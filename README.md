@@ -7,14 +7,13 @@ inspect anatomy, operate simulated instruments, record demonstrations, and explo
 and reinforcement-learning workflows.
 
 <p align="center">
-  <img src="docs/screenshots/doctor-studio-learning-loop.gif" width="960" alt="Dr.Anmar guiding a needle-lift lesson through Observe, Demonstrate, Train, and Compare">
+  <img src="docs/screenshots/dr-anmar-ui-showcase.gif" width="960" alt="Dr.Anmar interface showcase covering surgical teaching, robot simulation, controls, and anatomy">
 </p>
 
-<p align="center"><strong>Observe → Demonstrate → Train → Compare</strong><br>
-One repeatable learning loop connects clinical intent, robot control, data collection, and policy evaluation.</p>
+<p align="center"><strong>From clinical lesson to live digital twin</strong><br>
+Guided teaching, simulated robot control, anatomy variation, and policy learning in one doctor-facing workspace.</p>
 
-All visuals below are direct captures from the Dr.Anmar interface—not figures copied from a paper or
-external research media.
+All visuals below are project-owner-approved Dr.Anmar interface screens.
 
 > [!WARNING]
 > Dr.Anmar is research software for simulation, synthetic data, and education. It is not a medical
@@ -29,6 +28,13 @@ Dr.Anmar exposes robotics progressively instead of presenting a wall of simulato
 2. **Demonstrate** — perform the same task in the digital twin and record the whole trajectory.
 3. **Train** — connect the demonstration to Behavior Cloning or run a deliberately bounded RL exercise.
 4. **Compare** — change anatomy, viewpoint, or object pose and inspect where behavior changes.
+
+<p align="center">
+  <img src="docs/screenshots/doctor-studio-learning-loop.gif" width="960" alt="Dr.Anmar guiding a needle-lift lesson through Observe, Demonstrate, Train, and Compare">
+</p>
+
+<p align="center"><strong>Observe → Demonstrate → Train → Compare</strong><br>
+One repeatable loop connects clinical intent, robot control, data collection, and policy evaluation.</p>
 
 ![Dr.Anmar guided needle-lift lesson with the four-step learning rail](docs/screenshots/doctor-studio-guided-learning.png)
 
