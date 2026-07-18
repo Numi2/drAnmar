@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ORBIT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${ORBIT_ROOT}/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "${ORBIT_ROOT}/.env"
+    set +a
+fi
+
+ROOT="${DR_ANMAR_ROOT:-${HOME}/.local/share/dr-anmar}"
+PYTHON="${ISAAC_PYTHON:-python3}"
+PORTABLE_ROOT="${DR_ANMAR_PORTABLE_ROOT:-${ROOT}/isaac_portable}"
+
+mkdir -p "${ROOT}/logs" "${ROOT}/tmp" "${PORTABLE_ROOT}"
+export TMPDIR="${ROOT}/tmp"
+export PYTHONPATH="${ORBIT_ROOT}/source/extensions/orbit.surgical.ext:${ORBIT_ROOT}/source/extensions/orbit.surgical.assets:${ORBIT_ROOT}/source/extensions/orbit.surgical.tasks:${PYTHONPATH:-}"
+
+cd "${ORBIT_ROOT}"
+
+command="${1:-smoke}"
+case "${command}" in
+    list)
+        exec "${PYTHON}" source/standalone/environments/list_envs.py \
+            --headless \
+            --kit_args "--portable-root ${PORTABLE_ROOT}"
+        ;;
+    smoke)
+        task="${2:-Isaac-Reach-PSM-v0}"
+        steps="${3:-120}"
+        slug="$(printf '%s' "${task}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '_')"
+        exec "${PYTHON}" scripts/dr_anmar_smoke.py \
+            --headless \
+            --task "${task}" \
+            --num_envs 1 \
+            --steps "${steps}" \
+            --report "${ROOT}/logs/${slug}_smoke.json" \
+            --kit_args "--portable-root ${PORTABLE_ROOT}"
+        ;;
+    workstation)
+        port="${2:-2361}"
+        task="${3:-Isaac-Lift-Needle-PSM-IK-Rel-v0}"
+        exec "${PYTHON}" scripts/dr_anmar_workstation.py \
+            --headless \
+            --enable_cameras \
+            --task "${task}" \
+            --port "${port}" \
+            --demo_dir "${ROOT}/demos" \
+            --kit_args "--portable-root ${PORTABLE_ROOT}"
+        ;;
+    anatomy-viewer)
+        port="${2:-2361}"
+        scene="${3:?An official main_scene.usd path is required}"
+        room_id="${4:?A room id is required}"
+        room_title="${5:?A room title is required}"
+        exec "${PYTHON}" scripts/dr_anmar_anatomy_viewer.py \
+            --scene "${scene}" \
+            --room_id "${room_id}" \
+            --room_title "${room_title}" \
+            --port "${port}"
+        ;;
+    catalog)
+        exec "${PYTHON}" scripts/dr_anmar_catalog.py
+        ;;
+    doctor)
+        exec "${PYTHON}" scripts/dr_anmar_doctor.py
+        ;;
+    *)
+        echo "Usage: $0 {list|catalog|doctor|smoke [TASK] [STEPS]|workstation [PORT] [TASK]|anatomy-viewer [PORT] [SCENE] [ROOM_ID] [ROOM_TITLE]}" >&2
+        exit 2
+        ;;
+esac

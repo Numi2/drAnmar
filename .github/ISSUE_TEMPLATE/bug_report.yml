@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a reproducible Dr.Anmar simulation or interface problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, patient information, or private datasets.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Explain the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Give the smallest sequence of commands and interface actions that reproduces the issue.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Runtime versions
+      description: Dr.Anmar revision, Isaac Sim, Isaac Lab, Python, OS, and GPU.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste only the smallest sanitized excerpt. Remove personal paths and private data.
+      render: shell
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: This report contains no patient data, secrets, or physical-robot control request.
+          required: true
