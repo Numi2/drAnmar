@@ -6,10 +6,62 @@ It turns the underlying simulator into a guided workstation where doctors and ro
 inspect anatomy, operate simulated instruments, record demonstrations, and explore imitation-learning
 and reinforcement-learning workflows.
 
+<p align="center">
+  <img src="docs/screenshots/doctor-studio-learning-loop.gif" width="960" alt="Dr.Anmar guiding a needle-lift lesson through Observe, Demonstrate, Train, and Compare">
+</p>
+
+<p align="center"><strong>Observe → Demonstrate → Train → Compare</strong><br>
+One repeatable learning loop connects clinical intent, robot control, data collection, and policy evaluation.</p>
+
+All visuals below are direct captures from the Dr.Anmar interface—not figures copied from a paper or
+external research media.
+
 > [!WARNING]
 > Dr.Anmar is research software for simulation, synthetic data, and education. It is not a medical
 > device, is not clinically validated, and must not be used for diagnosis, treatment, patient-specific
 > planning, or control of physical surgical hardware.
+
+## Control pedagogy designed for doctors
+
+Dr.Anmar exposes robotics progressively instead of presenting a wall of simulator controls:
+
+1. **Observe** — see the complete task and learn which visual cues matter.
+2. **Demonstrate** — perform the same task in the digital twin and record the whole trajectory.
+3. **Train** — connect the demonstration to Behavior Cloning or run a deliberately bounded RL exercise.
+4. **Compare** — change anatomy, viewpoint, or object pose and inspect where behavior changes.
+
+![Dr.Anmar guided needle-lift lesson with the four-step learning rail](docs/screenshots/doctor-studio-guided-learning.png)
+
+### Surgical controls that behave like a game
+
+The live workstation translates six-degree-of-freedom robot control into a control surface clinicians can
+learn immediately:
+
+- Hold to move; release to stop.
+- Precision, Normal, and Fast speed modes make fine grasping and open-space travel equally accessible.
+- Position and angle controls use spatial language—*toward patient*, *away*, *roll*, *pitch*, and *yaw*.
+- Every action has a keyboard equivalent, with standard gamepad support for continuous input.
+- Gripper and demonstration controls sit beside movement so practice naturally becomes training data.
+
+<p align="center">
+  <img src="docs/screenshots/surgical-control-panel.png" width="400" alt="Dr.Anmar game-like surgical instrument controls for speed, position, angle, and gripper">
+</p>
+
+### Robot learning explained in clinical language
+
+The Policy Lab compares Behavior Cloning, Reinforcement Learning, and Visual Behavior Cloning with simple
+resident-training analogies. Training begins with a small, reviewable recipe so a new user learns what
+observations, rewards, environments, iterations, logs, and checkpoints mean before scaling up.
+
+![Dr.Anmar Policy Lab comparing robot-learning approaches and preparing a bounded training run](docs/screenshots/doctor-studio-policy-lab.png)
+
+### Every practice attempt becomes structured training data
+
+The Demonstrations workspace teaches what makes an example useful, records the complete behavior from
+approach through safe recovery, and keeps synchronized observations, actions, joint motion, tool motion,
+and object pose together for Behavior Cloning.
+
+![Dr.Anmar Demonstrations workspace showing recording controls and example-quality guidance](docs/screenshots/doctor-studio-demonstrations.png)
 
 ## What is included
 
@@ -45,7 +97,7 @@ are dependencies and are not redistributed by this repository.
 Clone the repository outside the Isaac Lab checkout:
 
 ```bash
-git clone https://github.com/YOUR-ORG/DrAnmar.git
+git clone https://github.com/Numi2/drAnmar.git
 cd DrAnmar
 cp .env.example .env
 ```
