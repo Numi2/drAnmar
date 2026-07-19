@@ -1,0 +1,194 @@
+# Dr.Anmar validation backlog
+
+This ledger records completed engineering checks and the work still required for the Surgical Skills
+Twin, Failure Lab, and Multimodal Lab. Completed runtime checks are evidence of software behavior in
+simulation, not clinical validation.
+
+## Release status
+
+- Implementation status: Skills Twin, Failure Lab, RGB-D and semantic recording, native scene variation,
+  clinician reference comparison and path guide, tissue/contact telemetry, and automated challenge-matrix
+  slices complete in source.
+- Runtime validation status: first live Gilgamesh pass completed on 2026-07-19; the remaining items below
+  are still open.
+- Clinical validation status: not started.
+- Intended use remains simulation, education, synthetic data, and preclinical research only.
+
+## Gilgamesh runtime evidence — 2026-07-19
+
+Validated on the RTX 4090 host:
+
+- Doctor Studio and the default needle-lift relative-IK room started on ports 2360/2361 with the official
+  CT-liver showcase, stereo-left, stereo-right, and wrist-1 live camera streams.
+- A real browser pass loaded the operating room and Multimodal Lab without application console errors;
+  the only initial error was a missing favicon, which is now answered with HTTP 204.
+- The pinned `i4h-workflows` v0.5.0 source at revision
+  `fb7727ef12e980022997fccb6cbca5621e4616e4` exposed robotic-surgery, robotic-ultrasound, SO-ARM,
+  and telesurgery connectors. NVIDIA mode metadata was parsed directly rather than copied into Dr.Anmar.
+- HoloHub CLI was pinned to the release-compatible revision
+  `5c49897bd229d4ce46cbcd4a68c640f6258233f7`. This fixes upstream main-branch drift that removed
+  `utilities/cli/holohub.py` after the i4h v0.5.0 release.
+- The web runner rejected privileged Clarius hardware access and rejected container launch before pausing
+  the operating room when Docker was absent. A pre-fix failure-path exercise also proved that job logs and
+  manifests persist and the prior Dr.Anmar lesson automatically resumes after an official workflow exits.
+- A study manifest was created and exported through the live hub.
+- A 5-second multimodal recording saved 169 control/state frames and 22 vision frames. It contained left
+  and right RGB, wrist RGB, finite metric depth, semantic IDs, fixed-grid camera-frame point clouds, joint
+  state, applied/computed joint torque, world-frame robot/object/anatomy pose, simulator outcome, gaze/input
+  provenance, and procedure phase/event codes.
+- Stereo-left and stereo-right frames were numerically distinct; the wrist view was substantially distinct;
+  all sampled depth and point-cloud values were valid in this capture; all recorded torque values were finite.
+- Procedure events were preserved both as per-frame numeric codes and as two human-readable manifest entries.
+- Isaac Lab 2.3 camera metadata changed from a dictionary to a per-environment list after rendering. The live
+  capture exposed this compatibility fault; metadata normalization was added and the complete recording then
+  saved successfully.
+
+Known host/runtime blockers from the same pass:
+
+- Docker Engine and the NVIDIA container runtime are not installed for the `numi` account, and that account
+  has no passwordless administrative access. Official i4h containers therefore remain blocked before launch.
+- No RTI Connext DDS license is configured. Ultrasound, DDS policy pipelines, telesurgery, and related
+  distributed modes must remain disabled until a valid license file is supplied.
+- Co-resident Jetbot vision workloads used about 13.8 GB of GPU memory. Dr.Anmar rendered at roughly 2 FPS
+  while those processes remained untouched. Sensor-throughput and long-recording performance results from
+  this pass are not representative of an isolated 4090.
+- Physical hardware, haptic, XR, external eye-tracker, Clarius, RealSense, and real-robot modes were not run.
+
+## P0 — validate before calling this release runtime-ready
+
+- Start the complete suite with Isaac Sim 5.1 and Isaac Lab 2.3.2 on the validated Linux/NVIDIA host.
+- Confirm `dr_anmar_workstation.py` imports and starts for the default needle-lift relative-IK task.
+- Exercise every new API through the hub and worker:
+  - list and apply failure scenarios;
+  - change manual and guided modes;
+  - start selected demonstration replay;
+  - take control during replay;
+  - list demonstration analysis;
+  - list persisted experiment manifests.
+- Confirm the Doctor Studio loads Skills Twin and Failure Lab without browser-console errors.
+- Confirm applying a challenge resets the environment once and preserves the selected task.
+- Confirm the shifted-camera pose is valid for the default room and does not place the camera inside geometry.
+- Confirm low-light, glare, partial-occlusion, and combined visual transforms update the streamed frame.
+- Confirm manual movement interrupts supervised replay immediately and increments intervention count once.
+- Confirm the explicit **Take control immediately** action stops replay and zeroes active drive commands.
+- Record and stop a new demonstration; confirm both `.npz` and v2 `.json` manifest are written.
+- Confirm the hub can read the worker's enriched demonstration list and selected analysis.
+- Confirm newly recorded v2 demonstrations contain synchronized 360 × 240 endoscopic RGB at the declared
+  5 Hz sampling rate and that timestamps align with the 50 Hz robot-state trajectory.
+- Confirm depth is stored in metres as finite 360 × 240 float arrays, semantic IDs remain uint32 after nearest-
+  neighbour resizing, the semantic label map is serializable, and camera intrinsics match the rendered sensor.
+- Confirm the two endoscope cameras share intrinsics, use the intended 6 mm baseline, remain time-synchronized,
+  and have correct left/right extrinsics after baseline and shifted-camera resets.
+- Confirm each wrist camera is parented to the actual `psm_tool_tip_link`, `endo360_needle`, or `ecm_end_link`,
+  has the expected optical convention, clears surrounding geometry, and renders for single and dual robots.
+- Independently unproject sampled depth and confirm every fixed-grid point-cloud XYZ is in metres in the declared
+  left-camera optical frame, including invalid-depth encoding.
+- Confirm applied/computed joint-torque arrays exist, use documented simulator units, align with joint ordering,
+  and are never described as a wrist force-torque sensor.
+- Confirm anatomy pose is the actual spawned prim transform for every anatomy preset; the initial implementation
+  records the configured showcase transform and must not be treated as patient registration.
+- Confirm simulator reward, termination, truncation, success, and contact-force tensors are converted without
+  blocking GPU execution or introducing device synchronization stalls.
+- Confirm deformable-object nodal displacement, deformation-gradient, and stress tensors exist for each tissue
+  task, use the expected frames/units, and do not stall the GPU at 50 Hz recording cadence.
+- Select a clinician reference, compare another attempt, and verify normalized action interpolation for
+  demonstrations with different durations and action dimensions.
+- Promote a clinician reference to the world-space path guide; verify the moving-body heuristic selects the
+  actual tool tip, the points register after reset, remain visible from the endoscope, and hide immediately.
+- Confirm the lateral and depth target scenarios call `write_root_pose_to_sim` and zero root velocity after the
+  seeded environment reset without moving unrelated rigid objects.
+- Confirm calibration bias rotates/scales both manual commands and automated replay exactly once.
+- Confirm the multi-organ anatomy context reveals intended organ prims without exposing material/helper prims
+  or changing collision behavior unexpectedly.
+- Run a small two-scenario, two-seed challenge matrix and confirm every rollout resets, replays, records,
+  analyzes, and updates the durable matrix manifest before the next rollout begins.
+- Confirm challenge summary means, 95% normal intervals, native-success rate, intervention rate, safety-event
+  rate, and per-scenario groups exactly match an independent calculation. Treat intervals as descriptive only.
+- Interrupt an automated matrix rollout with **Take control immediately** and confirm the matrix records the
+  intervention and continues according to the intended study protocol.
+- Start one bounded training recipe and confirm its experiment manifest advances from `starting` to `running`
+  and then `complete` or `failed`.
+- Freeze a dataset card from multiple demonstrations; independently recompute every SHA-256, verify duplicate
+  content produces the same content-addressed ID, and confirm the exported JSON survives a hub restart.
+
+## P1 — validate telemetry and coaching correctness
+
+- Confirm `psm_tool_tip_link` and `endo360_needle` indices match the rendered end effector for every supported
+  dVRK and STAR task; legacy demonstrations still use the maximum-moving-body fallback.
+- Check tool-path units and magnitude against an independently calculated trajectory.
+- Calibrate normalized action-similarity against clinician judgment; it is not yet a measure of surgical skill
+  or procedural equivalence.
+- Verify object-position keys for needle, block, and handover tasks.
+- Calibrate the current 8 mm lift-evidence threshold separately for each task and object.
+- Verify gripper-close event detection for single- and dual-arm action layouts.
+- Validate phase-event ordering for demonstrations containing re-grasps, aborted attempts, or multiple lifts.
+- Validate the relative tool-object drift proxy against explicit simulated grasp/contact state before calling it
+  grasp slip; rotation about a stable grasp can currently contribute to the distance signal.
+- Calibrate direction-correction, idle-time, recovery-hold, and smoothness proxies on a controlled set of
+  novice and expert demonstrations.
+- Confirm legacy v1 demonstrations remain downloadable and degrade gracefully when no analysis exists.
+- Confirm very short, empty, corrupted, and partially written demonstrations do not break the UI.
+- Add explicit task-success signals from the Isaac environment rather than treating object displacement as
+  the final success measure.
+- Replace maximum-moving-body path selection with task-specific tool-tip body registration.
+- Validate contact force, deformation-gradient, stress, camera visibility, and grasp-slip metrics against
+  independent ground truth for every supported task.
+- Replace the current engineering advisories (2 N contact, 15 mm displacement, 0.50 deformation proxy) with
+  task-specific, clinician- and biomechanical-engineer-reviewed research limits; they are not clinical limits.
+
+## P1 — validate reproducibility and performance
+
+- Confirm the recorded scenario seed deterministically reproduces the environment reset, native target jitter,
+  camera pose, anatomy visibility, and every future randomizer on the supported Isaac Lab release.
+- Measure storage growth and save latency from synchronized endoscopic RGB arrays across long demonstrations
+  and large automated matrices.
+- Decide whether RGB observations belong in the main `.npz`, a chunked Zarr/HDF5 dataset, or an external
+  image/video stream before collecting large research datasets.
+- Confirm dataset-card hashing and UI enumeration remain responsive for 100 large demonstrations; hashing is
+  currently synchronous and should move to a background job if it delays the doctor-facing request.
+- Measure render, GPU-memory, storage, and save-latency impact of stereo plus one or two wrist cameras. Add a
+  doctor-selectable sensor budget if simultaneous cameras reduce the required control rate.
+- Confirm procedure phase/event pulses are aligned to the correct trajectory frame and are not lost when events
+  occur between sampling intervals.
+- Validate external eye-tracker and XR gaze timestamps, coordinate conventions, calibration drift, and dropout.
+  The browser pointer channel is an attention proxy and must never be reported as measured eye gaze.
+- Verify input-source codes distinguish keyboard/pointer, gamepad, dVRK MTM, XR, and haptic devices throughout
+  recording, replay, handover, and export.
+- Recheck mode discovery when changing the pinned i4h or HoloHub revisions; metadata drift must fail closed
+  rather than silently enabling an unknown hardware or custom-argument mode.
+- After Docker/NVIDIA Container Toolkit and RTI licensing are configured, launch the official robotic-ultrasound
+  workflow through the guarded runner; validate B-mode frames, probe pose, acoustic parameters, timestamps,
+  and the Holoscan path before enabling live ultrasound controls.
+- Validate optional XR and haptic adapters with end-to-end latency, packet loss, force scaling, saturation,
+  emergency stop, human handover, RTI DDS licensing, and hardware-in-the-loop isolation.
+- Define consent, privacy, retention, pseudonymization, and access controls before collecting identifiable gaze,
+  operator video, voice, or real clinician performance data.
+- Confirm a hub restart can discover and resume or accurately mark an in-progress matrix; the current
+  background runner is process-local while its completed evidence is durable.
+- Record package versions, simulator build, GPU, task configuration, and policy checkpoint hashes in manifests.
+- Measure CPU and GPU impact of Pillow-based stream perturbations at interactive and idle frame rates.
+- Confirm experiment and demonstration enumeration remains responsive with 1,000+ manifests.
+- Add manifest lifecycle recovery for a training process that is killed before the monitor thread updates it.
+- Confirm concurrent browser sessions cannot unintentionally change each other's scenario or autonomy mode.
+
+## P2 — clinical and educational validation
+
+- Convene a clinician panel to define the observable phases and acceptable recovery for needle lift.
+- Replace generic coaching thresholds with clinician-authored, task-specific criteria.
+- Run a novice/intermediate/expert study and test construct validity of each automated metric.
+- Compare automated scores with blinded GEARS ratings; report agreement rather than calling the proxy GEARS.
+- Measure whether Skills Twin feedback improves subsequent performance, not merely whether users like it.
+- Test whether the Failure Lab improves detection of uncertainty and appropriate hand-back behavior.
+- Evaluate usability, workload, accessibility, simulator sickness, and learning retention.
+- Validate specialty-specific tasks independently; do not transfer needle-lift thresholds to other procedures.
+
+## Planned next engineering slice
+
+- Have the Gilgamesh administrator install Docker Engine plus NVIDIA Container Toolkit, then configure a valid
+  RTI Connext DDS license and rerun the guarded ultrasound launch.
+- Launch `teleop_with_ultrasound`, confirm the B-mode and visualization processes become ready, and embed their
+  clinician-facing video/status surface in Dr.Anmar rather than exposing container logs as the primary view.
+- Add simulator-native tissue-stiffness, latency, object-scale, grasp-friction, stereo-calibration, and sensor-
+  dropout randomizers to the automated challenge matrix.
+- Add visibility/occlusion metrics and independently validated task-specific grasp/contact state.
+- Add policy evaluation cards linked to immutable datasets, checkpoints, runtime revisions, and challenge matrices.

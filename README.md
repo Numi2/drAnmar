@@ -75,6 +75,31 @@ and object pose together for Behavior Cloning.
 - A default operating-room showcase with the surgical robot, controls, room, and liver geometry.
 - Guided lessons, plain-language robotics explanations, progress tracking, and a robotics glossary.
 - Demonstration recording and replay for behavior-cloning experiments.
+- Surgical Skills Twin analysis with telemetry-derived coaching, phase timelines, subscores, and selected-attempt replay.
+- Registered task-native dVRK/STAR tool-tip paths rendered as an optional phase-coloured guide inside the live
+  OpenUSD operating room, with a legacy trajectory fallback.
+- Needle-lift Failure Lab with reproducible camera and visual challenges, supervision state, and immediate doctor handoff.
+- Synchronized endoscopic RGB, robot state, native simulator outcomes, and available contact-force evidence in new demonstrations.
+- Clinician-selected reference demonstrations with normalized trajectory comparison and coaching.
+- Synchronized 50 Hz robot state plus 5 Hz endoscopic RGB, metric depth, semantic IDs, camera intrinsics,
+  native task outcomes, available contact forces, and deformable-tissue research telemetry.
+- Stereo endoscope views, task-native instrument wrist cameras, camera-frame metric point clouds, joint torque,
+  anatomy pose, operator gaze/input provenance, and procedure phase/event annotation.
+- A clinician-facing Multimodal Lab that converts a research question into an exportable study manifest bound
+  to NVIDIA's robotic-surgery, robotic-ultrasound, SO-ARM/GR00T, and telesurgery workflows.
+- A guarded NVIDIA workflow runner with live mode discovery, plain-language prerequisites, job logs,
+  provenance manifests, automatic lesson restoration, and privileged hardware modes locked out by default.
+- Simulator-native target-pose, control-calibration, and multi-organ context challenges beside the camera and
+  image stressors.
+- Automated challenge summaries with per-scenario descriptive statistics, intervention rate, native success,
+  safety-event rate, and 95% intervals where repeated rollouts exist.
+- Content-addressed dataset cards that freeze demonstration and sidecar checksums, provenance, modalities,
+  task context, references, duration, and intended research use into an exportable JSON record.
+
+The multimodal architecture and study schema are described in
+[`docs/MULTIMODAL_STUDIES.md`](docs/MULTIMODAL_STUDIES.md).
+- Automated challenge matrices that replay one demonstration across selected scenarios and seeds while preserving every rollout.
+- Versioned demonstration and experiment manifests recording task, scenario, seed, source revision, and training recipe.
 - Nine ORBIT-Surgical task families and 54 registered control/play variants.
 - RSL-RL, RL-Games, Stable-Baselines3, SKRL, and Robomimic workflows inherited from ORBIT-Surgical.
 - A resumable installer for seven official ORBIT-Surgical v0.1.0 anatomy scene archives.
@@ -82,6 +107,10 @@ and object pose together for Behavior Cloning.
 
 Downloaded anatomy, demonstrations, checkpoints, logs, and runtime state are deliberately kept outside
 the Git repository.
+
+The first Skills Twin metrics are explicitly research coaching proxies rather than validated clinical
+assessment instruments. Runtime, telemetry, performance, and clinician-study work intentionally deferred
+from the fast implementation pass is tracked in [the validation backlog](docs/VALIDATION_BACKLOG.md).
 
 ## Requirements
 
@@ -123,6 +152,16 @@ Start Doctor Studio:
 ```bash
 ./dr_anmar_suite.sh start
 ```
+
+Optionally install the pinned Isaac for Healthcare workflow source:
+
+```bash
+./scripts/install_i4h_workflows.sh
+```
+
+Official workflow containers also require Docker Engine with NVIDIA GPU container support. DDS-based modes
+such as robotic ultrasound require a valid `RTI_LICENSE_FILE`. The Multimodal Lab reports these prerequisites
+and keeps launch disabled until they are present; the normal Dr.Anmar operating room does not require them.
 
 Open [http://localhost:2360](http://localhost:2360). Useful service commands are:
 

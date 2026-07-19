@@ -6,7 +6,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import math
 import os
 import signal
 import subprocess
@@ -22,12 +24,23 @@ from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from dr_anmar_catalog import CATALOG, PRIMARY_TASKS, TASKS_BY_ID
 from dr_anmar_curriculum import curriculum_payload
+from dr_anmar_i4h_adapter import (
+    I4H_ROOT,
+    HOLOHUB_CLI_COMMIT,
+    MODALITY_CATALOG,
+    POLICY_STARTING_POINTS,
+    WORKFLOW_BINDINGS,
+    platform_payload,
+    runtime_prerequisites,
+    study_manifest,
+    workflow_modes,
+)
 
 
 parser = argparse.ArgumentParser()
@@ -45,6 +58,11 @@ ANATOMY_ROOT = DR_ANMAR_ROOT / "assets/sufia_bc"
 ASSET_STATUS_PATH = DR_ANMAR_ROOT / "run/sufia_assets_status.json"
 PROGRESS_PATH = DR_ANMAR_ROOT / "state/doctor_progress.json"
 TRAINING_ROOT = DR_ANMAR_ROOT / "training"
+EXPERIMENT_ROOT = DR_ANMAR_ROOT / "experiments"
+DEMO_ROOT = DR_ANMAR_ROOT / "demos"
+DATASET_CARD_ROOT = DR_ANMAR_ROOT / "dataset_cards"
+STUDY_ROOT = DR_ANMAR_ROOT / "studies"
+HEALTHCARE_JOB_ROOT = DR_ANMAR_ROOT / "healthcare_jobs"
 
 
 ANATOMY_SCENES = (
@@ -128,6 +146,47 @@ class TrainingRequest(BaseModel):
     resume_workstation: bool = True
 
 
+class ScenarioApplicationRequest(BaseModel):
+    scenario_id: str
+    seed: int = 7777
+
+
+class AutonomyModeRequest(BaseModel):
+    mode: str
+
+
+class ChallengeMatrixRequest(BaseModel):
+    demo: str
+    scenario_ids: list[str]
+    seeds: list[int]
+
+
+class ReferenceGhostRequest(BaseModel):
+    enabled: bool = True
+    demo: str | None = None
+
+
+class DatasetCardRequest(BaseModel):
+    title: str = "Dr.Anmar surgical behavior dataset"
+    demos: list[str]
+    intended_use: str = "Simulation-only behavior cloning and supervised-autonomy research"
+
+
+class MultimodalStudyRequest(BaseModel):
+    title: str
+    clinical_question: str
+    task: str
+    modalities: list[str]
+    policy: str = "behavior_cloning"
+    teleoperation: str = "keyboard_pointer"
+
+
+class HealthcareWorkflowRequest(BaseModel):
+    workflow: str
+    mode: str
+    resume_workstation: bool = True
+
+
 @dataclass
 class HubState:
     switching: bool = False
@@ -140,6 +199,25 @@ class HubState:
     training_log: str | None = None
     training_started_at: str | None = None
     training_exit_code: int | None = None
+    training_manifest: str | None = None
+    healthcare_process: subprocess.Popen | None = None
+    healthcare_status: str = "idle"
+    healthcare_job_id: str | None = None
+    healthcare_workflow: str | None = None
+    healthcare_mode: str | None = None
+    healthcare_log: str | None = None
+    healthcare_started_at: str | None = None
+    healthcare_exit_code: int | None = None
+    healthcare_manifest: str | None = None
+    healthcare_resume_task: str | None = None
+    matrix_status: str = "idle"
+    matrix_id: str | None = None
+    matrix_demo: str | None = None
+    matrix_total: int = 0
+    matrix_completed: int = 0
+    matrix_results: list[dict[str, Any]] = field(default_factory=list)
+    matrix_aggregate: dict[str, Any] = field(default_factory=dict)
+    matrix_manifest: str | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
 
 
@@ -165,6 +243,24 @@ def write_json(path: Path, value: Any) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
     temporary.replace(path)
+
+
+def repository_revision(root: Path) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        return result.stdout.strip() if result.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def source_revision() -> str | None:
+    return repository_revision(args.root)
 
 
 def worker_json(path: str, method: str = "GET", payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -315,7 +411,157 @@ def training_payload() -> dict[str, Any]:
             "log": state.training_log,
             "started_at": state.training_started_at,
             "exit_code": state.training_exit_code,
+            "manifest": state.training_manifest,
         }
+
+
+def healthcare_job_payload() -> dict[str, Any]:
+    with state.lock:
+        return {
+            "status": state.healthcare_status,
+            "job_id": state.healthcare_job_id,
+            "workflow": state.healthcare_workflow,
+            "mode": state.healthcare_mode,
+            "log": state.healthcare_log,
+            "started_at": state.healthcare_started_at,
+            "exit_code": state.healthcare_exit_code,
+            "manifest": state.healthcare_manifest,
+            "resume_task": state.healthcare_resume_task,
+        }
+
+
+def matrix_payload() -> dict[str, Any]:
+    with state.lock:
+        return {
+            "status": state.matrix_status,
+            "matrix_id": state.matrix_id,
+            "demo": state.matrix_demo,
+            "total": state.matrix_total,
+            "completed": state.matrix_completed,
+            "results": list(state.matrix_results),
+            "aggregate": dict(state.matrix_aggregate),
+            "manifest": state.matrix_manifest,
+        }
+
+
+def descriptive_interval(values: list[float]) -> dict[str, Any]:
+    if not values:
+        return {"n": 0, "mean": None, "ci95": [None, None]}
+    mean = sum(values) / len(values)
+    if len(values) < 2:
+        return {"n": len(values), "mean": round(mean, 4), "ci95": [None, None]}
+    variance = sum((value - mean) ** 2 for value in values) / (len(values) - 1)
+    half_width = 1.96 * math.sqrt(variance / len(values))
+    return {
+        "n": len(values),
+        "mean": round(mean, 4),
+        "ci95": [round(mean - half_width, 4), round(mean + half_width, 4)],
+    }
+
+
+def aggregate_matrix_results(results: list[dict[str, Any]]) -> dict[str, Any]:
+    completed = [item for item in results if item.get("status") in {"complete", "interrupted"}]
+    scores = [float(item["overall_score"]) for item in completed if item.get("overall_score") is not None]
+    native = [1.0 if item.get("native_success") else 0.0 for item in completed if item.get("native_success") is not None]
+    interventions = [1.0 if int(item.get("intervention_count", 0)) > 0 else 0.0 for item in completed]
+    safety = [1.0 if int(item.get("safety_event_count", 0)) > 0 else 0.0 for item in completed]
+    contacts = [float(item["max_contact_force_n"]) for item in completed if item.get("max_contact_force_n") is not None]
+    per_scenario = {}
+    for scenario_id in sorted({str(item.get("scenario_id")) for item in completed}):
+        group = [item for item in completed if item.get("scenario_id") == scenario_id]
+        group_scores = [float(item["overall_score"]) for item in group if item.get("overall_score") is not None]
+        per_scenario[scenario_id] = {
+            "rollouts": len(group),
+            "skills_score": descriptive_interval(group_scores),
+            "native_success_rate": descriptive_interval(
+                [1.0 if item.get("native_success") else 0.0 for item in group if item.get("native_success") is not None]
+            ),
+            "intervention_rate": round(sum(1 for item in group if int(item.get("intervention_count", 0)) > 0) / len(group), 4),
+            "safety_event_rate": round(sum(1 for item in group if int(item.get("safety_event_count", 0)) > 0) / len(group), 4),
+        }
+    return {
+        "schema": "dr.anmar.challenge-summary.v1",
+        "validation_status": "descriptive_research_statistics_not_clinically_validated",
+        "completed_rollouts": len(completed),
+        "skills_score": descriptive_interval(scores),
+        "native_success_rate": descriptive_interval(native),
+        "intervention_rate": descriptive_interval(interventions),
+        "safety_event_rate": descriptive_interval(safety),
+        "max_contact_force_n": descriptive_interval(contacts),
+        "per_scenario": per_scenario,
+    }
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def run_challenge_matrix(demo: str, cases: list[tuple[str, int]], manifest_path: Path) -> None:
+    results: list[dict[str, Any]] = []
+    for scenario_id, seed in cases:
+        result: dict[str, Any] = {"scenario_id": scenario_id, "seed": seed, "status": "starting"}
+        try:
+            worker_json(
+                "/api/evaluate",
+                method="POST",
+                payload={"demo": demo, "scenario_id": scenario_id, "seed": seed},
+            )
+            deadline = time.monotonic() + 360.0
+            worker = None
+            while time.monotonic() < deadline:
+                worker = worker_status()
+                if worker and worker.get("evaluation_status") in {"complete", "interrupted", "failed"}:
+                    break
+                time.sleep(0.5)
+            if not worker or worker.get("evaluation_status") not in {"complete", "interrupted", "failed"}:
+                try:
+                    worker_json("/api/handoff", method="POST", payload={})
+                except HTTPException:
+                    pass
+                raise TimeoutError("Challenge rollout exceeded 360 seconds")
+            output = worker.get("evaluation_output")
+            analysis = worker_json(f"/api/demos/{output}/analysis") if output else {}
+            skills = analysis.get("analysis", {})
+            result.update(
+                {
+                    "status": worker.get("evaluation_status"),
+                    "output": output,
+                    "overall_score": skills.get("overall_score"),
+                    "native_success": skills.get("metrics", {}).get("native_success"),
+                    "max_contact_force_n": skills.get("metrics", {}).get("max_contact_force_n"),
+                    "max_tissue_displacement_m": skills.get("metrics", {}).get("max_tissue_displacement_m"),
+                    "safety_event_count": len(skills.get("safety", {}).get("events", [])),
+                    "intervention_count": analysis.get("context", {}).get("intervention_count", 0),
+                    "analysis": skills,
+                }
+            )
+        except Exception as exc:
+            result.update({"status": "failed", "error": str(exc)})
+        results.append(result)
+        aggregate = aggregate_matrix_results(results)
+        with state.lock:
+            state.matrix_completed = len(results)
+            state.matrix_results = list(results)
+            state.matrix_aggregate = aggregate
+        manifest = read_json(manifest_path, {})
+        manifest.update(
+            {"status": "running", "completed": len(results), "results": results, "aggregate": aggregate, "updated_at": utc_now()}
+        )
+        write_json(manifest_path, manifest)
+    aggregate = aggregate_matrix_results(results)
+    with state.lock:
+        state.matrix_status = "complete"
+        state.matrix_results = list(results)
+        state.matrix_aggregate = aggregate
+    manifest = read_json(manifest_path, {})
+    manifest.update(
+        {"status": "complete", "completed": len(results), "results": results, "aggregate": aggregate, "finished_at": utc_now()}
+    )
+    write_json(manifest_path, manifest)
 
 
 def monitor_training(process: subprocess.Popen, log_file, resume_task: str | None) -> None:
@@ -324,6 +570,43 @@ def monitor_training(process: subprocess.Popen, log_file, resume_task: str | Non
     with state.lock:
         state.training_exit_code = code
         state.training_status = "complete" if code == 0 else "failed"
+        manifest_path = Path(state.training_manifest) if state.training_manifest else None
+    if manifest_path:
+        manifest = read_json(manifest_path, {})
+        manifest.update({"status": "complete" if code == 0 else "failed", "exit_code": code, "finished_at": utc_now()})
+        write_json(manifest_path, manifest)
+    if resume_task:
+        with state.lock:
+            state.switching = True
+            state.requested_task = resume_task
+        switch_worker(resume_task)
+
+
+def stop_interactive_worker() -> None:
+    command = [str(args.root / "dr_anmar_workstation.sh"), "stop", str(args.worker_port)]
+    result = subprocess.run(command, cwd=args.root, capture_output=True, text=True, timeout=45)
+    if result.returncode != 0:
+        raise RuntimeError((result.stderr or result.stdout).strip() or "Could not pause the interactive operating room")
+
+
+def monitor_healthcare_workflow(
+    process: subprocess.Popen,
+    log_file,
+    job_id: str,
+    manifest_path: Path,
+    resume_task: str | None,
+) -> None:
+    code = process.wait()
+    log_file.close()
+    with state.lock:
+        requested_stop = state.healthcare_job_id == job_id and state.healthcare_status == "stopping"
+        final_status = "stopped" if requested_stop else ("complete" if code == 0 else "failed")
+        if state.healthcare_job_id == job_id:
+            state.healthcare_exit_code = code
+            state.healthcare_status = final_status
+    manifest = read_json(manifest_path, {})
+    manifest.update({"status": final_status, "exit_code": code, "finished_at": utc_now()})
+    write_json(manifest_path, manifest)
     if resume_task:
         with state.lock:
             state.switching = True
@@ -339,6 +622,11 @@ def index() -> HTMLResponse:
     return HTMLResponse(path.read_text(encoding="utf-8"), headers={"Cache-Control": "no-store"})
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    return Response(status_code=204)
+
+
 @app.get("/api/catalog")
 def catalog() -> dict[str, Any]:
     current = worker_status()
@@ -348,6 +636,225 @@ def catalog() -> dict[str, Any]:
 @app.get("/api/curriculum")
 def curriculum() -> dict[str, Any]:
     return curriculum_payload()
+
+
+@app.get("/api/healthcare-platform")
+def healthcare_platform() -> dict[str, Any]:
+    return platform_payload(ANATOMY_ROOT)
+
+
+@app.get("/api/healthcare-job")
+def healthcare_job() -> dict[str, Any]:
+    return healthcare_job_payload()
+
+
+@app.get("/api/healthcare-job/log")
+def healthcare_job_log() -> dict[str, Any]:
+    with state.lock:
+        log_value = state.healthcare_log
+        job_id = state.healthcare_job_id
+    if not log_value:
+        return {"job_id": job_id, "text": "No NVIDIA workflow has been launched yet."}
+    path = Path(log_value).resolve()
+    root = HEALTHCARE_JOB_ROOT.resolve()
+    if root not in path.parents or not path.is_file():
+        return {"job_id": job_id, "text": "The workflow log is not available yet."}
+    try:
+        with path.open("rb") as stream:
+            stream.seek(0, os.SEEK_END)
+            size = stream.tell()
+            stream.seek(max(0, size - 48 * 1024))
+            output = stream.read().decode("utf-8", errors="replace")
+    except OSError as exc:
+        raise HTTPException(503, "The workflow log could not be read") from exc
+    return {"job_id": job_id, "text": output[-24000:]}
+
+
+@app.post("/api/healthcare-job/start")
+def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
+    definition = WORKFLOW_BINDINGS.get(request.workflow)
+    if definition is None:
+        raise HTTPException(404, "Unknown NVIDIA healthcare workflow")
+    mode_catalog = workflow_modes(request.workflow)
+    mode = next((item for item in mode_catalog["modes"] if item["id"] == request.mode), None)
+    if mode is None:
+        raise HTTPException(404, "This mode is not present in the pinned NVIDIA workflow metadata")
+    if not mode["launchable"]:
+        raise HTTPException(409, mode["blocked_reason"] or "This mode needs advanced workstation setup")
+    workflow_root = I4H_ROOT / definition["directory"]
+    i4h_cli = I4H_ROOT / "i4h"
+    if not workflow_root.is_dir() or not i4h_cli.is_file():
+        raise HTTPException(409, "Install the pinned Isaac for Healthcare workflows before launching this mode")
+    prerequisites = runtime_prerequisites()
+    if not prerequisites["container_runtime"]["ready"]:
+        raise HTTPException(409, "Gilgamesh needs Docker Engine before official NVIDIA workflow containers can launch")
+    if mode["requires_rti"] and not prerequisites["rti_dds_license"]["ready"]:
+        raise HTTPException(409, "This workflow needs an RTI Connext DDS license file before it can launch")
+    training = training_payload()
+    if training["status"] in {"running", "stopping"}:
+        raise HTTPException(409, "Stop the policy training lab before launching an NVIDIA healthcare workflow")
+    if matrix_payload()["status"] == "running":
+        raise HTTPException(409, "Finish the active Failure Lab matrix before launching another simulator")
+    with state.lock:
+        if state.switching:
+            raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
+        if state.healthcare_process is not None and state.healthcare_process.poll() is None:
+            raise HTTPException(409, "An NVIDIA healthcare workflow is already running")
+    current = worker_status()
+    resume_task = (
+        current.get("task")
+        if current and current.get("mode") != "anatomy" and request.resume_workstation
+        else None
+    )
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    job_id = f"healthcare_{stamp}_{request.workflow}_{request.mode}"
+    HEALTHCARE_JOB_ROOT.mkdir(parents=True, exist_ok=True)
+    EXPERIMENT_ROOT.mkdir(parents=True, exist_ok=True)
+    log_path = HEALTHCARE_JOB_ROOT / f"{job_id}.log"
+    manifest_path = EXPERIMENT_ROOT / f"{job_id}.json"
+    command = [str(i4h_cli), "run", request.workflow, request.mode]
+    manifest = {
+        "schema": "dr.anmar.healthcare-workflow-job.v1",
+        "experiment_id": job_id,
+        "kind": "isaac_for_healthcare_workflow",
+        "simulation_only": True,
+        "clinical_use": False,
+        "created_at": utc_now(),
+        "source_revision": source_revision(),
+        "i4h_revision": repository_revision(I4H_ROOT),
+        "workflow": request.workflow,
+        "workflow_title": definition["title"],
+        "mode": request.mode,
+        "mode_title": mode["title"],
+        "mode_description": mode["description"],
+        "configuration": {
+            "resume_workstation": request.resume_workstation,
+            "hardware_access": False,
+            "custom_arguments": False,
+            "holohub_cli_commit": HOLOHUB_CLI_COMMIT,
+        },
+        "command": command,
+        "log": str(log_path),
+        "status": "preparing",
+    }
+    write_json(manifest_path, manifest)
+    with state.lock:
+        state.healthcare_status = "preparing"
+        state.healthcare_job_id = job_id
+        state.healthcare_workflow = request.workflow
+        state.healthcare_mode = request.mode
+        state.healthcare_log = str(log_path)
+        state.healthcare_started_at = None
+        state.healthcare_exit_code = None
+        state.healthcare_manifest = str(manifest_path)
+        state.healthcare_resume_task = resume_task
+    log_file = log_path.open("ab", buffering=0)
+    try:
+        if current:
+            stop_interactive_worker()
+        process_env = os.environ.copy()
+        process_env["CLI_PINNED_COMMIT"] = HOLOHUB_CLI_COMMIT
+        if not (I4H_ROOT / "tools/utilities/cli/holohub.py").is_file():
+            process_env["CLI_FORCE_UPDATE"] = "1"
+        process = subprocess.Popen(
+            command,
+            cwd=I4H_ROOT,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+            env=process_env,
+        )
+    except Exception as exc:
+        log_file.close()
+        with state.lock:
+            state.healthcare_status = "failed"
+            state.healthcare_exit_code = -1
+        manifest.update({"status": "failed", "error": str(exc), "finished_at": utc_now()})
+        write_json(manifest_path, manifest)
+        if resume_task:
+            with state.lock:
+                state.switching = True
+                state.requested_task = resume_task
+            threading.Thread(target=switch_worker, args=(resume_task,), daemon=True, name="dr-anmar-resume").start()
+        raise HTTPException(500, f"The NVIDIA workflow could not start: {exc}") from exc
+    started_at = utc_now()
+    with state.lock:
+        state.healthcare_process = process
+        state.healthcare_status = "running"
+        state.healthcare_started_at = started_at
+    manifest.update({"status": "running", "pid": process.pid, "started_at": started_at})
+    write_json(manifest_path, manifest)
+    threading.Thread(
+        target=monitor_healthcare_workflow,
+        args=(process, log_file, job_id, manifest_path, resume_task),
+        daemon=True,
+        name="dr-anmar-healthcare-workflow",
+    ).start()
+    return {"ok": True, **healthcare_job_payload()}
+
+
+@app.post("/api/healthcare-job/stop")
+def stop_healthcare_job() -> dict[str, Any]:
+    with state.lock:
+        process = state.healthcare_process
+    if process is None or process.poll() is not None:
+        raise HTTPException(409, "No NVIDIA healthcare workflow is running")
+    os.killpg(process.pid, signal.SIGTERM)
+    with state.lock:
+        state.healthcare_status = "stopping"
+    return {"ok": True, **healthcare_job_payload()}
+
+
+@app.get("/api/multimodal-studies")
+def multimodal_studies() -> dict[str, Any]:
+    files = sorted(STUDY_ROOT.glob("study_*.json"), reverse=True) if STUDY_ROOT.is_dir() else []
+    return {"studies": [read_json(path, {}) for path in files[:100] if read_json(path, {})], "root": str(STUDY_ROOT)}
+
+
+@app.post("/api/multimodal-studies")
+def create_multimodal_study(request: MultimodalStudyRequest) -> dict[str, Any]:
+    if not request.title.strip() or len(request.title) > 120:
+        raise HTTPException(400, "Study title must contain 1 to 120 characters")
+    if not request.clinical_question.strip() or len(request.clinical_question) > 500:
+        raise HTTPException(400, "Describe one concise clinical research question")
+    available_modalities = {item["id"] for item in MODALITY_CATALOG}
+    modalities = list(dict.fromkeys(request.modalities))
+    unknown_modalities = sorted(set(modalities) - available_modalities)
+    if not modalities or unknown_modalities:
+        raise HTTPException(400, f"Choose valid study modalities; unknown: {', '.join(unknown_modalities)}")
+    available_policies = {item["id"] for item in POLICY_STARTING_POINTS}
+    if request.policy not in available_policies:
+        raise HTTPException(400, "Unknown policy starting point")
+    if request.teleoperation not in {"keyboard_pointer", "gamepad", "external_teleop", "xr", "haptic"}:
+        raise HTTPException(400, "Unknown teleoperation method")
+    if request.task not in TASKS_BY_ID and not request.task.startswith("Isaac-"):
+        raise HTTPException(400, "Unknown surgical task")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    study_id = f"study_{stamp}"
+    manifest = study_manifest(
+        study_id=study_id,
+        title=request.title.strip(),
+        clinical_question=request.clinical_question.strip(),
+        task=request.task,
+        modalities=modalities,
+        policy=request.policy,
+        teleoperation=request.teleoperation,
+        created_at=utc_now(),
+        source_revision=source_revision(),
+    )
+    STUDY_ROOT.mkdir(parents=True, exist_ok=True)
+    write_json(STUDY_ROOT / f"{study_id}.json", manifest)
+    return {"ok": True, "study": manifest, "download": f"/api/multimodal-studies/{study_id}/download"}
+
+
+@app.get("/api/multimodal-studies/{study_id}/download")
+def download_multimodal_study(study_id: str) -> FileResponse:
+    if not study_id.startswith("study_") or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_" for character in study_id):
+        raise HTTPException(400, "Invalid study ID")
+    path = STUDY_ROOT / f"{study_id}.json"
+    if not path.is_file():
+        raise HTTPException(404, "Study manifest not found")
+    return FileResponse(path, filename=path.name, media_type="application/json")
 
 
 @app.get("/api/progress")
@@ -386,6 +893,9 @@ def launch_anatomy(request: AnatomyLaunchRequest) -> dict[str, Any]:
     training = training_payload()
     if training["status"] in {"running", "stopping"}:
         raise HTTPException(409, "Stop the training lab before loading an anatomy room")
+    healthcare = healthcare_job_payload()
+    if healthcare["status"] in {"preparing", "running", "stopping"}:
+        raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading an anatomy room")
     current = worker_status()
     if current and current.get("mode") == "anatomy" and current.get("room_id") == request.room_id and current.get("frame_id", 0) > 0:
         return {"ok": True, "room_id": request.room_id, "already_ready": True}
@@ -407,6 +917,273 @@ def launch_anatomy(request: AnatomyLaunchRequest) -> dict[str, Any]:
 @app.get("/api/demos")
 def demonstrations() -> dict[str, Any]:
     return worker_json("/api/demos")
+
+
+@app.get("/api/demos/{name}/analysis")
+def demonstration_analysis(name: str) -> dict[str, Any]:
+    if Path(name).name != name or not name.endswith(".npz"):
+        raise HTTPException(400, "Invalid demonstration name")
+    return worker_json(f"/api/demos/{name}/analysis")
+
+
+@app.post("/api/demos/{name}/replay")
+def replay_demonstration(name: str) -> dict[str, Any]:
+    if Path(name).name != name or not name.endswith(".npz"):
+        raise HTTPException(400, "Invalid demonstration name")
+    return worker_json(f"/api/replay/{name}", method="POST", payload={})
+
+
+@app.post("/api/demos/{name}/reference")
+def set_demonstration_reference(name: str) -> dict[str, Any]:
+    if Path(name).name != name or not name.endswith(".npz"):
+        raise HTTPException(400, "Invalid demonstration name")
+    return worker_json(f"/api/demos/{name}/reference", method="POST", payload={})
+
+
+@app.post("/api/reference-ghost")
+def reference_ghost(request: ReferenceGhostRequest) -> dict[str, Any]:
+    return worker_json(
+        "/api/reference-ghost",
+        method="POST",
+        payload={"enabled": request.enabled, "demo": request.demo},
+    )
+
+
+@app.get("/api/demos/{name}/comparison")
+def demonstration_comparison(name: str) -> dict[str, Any]:
+    if Path(name).name != name or not name.endswith(".npz"):
+        raise HTTPException(400, "Invalid demonstration name")
+    return worker_json(f"/api/demos/{name}/comparison")
+
+
+@app.get("/api/failure-scenarios")
+def failure_scenarios() -> dict[str, Any]:
+    return worker_json("/api/scenarios")
+
+
+@app.post("/api/failure-scenarios/apply")
+def apply_failure_scenario(request: ScenarioApplicationRequest) -> dict[str, Any]:
+    current = worker_status()
+    if current is None or current.get("mode") == "anatomy":
+        raise HTTPException(409, "Load a runnable lesson robot before applying a challenge")
+    result = worker_json(
+        "/api/scenario",
+        method="POST",
+        payload={"scenario_id": request.scenario_id, "seed": request.seed},
+    )
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    experiment_id = f"failure_{stamp}_{request.scenario_id}"
+    manifest_path = EXPERIMENT_ROOT / f"{experiment_id}.json"
+    write_json(
+        manifest_path,
+        {
+            "schema": "dr.anmar.experiment.v1",
+            "experiment_id": experiment_id,
+            "kind": "failure_scenario",
+            "simulation_only": True,
+            "created_at": utc_now(),
+            "source_revision": source_revision(),
+            "task": current.get("task"),
+            "configuration": {"scenario_id": request.scenario_id, "seed": request.seed},
+            "status": "ready_for_demonstration",
+            "result": result,
+        },
+    )
+    result["experiment_id"] = experiment_id
+    result["manifest"] = str(manifest_path)
+    return result
+
+
+@app.get("/api/challenge-matrix")
+def challenge_matrix_status() -> dict[str, Any]:
+    return matrix_payload()
+
+
+@app.post("/api/challenge-matrix")
+def start_challenge_matrix(request: ChallengeMatrixRequest) -> dict[str, Any]:
+    if Path(request.demo).name != request.demo or not request.demo.endswith(".npz"):
+        raise HTTPException(400, "Invalid demonstration name")
+    if not request.scenario_ids or not request.seeds:
+        raise HTTPException(400, "Choose at least one scenario and one seed")
+    if len(request.scenario_ids) * len(request.seeds) > 30:
+        raise HTTPException(400, "A single challenge matrix is limited to 30 rollouts")
+    if any(not 0 <= seed <= 2_147_483_647 for seed in request.seeds):
+        raise HTTPException(400, "Seeds must be between 0 and 2147483647")
+    available = worker_json("/api/scenarios").get("scenarios", [])
+    available_ids = {item["id"] for item in available}
+    unknown = sorted(set(request.scenario_ids) - available_ids)
+    if unknown:
+        raise HTTPException(404, f"Unknown failure scenarios: {', '.join(unknown)}")
+    worker_demos = worker_json("/api/demos").get("demos", [])
+    if request.demo not in {item.get("name") for item in worker_demos}:
+        raise HTTPException(404, "Demonstration not found")
+    with state.lock:
+        if state.matrix_status == "running":
+            raise HTTPException(409, "A challenge matrix is already running")
+    cases = [(scenario_id, seed) for scenario_id in request.scenario_ids for seed in request.seeds]
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    matrix_id = f"matrix_{stamp}"
+    manifest_path = EXPERIMENT_ROOT / f"{matrix_id}.json"
+    manifest = {
+        "schema": "dr.anmar.challenge-matrix.v1",
+        "experiment_id": matrix_id,
+        "kind": "challenge_matrix",
+        "simulation_only": True,
+        "created_at": utc_now(),
+        "source_revision": source_revision(),
+        "demo": request.demo,
+        "scenario_ids": request.scenario_ids,
+        "seeds": request.seeds,
+        "total": len(cases),
+        "completed": 0,
+        "status": "running",
+        "results": [],
+    }
+    write_json(manifest_path, manifest)
+    with state.lock:
+        state.matrix_status = "running"
+        state.matrix_id = matrix_id
+        state.matrix_demo = request.demo
+        state.matrix_total = len(cases)
+        state.matrix_completed = 0
+        state.matrix_results = []
+        state.matrix_aggregate = {}
+        state.matrix_manifest = str(manifest_path)
+    threading.Thread(
+        target=run_challenge_matrix,
+        args=(request.demo, cases, manifest_path),
+        daemon=True,
+        name="dr-anmar-challenge-matrix",
+    ).start()
+    return {"ok": True, **matrix_payload()}
+
+
+@app.post("/api/autonomy")
+def autonomy(request: AutonomyModeRequest) -> dict[str, Any]:
+    return worker_json("/api/autonomy", method="POST", payload={"mode": request.mode})
+
+
+@app.post("/api/handoff")
+def handoff() -> dict[str, Any]:
+    return worker_json("/api/handoff", method="POST", payload={})
+
+
+@app.get("/api/dataset-cards")
+def dataset_cards() -> dict[str, Any]:
+    files = sorted(DATASET_CARD_ROOT.glob("dataset_*.json"), reverse=True) if DATASET_CARD_ROOT.is_dir() else []
+    items = []
+    for path in files[:100]:
+        card = read_json(path, {})
+        if card:
+            items.append(card)
+    return {"dataset_cards": items, "root": str(DATASET_CARD_ROOT)}
+
+
+@app.post("/api/dataset-cards")
+def create_dataset_card(request: DatasetCardRequest) -> dict[str, Any]:
+    demo_names = list(dict.fromkeys(request.demos))
+    if not demo_names:
+        raise HTTPException(400, "Choose at least one demonstration")
+    if len(demo_names) > 100:
+        raise HTTPException(400, "A dataset card can contain at most 100 demonstrations")
+    if not request.title.strip() or len(request.title) > 120 or len(request.intended_use) > 500:
+        raise HTTPException(400, "Dataset title or intended use is invalid")
+    worker_items = {item.get("name"): item for item in worker_json("/api/demos").get("demos", [])}
+    entries = []
+    for name in demo_names:
+        if Path(name).name != name or not name.endswith(".npz"):
+            raise HTTPException(400, f"Invalid demonstration name: {name}")
+        path = DEMO_ROOT / name
+        item = worker_items.get(name)
+        if item is None or not path.is_file():
+            raise HTTPException(404, f"Demonstration not found: {name}")
+        manifest_path = path.with_suffix(".json")
+        entries.append(
+            {
+                "name": name,
+                "sha256": sha256_file(path),
+                "bytes": path.stat().st_size,
+                "manifest": manifest_path.name if manifest_path.is_file() else None,
+                "manifest_sha256": sha256_file(manifest_path) if manifest_path.is_file() else None,
+                "task": item.get("task"),
+                "frames": item.get("frames"),
+                "duration_s": item.get("duration_s"),
+                "modalities": item.get("modalities", {}),
+                "context": item.get("context", {}),
+                "clinician_reference": bool(item.get("is_reference")),
+            }
+        )
+    canonical = {
+        "title": request.title.strip(),
+        "intended_use": request.intended_use.strip(),
+        "demonstrations": entries,
+    }
+    fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    dataset_id = f"dataset_{fingerprint[:16]}"
+    tasks = sorted({entry["task"] for entry in entries if entry.get("task")})
+    card = {
+        "schema": "dr.anmar.dataset-card.v1",
+        "dataset_id": dataset_id,
+        "immutable": True,
+        "simulation_only": True,
+        "clinical_use": False,
+        "created_at": utc_now(),
+        "source_revision": source_revision(),
+        "content_sha256": fingerprint,
+        "title": canonical["title"],
+        "intended_use": canonical["intended_use"],
+        "tasks": tasks,
+        "summary": {
+            "demonstrations": len(entries),
+            "frames": sum(int(entry.get("frames") or 0) for entry in entries),
+            "duration_s": round(sum(float(entry.get("duration_s") or 0.0) for entry in entries), 2),
+            "clinician_references": sum(1 for entry in entries if entry["clinician_reference"]),
+        },
+        "demonstrations": entries,
+        "limitations": [
+            "Simulation and preclinical research evidence only.",
+            "Telemetry-derived coaching and research advisories are not clinically validated.",
+            "Checksums detect any later change to the referenced demonstration files.",
+        ],
+    }
+    DATASET_CARD_ROOT.mkdir(parents=True, exist_ok=True)
+    path = DATASET_CARD_ROOT / f"{dataset_id}.json"
+    if not path.exists():
+        write_json(path, card)
+    else:
+        card = read_json(path, card)
+    return {"ok": True, "dataset_card": card, "download": f"/api/dataset-cards/{dataset_id}/download"}
+
+
+@app.get("/api/dataset-cards/{dataset_id}/download")
+def download_dataset_card(dataset_id: str) -> FileResponse:
+    if not dataset_id.startswith("dataset_") or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_" for character in dataset_id):
+        raise HTTPException(400, "Invalid dataset card ID")
+    path = DATASET_CARD_ROOT / f"{dataset_id}.json"
+    if not path.is_file():
+        raise HTTPException(404, "Dataset card not found")
+    return FileResponse(path, filename=path.name, media_type="application/json")
+
+
+@app.get("/api/experiments")
+def experiments() -> dict[str, Any]:
+    files = sorted(EXPERIMENT_ROOT.glob("*.json"), reverse=True) if EXPERIMENT_ROOT.is_dir() else []
+    items = []
+    for path in files[:100]:
+        manifest = read_json(path, {})
+        if manifest:
+            items.append({"file": path.name, **manifest})
+    return {"experiments": items, "root": str(EXPERIMENT_ROOT)}
+
+
+@app.get("/api/experiments/{experiment_id}/download")
+def download_experiment(experiment_id: str) -> FileResponse:
+    if not experiment_id or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_" for character in experiment_id):
+        raise HTTPException(400, "Invalid experiment ID")
+    path = EXPERIMENT_ROOT / f"{experiment_id}.json"
+    if not path.is_file():
+        raise HTTPException(404, "Experiment manifest not found")
+    return FileResponse(path, filename=path.name, media_type="application/json")
 
 
 @app.post("/api/worker/{command}")
@@ -445,11 +1222,15 @@ def start_training(request: TrainingRequest) -> dict[str, Any]:
     with state.lock:
         if state.training_process is not None and state.training_process.poll() is None:
             raise HTTPException(409, "A training lab is already running")
+        if state.healthcare_process is not None and state.healthcare_process.poll() is None:
+            raise HTTPException(409, "Stop the NVIDIA healthcare workflow before starting policy training")
     current = worker_status()
     resume_task = current.get("task") if current and current.get("mode") != "anatomy" and request.resume_workstation else None
     TRAINING_ROOT.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     log_path = TRAINING_ROOT / f"{stamp}_{request.backend}_{item['slug']}.log"
+    experiment_id = f"training_{stamp}_{request.backend}_{item['slug']}"
+    manifest_path = EXPERIMENT_ROOT / f"{experiment_id}.json"
     command = [
         str(args.root / "dr_anmar_train.sh"),
         request.backend,
@@ -459,6 +1240,27 @@ def start_training(request: TrainingRequest) -> dict[str, Any]:
         "--max_iterations",
         str(request.max_iterations),
     ]
+    write_json(
+        manifest_path,
+        {
+            "schema": "dr.anmar.experiment.v1",
+            "experiment_id": experiment_id,
+            "kind": "policy_training",
+            "simulation_only": True,
+            "created_at": utc_now(),
+            "source_revision": source_revision(),
+            "task": request.task,
+            "configuration": {
+                "backend": request.backend,
+                "num_envs": request.num_envs,
+                "max_iterations": request.max_iterations,
+                "resume_workstation": request.resume_workstation,
+            },
+            "command": command,
+            "log": str(log_path),
+            "status": "starting",
+        },
+    )
     log_file = log_path.open("ab", buffering=0)
     try:
         process = subprocess.Popen(
@@ -479,6 +1281,10 @@ def start_training(request: TrainingRequest) -> dict[str, Any]:
         state.training_log = str(log_path)
         state.training_started_at = utc_now()
         state.training_exit_code = None
+        state.training_manifest = str(manifest_path)
+    manifest = read_json(manifest_path, {})
+    manifest.update({"status": "running", "pid": process.pid, "started_at": state.training_started_at})
+    write_json(manifest_path, manifest)
     threading.Thread(
         target=monitor_training,
         args=(process, log_file, resume_task),
@@ -511,6 +1317,8 @@ def status() -> JSONResponse:
             "interactive_tasks": len(PRIMARY_TASKS),
             "anatomy": anatomy_payload(),
             "training": training_payload(),
+            "healthcare_job": healthcare_job_payload(),
+            "challenge_matrix": matrix_payload(),
         }
     )
     return JSONResponse(hub)
@@ -526,6 +1334,9 @@ def launch(request: LaunchRequest) -> dict[str, Any]:
     training = training_payload()
     if training["status"] in {"running", "stopping"}:
         raise HTTPException(409, "Stop the training lab before loading an operating room")
+    healthcare = healthcare_job_payload()
+    if healthcare["status"] in {"preparing", "running", "stopping"}:
+        raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading the Dr.Anmar operating room")
     current = worker_status()
     if current and current.get("task") == request.task and current.get("frame_id", 0) > 0:
         return {"ok": True, "task": request.task, "already_ready": True}

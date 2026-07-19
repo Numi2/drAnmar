@@ -10,6 +10,8 @@ if [[ -f "${ORBIT_ROOT}/.env" ]]; then
 fi
 
 ROOT="${DR_ANMAR_ROOT:-${HOME}/.local/share/dr-anmar}"
+export DR_ANMAR_ROOT="${ROOT}"
+export DR_ANMAR_I4H_ROOT="${DR_ANMAR_I4H_ROOT:-${ROOT}/vendor/i4h-workflows}"
 PYTHON="${ISAAC_PYTHON:-python3}"
 HUB_PORT="${DR_ANMAR_HUB_PORT:-2360}"
 WORKER_PORT="${DR_ANMAR_WORKER_PORT:-2361}"
