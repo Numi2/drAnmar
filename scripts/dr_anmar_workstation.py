@@ -166,7 +166,8 @@ APP_HTML = r"""<!doctype html>
     .brand{font-weight:900;letter-spacing:.08em}.brand span{color:var(--cyan)}.tag{font-size:11px;font-weight:800;letter-spacing:.08em;padding:5px 9px;border-radius:99px;border:1px solid #76505a;color:#ff9aa2;background:#2b151b}
     .live{margin-left:auto;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:13px}.dot{width:9px;height:9px;border-radius:50%;background:var(--red)}.dot.ok{background:var(--green);box-shadow:0 0 12px #42e49b99}
     main{display:grid;grid-template-columns:minmax(0,1fr) 400px;height:calc(100vh - 58px)}
-    .view{position:relative;overflow:hidden;background:#020608;display:flex;align-items:center;justify-content:center}.view img{width:100%;height:100%;object-fit:contain}.camera-tabs{position:absolute;left:50%;bottom:16px;translate:-50% 0;display:flex;gap:5px;padding:5px;background:#061118cc;border:1px solid #ffffff24;border-radius:8px}.camera-tabs button{min-height:31px;padding:0 10px;font-size:10px}.camera-tabs button.active{background:var(--cyan);color:#031014}.gaze-cursor{position:absolute;width:18px;height:18px;border:1px solid #fff;border-radius:50%;translate:-50% -50%;pointer-events:none;opacity:0;box-shadow:0 0 0 3px #2cd2e855}.view.gaze-on .gaze-cursor{opacity:.85}
+    .view{position:relative;overflow:hidden;background:#020608;display:flex;align-items:center;justify-content:center}.view img{width:100%;height:100%;object-fit:contain}.camera-tabs{position:absolute;left:50%;bottom:16px;translate:-50% 0;display:flex;gap:5px;padding:5px;background:#061118cc;border:1px solid #ffffff24;border-radius:8px}.camera-tabs button,.view-presets button{min-height:31px;padding:0 10px;font-size:10px}.camera-tabs button.active,.view-presets button.active{background:var(--cyan);color:#031014}.view-presets{position:absolute;right:16px;bottom:16px;display:flex;gap:5px;padding:5px;background:#061118cc;border:1px solid #ffffff24;border-radius:8px}.gaze-cursor{position:absolute;width:18px;height:18px;border:1px solid #fff;border-radius:50%;translate:-50% -50%;pointer-events:none;opacity:0;box-shadow:0 0 0 3px #2cd2e855}.view.gaze-on .gaze-cursor{opacity:.85}
+    .aim-reticle{position:absolute;left:50%;top:50%;width:34px;height:34px;translate:-50% -50%;pointer-events:none;opacity:.48}.aim-reticle:before,.aim-reticle:after{content:"";position:absolute;background:#dffcff}.aim-reticle:before{left:0;right:0;top:16px;height:1px}.aim-reticle:after{top:0;bottom:0;left:16px;width:1px}.proximity{position:absolute;right:16px;top:16px;min-width:180px;padding:9px 11px;border:1px solid #ffffff24;border-radius:8px;background:#051016d9;color:#9fc0c9;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo;backdrop-filter:blur(6px)}.proximity b{display:block;color:var(--ink);font-size:13px}.proximity.near{border-color:#ffd978}.proximity.held{border-color:var(--green);color:var(--green)}.proximity.guard{border-color:var(--cyan);color:var(--cyan)}.proximity.puncture{border-color:#ff9b83;color:#ffb09e;box-shadow:0 0 18px #ff775533}
     .hud{position:absolute;left:16px;top:16px;padding:10px 13px;border:1px solid #ffffff24;border-radius:8px;background:#051016c9;backdrop-filter:blur(6px);font:12px/1.5 ui-monospace,SFMono-Regular,Menlo;color:#cfe7eb}.hud strong{color:var(--cyan)}
     .recflag{display:none;position:absolute;right:18px;top:18px;color:#fff;background:#c91f2f;padding:8px 12px;border-radius:99px;font-size:12px;font-weight:900;letter-spacing:.08em}.recflag.on{display:block}
     aside{overflow:auto;padding:17px;background:var(--panel);border-left:1px solid var(--line)}
@@ -179,32 +180,36 @@ APP_HTML = r"""<!doctype html>
     .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}.fidelity-note{margin-top:8px;padding:7px;border-left:2px solid #f0b94e;background:#201a0d;color:#d8c18c;font-size:9px}
     .supervision{border-color:#356475;background:linear-gradient(135deg,#0d2731,#09171e)}.supervision-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.supervision-state b{color:var(--cyan)}.cue{min-height:32px;margin-top:9px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#9fc0c9;font-size:11px}.take-control{width:100%;margin-top:8px;background:#ffd978;color:#251b02;border-color:#ffd978}
     .safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.safety-metric{padding:8px;background:#061219;border:1px solid #1c3742}.safety-metric b{display:block;color:var(--green);font:15px ui-monospace,monospace}.safety-metric span{color:var(--muted);font-size:9px}.ghost-state{margin-top:8px;color:var(--muted);font-size:11px}.ghost-state.on{color:var(--green)}
+    .control-dock{position:relative;margin:2px 0 18px;padding:42px 13px 4px;border:2px solid var(--cyan);border-radius:13px;background:linear-gradient(145deg,#0d2630,#08151c 68%);box-shadow:0 0 0 1px #2cd2e829,0 0 24px #2cd2e820}.control-dock:before{content:"INSTRUMENT CONTROL";position:absolute;left:14px;top:12px;color:var(--cyan);font:900 13px/1 ui-sans-serif,system-ui;letter-spacing:.15em}.control-dock:after{content:"LIVE";position:absolute;right:14px;top:9px;padding:4px 7px;border-radius:99px;background:#123a32;color:var(--green);font:900 9px/1 ui-monospace,monospace;letter-spacing:.12em}.control-dock h2{color:#d7f9fc;margin-top:8px}.control-dock .card{border-color:#356675;background:#07151c;margin-bottom:10px}.control-dock .move-button{min-height:62px;border-width:2px;border-color:#3d6d7b;font-size:14px}.control-dock .stop-center{border-width:2px}.control-dock #gripperPanel .primary{box-shadow:0 0 18px #2cd2e82e}.control-dock .hint{font-size:10px}
     #toast{position:fixed;left:50%;bottom:20px;translate:-50% 20px;opacity:0;background:#e9f8fa;color:#061116;border-radius:8px;padding:10px 15px;font-weight:750;transition:.2s;pointer-events:none}#toast.show{opacity:1;translate:-50% 0}
-    @media(max-width:880px){main{display:block;height:auto}.view{height:52vh}aside{border-left:0;border-top:1px solid var(--line)}header{padding:0 12px}.tag{display:none}}
+    @media(max-width:1100px){.view-presets{right:10px;top:74px;bottom:auto;flex-direction:column}.proximity{right:10px;top:10px;min-width:155px}.camera-tabs{bottom:10px}}
+    @media(max-width:880px){main{display:block;height:auto}.view{height:52vh}aside{border-left:0;border-top:1px solid var(--line)}header{padding:0 12px}.tag{display:none}.view-presets{display:none}.proximity{font-size:9px;min-width:130px}}
   </style>
 </head>
 <body>
 <header><div class="brand">DR.<span>ANMAR</span></div><div class="tag">SIMULATION ONLY · NO PHYSICAL ROBOT OUTPUT</div><div class="live"><i id="dot" class="dot"></i><span id="connection">Connecting…</span></div></header>
 <main>
-  <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div class="hud"><strong id="cameraLabel">STEREO ENDOSCOPE · LEFT</strong><br><span id="hud">Waiting for Isaac Lab…</span></div><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="camera-tabs"><button class="active" data-camera="endoscope_left" onclick="setCamera('endoscope_left',this)">Stereo left</button><button data-camera="endoscope_right" onclick="setCamera('endoscope_right',this)">Stereo right</button><button data-camera="wrist_1" onclick="setCamera('wrist_1',this)">Wrist 1</button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" onclick="setCamera('wrist_2',this)">Wrist 2</button></div></section>
+  <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div class="hud"><strong id="cameraLabel">STEREO ENDOSCOPE · LEFT</strong><br><span id="hud">Waiting for Isaac Lab…</span></div><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div><div id="proximity" class="proximity"><b>Tool guidance</b><span>Acquiring target…</span></div><div class="camera-tabs"><button class="active" data-camera="endoscope_left" onclick="setCamera('endoscope_left',this)">Stereo left</button><button data-camera="endoscope_right" onclick="setCamera('endoscope_right',this)">Stereo right</button><button data-camera="wrist_1" onclick="setCamera('wrist_1',this)">Wrist 1</button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" onclick="setCamera('wrist_2',this)">Wrist 2</button></div><div class="view-presets"><button class="active" data-view-mode="operative" onclick="setCameraView('operative',this)">Operative</button><button data-view-mode="close" onclick="setCameraView('close',this)">Close</button><button data-view-mode="overview" onclick="setCameraView('overview',this)">Overview</button></div></section>
   <aside>
+    <section class="control-dock">
+      <div id="armPanel" class="hidden"><h2>Active instrument</h2><div class="card"><div class="grid two"><button id="arm0" class="arm active" onclick="setArm(0)">Instrument 1</button><button id="arm1" class="arm" onclick="setArm(1)">Instrument 2</button></div></div></div>
+      <h2>Movement speed</h2><div class="card"><div class="speedbar"><button data-speed="0.35" onclick="setSpeed(0.35,this)">Precision</button><button class="active" data-speed="1" onclick="setSpeed(1,this)">Normal</button><button data-speed="1.7" onclick="setSpeed(1.7,this)">Fast</button></div><div class="hint">Fast in open space; automatic precision near the target.</div></div>
+      <h2>Tool position</h2><div class="card"><div class="dpad">
+        <button class="move-button up" data-axis="2" data-direction="1">↑ Up<small>R</small></button>
+        <button class="move-button left" data-axis="1" data-direction="1">← Left<small>A</small></button>
+        <button class="stop-center" onclick="stopTool()">■ Stop<small>Esc</small></button>
+        <button class="move-button right" data-axis="1" data-direction="-1">Right →<small>D</small></button>
+        <button class="move-button down" data-axis="2" data-direction="-1">↓ Down<small>F</small></button>
+      </div><div class="depthgrid"><button class="move-button" data-axis="0" data-direction="-1">Toward patient<small>W</small></button><button class="move-button" data-axis="0" data-direction="1">Away from patient<small>S</small></button></div><div id="controlReadout" class="control-readout"><i></i><span>Ready · hold a control to move</span></div></div>
+      <div id="gripperPanel"><h2>Gripper</h2><div class="card"><div class="grid two"><button onclick="grip(true)">Open jaws</button><button class="primary" onclick="grip(false)">Close / grasp</button></div><div class="hint">Space or gamepad A toggles the jaws.</div></div></div>
+      <h2>Tool angle</h2><div class="card"><div class="anglegrid">
+        <button class="move-button" data-axis="3" data-direction="-1">↶ Roll left<small>Q</small></button><button class="move-button" data-axis="3" data-direction="1">Roll right ↷<small>E</small></button>
+        <button class="move-button" data-axis="4" data-direction="-1">Pitch up<small>↑</small></button><button class="move-button" data-axis="4" data-direction="1">Pitch down<small>↓</small></button>
+        <button class="move-button" data-axis="5" data-direction="-1">← Yaw left<small>←</small></button><button class="move-button" data-axis="5" data-direction="1">Yaw right →<small>→</small></button>
+      </div><div class="hint">WASD + R/F position · arrows + Q/E angle · C camera · Space gripper · Esc stop.</div></div>
+    </section>
     <h2>Procedure room</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div><div id="procedureTruth" class="fidelity-note hidden"></div></div>
     <h2>Supervision</h2><div class="card supervision"><div class="supervision-state"><span>Autonomy level</span><b id="autonomyState">L0 · Manual</b></div><div class="grid two"><button id="manualMode" class="autonomy active" onclick="setAutonomy('manual')">Manual</button><button id="guidedMode" class="autonomy" onclick="setAutonomy('guided')">Guided</button></div><button class="take-control" onclick="takeControl()">Take control now</button><div id="coachingCue" class="cue">You command every movement. Dr.Anmar records telemetry for coaching.</div></div>
-    <div id="armPanel" class="hidden"><h2>Active instrument</h2><div class="card"><div class="grid two"><button id="arm0" class="arm active" onclick="setArm(0)">Instrument 1</button><button id="arm1" class="arm" onclick="setArm(1)">Instrument 2</button></div></div></div>
-    <h2>Movement speed</h2><div class="card"><div class="speedbar"><button data-speed="0.45" onclick="setSpeed(0.45,this)">Precision</button><button class="active" data-speed="1" onclick="setSpeed(1,this)">Normal</button><button data-speed="1.8" onclick="setSpeed(1.8,this)">Fast</button></div><div class="hint">Hold controls to move. Release to stop. Fast is for open space; Precision is for grasping.</div></div>
-    <h2>Tool position</h2><div class="card"><div class="dpad">
-      <button class="move-button up" data-axis="2" data-direction="1">↑ Up<small>R</small></button>
-      <button class="move-button left" data-axis="1" data-direction="1">← Left<small>A</small></button>
-      <button class="stop-center" onclick="stopTool()">■ Stop<small>Esc</small></button>
-      <button class="move-button right" data-axis="1" data-direction="-1">Right →<small>D</small></button>
-      <button class="move-button down" data-axis="2" data-direction="-1">↓ Down<small>F</small></button>
-    </div><div class="depthgrid"><button class="move-button" data-axis="0" data-direction="-1">Toward patient<small>W</small></button><button class="move-button" data-axis="0" data-direction="1">Away from patient<small>S</small></button></div><div id="controlReadout" class="control-readout"><i></i><span>Ready · hold a control to move</span></div></div>
-    <h2>Tool angle</h2><div class="card"><div class="anglegrid">
-      <button class="move-button" data-axis="3" data-direction="-1">↶ Roll left<small>Q</small></button><button class="move-button" data-axis="3" data-direction="1">Roll right ↷<small>E</small></button>
-      <button class="move-button" data-axis="4" data-direction="-1">Pitch up<small>↑</small></button><button class="move-button" data-axis="4" data-direction="1">Pitch down<small>↓</small></button>
-      <button class="move-button" data-axis="5" data-direction="-1">← Yaw left<small>←</small></button><button class="move-button" data-axis="5" data-direction="1">Yaw right →<small>→</small></button>
-    </div><div class="hint">Keyboard: WASD + R/F for position, arrows + Q/E for angle, and Esc to stop. Standard gamepads are supported.</div></div>
-    <div id="gripperPanel"><h2>Gripper</h2><div class="card"><div class="grid two"><button onclick="grip(true)">Open</button><button class="primary" onclick="grip(false)">Close / grasp</button></div><div class="hint">Press Space to toggle open / close.</div></div></div>
     <h2>Expert path guide</h2><div class="card"><div class="grid two"><button class="primary" onclick="referenceGhost(true)">Show clinician path</button><button onclick="referenceGhost(false)">Hide path</button></div><div id="ghostState" class="ghost-state">Select a clinician reference in Skills Twin first.</div></div>
     <h2>Procedure annotation</h2><div class="card"><div class="grid"><button onclick="annotatePhase('approach')">Approach</button><button onclick="annotatePhase('grasp')">Grasp</button><button onclick="annotatePhase('manipulation')">Manipulate</button><button onclick="annotatePhase('recovery')">Recovery</button><button onclick="annotateEvent('task_complete')">Task event</button><button onclick="annotateEvent('safety_review')">Safety event</button></div><div class="hint">Phase labels and events are synchronized into the training trajectory.</div></div>
     <h2>Research safety monitor</h2><div class="card"><div class="safety-grid"><div class="safety-metric"><b id="forceMetric">—</b><span>CONTACT N</span></div><div class="safety-metric"><b id="deformMetric">—</b><span>TISSUE MM</span></div><div class="safety-metric"><b id="stressMetric">—</b><span>STRESS PA</span></div></div><div class="hint">Simulator signals only. Limits are engineering advisories, not clinical thresholds.</div></div>
@@ -214,14 +219,14 @@ APP_HTML = r"""<!doctype html>
 </main><div id="toast"></div>
 <script>
 const keyMap={w:[0,-1],s:[0,1],a:[1,1],d:[1,-1],r:[2,1],f:[2,-1],q:[3,-1],e:[3,1],arrowup:[4,-1],arrowdown:[4,1],arrowleft:[5,-1],arrowright:[5,1]};
-let activeArm=0,driveSpeed=1,driveInFlight=false,queuedDrive=null,driveWasActive=false,inputSource='keyboard_pointer',lastGazeSend=0;
+let activeArm=0,driveSpeed=1,driveInFlight=false,queuedDrive=null,driveWasActive=false,inputSource='keyboard_pointer',lastGazeSend=0,currentCamera='endoscope_left',currentViewMode='operative',lastGamepadGrip=false,lastGamepadCamera=false;
 const heldKeys=new Set(),pointerMoves=new Map();
 async function post(url,body={}){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.detail||'Request failed');return data}
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1600)}
 function setArm(arm){stopDrive(false);activeArm=arm;document.getElementById('arm0').classList.toggle('active',arm===0);document.getElementById('arm1').classList.toggle('active',arm===1)}
 function setSpeed(speed,button){driveSpeed=speed;document.querySelectorAll('[data-speed]').forEach(x=>x.classList.toggle('active',x===button));updateControlReadout(false,`${button.textContent} speed`)}
 function deadzone(value){return Math.abs(value)<0.18?0:Math.sign(value)*(Math.abs(value)-0.18)/0.82}
-function gamepadDrive(){const values=Array(6).fill(0);const pads=navigator.getGamepads?navigator.getGamepads():[];const pad=[...pads].find(Boolean);if(!pad)return values;inputSource='gamepad';values[1]-=deadzone(pad.axes[0]||0);values[0]+=deadzone(pad.axes[1]||0);values[5]+=deadzone(pad.axes[2]||0);values[4]+=deadzone(pad.axes[3]||0);values[3]+=(pad.buttons[5]?.value||0)-(pad.buttons[4]?.value||0);values[2]+=(pad.buttons[7]?.value||0)-(pad.buttons[6]?.value||0);return values}
+function gamepadDrive(){const values=Array(6).fill(0);const pads=navigator.getGamepads?navigator.getGamepads():[];const pad=[...pads].find(Boolean);if(!pad){lastGamepadGrip=false;lastGamepadCamera=false;return values}inputSource='gamepad';values[1]-=deadzone(pad.axes[0]||0);values[0]+=deadzone(pad.axes[1]||0);values[5]+=deadzone(pad.axes[2]||0);values[4]+=deadzone(pad.axes[3]||0);values[3]+=(pad.buttons[5]?.value||0)-(pad.buttons[4]?.value||0);values[2]+=(pad.buttons[7]?.value||0)-(pad.buttons[6]?.value||0);const gripPressed=!!pad.buttons[0]?.pressed,cameraPressed=!!pad.buttons[3]?.pressed;if(gripPressed&&!lastGamepadGrip)toggleGrip();if(cameraPressed&&!lastGamepadCamera)cycleCameraView();lastGamepadGrip=gripPressed;lastGamepadCamera=cameraPressed;return values}
 function buildDrive(){const values=gamepadDrive();heldKeys.forEach(key=>{const move=keyMap[key];if(move)values[move[0]]+=move[1]});pointerMoves.forEach(move=>values[move.axis]+=move.direction);return values.map(value=>Math.max(-1,Math.min(1,value)))}
 function updateControlReadout(moving,label){const readout=document.getElementById('controlReadout');readout.classList.toggle('moving',moving);readout.querySelector('span').textContent=moving?(label||'Moving · release to stop'):'Ready · hold a control to move'}
 async function flushDrive(){if(driveInFlight||!queuedDrive)return;const next=queuedDrive;queuedDrive=null;driveInFlight=true;try{await post('/api/drive',{values:next,arm:activeArm,speed:driveSpeed,source:inputSource})}catch(e){toast(e.message)}finally{driveInFlight=false;if(queuedDrive)flushDrive()}}
@@ -234,18 +239,30 @@ async function toggleGrip(){try{const result=await post('/api/gripper/toggle',{a
 async function recording(start){try{await post(start?'/api/record/start':'/api/record/stop');toast(start?'Recording started':'Saving demonstration…')}catch(e){toast(e.message)}}
 async function replay(){try{const x=await post('/api/replay-last');toast(x.message)}catch(e){toast(e.message)}}
 async function referenceGhost(enabled){try{const x=await post('/api/reference-ghost',{enabled});toast(x.message)}catch(e){toast(e.message)}}
-function setCamera(name,button){document.getElementById('cameraImage').src=`/video/${name}?t=${Date.now()}`;document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===button));const labels={endoscope_left:'STEREO ENDOSCOPE · LEFT',endoscope_right:'STEREO ENDOSCOPE · RIGHT',wrist_1:'INSTRUMENT WRIST · 1',wrist_2:'INSTRUMENT WRIST · 2'};document.getElementById('cameraLabel').textContent=labels[name]||name.toUpperCase()}
+function setCamera(name,button){currentCamera=name;document.getElementById('cameraImage').src=`/video/${name}?t=${Date.now()}`;document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===button));const labels={endoscope_left:'STEREO ENDOSCOPE · LEFT',endoscope_right:'STEREO ENDOSCOPE · RIGHT',wrist_1:'INSTRUMENT WRIST · 1',wrist_2:'INSTRUMENT WRIST · 2'};document.getElementById('cameraLabel').textContent=labels[name]||name.toUpperCase()}
+async function setCameraView(mode,button){try{const result=await post('/api/camera-view',{mode});currentViewMode=result.mode;document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===result.mode));toast(`${button?.textContent||result.mode} camera ready`)}catch(e){toast(e.message)}}
+function cycleCameraView(){const modes=['operative','close','overview'],mode=modes[(modes.indexOf(currentViewMode)+1)%modes.length],button=document.querySelector(`[data-view-mode="${mode}"]`);setCameraView(mode,button)}
 async function annotatePhase(phase){try{const x=await post('/api/annotation',{phase});toast(x.message)}catch(e){toast(e.message)}}
 async function annotateEvent(event){try{const x=await post('/api/annotation',{event});toast('Procedure event saved')}catch(e){toast(e.message)}}
 async function resetScene(){try{await post('/api/reset');toast('Scene reset')}catch(e){toast(e.message)}}
 async function setAutonomy(mode){try{const x=await post('/api/autonomy',{mode});toast(x.message)}catch(e){toast(e.message)}}
 async function takeControl(){stopDrive(false);try{const x=await post('/api/handoff');toast(x.message)}catch(e){toast(e.message)}}
 document.querySelectorAll('.move-button').forEach(button=>{button.addEventListener('pointerdown',event=>{event.preventDefault();inputSource='keyboard_pointer';button.setPointerCapture(event.pointerId);pointerMoves.set(event.pointerId,{axis:Number(button.dataset.axis),direction:Number(button.dataset.direction),button});button.classList.add('held');updateDrive()});const release=event=>{const move=pointerMoves.get(event.pointerId);pointerMoves.delete(event.pointerId);if(move&&![...pointerMoves.values()].some(x=>x.button===move.button))move.button.classList.remove('held');updateDrive()};button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release);button.addEventListener('contextmenu',event=>event.preventDefault())});
-document.addEventListener('keydown',event=>{if(['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName))return;const key=event.key.toLowerCase();if(event.code==='Space'){event.preventDefault();if(!event.repeat)toggleGrip();return}if(key==='escape'){event.preventDefault();stopTool();return}if(!keyMap[key])return;event.preventDefault();inputSource='keyboard_pointer';heldKeys.add(key);updateDrive()});
+document.addEventListener('keydown',event=>{if(['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName))return;const key=event.key.toLowerCase();if(event.code==='Space'){event.preventDefault();if(!event.repeat)toggleGrip();return}if(key==='c'){event.preventDefault();if(!event.repeat)cycleCameraView();return}if(key==='escape'){event.preventDefault();stopTool();return}if(!keyMap[key])return;event.preventDefault();inputSource='keyboard_pointer';heldKeys.add(key);updateDrive()});
 document.addEventListener('keyup',event=>{if(event.code==='Space'){event.preventDefault();return}const key=event.key.toLowerCase();if(!keyMap[key])return;event.preventDefault();heldKeys.delete(key);updateDrive()});
 window.addEventListener('blur',()=>stopDrive(false));document.addEventListener('visibilitychange',()=>{if(document.hidden)stopDrive(false)});
 document.getElementById('cameraView').addEventListener('pointermove',event=>{const view=event.currentTarget,rect=view.getBoundingClientRect();const u=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),v=Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height));const cursor=document.getElementById('gazeCursor');cursor.style.left=`${u*100}%`;cursor.style.top=`${v*100}%`;view.classList.add('gaze-on');const now=performance.now();if(now-lastGazeSend>100){lastGazeSend=now;post('/api/gaze',{u,v,valid:true,source:'pointer_attention_proxy'}).catch(()=>{})}});document.getElementById('cameraView').addEventListener('pointerleave',()=>document.getElementById('cameraView').classList.remove('gaze-on'));
-async function refresh(){try{const s=await(await fetch('/api/status',{cache:'no-store'})).json();document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;document.getElementById('procedureSteps').innerHTML=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join('');const truth=document.getElementById('procedureTruth');truth.textContent=p.truth_note||'';truth.classList.toggle('hidden',!p.truth_note);document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('armPanel').classList.toggle('hidden',s.arms<2);document.getElementById('gripperPanel').classList.toggle('hidden',!s.has_grippers);const grip=s.has_grippers?(s.grippers_open[activeArm]?' · GRIPPER OPEN':' · GRIPPER CLOSED'):'';const moving=s.drive_active?' · MOVING':'';document.getElementById('hud').innerHTML=`<strong>${s.anatomy_showcase||'SURGICAL WORKSPACE'}</strong><br>${s.camera_width}×${s.camera_height} · ${s.render_fps.toFixed(1)} FPS<br>${p.title||s.scenario_title}${grip}${moving}`;document.getElementById('recflag').classList.toggle('on',s.recording);const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Procedure: ${p.title||'Free practice'}<br>Anatomy: ${s.anatomy_showcase||'—'}<br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;}catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
+function targetDirections(offset){if(!offset)return'';const choices=[];if(Math.abs(offset[2])>.004)choices.push([Math.abs(offset[2]),offset[2]>0?'Up':'Down']);if(Math.abs(offset[1])>.004)choices.push([Math.abs(offset[1]),offset[1]>0?'Left':'Right']);if(Math.abs(offset[0])>.004)choices.push([Math.abs(offset[0]),offset[0]<0?'Toward':'Away']);return choices.sort((a,b)=>b[0]-a[0]).slice(0,2).map(x=>x[1]).join(' + ')}
+async function refresh(){try{
+  const s=await(await fetch('/api/status',{cache:'no-store'})).json();document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';
+  const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;document.getElementById('procedureSteps').innerHTML=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join('');
+  const truth=document.getElementById('procedureTruth');truth.textContent=p.truth_note||'';truth.classList.toggle('hidden',!p.truth_note);document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('armPanel').classList.toggle('hidden',s.arms<2);document.getElementById('gripperPanel').classList.toggle('hidden',!s.has_grippers);
+  currentViewMode=s.camera_view_mode||currentViewMode;document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===currentViewMode));
+  const grip=s.has_grippers?(s.grippers_open[activeArm]?' · GRIPPER OPEN':' · GRIPPER CLOSED'):'',moving=s.drive_active?' · MOVING':'';document.getElementById('hud').innerHTML=`<strong>${s.anatomy_showcase||'SURGICAL WORKSPACE'}</strong><br>${s.camera_width}×${s.camera_height} · ${s.render_fps.toFixed(1)} FPS · ${currentViewMode.toUpperCase()}<br>${p.title||s.scenario_title}${grip}${moving}`;document.getElementById('recflag').classList.toggle('on',s.recording);
+  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m,tipClearance=s.needle_tip_clearance_m,depth=s.needle_penetration_depth_m||0;proximity.className='proximity';let guidance='Move toward the target';if(s.needle_puncture_active){guidance=`Needle inserted ${Math.round(depth*1000)} mm · rotate through the arc`;proximity.classList.add('puncture')}else if(s.assisted_grasp_active?.[activeArm]&&tipClearance!==null&&tipClearance!==undefined&&tipClearance<=.006){guidance=`Needle tip ${Math.max(0,Math.round(tipClearance*1000))} mm from tissue · advance gently`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]){guidance='Needle held · Space releases';proximity.classList.add('held')}else if(s.virtual_fixture_active){guidance='Instrument boundary · tangential motion only';proximity.classList.add('guard')}else if(distance!==null&&distance!==undefined&&distance<=s.grasp_capture_radius_m){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){const direction=targetDirections(offset);guidance=`Target ${Math.round(distance*1000)} mm · ${direction||'hold course'}${s.adaptive_precision_active?' · auto precision':''}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Tool guidance</b><span>${guidance}</span>`;
+  const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);
+  const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Procedure: ${p.title||'Free practice'}<br>Anatomy: ${s.anatomy_showcase||'—'}<br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Instrument guard: ${s.virtual_fixture_enabled?'on':'off'}<br>Needle entry: ${s.needle_puncture_active?`${Math.round(depth*1000)} mm`:'ready'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
+}catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
 setInterval(updateDrive,90);setInterval(refresh,500);refresh();
 </script></body></html>"""
 
@@ -270,6 +287,10 @@ class GripperRequest(BaseModel):
 
 class GripperToggleRequest(BaseModel):
     arm: int = 0
+
+
+class CameraViewRequest(BaseModel):
+    mode: str
 
 
 class ScenarioRequest(BaseModel):
@@ -342,6 +363,18 @@ class SharedState:
     grippers_open: list[bool] = field(init=False)
     assisted_grasp_active: list[bool] = field(init=False)
     tool_to_object_distance_m: list[float | None] = field(init=False)
+    tool_to_object_offset_m: list[list[float] | None] = field(init=False)
+    grasp_capture_radius_m: float = 0.018
+    camera_view_mode: str = "operative"
+    camera_view_request: str | None = None
+    virtual_fixture_enabled: bool = True
+    virtual_fixture_active: bool = False
+    closest_anatomy_clearance_m: float | None = None
+    needle_tip_clearance_m: float | None = None
+    needle_puncture_active: bool = False
+    needle_penetration_depth_m: float = 0.0
+    needle_max_penetration_m: float = 0.012
+    adaptive_precision_active: bool = False
     reset_requested: bool = False
     record_request: str | None = None
     recording: bool = False
@@ -389,6 +422,7 @@ class SharedState:
         self.grippers_open = [True] * self.arms
         self.assisted_grasp_active = [False] * self.arms
         self.tool_to_object_distance_m = [None] * self.arms
+        self.tool_to_object_offset_m = [None] * self.arms
 
     def body_action_slice(self, arm: int) -> slice:
         group_width = 7 if self.has_grippers else 6
@@ -429,6 +463,17 @@ class SharedState:
                 "grippers_open": self.grippers_open,
                 "assisted_grasp_active": self.assisted_grasp_active,
                 "tool_to_object_distance_m": self.tool_to_object_distance_m,
+                "tool_to_object_offset_m": self.tool_to_object_offset_m,
+                "grasp_capture_radius_m": self.grasp_capture_radius_m,
+                "camera_view_mode": self.camera_view_mode,
+                "virtual_fixture_enabled": self.virtual_fixture_enabled,
+                "virtual_fixture_active": self.virtual_fixture_active,
+                "closest_anatomy_clearance_m": self.closest_anatomy_clearance_m,
+                "needle_tip_clearance_m": self.needle_tip_clearance_m,
+                "needle_puncture_active": self.needle_puncture_active,
+                "needle_penetration_depth_m": self.needle_penetration_depth_m,
+                "needle_max_penetration_m": self.needle_max_penetration_m,
+                "adaptive_precision_active": self.adaptive_precision_active,
                 "recording": self.recording,
                 "recorded_frames": self.recorded_frames,
                 "last_demo": self.last_demo,
@@ -592,6 +637,16 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.replay_request = "stop"
         state.wake_event.set()
         return {"ok": True}
+
+    @app.post("/api/camera-view")
+    def camera_view(request: CameraViewRequest) -> dict[str, Any]:
+        if request.mode not in {"operative", "close", "overview"}:
+            raise HTTPException(400, "camera view must be operative, close, or overview")
+        with state.lock:
+            state.camera_view_mode = request.mode
+            state.camera_view_request = request.mode
+        state.wake_event.set()
+        return {"ok": True, "mode": request.mode}
 
     @app.post("/api/gripper")
     def gripper(request: GripperRequest) -> dict[str, Any]:
@@ -1558,6 +1613,17 @@ def scenario_camera_pose(base_eye: np.ndarray, base_target: np.ndarray, scenario
     return eye, target
 
 
+def camera_view_pose(eye: np.ndarray, target: np.ndarray, mode: str) -> tuple[np.ndarray, np.ndarray]:
+    """Move the existing stereo pair without adding another rendered sensor."""
+    view_vector = eye - target
+    if mode == "close":
+        eye = target + view_vector * 0.68
+    elif mode == "overview":
+        eye = target + view_vector * 1.48 + np.asarray((0.0, 0.0, 0.11), dtype=np.float32)
+        target = target + np.asarray((0.0, 0.0, 0.015), dtype=np.float32)
+    return eye.astype(np.float32), target.astype(np.float32)
+
+
 def scalar_value(value: Any, default: float = 0.0) -> float:
     try:
         if isinstance(value, torch.Tensor):
@@ -1773,10 +1839,15 @@ def main() -> None:
     default_showcase_names: set[str] = {"Liver_topo_blender"}
     proxy_visual_ready = False
     collision_mesh_count = 0
+    anatomy_guard_volumes: list[tuple[np.ndarray, np.ndarray, str]] = []
+    anatomy_surface_samples: list[tuple[np.ndarray, np.ndarray, str]] = []
+    anatomy_collision_prims: list[Any] = []
+    puncture_marker_translate = None
+    puncture_marker_prim = None
     stage = None
     if organ_usd.is_file():
         import omni.usd
-        from pxr import Gf, Sdf, UsdGeom, UsdPhysics, UsdShade
+        from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade
 
         stage = omni.usd.get_context().get_stage()
         showcase_path = "/World/envs/env_0/LiverShowcase"
@@ -1784,6 +1855,33 @@ def main() -> None:
         showcase_children = [
             child for child in showcase_prim.GetChildren() if child.GetName() != "_materials" and child.IsA(UsdGeom.Imageable)
         ]
+        drape_path = "/World/envs/env_0/DrAnmarSurgicalDrape"
+        drape = UsdGeom.Cube.Define(stage, drape_path)
+        drape.CreateSizeAttr(1.0)
+        drape_transform = UsdGeom.Xformable(drape.GetPrim())
+        drape_transform.ClearXformOpOrder()
+        drape_transform.AddTranslateOp().Set(Gf.Vec3d(0.0, -0.12, 0.001))
+        drape_transform.AddScaleOp().Set(Gf.Vec3f(0.62, 0.50, 0.002))
+        drape_material = UsdShade.Material.Define(stage, f"{drape_path}/Material")
+        drape_shader = UsdShade.Shader.Define(stage, f"{drape_path}/Material/Shader")
+        drape_shader.CreateIdAttr("UsdPreviewSurface")
+        drape_shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.025, 0.12, 0.15))
+        drape_shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.92)
+        drape_material.CreateSurfaceOutput().ConnectToSource(drape_shader.ConnectableAPI(), "surface")
+        UsdShade.MaterialBindingAPI.Apply(drape.GetPrim()).Bind(drape_material)
+        puncture_marker_path = "/World/envs/env_0/DrAnmarNeedleEntry"
+        puncture_marker = UsdGeom.Sphere.Define(stage, puncture_marker_path)
+        puncture_marker.CreateRadiusAttr(0.0024)
+        puncture_marker_prim = puncture_marker.GetPrim()
+        puncture_marker_translate = UsdGeom.Xformable(puncture_marker_prim).AddTranslateOp()
+        puncture_marker_material = UsdShade.Material.Define(stage, f"{puncture_marker_path}/Material")
+        puncture_marker_shader = UsdShade.Shader.Define(stage, f"{puncture_marker_path}/Material/Shader")
+        puncture_marker_shader.CreateIdAttr("UsdPreviewSurface")
+        puncture_marker_shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.18, 0.012, 0.008))
+        puncture_marker_shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.82)
+        puncture_marker_material.CreateSurfaceOutput().ConnectToSource(puncture_marker_shader.ConnectableAPI(), "surface")
+        UsdShade.MaterialBindingAPI.Apply(puncture_marker_prim).Bind(puncture_marker_material)
+        UsdGeom.Imageable(puncture_marker_prim).MakeInvisible()
         focus = str(procedure.get("anatomy_focus", "Liver"))
         if "multi-organ" in focus.lower() or procedure.get("guide_kind") == "navigation":
             default_showcase_names = {child.GetName() for child in showcase_children}
@@ -1831,6 +1929,7 @@ def main() -> None:
             collision_enabled = organ_name in default_showcase_names
             collision_api = UsdPhysics.CollisionAPI.Apply(mesh)
             collision_api.CreateCollisionEnabledAttr().Set(collision_enabled)
+            anatomy_collision_prims.append(mesh)
             mesh_collision_api = UsdPhysics.MeshCollisionAPI.Apply(mesh)
             mesh_collision_api.CreateApproximationAttr().Set("convexHull")
             if collision_enabled:
@@ -1869,6 +1968,161 @@ def main() -> None:
                         bindingStrength=UsdShade.Tokens.strongerThanDescendants,
                     )
                 proxy_visual_ready = True
+
+    def refresh_anatomy_guard_volumes() -> None:
+        """Cache visible OpenUSD organ surfaces for shape-aware proximity and a bounds fallback."""
+        anatomy_guard_volumes.clear()
+        anatomy_surface_samples.clear()
+        if stage is None:
+            return
+        bounds_cache = UsdGeom.BBoxCache(
+            Usd.TimeCode.Default(),
+            [UsdGeom.Tokens.default_, UsdGeom.Tokens.render],
+            useExtentsHint=True,
+        )
+        for child in showcase_children:
+            if UsdGeom.Imageable(child).ComputeVisibility(Usd.TimeCode.Default()) == UsdGeom.Tokens.invisible:
+                continue
+            mesh = stage.GetPrimAtPath(f"{showcase_path}/{child.GetName()}/{child.GetName()}")
+            if not mesh.IsValid():
+                continue
+            collision_enabled = UsdPhysics.CollisionAPI(mesh).GetCollisionEnabledAttr().Get()
+            if collision_enabled is False:
+                continue
+            aligned_range = bounds_cache.ComputeWorldBound(mesh).ComputeAlignedRange()
+            minimum = np.asarray(tuple(aligned_range.GetMin()), dtype=np.float32)
+            maximum = np.asarray(tuple(aligned_range.GetMax()), dtype=np.float32)
+            center = (minimum + maximum) * 0.5
+            radii = np.maximum((maximum - minimum) * 0.48, np.asarray((0.008, 0.008, 0.008), dtype=np.float32))
+            if np.all(np.isfinite(center)) and np.all(np.isfinite(radii)):
+                anatomy_guard_volumes.append((center, radii, child.GetName()))
+            mesh_points = UsdGeom.Mesh(mesh).GetPointsAttr().Get()
+            if mesh_points:
+                stride = max(1, int(np.ceil(len(mesh_points) / 3000)))
+                transform = UsdGeom.XformCache(Usd.TimeCode.Default()).GetLocalToWorldTransform(mesh)
+                sampled = np.asarray(
+                    [tuple(transform.Transform(point)) for point in list(mesh_points)[::stride]],
+                    dtype=np.float32,
+                )
+                if len(sampled) and np.all(np.isfinite(sampled)):
+                    anatomy_surface_samples.append((sampled, center, child.GetName()))
+
+    def set_anatomy_collision_enabled(enabled: bool) -> None:
+        """Temporarily open a needle-only channel while the tool guard remains active."""
+        for mesh in anatomy_collision_prims:
+            parent = mesh.GetParent()
+            visible = UsdGeom.Imageable(parent).ComputeVisibility(Usd.TimeCode.Default()) != UsdGeom.Tokens.invisible
+            UsdPhysics.CollisionAPI.Apply(mesh).CreateCollisionEnabledAttr().Set(bool(enabled and visible))
+
+    def show_puncture_marker(position: np.ndarray | None) -> None:
+        if puncture_marker_prim is None or puncture_marker_translate is None:
+            return
+        imageable = UsdGeom.Imageable(puncture_marker_prim)
+        if position is None:
+            imageable.MakeInvisible()
+            return
+        puncture_marker_translate.Set(Gf.Vec3d(*position.astype(float).tolist()))
+        imageable.MakeVisible()
+
+    def anatomy_surface_query(
+        point: np.ndarray,
+    ) -> tuple[float | None, np.ndarray | None, np.ndarray | None]:
+        """Return signed clearance, outward normal, and actual sampled surface point."""
+        candidates: list[tuple[float, float, np.ndarray, np.ndarray]] = []
+        for points, center, _name in anatomy_surface_samples:
+            offsets = point[None, :] - points
+            nearest_index = int(np.argmin(np.einsum("ij,ij->i", offsets, offsets)))
+            surface = points[nearest_index]
+            outward = surface - center
+            outward_length = float(np.linalg.norm(outward))
+            if outward_length < 1e-6:
+                continue
+            outward /= outward_length
+            clearance = float(np.dot(point - surface, outward))
+            candidates.append((abs(clearance), clearance, outward.astype(np.float32), surface.astype(np.float32)))
+        if candidates:
+            _absolute, clearance, outward, surface = min(candidates, key=lambda item: item[0])
+            return clearance, outward, surface
+        # Bounds-only fallback for anatomy assets that do not expose readable mesh points.
+        for center, radii, _name in anatomy_guard_volumes:
+            delta = point - center
+            normalized_length = float(np.linalg.norm(delta / radii))
+            if normalized_length < 1e-6:
+                continue
+            clearance = (normalized_length - 1.0) * float(np.min(radii))
+            outward = delta / np.square(radii)
+            outward_length = float(np.linalg.norm(outward))
+            if outward_length < 1e-6:
+                continue
+            outward /= outward_length
+            surface = center + delta / normalized_length
+            candidates.append((abs(clearance), clearance, outward.astype(np.float32), surface.astype(np.float32)))
+        if not candidates:
+            return None, None, None
+        _absolute, clearance, outward, surface = min(candidates, key=lambda item: item[0])
+        return clearance, outward, surface
+
+    def derive_needle_tip_offsets() -> np.ndarray:
+        """Derive the two open ends of the official semicircular needle in Object-local metres."""
+        if stage is None:
+            return np.empty((0, 3), dtype=np.float32)
+        object_prim = stage.GetPrimAtPath("/World/envs/env_0/Object")
+        if not object_prim.IsValid():
+            return np.empty((0, 3), dtype=np.float32)
+        cache = UsdGeom.XformCache(Usd.TimeCode.Default())
+        world_to_object = cache.GetLocalToWorldTransform(object_prim).GetInverse()
+        local_points: list[np.ndarray] = []
+        for prim in Usd.PrimRange(object_prim):
+            if not prim.IsA(UsdGeom.Mesh):
+                continue
+            points = UsdGeom.Mesh(prim).GetPointsAttr().Get()
+            if not points:
+                continue
+            mesh_to_world = cache.GetLocalToWorldTransform(prim)
+            for point in points:
+                world_point = mesh_to_world.Transform(point)
+                local_point = world_to_object.Transform(world_point)
+                local_points.append(np.asarray(tuple(local_point), dtype=np.float32))
+        if not local_points:
+            return np.empty((0, 3), dtype=np.float32)
+        vertices = np.stack(local_points)
+        span = np.ptp(vertices, axis=0)
+        thickness_axis = int(np.argmin(span))
+        curve_axes = [axis for axis in range(3) if axis != thickness_axis]
+        arc_axis = max(curve_axes, key=lambda axis: float(span[axis]))
+        ordered = np.argsort(vertices[:, arc_axis])
+        endpoint_count = max(12, min(64, len(vertices) // 100))
+        return np.stack(
+            (
+                np.mean(vertices[ordered[:endpoint_count]], axis=0),
+                np.mean(vertices[ordered[-endpoint_count:]], axis=0),
+            )
+        ).astype(np.float32)
+
+    def rotate_wxyz(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
+        vector_part = quaternion[1:4]
+        cross = 2.0 * np.cross(vector_part, vector)
+        return vector + quaternion[0] * cross + np.cross(vector_part, cross)
+
+    def constrain_anatomy_translation(
+        tool_position: np.ndarray | None,
+        translation: np.ndarray,
+    ) -> tuple[np.ndarray, float | None, bool]:
+        if tool_position is None or not anatomy_guard_volumes:
+            return translation, None, False
+        adjusted = translation.astype(np.float32).copy()
+        clearance, outward, _surface = anatomy_surface_query(tool_position)
+        if clearance is None or outward is None:
+            return adjusted, None, False
+        inward_component = float(np.dot(adjusted, outward))
+        guard_active = clearance <= 0.004 and inward_component < 0.0
+        if guard_active:
+            remaining_fraction = float(np.clip(max(clearance, 0.0) / 0.004, 0.0, 1.0))
+            adjusted -= outward * inward_component * (1.0 - remaining_fraction)
+        return adjusted, clearance, guard_active
+
+    refresh_anatomy_guard_volumes()
+    needle_tip_offsets_local = derive_needle_tip_offsets()
     ghost_markers = VisualizationMarkers(
         VisualizationMarkersCfg(
             prim_path="/World/DrAnmarClinicianPath",
@@ -1995,19 +2249,31 @@ def main() -> None:
             return None
         return robots[robot_name].data.body_pos_w[0, tip_index, :3].detach().cpu().numpy().astype(np.float32)
 
+    def needle_tip_positions_world() -> np.ndarray:
+        if not len(needle_tip_offsets_local) or not objects:
+            return np.empty((0, 3), dtype=np.float32)
+        needle = next(iter(objects.values()))
+        position = needle.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
+        quaternion = needle.data.root_quat_w[0, :4].detach().cpu().numpy().astype(np.float32)
+        return np.stack([position + rotate_wxyz(quaternion, offset) for offset in needle_tip_offsets_local])
+
+    def apply_endoscope_camera_view(selected_scenario: str, view_mode: str) -> None:
+        selected_eye, selected_target = scenario_camera_pose(camera_eye, camera_target, selected_scenario)
+        selected_eye, selected_target = camera_view_pose(selected_eye, selected_target, view_mode)
+        camera.set_world_poses_from_view(
+            torch.tensor([selected_eye.tolist()], device=camera.device),
+            torch.tensor([selected_target.tolist()], device=camera.device),
+        )
+        selected_right_eye = selected_eye + np.asarray((0.0, 0.006, 0.0), dtype=np.float32)
+        stereo_right_camera.set_world_poses_from_view(
+            torch.tensor([selected_right_eye.tolist()], device=stereo_right_camera.device),
+            torch.tensor([selected_target.tolist()], device=stereo_right_camera.device),
+        )
+
     action_dim = int(env.action_space.shape[-1])
     arms = 2 if "Dual" in args_cli.task else 1
     has_grippers = "Lift" in args_cli.task or "Handover" in args_cli.task
-    initial_eye, initial_target = scenario_camera_pose(camera_eye, camera_target, "baseline")
-    camera.set_world_poses_from_view(
-        torch.tensor([initial_eye.tolist()], device=camera.device),
-        torch.tensor([initial_target.tolist()], device=camera.device),
-    )
-    right_eye = initial_eye + np.asarray((0.0, 0.006, 0.0), dtype=np.float32)
-    stereo_right_camera.set_world_poses_from_view(
-        torch.tensor([right_eye.tolist()], device=stereo_right_camera.device),
-        torch.tensor([initial_target.tolist()], device=stereo_right_camera.device),
-    )
+    apply_endoscope_camera_view("baseline", "operative")
     update_wrist_camera_poses()
 
     state = SharedState(
@@ -2049,6 +2315,7 @@ def main() -> None:
             for joint_path in assisted_grasp_joints.values():
                 stage.RemovePrim(joint_path)
         assisted_grasp_joints.clear()
+        show_puncture_marker(None)
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
@@ -2074,6 +2341,7 @@ def main() -> None:
             if child_mesh.IsValid():
                 UsdPhysics.CollisionAPI.Apply(child_mesh).CreateCollisionEnabledAttr().Set(visible)
                 enabled_colliders += int(visible)
+        refresh_anatomy_guard_volumes()
         with state.lock:
             state.anatomy_showcase = (
                 f"{args_cli.anatomy_title or 'Official anatomy'} · multi-organ context"
@@ -2090,16 +2358,16 @@ def main() -> None:
             state.anatomy_collision_meshes = enabled_colliders
             state.assisted_grasp_active = [False] * state.arms
             state.tool_to_object_distance_m = [None] * state.arms
-        scenario_eye, scenario_target = scenario_camera_pose(camera_eye, camera_target, selected_scenario)
-        camera.set_world_poses_from_view(
-            torch.tensor([scenario_eye.tolist()], device=camera.device),
-            torch.tensor([scenario_target.tolist()], device=camera.device),
-        )
-        scenario_right_eye = scenario_eye + np.asarray((0.0, 0.006, 0.0), dtype=np.float32)
-        stereo_right_camera.set_world_poses_from_view(
-            torch.tensor([scenario_right_eye.tolist()], device=stereo_right_camera.device),
-            torch.tensor([scenario_target.tolist()], device=stereo_right_camera.device),
-        )
+            state.tool_to_object_offset_m = [None] * state.arms
+            state.virtual_fixture_active = False
+            state.closest_anatomy_clearance_m = None
+            state.needle_tip_clearance_m = None
+            state.needle_puncture_active = False
+            state.needle_penetration_depth_m = 0.0
+            state.adaptive_precision_active = False
+        with state.lock:
+            selected_view_mode = state.camera_view_mode
+        apply_endoscope_camera_view(selected_scenario, selected_view_mode)
         update_wrist_camera_poses()
     task_slug = args_cli.task.lower().replace("isaac-", "").replace("-v0", "").replace("-", "_")
     existing = sorted(args_cli.demo_dir.glob(f"dr_anmar_{task_slug}_*.npz"), reverse=True)
@@ -2153,6 +2421,8 @@ def main() -> None:
             state.replay_request = None
             scenario_id = state.scenario_id
             scenario_seed = state.scenario_seed
+            camera_view_request = state.camera_view_request
+            state.camera_view_request = None
             ghost_update = state.reference_ghost_update
             state.reference_ghost_update = None
             ghost_enabled = state.reference_ghost_enabled
@@ -2164,6 +2434,7 @@ def main() -> None:
             else:
                 manual_action = np.zeros(state.action_dim, dtype=np.float32)
             grippers_open = list(state.grippers_open)
+            virtual_fixture_enabled = state.virtual_fixture_enabled
 
         if ghost_update is not None:
             if ghost_enabled and ghost_update != "__hide__":
@@ -2187,6 +2458,10 @@ def main() -> None:
         if reset_requested:
             with torch.inference_mode():
                 reset_environment(scenario_id, scenario_seed)
+
+        if camera_view_request is not None and not reset_requested:
+            with torch.inference_mode():
+                apply_endoscope_camera_view(scenario_id, camera_view_request)
 
         if record_request == "start":
             demo_frames.clear()
@@ -2275,20 +2550,23 @@ def main() -> None:
                     action_np[state.gripper_action_index(arm)] = 1.0 if is_open else -1.0
 
         grasp_distances: list[float | None] = [None] * state.arms
+        grasp_offsets: list[list[float] | None] = [None] * state.arms
         if state.has_grippers and objects and stage is not None:
             grasp_object = next(iter(objects.values()))
             object_position = grasp_object.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
             for arm, is_open in enumerate(grippers_open):
                 tool_position_for_grasp = tool_position_for_arm(arm)
                 if tool_position_for_grasp is not None:
-                    grasp_distances[arm] = float(np.linalg.norm(object_position - tool_position_for_grasp))
+                    object_offset = object_position - tool_position_for_grasp
+                    grasp_distances[arm] = float(np.linalg.norm(object_offset))
+                    grasp_offsets[arm] = object_offset.astype(float).round(5).tolist()
                 if is_open and arm in assisted_grasp_joints:
                     stage.RemovePrim(assisted_grasp_joints.pop(arm))
                 elif (
                     not is_open
                     and arm not in assisted_grasp_joints
                     and grasp_distances[arm] is not None
-                    and grasp_distances[arm] <= 0.025
+                    and grasp_distances[arm] <= state.grasp_capture_radius_m
                 ):
                     robot_prim_name = "Robot" if state.arms == 1 else f"Robot_{arm + 1}"
                     tool_body_path = Sdf.Path(f"/World/envs/env_0/{robot_prim_name}/{wrist_tip_name}")
@@ -2307,6 +2585,74 @@ def main() -> None:
             with state.lock:
                 state.assisted_grasp_active = [arm in assisted_grasp_joints for arm in range(state.arms)]
                 state.tool_to_object_distance_m = [round(value, 5) if value is not None else None for value in grasp_distances]
+                state.tool_to_object_offset_m = grasp_offsets
+
+        with state.lock:
+            puncture_was_active = state.needle_puncture_active
+            max_penetration = state.needle_max_penetration_m
+        needle_clearance: float | None = None
+        needle_outward: np.ndarray | None = None
+        needle_surface: np.ndarray | None = None
+        if assisted_grasp_joints:
+            tip_queries = []
+            for tip in needle_tip_positions_world():
+                clearance, outward, surface = anatomy_surface_query(tip)
+                if clearance is not None and outward is not None and surface is not None:
+                    tip_queries.append((abs(clearance), clearance, outward, surface))
+            if tip_queries:
+                _absolute, needle_clearance, needle_outward, needle_surface = min(
+                    tip_queries, key=lambda item: item[0]
+                )
+
+        adaptive_precision_active = False
+        virtual_fixture_active = False
+        puncture_active = bool(puncture_was_active and assisted_grasp_joints)
+        anatomy_clearances: list[float] = []
+        for arm in range(state.arms):
+            body_slice = state.body_action_slice(arm)
+            translation = action_np[body_slice.start : body_slice.start + 3].copy()
+            if replay_actions is None and grasp_distances[arm] is not None and grasp_distances[arm] < 0.035:
+                feather = 0.35 + 0.65 * float(np.clip(grasp_distances[arm] / 0.035, 0.0, 1.0))
+                translation *= feather
+                adaptive_precision_active = adaptive_precision_active or bool(np.any(translation))
+            if arm in assisted_grasp_joints and needle_clearance is not None and needle_outward is not None:
+                needle_inward = float(np.dot(translation, needle_outward))
+                if not puncture_active and needle_clearance <= 0.0025 and needle_inward < 0.0:
+                    puncture_active = True
+                penetration_depth = max(0.0, -needle_clearance)
+                if puncture_active and penetration_depth >= max_penetration and needle_inward < 0.0:
+                    translation -= needle_outward * needle_inward
+                    virtual_fixture_active = True
+            if virtual_fixture_enabled:
+                translation, clearance, guard_active = constrain_anatomy_translation(
+                    tool_position_for_arm(arm),
+                    translation,
+                )
+                if clearance is not None:
+                    anatomy_clearances.append(clearance)
+                virtual_fixture_active = virtual_fixture_active or guard_active
+            action_np[body_slice.start : body_slice.start + 3] = translation
+        if puncture_active and needle_clearance is not None and needle_clearance > 0.006:
+            puncture_active = False
+        if puncture_active != puncture_was_active:
+            set_anatomy_collision_enabled(not puncture_active)
+        show_puncture_marker(needle_surface if puncture_active else None)
+        penetration_depth = max(0.0, -needle_clearance) if needle_clearance is not None else 0.0
+        with state.lock:
+            state.adaptive_precision_active = adaptive_precision_active
+            state.virtual_fixture_active = virtual_fixture_active
+            state.closest_anatomy_clearance_m = (
+                round(min(anatomy_clearances, key=abs), 5) if anatomy_clearances else None
+            )
+            state.needle_tip_clearance_m = round(needle_clearance, 5) if needle_clearance is not None else None
+            state.needle_puncture_active = puncture_active
+            state.needle_penetration_depth_m = round(min(penetration_depth, max_penetration), 5)
+            if puncture_active and penetration_depth >= max_penetration:
+                state.coaching_cue = "Maximum rehearsal depth reached. Rotate along the needle arc or withdraw."
+            elif puncture_active:
+                state.coaching_cue = "Needle tip is inside the tissue proxy. Rotate through the curved needle arc; the shaft remains excluded."
+            elif virtual_fixture_active:
+                state.coaching_cue = "Instrument boundary reached. The shaft cannot enter; align the needle tip or withdraw."
 
         actions = torch.from_numpy(action_np).to(device=env.unwrapped.device).reshape(1, -1)
         with torch.inference_mode():
@@ -2381,6 +2727,9 @@ def main() -> None:
                 operator_source = state.operator_input_source
                 procedure_phase = state.procedure_phase
                 procedure_event_code = state.procedure_event_code
+                needle_puncture_active = state.needle_puncture_active
+                needle_penetration_depth_m = state.needle_penetration_depth_m
+                needle_tip_clearance_m = state.needle_tip_clearance_m
                 state.procedure_event_code = 0
             frame = {
                 "time_s": np.array(time.monotonic() - demo_started_monotonic, dtype=np.float64),
@@ -2400,6 +2749,12 @@ def main() -> None:
                 "operator_input_source_code": np.array(OPERATOR_INPUT_SOURCES.get(operator_source, 0), dtype=np.int16),
                 "procedure_phase_code": np.array(PROCEDURE_PHASES.get(procedure_phase, 0), dtype=np.int16),
                 "procedure_event_code": np.array(procedure_event_code, dtype=np.int16),
+                "needle_puncture_active": np.array(needle_puncture_active, dtype=np.bool_),
+                "needle_penetration_depth_m": np.array(needle_penetration_depth_m, dtype=np.float32),
+                "needle_tip_clearance_m": np.array(
+                    needle_tip_clearance_m if needle_tip_clearance_m is not None else np.nan,
+                    dtype=np.float32,
+                ),
                 "anatomy_showcase_position_w": np.asarray((-0.117, -0.0945, -0.144), dtype=np.float32),
                 "anatomy_showcase_quaternion_w": np.asarray((1.0, 0.0, 0.0, 0.0), dtype=np.float32),
             }

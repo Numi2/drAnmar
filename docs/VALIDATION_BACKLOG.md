@@ -50,6 +50,22 @@ Validated on the RTX 4090 host:
   and the wrist camera was changed to a live tool-following oblique view. A controlled browser-API attempt moved
   the PSM to 11.7 mm from the needle, closed the jaws, activated the limited grasp joint, and lifted the needle
   44.7 mm; opening and resetting removed the joint and restored the scene.
+- The operating room gained zero-extra-sensor Operative, Close, and Overview stereo presets, a view-centred
+  reticle, live target-direction guidance, gamepad camera/gripper bindings, and a strictly visual OpenUSD surgical
+  drape. A browser pass switched presets, kept the stream live, exposed the active grasp state, and produced no
+  application console warnings or errors.
+- The jaw-capture zone was tightened to 18 mm and manual translation now feathers near the target. A closed-loop
+  live attempt followed the new offset guidance, captured the needle at 13.4 mm, and lifted it 37.5 mm. The
+  OpenUSD environment still opened as a metre-scale Z-up stage with 50 meshes and zero unresolved dependencies.
+- Visible collidable anatomy now supplies a mesh-sampled control-space safety surface with a bounds fallback. The guard
+  removes only the inward command component so withdrawal and tangential motion remain available; its activation
+  state and anatomy clearance are exposed in the live API and clinician overlay.
+- The anatomy guard now samples the actual visible OpenUSD mesh instead of relying only on its bounding volume.
+  A live needle-pickup pass derived the official needle endpoints from mesh vertices, entered the rigid tissue
+  proxy to 2.0 mm while the instrument tip remained about 2.3 mm outside, disabled the organ collider only for
+  the latched needle-entry interval, and restored the protected shaft boundary. Operative and wrist streams both
+  showed the needle occluded by the organ surface. Entry depth, tip clearance, and puncture state are recorded
+  with each demonstration frame. The 12 mm cap remains an engineering rehearsal limit, not a clinical threshold.
 
 Known host/runtime blockers from the same pass:
 
@@ -87,8 +103,9 @@ Known host/runtime blockers from the same pass:
   neighbour resizing, the semantic label map is serializable, and camera intrinsics match the rendered sensor.
 - Confirm the two endoscope cameras share intrinsics, use the intended 6 mm baseline, remain time-synchronized,
   and have correct left/right extrinsics after baseline and shifted-camera resets.
-- Confirm each wrist camera is parented to the actual `psm_tool_tip_link`, `endo360_needle`, or `ecm_end_link`,
-  has the expected optical convention, clears surrounding geometry, and renders for single and dual robots.
+- Confirm each dynamically tool-following wrist camera resolves the actual `psm_tool_tip_link`, `endo360_needle`,
+  or `ecm_end_link`, has the expected optical convention, clears surrounding geometry, and renders for single
+  and dual robots.
 - Independently unproject sampled depth and confirm every fixed-grid point-cloud XYZ is in metres in the declared
   left-camera optical frame, including invalid-depth encoding.
 - Confirm applied/computed joint-torque arrays exist, use documented simulator units, align with joint ordering,
@@ -112,8 +129,12 @@ Known host/runtime blockers from the same pass:
   are validated, but the replacement PreviewSurface room finishes and illumination are not clinically reviewed.
 - Confirm the Y-up centimetre source-room conversion and -0.95 m floor registration align the walls, ceiling,
   upstream ORBIT-Surgical table, each robot base, and all endoscope views across all seven anatomy variants.
-- Confirm rigid collision remains owned only by the upstream ORBIT-Surgical task; the added room and anatomy
-  layers are visual context and must not silently introduce duplicate table or organ collision bodies.
+- Confirm the upstream ORBIT-Surgical table/object collision and the single enabled Dr.Anmar anatomy collider do
+  not introduce duplicate bodies, solver instability, or task-dependent contact artifacts.
+- Drive every supported tool into every enabled organ from the top and sides; confirm the OpenUSD-derived virtual
+  fixture activates before visible instrument penetration, preserves tangent/withdrawal motion, and does not block intended
+  needle, cutting-path, retraction, or handover work. The current sampled surface is a usability boundary, not tissue
+  deformation or a clinically validated forbidden-region model.
 - Validate the liver, gallbladder, and bladder visible-mesh proxies against their underlying rigid collision
   targets before using those rooms for quantitative tissue-handling studies.
 - Keep incision-path rehearsal labelled as trajectory practice until deformable tissue, puncture, topology

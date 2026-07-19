@@ -138,6 +138,38 @@ def Xform "DrAnmarEnvironment" (
             rel material:binding = </DrAnmarEnvironment/Materials/CeilingLampFinish>
         }}
     }}
+
+    def Scope "Lighting"
+    {{
+        def DomeLight "ClinicalAmbient"
+        {{
+            float inputs:intensity = 180
+            color3f inputs:color = (0.78, 0.88, 1)
+            custom string drAnmar:lightRole = "cool_operating_room_fill"
+        }}
+
+        def RectLight "OperatingFieldKey"
+        {{
+            float inputs:intensity = 850
+            color3f inputs:color = (1, 0.94, 0.84)
+            float inputs:width = 0.42
+            float inputs:height = 0.30
+            double3 xformOp:translate = (0.10, -0.10, 0.82)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            custom string drAnmar:lightRole = "warm_operating_field_key"
+        }}
+
+        def RectLight "OperatingFieldFill"
+        {{
+            float inputs:intensity = 420
+            color3f inputs:color = (0.72, 0.90, 1)
+            float inputs:width = 0.30
+            float inputs:height = 0.24
+            double3 xformOp:translate = (-0.30, 0.18, 0.62)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            custom string drAnmar:lightRole = "cool_instrument_fill"
+        }}
+    }}
 }}
 '''
 

@@ -50,6 +50,17 @@ learn immediately:
 - Gripper and demonstration controls sit beside movement so practice naturally becomes training data.
 
 <p align="center">
+  <img src="docs/screenshots/needle-operation-and-camera-control.gif" width="960" alt="Live Dr.Anmar workflow approaching and grasping a needle, lifting it, entering the organ tissue proxy, and switching between operative and wrist cameras">
+</p>
+
+<p align="center"><strong>One continuous live-simulator workflow</strong><br>
+Target-guided pickup → grasp → lift → bounded needle entry → operative and wrist-camera inspection.</p>
+
+The instrument shaft remains outside the anatomy surface while the grasped needle tip can follow a bounded
+12 mm entry channel. This is a rigid rehearsal interaction with synchronized depth telemetry—not a validated
+deformable-tissue or needle-force model.
+
+<p align="center">
   <img src="docs/screenshots/surgical-control-panel.png" width="400" alt="Dr.Anmar game-like surgical instrument controls for speed, position, angle, and gripper">
 </p>
 
