@@ -46,15 +46,24 @@ learn immediately:
 - Hold to move; release to stop.
 - Precision, Normal, and Fast speed modes make fine grasping and open-space travel equally accessible.
 - Position and angle controls use spatial language—*toward patient*, *away*, *roll*, *pitch*, and *yaw*.
-- Every action has a keyboard equivalent, with standard gamepad support for continuous input.
+- Every visible action has an audited keyboard equivalent, with standard gamepad support for continuous input.
+- `Enter` becomes a contextual approach → grasp → lift control, while six hold-to-move surgical combinations
+  provide orbiting, curved needle driving, reversal, lift/retract, and lower/approach with one key each.
+- A quick tap performs a bounded precision nudge; holding the same combination key gives continuous motion.
+- Needle driving uses the actual OpenUSD surface direction, locks the entry vector at puncture, and reverses that
+  vector during withdrawal so the same two keys remain intuitive across entry and exit.
+- `Option` and `Shift` act as temporary precision and fast clutches; `Esc` always stops and restores manual control.
 - Gripper and demonstration controls sit beside movement so practice naturally becomes training data.
 
+The complete keyboard map and the rationale for each combined movement are documented in
+[`docs/KEYBOARD_CONTROLS.md`](docs/KEYBOARD_CONTROLS.md).
+
 <p align="center">
-  <img src="docs/screenshots/needle-operation-and-camera-control.gif" width="960" alt="Live Dr.Anmar workflow approaching and grasping a needle, lifting it, entering the organ tissue proxy, and switching between operative and wrist cameras">
+  <img src="docs/screenshots/keyboard-surgical-control-workflow.gif" width="960" alt="Live Dr.Anmar keyboard workflow grasping a curved needle, visibly entering and fully withdrawing from the anatomy surface while held, then presenting it to a second instrument before handoff">
 </p>
 
-<p align="center"><strong>One continuous live-simulator workflow</strong><br>
-Target-guided pickup → grasp → lift → bounded needle entry → operative and wrist-camera inspection.</p>
+<p align="center"><strong>Keyboard-first needle workflow in the live simulator</strong><br>
+Target-guided pickup → grasp → close-up entry → full exit while held → dual-instrument pre-handoff.</p>
 
 The instrument shaft remains outside the anatomy surface while the grasped needle tip can follow a bounded
 12 mm entry channel. This is a rigid rehearsal interaction with synchronized depth telemetry—not a validated

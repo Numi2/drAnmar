@@ -231,3 +231,22 @@ Known host/runtime blockers from the same pass:
   dropout randomizers to the automated challenge matrix.
 - Add visibility/occlusion metrics and independently validated task-specific grasp/contact state.
 - Add policy evaluation cards linked to immutable datasets, checkpoints, runtime revisions, and challenge matrices.
+
+## 2026-07-20 keyboard-control live evidence
+
+Captured on Gilgamesh in the running Isaac workstation rather than from mocked UI state:
+
+- The workstation self-audit reported `51/51` visible controls mapped to keyboard shortcuts.
+- Quick-tap semantic actions were recorded as `keyboard_smart_action`, and command lifetime followed the live
+  simulator rate instead of expiring before a 2 Hz physics step.
+- In the single-PSM needle room, a held needle reached a measured 2.64 mm bounded entry, then withdrew until
+  puncture was false and the tip had a 49.17 mm positive clearance; assisted grasp remained active throughout.
+- In the dual-PSM room, the holder retained the extracted needle while the receiving open gripper approached
+  to 21.51 mm. Capture stopped before the receiving grasp or release, as intended for the pre-handoff view.
+- The resulting GIF holds control highlights for readable frames and includes close, overview, instrument-select,
+  entry, reverse, and pre-handoff states.
+
+Still required before research claims expand: validate the rigid entry proxy against an independently measured
+surface, calibrate camera projection and depth cues, verify collision/contact telemetry under every anatomy
+scene, and run clinician usability studies. This remains simulation training, not deformable biomechanics or
+clinical validation.
