@@ -186,7 +186,7 @@ APP_HTML = r"""<!doctype html>
     <h2>Tool position</h2><div class="card"><div class="dpad">
       <button class="move-button up" data-axis="2" data-direction="1">↑ Up<small>R</small></button>
       <button class="move-button left" data-axis="1" data-direction="1">← Left<small>A</small></button>
-      <button class="stop-center" onclick="stopTool()">■ Stop<small>Space</small></button>
+      <button class="stop-center" onclick="stopTool()">■ Stop<small>Esc</small></button>
       <button class="move-button right" data-axis="1" data-direction="-1">Right →<small>D</small></button>
       <button class="move-button down" data-axis="2" data-direction="-1">↓ Down<small>F</small></button>
     </div><div class="depthgrid"><button class="move-button" data-axis="0" data-direction="-1">Toward patient<small>W</small></button><button class="move-button" data-axis="0" data-direction="1">Away from patient<small>S</small></button></div><div id="controlReadout" class="control-readout"><i></i><span>Ready · hold a control to move</span></div></div>
@@ -194,8 +194,8 @@ APP_HTML = r"""<!doctype html>
       <button class="move-button" data-axis="3" data-direction="-1">↶ Roll left<small>Q</small></button><button class="move-button" data-axis="3" data-direction="1">Roll right ↷<small>E</small></button>
       <button class="move-button" data-axis="4" data-direction="-1">Pitch up<small>↑</small></button><button class="move-button" data-axis="4" data-direction="1">Pitch down<small>↓</small></button>
       <button class="move-button" data-axis="5" data-direction="-1">← Yaw left<small>←</small></button><button class="move-button" data-axis="5" data-direction="1">Yaw right →<small>→</small></button>
-    </div><div class="hint">Keyboard: WASD + R/F for position, arrows + Q/E for angle. Standard gamepads are supported.</div></div>
-    <div id="gripperPanel"><h2>Gripper</h2><div class="card"><div class="grid two"><button onclick="grip(true)">Open</button><button class="primary" onclick="grip(false)">Close / grasp</button></div></div></div>
+    </div><div class="hint">Keyboard: WASD + R/F for position, arrows + Q/E for angle, and Esc to stop. Standard gamepads are supported.</div></div>
+    <div id="gripperPanel"><h2>Gripper</h2><div class="card"><div class="grid two"><button onclick="grip(true)">Open</button><button class="primary" onclick="grip(false)">Close / grasp</button></div><div class="hint">Press Space to toggle open / close.</div></div></div>
     <h2>Expert path guide</h2><div class="card"><div class="grid two"><button class="primary" onclick="referenceGhost(true)">Show clinician path</button><button onclick="referenceGhost(false)">Hide path</button></div><div id="ghostState" class="ghost-state">Select a clinician reference in Skills Twin first.</div></div>
     <h2>Procedure annotation</h2><div class="card"><div class="grid"><button onclick="annotatePhase('approach')">Approach</button><button onclick="annotatePhase('grasp')">Grasp</button><button onclick="annotatePhase('manipulation')">Manipulate</button><button onclick="annotatePhase('recovery')">Recovery</button><button onclick="annotateEvent('task_complete')">Task event</button><button onclick="annotateEvent('safety_review')">Safety event</button></div><div class="hint">Phase labels and events are synchronized into the training trajectory.</div></div>
     <h2>Research safety monitor</h2><div class="card"><div class="safety-grid"><div class="safety-metric"><b id="forceMetric">—</b><span>CONTACT N</span></div><div class="safety-metric"><b id="deformMetric">—</b><span>TISSUE MM</span></div><div class="safety-metric"><b id="stressMetric">—</b><span>STRESS PA</span></div></div><div class="hint">Simulator signals only. Limits are engineering advisories, not clinical thresholds.</div></div>
@@ -221,6 +221,7 @@ function updateDrive(){const values=buildDrive();const active=values.some(value=
 function stopDrive(showToast=true){heldKeys.clear();pointerMoves.clear();document.querySelectorAll('.move-button.held').forEach(x=>x.classList.remove('held'));driveWasActive=false;sendDrive(Array(6).fill(0));updateControlReadout(false);if(showToast)toast('Tool stopped')}
 async function stopTool(){stopDrive();try{await post('/api/stop')}catch(e){toast(e.message)}}
 async function grip(open){try{await post('/api/gripper',{open,arm:activeArm});toast(open?'Gripper open':'Gripper closed')}catch(e){toast(e.message)}}
+async function toggleGrip(){try{const result=await post('/api/gripper/toggle',{arm:activeArm});toast(result.open?'Gripper open':'Gripper closed')}catch(e){toast(e.message)}}
 async function recording(start){try{await post(start?'/api/record/start':'/api/record/stop');toast(start?'Recording started':'Saving demonstration…')}catch(e){toast(e.message)}}
 async function replay(){try{const x=await post('/api/replay-last');toast(x.message)}catch(e){toast(e.message)}}
 async function referenceGhost(enabled){try{const x=await post('/api/reference-ghost',{enabled});toast(x.message)}catch(e){toast(e.message)}}
@@ -231,8 +232,8 @@ async function resetScene(){try{await post('/api/reset');toast('Scene reset')}ca
 async function setAutonomy(mode){try{const x=await post('/api/autonomy',{mode});toast(x.message)}catch(e){toast(e.message)}}
 async function takeControl(){stopDrive(false);try{const x=await post('/api/handoff');toast(x.message)}catch(e){toast(e.message)}}
 document.querySelectorAll('.move-button').forEach(button=>{button.addEventListener('pointerdown',event=>{event.preventDefault();inputSource='keyboard_pointer';button.setPointerCapture(event.pointerId);pointerMoves.set(event.pointerId,{axis:Number(button.dataset.axis),direction:Number(button.dataset.direction),button});button.classList.add('held');updateDrive()});const release=event=>{const move=pointerMoves.get(event.pointerId);pointerMoves.delete(event.pointerId);if(move&&![...pointerMoves.values()].some(x=>x.button===move.button))move.button.classList.remove('held');updateDrive()};button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release);button.addEventListener('contextmenu',event=>event.preventDefault())});
-document.addEventListener('keydown',event=>{if(['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName))return;const key=event.key.toLowerCase();if(key===' '){event.preventDefault();stopTool();return}if(!keyMap[key])return;event.preventDefault();inputSource='keyboard_pointer';heldKeys.add(key);updateDrive()});
-document.addEventListener('keyup',event=>{const key=event.key.toLowerCase();if(!keyMap[key])return;event.preventDefault();heldKeys.delete(key);updateDrive()});
+document.addEventListener('keydown',event=>{if(['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName))return;const key=event.key.toLowerCase();if(event.code==='Space'){event.preventDefault();if(!event.repeat)toggleGrip();return}if(key==='escape'){event.preventDefault();stopTool();return}if(!keyMap[key])return;event.preventDefault();inputSource='keyboard_pointer';heldKeys.add(key);updateDrive()});
+document.addEventListener('keyup',event=>{if(event.code==='Space'){event.preventDefault();return}const key=event.key.toLowerCase();if(!keyMap[key])return;event.preventDefault();heldKeys.delete(key);updateDrive()});
 window.addEventListener('blur',()=>stopDrive(false));document.addEventListener('visibilitychange',()=>{if(document.hidden)stopDrive(false)});
 document.getElementById('cameraView').addEventListener('pointermove',event=>{const view=event.currentTarget,rect=view.getBoundingClientRect();const u=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),v=Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height));const cursor=document.getElementById('gazeCursor');cursor.style.left=`${u*100}%`;cursor.style.top=`${v*100}%`;view.classList.add('gaze-on');const now=performance.now();if(now-lastGazeSend>100){lastGazeSend=now;post('/api/gaze',{u,v,valid:true,source:'pointer_attention_proxy'}).catch(()=>{})}});document.getElementById('cameraView').addEventListener('pointerleave',()=>document.getElementById('cameraView').classList.remove('gaze-on'));
 async function refresh(){try{const s=await(await fetch('/api/status',{cache:'no-store'})).json();document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('armPanel').classList.toggle('hidden',s.arms<2);document.getElementById('gripperPanel').classList.toggle('hidden',!s.has_grippers);const grip=s.has_grippers?(s.grippers_open[activeArm]?' · GRIPPER OPEN':' · GRIPPER CLOSED'):'';const moving=s.drive_active?' · MOVING':'';document.getElementById('hud').innerHTML=`<strong>${s.anatomy_showcase||'SURGICAL WORKSPACE'}</strong><br>${s.camera_width}×${s.camera_height} · ${s.render_fps.toFixed(1)} FPS<br>${s.scenario_title}${grip}${moving}`;document.getElementById('recflag').classList.toggle('on',s.recording);const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;}catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
@@ -255,6 +256,10 @@ class DriveRequest(BaseModel):
 
 class GripperRequest(BaseModel):
     open: bool
+    arm: int = 0
+
+
+class GripperToggleRequest(BaseModel):
     arm: int = 0
 
 
@@ -510,6 +515,18 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.grippers_open[request.arm] = request.open
         state.wake_event.set()
         return {"ok": True, "open": request.open, "arm": request.arm}
+
+    @app.post("/api/gripper/toggle")
+    def toggle_gripper(request: GripperToggleRequest) -> dict[str, Any]:
+        if not state.has_grippers:
+            raise HTTPException(409, "This robot has no gripper action")
+        if request.arm not in range(state.arms):
+            raise HTTPException(400, f"arm must be between 0 and {state.arms - 1}")
+        with state.lock:
+            state.grippers_open[request.arm] = not state.grippers_open[request.arm]
+            is_open = state.grippers_open[request.arm]
+        state.wake_event.set()
+        return {"ok": True, "open": is_open, "arm": request.arm}
 
     @app.post("/api/reset")
     def reset() -> dict[str, bool]:
