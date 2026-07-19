@@ -46,6 +46,10 @@ Validated on the RTX 4090 host:
   room, ceiling, table, anatomy, and camera layers were opened in one Isaac audit pass: 14 stages, zero unresolved
   asset paths, and 14 authored cameras. The live needle-pickup worker then started with the sanitized CT anatomy
   and its matching repaired operating-room layer.
+- The default liver context was moved out of the needle spawn volume, given an enabled convex collision mesh,
+  and the wrist camera was changed to a live tool-following oblique view. A controlled browser-API attempt moved
+  the PSM to 11.7 mm from the needle, closed the jaws, activated the limited grasp joint, and lifted the needle
+  44.7 mm; opening and resetting removed the joint and restored the scene.
 
 Known host/runtime blockers from the same pass:
 

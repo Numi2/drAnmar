@@ -33,7 +33,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "robot": "dVRK PSM",
         "instrument": "Large needle driver",
         "objective": "Approach the curved needle, grasp its body, lift it clear of the tray, and hold a stable recovery pose.",
-        "interaction": "Native ORBIT-Surgical needle rigid-body physics and gripper control.",
+        "interaction": "ORBIT-Surgical rigid-body needle physics with proximity-limited jaw capture for reliable browser control.",
         "fidelity": "native_object_physics",
         "guide_kind": "pickup",
         "proxy_organ": None,
@@ -44,7 +44,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("orient", "Orient", "Rotate the needle into a controlled, readable presentation.", "tool orientation"),
             step("recover", "Recover", "Hold the final pose without dropping the needle.", "stable hold"),
         ],
-        "truth_note": "The needle, robot, grasp, and lift are simulated physically. Research use only.",
+        "truth_note": "The needle and robot use simulator physics. Closing within 25 mm secures the needle to the jaws until release; this usability assist is not a tissue/contact validation model.",
     },
     {
         "id": "needle-transfer",

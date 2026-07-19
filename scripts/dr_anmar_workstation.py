@@ -323,6 +323,7 @@ class SharedState:
     procedure: dict[str, Any] = field(default_factory=dict)
     openusd_scene_loaded: bool = False
     organ_proxy_visual_ready: bool = False
+    anatomy_collision_meshes: int = 0
     instance_id: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ"))
     lock: threading.Lock = field(default_factory=threading.Lock)
     wake_event: threading.Event = field(default_factory=threading.Event)
@@ -339,6 +340,8 @@ class SharedState:
     drive: np.ndarray = field(init=False)
     drive_until: float = 0.0
     grippers_open: list[bool] = field(init=False)
+    assisted_grasp_active: list[bool] = field(init=False)
+    tool_to_object_distance_m: list[float | None] = field(init=False)
     reset_requested: bool = False
     record_request: str | None = None
     recording: bool = False
@@ -384,6 +387,18 @@ class SharedState:
         self.pulse = np.zeros(self.action_dim, dtype=np.float32)
         self.drive = np.zeros(self.action_dim, dtype=np.float32)
         self.grippers_open = [True] * self.arms
+        self.assisted_grasp_active = [False] * self.arms
+        self.tool_to_object_distance_m = [None] * self.arms
+
+    def body_action_slice(self, arm: int) -> slice:
+        group_width = 7 if self.has_grippers else 6
+        start = arm * group_width
+        return slice(start, start + 6)
+
+    def gripper_action_index(self, arm: int) -> int:
+        if not self.has_grippers:
+            raise ValueError("This task has no gripper action")
+        return arm * 7 + 6
 
     def status(self) -> dict[str, Any]:
         with self.lock:
@@ -409,8 +424,11 @@ class SharedState:
                 "openusd_environment": self.openusd_environment,
                 "openusd_scene_loaded": self.openusd_scene_loaded,
                 "organ_proxy_visual_ready": self.organ_proxy_visual_ready,
+                "anatomy_collision_meshes": self.anatomy_collision_meshes,
                 "procedure": procedure_status,
                 "grippers_open": self.grippers_open,
+                "assisted_grasp_active": self.assisted_grasp_active,
+                "tool_to_object_distance_m": self.tool_to_object_distance_m,
                 "recording": self.recording,
                 "recorded_frames": self.recorded_frames,
                 "last_demo": self.last_demo,
@@ -503,7 +521,8 @@ def build_web_app(state: SharedState) -> FastAPI:
         if request.arm not in range(state.arms):
             raise HTTPException(400, f"arm must be between 0 and {state.arms - 1}")
         command = np.zeros(state.action_dim, dtype=np.float32)
-        command[request.arm * 6 + request.axis] = (0.02 if request.axis < 3 else 0.08) * request.direction
+        body_slice = state.body_action_slice(request.arm)
+        command[body_slice.start + request.axis] = (0.02 if request.axis < 3 else 0.08) * request.direction
         with state.lock:
             state.pulse = command
             state.pulse_steps = 1
@@ -540,7 +559,7 @@ def build_web_app(state: SharedState) -> FastAPI:
         calibrated_values[:3] = translation
         command = np.zeros(state.action_dim, dtype=np.float32)
         scales = np.asarray((0.006, 0.006, 0.006, 0.03, 0.03, 0.03), dtype=np.float32)
-        command[request.arm * 6 : request.arm * 6 + 6] = calibrated_values * scales * request.speed
+        command[state.body_action_slice(request.arm)] = calibrated_values * scales * request.speed
         active = bool(np.any(values))
         with state.lock:
             state.drive = command
@@ -604,6 +623,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.drive.fill(0.0)
             state.drive_until = 0.0
             state.replay_request = "stop"
+            state.grippers_open = [True] * state.arms
         state.wake_event.set()
         return {"ok": True}
 
@@ -1183,6 +1203,20 @@ def _last_index(mask: np.ndarray) -> int | None:
     return int(indices[-1]) if len(indices) else None
 
 
+def action_channel_views(actions: np.ndarray, arms: int) -> tuple[np.ndarray, np.ndarray]:
+    """Split Isaac action vectors for both single and interleaved dual-arm tasks."""
+    group_width = 7 if actions.shape[1] >= arms * 7 else 6
+    motion = np.stack(
+        [actions[:, arm * group_width : arm * group_width + 6] for arm in range(arms)],
+        axis=1,
+    )
+    if group_width == 7:
+        grippers = np.stack([actions[:, arm * 7 + 6] for arm in range(arms)], axis=1)
+    else:
+        grippers = np.zeros((actions.shape[0], 0), dtype=actions.dtype)
+    return motion, grippers
+
+
 def analyze_demo(
     arrays: dict[str, np.ndarray],
     task: str,
@@ -1193,7 +1227,7 @@ def analyze_demo(
     actions = np.asarray(arrays["actions"], dtype=np.float64)
     frame_count = len(times)
     duration = float(times[-1] - times[0]) if frame_count > 1 else 0.0
-    motion = actions[:, : arms * 6].reshape(frame_count, arms, 6)
+    motion, gripper_values = action_channel_views(actions, arms)
     translation = np.linalg.norm(motion[:, :, :3], axis=2)
     rotation = np.linalg.norm(motion[:, :, 3:], axis=2)
     activity = np.max(np.concatenate((translation, rotation), axis=1), axis=1) > 1e-5
@@ -1248,8 +1282,7 @@ def analyze_demo(
             object_motion_index = int(np.argmax(travel))
 
     gripper_index: int | None = None
-    if actions.shape[1] > arms * 6:
-        gripper_values = actions[:, arms * 6 :]
+    if gripper_values.shape[1]:
         gripper_index = _first_index(np.min(gripper_values, axis=1) < -0.5)
 
     grasp_relative_drift_m = 0.0
@@ -1640,7 +1673,7 @@ def main() -> None:
             env_cfg.scene,
             f"wrist_{wrist_index}",
             CameraCfg(
-                prim_path=f"{{ENV_REGEX_NS}}/{wrist_robot_name}/{wrist_tip_name}/DrAnmarWristCamera{wrist_index}",
+                prim_path=f"{{ENV_REGEX_NS}}/DrAnmarWristCamera{wrist_index}",
                 update_period=0.04,
                 height=360,
                 width=480,
@@ -1652,9 +1685,9 @@ def main() -> None:
                     clipping_range=(0.005, 0.50),
                 ),
                 offset=CameraCfg.OffsetCfg(
-                    pos=(-0.025, 0.0, 0.012),
+                    pos=(0.20, 0.20, 0.14),
                     rot=(1.0, 0.0, 0.0, 0.0),
-                    convention="ros",
+                    convention="world",
                 ),
             ),
         )
@@ -1700,10 +1733,18 @@ def main() -> None:
             ),
             spawn=sim_utils.CuboidCfg(size=(0.05, 3.5, 2.8), visual_material=wall_material),
         )
+    procedure_id = str(procedure.get("id", ""))
+    guide_kind = str(procedure.get("guide_kind", ""))
+    if guide_kind in {"threading", "cutting_path", "navigation"}:
+        anatomy_position = (-0.117, -0.0945, -0.189)
+    elif procedure_id in {"needle-pickup", "needle-transfer"} or procedure.get("proxy_organ"):
+        anatomy_position = (-0.117, -0.2445, -0.144)
+    else:
+        anatomy_position = (-0.117, -0.1945, -0.164)
     if organ_usd.is_file():
         env_cfg.scene.liver_showcase = AssetBaseCfg(
             prim_path="{ENV_REGEX_NS}/LiverShowcase",
-            init_state=AssetBaseCfg.InitialStateCfg(pos=(-0.117, -0.0945, -0.144)),
+            init_state=AssetBaseCfg.InitialStateCfg(pos=anatomy_position),
             spawn=sim_utils.UsdFileCfg(usd_path=str(organ_usd), scale=(0.35, 0.35, 0.35)),
         )
     env_cfg.num_rerenders_on_reset = 3
@@ -1731,9 +1772,11 @@ def main() -> None:
     showcase_children: list[Any] = []
     default_showcase_names: set[str] = {"Liver_topo_blender"}
     proxy_visual_ready = False
+    collision_mesh_count = 0
+    stage = None
     if organ_usd.is_file():
         import omni.usd
-        from pxr import Gf, Sdf, UsdGeom, UsdShade
+        from pxr import Gf, Sdf, UsdGeom, UsdPhysics, UsdShade
 
         stage = omni.usd.get_context().get_stage()
         showcase_path = "/World/envs/env_0/LiverShowcase"
@@ -1745,8 +1788,14 @@ def main() -> None:
         if "multi-organ" in focus.lower() or procedure.get("guide_kind") == "navigation":
             default_showcase_names = {child.GetName() for child in showcase_children}
         else:
-            focus_token = focus.lower().replace(" surface", "")
-            matching = {child.GetName() for child in showcase_children if focus_token in child.GetName().lower()}
+            focus_lower = focus.lower()
+            organ_terms = ("liver", "gallbladder", "bladder", "prostate", "kidney", "pancreas", "spleen")
+            selected_terms = {term for term in organ_terms if term in focus_lower} or {focus_lower.replace(" surface", "")}
+            matching = {
+                child.GetName()
+                for child in showcase_children
+                if any(term in child.GetName().lower() for term in selected_terms)
+            }
             if matching:
                 default_showcase_names = matching
         for child in showcase_children:
@@ -1779,6 +1828,13 @@ def main() -> None:
                 material,
                 bindingStrength=UsdShade.Tokens.strongerThanDescendants,
             )
+            collision_enabled = organ_name in default_showcase_names
+            collision_api = UsdPhysics.CollisionAPI.Apply(mesh)
+            collision_api.CreateCollisionEnabledAttr().Set(collision_enabled)
+            mesh_collision_api = UsdPhysics.MeshCollisionAPI.Apply(mesh)
+            mesh_collision_api.CreateApproximationAttr().Set("convexHull")
+            if collision_enabled:
+                collision_mesh_count += 1
 
         proxy_organ = procedure.get("proxy_organ")
         object_prim = stage.GetPrimAtPath("/World/envs/env_0/Object")
@@ -1881,6 +1937,64 @@ def main() -> None:
     else:
         procedure_markers.visualize(translations=np.zeros((1, 3), dtype=np.float32))
         procedure_markers.set_visibility(False)
+
+    def update_wrist_camera_poses() -> None:
+        """Keep a close oblique camera behind each instrument and aimed at its jaws."""
+        world_up = np.asarray((0.0, 0.0, 1.0), dtype=np.float32)
+        fallback_axis = np.asarray((1.0, 0.0, 0.0), dtype=np.float32)
+        for arm, wrist_camera in enumerate(wrist_cameras):
+            if arm >= len(robot_names):
+                continue
+            robot_name = robot_names[arm]
+            robot = robots[robot_name]
+            names = robot_body_names.get(robot_name, [])
+            tip_index = next(
+                (names.index(candidate) for candidate in (wrist_tip_name, "psm_tool_tip_link", "endo360_needle", "ecm_end_link") if candidate in names),
+                None,
+            )
+            if tip_index is None:
+                continue
+            rear_index = next(
+                (
+                    names.index(candidate)
+                    for candidate in ("psm_tool_roll_link", "psm_main_insertion_link_3", "endo360_link", "ecm_yaw_link")
+                    if candidate in names
+                ),
+                None,
+            )
+            positions = robot.data.body_pos_w[0, :, :3].detach().cpu().numpy().astype(np.float32)
+            tip = positions[tip_index]
+            shaft = tip - positions[rear_index] if rear_index is not None else np.asarray((0.0, 0.0, -1.0), dtype=np.float32)
+            shaft_norm = float(np.linalg.norm(shaft))
+            if shaft_norm < 1e-6:
+                continue
+            shaft /= shaft_norm
+            lateral = np.cross(shaft, world_up)
+            lateral_norm = float(np.linalg.norm(lateral))
+            if lateral_norm < 1e-6:
+                lateral = np.cross(shaft, fallback_axis)
+                lateral_norm = float(np.linalg.norm(lateral))
+            lateral /= max(lateral_norm, 1e-6)
+            eye = tip - shaft * 0.055 + lateral * 0.022 + world_up * 0.014
+            target = tip + shaft * 0.028
+            wrist_camera.set_world_poses_from_view(
+                torch.tensor([eye.tolist()], device=wrist_camera.device),
+                torch.tensor([target.tolist()], device=wrist_camera.device),
+            )
+
+    def tool_position_for_arm(arm: int) -> np.ndarray | None:
+        if arm >= len(robot_names):
+            return None
+        robot_name = robot_names[arm]
+        names = robot_body_names.get(robot_name, [])
+        tip_index = next(
+            (names.index(candidate) for candidate in (wrist_tip_name, "psm_tool_tip_link", "endo360_needle", "ecm_end_link") if candidate in names),
+            None,
+        )
+        if tip_index is None:
+            return None
+        return robots[robot_name].data.body_pos_w[0, tip_index, :3].detach().cpu().numpy().astype(np.float32)
+
     action_dim = int(env.action_space.shape[-1])
     arms = 2 if "Dual" in args_cli.task else 1
     has_grippers = "Lift" in args_cli.task or "Handover" in args_cli.task
@@ -1894,6 +2008,7 @@ def main() -> None:
         torch.tensor([right_eye.tolist()], device=stereo_right_camera.device),
         torch.tensor([initial_target.tolist()], device=stereo_right_camera.device),
     )
+    update_wrist_camera_poses()
 
     state = SharedState(
         task=args_cli.task,
@@ -1912,6 +2027,7 @@ def main() -> None:
         procedure=procedure,
         openusd_scene_loaded=bool(openusd_environment and organ_usd.is_file() and showcase_children),
         organ_proxy_visual_ready=proxy_visual_ready,
+        anatomy_collision_meshes=collision_mesh_count,
     )
     state.camera_names = list(camera_sources)
     state.camera_frame_ids = {name: 0 for name in camera_sources}
@@ -1929,6 +2045,10 @@ def main() -> None:
     }
 
     def reset_environment(selected_scenario: str, selected_seed: int) -> None:
+        if stage is not None:
+            for joint_path in assisted_grasp_joints.values():
+                stage.RemovePrim(joint_path)
+        assisted_grasp_joints.clear()
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
@@ -1942,12 +2062,18 @@ def main() -> None:
         )
         profile = SCENARIO_NATIVE_PROFILES.get(selected_scenario, {})
         show_multi_organ = bool(profile.get("show_multi_organ"))
+        enabled_colliders = 0
         for child in showcase_children:
             imageable = UsdGeom.Imageable(child)
-            if show_multi_organ or child.GetName() in default_showcase_names:
+            visible = show_multi_organ or child.GetName() in default_showcase_names
+            if visible:
                 imageable.MakeVisible()
             else:
                 imageable.MakeInvisible()
+            child_mesh = stage.GetPrimAtPath(f"{showcase_path}/{child.GetName()}/{child.GetName()}")
+            if child_mesh.IsValid():
+                UsdPhysics.CollisionAPI.Apply(child_mesh).CreateCollisionEnabledAttr().Set(visible)
+                enabled_colliders += int(visible)
         with state.lock:
             state.anatomy_showcase = (
                 f"{args_cli.anatomy_title or 'Official anatomy'} · multi-organ context"
@@ -1961,6 +2087,9 @@ def main() -> None:
             state.procedure_object_motion_m = 0.0
             state.procedure_started_at = time.monotonic()
             state.procedure_last_motion_at = time.monotonic()
+            state.anatomy_collision_meshes = enabled_colliders
+            state.assisted_grasp_active = [False] * state.arms
+            state.tool_to_object_distance_m = [None] * state.arms
         scenario_eye, scenario_target = scenario_camera_pose(camera_eye, camera_target, selected_scenario)
         camera.set_world_poses_from_view(
             torch.tensor([scenario_eye.tolist()], device=camera.device),
@@ -1971,6 +2100,7 @@ def main() -> None:
             torch.tensor([scenario_right_eye.tolist()], device=stereo_right_camera.device),
             torch.tensor([scenario_target.tolist()], device=stereo_right_camera.device),
         )
+        update_wrist_camera_poses()
     task_slug = args_cli.task.lower().replace("isaac-", "").replace("-v0", "").replace("-", "_")
     existing = sorted(args_cli.demo_dir.glob(f"dr_anmar_{task_slug}_*.npz"), reverse=True)
     if existing:
@@ -2000,6 +2130,7 @@ def main() -> None:
     latest_deformable_safety: dict[str, float] = {}
     replay_actions: np.ndarray | None = None
     replay_index = 0
+    assisted_grasp_joints: dict[int, str] = {}
     last_loop_time = time.monotonic()
     last_fps_time = last_loop_time
     fps_steps = 0
@@ -2119,7 +2250,7 @@ def main() -> None:
                 cosine, sine = np.cos(radians), np.sin(radians)
                 axis_scale = np.asarray(replay_profile.get("axis_scale", (1.0, 1.0, 1.0)), dtype=np.float32)
                 for arm in range(state.arms):
-                    start = arm * 6
+                    start = state.body_action_slice(arm).start
                     translation = action_np[start : start + 3].copy()
                     translation[:2] = (
                         cosine * translation[0] - sine * translation[1],
@@ -2140,19 +2271,53 @@ def main() -> None:
                         state.coaching_cue = "Supervised replay finished. Manual control is active."
             action_np = manual_action.copy()
             if state.has_grippers:
-                gripper_offset = state.arms * 6
                 for arm, is_open in enumerate(grippers_open):
-                    action_np[gripper_offset + arm] = 1.0 if is_open else -1.0
+                    action_np[state.gripper_action_index(arm)] = 1.0 if is_open else -1.0
+
+        grasp_distances: list[float | None] = [None] * state.arms
+        if state.has_grippers and objects and stage is not None:
+            grasp_object = next(iter(objects.values()))
+            object_position = grasp_object.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
+            for arm, is_open in enumerate(grippers_open):
+                tool_position_for_grasp = tool_position_for_arm(arm)
+                if tool_position_for_grasp is not None:
+                    grasp_distances[arm] = float(np.linalg.norm(object_position - tool_position_for_grasp))
+                if is_open and arm in assisted_grasp_joints:
+                    stage.RemovePrim(assisted_grasp_joints.pop(arm))
+                elif (
+                    not is_open
+                    and arm not in assisted_grasp_joints
+                    and grasp_distances[arm] is not None
+                    and grasp_distances[arm] <= 0.025
+                ):
+                    robot_prim_name = "Robot" if state.arms == 1 else f"Robot_{arm + 1}"
+                    tool_body_path = Sdf.Path(f"/World/envs/env_0/{robot_prim_name}/{wrist_tip_name}")
+                    object_body_path = Sdf.Path("/World/envs/env_0/Object")
+                    if stage.GetPrimAtPath(tool_body_path).IsValid() and stage.GetPrimAtPath(object_body_path).IsValid():
+                        joint_path = f"/World/envs/env_0/DrAnmarAssistedGrasp{arm + 1}"
+                        fixed_joint = UsdPhysics.FixedJoint.Define(stage, joint_path)
+                        fixed_joint.CreateBody0Rel().SetTargets([tool_body_path])
+                        fixed_joint.CreateBody1Rel().SetTargets([object_body_path])
+                        fixed_joint.CreateCollisionEnabledAttr().Set(False)
+                        fixed_joint.CreateBreakForceAttr().Set(1_000_000.0)
+                        fixed_joint.CreateBreakTorqueAttr().Set(1_000_000.0)
+                        assisted_grasp_joints[arm] = joint_path
+                        with state.lock:
+                            state.coaching_cue = "Needle secured between the jaws. Open the gripper to release it."
+            with state.lock:
+                state.assisted_grasp_active = [arm in assisted_grasp_joints for arm in range(state.arms)]
+                state.tool_to_object_distance_m = [round(value, 5) if value is not None else None for value in grasp_distances]
 
         actions = torch.from_numpy(action_np).to(device=env.unwrapped.device).reshape(1, -1)
         with torch.inference_mode():
             _observations, reward, terminated, truncated, info = env.step(actions)
+            update_wrist_camera_poses()
         environment_reward = scalar_value(reward)
         environment_terminated = bool(scalar_value(terminated))
         environment_truncated = bool(scalar_value(truncated))
         environment_success = native_success_from_info(info)
 
-        motion_active = bool(np.any(action_np[: state.arms * 6]))
+        motion_active = any(bool(np.any(action_np[state.body_action_slice(arm)])) for arm in range(state.arms))
         current_time = time.monotonic()
         max_object_lift = 0.0
         max_object_motion = 0.0
