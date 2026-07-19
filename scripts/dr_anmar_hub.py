@@ -41,6 +41,7 @@ from dr_anmar_i4h_adapter import (
     study_manifest,
     workflow_modes,
 )
+from dr_anmar_procedures import PROCEDURES_BY_ID, PROCEDURE_ROOMS, procedure_payload
 
 
 parser = argparse.ArgumentParser()
@@ -55,6 +56,7 @@ DR_ANMAR_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share
 WEB_ROOT = args.root / "web"
 RESEARCH_ROOT = DR_ANMAR_ROOT / "research/sufia-bc/static"
 ANATOMY_ROOT = DR_ANMAR_ROOT / "assets/sufia_bc"
+OPENUSD_ROOT = DR_ANMAR_ROOT / "scenes/openusd"
 ASSET_STATUS_PATH = DR_ANMAR_ROOT / "run/sufia_assets_status.json"
 PROGRESS_PATH = DR_ANMAR_ROOT / "state/doctor_progress.json"
 TRAINING_ROOT = DR_ANMAR_ROOT / "training"
@@ -131,6 +133,11 @@ class LaunchRequest(BaseModel):
 
 class AnatomyLaunchRequest(BaseModel):
     room_id: str
+
+
+class ProcedureLaunchRequest(BaseModel):
+    procedure_id: str
+    anatomy_scene: str | None = None
 
 
 class ProgressRequest(BaseModel):
@@ -291,9 +298,26 @@ def worker_status() -> dict[str, Any] | None:
         return None
 
 
-def switch_worker(task: str) -> None:
+def switch_worker(
+    task: str,
+    procedure_id: str = "",
+    anatomy_scene: Path | None = None,
+    anatomy_scene_id: str = "",
+    anatomy_title: str = "",
+    openusd_environment: Path | None = None,
+) -> None:
     try:
-        command = [str(args.root / "dr_anmar_workstation.sh"), "restart", str(args.worker_port), task]
+        command = [
+            str(args.root / "dr_anmar_workstation.sh"),
+            "restart",
+            str(args.worker_port),
+            task,
+            procedure_id,
+            str(anatomy_scene or ""),
+            anatomy_scene_id,
+            anatomy_title,
+            str(openusd_environment or ""),
+        ]
         result = subprocess.run(command, cwd=args.root, capture_output=True, text=True, timeout=60)
         if result.returncode != 0:
             raise RuntimeError((result.stderr or result.stdout).strip())
@@ -345,11 +369,18 @@ def switch_anatomy_worker(room_id: str, room_title: str, scene: Path) -> None:
 @lru_cache(maxsize=len(ANATOMY_SCENES))
 def installed_usd_inventory(directory: str) -> tuple[str, ...]:
     root = Path(directory)
-    return tuple(sorted(str(path.relative_to(ANATOMY_ROOT)) for path in root.rglob("*.usd")))
+    paths = tuple(root.rglob("*.usd")) + tuple(root.rglob("*.usdc"))
+    return tuple(sorted(str(path.relative_to(ANATOMY_ROOT)) for path in paths))
 
 
 def anatomy_payload() -> dict[str, Any]:
     installer = read_json(ASSET_STATUS_PATH, {})
+    composed_manifest = read_json(OPENUSD_ROOT / "manifest.json", {})
+    composed_by_id = {
+        item.get("id"): item
+        for item in composed_manifest.get("scenes", [])
+        if isinstance(item, dict) and item.get("id") and not item.get("error")
+    }
     scenes: list[dict[str, Any]] = []
     for metadata in ANATOMY_SCENES:
         archive = metadata["archive"]
@@ -363,14 +394,27 @@ def anatomy_payload() -> dict[str, Any]:
         else:
             scene_state = "queued"
         item = dict(metadata)
+        composed = composed_by_id.get(archive.removesuffix(".zip"), {})
+        environment_usd = composed.get("environment_usd")
+        composed_usd = composed.get("composed_usd")
+        runtime_organ_usd = composed.get("runtime_organ_usd")
+        environment_ready = bool(environment_usd and Path(environment_usd).is_file())
+        composed_ready = bool(composed_usd and Path(composed_usd).is_file())
+        runtime_organ_ready = bool(runtime_organ_usd and Path(runtime_organ_usd).is_file())
         primary_usd = next((path for path in usd_files if Path(path).name == "main_scene.usd"), None)
+        organ_usd = next((path for path in usd_files if Path(path).name == "models_topo_blender.usdc"), None)
         item.update(
             {
                 "id": archive.removesuffix(".zip"),
                 "state": scene_state,
-                "openusd_ready": bool(usd_files),
+                "openusd_ready": bool(organ_usd and runtime_organ_ready and environment_ready and composed_ready),
                 "usd_count": len(usd_files),
                 "primary_usd": primary_usd,
+                "organ_usd": organ_usd,
+                "environment_usd": environment_usd,
+                "composed_usd": composed_usd,
+                "runtime_organ_usd": runtime_organ_usd,
+                "source_entrypoint_replaced": composed.get("source_entrypoint_replaced"),
             }
         )
         scenes.append(item)
@@ -384,8 +428,32 @@ def anatomy_payload() -> dict[str, Any]:
         "download_percent": round(downloaded * 100 / total, 1) if total else 0.0,
         "install_root": str(ANATOMY_ROOT),
         "source": "Official ORBIT-Surgical v0.1.0 release assets",
-        "runtime_note": "OpenUSD scenes are installed for Isaac Sim inspection and synthetic-data authoring; they are not clinical patient models.",
+        "runtime_note": "Each preset uses a repaired, dependency-clean OpenUSD room plus the official anatomy layer. These are simulation and research assets, not clinical patient models.",
     }
+
+
+def anatomy_room(room_id: str) -> dict[str, Any] | None:
+    return next((item for item in anatomy_payload()["scenes"] if item["id"] == room_id), None)
+
+
+def anatomy_asset(room: dict[str, Any]) -> Path:
+    raw_path = room.get("runtime_organ_usd")
+    if not raw_path:
+        raise HTTPException(409, "This anatomy package has no dependency-clean organ OpenUSD asset")
+    asset = Path(raw_path).expanduser().resolve()
+    if OPENUSD_ROOT.resolve() not in asset.parents or asset.suffix != ".usdc" or not asset.is_file():
+        raise HTTPException(409, "The prepared anatomy OpenUSD asset path is invalid")
+    return asset
+
+
+def openusd_environment_asset(room: dict[str, Any]) -> Path:
+    raw_path = room.get("environment_usd")
+    if not raw_path:
+        raise HTTPException(409, "This anatomy package has no prepared OpenUSD operating-room layer")
+    asset = Path(raw_path).expanduser().resolve()
+    if OPENUSD_ROOT.resolve() not in asset.parents or asset.name != "environment.usda" or not asset.is_file():
+        raise HTTPException(409, "The prepared OpenUSD operating-room path is invalid")
+    return asset
 
 
 def progress_payload() -> dict[str, Any]:
@@ -880,16 +948,73 @@ def anatomy() -> dict[str, Any]:
     return anatomy_payload()
 
 
+@app.get("/api/procedure-rooms")
+def procedure_rooms() -> dict[str, Any]:
+    payload = procedure_payload()
+    available_anatomy = {scene["id"]: scene for scene in anatomy_payload()["scenes"]}
+    for room in payload["rooms"]:
+        anatomy = available_anatomy.get(room["anatomy_scene"])
+        room["ready"] = bool(anatomy and anatomy.get("openusd_ready"))
+        room["anatomy_title"] = anatomy["title"] if anatomy else room["anatomy_scene"]
+    return payload
+
+
+@app.post("/api/procedure-rooms/launch")
+def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
+    procedure = PROCEDURES_BY_ID.get(request.procedure_id)
+    if procedure is None:
+        raise HTTPException(404, "Unknown procedure room")
+    selected_anatomy = request.anatomy_scene or procedure["anatomy_scene"]
+    room = anatomy_room(selected_anatomy)
+    if room is None:
+        raise HTTPException(404, "Unknown OpenUSD anatomy scene")
+    asset = anatomy_asset(room)
+    environment = openusd_environment_asset(room)
+    training = training_payload()
+    if training["status"] in {"running", "stopping"}:
+        raise HTTPException(409, "Stop the training lab before loading an operating room")
+    healthcare = healthcare_job_payload()
+    if healthcare["status"] in {"preparing", "running", "stopping"}:
+        raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading an operating room")
+    current = worker_status()
+    if (
+        current
+        and current.get("task") == procedure["task"]
+        and current.get("procedure", {}).get("id") == request.procedure_id
+        and current.get("anatomy_scene_id") == selected_anatomy
+        and current.get("frame_id", 0) > 0
+    ):
+        return {"ok": True, "procedure_id": request.procedure_id, "already_ready": True}
+    with state.lock:
+        if state.switching:
+            raise HTTPException(409, f"Already loading {state.requested_task}")
+        state.switching = True
+        state.requested_task = procedure["title"]
+        state.error = None
+    threading.Thread(
+        target=switch_worker,
+        args=(procedure["task"], request.procedure_id, asset, selected_anatomy, room["title"], environment),
+        daemon=True,
+        name="dr-anmar-procedure-switch",
+    ).start()
+    return {
+        "ok": True,
+        "procedure_id": request.procedure_id,
+        "title": procedure["title"],
+        "anatomy_scene": selected_anatomy,
+        "anatomy_title": room["title"],
+    }
+
+
 @app.post("/api/anatomy/launch")
 def launch_anatomy(request: AnatomyLaunchRequest) -> dict[str, Any]:
-    room = next((item for item in anatomy_payload()["scenes"] if item["id"] == request.room_id), None)
+    room = anatomy_room(request.room_id)
     if room is None:
         raise HTTPException(404, "Unknown anatomy operating-room preset")
-    if not room["openusd_ready"] or not room["primary_usd"]:
+    if not room["openusd_ready"] or not room["organ_usd"]:
         raise HTTPException(409, "This anatomy room has not finished installing")
-    scene = (ANATOMY_ROOT / room["primary_usd"]).resolve()
-    if ANATOMY_ROOT.resolve() not in scene.parents or scene.name != "main_scene.usd" or not scene.is_file():
-        raise HTTPException(409, "The installed anatomy room path is invalid")
+    scene = anatomy_asset(room)
+    environment = openusd_environment_asset(room)
     training = training_payload()
     if training["status"] in {"running", "stopping"}:
         raise HTTPException(409, "Stop the training lab before loading an anatomy room")
@@ -897,7 +1022,7 @@ def launch_anatomy(request: AnatomyLaunchRequest) -> dict[str, Any]:
     if healthcare["status"] in {"preparing", "running", "stopping"}:
         raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading an anatomy room")
     current = worker_status()
-    if current and current.get("mode") == "anatomy" and current.get("room_id") == request.room_id and current.get("frame_id", 0) > 0:
+    if current and current.get("anatomy_scene_id") == request.room_id and current.get("frame_id", 0) > 0:
         return {"ok": True, "room_id": request.room_id, "already_ready": True}
     with state.lock:
         if state.switching:
@@ -906,8 +1031,15 @@ def launch_anatomy(request: AnatomyLaunchRequest) -> dict[str, Any]:
         state.requested_task = room["title"]
         state.error = None
     threading.Thread(
-        target=switch_anatomy_worker,
-        args=(request.room_id, room["title"], scene),
+        target=switch_worker,
+        args=(
+            PROCEDURES_BY_ID["synthetic-anatomy-navigation"]["task"],
+            "synthetic-anatomy-navigation",
+            scene,
+            request.room_id,
+            room["title"],
+            environment,
+        ),
         daemon=True,
         name="dr-anmar-anatomy-switch",
     ).start()
@@ -1315,6 +1447,7 @@ def status() -> JSONResponse:
             "worker": worker_status(),
             "catalog_tasks": len(CATALOG),
             "interactive_tasks": len(PRIMARY_TASKS),
+            "procedure_rooms": len(PROCEDURE_ROOMS),
             "anatomy": anatomy_payload(),
             "training": training_payload(),
             "healthcare_job": healthcare_job_payload(),
@@ -1337,8 +1470,18 @@ def launch(request: LaunchRequest) -> dict[str, Any]:
     healthcare = healthcare_job_payload()
     if healthcare["status"] in {"preparing", "running", "stopping"}:
         raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading the Dr.Anmar operating room")
+    procedure = next((room for room in PROCEDURE_ROOMS if room["task"] == request.task), None)
+    selected_anatomy = anatomy_room(procedure["anatomy_scene"]) if procedure else anatomy_room(ANATOMY_SCENES[0]["archive"].removesuffix(".zip"))
+    anatomy_scene = anatomy_asset(selected_anatomy) if selected_anatomy else None
+    openusd_environment = openusd_environment_asset(selected_anatomy) if selected_anatomy else None
+    procedure_id = procedure["id"] if procedure else ""
     current = worker_status()
-    if current and current.get("task") == request.task and current.get("frame_id", 0) > 0:
+    if (
+        current
+        and current.get("task") == request.task
+        and current.get("procedure", {}).get("id", "") == procedure_id
+        and current.get("frame_id", 0) > 0
+    ):
         return {"ok": True, "task": request.task, "already_ready": True}
     with state.lock:
         if state.switching:
@@ -1346,7 +1489,19 @@ def launch(request: LaunchRequest) -> dict[str, Any]:
         state.switching = True
         state.requested_task = request.task
         state.error = None
-    threading.Thread(target=switch_worker, args=(request.task,), daemon=True, name="dr-anmar-switch").start()
+    threading.Thread(
+        target=switch_worker,
+        args=(
+            request.task,
+            procedure_id,
+            anatomy_scene,
+            selected_anatomy["id"] if selected_anatomy else "",
+            selected_anatomy["title"] if selected_anatomy else "",
+            openusd_environment,
+        ),
+        daemon=True,
+        name="dr-anmar-switch",
+    ).start()
     return {"ok": True, "task": request.task}
 
 

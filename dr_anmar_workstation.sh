@@ -12,6 +12,11 @@ fi
 ROOT="${DR_ANMAR_ROOT:-${HOME}/.local/share/dr-anmar}"
 PORT="${2:-2361}"
 TASK="${3:-Isaac-Lift-Needle-PSM-IK-Rel-v0}"
+PROCEDURE="${4:-}"
+ANATOMY_SCENE="${5:-}"
+ANATOMY_SCENE_ID="${6:-}"
+ANATOMY_TITLE="${7:-}"
+OPENUSD_ENVIRONMENT="${8:-}"
 PID_FILE="${ROOT}/run/workstation.pid"
 LOG_FILE="${ROOT}/logs/workstation.log"
 
@@ -29,7 +34,7 @@ case "${1:-status}" in
         fi
         rm -f "${PID_FILE}"
         cd "${ORBIT_ROOT}"
-        nohup ./dr_anmar.sh workstation "${PORT}" "${TASK}" >>"${LOG_FILE}" 2>&1 &
+        nohup ./dr_anmar.sh workstation "${PORT}" "${TASK}" "${PROCEDURE}" "${ANATOMY_SCENE}" "${ANATOMY_SCENE_ID}" "${ANATOMY_TITLE}" "${OPENUSD_ENVIRONMENT}" >>"${LOG_FILE}" 2>&1 &
         echo "$!" >"${PID_FILE}"
         echo "Starting Dr.Anmar workstation on port ${PORT}: ${TASK} (PID $!)"
         echo "Log: ${LOG_FILE}"
@@ -69,7 +74,7 @@ case "${1:-status}" in
         ;;
     restart)
         "$0" stop || true
-        "$0" start "${PORT}" "${TASK}"
+        "$0" start "${PORT}" "${TASK}" "${PROCEDURE}" "${ANATOMY_SCENE}" "${ANATOMY_SCENE_ID}" "${ANATOMY_TITLE}" "${OPENUSD_ENVIRONMENT}"
         ;;
     restart-anatomy)
         room_id="${3:?A room id is required}"
@@ -92,7 +97,7 @@ case "${1:-status}" in
         tail -n 120 "${LOG_FILE}"
         ;;
     *)
-        echo "Usage: $0 {start|stop|restart|start-anatomy|restart-anatomy|status|logs} [PORT] [TASK_OR_ROOM] [SCENE] [TITLE]" >&2
+        echo "Usage: $0 {start|stop|restart|start-anatomy|restart-anatomy|status|logs} [PORT] [TASK_OR_ROOM] [PROCEDURE_OR_SCENE] [ANATOMY_SCENE_OR_TITLE] [ANATOMY_ID] [ANATOMY_TITLE]" >&2
         exit 2
         ;;
 esac

@@ -24,13 +24,27 @@ hub_running() { [[ -f "${PID_FILE}" ]] && kill -0 "$(cat "${PID_FILE}")" 2>/dev/
 
 case "${1:-status}" in
     start)
+        "${PYTHON}" "${ORBIT_ROOT}/scripts/dr_anmar_geometry_sanitize.py" \
+            --headless \
+            --kit_args "--portable-root ${ROOT}/isaac_portable" >/dev/null
+        "${PYTHON}" "${ORBIT_ROOT}/scripts/dr_anmar_openusd.py" >/dev/null
         if ! hub_running; then
             cd "${ORBIT_ROOT}"
             nohup "${PYTHON}" scripts/dr_anmar_hub.py --port "${HUB_PORT}" --worker_port "${WORKER_PORT}" --root "${ORBIT_ROOT}" >>"${LOG_FILE}" 2>&1 &
             echo "$!" >"${PID_FILE}"
         fi
         if ! "${ORBIT_ROOT}/dr_anmar_workstation.sh" status "${WORKER_PORT}" >/dev/null 2>&1; then
-            "${ORBIT_ROOT}/dr_anmar_workstation.sh" start "${WORKER_PORT}" "Isaac-Lift-Needle-PSM-IK-Rel-v0"
+            default_anatomy_id="OR_scene_CTLiver-Prostate-Bladder"
+            default_anatomy="$("${PYTHON}" -c 'import json,sys; data=json.load(open(sys.argv[1])); target=sys.argv[2]; print(next(item["runtime_organ_usd"] for item in data["scenes"] if item["id"] == target))' "${ROOT}/scenes/openusd/manifest.json" "${default_anatomy_id}")"
+            default_environment="${ROOT}/scenes/openusd/${default_anatomy_id}/environment.usda"
+            "${ORBIT_ROOT}/dr_anmar_workstation.sh" start \
+                "${WORKER_PORT}" \
+                "Isaac-Lift-Needle-PSM-IK-Rel-v0" \
+                "needle-pickup" \
+                "${default_anatomy}" \
+                "${default_anatomy_id}" \
+                "CT liver, prostate & bladder" \
+                "${default_environment}"
         fi
         echo "Dr.Anmar suite starting: http://localhost:${HUB_PORT}/"
         ;;

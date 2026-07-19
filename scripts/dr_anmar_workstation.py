@@ -21,6 +21,8 @@ from typing import Any
 
 from isaaclab.app import AppLauncher
 
+from dr_anmar_procedures import PROCEDURES_BY_ID
+
 
 DATA_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
 
@@ -32,6 +34,11 @@ parser.add_argument("--demo_dir", type=Path, default=DATA_ROOT / "demos")
 parser.add_argument("--camera_width", type=int, default=960)
 parser.add_argument("--camera_height", type=int, default=640)
 parser.add_argument("--disable_fabric", action="store_true", default=False)
+parser.add_argument("--procedure", default="")
+parser.add_argument("--anatomy_scene", type=Path)
+parser.add_argument("--openusd_environment", type=Path)
+parser.add_argument("--anatomy_scene_id", default="")
+parser.add_argument("--anatomy_title", default="")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -169,6 +176,7 @@ APP_HTML = r"""<!doctype html>
     button.primary{background:var(--cyan);border-color:var(--cyan);color:#041014}button.danger{background:#31171c;border-color:#74414a;color:#ffabb2}button.stop{grid-column:1/-1;background:#27323a;border-color:#5f727c}
     .speedbar{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:11px}.speedbar button{min-height:35px;font-size:11px}.speedbar button.active{background:var(--cyan);border-color:var(--cyan);color:#041014}.dpad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:"blank up blank2" "left stop right" "blank3 down blank4";gap:6px}.dpad .up{grid-area:up}.dpad .left{grid-area:left}.dpad .stop-center{grid-area:stop;min-height:54px;background:#26343b;border-color:#617681}.stop-center small{display:block;color:#9bb0b8;font-size:10px;margin-top:2px}.dpad .right{grid-area:right}.dpad .down{grid-area:down}.depthgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.anglegrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.move-button{min-height:54px;touch-action:none;position:relative}.move-button small{display:block;color:#86a5af;font-size:10px;margin-top:2px}.move-button.held{background:var(--cyan);border-color:var(--cyan);color:#041014;box-shadow:0 0 16px #2cd2e855}.move-button.held small{color:#0a5260}.control-readout{display:flex;align-items:center;gap:7px;margin-top:10px;color:var(--muted);font-size:11px}.control-readout i{width:7px;height:7px;border-radius:50%;background:#536a73}.control-readout.moving{color:var(--green)}.control-readout.moving i{background:var(--green);box-shadow:0 0 10px #42e49b99}
     .hint{color:var(--muted);font-size:12px;margin-top:9px}.status{font:12px/1.65 ui-monospace,SFMono-Regular,Menlo;color:#bdd2d8;word-break:break-word}.status b{color:var(--green)}.hidden{display:none}.arm.active,.autonomy.active{background:var(--cyan);color:#041014;border-color:var(--cyan)}
+    .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}.fidelity-note{margin-top:8px;padding:7px;border-left:2px solid #f0b94e;background:#201a0d;color:#d8c18c;font-size:9px}
     .supervision{border-color:#356475;background:linear-gradient(135deg,#0d2731,#09171e)}.supervision-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.supervision-state b{color:var(--cyan)}.cue{min-height:32px;margin-top:9px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#9fc0c9;font-size:11px}.take-control{width:100%;margin-top:8px;background:#ffd978;color:#251b02;border-color:#ffd978}
     .safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.safety-metric{padding:8px;background:#061219;border:1px solid #1c3742}.safety-metric b{display:block;color:var(--green);font:15px ui-monospace,monospace}.safety-metric span{color:var(--muted);font-size:9px}.ghost-state{margin-top:8px;color:var(--muted);font-size:11px}.ghost-state.on{color:var(--green)}
     #toast{position:fixed;left:50%;bottom:20px;translate:-50% 20px;opacity:0;background:#e9f8fa;color:#061116;border-radius:8px;padding:10px 15px;font-weight:750;transition:.2s;pointer-events:none}#toast.show{opacity:1;translate:-50% 0}
@@ -180,6 +188,7 @@ APP_HTML = r"""<!doctype html>
 <main>
   <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div class="hud"><strong id="cameraLabel">STEREO ENDOSCOPE · LEFT</strong><br><span id="hud">Waiting for Isaac Lab…</span></div><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="camera-tabs"><button class="active" data-camera="endoscope_left" onclick="setCamera('endoscope_left',this)">Stereo left</button><button data-camera="endoscope_right" onclick="setCamera('endoscope_right',this)">Stereo right</button><button data-camera="wrist_1" onclick="setCamera('wrist_1',this)">Wrist 1</button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" onclick="setCamera('wrist_2',this)">Wrist 2</button></div></section>
   <aside>
+    <h2>Procedure room</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div><div id="procedureTruth" class="fidelity-note hidden"></div></div>
     <h2>Supervision</h2><div class="card supervision"><div class="supervision-state"><span>Autonomy level</span><b id="autonomyState">L0 · Manual</b></div><div class="grid two"><button id="manualMode" class="autonomy active" onclick="setAutonomy('manual')">Manual</button><button id="guidedMode" class="autonomy" onclick="setAutonomy('guided')">Guided</button></div><button class="take-control" onclick="takeControl()">Take control now</button><div id="coachingCue" class="cue">You command every movement. Dr.Anmar records telemetry for coaching.</div></div>
     <div id="armPanel" class="hidden"><h2>Active instrument</h2><div class="card"><div class="grid two"><button id="arm0" class="arm active" onclick="setArm(0)">Instrument 1</button><button id="arm1" class="arm" onclick="setArm(1)">Instrument 2</button></div></div></div>
     <h2>Movement speed</h2><div class="card"><div class="speedbar"><button data-speed="0.45" onclick="setSpeed(0.45,this)">Precision</button><button class="active" data-speed="1" onclick="setSpeed(1,this)">Normal</button><button data-speed="1.8" onclick="setSpeed(1.8,this)">Fast</button></div><div class="hint">Hold controls to move. Release to stop. Fast is for open space; Precision is for grasping.</div></div>
@@ -236,7 +245,7 @@ document.addEventListener('keydown',event=>{if(['INPUT','SELECT','TEXTAREA'].inc
 document.addEventListener('keyup',event=>{if(event.code==='Space'){event.preventDefault();return}const key=event.key.toLowerCase();if(!keyMap[key])return;event.preventDefault();heldKeys.delete(key);updateDrive()});
 window.addEventListener('blur',()=>stopDrive(false));document.addEventListener('visibilitychange',()=>{if(document.hidden)stopDrive(false)});
 document.getElementById('cameraView').addEventListener('pointermove',event=>{const view=event.currentTarget,rect=view.getBoundingClientRect();const u=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),v=Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height));const cursor=document.getElementById('gazeCursor');cursor.style.left=`${u*100}%`;cursor.style.top=`${v*100}%`;view.classList.add('gaze-on');const now=performance.now();if(now-lastGazeSend>100){lastGazeSend=now;post('/api/gaze',{u,v,valid:true,source:'pointer_attention_proxy'}).catch(()=>{})}});document.getElementById('cameraView').addEventListener('pointerleave',()=>document.getElementById('cameraView').classList.remove('gaze-on'));
-async function refresh(){try{const s=await(await fetch('/api/status',{cache:'no-store'})).json();document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('armPanel').classList.toggle('hidden',s.arms<2);document.getElementById('gripperPanel').classList.toggle('hidden',!s.has_grippers);const grip=s.has_grippers?(s.grippers_open[activeArm]?' · GRIPPER OPEN':' · GRIPPER CLOSED'):'';const moving=s.drive_active?' · MOVING':'';document.getElementById('hud').innerHTML=`<strong>${s.anatomy_showcase||'SURGICAL WORKSPACE'}</strong><br>${s.camera_width}×${s.camera_height} · ${s.render_fps.toFixed(1)} FPS<br>${s.scenario_title}${grip}${moving}`;document.getElementById('recflag').classList.toggle('on',s.recording);const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;}catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
+async function refresh(){try{const s=await(await fetch('/api/status',{cache:'no-store'})).json();document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;document.getElementById('procedureSteps').innerHTML=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join('');const truth=document.getElementById('procedureTruth');truth.textContent=p.truth_note||'';truth.classList.toggle('hidden',!p.truth_note);document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('armPanel').classList.toggle('hidden',s.arms<2);document.getElementById('gripperPanel').classList.toggle('hidden',!s.has_grippers);const grip=s.has_grippers?(s.grippers_open[activeArm]?' · GRIPPER OPEN':' · GRIPPER CLOSED'):'';const moving=s.drive_active?' · MOVING':'';document.getElementById('hud').innerHTML=`<strong>${s.anatomy_showcase||'SURGICAL WORKSPACE'}</strong><br>${s.camera_width}×${s.camera_height} · ${s.render_fps.toFixed(1)} FPS<br>${p.title||s.scenario_title}${grip}${moving}`;document.getElementById('recflag').classList.toggle('on',s.recording);const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Procedure: ${p.title||'Free practice'}<br>Anatomy: ${s.anatomy_showcase||'—'}<br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;}catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
 setInterval(updateDrive,90);setInterval(refresh,500);refresh();
 </script></body></html>"""
 
@@ -308,6 +317,12 @@ class SharedState:
     robot_names: list[str]
     robot_body_names: dict[str, list[str]]
     anatomy_showcase: str | None = None
+    anatomy_scene_id: str = ""
+    anatomy_asset: str = ""
+    openusd_environment: str = ""
+    procedure: dict[str, Any] = field(default_factory=dict)
+    openusd_scene_loaded: bool = False
+    organ_proxy_visual_ready: bool = False
     instance_id: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ"))
     lock: threading.Lock = field(default_factory=threading.Lock)
     wake_event: threading.Event = field(default_factory=threading.Event)
@@ -356,6 +371,14 @@ class SharedState:
     procedure_phase: str = "setup"
     procedure_event_code: int = 0
     procedure_events: list[dict[str, Any]] = field(default_factory=list)
+    procedure_waypoints_total: int = 0
+    procedure_waypoints_completed: int = 0
+    procedure_motion_seen: bool = False
+    procedure_grasp_seen: bool = False
+    procedure_object_lift_m: float = 0.0
+    procedure_object_motion_m: float = 0.0
+    procedure_started_at: float = 0.0
+    procedure_last_motion_at: float = 0.0
 
     def __post_init__(self) -> None:
         self.pulse = np.zeros(self.action_dim, dtype=np.float32)
@@ -364,6 +387,7 @@ class SharedState:
 
     def status(self) -> dict[str, Any]:
         with self.lock:
+            procedure_status = self._procedure_status()
             return {
                 "task": self.task,
                 "instance_id": self.instance_id,
@@ -380,6 +404,12 @@ class SharedState:
                 "robot_names": self.robot_names,
                 "robot_body_names": self.robot_body_names,
                 "anatomy_showcase": self.anatomy_showcase,
+                "anatomy_scene_id": self.anatomy_scene_id,
+                "anatomy_asset": self.anatomy_asset,
+                "openusd_environment": self.openusd_environment,
+                "openusd_scene_loaded": self.openusd_scene_loaded,
+                "organ_proxy_visual_ready": self.organ_proxy_visual_ready,
+                "procedure": procedure_status,
                 "grippers_open": self.grippers_open,
                 "recording": self.recording,
                 "recorded_frames": self.recorded_frames,
@@ -414,6 +444,45 @@ class SharedState:
                 },
                 "drive_active": self.drive_until > time.monotonic() and bool(np.any(self.drive)),
             }
+
+    def _procedure_status(self) -> dict[str, Any]:
+        if not self.procedure:
+            return {}
+        now = time.monotonic()
+        kind = self.procedure.get("guide_kind")
+        step_count = len(self.procedure.get("steps", []))
+        if kind in {"threading", "cutting_path", "navigation"}:
+            completed = int(self.procedure_motion_seen)
+            if self.procedure_waypoints_total and self.procedure_waypoints_completed:
+                completed = max(
+                    completed,
+                    1 + round(3 * self.procedure_waypoints_completed / self.procedure_waypoints_total),
+                )
+            if self.procedure_waypoints_completed >= self.procedure_waypoints_total > 0 and now - self.procedure_last_motion_at > 0.8:
+                completed = step_count
+        else:
+            completed = int(self.procedure_motion_seen)
+            completed += int(self.procedure_grasp_seen)
+            completed += int(self.procedure_object_lift_m >= 0.008)
+            completed += int(self.procedure_object_motion_m >= 0.018)
+            if completed >= max(1, step_count - 1) and now - self.procedure_last_motion_at > 0.8:
+                completed = step_count
+        completed = min(completed, step_count)
+        steps = []
+        for index, item in enumerate(self.procedure.get("steps", [])):
+            status = "complete" if index < completed else "active" if index == completed else "pending"
+            steps.append({**item, "status": status})
+        return {
+            **self.procedure,
+            "steps": steps,
+            "completed_steps": completed,
+            "step_count": step_count,
+            "progress_percent": round(100 * completed / step_count) if step_count else 0,
+            "waypoints_completed": self.procedure_waypoints_completed,
+            "waypoints_total": self.procedure_waypoints_total,
+            "object_lift_m": round(self.procedure_object_lift_m, 4),
+            "object_motion_m": round(self.procedure_object_motion_m, 4),
+        }
 
 
 def build_web_app(state: SharedState) -> FastAPI:
@@ -1387,6 +1456,11 @@ def save_demo(
             "intervention_count": state.intervention_count,
             "run_kind": "challenge_evaluation" if state.evaluation_source else "demonstration",
             "evaluation_source": state.evaluation_source,
+            "procedure_id": state.procedure.get("id"),
+            "procedure_title": state.procedure.get("title"),
+            "procedure_fidelity": state.procedure.get("fidelity"),
+            "anatomy_scene_id": state.anatomy_scene_id,
+            "anatomy_asset": state.anatomy_asset,
         }
     manifest = {
         "schema": "dr.anmar.demonstration.v2",
@@ -1476,8 +1550,46 @@ def native_success_from_info(info: Any) -> float:
     return -1.0
 
 
+def procedure_waypoints(procedure: dict[str, Any]) -> np.ndarray:
+    """Return ordered world-space guidance points in the native PSM workspace."""
+    kind = procedure.get("guide_kind")
+    if kind == "threading":
+        return np.asarray(
+            ((-0.038, -0.018, 0.025), (-0.018, -0.002, 0.038), (0.006, 0.012, 0.044), (0.032, 0.022, 0.032)),
+            dtype=np.float32,
+        )
+    if kind == "cutting_path":
+        return np.asarray(
+            ((-0.055, -0.018, 0.052), (-0.030, -0.010, 0.046), (-0.004, 0.000, 0.043), (0.024, 0.011, 0.040), (0.050, 0.020, 0.036)),
+            dtype=np.float32,
+        )
+    if kind == "navigation":
+        return np.asarray(
+            ((-0.045, -0.030, 0.070), (-0.015, -0.005, 0.052), (0.018, 0.020, 0.046), (0.050, 0.036, 0.060)),
+            dtype=np.float32,
+        )
+    return np.zeros((0, 3), dtype=np.float32)
+
+
+def preferred_tool_position(robots: dict[str, Any], body_names: dict[str, list[str]]) -> np.ndarray | None:
+    preferred = ("psm_tool_tip_link", "endo360_needle", "ecm_end_link", "tool_tip", "end_effector")
+    for name, robot in robots.items():
+        names = body_names.get(name, [])
+        index = next((names.index(candidate) for candidate in preferred if candidate in names), None)
+        if index is None:
+            continue
+        try:
+            return robot.data.body_pos_w[0, index, :3].detach().cpu().numpy().astype(np.float32)
+        except (AttributeError, IndexError, RuntimeError):
+            continue
+    return None
+
+
 def main() -> None:
     args_cli.demo_dir.mkdir(parents=True, exist_ok=True)
+    procedure = dict(PROCEDURES_BY_ID.get(args_cli.procedure, {}))
+    if args_cli.procedure and not procedure:
+        raise ValueError(f"Unknown Dr.Anmar procedure room: {args_cli.procedure}")
     if "-IK-Rel" not in args_cli.task:
         raise ValueError("The browser workstation accepts relative-IK tasks. Other variants remain available via the CLI.")
     env_cfg = parse_env_cfg(
@@ -1546,30 +1658,48 @@ def main() -> None:
                 ),
             ),
         )
-    organ_usd = (
+    organ_usd = args_cli.anatomy_scene.expanduser().resolve() if args_cli.anatomy_scene else (
         DATA_ROOT
         / "assets/sufia_bc/OR_scene_CTLiver-Prostate-Bladder"
         / "OR_scene_CTLiver-Prostate-Bladder/models/organs/models_topo_blender.usdc"
     )
-    wall_material = sim_utils.PreviewSurfaceCfg(diffuse_color=(0.20, 0.27, 0.30), roughness=0.72)
-    env_cfg.scene.or_wall_x = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/ORWallX",
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(-1.25, 0.0, 0.45)),
-        spawn=sim_utils.CuboidCfg(size=(0.05, 2.5, 2.8), visual_material=wall_material),
-    )
-    env_cfg.scene.or_wall_y = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/ORWallY",
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, -1.25, 0.45)),
-        spawn=sim_utils.CuboidCfg(size=(2.5, 0.05, 2.8), visual_material=wall_material),
-    )
-    env_cfg.scene.or_backdrop = AssetBaseCfg(
-        prim_path="{ENV_REGEX_NS}/ORBackdrop",
-        init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(-1.0, -0.55, 0.45),
-            rot=(0.9681476, 0.0, 0.0, 0.2503800),
-        ),
-        spawn=sim_utils.CuboidCfg(size=(0.05, 3.5, 2.8), visual_material=wall_material),
-    )
+    allowed_anatomy_root = (DATA_ROOT / "assets/sufia_bc").resolve()
+    allowed_composed_root = (DATA_ROOT / "scenes/openusd").resolve()
+    if organ_usd.is_file() and allowed_anatomy_root not in organ_usd.parents and allowed_composed_root not in organ_usd.parents:
+        raise ValueError("The composed anatomy asset must be inside the installed Dr.Anmar OpenUSD library")
+    openusd_environment = args_cli.openusd_environment.expanduser().resolve() if args_cli.openusd_environment else None
+    allowed_environment_root = (DATA_ROOT / "scenes/openusd").resolve()
+    if openusd_environment and (
+        not openusd_environment.is_file() or allowed_environment_root not in openusd_environment.parents
+    ):
+        raise ValueError("The OpenUSD environment must be a prepared Dr.Anmar scene inside the composed library")
+    if openusd_environment:
+        env_cfg.scene.openusd_operating_room = AssetBaseCfg(
+            prim_path="{ENV_REGEX_NS}/OpenUSDOperatingRoom",
+            spawn=sim_utils.UsdFileCfg(usd_path=str(openusd_environment)),
+        )
+    else:
+        # Offline fallback for development installations that do not yet have
+        # the repaired OpenUSD compositions generated.
+        wall_material = sim_utils.PreviewSurfaceCfg(diffuse_color=(0.20, 0.27, 0.30), roughness=0.72)
+        env_cfg.scene.or_wall_x = AssetBaseCfg(
+            prim_path="{ENV_REGEX_NS}/ORWallX",
+            init_state=AssetBaseCfg.InitialStateCfg(pos=(-1.25, 0.0, 0.45)),
+            spawn=sim_utils.CuboidCfg(size=(0.05, 2.5, 2.8), visual_material=wall_material),
+        )
+        env_cfg.scene.or_wall_y = AssetBaseCfg(
+            prim_path="{ENV_REGEX_NS}/ORWallY",
+            init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, -1.25, 0.45)),
+            spawn=sim_utils.CuboidCfg(size=(2.5, 0.05, 2.8), visual_material=wall_material),
+        )
+        env_cfg.scene.or_backdrop = AssetBaseCfg(
+            prim_path="{ENV_REGEX_NS}/ORBackdrop",
+            init_state=AssetBaseCfg.InitialStateCfg(
+                pos=(-1.0, -0.55, 0.45),
+                rot=(0.9681476, 0.0, 0.0, 0.2503800),
+            ),
+            spawn=sim_utils.CuboidCfg(size=(0.05, 3.5, 2.8), visual_material=wall_material),
+        )
     if organ_usd.is_file():
         env_cfg.scene.liver_showcase = AssetBaseCfg(
             prim_path="{ENV_REGEX_NS}/LiverShowcase",
@@ -1599,6 +1729,8 @@ def main() -> None:
         if getattr(sensor.data, "net_forces_w", None) is not None:
             contact_sensors[name] = sensor
     showcase_children: list[Any] = []
+    default_showcase_names: set[str] = {"Liver_topo_blender"}
+    proxy_visual_ready = False
     if organ_usd.is_file():
         import omni.usd
         from pxr import Gf, Sdf, UsdGeom, UsdShade
@@ -1609,20 +1741,78 @@ def main() -> None:
         showcase_children = [
             child for child in showcase_prim.GetChildren() if child.GetName() != "_materials" and child.IsA(UsdGeom.Imageable)
         ]
-        for child in showcase_prim.GetChildren():
-            if child.GetName() not in {"Liver_topo_blender", "_materials"} and child.IsA(UsdGeom.Imageable):
+        focus = str(procedure.get("anatomy_focus", "Liver"))
+        if "multi-organ" in focus.lower() or procedure.get("guide_kind") == "navigation":
+            default_showcase_names = {child.GetName() for child in showcase_children}
+        else:
+            focus_token = focus.lower().replace(" surface", "")
+            matching = {child.GetName() for child in showcase_children if focus_token in child.GetName().lower()}
+            if matching:
+                default_showcase_names = matching
+        for child in showcase_children:
+            if child.GetName() in default_showcase_names:
+                UsdGeom.Imageable(child).MakeVisible()
+            else:
                 UsdGeom.Imageable(child).MakeInvisible()
-        material = UsdShade.Material.Define(stage, f"{showcase_path}/DrAnmarLiverMaterial")
-        shader = UsdShade.Shader.Define(stage, f"{showcase_path}/DrAnmarLiverMaterial/Shader")
-        shader.CreateIdAttr("UsdPreviewSurface")
-        shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.48, 0.055, 0.035))
-        shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.38)
-        material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
-        liver_mesh = stage.GetPrimAtPath(f"{showcase_path}/Liver_topo_blender/Liver_topo_blender")
-        UsdShade.MaterialBindingAPI.Apply(liver_mesh).Bind(
-            material,
-            bindingStrength=UsdShade.Tokens.strongerThanDescendants,
-        )
+
+        organ_colors = {
+            "Liver_topo_blender": (0.48, 0.055, 0.035),
+            "Gallbladder_topo_blender": (0.20, 0.42, 0.12),
+            "Bladder_topo_blender": (0.72, 0.30, 0.28),
+            "Prostate_topo_blender": (0.70, 0.45, 0.28),
+            "Kidney_topo_blender": (0.48, 0.16, 0.12),
+            "Pancreas_topo_blender": (0.78, 0.48, 0.34),
+            "Spleen_topo_blender": (0.38, 0.09, 0.16),
+        }
+        for organ_name, color in organ_colors.items():
+            mesh = stage.GetPrimAtPath(f"{showcase_path}/{organ_name}/{organ_name}")
+            if not mesh.IsValid():
+                continue
+            material_path = f"{showcase_path}/DrAnmarMaterials/{organ_name}"
+            material = UsdShade.Material.Define(stage, material_path)
+            shader = UsdShade.Shader.Define(stage, f"{material_path}/Shader")
+            shader.CreateIdAttr("UsdPreviewSurface")
+            shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*color))
+            shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.38)
+            material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
+            UsdShade.MaterialBindingAPI.Apply(mesh).Bind(
+                material,
+                bindingStrength=UsdShade.Tokens.strongerThanDescendants,
+            )
+
+        proxy_organ = procedure.get("proxy_organ")
+        object_prim = stage.GetPrimAtPath("/World/envs/env_0/Object")
+        if proxy_organ and object_prim.IsValid():
+            for child in object_prim.GetChildren():
+                if child.IsA(UsdGeom.Imageable):
+                    UsdGeom.Imageable(child).MakeInvisible()
+            proxy_path = "/World/envs/env_0/Object/DrAnmarOrganProxy"
+            proxy_prim = stage.DefinePrim(proxy_path, "Xform")
+            proxy_prim.GetReferences().AddReference(str(organ_usd))
+            for child in proxy_prim.GetChildren():
+                if child.IsA(UsdGeom.Imageable):
+                    if child.GetName() == proxy_organ:
+                        UsdGeom.Imageable(child).MakeVisible()
+                    else:
+                        UsdGeom.Imageable(child).MakeInvisible()
+            proxy_mesh = stage.GetPrimAtPath(f"{proxy_path}/{proxy_organ}/{proxy_organ}")
+            if proxy_mesh.IsValid():
+                bounds = UsdGeom.BBoxCache(0.0, [UsdGeom.Tokens.default_, UsdGeom.Tokens.render]).ComputeWorldBound(proxy_mesh).ComputeAlignedRange()
+                center = bounds.GetMidpoint()
+                size = bounds.GetSize()
+                longest = max(float(size[0]), float(size[1]), float(size[2]), 1e-6)
+                scale = min(0.055 / longest, 0.32)
+                transform = UsdGeom.Xformable(proxy_prim)
+                transform.ClearXformOpOrder()
+                transform.AddTranslateOp().Set(Gf.Vec3d(-center[0] * scale, -center[1] * scale, -center[2] * scale + 0.006))
+                transform.AddScaleOp().Set(Gf.Vec3f(scale, scale, scale))
+                source_material = stage.GetPrimAtPath(f"{showcase_path}/DrAnmarMaterials/{proxy_organ}")
+                if source_material.IsValid():
+                    UsdShade.MaterialBindingAPI.Apply(proxy_mesh).Bind(
+                        UsdShade.Material(source_material),
+                        bindingStrength=UsdShade.Tokens.strongerThanDescendants,
+                    )
+                proxy_visual_ready = True
     ghost_markers = VisualizationMarkers(
         VisualizationMarkersCfg(
             prim_path="/World/DrAnmarClinicianPath",
@@ -1656,6 +1846,41 @@ def main() -> None:
     )
     ghost_markers.visualize(translations=np.zeros((1, 3), dtype=np.float32))
     ghost_markers.set_visibility(False)
+    room_waypoints = procedure_waypoints(procedure)
+    procedure_markers = VisualizationMarkers(
+        VisualizationMarkersCfg(
+            prim_path="/World/DrAnmarProcedureGuide",
+            markers={
+                "start": sim_utils.SphereCfg(
+                    radius=0.006,
+                    visual_material=sim_utils.PreviewSurfaceCfg(
+                        diffuse_color=(0.08, 0.92, 1.0), emissive_color=(0.02, 0.38, 0.50), opacity=0.82
+                    ),
+                ),
+                "path": sim_utils.SphereCfg(
+                    radius=0.005,
+                    visual_material=sim_utils.PreviewSurfaceCfg(
+                        diffuse_color=(1.0, 0.64, 0.16), emissive_color=(0.40, 0.16, 0.01), opacity=0.78
+                    ),
+                ),
+                "finish": sim_utils.SphereCfg(
+                    radius=0.006,
+                    visual_material=sim_utils.PreviewSurfaceCfg(
+                        diffuse_color=(0.20, 0.95, 0.48), emissive_color=(0.02, 0.38, 0.14), opacity=0.84
+                    ),
+                ),
+            },
+        )
+    )
+    if len(room_waypoints):
+        marker_indices = np.ones(len(room_waypoints), dtype=np.int32)
+        marker_indices[0] = 0
+        marker_indices[-1] = 2
+        procedure_markers.visualize(translations=room_waypoints, marker_indices=marker_indices)
+        procedure_markers.set_visibility(True)
+    else:
+        procedure_markers.visualize(translations=np.zeros((1, 3), dtype=np.float32))
+        procedure_markers.set_visibility(False)
     action_dim = int(env.action_space.shape[-1])
     arms = 2 if "Dual" in args_cli.task else 1
     has_grippers = "Lift" in args_cli.task or "Handover" in args_cli.task
@@ -1671,40 +1896,71 @@ def main() -> None:
     )
 
     state = SharedState(
-        args_cli.task,
-        args_cli.camera_width,
-        args_cli.camera_height,
-        args_cli.demo_dir,
-        action_dim,
-        arms,
-        has_grippers,
-        robot_names,
-        robot_body_names,
-        "Official CT liver",
+        task=args_cli.task,
+        camera_width=args_cli.camera_width,
+        camera_height=args_cli.camera_height,
+        demo_dir=args_cli.demo_dir,
+        action_dim=action_dim,
+        arms=arms,
+        has_grippers=has_grippers,
+        robot_names=robot_names,
+        robot_body_names=robot_body_names,
+        anatomy_showcase=args_cli.anatomy_title or "Official CT liver",
+        anatomy_scene_id=args_cli.anatomy_scene_id,
+        anatomy_asset=str(organ_usd) if organ_usd.is_file() else "",
+        openusd_environment=str(openusd_environment) if openusd_environment else "",
+        procedure=procedure,
+        openusd_scene_loaded=bool(openusd_environment and organ_usd.is_file() and showcase_children),
+        organ_proxy_visual_ready=proxy_visual_ready,
     )
     state.camera_names = list(camera_sources)
     state.camera_frame_ids = {name: 0 for name in camera_sources}
+    state.procedure_waypoints_total = len(room_waypoints)
+    state.procedure_started_at = time.monotonic()
+    state.procedure_last_motion_at = state.procedure_started_at
     try:
         state.camera_intrinsics = camera.data.intrinsic_matrices[0].detach().cpu().numpy().astype(float).tolist()
         state.semantic_labels = camera_semantic_labels(camera)
     except (AttributeError, KeyError, TypeError, RuntimeError):
         pass
+    initial_object_positions = {
+        name: rigid_object.data.root_pos_w[0].detach().cpu().numpy().astype(np.float32).copy()
+        for name, rigid_object in objects.items()
+    }
 
     def reset_environment(selected_scenario: str, selected_seed: int) -> None:
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
         apply_native_object_scenario(objects, selected_scenario, selected_seed)
+        initial_object_positions.clear()
+        initial_object_positions.update(
+            {
+                name: rigid_object.data.root_pos_w[0].detach().cpu().numpy().astype(np.float32).copy()
+                for name, rigid_object in objects.items()
+            }
+        )
         profile = SCENARIO_NATIVE_PROFILES.get(selected_scenario, {})
         show_multi_organ = bool(profile.get("show_multi_organ"))
         for child in showcase_children:
             imageable = UsdGeom.Imageable(child)
-            if show_multi_organ or child.GetName() == "Liver_topo_blender":
+            if show_multi_organ or child.GetName() in default_showcase_names:
                 imageable.MakeVisible()
             else:
                 imageable.MakeInvisible()
         with state.lock:
-            state.anatomy_showcase = "Official CT liver + pelvic anatomy" if show_multi_organ else "Official CT liver"
+            state.anatomy_showcase = (
+                f"{args_cli.anatomy_title or 'Official anatomy'} · multi-organ context"
+                if show_multi_organ
+                else args_cli.anatomy_title or "Official CT liver"
+            )
+            state.procedure_waypoints_completed = 0
+            state.procedure_motion_seen = False
+            state.procedure_grasp_seen = False
+            state.procedure_object_lift_m = 0.0
+            state.procedure_object_motion_m = 0.0
+            state.procedure_started_at = time.monotonic()
+            state.procedure_last_motion_at = time.monotonic()
         scenario_eye, scenario_target = scenario_camera_pose(camera_eye, camera_target, selected_scenario)
         camera.set_world_poses_from_view(
             torch.tensor([scenario_eye.tolist()], device=camera.device),
@@ -1895,6 +2151,32 @@ def main() -> None:
         environment_terminated = bool(scalar_value(terminated))
         environment_truncated = bool(scalar_value(truncated))
         environment_success = native_success_from_info(info)
+
+        motion_active = bool(np.any(action_np[: state.arms * 6]))
+        current_time = time.monotonic()
+        max_object_lift = 0.0
+        max_object_motion = 0.0
+        for name, rigid_object in objects.items():
+            start = initial_object_positions.get(name)
+            if start is None:
+                continue
+            current_position = rigid_object.data.root_pos_w[0].detach().cpu().numpy().astype(np.float32)
+            max_object_lift = max(max_object_lift, float(current_position[2] - start[2]))
+            max_object_motion = max(max_object_motion, float(np.linalg.norm(current_position - start)))
+        tool_position = preferred_tool_position(robots, robot_body_names)
+        with state.lock:
+            if motion_active:
+                state.procedure_motion_seen = True
+                state.procedure_last_motion_at = current_time
+            if state.has_grippers and any(not is_open for is_open in grippers_open):
+                state.procedure_grasp_seen = True
+            state.procedure_object_lift_m = max(state.procedure_object_lift_m, max_object_lift)
+            state.procedure_object_motion_m = max(state.procedure_object_motion_m, max_object_motion)
+            waypoint_index = state.procedure_waypoints_completed
+            if tool_position is not None and waypoint_index < len(room_waypoints):
+                if float(np.linalg.norm(tool_position - room_waypoints[waypoint_index])) <= 0.014:
+                    state.procedure_waypoints_completed += 1
+                    state.procedure_last_motion_at = current_time
 
         with state.lock:
             is_recording = state.recording

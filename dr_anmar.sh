@@ -41,12 +41,25 @@ case "${command}" in
     workstation)
         port="${2:-2361}"
         task="${3:-Isaac-Lift-Needle-PSM-IK-Rel-v0}"
+        procedure="${4:-}"
+        anatomy_scene="${5:-}"
+        anatomy_scene_id="${6:-}"
+        anatomy_title="${7:-}"
+        openusd_environment="${8:-}"
+        workstation_args=(
+            --headless
+            --enable_cameras
+            --task "${task}"
+            --port "${port}"
+            --demo_dir "${ROOT}/demos"
+        )
+        [[ -n "${procedure}" ]] && workstation_args+=(--procedure "${procedure}")
+        [[ -n "${anatomy_scene}" ]] && workstation_args+=(--anatomy_scene "${anatomy_scene}")
+        [[ -n "${anatomy_scene_id}" ]] && workstation_args+=(--anatomy_scene_id "${anatomy_scene_id}")
+        [[ -n "${anatomy_title}" ]] && workstation_args+=(--anatomy_title "${anatomy_title}")
+        [[ -n "${openusd_environment}" ]] && workstation_args+=(--openusd_environment "${openusd_environment}")
         exec "${PYTHON}" scripts/dr_anmar_workstation.py \
-            --headless \
-            --enable_cameras \
-            --task "${task}" \
-            --port "${port}" \
-            --demo_dir "${ROOT}/demos" \
+            "${workstation_args[@]}" \
             --kit_args "--portable-root ${PORTABLE_ROOT}"
         ;;
     anatomy-viewer)

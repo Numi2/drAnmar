@@ -42,6 +42,10 @@ Validated on the RTX 4090 host:
 - Isaac Lab 2.3 camera metadata changed from a dictionary to a per-environment list after rendering. The live
   capture exposed this compatibility fault; metadata normalization was added and the complete recording then
   saved successfully.
+- All seven installed anatomy packages were rebuilt as separate metre-scale, Z-up OpenUSD compositions. Their
+  room, ceiling, table, anatomy, and camera layers were opened in one Isaac audit pass: 14 stages, zero unresolved
+  asset paths, and 14 authored cameras. The live needle-pickup worker then started with the sanitized CT anatomy
+  and its matching repaired operating-room layer.
 
 Known host/runtime blockers from the same pass:
 
@@ -100,6 +104,16 @@ Known host/runtime blockers from the same pass:
 - Confirm calibration bias rotates/scales both manual commands and automated replay exactly once.
 - Confirm the multi-organ anatomy context reveals intended organ prims without exposing material/helper prims
   or changing collision behavior unexpectedly.
+- Review every repaired room composition in a colour-managed Isaac renderer. Geometry and dependency integrity
+  are validated, but the replacement PreviewSurface room finishes and illumination are not clinically reviewed.
+- Confirm the Y-up centimetre source-room conversion and -0.95 m floor registration align the walls, ceiling,
+  upstream ORBIT-Surgical table, each robot base, and all endoscope views across all seven anatomy variants.
+- Confirm rigid collision remains owned only by the upstream ORBIT-Surgical task; the added room and anatomy
+  layers are visual context and must not silently introduce duplicate table or organ collision bodies.
+- Validate the liver, gallbladder, and bladder visible-mesh proxies against their underlying rigid collision
+  targets before using those rooms for quantitative tissue-handling studies.
+- Keep incision-path rehearsal labelled as trajectory practice until deformable tissue, puncture, topology
+  change, thread tension, and independent biomechanical validation are implemented.
 - Run a small two-scenario, two-seed challenge matrix and confirm every rollout resets, replays, records,
   analyzes, and updates the durable matrix manifest before the next rollout begins.
 - Confirm challenge summary means, 95% normal intervals, native-success rate, intervention rate, safety-event
