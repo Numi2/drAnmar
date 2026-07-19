@@ -65,6 +65,13 @@ The complete keyboard map and the rationale for each combined movement are docum
 <p align="center"><strong>Keyboard-first needle workflow in the live simulator</strong><br>
 Target-guided pickup → grasp → close-up entry → full exit while held → dual-instrument pre-handoff.</p>
 
+<p align="center">
+  <img src="docs/screenshots/fast-needle-pickup-and-handoff.gif" width="960" alt="Live dual-arm Dr.Anmar workflow rapidly picking up a curved needle, presenting it to the receiving instrument, closing the receiving jaws, releasing the original holder, and carrying the retained needle toward the organ">
+</p>
+
+<p align="center"><strong>Fast dual-instrument pickup and completed handoff</strong><br>
+Pickup → presentation → dual grasp → holder release → receiver recovery → organ approach, with the active keyboard controls visible throughout.</p>
+
 The instrument shaft remains outside the anatomy surface while the grasped needle tip can follow a bounded
 12 mm entry channel. This is a rigid rehearsal interaction with synchronized depth telemetry—not a validated
 deformable-tissue or needle-force model.

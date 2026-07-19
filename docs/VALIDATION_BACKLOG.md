@@ -245,6 +245,14 @@ Captured on Gilgamesh in the running Isaac workstation rather than from mocked U
   to 21.51 mm. Capture stopped before the receiving grasp or release, as intended for the pre-handoff view.
 - The resulting GIF holds control highlights for readable frames and includes close, overview, instrument-select,
   entry, reverse, and pre-handoff states.
+- A second live dual-PSM capture completed the transfer rather than stopping at pre-handoff: instrument 2 first
+  acquired and lifted the needle, instrument 1 closed at 1.91 mm while both assisted grasps were active, then
+  instrument 2 opened. Final simulator state reported assisted grasp `[true, false]`, grippers `[closed, open]`,
+  and the receiving instrument retained the needle while separating 51.16 mm from the released holder.
+- The completed-transfer showcase is a 10.2-second, 1152×648 GIF assembled from live Isaac frames. After release,
+  the receiver remains grasped and carries the needle toward the organ until the simulator reports the bounded
+  entry state. It keeps active instrument, smart action, movement, grasp, release, and camera feedback visible
+  instead of overlaying staged labels.
 
 Still required before research claims expand: validate the rigid entry proxy against an independently measured
 surface, calibrate camera projection and depth cues, verify collision/contact telemetry under every anatomy
