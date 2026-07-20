@@ -646,6 +646,7 @@ class SharedState:
                 "camera_width": self.camera_width,
                 "camera_height": self.camera_height,
                 "camera_names": self.camera_names,
+                "active_camera_streams": sum(1 for count in self.camera_subscribers.values() if count > 0),
                 "frame_id": self.frame_id,
                 "render_fps": self.render_fps,
                 "sim_fps": self.sim_fps,
@@ -4498,7 +4499,19 @@ def main() -> None:
 
         with state.lock:
             is_recording = state.recording
-        interactive_active = bool(np.any(manual_action)) or replay_actions is not None or is_recording
+            camera_stream_active = any(count > 0 for count in state.camera_subscribers.values())
+        # A doctor watching any live camera is an interactive workload even
+        # while the instruments are stationary.  Previously the loop fell to
+        # its 500 ms unattended cadence in that state, hard-capping every
+        # visible camera at 2 FPS despite an otherwise idle GPU.  Keep the
+        # camera sensors at their native 25 Hz whenever a stream is connected;
+        # the low-power cadence remains available after the last viewer leaves.
+        interactive_active = (
+            bool(np.any(manual_action))
+            or replay_actions is not None
+            or is_recording
+            or camera_stream_active
+        )
         safety_due = is_recording or loop_started - last_safety_sample_time >= 0.20
         if safety_due:
             latest_contact_forces = {}
