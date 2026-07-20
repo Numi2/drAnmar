@@ -73,8 +73,9 @@ Target-guided pickup → grasp → close-up entry → full exit while held → d
 Pickup → presentation → dual grasp → holder release → receiver recovery → organ approach, with the active keyboard controls visible throughout.</p>
 
 The instrument shaft remains outside the anatomy surface while the grasped needle tip can follow a bounded
-12 mm entry channel. This is a rigid rehearsal interaction with synchronized depth telemetry—not a validated
-deformable-tissue or needle-force model.
+12 mm entry channel. The suturing room adds a rendered position-based thread with entry/exit tissue pins,
+stretch tension, live surface indentation, and a persistent cinch constraint. These are engineering training
+mechanics—not validated suture material, knot security, human-tissue constitutive behavior, or needle forces.
 
 <p align="center">
   <img src="docs/screenshots/surgical-control-panel.png" width="400" alt="Dr.Anmar game-like surgical instrument controls for speed, position, angle, and gripper">
@@ -100,6 +101,12 @@ and object pose together for Behavior Cloning.
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
 - A default operating-room showcase with the surgical robot, controls, room, and liver geometry.
+- Live suturing mechanics: an attached constrained strand, tissue entry/exit pins, tension response, cinch state,
+  compliant surface motion, reset, progress scoring, and synchronized recording.
+- Live incision mechanics that remove swept faces from the displayed OpenUSD liver mesh, expose the incision bed,
+  record cut length/topology revisions, and restore the exact original topology on reset.
+- Compliant liver, gallbladder, and bladder surfaces with localized jaw indentation, bounded drag deformation,
+  elastic recovery, and native ORBIT-Surgical grasp dynamics for gross organ motion.
 - Guided lessons, plain-language robotics explanations, progress tracking, and a robotics glossary.
 - Demonstration recording and replay for behavior-cloning experiments.
 - Surgical Skills Twin analysis with telemetry-derived coaching, phase timelines, subscores, and selected-attempt replay.

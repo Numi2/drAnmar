@@ -63,6 +63,8 @@ from isaaclab_tasks.utils import parse_env_cfg
 
 import orbit.surgical.tasks  # noqa: F401
 
+from dr_anmar_soft_tissue import SurfaceMeshModel, SutureThreadModel
+
 
 FAILURE_SCENARIOS = (
     {
@@ -314,9 +316,9 @@ async function refresh(){try{
   const truth=document.getElementById('procedureTruth');truth.textContent=p.truth_note||'';truth.classList.toggle('hidden',!p.truth_note);document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('armPanel').classList.toggle('hidden',s.arms<2);document.getElementById('gripperPanel').classList.toggle('hidden',!s.has_grippers);
   currentViewMode=s.camera_view_mode||currentViewMode;document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===currentViewMode));
   const grip=s.has_grippers?(s.grippers_open[activeArm]?' · GRIPPER OPEN':' · GRIPPER CLOSED'):'',moving=s.drive_active?' · MOVING':'';document.getElementById('hud').innerHTML=`<strong>${s.anatomy_showcase||'SURGICAL WORKSPACE'}</strong><br>${s.camera_width}×${s.camera_height} · ${s.render_fps.toFixed(1)} FPS · ${currentViewMode.toUpperCase()}<br>${p.title||s.scenario_title}${grip}${moving}`;document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record').classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[activeArm]===true);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[activeArm]===false);
-  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m,tipClearance=s.needle_tip_clearance_m,depth=s.needle_penetration_depth_m||0;proximity.className='proximity';let guidance='Move toward the target';if(s.needle_puncture_active){guidance=`Needle inserted ${Math.round(depth*1000)} mm · rotate through the arc`;proximity.classList.add('puncture')}else if(s.assisted_grasp_active?.[activeArm]&&tipClearance!==null&&tipClearance!==undefined&&tipClearance<=.006){guidance=`Needle tip ${Math.max(0,Math.round(tipClearance*1000))} mm from tissue · advance gently`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]){guidance='Needle held · Space releases';proximity.classList.add('held')}else if(s.virtual_fixture_active){guidance='Instrument boundary · tangential motion only';proximity.classList.add('guard')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){const direction=targetDirections(offset);guidance=`Target ${Math.round(distance*1000)} mm · ${direction||'hold course'}${s.adaptive_precision_active?' · auto precision':''}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Tool guidance</b><span>${guidance}</span>`;const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],assisted=s.assisted_grasp_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':assisted?'Lift and retract the secured object':'Open jaws and retry';
+  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m,tipClearance=s.needle_tip_clearance_m,depth=s.needle_penetration_depth_m||0,thread=s.mechanics?.thread||{},cut=s.mechanics?.cut||{},tissue=s.mechanics?.tissue||{};proximity.className='proximity';let guidance='Move toward the target';if(thread.knot_formed){guidance=`Knot cinched ${Math.round((thread.knot_tightness||0)*100)}% · tension ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(cut.active){guidance=`Cutting live · ${Math.round((cut.length_m||0)*1000)} mm · ${cut.faces_removed||0} faces opened`;proximity.classList.add('puncture')}else if(s.needle_puncture_active){guidance=`Needle inserted ${Math.round(depth*1000)} mm · thread ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(tissue.recovering){guidance=`Tissue recovering · peak ${Math.round((tissue.max_displacement_m||0)*1000)} mm`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]&&tipClearance!==null&&tipClearance!==undefined&&tipClearance<=.006){guidance=`Needle tip ${Math.max(0,Math.round(tipClearance*1000))} mm from tissue · advance gently`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]){guidance=tissue.active?`Object held · deforming surface ${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'Needle held · Space releases';proximity.classList.add('held')}else if(s.virtual_fixture_active){guidance='Instrument boundary · tangential motion only';proximity.classList.add('guard')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){const direction=targetDirections(offset);guidance=`Target ${Math.round(distance*1000)} mm · ${direction||'hold course'}${s.adaptive_precision_active?' · auto precision':''}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Tool guidance</b><span>${guidance}</span>`;const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],assisted=s.assisted_grasp_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':assisted?'Lift and retract the secured object':'Open jaws and retry';
   const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);
-  const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Procedure: ${p.title||'Free practice'}<br>Anatomy: ${s.anatomy_showcase||'—'}<br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Instrument guard: ${s.virtual_fixture_enabled?'on':'off'}<br>Needle entry: ${s.needle_puncture_active?`${Math.round(depth*1000)} mm`:'ready'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
+  const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Procedure: ${p.title||'Free practice'}<br>Anatomy: ${s.anatomy_showcase||'—'}<br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Instrument guard: ${s.virtual_fixture_enabled?'on':'off'}<br>Thread: ${thread.active?`${Number(thread.tension_n||0).toFixed(2)} N · ${thread.tissue_anchors||0} pins`:'—'}<br>Cut: ${cut.faces_removed?`${Math.round((cut.length_m||0)*1000)} mm · r${cut.topology_revision}`:'—'}<br>Tissue: ${tissue.active?`${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'—'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
 }catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
 auditKeyboardCoverage();setInterval(updateDrive,90);setInterval(refresh,500);refresh();
 </script></body></html>"""
@@ -473,6 +475,34 @@ class SharedState:
     procedure_object_motion_m: float = 0.0
     procedure_started_at: float = 0.0
     procedure_last_motion_at: float = 0.0
+    mechanics: dict[str, Any] = field(
+        default_factory=lambda: {
+            "thread": {
+                "active": False,
+                "visible": False,
+                "tension_n": 0.0,
+                "peak_tension_n": 0.0,
+                "tissue_anchors": 0,
+                "knot_formed": False,
+                "knot_tightness": 0.0,
+            },
+            "cut": {
+                "active": False,
+                "topology_ready": False,
+                "length_m": 0.0,
+                "faces_removed": 0,
+                "topology_revision": 0,
+            },
+            "tissue": {
+                "active": False,
+                "model": "none",
+                "authoring_ready": False,
+                "max_displacement_m": 0.0,
+                "recovering": False,
+                "surface_revision": 0,
+            },
+        }
+    )
 
     def __post_init__(self) -> None:
         self.pulse = np.zeros(self.action_dim, dtype=np.float32)
@@ -559,6 +589,7 @@ class SharedState:
                     "max_tissue_deformation_proxy": self.max_tissue_deformation_proxy,
                     "max_tissue_stress_pa": self.max_tissue_stress_pa,
                 },
+                "mechanics": self.mechanics,
                 "operator_study": {
                     "gaze_valid": self.gaze_valid,
                     "gaze_source": self.gaze_source,
@@ -575,7 +606,25 @@ class SharedState:
         now = time.monotonic()
         kind = self.procedure.get("guide_kind")
         step_count = len(self.procedure.get("steps", []))
-        if kind in {"threading", "cutting_path", "navigation"}:
+        mechanics = self.mechanics
+        if kind == "threading":
+            thread = mechanics.get("thread", {})
+            completed = int(self.procedure_grasp_seen)
+            completed += int(thread.get("tissue_anchors", 0) >= 1)
+            completed += int(self.procedure_waypoints_completed >= 2)
+            completed += int(thread.get("tissue_anchors", 0) >= 2)
+            completed += int(bool(thread.get("knot_formed")))
+            if completed >= max(1, step_count - 1) and now - self.procedure_last_motion_at > 0.8:
+                completed = step_count
+        elif kind == "cutting_path":
+            cut = mechanics.get("cut", {})
+            completed = int(self.procedure_motion_seen)
+            completed += int(cut.get("faces_removed", 0) > 0)
+            completed += int(float(cut.get("length_m", 0.0)) >= 0.025)
+            completed += int(self.procedure_waypoints_completed >= self.procedure_waypoints_total > 0)
+            if completed >= max(1, step_count - 1) and now - self.procedure_last_motion_at > 0.8:
+                completed = step_count
+        elif kind == "navigation":
             completed = int(self.procedure_motion_seen)
             if self.procedure_waypoints_total and self.procedure_waypoints_completed:
                 completed = max(
@@ -606,6 +655,7 @@ class SharedState:
             "waypoints_total": self.procedure_waypoints_total,
             "object_lift_m": round(self.procedure_object_lift_m, 4),
             "object_motion_m": round(self.procedure_object_motion_m, 4),
+            "mechanics": mechanics,
         }
 
 
@@ -1450,6 +1500,16 @@ def analyze_demo(
     native_success = np.asarray(arrays.get("environment_success", []), dtype=np.float64).reshape(-1)
     native_success_observed = bool(np.any(native_success > 0.5)) if len(native_success) else False
     native_success_available = bool(np.any(native_success >= 0.0)) if len(native_success) else False
+    suture_tension = np.asarray(arrays.get("suture_tension_n", []), dtype=np.float64).reshape(-1)
+    suture_anchors = np.asarray(arrays.get("suture_tissue_anchor_count", []), dtype=np.int32).reshape(-1)
+    suture_knot = np.asarray(arrays.get("suture_knot_formed", []), dtype=np.bool_).reshape(-1)
+    incision_length = np.asarray(arrays.get("incision_length_m", []), dtype=np.float64).reshape(-1)
+    incision_faces = np.asarray(arrays.get("incision_faces_removed", []), dtype=np.int32).reshape(-1)
+    max_suture_tension_n = float(np.max(suture_tension)) if len(suture_tension) else 0.0
+    max_suture_anchors = int(np.max(suture_anchors)) if len(suture_anchors) else 0
+    suture_knot_formed = bool(np.any(suture_knot)) if len(suture_knot) else False
+    final_incision_length_m = float(np.max(incision_length)) if len(incision_length) else 0.0
+    final_incision_faces_removed = int(np.max(incision_faces)) if len(incision_faces) else 0
     max_contact_force_n = 0.0
     max_tissue_displacement_m = 0.0
     max_tissue_deformation_proxy = 0.0
@@ -1496,6 +1556,10 @@ def analyze_demo(
     smoothness_score = max(0.0, 100.0 - smoothness_proxy * 18_000.0)
     if native_success_available:
         task_score = 100.0 if native_success_observed else 0.0
+    elif len(suture_knot):
+        task_score = 100.0 if suture_knot_formed else min(80.0, max_suture_anchors * 32.0)
+    elif len(incision_length):
+        task_score = min(100.0, final_incision_length_m / 0.070 * 100.0)
     else:
         task_score = 100.0 if "Lift" not in task else min(100.0, object_lift_m / 0.03 * 100.0)
     overall = round(0.30 * completeness + 0.22 * control_score + 0.18 * economy_score + 0.15 * smoothness_score + 0.15 * task_score)
@@ -1511,6 +1575,14 @@ def analyze_demo(
         success_index = _first_index(native_success > 0.5)
         if success_index is not None and success_index < len(times):
             timeline.append({"time_s": round(float(times[success_index]), 2), "kind": "success", "label": "Simulator-native task success signal"})
+    if suture_knot_formed:
+        knot_index = _first_index(suture_knot)
+        if knot_index is not None and knot_index < len(times):
+            timeline.append({"time_s": round(float(times[knot_index]), 2), "kind": "task", "label": "Suture cinch constraint formed"})
+    if final_incision_faces_removed:
+        cut_index = _first_index(incision_faces > 0)
+        if cut_index is not None and cut_index < len(times):
+            timeline.append({"time_s": round(float(times[cut_index]), 2), "kind": "task", "label": "First OpenUSD faces removed"})
     safety_events = []
     safety_labels = {
         "contact_force_n": "Contact-force engineering advisory crossed",
@@ -1573,6 +1645,11 @@ def analyze_demo(
             "grasp_relative_drift_m": round(grasp_relative_drift_m, 5),
             "max_environment_reward": round(float(np.max(native_reward)), 4) if len(native_reward) else None,
             "native_success": native_success_observed if native_success_available else None,
+            "max_suture_tension_n": round(max_suture_tension_n, 4),
+            "suture_tissue_anchors": max_suture_anchors,
+            "suture_knot_formed": suture_knot_formed,
+            "incision_length_m": round(final_incision_length_m, 5),
+            "incision_faces_removed": final_incision_faces_removed,
         },
         "subscores": {
             "completeness": round(completeness),
@@ -1638,6 +1715,7 @@ def save_demo(
             "procedure_fidelity": state.procedure.get("fidelity"),
             "anatomy_scene_id": state.anatomy_scene_id,
             "anatomy_asset": state.anatomy_asset,
+            "final_mechanics": json.loads(json.dumps(state.mechanics)),
         }
     manifest = {
         "schema": "dr.anmar.demonstration.v2",
@@ -1671,6 +1749,7 @@ def save_demo(
             "simulator_outcome": "environment_reward, termination, truncation, and success when exposed by the task",
             "contact": "maximum force per available contact sensor",
             "deformable_tissue": "nodal displacement, deformation-gradient proxy, and simulator stress when exposed",
+            "surface_mechanics": "OpenUSD surface displacement/recovery, suture constraints/tension/knot state, and incision topology revisions at 50 Hz",
             "robot_and_anatomy_pose": "world-frame tool bodies, task objects, and showcase anatomy transform at 50 Hz",
             "joint_torque": "applied and computed joint torque when exposed by the articulation",
             "operator_study": "input source, normalized gaze/attention coordinates, procedure phase, and event codes at 50 Hz",
@@ -1933,10 +2012,19 @@ def main() -> None:
     anatomy_collision_prims: list[Any] = []
     puncture_marker_translate = None
     puncture_marker_prim = None
+    surface_mesh_prim = None
+    surface_mesh_model: SurfaceMeshModel | None = None
+    surface_mesh_name = ""
+    suture_model = SutureThreadModel() if guide_kind == "threading" else None
+    suture_curve = None
+    suture_curve_prim = None
+    incision_curve = None
+    incision_curve_prim = None
+    incision_points_world: list[np.ndarray] = []
     stage = None
     if organ_usd.is_file():
         import omni.usd
-        from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade
+        from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt
 
         stage = omni.usd.get_context().get_stage()
         showcase_path = "/World/envs/env_0/LiverShowcase"
@@ -2058,6 +2146,67 @@ def main() -> None:
                     )
                 proxy_visual_ready = True
 
+        target_mesh_path = ""
+        if proxy_organ:
+            target_mesh_path = f"/World/envs/env_0/Object/DrAnmarOrganProxy/{proxy_organ}/{proxy_organ}"
+        elif guide_kind in {"threading", "cutting_path"}:
+            target_mesh_path = f"{showcase_path}/Liver_topo_blender/Liver_topo_blender"
+        if target_mesh_path:
+            candidate_mesh = stage.GetPrimAtPath(target_mesh_path)
+            if candidate_mesh.IsValid() and candidate_mesh.IsA(UsdGeom.Mesh):
+                mesh_geometry = UsdGeom.Mesh(candidate_mesh)
+                points = mesh_geometry.GetPointsAttr().Get()
+                face_counts = mesh_geometry.GetFaceVertexCountsAttr().Get()
+                face_indices = mesh_geometry.GetFaceVertexIndicesAttr().Get()
+                if points and face_counts and face_indices:
+                    surface_mesh_prim = candidate_mesh
+                    surface_mesh_name = proxy_organ or "Liver_topo_blender"
+                    surface_mesh_model = SurfaceMeshModel(
+                        np.asarray([tuple(point) for point in points], dtype=np.float32),
+                        np.asarray(face_counts, dtype=np.int32),
+                        np.asarray(face_indices, dtype=np.int32),
+                    )
+
+        if guide_kind == "threading":
+            suture_path = "/World/envs/env_0/DrAnmarSutureThread"
+            suture_curve = UsdGeom.BasisCurves.Define(stage, suture_path)
+            suture_curve.CreateTypeAttr(UsdGeom.Tokens.linear)
+            suture_curve.CreateWrapAttr(UsdGeom.Tokens.nonperiodic)
+            suture_curve.CreateCurveVertexCountsAttr(Vt.IntArray([suture_model.node_count]))
+            suture_curve.CreatePointsAttr(
+                Vt.Vec3fArray.FromNumpy(np.zeros((suture_model.node_count, 3), dtype=np.float32))
+            )
+            suture_curve.CreateWidthsAttr(Vt.FloatArray([0.00115] * suture_model.node_count))
+            suture_curve_prim = suture_curve.GetPrim()
+            suture_material = UsdShade.Material.Define(stage, f"{suture_path}/Material")
+            suture_shader = UsdShade.Shader.Define(stage, f"{suture_path}/Material/Shader")
+            suture_shader.CreateIdAttr("UsdPreviewSurface")
+            suture_shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.16, 0.32, 0.82))
+            suture_shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.58)
+            suture_material.CreateSurfaceOutput().ConnectToSource(suture_shader.ConnectableAPI(), "surface")
+            UsdShade.MaterialBindingAPI.Apply(suture_curve_prim).Bind(suture_material)
+            UsdGeom.Imageable(suture_curve_prim).MakeInvisible()
+
+        if guide_kind == "cutting_path":
+            incision_path = "/World/envs/env_0/DrAnmarIncisionBed"
+            incision_curve = UsdGeom.BasisCurves.Define(stage, incision_path)
+            incision_curve.CreateTypeAttr(UsdGeom.Tokens.linear)
+            incision_curve.CreateWrapAttr(UsdGeom.Tokens.nonperiodic)
+            incision_curve.CreateCurveVertexCountsAttr(Vt.IntArray([2]))
+            incision_curve.CreatePointsAttr(
+                Vt.Vec3fArray.FromNumpy(np.asarray(((0.0, 0.0, -10.0), (0.0, 0.0, -10.0)), dtype=np.float32))
+            )
+            incision_curve.CreateWidthsAttr(Vt.FloatArray([0.0045, 0.0045]))
+            incision_curve_prim = incision_curve.GetPrim()
+            incision_material = UsdShade.Material.Define(stage, f"{incision_path}/Material")
+            incision_shader = UsdShade.Shader.Define(stage, f"{incision_path}/Material/Shader")
+            incision_shader.CreateIdAttr("UsdPreviewSurface")
+            incision_shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.20, 0.008, 0.012))
+            incision_shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.86)
+            incision_material.CreateSurfaceOutput().ConnectToSource(incision_shader.ConnectableAPI(), "surface")
+            UsdShade.MaterialBindingAPI.Apply(incision_curve_prim).Bind(incision_material)
+            UsdGeom.Imageable(incision_curve_prim).MakeInvisible()
+
     def refresh_anatomy_guard_volumes() -> None:
         """Cache visible OpenUSD organ surfaces for shape-aware proximity and a bounds fallback."""
         anatomy_guard_volumes.clear()
@@ -2112,6 +2261,124 @@ def main() -> None:
             return
         puncture_marker_translate.Set(Gf.Vec3d(*position.astype(float).tolist()))
         imageable.MakeVisible()
+
+    def surface_transform() -> tuple[Any, Any] | tuple[None, None]:
+        if surface_mesh_prim is None:
+            return None, None
+        local_to_world = UsdGeom.XformCache(Usd.TimeCode.Default()).GetLocalToWorldTransform(surface_mesh_prim)
+        return local_to_world, local_to_world.GetInverse()
+
+    def surface_world_scale() -> float:
+        local_to_world, _world_to_local = surface_transform()
+        if local_to_world is None:
+            return 1.0
+        scales = [
+            float(Gf.Vec3d(local_to_world.TransformDir(Gf.Vec3d(*(1.0 if axis == index else 0.0 for axis in range(3))))).GetLength())
+            for index in range(3)
+        ]
+        finite = [scale for scale in scales if np.isfinite(scale) and scale > 1e-8]
+        return float(np.mean(finite)) if finite else 1.0
+
+    def surface_local_point(world_point: np.ndarray) -> np.ndarray | None:
+        _local_to_world, world_to_local = surface_transform()
+        if world_to_local is None:
+            return None
+        value = world_to_local.Transform(Gf.Vec3d(*np.asarray(world_point, dtype=float).tolist()))
+        return np.asarray(tuple(value), dtype=np.float32)
+
+    def surface_local_delta(world_delta: np.ndarray) -> np.ndarray | None:
+        _local_to_world, world_to_local = surface_transform()
+        if world_to_local is None:
+            return None
+        value = world_to_local.TransformDir(Gf.Vec3d(*np.asarray(world_delta, dtype=float).tolist()))
+        return np.asarray(tuple(value), dtype=np.float32)
+
+    def author_surface_model(topology_changed: bool = False) -> None:
+        if surface_mesh_model is None or surface_mesh_prim is None:
+            return
+        geometry = UsdGeom.Mesh(surface_mesh_prim)
+        geometry.GetPointsAttr().Set(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(surface_mesh_model.current_points)))
+        if topology_changed:
+            counts, indices = surface_mesh_model.active_topology()
+            geometry.GetFaceVertexCountsAttr().Set(Vt.IntArray.FromNumpy(np.ascontiguousarray(counts)))
+            geometry.GetFaceVertexIndicesAttr().Set(Vt.IntArray.FromNumpy(np.ascontiguousarray(indices)))
+        minimum = surface_mesh_model.current_points.min(axis=0)
+        maximum = surface_mesh_model.current_points.max(axis=0)
+        geometry.GetExtentAttr().Set(
+            Vt.Vec3fArray(
+                [Gf.Vec3f(*minimum.astype(float).tolist()), Gf.Vec3f(*maximum.astype(float).tolist())]
+            )
+        )
+
+    def update_suture_visual() -> None:
+        if suture_model is None or suture_curve is None or suture_curve_prim is None:
+            return
+        if not suture_model.initialized:
+            UsdGeom.Imageable(suture_curve_prim).MakeInvisible()
+            return
+        suture_curve.GetPointsAttr().Set(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(suture_model.points)))
+        color_scale = float(np.clip(suture_model.tension_n / 1.5, 0.0, 1.0))
+        shader = UsdShade.Shader(stage.GetPrimAtPath(f"{suture_curve_prim.GetPath()}/Material/Shader"))
+        if shader:
+            shader.GetInput("diffuseColor").Set(
+                Gf.Vec3f(0.16 + 0.68 * color_scale, 0.32 - 0.18 * color_scale, 0.82 - 0.58 * color_scale)
+            )
+        UsdGeom.Imageable(suture_curve_prim).MakeVisible()
+
+    def update_incision_visual() -> None:
+        if incision_curve is None or incision_curve_prim is None:
+            return
+        if not incision_points_world:
+            UsdGeom.Imageable(incision_curve_prim).MakeInvisible()
+            return
+        points = np.asarray(incision_points_world, dtype=np.float32)
+        if len(points) == 1:
+            points = np.concatenate((points, points + np.asarray((0.0, 0.0, -0.0002), dtype=np.float32)[None, :]))
+        incision_curve.GetCurveVertexCountsAttr().Set(Vt.IntArray([len(points)]))
+        incision_curve.GetPointsAttr().Set(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(points)))
+        incision_curve.GetWidthsAttr().Set(Vt.FloatArray([0.0045] * len(points)))
+        UsdGeom.Imageable(incision_curve_prim).MakeVisible()
+
+    def reset_surface_mechanics() -> None:
+        incision_points_world.clear()
+        if surface_mesh_model is not None:
+            surface_mesh_model.reset()
+            author_surface_model(topology_changed=True)
+        if suture_model is not None:
+            suture_model.reset()
+        update_suture_visual()
+        update_incision_visual()
+
+    def validate_surface_authoring() -> bool:
+        """Round-trip a tiny point edit and face removal, then restore exactly."""
+        if surface_mesh_model is None or surface_mesh_prim is None:
+            return False
+        try:
+            geometry = UsdGeom.Mesh(surface_mesh_prim)
+            original_face_count = len(surface_mesh_model.face_counts)
+            surface_mesh_model.current_points[0, 2] += 1e-7
+            author_surface_model(topology_changed=False)
+            probe = surface_mesh_model.face_centroids[0]
+            if surface_mesh_model.cut_segment(probe, probe, 1e-8) < 1:
+                raise RuntimeError("OpenUSD topology probe did not select a face")
+            author_surface_model(topology_changed=True)
+            cut_face_count = len(geometry.GetFaceVertexCountsAttr().Get())
+            surface_mesh_model.reset()
+            author_surface_model(topology_changed=True)
+            restored_points = geometry.GetPointsAttr().Get()
+            restored_face_count = len(geometry.GetFaceVertexCountsAttr().Get())
+            return (
+                cut_face_count < original_face_count
+                and restored_face_count == original_face_count
+                and len(restored_points) == len(surface_mesh_model.original_points)
+            )
+        except (AttributeError, RuntimeError, TypeError, ValueError, IndexError):
+            try:
+                surface_mesh_model.reset()
+                author_surface_model(topology_changed=True)
+            except (AttributeError, RuntimeError, TypeError, ValueError, IndexError):
+                pass
+            return False
 
     def anatomy_surface_query(
         point: np.ndarray,
@@ -2210,6 +2477,7 @@ def main() -> None:
             adjusted -= outward * inward_component * (1.0 - remaining_fraction)
         return adjusted, clearance, guard_active
 
+    surface_authoring_ready = validate_surface_authoring()
     refresh_anatomy_guard_volumes()
     needle_tip_offsets_local = derive_needle_tip_offsets()
     ghost_markers = VisualizationMarkers(
@@ -2389,6 +2657,13 @@ def main() -> None:
     state.procedure_waypoints_total = len(room_waypoints)
     state.procedure_started_at = time.monotonic()
     state.procedure_last_motion_at = state.procedure_started_at
+    state.mechanics["tissue"].update(
+        {
+            "active": surface_mesh_model is not None,
+            "model": "bounded_compliant_openusd_surface" if surface_mesh_model is not None else "none",
+            "authoring_ready": surface_authoring_ready,
+        }
+    )
     try:
         state.camera_intrinsics = camera.data.intrinsic_matrices[0].detach().cpu().numpy().astype(float).tolist()
         state.semantic_labels = camera_semantic_labels(camera)
@@ -2405,6 +2680,7 @@ def main() -> None:
                 stage.RemovePrim(joint_path)
         assisted_grasp_joints.clear()
         show_puncture_marker(None)
+        reset_surface_mechanics()
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
@@ -2457,6 +2733,36 @@ def main() -> None:
             state.needle_puncture_active = False
             state.needle_penetration_depth_m = 0.0
             state.adaptive_precision_active = False
+            state.mechanics["thread"].update(
+                {
+                    "active": suture_model is not None,
+                    "visible": False,
+                    "tension_n": 0.0,
+                    "peak_tension_n": 0.0,
+                    "tissue_anchors": 0,
+                    "knot_formed": False,
+                    "knot_tightness": 0.0,
+                }
+            )
+            state.mechanics["cut"].update(
+                {
+                    "active": False,
+                    "topology_ready": surface_authoring_ready and guide_kind == "cutting_path",
+                    "length_m": 0.0,
+                    "faces_removed": 0,
+                    "topology_revision": 0,
+                }
+            )
+            state.mechanics["tissue"].update(
+                {
+                    "active": surface_mesh_model is not None,
+                    "model": "bounded_compliant_openusd_surface" if surface_mesh_model is not None else "none",
+                    "authoring_ready": surface_authoring_ready,
+                    "max_displacement_m": 0.0,
+                    "recovering": False,
+                    "surface_revision": 0,
+                }
+            )
         with state.lock:
             selected_view_mode = state.camera_view_mode
         apply_endoscope_camera_view(selected_scenario, selected_view_mode)
@@ -2491,6 +2797,11 @@ def main() -> None:
     replay_actions: np.ndarray | None = None
     replay_index = 0
     assisted_grasp_joints: dict[int, str] = {}
+    organ_grasp_initialized: set[int] = set()
+    previous_tool_positions: dict[int, np.ndarray] = {}
+    thread_was_inside_tissue = False
+    thread_last_surface: np.ndarray | None = None
+    cut_length_m = 0.0
     last_loop_time = time.monotonic()
     last_fps_time = last_loop_time
     fps_steps = 0
@@ -2550,6 +2861,11 @@ def main() -> None:
         if reset_requested:
             with torch.inference_mode():
                 reset_environment(scenario_id, scenario_seed)
+            previous_tool_positions.clear()
+            organ_grasp_initialized.clear()
+            thread_was_inside_tissue = False
+            thread_last_surface = None
+            cut_length_m = 0.0
 
         if camera_view_request is not None and not reset_requested:
             with torch.inference_mode():
@@ -2673,7 +2989,14 @@ def main() -> None:
                         fixed_joint.CreateBreakTorqueAttr().Set(1_000_000.0)
                         assisted_grasp_joints[arm] = joint_path
                         with state.lock:
-                            state.coaching_cue = "Needle secured between the jaws. Open the gripper to release it."
+                            if proxy_organ:
+                                focus_name = str(procedure.get("anatomy_focus", "Organ"))
+                                state.coaching_cue = (
+                                    f"{focus_name} secured with localized surface compression. "
+                                    "Retract smoothly; open the gripper to release and recover."
+                                )
+                            else:
+                                state.coaching_cue = "Needle secured between the jaws. Open the gripper to release it."
             with state.lock:
                 state.assisted_grasp_active = [arm in assisted_grasp_joints for arm in range(state.arms)]
                 state.tool_to_object_distance_m = [round(value, 5) if value is not None else None for value in grasp_distances]
@@ -2732,6 +3055,29 @@ def main() -> None:
                 if clearance is not None:
                     anatomy_clearances.append(clearance)
                 virtual_fixture_active = virtual_fixture_active or guard_active
+            if (
+                suture_model is not None
+                and suture_model.initialized
+                and arm in assisted_grasp_joints
+                and suture_model.tension_n > 0.04
+            ):
+                toward_thread = suture_model.points[-2] - suture_model.points[-1]
+                thread_length = float(np.linalg.norm(toward_thread))
+                if thread_length > 1e-7:
+                    toward_thread /= thread_length
+                    away_component = float(np.dot(translation, -toward_thread))
+                    if away_component > 0.0:
+                        resistance = float(np.clip(suture_model.tension_n / 2.0, 0.0, 0.82))
+                        translation += toward_thread * away_component * resistance
+                        adaptive_precision_active = True
+            if proxy_organ and surface_mesh_model is not None and arm in assisted_grasp_joints:
+                scale = surface_world_scale()
+                current_displacement = float(
+                    np.linalg.norm(surface_mesh_model.current_points - surface_mesh_model.original_points, axis=1).max(initial=0.0)
+                ) * scale
+                if current_displacement > 0.006:
+                    translation *= float(np.clip(1.0 - current_displacement / 0.040, 0.42, 0.82))
+                    adaptive_precision_active = True
             action_np[body_slice.start : body_slice.start + 3] = translation
         if puncture_active and needle_clearance is not None and needle_clearance > 0.006:
             puncture_active = False
@@ -2779,6 +3125,203 @@ def main() -> None:
         environment_terminated = bool(scalar_value(terminated))
         environment_truncated = bool(scalar_value(truncated))
         environment_success = native_success_from_info(info)
+
+        # These mechanics advance with the configured simulator step, not slow
+        # wall-clock rendering time (photorealistic rooms may render near 2 FPS).
+        mechanics_dt = 0.02
+        surface_changed = False
+        topology_changed = False
+        tissue_recovering = False
+        current_tool_positions = {
+            arm: position
+            for arm in range(state.arms)
+            if (position := tool_position_for_arm(arm)) is not None
+        }
+
+        if proxy_organ and surface_mesh_model is not None:
+            organ_grasp_initialized.intersection_update(assisted_grasp_joints)
+            for arm, current_tool in current_tool_positions.items():
+                if arm not in assisted_grasp_joints:
+                    continue
+                local_center = surface_local_point(current_tool)
+                scale = surface_world_scale()
+                if local_center is not None and arm not in organ_grasp_initialized:
+                    nearest_index = int(
+                        np.argmin(np.linalg.norm(surface_mesh_model.original_points - local_center[None, :], axis=1))
+                    )
+                    nearest_surface = surface_mesh_model.original_points[nearest_index]
+                    inward = np.mean(surface_mesh_model.original_points, axis=0) - nearest_surface
+                    inward_length = float(np.linalg.norm(inward))
+                    if inward_length > 1e-7:
+                        inward /= inward_length
+                        surface_changed = surface_mesh_model.deform(
+                            nearest_surface,
+                            inward * (0.0035 / max(scale, 1e-6)),
+                            radius_local=0.026 / max(scale, 1e-6),
+                            max_displacement_local=0.018 / max(scale, 1e-6),
+                            compliance=1.0,
+                        ) or surface_changed
+                    organ_grasp_initialized.add(arm)
+                previous_tool = previous_tool_positions.get(arm)
+                if local_center is None or previous_tool is None:
+                    continue
+                local_delta = surface_local_delta((current_tool - previous_tool) * 2.4)
+                if local_delta is not None:
+                    surface_changed = surface_mesh_model.deform(
+                        local_center,
+                        local_delta,
+                        radius_local=0.030 / max(scale, 1e-6),
+                        max_displacement_local=0.018 / max(scale, 1e-6),
+                        compliance=0.78,
+                    ) or surface_changed
+            if not assisted_grasp_joints:
+                tissue_recovering = surface_mesh_model.recover(0.052)
+                surface_changed = tissue_recovering or surface_changed
+
+        if suture_model is not None:
+            needle_tips = needle_tip_positions_world()
+            if len(needle_tips):
+                suture_model.update(needle_tips[0], mechanics_dt)
+                if puncture_active and not thread_was_inside_tissue and needle_surface is not None:
+                    if suture_model.add_tissue_anchor(needle_surface):
+                        with state.lock:
+                            state.coaching_cue = "Tissue entry pinned. Rotate the needle through and pull the suture toward the exit."
+                if puncture_active and needle_surface is not None:
+                    thread_last_surface = needle_surface.copy()
+                elif thread_was_inside_tissue and thread_last_surface is not None:
+                    if suture_model.add_tissue_anchor(thread_last_surface):
+                        with state.lock:
+                            state.coaching_cue = "Suture exited the tissue. Bring the loop back toward entry, then pull to cinch."
+                thread_was_inside_tissue = puncture_active
+                update_suture_visual()
+            if surface_mesh_model is not None:
+                if puncture_active and needle_surface is not None:
+                    local_center = surface_local_point(needle_surface)
+                    inward_world = (
+                        -needle_outward * min(0.00045, 0.00012 + penetration_depth * 0.025)
+                        if needle_outward is not None
+                        else np.asarray((0.0, 0.0, -0.0002), dtype=np.float32)
+                    )
+                    local_delta = surface_local_delta(inward_world)
+                    scale = surface_world_scale()
+                    if local_center is not None and local_delta is not None:
+                        surface_changed = surface_mesh_model.deform(
+                            local_center,
+                            local_delta,
+                            radius_local=0.018 / max(scale, 1e-6),
+                            max_displacement_local=0.012 / max(scale, 1e-6),
+                            compliance=0.58,
+                        ) or surface_changed
+                else:
+                    tissue_recovering = surface_mesh_model.recover(0.018)
+                    surface_changed = tissue_recovering or surface_changed
+
+        cut_active = False
+        if guide_kind == "cutting_path" and surface_mesh_model is not None:
+            current_tool = current_tool_positions.get(0)
+            previous_tool = previous_tool_positions.get(0)
+            if current_tool is not None and previous_tool is not None and len(room_waypoints) >= 2:
+                tool_step = float(np.linalg.norm(current_tool - previous_tool))
+                path_distance = min(
+                    float(
+                        np.linalg.norm(
+                            current_tool
+                            - (
+                                start
+                                + np.clip(
+                                    float(np.dot(current_tool - start, end - start))
+                                    / max(float(np.dot(end - start, end - start)), 1e-9),
+                                    0.0,
+                                    1.0,
+                                )
+                                * (end - start)
+                            )
+                        )
+                    )
+                    for start, end in zip(room_waypoints[:-1], room_waypoints[1:])
+                )
+                cut_clearance, _cut_outward, cut_surface = anatomy_surface_query(current_tool)
+                cut_active = (
+                    1e-5 < tool_step <= 0.025
+                    and path_distance <= 0.018
+                    and cut_clearance is not None
+                    and abs(cut_clearance) <= 0.012
+                )
+                if cut_active:
+                    local_start = surface_local_point(previous_tool)
+                    local_end = surface_local_point(current_tool)
+                    scale = surface_world_scale()
+                    removed = 0
+                    if local_start is not None and local_end is not None:
+                        removed = surface_mesh_model.cut_segment(
+                            local_start,
+                            local_end,
+                            radius_local=0.0042 / max(scale, 1e-6),
+                        )
+                    if removed:
+                        cut_length_m += tool_step
+                        topology_changed = True
+                        surface_changed = True
+                        incision_point = cut_surface if cut_surface is not None else current_tool
+                        if not incision_points_world or float(np.linalg.norm(incision_point - incision_points_world[-1])) >= 0.001:
+                            incision_points_world.append(np.asarray(incision_point, dtype=np.float32).copy())
+                        update_incision_visual()
+                        with state.lock:
+                            state.procedure_last_motion_at = time.monotonic()
+                            state.coaching_cue = f"Incision open: {cut_length_m * 1000:.0f} mm. Continue along the highlighted corridor."
+
+        if surface_changed:
+            author_surface_model(topology_changed=topology_changed)
+            if topology_changed:
+                refresh_anatomy_guard_volumes()
+
+        previous_tool_positions = {arm: position.copy() for arm, position in current_tool_positions.items()}
+        surface_scale = surface_world_scale() if surface_mesh_model is not None else 1.0
+        current_surface_displacement_m = (
+            float(
+                np.linalg.norm(surface_mesh_model.current_points - surface_mesh_model.original_points, axis=1).max(initial=0.0)
+            )
+            * surface_scale
+            if surface_mesh_model is not None
+            else 0.0
+        )
+        with state.lock:
+            state.mechanics["thread"].update(
+                {
+                    "active": suture_model is not None,
+                    "visible": bool(suture_model and suture_model.initialized),
+                    "tension_n": round(suture_model.tension_n, 4) if suture_model else 0.0,
+                    "peak_tension_n": round(suture_model.peak_tension_n, 4) if suture_model else 0.0,
+                    "tissue_anchors": len(suture_model.tissue_anchor_indices) if suture_model else 0,
+                    "knot_formed": bool(suture_model and suture_model.knot_formed),
+                    "knot_tightness": round(suture_model.knot_tightness, 4) if suture_model else 0.0,
+                }
+            )
+            state.mechanics["cut"].update(
+                {
+                    "active": cut_active,
+                    "topology_ready": surface_authoring_ready and guide_kind == "cutting_path",
+                    "length_m": round(cut_length_m, 5),
+                    "faces_removed": surface_mesh_model.removed_faces if guide_kind == "cutting_path" and surface_mesh_model else 0,
+                    "topology_revision": surface_mesh_model.revision if guide_kind == "cutting_path" and surface_mesh_model else 0,
+                }
+            )
+            state.mechanics["tissue"].update(
+                {
+                    "active": surface_mesh_model is not None,
+                    "model": "bounded_compliant_openusd_surface" if surface_mesh_model is not None else "none",
+                    "authoring_ready": surface_authoring_ready,
+                    "max_displacement_m": round(
+                        max(
+                            float(state.mechanics["tissue"].get("max_displacement_m", 0.0)),
+                            current_surface_displacement_m,
+                        ),
+                        6,
+                    ),
+                    "recovering": tissue_recovering,
+                    "surface_revision": surface_mesh_model.revision if surface_mesh_model is not None else 0,
+                }
+            )
 
         motion_active = any(bool(np.any(action_np[state.body_action_slice(arm)])) for arm in range(state.arms))
         current_time = time.monotonic()
@@ -2831,8 +3374,12 @@ def main() -> None:
                 default=None,
             )
             with state.lock:
+                custom_displacement = float(state.mechanics["tissue"].get("max_displacement_m", 0.0))
                 state.max_contact_force_n = max_force_value
-                state.max_tissue_displacement_m = max_displacement
+                state.max_tissue_displacement_m = max(
+                    (value for value in (max_displacement, custom_displacement) if value is not None),
+                    default=None,
+                )
                 state.max_tissue_deformation_proxy = max_deformation
                 state.max_tissue_stress_pa = max_stress
             last_safety_sample_time = loop_started
@@ -2847,6 +3394,9 @@ def main() -> None:
                 needle_puncture_active = state.needle_puncture_active
                 needle_penetration_depth_m = state.needle_penetration_depth_m
                 needle_tip_clearance_m = state.needle_tip_clearance_m
+                thread_metrics = dict(state.mechanics["thread"])
+                cut_metrics = dict(state.mechanics["cut"])
+                tissue_metrics = dict(state.mechanics["tissue"])
                 state.procedure_event_code = 0
             frame = {
                 "time_s": np.array(time.monotonic() - demo_started_monotonic, dtype=np.float64),
@@ -2872,6 +3422,19 @@ def main() -> None:
                     needle_tip_clearance_m if needle_tip_clearance_m is not None else np.nan,
                     dtype=np.float32,
                 ),
+                "suture_tension_n": np.array(thread_metrics.get("tension_n", 0.0), dtype=np.float32),
+                "suture_tissue_anchor_count": np.array(thread_metrics.get("tissue_anchors", 0), dtype=np.int16),
+                "suture_knot_formed": np.array(thread_metrics.get("knot_formed", False), dtype=np.bool_),
+                "suture_knot_tightness": np.array(thread_metrics.get("knot_tightness", 0.0), dtype=np.float32),
+                "incision_active": np.array(cut_metrics.get("active", False), dtype=np.bool_),
+                "incision_length_m": np.array(cut_metrics.get("length_m", 0.0), dtype=np.float32),
+                "incision_faces_removed": np.array(cut_metrics.get("faces_removed", 0), dtype=np.int32),
+                "incision_topology_revision": np.array(cut_metrics.get("topology_revision", 0), dtype=np.int32),
+                "surface_max_tissue_displacement_m": np.array(
+                    tissue_metrics.get("max_displacement_m", 0.0), dtype=np.float32
+                ),
+                "surface_tissue_recovering": np.array(tissue_metrics.get("recovering", False), dtype=np.bool_),
+                "surface_tissue_revision": np.array(tissue_metrics.get("surface_revision", 0), dtype=np.int32),
                 "anatomy_showcase_position_w": np.asarray((-0.117, -0.0945, -0.144), dtype=np.float32),
                 "anatomy_showcase_quaternion_w": np.asarray((1.0, 0.0, 0.0, 0.0), dtype=np.float32),
             }

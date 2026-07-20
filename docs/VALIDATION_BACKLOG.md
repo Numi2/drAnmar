@@ -135,10 +135,11 @@ Known host/runtime blockers from the same pass:
   fixture activates before visible instrument penetration, preserves tangent/withdrawal motion, and does not block intended
   needle, cutting-path, retraction, or handover work. The current sampled surface is a usability boundary, not tissue
   deformation or a clinically validated forbidden-region model.
-- Validate the liver, gallbladder, and bladder visible-mesh proxies against their underlying rigid collision
-  targets before using those rooms for quantitative tissue-handling studies.
-- Keep incision-path rehearsal labelled as trajectory practice until deformable tissue, puncture, topology
-  change, thread tension, and independent biomechanical validation are implemented.
+- Calibrate the liver, gallbladder, and bladder compliant-surface parameters against tissue-specific measurements,
+  replace the rigid gross-motion core where a validated FEM/MPM body is available, and independently validate
+  contact/strain telemetry before quantitative tissue-handling studies.
+- Exercise complete suturing and incision trajectories with clinicians; validate thread material, puncture force,
+  knot security, tissue tearing, cut width/depth, topology quality, and performance before making biomechanical claims.
 - Run a small two-scenario, two-seed challenge matrix and confirm every rollout resets, replays, records,
   analyzes, and updates the durable matrix manifest before the next rollout begins.
 - Confirm challenge summary means, 95% normal intervals, native-success rate, intervention rate, safety-event
@@ -254,7 +255,29 @@ Captured on Gilgamesh in the running Isaac workstation rather than from mocked U
   entry state. It keeps active instrument, smart action, movement, grasp, release, and camera feedback visible
   instead of overlaying staged labels.
 
-Still required before research claims expand: validate the rigid entry proxy against an independently measured
-surface, calibrate camera projection and depth cues, verify collision/contact telemetry under every anatomy
-scene, and run clinician usability studies. This remains simulation training, not deformable biomechanics or
-clinical validation.
+## 2026-07-20 suturing, cutting, and organ-mechanics evidence
+
+- The suturing room launched with the official CT liver OpenUSD scene, a visible 48-node constrained strand, and
+  compliant surface authoring active. Untouched strand tension remained at 0.0 N after changing integration from
+  wall-clock rendering time to the simulator's 20 ms step. Entry/exit pins, tension resistance, tissue deformation,
+  loop closure and the persistent cinch constraint are implemented; a complete clinician-driven knot remains open.
+- The incision room reported `topology_ready: true`. Its startup round-trip changed a live liver point, removed and
+  read back at least one OpenUSD face, then restored the original vertex and face arrays before frame 1. A complete
+  tool-driven incision from corridor start to recovery remains open for visual and topology-quality review.
+- Liver retraction, gallbladder repositioning, and dual-arm bladder handover each resolved the correct visible organ,
+  retained the matching OpenUSD operating room, and independently passed live surface-authoring round trips.
+- A real dual-PSM API run approached the bladder from 67.7 mm to 5.3 mm, activated assisted capture, created a
+  3.5 mm local jaw indentation, moved the organ 117.8 mm, switched to elastic recovery on release, and restored
+  displacement and surface revision to zero on Reset.
+- A 65-frame demonstration saved suture tension/pins/knot state, incision activity/length/removed faces/topology
+  revision, and compliant-surface displacement/recovery/revision in the NPZ. The v2 JSON sidecar preserved the
+  mechanics modality, final mechanics state, and task-analysis metrics.
+
+Still open: full clinician-driven entry-through-exit knot completion; continuous tool-driven cut and incision-edge
+review; tissue-specific FEM/MPM material calibration; validated needle, thread, cutting and organ contact forces;
+tearing, bleeding, cautery and healing models; and clinical construct/usability studies.
+
+Still required before research claims expand: calibrate the interactive surface, thread and incision models against
+independent measurements, calibrate camera projection and depth cues, verify collision/contact telemetry under every
+anatomy scene, and run clinician usability studies. This remains simulation training, not validated biomechanics or
+clinical use.
