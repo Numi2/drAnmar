@@ -328,7 +328,7 @@ COURSES.extend(
                     "id": "ultrasound-access-live",
                     "title": "Ultrasound-guided access",
                     "eyebrow": "Runnable procedural B-mode lab · 30 min",
-                    "task": "Isaac-Reach-PSM-IK-Rel-v0",
+                    "task": "Isaac-Reach-Dual-PSM-IK-Rel-v0",
                     "procedure_id": "ultrasound-guided-access",
                     "video": None,
                     "mode": "live",

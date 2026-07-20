@@ -314,3 +314,25 @@ Deferred validation gates for the expanded rooms:
   RTI licensing are present; compare the procedural B-mode proxy with official sensor output before combining data.
 - Have specialty clinicians author acceptable phases, recovery actions, error taxonomies and task-specific scoring;
   then perform construct validity, inter-rater agreement, usability, workload and learning-transfer studies.
+
+## 2026-07-20 procedure-mechanics polish
+
+- Removed marker-only success shortcuts from shunt verification, knot tying, anastomosis pressure testing, clip
+  placement, vessel division, hemostasis and ultrasound access. Progress now depends on the intended instrument
+  interaction, stable dwell or topology change.
+- Added PSM jaw control to the native dual-reach base used by vascular, dissection, biopsy and ultrasound rooms, so
+  their close, compression and counter-traction actions are recorded in the same 14-channel action stream.
+- Added stable shunt verification, off-target clip and protected-interval events, early-release rebleed, actual
+  alternating two-arm knot throws, counter-traction-gated dissection progress, and protected-structure penalties.
+- Converted ultrasound access to a bimanual room: Instrument 1 positions and stabilizes the probe while Instrument 2
+  advances and withdraws the needle. Confidence now depends on probe pose and dwell; needle visibility, target
+  contact, withdrawal and protected-vessel contacts are tracked separately.
+- Added the new procedure events to demonstration files and task-specific scoring. They remain engineering proxies.
+
+Focused gates still required after this polish:
+
+- Clinician-check the spatial tolerance for clip deployment and division, the probe/needle role convention, knot
+  crossing detection, dissection counter-traction radius, and each stability dwell on the live Gilgamesh controls.
+- Confirm all added gripper action terms retain the intended PSM joint ordering after future Isaac Lab upgrades.
+- Replace proximity and close-event procedure proxies with device-specific clip, suction, probe, scissors and
+  dissector assets plus calibrated contact and material models before any claim of clinical fidelity.

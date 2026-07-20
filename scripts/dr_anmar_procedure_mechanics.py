@@ -50,6 +50,8 @@ class TubeInsertionModel:
     buckling_events: int = 0
     buckled: bool = False
     patency_percent: float = 0.0
+    stable_time_s: float = 0.0
+    placement_verified: bool = False
 
     def __post_init__(self) -> None:
         self.entry = np.asarray(self.entry, dtype=np.float32)
@@ -67,8 +69,10 @@ class TubeInsertionModel:
         self.buckling_events = 0
         self.buckled = False
         self.patency_percent = 0.0
+        self.stable_time_s = 0.0
+        self.placement_verified = False
 
-    def update(self, tip: np.ndarray | None, grasped: bool) -> None:
+    def update(self, tip: np.ndarray | None, grasped: bool, dt: float) -> None:
         if tip is None:
             return
         tip = np.asarray(tip, dtype=np.float32)
@@ -98,6 +102,17 @@ class TubeInsertionModel:
         load_penalty = float(np.clip(self.wall_load_proxy_n / 2.0, 0.0, 1.0))
         buckle_penalty = 0.35 if self.buckled else 0.0
         self.patency_percent = float(np.clip(100.0 * depth_fraction * (1.0 - 0.55 * load_penalty - buckle_penalty), 0.0, 100.0))
+        speed = float(np.linalg.norm(tip - self.previous_tip)) / max(float(dt), 1e-4) if self.previous_tip is not None else 0.0
+        stable = bool(
+            grasped
+            and depth_fraction >= 0.88
+            and self.radial_error_m <= self.lumen_radius_m
+            and self.wall_load_proxy_n <= 0.55
+            and not self.buckled
+            and speed <= 0.018
+        )
+        self.stable_time_s = self.stable_time_s + max(0.0, float(dt)) if stable else max(0.0, self.stable_time_s - 2.0 * max(0.0, float(dt)))
+        self.placement_verified = self.stable_time_s >= 0.65
         self.previous_tip = tip.copy()
 
     def curve_points(self, tip: np.ndarray | None, nodes: int = 18) -> np.ndarray:
@@ -121,6 +136,8 @@ class TubeInsertionModel:
             "buckled": self.buckled,
             "buckling_events": self.buckling_events,
             "patency_percent": round(self.patency_percent, 1),
+            "stable_time_s": round(self.stable_time_s, 2),
+            "placement_verified": self.placement_verified,
         }
 
 
@@ -128,9 +145,29 @@ class TubeInsertionModel:
 class ClosureQualityModel:
     target_stitches: int
     mode: str
+    target_throws: int = 3
     pressure_kpa: float = 0.0
+    throw_count: int = 0
+    alternating_crossings: int = 0
+    last_tool_side: int = 0
+    crossing_cooldown_s: float = 0.0
+    stable_closure_time_s: float = 0.0
 
-    def snapshot(self, thread: Any | None, waypoint_count: int) -> dict[str, Any]:
+    def reset(self) -> None:
+        self.pressure_kpa = 0.0
+        self.throw_count = 0
+        self.alternating_crossings = 0
+        self.last_tool_side = 0
+        self.crossing_cooldown_s = 0.0
+        self.stable_closure_time_s = 0.0
+
+    def snapshot(
+        self,
+        thread: Any | None,
+        tool_positions: dict[int, np.ndarray],
+        grippers_open: list[bool],
+        dt: float,
+    ) -> dict[str, Any]:
         anchors = len(getattr(thread, "tissue_anchor_indices", [])) if thread is not None else 0
         stitches = int(getattr(thread, "stitch_count", anchors // 2)) if thread is not None else 0
         tension = float(getattr(thread, "tension_n", 0.0)) if thread is not None else 0.0
@@ -140,9 +177,30 @@ class ClosureQualityModel:
         completion = float(np.clip(stitches / max(1, self.target_stitches), 0.0, 1.0))
         closure_gap = float(np.clip(0.012 * (1.0 - completion) + max(0.0, 0.20 - tightness) * 0.003, 0.0004, 0.016))
         narrowing = float(np.clip(max(0.0, tension - 0.65) * 22.0 + max(0.0, tightness - 0.92) * 35.0, 0.0, 100.0))
-        if self.mode == "anastomosis" and waypoint_count >= 7:
-            self.pressure_kpa = min(12.0, self.pressure_kpa + 0.18)
+        self.crossing_cooldown_s = max(0.0, self.crossing_cooldown_s - max(0.0, float(dt)))
+        primary = tool_positions.get(0)
+        secondary = tool_positions.get(1)
+        both_closed = len(grippers_open) >= 2 and not grippers_open[0] and not grippers_open[1]
+        if self.mode == "knot_tying" and primary is not None and secondary is not None and both_closed:
+            relative = np.asarray(primary, dtype=np.float32) - np.asarray(secondary, dtype=np.float32)
+            side = 1 if relative[0] >= 0.008 else -1 if relative[0] <= -0.008 else 0
+            close_enough = float(np.linalg.norm(relative)) <= 0.095
+            if side and close_enough and self.last_tool_side and side != self.last_tool_side and self.crossing_cooldown_s <= 0.0:
+                self.throw_count = min(self.target_throws, self.throw_count + 1)
+                self.alternating_crossings += 1
+                self.crossing_cooldown_s = 0.32
+            if side:
+                self.last_tool_side = side
+        closure_stable = bool(completion >= 1.0 and closure_gap <= 0.006 and tension <= 0.95)
+        self.stable_closure_time_s = (
+            self.stable_closure_time_s + max(0.0, float(dt))
+            if closure_stable
+            else max(0.0, self.stable_closure_time_s - max(0.0, float(dt)))
+        )
+        if self.mode == "anastomosis" and self.stable_closure_time_s >= 0.6:
+            self.pressure_kpa = min(12.0, self.pressure_kpa + 2.4 * max(0.0, float(dt)))
         leak_rate = float(np.clip(180.0 * (closure_gap / 0.012) ** 2 + narrowing * 0.45, 0.0, 260.0))
+        slippage = float(np.clip(1.0 - tightness * 0.70 - self.throw_count / max(1, self.target_throws) * 0.30, 0.0, 1.0))
         return {
             "active": True,
             "mode": self.mode,
@@ -156,62 +214,176 @@ class ClosureQualityModel:
             "test_pressure_kpa": round(self.pressure_kpa, 2),
             "leak_rate_proxy_ml_min": round(leak_rate, 1),
             "over_tension_events": int(getattr(thread, "over_tension_events", 0)) if thread is not None else 0,
+            "throw_count": self.throw_count,
+            "target_throws": self.target_throws,
+            "alternating_crossings": self.alternating_crossings,
+            "slippage_proxy": round(slippage, 3),
+            "stable_closure_time_s": round(self.stable_closure_time_s, 2),
+            "pressure_test_ready": closure_stable,
         }
 
 
 @dataclass
 class VascularControlModel:
     mode: str
+    waypoints: np.ndarray
     baseline_bleed_rate_ml_min: float = 240.0
     blood_loss_proxy_ml: float = 0.0
     rebleed: bool = False
+    placed_sites: list[int] = field(default_factory=list)
+    divided: bool = False
+    division_inside_interval: bool = False
+    off_target_deployments: int = 0
+    protected_violations: int = 0
+    definitive_control: bool = False
+    localized_time_s: float = 0.0
+    time_to_control_s: float | None = None
+    stable_control_time_s: float = 0.0
+    elapsed_s: float = 0.0
+    previous_tools: dict[int, np.ndarray] = field(default_factory=dict)
+    previous_open: list[bool] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.waypoints = np.asarray(self.waypoints, dtype=np.float32).reshape(-1, 3)
+        if self.mode == "clip_divide":
+            self.clip_sites = [self.waypoints[min(index, len(self.waypoints) - 1)] for index in (1, 3)]
+            self.division_center = (self.clip_sites[0] + self.clip_sites[1]) * 0.5
+            self.source = self.division_center
+        else:
+            self.clip_sites = []
+            self.source = self.waypoints[min(2, len(self.waypoints) - 1)]
+            self.division_center = self.source
 
     def reset(self) -> None:
         self.blood_loss_proxy_ml = 0.0
         self.rebleed = False
+        self.placed_sites.clear()
+        self.divided = False
+        self.division_inside_interval = False
+        self.off_target_deployments = 0
+        self.protected_violations = 0
+        self.definitive_control = False
+        self.localized_time_s = 0.0
+        self.time_to_control_s = None
+        self.stable_control_time_s = 0.0
+        self.elapsed_s = 0.0
+        self.previous_tools.clear()
+        self.previous_open.clear()
 
     def snapshot(
         self,
-        waypoint_count: int,
-        source_distance_m: float | None,
-        grippers_closed: int,
+        tool_positions: dict[int, np.ndarray],
+        grippers_open: list[bool],
         dt: float,
     ) -> dict[str, Any]:
-        distance = float(source_distance_m if source_distance_m is not None else 1.0)
+        self.elapsed_s += max(0.0, float(dt))
+        positions = {arm: np.asarray(position, dtype=np.float32) for arm, position in tool_positions.items()}
+        distances = [float(np.linalg.norm(position - self.source)) for position in positions.values()]
+        distance = min(distances, default=1.0)
         proximity = float(np.clip(1.0 - distance / 0.045, 0.0, 1.0))
+        close_edges = [
+            arm
+            for arm, is_open in enumerate(grippers_open)
+            if arm < len(self.previous_open) and self.previous_open[arm] and not is_open
+        ]
         if self.mode == "clip_divide":
-            clips = int(waypoint_count >= 2) + int(waypoint_count >= 3)
-            divided = waypoint_count >= 4
-            safe_interval = bool(divided and clips == 2)
+            for arm in close_edges:
+                position = positions.get(arm)
+                if position is None:
+                    continue
+                available = [site for site in range(2) if site not in self.placed_sites]
+                nearest = min(available, key=lambda site: float(np.linalg.norm(position - self.clip_sites[site])), default=None)
+                if nearest is not None and float(np.linalg.norm(position - self.clip_sites[nearest])) <= 0.020:
+                    self.placed_sites.append(nearest)
+                elif float(np.linalg.norm(position - self.source)) <= 0.055:
+                    self.off_target_deployments += 1
+            if len(self.placed_sites) >= 2 and not self.divided:
+                for arm, position in positions.items():
+                    previous = self.previous_tools.get(arm)
+                    if previous is None or float(np.linalg.norm(position - previous)) < 0.001:
+                        continue
+                    center_distance = _point_segment_distance(self.division_center, previous, position)
+                    exposure_held = any(
+                        other != arm
+                        and other < len(grippers_open)
+                        and not grippers_open[other]
+                        and float(np.linalg.norm(other_position - self.source)) <= 0.060
+                        for other, other_position in positions.items()
+                    )
+                    if center_distance <= 0.010 and exposure_held:
+                        self.divided = True
+                        self.division_inside_interval = True
+                        break
+            elif len(self.placed_sites) < 2:
+                for arm, position in positions.items():
+                    previous = self.previous_tools.get(arm)
+                    if previous is not None and _point_segment_distance(self.division_center, previous, position) <= 0.007:
+                        if float(np.linalg.norm(position - previous)) >= 0.002:
+                            self.protected_violations += 1
+                            break
+            clips = len(self.placed_sites)
+            divided = self.divided
+            safe_interval = self.division_inside_interval
             residual_flow = 100.0 if clips == 0 else 45.0 if clips == 1 else 3.0
             if divided and clips < 2:
                 residual_flow = 100.0
-            return {
+            output = {
                 "active": True,
                 "mode": self.mode,
                 "clips_placed": clips,
                 "divided": divided,
                 "division_inside_protected_interval": safe_interval,
                 "residual_flow_percent": residual_flow,
-                "clip_spacing_m": 0.018 if clips == 2 else 0.0,
+                "clip_spacing_m": round(float(np.linalg.norm(self.clip_sites[0] - self.clip_sites[1])), 5) if clips == 2 else 0.0,
+                "off_target_deployments": self.off_target_deployments,
+                "protected_violations": self.protected_violations,
             }
-        suction = proximity * (0.50 if waypoint_count >= 2 else 0.20)
-        compression = proximity * min(1.0, grippers_closed * 0.55)
-        definitive = 0.88 if waypoint_count >= 4 else 0.0
-        control = float(np.clip(max(suction + compression, definitive), 0.0, 0.98))
-        bleed_rate = self.baseline_bleed_rate_ml_min * (1.0 - control)
-        self.blood_loss_proxy_ml += bleed_rate * max(0.0, dt) / 60.0
-        self.rebleed = bool(waypoint_count >= 4 and distance > 0.06 and definitive < 0.9)
-        return {
-            "active": True,
-            "mode": self.mode,
-            "source_distance_m": round(distance, 5),
-            "bleed_rate_proxy_ml_min": round(bleed_rate, 1),
-            "blood_loss_proxy_ml": round(self.blood_loss_proxy_ml, 2),
-            "visibility_percent": round(float(np.clip(100.0 - bleed_rate * 0.30, 8.0, 100.0)), 1),
-            "controlled": bleed_rate <= 35.0,
-            "rebleed": self.rebleed,
-        }
+        else:
+            closed_near_source = sum(
+                arm < len(grippers_open) and not grippers_open[arm] and float(np.linalg.norm(position - self.source)) <= 0.032
+                for arm, position in positions.items()
+            )
+            suction = proximity * 0.52
+            compression = min(0.48, closed_near_source * 0.34)
+            if distance <= 0.028:
+                self.localized_time_s += max(0.0, float(dt))
+            if any(
+                arm in close_edges and float(np.linalg.norm(positions[arm] - self.source)) <= 0.020
+                for arm in close_edges
+                if arm in positions
+            ) and self.localized_time_s >= 0.35:
+                self.definitive_control = True
+                self.rebleed = False
+            if self.definitive_control and distance > 0.070 and self.stable_control_time_s < 0.8:
+                self.definitive_control = False
+                self.rebleed = True
+                self.stable_control_time_s = 0.0
+            definitive = 0.90 if self.definitive_control else 0.0
+            control = float(np.clip(max(suction + compression, definitive), 0.0, 0.98))
+            bleed_rate = self.baseline_bleed_rate_ml_min * (1.0 - control)
+            self.blood_loss_proxy_ml += bleed_rate * max(0.0, dt) / 60.0
+            controlled = bleed_rate <= 35.0
+            self.stable_control_time_s = self.stable_control_time_s + max(0.0, float(dt)) if controlled else 0.0
+            if controlled and self.time_to_control_s is None:
+                self.time_to_control_s = self.elapsed_s
+            output = {
+                "active": True,
+                "mode": self.mode,
+                "source_distance_m": round(distance, 5),
+                "bleed_rate_proxy_ml_min": round(bleed_rate, 1),
+                "blood_loss_proxy_ml": round(self.blood_loss_proxy_ml, 2),
+                "visibility_percent": round(float(np.clip(100.0 - bleed_rate * 0.30, 8.0, 100.0)), 1),
+                "localized": self.localized_time_s >= 0.35,
+                "time_to_localize_s": round(self.elapsed_s - self.localized_time_s + 0.35, 2) if self.localized_time_s >= 0.35 else None,
+                "definitive_control": self.definitive_control,
+                "time_to_control_s": round(self.time_to_control_s, 2) if self.time_to_control_s is not None else None,
+                "stable_control_time_s": round(self.stable_control_time_s, 2),
+                "controlled": controlled,
+                "rebleed": self.rebleed,
+            }
+        self.previous_tools = {arm: position.copy() for arm, position in positions.items()}
+        self.previous_open = list(grippers_open)
+        return output
 
 
 @dataclass
@@ -220,36 +392,69 @@ class UltrasoundAccessModel:
     protected_center: np.ndarray
     protected_radius_m: float = 0.012
     min_target_error_m: float = 1.0
+    scan_pose: np.ndarray | None = None
+    previous_probe: np.ndarray | None = None
+    stable_probe_time_s: float = 0.0
+    protected_contacts: int = 0
+    was_protected_contact: bool = False
+    target_reached: bool = False
+    withdrawn_on_path: bool = False
 
     def __post_init__(self) -> None:
         self.target = np.asarray(self.target, dtype=np.float32)
         self.protected_center = np.asarray(self.protected_center, dtype=np.float32)
+        self.scan_pose = np.asarray(self.scan_pose if self.scan_pose is not None else self.target + (-0.035, -0.020, 0.025), dtype=np.float32)
 
     def reset(self) -> None:
         self.min_target_error_m = 1.0
+        self.previous_probe = None
+        self.stable_probe_time_s = 0.0
+        self.protected_contacts = 0
+        self.was_protected_contact = False
+        self.target_reached = False
+        self.withdrawn_on_path = False
 
-    def snapshot(self, tool: np.ndarray | None, waypoints: np.ndarray) -> dict[str, Any]:
-        if tool is None:
+    def snapshot(self, probe: np.ndarray | None, needle: np.ndarray | None, waypoints: np.ndarray, dt: float) -> dict[str, Any]:
+        if probe is None or needle is None:
             return {"active": True, "target_visible": False}
-        tool = np.asarray(tool, dtype=np.float32)
-        target_error = float(np.linalg.norm(tool - self.target))
+        probe = np.asarray(probe, dtype=np.float32)
+        needle = np.asarray(needle, dtype=np.float32)
+        target_error = float(np.linalg.norm(needle - self.target))
         self.min_target_error_m = min(self.min_target_error_m, target_error)
         path_error = min(
-            (_point_segment_distance(tool, start, end) for start, end in zip(waypoints[:-1], waypoints[1:])),
+            (_point_segment_distance(needle, start, end) for start, end in zip(waypoints[:-1], waypoints[1:])),
             default=target_error,
         )
-        protected_clearance = float(np.linalg.norm(tool - self.protected_center) - self.protected_radius_m)
-        confidence = float(np.clip(1.0 - target_error / 0.09, 0.0, 1.0))
-        visibility = float(np.clip(1.0 - path_error / 0.035, 0.0, 1.0))
+        protected_clearance = float(np.linalg.norm(needle - self.protected_center) - self.protected_radius_m)
+        probe_error = float(np.linalg.norm(probe - self.scan_pose))
+        probe_speed = float(np.linalg.norm(probe - self.previous_probe)) / max(float(dt), 1e-4) if self.previous_probe is not None else 0.0
+        probe_stable = probe_error <= 0.035 and probe_speed <= 0.028
+        self.stable_probe_time_s = self.stable_probe_time_s + max(0.0, float(dt)) if probe_stable else max(0.0, self.stable_probe_time_s - 2.0 * max(0.0, float(dt)))
+        confidence = float(np.clip(1.0 - probe_error / 0.075, 0.0, 1.0)) * float(np.clip(self.stable_probe_time_s / 0.45, 0.0, 1.0))
+        visibility = float(np.clip(1.0 - path_error / 0.035, 0.0, 1.0)) * confidence
+        protected_contact = protected_clearance <= 0.0
+        if protected_contact and not self.was_protected_contact:
+            self.protected_contacts += 1
+        self.was_protected_contact = protected_contact
+        target_contact = target_error <= 0.008 and protected_clearance > 0.0 and confidence >= 0.55
+        self.target_reached = self.target_reached or target_contact
+        if self.target_reached and target_error >= 0.030 and visibility >= 0.35 and not protected_contact:
+            self.withdrawn_on_path = True
+        self.previous_probe = probe.copy()
         return {
             "active": True,
             "target_visible": confidence >= 0.25,
             "target_confidence": round(confidence, 3),
+            "probe_error_m": round(probe_error, 5),
+            "probe_stable_time_s": round(self.stable_probe_time_s, 2),
             "needle_visibility": round(visibility, 3),
             "target_error_m": round(target_error, 5),
             "minimum_target_error_m": round(self.min_target_error_m, 5),
             "protected_clearance_m": round(protected_clearance, 5),
-            "target_contact": target_error <= 0.008 and protected_clearance > 0.0,
+            "protected_contacts": self.protected_contacts,
+            "target_contact": target_contact,
+            "target_reached": self.target_reached,
+            "withdrawn_on_path": self.withdrawn_on_path,
         }
 
 
@@ -258,25 +463,29 @@ class ProcedureMechanics:
     kind: str
     waypoints: np.ndarray
     target_stitches: int = 1
+    target_throws: int = 3
     tube: TubeInsertionModel | None = field(init=False, default=None)
     closure: ClosureQualityModel | None = field(init=False, default=None)
     vascular: VascularControlModel | None = field(init=False, default=None)
     ultrasound: UltrasoundAccessModel | None = field(init=False, default=None)
+    traction_time_s: float = field(init=False, default=0.0)
 
     def __post_init__(self) -> None:
         self.waypoints = np.asarray(self.waypoints, dtype=np.float32).reshape(-1, 3)
         if self.kind == "tube_insertion" and len(self.waypoints) >= 3:
             self.tube = TubeInsertionModel(self.waypoints[1], self.waypoints[-1])
         if self.kind in {"running_suture", "anastomosis", "knot_tying", "threading"}:
-            self.closure = ClosureQualityModel(max(1, self.target_stitches), self.kind)
+            self.closure = ClosureQualityModel(max(1, self.target_stitches), self.kind, max(1, self.target_throws))
         if self.kind in {"clip_divide", "hemostasis"}:
-            self.vascular = VascularControlModel(self.kind)
+            self.vascular = VascularControlModel(self.kind, self.waypoints)
         if self.kind == "ultrasound_access" and len(self.waypoints):
             target = self.waypoints[-1]
             protected = target + np.asarray((0.018, -0.012, -0.004), dtype=np.float32)
-            self.ultrasound = UltrasoundAccessModel(target, protected)
+            scan_pose = self.waypoints[0] if len(self.waypoints) else target + (-0.035, -0.020, 0.025)
+            self.ultrasound = UltrasoundAccessModel(target, protected, scan_pose=scan_pose)
 
     def reset(self) -> None:
+        self.traction_time_s = 0.0
         if self.tube:
             self.tube.reset()
         if self.vascular:
@@ -284,7 +493,7 @@ class ProcedureMechanics:
         if self.ultrasound:
             self.ultrasound.reset()
         if self.closure:
-            self.closure.pressure_kpa = 0.0
+            self.closure.reset()
 
     def update(
         self,
@@ -302,27 +511,46 @@ class ProcedureMechanics:
         closed = sum(not value for value in grippers_open)
         result: dict[str, dict[str, Any]] = {}
         if self.tube:
-            self.tube.update(primary, assisted_grasped)
+            self.tube.update(primary, assisted_grasped, dt)
             result["tube"] = self.tube.snapshot()
         if self.closure:
-            result["closure"] = self.closure.snapshot(thread, waypoint_count)
+            result["closure"] = self.closure.snapshot(thread, tool_positions, grippers_open, dt)
         if self.vascular:
-            source = self.waypoints[2] if len(self.waypoints) > 2 else self.waypoints[-1]
-            distances = [float(np.linalg.norm(position - source)) for position in (primary, secondary) if position is not None]
-            result["vascular"] = self.vascular.snapshot(waypoint_count, min(distances) if distances else None, closed, dt)
+            result["vascular"] = self.vascular.snapshot(tool_positions, grippers_open, dt)
         if self.ultrasound:
-            result["ultrasound"] = self.ultrasound.snapshot(primary, self.waypoints)
+            result["ultrasound"] = self.ultrasound.snapshot(primary, secondary, self.waypoints, dt)
         if self.kind in {"dissection", "biopsy"}:
-            progress = float(np.clip(waypoint_count / max(1, len(self.waypoints)), 0.0, 1.0))
             faces = int(cut.get("faces_removed", 0))
+            cut_length = float(cut.get("length_m", 0.0))
+            target_length = max(0.035, sum(float(np.linalg.norm(end - start)) for start, end in zip(self.waypoints[:-1], self.waypoints[1:])))
+            topology_progress = float(np.clip(cut_length / target_length, 0.0, 1.0))
+            protected_center = np.mean(self.waypoints, axis=0) + np.asarray((0.0, 0.028, -0.004), dtype=np.float32)
+            clearances = [float(np.linalg.norm(position - protected_center) - 0.014) for position in tool_positions.values()]
+            protected_clearance = min(clearances, default=1.0)
+            protected_contact = protected_clearance <= 0.0
+            path_progress = float(np.clip(waypoint_count / max(1, len(self.waypoints)), 0.0, 1.0))
+            field_center = np.mean(self.waypoints, axis=0)
+            traction_active = bool(
+                secondary is not None
+                and len(grippers_open) >= 2
+                and not grippers_open[1]
+                and float(np.linalg.norm(secondary - field_center)) <= 0.085
+            )
+            self.traction_time_s = self.traction_time_s + max(0.0, float(dt)) if traction_active else max(0.0, self.traction_time_s - max(0.0, float(dt)))
+            exposure_factor = 1.0 if self.traction_time_s >= 0.25 else 0.55
+            raw_progress = min(path_progress, topology_progress) if self.kind == "biopsy" else 0.25 * path_progress + 0.75 * topology_progress
+            progress = raw_progress * exposure_factor
             result["dissection"] = {
                 "active": True,
                 "mode": self.kind,
                 "plane_progress": round(progress, 3),
                 "faces_separated": faces,
-                "protected_contact": False,
-                "margin_consistency_percent": round(100.0 * progress * (1.0 if faces else 0.35), 1),
-                "specimen_released": bool(self.kind == "biopsy" and progress >= 0.85 and faces > 8),
+                "protected_contact": protected_contact,
+                "protected_clearance_m": round(protected_clearance, 5),
+                "traction_active": traction_active,
+                "traction_time_s": round(self.traction_time_s, 2),
+                "margin_consistency_percent": round(100.0 * progress * (1.0 if not protected_contact else 0.55), 1),
+                "specimen_released": bool(self.kind == "biopsy" and progress >= 0.85 and faces > 8 and not protected_contact),
             }
         if self.kind == "recovery":
             failure_active = scenario_id != "baseline"

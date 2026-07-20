@@ -108,8 +108,9 @@ and object pose together for Behavior Cloning.
 - Live suturing mechanics: an attached constrained strand, tissue entry/exit pins, tension response, cinch state,
   multi-bite running closure, intracorporeal-knot and anastomosis/leak-test state, compliant surface motion,
   reset, procedure-specific progress scoring, and synchronized recording.
-- Interactive vascular-control, hemostasis, procedural ultrasound, tissue-plane dissection, lesion-excision,
-  and failure-recovery engineering models with synchronized research telemetry.
+- Action-driven vascular control, hemostasis, bimanual procedural ultrasound, tissue-plane dissection,
+  lesion excision, and failure recovery: clip and control events require actual jaw actions, probe and needle
+  roles are separate, and dissection progress requires both topology change and counter-traction.
 - Live incision mechanics that remove swept faces from the displayed OpenUSD liver mesh, expose the incision bed,
   record cut length/topology revisions, and restore the exact original topology on reset.
 - Compliant liver, gallbladder, and bladder surfaces with localized jaw indentation, bounded drag deformation,
