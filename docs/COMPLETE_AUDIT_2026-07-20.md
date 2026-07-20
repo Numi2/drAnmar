@@ -41,8 +41,8 @@ biomechanical and clinician-facing claims remain explicit validation gates rathe
 - Hub and worker reject cross-site browser mutations and emit no-store, no-sniff, no-referrer and same-site
   resource headers. This reduces browser-origin attacks but does not replace authentication or TLS.
 - User-authored study and dataset titles, plus displayed server errors, are HTML-escaped before insertion.
-- Public-release scanning uses Git index blobs rather than recursively hydrating ignored/cloud-evicted files,
-  so a release audit cannot freeze on a local runtime asset.
+- Public-release scanning uses bounded parallel reads of tracked and candidate public files rather than
+  recursively hydrating ignored/cloud-evicted runtime assets, so a release audit cannot freeze on local data.
 
 ## Curriculum and procedure integrity
 
@@ -76,9 +76,10 @@ domain evidence:
   organ material parameters against accepted bench or biomechanical references.
 - Conduct clinician usability and construct-validity studies; telemetry coaching remains an engineering
   research proxy and must not be represented as a clinical score.
-- Add an authenticated TLS reverse proxy before use outside a private trusted network. Multi-browser control
-  is intentionally a shared workstation today; operational use should assign one active operator.
+- Configure the new optional application access token and HTTPS before use outside a private trusted network.
+  The single-operator lease now prevents two browser sessions from mutating the same live workstation.
 - Validate optional RTI DDS, Clarius, haptic, XR, eye tracking and physical hardware only after their licensed
   runtimes and explicit safety boundaries are available.
 
-The detailed validation ledger remains in `docs/VALIDATION_BACKLOG.md`.
+The detailed validation backlog remains in `docs/VALIDATION_BACKLOG.md`; machine-readable gate state is in
+`docs/VALIDATION_GATES.json` and fails closed in CI if a validated claim lacks evidence.

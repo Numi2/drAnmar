@@ -1,0 +1,21 @@
+# Data governance boundary
+
+Dr.Anmar is simulation and preclinical research software. Its default workstation records simulated robot,
+anatomy, sensor, and browser-control telemetry. It does not request patient identifiers, patient images,
+operator video, voice, or measured eye gaze.
+
+The pointer channel is labelled `pointer_attention_proxy`; it must not be represented as eye tracking.
+External eye-tracker and XR gaze ingestion fails closed unless the deployment deliberately sets all of:
+
+- `DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS=1`
+- a non-empty `DR_ANMAR_STUDY_ID`
+- a non-empty `DR_ANMAR_CONSENT_PROTOCOL`
+
+Before enabling those values, the research owner must define consent, lawful basis, allowed operators,
+pseudonymization, retention/deletion, export controls, incident handling, and institutional approval. The study
+protocol—not this repository—owns those decisions. Each resulting demonstration manifest records the configured
+study and consent-protocol identifiers so an ungoverned dataset cannot be mistaken for approved study evidence.
+
+Access to a shared deployment should use `DR_ANMAR_ACCESS_TOKEN` and HTTPS with
+`DR_ANMAR_COOKIE_SECURE=1`. The application lease prevents simultaneous robot commands; it is not a substitute
+for institutional identity, authorization, audit logging, or a managed research-data repository.

@@ -1,0 +1,86 @@
+{
+  "schema": "dr.anmar.validation-gates.v1",
+  "release_claim": "simulation_and_preclinical_research_only",
+  "runtime_ready": false,
+  "clinical_ready": false,
+  "gates": [
+    {
+      "id": "all_openusd_rooms_on_gilgamesh",
+      "priority": "P0",
+      "state": "blocked_host",
+      "owner": "runtime_engineering",
+      "requirement": "Run all 19 procedure rooms across the supported anatomy presets on the isolated RTX 4090 host.",
+      "blocker": "Gilgamesh SSH and service ports were unreachable during the 2026-07-20 remediation pass.",
+      "evidence": []
+    },
+    {
+      "id": "isolated_performance_matrix",
+      "priority": "P0",
+      "state": "blocked_host",
+      "owner": "runtime_engineering",
+      "requirement": "Measure control rate, render rate, CPU, GPU memory, recording growth and save latency for each sensor profile.",
+      "blocker": "Requires the isolated RTX 4090 runtime.",
+      "evidence": []
+    },
+    {
+      "id": "biomechanical_calibration",
+      "priority": "P0",
+      "state": "blocked_external",
+      "owner": "biomechanics_and_clinical_panel",
+      "requirement": "Calibrate tissue, needle, suture, knot, cutting, shunt, flow and force models against accepted bench evidence.",
+      "blocker": "Requires physical reference data and specialist review; engineering proxies cannot supply this evidence.",
+      "evidence": []
+    },
+    {
+      "id": "clinician_construct_validity",
+      "priority": "P1",
+      "state": "blocked_external",
+      "owner": "clinical_research_lead",
+      "requirement": "Validate phases, coaching, workload, usability, learning transfer and agreement with blinded expert ratings.",
+      "blocker": "Requires approved clinician studies and statistical analysis.",
+      "evidence": []
+    },
+    {
+      "id": "robotic_ultrasound_runtime",
+      "priority": "P1",
+      "state": "blocked_dependency",
+      "owner": "gilgamesh_administrator",
+      "requirement": "Launch the pinned Isaac for Healthcare B-mode workflow and verify frames, calibration, probe pose and timestamps.",
+      "blocker": "Docker with NVIDIA Container Toolkit and a valid RTI Connext DDS licence are not installed.",
+      "evidence": []
+    },
+    {
+      "id": "optional_hardware_adapters",
+      "priority": "P2",
+      "state": "blocked_dependency",
+      "owner": "hardware_research_lead",
+      "requirement": "Validate haptic, XR, eye tracker, Clarius, RealSense and physical robot adapters with safety isolation.",
+      "blocker": "Licensed runtimes, approved devices and hardware safety plans are unavailable.",
+      "evidence": []
+    },
+    {
+      "id": "shared_workstation_control_boundary",
+      "priority": "P0",
+      "state": "source_ready",
+      "owner": "deployment_operator",
+      "requirement": "Configure access control and HTTPS, then verify one-operator leasing from two independent browsers.",
+      "blocker": "Source supports an optional access token and single-operator lease; deployment TLS and live two-browser evidence remain required.",
+      "evidence": [
+        "scripts/dr_anmar_operator.py",
+        "docs/DATA_GOVERNANCE.md"
+      ]
+    },
+    {
+      "id": "dataset_and_policy_provenance",
+      "priority": "P1",
+      "state": "source_ready",
+      "owner": "research_engineering",
+      "requirement": "Bind demonstrations, datasets, checkpoints, runtime revisions and challenge matrices with immutable hashes.",
+      "blocker": "Live end-to-end card creation remains part of the Gilgamesh matrix.",
+      "evidence": [
+        "scripts/dr_anmar_workstation.py",
+        "scripts/dr_anmar_hub.py"
+      ]
+    }
+  ]
+}

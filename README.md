@@ -181,6 +181,9 @@ cp .env.example .env
 
 Edit `.env` so `ISAAC_PYTHON` points to the Python executable in your Isaac-enabled environment. Runtime
 data defaults to `~/.local/share/dr-anmar` and can be moved by changing `DR_ANMAR_ROOT`.
+For a shared workstation, set a long random `DR_ANMAR_ACCESS_TOKEN`; Doctor Studio then requires login and
+shares the resulting secure session with its operating-room worker. Set `DR_ANMAR_COOKIE_SECURE=1` behind
+HTTPS. `DR_ANMAR_SENSOR_PROFILE` selects `efficient`, `stereo`, or full `research` camera capture.
 
 Install the ORBIT-Surgical extensions:
 

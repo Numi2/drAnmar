@@ -11,6 +11,7 @@ hardware communication, synthetic data, and deployment infrastructure.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import shutil
 from pathlib import Path
@@ -107,20 +108,39 @@ def workflow_modes(workflow_id: str) -> dict[str, Any]:
             "modes": [],
         }
     try:
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata_bytes = metadata_path.read_bytes()
+        metadata = json.loads(metadata_bytes)
     except (OSError, ValueError):
         return {
             "default_mode": definition.get("doctor_default_mode"),
             "metadata_ready": False,
             "metadata_path": str(metadata_path),
             "modes": [],
+            "discovery_error": "Workflow metadata is unreadable; launch is disabled.",
         }
     official = metadata.get("workflow", {})
+    official_modes = official.get("modes") if isinstance(official, dict) else None
+    if not isinstance(official_modes, dict):
+        return {
+            "default_mode": None,
+            "metadata_ready": False,
+            "metadata_path": str(metadata_path),
+            "metadata_sha256": hashlib.sha256(metadata_bytes).hexdigest(),
+            "modes": [],
+            "discovery_error": "Workflow metadata schema changed; launch is disabled until the adapter is reviewed.",
+        }
     prerequisites = runtime_prerequisites()
     modes = []
-    for mode_id, mode_definition in official.get("modes", {}).items():
+    rejected_modes = []
+    for mode_id, mode_definition in official_modes.items():
+        if not isinstance(mode_id, str) or not mode_id or not isinstance(mode_definition, dict):
+            rejected_modes.append(str(mode_id))
+            continue
         description = str(mode_definition.get("description") or mode_id.replace("_", " ").title())
         run = mode_definition.get("run", {})
+        if not isinstance(run, dict) or not isinstance(run.get("docker_run_args", []), list):
+            rejected_modes.append(mode_id)
+            continue
         docker_args = [str(value) for value in run.get("docker_run_args", [])]
         lower_description = description.lower()
         requires_arguments = "requires --run-args" in lower_description
@@ -172,6 +192,9 @@ def workflow_modes(workflow_id: str) -> dict[str, Any]:
         "official_default_mode": official.get("default_mode"),
         "metadata_ready": True,
         "metadata_path": str(metadata_path),
+        "metadata_sha256": hashlib.sha256(metadata_bytes).hexdigest(),
+        "rejected_modes": rejected_modes,
+        "discovery_error": f"{len(rejected_modes)} malformed modes were disabled" if rejected_modes else None,
         "modes": modes,
     }
 

@@ -42,6 +42,14 @@ from dr_anmar_i4h_adapter import (
     workflow_modes,
 )
 from dr_anmar_procedures import PROCEDURES_BY_ID, PROCEDURE_ROOMS, procedure_payload
+from dr_anmar_operator import (
+    ACCESS_COOKIE,
+    OPERATOR_HEADER,
+    OperatorLease,
+    access_cookie_value,
+    access_is_authorized,
+    configured_access_token,
+)
 
 
 parser = argparse.ArgumentParser()
@@ -63,6 +71,7 @@ TRAINING_ROOT = DR_ANMAR_ROOT / "training"
 EXPERIMENT_ROOT = DR_ANMAR_ROOT / "experiments"
 DEMO_ROOT = DR_ANMAR_ROOT / "demos"
 DATASET_CARD_ROOT = DR_ANMAR_ROOT / "dataset_cards"
+POLICY_CARD_ROOT = DR_ANMAR_ROOT / "policy_evaluation_cards"
 STUDY_ROOT = DR_ANMAR_ROOT / "studies"
 HEALTHCARE_JOB_ROOT = DR_ANMAR_ROOT / "healthcare_jobs"
 
@@ -179,6 +188,14 @@ class DatasetCardRequest(BaseModel):
     intended_use: str = "Simulation-only behavior cloning and supervised-autonomy research"
 
 
+class PolicyEvaluationCardRequest(BaseModel):
+    title: str
+    dataset_id: str
+    training_experiment_id: str
+    challenge_matrix_id: str
+    checkpoint_path: str
+
+
 class MultimodalStudyRequest(BaseModel):
     title: str
     clinical_question: str
@@ -192,6 +209,10 @@ class HealthcareWorkflowRequest(BaseModel):
     workflow: str
     mode: str
     resume_workstation: bool = True
+
+
+class AccessSessionRequest(BaseModel):
+    token: str
 
 
 @dataclass
@@ -231,6 +252,9 @@ class HubState:
 
 
 state = HubState()
+operator_lease = OperatorLease()
+access_attempts: dict[str, list[float]] = {}
+access_attempts_lock = threading.Lock()
 app = FastAPI(title="Dr.Anmar Doctor Studio", docs_url=None, redoc_url=None)
 if RESEARCH_ROOT.is_dir():
     app.mount("/research", StaticFiles(directory=RESEARCH_ROOT), name="sufia-research")
@@ -239,6 +263,10 @@ if RESEARCH_ROOT.is_dir():
 @app.middleware("http")
 async def protect_browser_requests(request: Request, call_next):
     """Reject cross-site mutations while preserving local API and tailnet use."""
+    if request.url.path != "/api/session" and not access_is_authorized(request.cookies.get(ACCESS_COOKIE)):
+        if request.method == "GET" and request.url.path == "/":
+            return HTMLResponse(LOGIN_HTML)
+        return JSONResponse({"detail": "Dr.Anmar access token required"}, status_code=401)
     origin = request.headers.get("origin")
     if request.method not in {"GET", "HEAD", "OPTIONS"} and origin:
         try:
@@ -248,12 +276,61 @@ async def protect_browser_requests(request: Request, call_next):
                 return JSONResponse({"detail": "Cross-site state changes are not allowed"}, status_code=403)
         except ValueError:
             return JSONResponse({"detail": "Invalid request origin"}, status_code=403)
+        if request.url.path != "/api/session":
+            claimed, detail = operator_lease.claim(request.headers.get(OPERATOR_HEADER))
+            if not claimed:
+                return JSONResponse({"detail": detail}, status_code=423)
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Cross-Origin-Resource-Policy"] = "same-site"
     return response
+
+
+LOGIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dr.Anmar access</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#061119;color:#e9f8fa;font:16px system-ui}.card{width:min(420px,90vw);padding:32px;border:1px solid #28505e;background:#0a1a23}h1{margin-top:0}p{color:#92adb7}input,button{width:100%;height:48px;box-sizing:border-box;margin-top:12px;border:1px solid #3b6878;background:#0c222c;color:#fff;padding:0 12px}button{background:#2cd2e8;color:#031014;font-weight:800;cursor:pointer}#error{color:#ff9ca4}</style></head><body><form class="card" onsubmit="login(event)"><h1>Dr.Anmar</h1><p>This research workstation requires its operator access token.</p><input id="token" type="password" autocomplete="current-password" autofocus aria-label="Access token"><button>Open Doctor Studio</button><p id="error"></p></form><script>async function login(event){event.preventDefault();const response=await fetch('/api/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:document.getElementById('token').value})});if(response.ok)location.reload();else document.getElementById('error').textContent='The access token was not accepted.'}</script></body></html>"""
+
+
+@app.post("/api/session")
+def create_access_session(request: AccessSessionRequest, http_request: Request) -> JSONResponse:
+    if configured_access_token() is None:
+        return JSONResponse({"ok": True, "access_control": "disabled"})
+    if not request.token or len(request.token) > 4096:
+        raise HTTPException(400, "Invalid access-token format")
+    client = http_request.client.host if http_request.client else "unknown"
+    now = time.monotonic()
+    with access_attempts_lock:
+        recent = [attempt for attempt in access_attempts.get(client, []) if now - attempt < 60.0]
+        if len(recent) >= 5:
+            raise HTTPException(429, "Too many access attempts; try again in one minute")
+        access_attempts[client] = recent
+    if not access_is_authorized(None, request.token):
+        with access_attempts_lock:
+            access_attempts.setdefault(client, []).append(now)
+        raise HTTPException(401, "Invalid Dr.Anmar access token")
+    with access_attempts_lock:
+        access_attempts.pop(client, None)
+    response = JSONResponse({"ok": True, "access_control": "enabled"})
+    response.set_cookie(
+        ACCESS_COOKIE,
+        access_cookie_value(request.token),
+        max_age=43_200,
+        httponly=True,
+        secure=os.environ.get("DR_ANMAR_COOKIE_SECURE", "0") == "1",
+        samesite="strict",
+        path="/",
+    )
+    return response
+
+
+@app.post("/api/operator/heartbeat")
+def operator_heartbeat(request: Request) -> dict[str, Any]:
+    return {"ok": True, "operator_lease": operator_lease.status()}
+
+
+@app.post("/api/operator/release")
+def operator_release(request: Request) -> dict[str, Any]:
+    return {"ok": operator_lease.release(request.headers.get(OPERATOR_HEADER))}
 
 
 def utc_now() -> str:
@@ -360,11 +437,14 @@ def source_revision() -> str | None:
 
 def worker_json(path: str, method: str = "GET", payload: dict[str, Any] | None = None) -> dict[str, Any]:
     body = json.dumps(payload or {}).encode() if method != "GET" else None
+    headers = {"Content-Type": "application/json"}
+    if (access_token := configured_access_token()) is not None:
+        headers["Cookie"] = f"{ACCESS_COOKIE}={access_cookie_value(access_token)}"
     request = urllib.request.Request(
         f"http://127.0.0.1:{args.worker_port}{path}",
         data=body,
         method=method,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(request, timeout=5.0) as response:
@@ -718,6 +798,18 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+@lru_cache(maxsize=4096)
+def cached_sha256_file(path_value: str, modified_ns: int, size: int) -> str:
+    """Cache immutable-artifact hashes without trusting a possibly stale manifest."""
+    del modified_ns, size
+    return sha256_file(Path(path_value))
+
+
+def artifact_sha256(path: Path) -> str:
+    stat = path.stat()
+    return cached_sha256_file(str(path), stat.st_mtime_ns, stat.st_size)
+
+
 def run_challenge_matrix(demo: str, cases: list[tuple[str, int]], manifest_path: Path) -> None:
     results: list[dict[str, Any]] = []
     for scenario_id, seed in cases:
@@ -928,7 +1020,9 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
         "clinical_use": False,
         "created_at": utc_now(),
         "source_revision": source_revision(),
+        "runtime_provenance": (current or {}).get("runtime_provenance", {}),
         "i4h_revision": repository_revision(I4H_ROOT),
+        "workflow_metadata_sha256": mode_catalog.get("metadata_sha256"),
         "workflow": request.workflow,
         "workflow_title": definition["title"],
         "mode": request.mode,
@@ -1176,8 +1270,10 @@ def launch_anatomy(request: AnatomyLaunchRequest) -> dict[str, Any]:
 
 
 @app.get("/api/demos")
-def demonstrations() -> dict[str, Any]:
-    return worker_json("/api/demos")
+def demonstrations(limit: int = 100, offset: int = 0) -> dict[str, Any]:
+    if not 1 <= limit <= 500 or offset < 0:
+        raise HTTPException(400, "limit must be 1–500 and offset must be non-negative")
+    return worker_json(f"/api/demos?limit={limit}&offset={offset}")
 
 
 @app.get("/api/demos/{name}/analysis")
@@ -1250,6 +1346,7 @@ def apply_failure_scenario(request: ScenarioApplicationRequest) -> dict[str, Any
             "simulation_only": True,
             "created_at": utc_now(),
             "source_revision": source_revision(),
+            "runtime_provenance": current.get("runtime_provenance", {}),
             "task": current.get("task"),
             "configuration": {"scenario_id": request.scenario_id, "seed": request.seed},
             "status": "ready_for_demonstration",
@@ -1284,6 +1381,7 @@ def start_challenge_matrix(request: ChallengeMatrixRequest) -> dict[str, Any]:
     worker_demos = worker_json("/api/demos").get("demos", [])
     if request.demo not in {item.get("name") for item in worker_demos}:
         raise HTTPException(404, "Demonstration not found")
+    current = worker_status()
     with state.lock:
         if state.switching:
             raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
@@ -1305,6 +1403,7 @@ def start_challenge_matrix(request: ChallengeMatrixRequest) -> dict[str, Any]:
         "simulation_only": True,
         "created_at": utc_now(),
         "source_revision": source_revision(),
+        "runtime_provenance": (current or {}).get("runtime_provenance", {}),
         "demo": request.demo,
         "scenario_ids": request.scenario_ids,
         "seeds": request.seeds,
@@ -1348,14 +1447,16 @@ def handoff() -> dict[str, Any]:
 
 
 @app.get("/api/dataset-cards")
-def dataset_cards() -> dict[str, Any]:
+def dataset_cards(limit: int = 100, offset: int = 0) -> dict[str, Any]:
+    if not 1 <= limit <= 500 or offset < 0:
+        raise HTTPException(400, "limit must be 1–500 and offset must be non-negative")
     files = sorted(DATASET_CARD_ROOT.glob("dataset_*.json"), reverse=True) if DATASET_CARD_ROOT.is_dir() else []
     items = []
-    for path in files[:100]:
+    for path in files[offset : offset + limit]:
         card = read_json(path, {})
         if card:
             items.append(card)
-    return {"dataset_cards": items, "root": str(DATASET_CARD_ROOT)}
+    return {"dataset_cards": items, "total": len(files), "offset": offset, "limit": limit, "has_more": offset + len(items) < len(files), "root": str(DATASET_CARD_ROOT)}
 
 
 @app.post("/api/dataset-cards")
@@ -1376,19 +1477,27 @@ def create_dataset_card(request: DatasetCardRequest) -> dict[str, Any]:
         item = worker_items.get(name)
         if item is None or not path.is_file():
             raise HTTPException(404, f"Demonstration not found: {name}")
+        integrity = item.get("integrity", {})
+        if not integrity.get("valid"):
+            raise HTTPException(422, f"Demonstration is unreadable: {name}")
+        if not integrity.get("training_eligible"):
+            raise HTTPException(422, f"Demonstration is too short for a dataset: {name}")
         manifest_path = path.with_suffix(".json")
+        source_manifest = read_json(manifest_path, {}) if manifest_path.is_file() else {}
+        data_hash = artifact_sha256(path)
         entries.append(
             {
                 "name": name,
-                "sha256": sha256_file(path),
+                "sha256": data_hash,
                 "bytes": path.stat().st_size,
                 "manifest": manifest_path.name if manifest_path.is_file() else None,
-                "manifest_sha256": sha256_file(manifest_path) if manifest_path.is_file() else None,
+                "manifest_sha256": artifact_sha256(manifest_path) if manifest_path.is_file() else None,
                 "task": item.get("task"),
                 "frames": item.get("frames"),
                 "duration_s": item.get("duration_s"),
                 "modalities": item.get("modalities", {}),
                 "context": item.get("context", {}),
+                "runtime_provenance": source_manifest.get("runtime_provenance", {}),
                 "clinician_reference": bool(item.get("is_reference")),
             }
         )
@@ -1444,20 +1553,105 @@ def download_dataset_card(dataset_id: str) -> FileResponse:
     return FileResponse(path, filename=path.name, media_type="application/json")
 
 
+def _artifact_manifest(root: Path, artifact_id: str, prefix: str) -> tuple[Path, dict[str, Any]]:
+    if not artifact_id.startswith(prefix) or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_-" for character in artifact_id):
+        raise HTTPException(400, f"Invalid {prefix.rstrip('_')} ID")
+    path = root / f"{artifact_id}.json"
+    if not path.is_file():
+        raise HTTPException(404, f"Artifact not found: {artifact_id}")
+    payload = read_json(path, {})
+    if not payload:
+        raise HTTPException(422, f"Artifact is unreadable: {artifact_id}")
+    return path, payload
+
+
+@app.get("/api/policy-evaluation-cards")
+def policy_evaluation_cards(limit: int = 100, offset: int = 0) -> dict[str, Any]:
+    if not 1 <= limit <= 500 or offset < 0:
+        raise HTTPException(400, "limit must be 1–500 and offset must be non-negative")
+    files = sorted(POLICY_CARD_ROOT.glob("policy_*.json"), reverse=True) if POLICY_CARD_ROOT.is_dir() else []
+    cards = [card for path in files[offset : offset + limit] if (card := read_json(path, {}))]
+    return {"policy_evaluation_cards": cards, "total": len(files), "offset": offset, "limit": limit, "has_more": offset + len(cards) < len(files)}
+
+
+@app.post("/api/policy-evaluation-cards")
+def create_policy_evaluation_card(request: PolicyEvaluationCardRequest) -> dict[str, Any]:
+    if not request.title.strip() or len(request.title) > 120:
+        raise HTTPException(400, "Policy card title is required and limited to 120 characters")
+    dataset_path, dataset = _artifact_manifest(DATASET_CARD_ROOT, request.dataset_id, "dataset_")
+    training_path, training = _artifact_manifest(EXPERIMENT_ROOT, request.training_experiment_id, "training_")
+    matrix_path, matrix = _artifact_manifest(EXPERIMENT_ROOT, request.challenge_matrix_id, "matrix_")
+    if training.get("kind") != "policy_training" or training.get("status") != "complete":
+        raise HTTPException(422, "The selected policy-training run must be complete")
+    if matrix.get("kind") != "challenge_matrix" or matrix.get("status") != "complete":
+        raise HTTPException(422, "The selected challenge matrix must be complete")
+    dataset_demos = {item.get("name") for item in dataset.get("demonstrations", [])}
+    if matrix.get("demo") not in dataset_demos:
+        raise HTTPException(422, "The challenge matrix demonstration is not part of the selected dataset")
+    checkpoint = Path(request.checkpoint_path).expanduser().resolve()
+    allowed_root = DR_ANMAR_ROOT.resolve()
+    if not checkpoint.is_file() or not checkpoint.is_relative_to(allowed_root):
+        raise HTTPException(400, "Checkpoint must be an existing file inside the Dr.Anmar data root")
+    evidence = {
+        "dataset": {"id": request.dataset_id, "sha256": artifact_sha256(dataset_path), "content_sha256": dataset.get("content_sha256")},
+        "training": {"id": request.training_experiment_id, "sha256": artifact_sha256(training_path), "status": training.get("status")},
+        "checkpoint": {"path": str(checkpoint.relative_to(allowed_root)), "sha256": artifact_sha256(checkpoint), "bytes": checkpoint.stat().st_size},
+        "challenge_matrix": {"id": request.challenge_matrix_id, "sha256": artifact_sha256(matrix_path), "aggregate": matrix.get("aggregate", {})},
+    }
+    policy_card_content = {"title": request.title.strip(), "task": training.get("task"), "evidence": evidence}
+    content_hash = hashlib.sha256(
+        json.dumps(policy_card_content, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    card_id = f"policy_{content_hash[:16]}"
+    card = {
+        "schema": "dr.anmar.policy-evaluation-card.v1",
+        "policy_card_id": card_id,
+        "immutable": True,
+        "simulation_only": True,
+        "clinical_use": False,
+        "created_at": utc_now(),
+        "source_revision": source_revision(),
+        "content_sha256": content_hash,
+        "title": request.title.strip(),
+        "task": training.get("task"),
+        "evidence": evidence,
+        "limitations": [
+            "Simulation and preclinical research evidence only.",
+            "Challenge statistics and coaching metrics require clinician and construct validation.",
+            "The card binds immutable hashes; it does not certify clinical safety or efficacy.",
+        ],
+    }
+    POLICY_CARD_ROOT.mkdir(parents=True, exist_ok=True)
+    path = POLICY_CARD_ROOT / f"{card_id}.json"
+    if not path.exists():
+        write_json(path, card)
+    else:
+        card = read_json(path, card)
+    return {"ok": True, "policy_evaluation_card": card, "download": f"/api/policy-evaluation-cards/{card_id}/download"}
+
+
+@app.get("/api/policy-evaluation-cards/{card_id}/download")
+def download_policy_evaluation_card(card_id: str) -> FileResponse:
+    path, _ = _artifact_manifest(POLICY_CARD_ROOT, card_id, "policy_")
+    return FileResponse(path, filename=path.name, media_type="application/json")
+
+
 @app.get("/api/experiments")
-def experiments() -> dict[str, Any]:
+def experiments(limit: int = 100, offset: int = 0) -> dict[str, Any]:
+    if not 1 <= limit <= 500 or offset < 0:
+        raise HTTPException(400, "limit must be 1–500 and offset must be non-negative")
     files = sorted(EXPERIMENT_ROOT.glob("*.json"), reverse=True) if EXPERIMENT_ROOT.is_dir() else []
     items = []
-    for path in files[:100]:
+    for path in files[offset : offset + limit]:
         manifest = read_json(path, {})
         if manifest:
             items.append({"file": path.name, **manifest})
-    return {"experiments": items, "root": str(EXPERIMENT_ROOT)}
+    return {"experiments": items, "total": len(files), "offset": offset, "limit": limit, "has_more": offset + len(items) < len(files), "root": str(EXPERIMENT_ROOT)}
 
 
 @app.get("/api/experiments/{experiment_id}/download")
 def download_experiment(experiment_id: str) -> FileResponse:
-    if not experiment_id or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_" for character in experiment_id):
+    if not experiment_id or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_-" for character in experiment_id):
         raise HTTPException(400, "Invalid experiment ID")
     path = EXPERIMENT_ROOT / f"{experiment_id}.json"
     if not path.is_file():
@@ -1533,6 +1727,7 @@ def start_training(request: TrainingRequest) -> dict[str, Any]:
             "simulation_only": True,
             "created_at": utc_now(),
             "source_revision": source_revision(),
+            "runtime_provenance": (current or {}).get("runtime_provenance", {}),
             "task": request.task,
             "configuration": {
                 "backend": request.backend,
@@ -1630,6 +1825,8 @@ def status() -> JSONResponse:
             "training": training_payload(),
             "healthcare_job": healthcare_job_payload(),
             "challenge_matrix": matrix_payload(),
+            "operator_lease": operator_lease.status(),
+            "access_control_enabled": configured_access_token() is not None,
         }
     )
     return JSONResponse(hub)

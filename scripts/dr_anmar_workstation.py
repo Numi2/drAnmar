@@ -11,7 +11,9 @@ import hashlib
 import io
 import json
 import os
+import platform
 import signal
+import subprocess
 import threading
 import time
 import traceback
@@ -37,6 +39,11 @@ def positive_environment_number(name: str, default: float, minimum: float) -> fl
 
 MAX_DEMO_FRAMES = int(positive_environment_number("DR_ANMAR_MAX_DEMO_FRAMES", 60_000, 1_000))
 MAX_DEMO_SECONDS = positive_environment_number("DR_ANMAR_MAX_DEMO_SECONDS", 300.0, 30.0)
+MAX_DEMO_BYTES = int(positive_environment_number("DR_ANMAR_MAX_DEMO_BYTES", 1_500_000_000, 50_000_000))
+SENSOR_PROFILES = {"efficient", "stereo", "research"}
+EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"
+STUDY_ID = os.environ.get("DR_ANMAR_STUDY_ID", "").strip()
+CONSENT_PROTOCOL = os.environ.get("DR_ANMAR_CONSENT_PROTOCOL", "").strip()
 
 parser = argparse.ArgumentParser(description="Run the Dr.Anmar browser workstation.")
 parser.add_argument("--task", default="Isaac-Lift-Needle-PSM-IK-Rel-v0")
@@ -51,6 +58,12 @@ parser.add_argument("--anatomy_scene", type=Path)
 parser.add_argument("--openusd_environment", type=Path)
 parser.add_argument("--anatomy_scene_id", default="")
 parser.add_argument("--anatomy_title", default="")
+parser.add_argument(
+    "--sensor_profile",
+    choices=sorted(SENSOR_PROFILES),
+    default=os.environ.get("DR_ANMAR_SENSOR_PROFILE", "research"),
+    help="efficient=left RGB, stereo=left RGB-D+right RGB, research=stereo plus wrist cameras",
+)
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
@@ -77,6 +90,7 @@ from isaaclab_tasks.utils import parse_env_cfg
 import orbit.surgical.tasks  # noqa: F401
 
 from dr_anmar_procedure_mechanics import ProcedureMechanics
+from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
 from dr_anmar_soft_tissue import SurfaceMeshModel, SutureThreadModel
 
 
@@ -145,6 +159,27 @@ FAILURE_SCENARIOS = (
         "doctor_focus": "Detect the systematic drift, slow down, compensate deliberately, or hand control back.",
     },
     {
+        "id": "stereo_miscalibration",
+        "title": "Stereo calibration drift",
+        "difficulty": "Research challenge",
+        "description": "The right endoscope receives a reproducible vertical and baseline error while the left view remains stable.",
+        "doctor_focus": "Recognize inconsistent depth cues and rely on deliberate camera motion or hand control back.",
+    },
+    {
+        "id": "sensor_dropout",
+        "title": "Intermittent camera dropout",
+        "difficulty": "Research challenge",
+        "description": "A seeded periodic dropout removes all camera observations for brief intervals.",
+        "doctor_focus": "Stop during missing observations and resume only after the operative field returns.",
+    },
+    {
+        "id": "stiff_tissue_response",
+        "title": "Stiffer tissue response",
+        "difficulty": "Advanced",
+        "description": "The bounded OpenUSD surface responds with lower compliance to the same interaction.",
+        "doctor_focus": "Compare displacement and force proxies without assuming one tissue model represents clinical material.",
+    },
+    {
         "id": "anatomy_context",
         "title": "Multi-organ anatomy context",
         "difficulty": "Advanced",
@@ -157,6 +192,9 @@ SCENARIO_NATIVE_PROFILES = {
     "target_lateral_offset": {"object_offset_m": (0.0, 0.025, 0.0)},
     "target_depth_offset": {"object_offset_m": (0.025, 0.0, 0.0)},
     "calibration_bias": {"translation_yaw_deg": 7.0, "axis_scale": (1.08, 0.92, 1.0)},
+    "stereo_miscalibration": {"right_camera_offset_m": (0.0, 0.010, 0.004)},
+    "sensor_dropout": {"dropout_frames": 8, "dropout_period_frames": 40},
+    "stiff_tissue_response": {"surface_compliance_scale": 0.45},
     "anatomy_context": {"show_multi_organ": True},
 }
 RESEARCH_ADVISORY_LIMITS = {
@@ -174,6 +212,8 @@ OPERATOR_INPUT_SOURCES = {
     "xr": 4,
     "haptic": 5,
     "keyboard_smart_action": 6,
+    "supervised_replay": 7,
+    "automation_policy": 8,
 }
 SUTURE_GUIDE_KINDS = {"threading", "running_suture", "knot_tying", "anastomosis"}
 CUTTING_GUIDE_KINDS = {"cutting_path", "dissection", "biopsy"}
@@ -262,12 +302,13 @@ APP_HTML = r"""<!doctype html>
   <div class="shortcut-group wide"><h3>PROCEDURE ANNOTATIONS</h3><div class="shortcut-list"><div class="shortcut-line"><kbd>⇧1</kbd><span>Approach</span></div><div class="shortcut-line"><kbd>⇧2</kbd><span>Grasp</span></div><div class="shortcut-line"><kbd>⇧3</kbd><span>Manipulate</span></div><div class="shortcut-line"><kbd>⇧4</kbd><span>Recovery</span></div><div class="shortcut-line"><kbd>⇧5</kbd><span>Task event</span></div><div class="shortcut-line"><kbd>⇧6</kbd><span>Safety event</span></div></div></div>
 </div></div></div><div id="toast"></div>
 <script>
+const operatorId=(()=>{const query=new URLSearchParams(location.search).get('operator');if(query){sessionStorage.setItem('drAnmarOperatorId',query);return query}let value=sessionStorage.getItem('drAnmarOperatorId');if(!value){const random=crypto.randomUUID?crypto.randomUUID():`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;value=`browser-${random}`;sessionStorage.setItem('drAnmarOperatorId',value)}return value})();
 const keyMap={KeyW:[0,-1,'Toward'],KeyS:[0,1,'Away'],KeyA:[1,1,'Left'],KeyD:[1,-1,'Right'],KeyR:[2,1,'Up'],KeyF:[2,-1,'Down'],KeyQ:[3,-1,'Roll left'],KeyE:[3,1,'Roll right'],ArrowUp:[4,-1,'Pitch up'],ArrowDown:[4,1,'Pitch down'],ArrowLeft:[5,-1,'Yaw left'],ArrowRight:[5,1,'Yaw right']};
 const comboMap={KeyZ:{label:'Orbit left',values:[0,.72,0,0,0,-.72]},KeyX:{label:'Orbit right',values:[0,-.72,0,0,0,.72]},KeyV:{label:'Drive needle',values:[-.68,0,0,.68,0,0]},KeyB:{label:'Reverse needle',values:[.68,0,0,-.68,0,0]},KeyN:{label:'Lift + retract',values:[.68,0,.68,0,0,0]},KeyK:{label:'Lower + approach',values:[-.68,0,-.68,0,0,0]}};
 function comboValues(code){const base=comboMap[code]?.values||Array(6).fill(0),normal=latestStatus?.needle_surface_outward,toward=latestStatus?.needle_surface_direction,entry=latestStatus?.needle_entry_direction;if((code==='KeyV'||code==='KeyB')&&latestStatus?.assisted_grasp_active?.[activeArm]&&normal?.length===3){const puncture=!!latestStatus?.needle_puncture_active,atSurface=puncture||(latestStatus?.needle_tip_clearance_m??1)<=.008,direction=puncture&&entry?.length===3?entry:(code==='KeyV'&&!atSurface&&toward?.length===3?toward:normal),sign=puncture?(code==='KeyV'?1:-1):(code==='KeyV'?(atSurface?-1:1):1),roll=code==='KeyV'?(puncture&&(latestStatus?.needle_penetration_depth_m||0)>=.002?.62:0):(puncture?-.62:0);return [direction[0]*sign*.78,direction[1]*sign*.78,direction[2]*sign*.78,roll,0,0]}return base}
 let activeArm=0,driveSpeed=1,driveInFlight=false,queuedDrive=null,driveWasActive=false,inputSource='keyboard_pointer',lastGazeSend=0,currentCamera='endoscope_left',currentViewMode='operative',lastGamepadGrip=false,lastGamepadCamera=false,latestStatus=null,macroPulseTimer=null,keyFlashTimer=null;
 const heldKeys=new Set(),heldModifiers=new Set(),pointerMoves=new Map(),keyDownAt=new Map();
-async function post(url,body={}){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.detail||'Request failed');return data}
+async function post(url,body={}){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.detail||'Request failed');return data}
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1600)}
 function showKeyAction(key,label,active=true){const display=document.getElementById('keyActionDisplay');display.classList.toggle('active',active);display.querySelector('kbd').textContent=key;display.querySelector('span').textContent=label}
 function flashShortcut(shortcut,label,duration=850){if(keyFlashTimer)clearTimeout(keyFlashTimer);document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));document.querySelectorAll('button[data-shortcut]').forEach(button=>{if(button.dataset.shortcut===shortcut)button.classList.add('key-active')});showKeyAction(shortcut,label,true);keyFlashTimer=setTimeout(()=>{document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));showKeyAction('READY','Keyboard control ready',false)},duration)}
@@ -339,7 +380,7 @@ async function refresh(){try{
   const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);
   const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Procedure: ${p.title||'Free practice'}<br>Anatomy: ${s.anatomy_showcase||'—'}<br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Instrument guard: ${s.virtual_fixture_enabled?'on':'off'}<br>Thread: ${thread.active?`${Number(thread.tension_n||0).toFixed(2)} N · ${thread.tissue_anchors||0} pins`:'—'}<br>Cut: ${cut.faces_removed?`${Math.round((cut.length_m||0)*1000)} mm · r${cut.topology_revision}`:'—'}<br>Tissue: ${tissue.active?`${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'—'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
 }catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
-auditKeyboardCoverage();setInterval(updateDrive,90);setInterval(refresh,500);refresh();
+auditKeyboardCoverage();setInterval(updateDrive,90);setInterval(refresh,500);setInterval(()=>post('/api/operator/heartbeat').catch(()=>{}),10000);refresh();
 </script></body></html>"""
 
 
@@ -459,6 +500,8 @@ class SharedState:
     record_request: str | None = None
     recording: bool = False
     recorded_frames: int = 0
+    recorded_bytes_estimate: int = 0
+    sensor_profile: str = "research"
     last_demo: str | None = None
     replay_request: str | None = None
     replaying: bool = False
@@ -472,6 +515,10 @@ class SharedState:
     evaluation_output: str | None = None
     camera_intrinsics: list[list[float]] | None = None
     semantic_labels: dict[str, Any] = field(default_factory=dict)
+    runtime_provenance: dict[str, Any] = field(default_factory=dict)
+    camera_valid_depth_fraction: float | None = None
+    camera_foreground_fraction: float | None = None
+    camera_mean_luminance: float | None = None
     reference_ghost_enabled: bool = False
     reference_ghost_demo: str | None = None
     reference_ghost_update: str | None = None
@@ -486,6 +533,7 @@ class SharedState:
     operator_input_source: str = "none"
     procedure_phase: str = "setup"
     procedure_event_code: int = 0
+    procedure_event_sequence: int = 0
     procedure_events: list[dict[str, Any]] = field(default_factory=list)
     procedure_waypoints_total: int = 0
     procedure_waypoints_completed: int = 0
@@ -597,6 +645,10 @@ class SharedState:
                 "adaptive_precision_active": self.adaptive_precision_active,
                 "recording": self.recording,
                 "recorded_frames": self.recorded_frames,
+                "recorded_bytes_estimate": self.recorded_bytes_estimate,
+                "recording_limit_bytes": MAX_DEMO_BYTES,
+                "sensor_profile": self.sensor_profile,
+                "runtime_provenance": self.runtime_provenance,
                 "last_demo": self.last_demo,
                 "replaying": self.replaying,
                 "scenario_id": self.scenario_id,
@@ -620,6 +672,11 @@ class SharedState:
                     "max_tissue_stress_pa": self.max_tissue_stress_pa,
                 },
                 "mechanics": self.mechanics,
+                "sensor_quality": {
+                    "valid_depth_fraction": self.camera_valid_depth_fraction,
+                    "semantic_foreground_fraction": self.camera_foreground_fraction,
+                    "mean_luminance": self.camera_mean_luminance,
+                },
                 "operator_study": {
                     "gaze_valid": self.gaze_valid,
                     "gaze_source": self.gaze_source,
@@ -750,9 +807,12 @@ class SharedState:
 
 def build_web_app(state: SharedState) -> FastAPI:
     app = FastAPI(title="Dr.Anmar Surgical Workstation", docs_url=None, redoc_url=None)
+    operator_lease = OperatorLease()
 
     @app.middleware("http")
     async def protect_browser_requests(request: Request, call_next):
+        if not access_is_authorized(request.cookies.get(ACCESS_COOKIE)):
+            return JSONResponse({"detail": "Dr.Anmar access token required"}, status_code=401)
         origin = request.headers.get("origin")
         if request.method not in {"GET", "HEAD", "OPTIONS"} and origin:
             try:
@@ -762,6 +822,9 @@ def build_web_app(state: SharedState) -> FastAPI:
                     return JSONResponse({"detail": "Cross-site state changes are not allowed"}, status_code=403)
             except ValueError:
                 return JSONResponse({"detail": "Invalid request origin"}, status_code=403)
+            claimed, detail = operator_lease.claim(request.headers.get(OPERATOR_HEADER))
+            if not claimed:
+                return JSONResponse({"detail": detail}, status_code=423)
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -775,7 +838,15 @@ def build_web_app(state: SharedState) -> FastAPI:
 
     @app.get("/api/status")
     def status() -> JSONResponse:
-        return JSONResponse(state.status())
+        return JSONResponse({**state.status(), "operator_lease": operator_lease.status()})
+
+    @app.post("/api/operator/heartbeat")
+    def operator_heartbeat() -> dict[str, Any]:
+        return {"ok": True, "operator_lease": operator_lease.status()}
+
+    @app.post("/api/operator/release")
+    def operator_release(request: Request) -> dict[str, Any]:
+        return {"ok": operator_lease.release(request.headers.get(OPERATOR_HEADER))}
 
     @app.post("/api/jog")
     def jog(request: JogRequest) -> dict[str, Any]:
@@ -957,8 +1028,10 @@ def build_web_app(state: SharedState) -> FastAPI:
     def evaluate(request: EvaluationRequest) -> dict[str, Any]:
         if Path(request.demo).name != request.demo or not request.demo.endswith(".npz"):
             raise HTTPException(400, "Invalid demonstration name")
-        if not (state.demo_dir / request.demo).is_file():
+        demo_path = state.demo_dir / request.demo
+        if not demo_path.is_file():
             raise HTTPException(404, "Demonstration not found")
+        require_replayable_demo(demo_path)
         scenario = SCENARIOS_BY_ID.get(request.scenario_id)
         if scenario is None:
             raise HTTPException(404, "Unknown failure scenario")
@@ -1010,6 +1083,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.replay_request = "stop"
             state.replaying = False
             state.autonomy_mode = "manual"
+            state.operator_input_source = "keyboard_pointer"
             state.drive.fill(0.0)
             state.drive_until = 0.0
             if state.evaluation_status in {"running", "saving"}:
@@ -1044,6 +1118,7 @@ def build_web_app(state: SharedState) -> FastAPI:
                 raise HTTPException(409, "Stop the recording before replaying")
             if not state.last_demo:
                 raise HTTPException(404, "Record a demonstration first")
+            require_replayable_demo(state.demo_dir / state.last_demo)
             state.replay_request = state.last_demo
             state.autonomy_mode = "supervised_replay"
             state.coaching_cue = "The recorded behavior is running under supervision. Take control at any time."
@@ -1055,8 +1130,10 @@ def build_web_app(state: SharedState) -> FastAPI:
     def replay_named(name: str) -> dict[str, Any]:
         if Path(name).name != name or not name.endswith(".npz"):
             raise HTTPException(400, "Invalid demonstration name")
-        if not (state.demo_dir / name).is_file():
+        demo_path = state.demo_dir / name
+        if not demo_path.is_file():
             raise HTTPException(404, "Demonstration not found")
+        require_replayable_demo(demo_path)
         with state.lock:
             if state.recording:
                 raise HTTPException(409, "Stop the recording before replaying")
@@ -1067,12 +1144,15 @@ def build_web_app(state: SharedState) -> FastAPI:
         return {"ok": True, "message": f"Replaying {name}"}
 
     @app.get("/api/demos")
-    def demos() -> dict[str, Any]:
+    def demos(limit: int = 100, offset: int = 0) -> dict[str, Any]:
+        if not 1 <= limit <= 500 or offset < 0:
+            raise HTTPException(400, "limit must be 1–500 and offset must be non-negative")
         files = sorted(state.demo_dir.glob("dr_anmar_*.npz"), reverse=True)
         references = read_reference_map(state.demo_dir)
         items = []
-        for path in files[:50]:
+        for path in files[offset : offset + limit]:
             manifest = read_demo_manifest(path)
+            integrity = inspect_demo_file(path)
             task = manifest.get("task")
             items.append(
                 {
@@ -1085,10 +1165,18 @@ def build_web_app(state: SharedState) -> FastAPI:
                     "analysis": manifest.get("analysis"),
                     "context": manifest.get("context", {}),
                     "modalities": manifest.get("modalities", {}),
+                    "integrity": integrity,
                     "is_reference": bool(task and references.get(task) == path.name),
                 }
             )
-        return {"demos": items, "analysis_notice": "Telemetry-derived research coaching; clinician validation is pending."}
+        return {
+            "demos": items,
+            "total": len(files),
+            "offset": offset,
+            "limit": limit,
+            "has_more": offset + len(items) < len(files),
+            "analysis_notice": "Telemetry-derived research coaching; clinician validation is pending.",
+        }
 
     @app.get("/api/demos/{name}/analysis")
     def demo_analysis(name: str) -> dict[str, Any]:
@@ -1106,6 +1194,7 @@ def build_web_app(state: SharedState) -> FastAPI:
         path = state.demo_dir / name
         if not path.is_file():
             raise HTTPException(404, "Demonstration not found")
+        require_replayable_demo(path)
         manifest = read_demo_manifest(path)
         task = manifest.get("task")
         if not task:
@@ -1135,6 +1224,7 @@ def build_web_app(state: SharedState) -> FastAPI:
                 raise HTTPException(409, "Select a clinician reference in Skills Twin first")
             if not (state.demo_dir / demo).is_file():
                 raise HTTPException(404, "The selected clinician reference file is missing")
+            require_replayable_demo(state.demo_dir / demo)
         with state.lock:
             state.reference_ghost_enabled = request.enabled
             if demo:
@@ -1154,6 +1244,13 @@ def build_web_app(state: SharedState) -> FastAPI:
             raise HTTPException(400, "Normalized gaze coordinates must be between zero and one")
         if request.source not in {"pointer_attention_proxy", "external_eye_tracker", "xr_eye_tracking"}:
             raise HTTPException(400, "Unknown gaze source")
+        if request.source != "pointer_attention_proxy" and (
+            not EXTERNAL_OPERATOR_SENSORS_ENABLED or not STUDY_ID or not CONSENT_PROTOCOL
+        ):
+            raise HTTPException(
+                403,
+                "External gaze is disabled until a study ID, consent protocol, and external-sensor opt-in are configured",
+            )
         with state.lock:
             state.gaze_uv = (request.u, request.v)
             state.gaze_valid = request.valid
@@ -1173,12 +1270,15 @@ def build_web_app(state: SharedState) -> FastAPI:
                 state.procedure_phase = request.phase
             if request.event is not None:
                 state.procedure_event_code = PROCEDURE_EVENTS[request.event]
+                state.procedure_event_sequence += 1
             annotation = {
                 "time": datetime.now(timezone.utc).isoformat(),
                 "recorded_frame": state.recorded_frames,
+                "frame_alignment": "next_control_frame_index",
                 "sim_step": state.sim_step,
                 "phase": state.procedure_phase,
                 "event": request.event,
+                "event_sequence": state.procedure_event_sequence,
                 "note": request.note,
             }
             state.procedure_events.append(annotation)
@@ -1191,6 +1291,7 @@ def build_web_app(state: SharedState) -> FastAPI:
         candidate = state.demo_dir / name
         if not candidate.is_file():
             raise HTTPException(404, "Demonstration not found")
+        require_replayable_demo(candidate)
         manifest = read_demo_manifest(candidate)
         task = manifest.get("task")
         reference_name = read_reference_map(state.demo_dir).get(task)
@@ -1199,6 +1300,7 @@ def build_web_app(state: SharedState) -> FastAPI:
         reference = state.demo_dir / reference_name
         if not reference.is_file():
             raise HTTPException(404, "The selected clinician reference file is missing")
+        require_replayable_demo(reference)
         return compare_demonstrations(candidate, reference)
 
     @app.get("/demos/{name}")
@@ -1298,18 +1400,19 @@ def apply_visual_scenario(image: Image.Image, scenario_id: str) -> Image.Image:
     return image
 
 
-def rgb_tensor_to_image(rgb: torch.Tensor, scenario_id: str = "baseline") -> Image.Image:
+def rgb_tensor_to_image(rgb: torch.Tensor, scenario_id: str = "baseline", dropout: bool = False) -> Image.Image:
     array = rgb[..., :3].detach().cpu().numpy()
     if np.issubdtype(array.dtype, np.floating):
         array = np.clip(array * 255.0, 0, 255).astype(np.uint8)
     else:
         array = array.astype(np.uint8, copy=False)
-    return apply_visual_scenario(Image.fromarray(array), scenario_id)
+    image = Image.fromarray(array)
+    return Image.new("RGB", image.size, (0, 0, 0)) if dropout else apply_visual_scenario(image, scenario_id)
 
 
-def encode_jpeg(rgb: torch.Tensor, scenario_id: str = "baseline") -> bytes:
+def encode_jpeg(rgb: torch.Tensor, scenario_id: str = "baseline", dropout: bool = False) -> bytes:
     buffer = io.BytesIO()
-    rgb_tensor_to_image(rgb, scenario_id).save(buffer, "JPEG", quality=86, optimize=False)
+    rgb_tensor_to_image(rgb, scenario_id, dropout).save(buffer, "JPEG", quality=86, optimize=False)
     return buffer.getvalue()
 
 
@@ -1356,6 +1459,69 @@ def read_demo_manifest(path: Path) -> dict[str, Any]:
         return {}
 
 
+_DEMO_INSPECTION_CACHE: dict[tuple[str, int, int], dict[str, Any]] = {}
+
+
+def inspect_demo_file(path: Path) -> dict[str, Any]:
+    """Bounded, cached structural validation for replay and dataset use."""
+    try:
+        stat = path.stat()
+    except OSError as exc:
+        return {"valid": False, "training_eligible": False, "error": str(exc)}
+    cache_key = (str(path), stat.st_mtime_ns, stat.st_size)
+    cached = _DEMO_INSPECTION_CACHE.get(cache_key)
+    if cached is not None:
+        return dict(cached)
+    result: dict[str, Any]
+    try:
+        with np.load(path, allow_pickle=False) as data:
+            if "actions" not in data.files:
+                raise ValueError("missing actions array")
+            actions = np.asarray(data["actions"])
+            if actions.ndim != 2 or actions.shape[1] < 1:
+                raise ValueError("actions must be a two-dimensional trajectory")
+            if not np.issubdtype(actions.dtype, np.number) or not np.all(np.isfinite(actions)):
+                raise ValueError("actions contain non-finite or non-numeric values")
+            frame_count = int(actions.shape[0])
+            if "time_s" in data.files:
+                times = np.asarray(data["time_s"]).reshape(-1)
+                if len(times) != frame_count or not np.all(np.isfinite(times)):
+                    raise ValueError("time_s is not finite and frame-aligned")
+                if len(times) > 1 and np.any(np.diff(times) < 0):
+                    raise ValueError("time_s is not monotonic")
+            warnings = [] if frame_count >= 2 else ["Recording has fewer than two control frames"]
+            result = {
+                "valid": True,
+                "training_eligible": frame_count >= 2,
+                "frames": frame_count,
+                "action_dim": int(actions.shape[1]),
+                "bytes": stat.st_size,
+                "warnings": warnings,
+                "error": None,
+            }
+    except Exception as exc:
+        result = {
+            "valid": False,
+            "training_eligible": False,
+            "bytes": stat.st_size,
+            "warnings": [],
+            "error": f"Unreadable demonstration: {exc}",
+        }
+    if len(_DEMO_INSPECTION_CACHE) >= 512:
+        _DEMO_INSPECTION_CACHE.clear()
+    _DEMO_INSPECTION_CACHE[cache_key] = result
+    return dict(result)
+
+
+def require_replayable_demo(path: Path) -> dict[str, Any]:
+    inspection = inspect_demo_file(path)
+    if not inspection.get("valid"):
+        raise HTTPException(422, inspection.get("error", "The demonstration is unreadable"))
+    if not inspection.get("training_eligible"):
+        raise HTTPException(422, "The demonstration is too short to replay or train from")
+    return inspection
+
+
 def read_reference_map(demo_dir: Path) -> dict[str, str]:
     try:
         value = json.loads((demo_dir / "clinician_references.json").read_text(encoding="utf-8"))
@@ -1380,7 +1546,7 @@ def _normalized_action_trace(actions: np.ndarray, points: int = 160) -> np.ndarr
 
 
 def compare_demonstrations(candidate_path: Path, reference_path: Path) -> dict[str, Any]:
-    with np.load(candidate_path) as candidate_data, np.load(reference_path) as reference_data:
+    with np.load(candidate_path, allow_pickle=False) as candidate_data, np.load(reference_path, allow_pickle=False) as reference_data:
         candidate_actions = np.asarray(candidate_data["actions"], dtype=np.float64)
         reference_actions = np.asarray(reference_data["actions"], dtype=np.float64)
     dimensions = min(candidate_actions.shape[1], reference_actions.shape[1])
@@ -1428,8 +1594,9 @@ def reference_tool_path(path: Path, max_points_per_tool: int = 54) -> tuple[np.n
     """Extract registered task-native tool-tip paths, with a legacy mobility fallback."""
     manifest = read_demo_manifest(path)
     body_names_by_robot = manifest.get("robot_body_names", {})
+    allow_legacy_fallback = not str(manifest.get("schema", "")).startswith("dr.anmar.demonstration.v2")
     preferred_tip_names = ("psm_tool_tip_link", "endo360_needle", "ecm_end_link", "tool_tip", "end_effector")
-    with np.load(path) as data:
+    with np.load(path, allow_pickle=False) as data:
         candidates: list[np.ndarray] = []
         legacy_candidates: list[tuple[float, np.ndarray]] = []
         for key in data.files:
@@ -1447,12 +1614,13 @@ def reference_tool_path(path: Path, max_points_per_tool: int = 54) -> tuple[np.n
             if preferred_index is not None and preferred_index < positions.shape[1]:
                 candidates.append(positions[:, preferred_index, :3])
                 continue
-            path_lengths = np.sum(np.linalg.norm(np.diff(positions, axis=0), axis=2), axis=0)
-            body_index = int(np.argmax(path_lengths))
-            legacy_candidates.append((float(path_lengths[body_index]), positions[:, body_index, :3]))
+            if allow_legacy_fallback:
+                path_lengths = np.sum(np.linalg.norm(np.diff(positions, axis=0), axis=2), axis=0)
+                body_index = int(np.argmax(path_lengths))
+                legacy_candidates.append((float(path_lengths[body_index]), positions[:, body_index, :3]))
     if not candidates:
         if not legacy_candidates:
-            raise ValueError("The reference does not contain a robot body trajectory")
+            raise ValueError("The reference has no registered task-native tool-tip trajectory")
         candidates = [max(legacy_candidates, key=lambda item: item[0])[1]]
     all_points = []
     all_phases = []
@@ -1579,7 +1747,7 @@ def analyze_demo(
         if tip_index is not None and tip_index < positions.shape[1]:
             tip_path_m += float(body_paths[tip_index])
             explicit_tip_positions.append(positions[:, tip_index, :3])
-        else:
+        elif not robot_body_names:
             tip_path_m += float(np.max(body_paths))
 
     object_lift_m = 0.0
@@ -1824,6 +1992,7 @@ def analyze_demo(
         "frames": frame_count,
         "metrics": {
             "tool_path_m": round(tip_path_m, 4),
+            "tool_path_registration": "task_native_tip_link" if explicit_tip_positions else "unavailable",
             "object_lift_m": round(object_lift_m, 4),
             "object_motion_m": round(object_motion_m, 4),
             "direction_corrections": corrections,
@@ -1837,6 +2006,7 @@ def analyze_demo(
             "grasp_relative_drift_m": round(grasp_relative_drift_m, 5),
             "max_environment_reward": round(float(np.max(native_reward)), 4) if len(native_reward) else None,
             "native_success": native_success_observed if native_success_available else None,
+            "success_signal_source": "simulator_native" if native_success_available else "procedure_mechanics" if procedure_id else "research_fallback",
             "max_suture_tension_n": round(max_suture_tension_n, 4),
             "suture_tissue_anchors": max_suture_anchors,
             "suture_knot_formed": suture_knot_formed,
@@ -1878,6 +2048,47 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def runtime_provenance(state: SharedState) -> dict[str, Any]:
+    try:
+        revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=Path(__file__).resolve().parents[1],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        ).stdout.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        revision = None
+    gpu_name = None
+    try:
+        gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else None
+    except (RuntimeError, AssertionError):
+        pass
+    configuration = {
+        "task": state.task,
+        "procedure": state.procedure,
+        "anatomy_scene_id": state.anatomy_scene_id,
+        "sensor_profile": state.sensor_profile,
+    }
+    return {
+        "source_revision": revision,
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "torch": getattr(torch, "__version__", None),
+        "cuda_runtime": getattr(torch.version, "cuda", None),
+        "gpu": gpu_name,
+        "task_id": state.task,
+        "task_configuration_sha256": hashlib.sha256(
+            json.dumps(configuration, sort_keys=True, default=str, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "policy_checkpoint_sha256": None,
+    }
+
+
+def array_payload_bytes(frame: dict[str, np.ndarray]) -> int:
+    return sum(int(np.asarray(value).nbytes) for value in frame.values())
+
+
 def save_demo(
     state: SharedState,
     frames: list[dict[str, np.ndarray]],
@@ -1895,6 +2106,9 @@ def save_demo(
     if vision_frames:
         arrays["endoscope_time_s"] = np.stack([frame["time_s"] for frame in vision_frames])
         arrays["endoscope_rgb"] = np.stack([frame["rgb"] for frame in vision_frames])
+        arrays["endoscope_sensor_dropout_active"] = np.stack(
+            [frame.get("sensor_dropout_active", np.array(False, dtype=np.bool_)) for frame in vision_frames]
+        )
         if all("depth_m" in frame for frame in vision_frames):
             arrays["endoscope_depth_m"] = np.stack([frame["depth_m"] for frame in vision_frames])
         if all("semantic_id" in frame for frame in vision_frames):
@@ -1940,6 +2154,9 @@ def save_demo(
             "anatomy_asset": state.anatomy_asset,
             "final_mechanics": json.loads(json.dumps(state.mechanics)),
         }
+        procedure_annotations = list(state.procedure_events)
+        camera_intrinsics = state.camera_intrinsics
+        semantic_labels = dict(state.semantic_labels)
     manifest = {
         "schema": "dr.anmar.demonstration.v2",
         "simulation_only": True,
@@ -1951,10 +2168,13 @@ def save_demo(
         "finished_at": datetime.now(timezone.utc).isoformat(),
         "frames": len(frames),
         "vision_frames": len(vision_frames),
+        "sensor_profile": state.sensor_profile,
+        "uncompressed_payload_bytes": sum(array_payload_bytes(frame) for frame in frames + vision_frames),
         "control_hz": round(observed_control_hz, 2),
         "control_hz_nominal": 50,
         "arrays": {key: list(value.shape) for key, value in arrays.items()},
         "data_file": name,
+        "data_bytes": path.stat().st_size,
         "modalities": {
             "robot_state_hz": round(observed_control_hz, 2),
             "robot_state_hz_nominal": 50,
@@ -1969,8 +2189,8 @@ def save_demo(
             "stereo_right_rgb_hz": 5 if "endoscope_right_rgb" in arrays else 0,
             "instrument_wrist_rgb_hz": 5 if "wrist_1_rgb" in arrays else 0,
             "instrument_wrist_camera_count": sum(1 for key in ("wrist_1_rgb", "wrist_2_rgb") if key in arrays),
-            "camera_intrinsics": state.camera_intrinsics,
-            "semantic_labels": state.semantic_labels,
+            "camera_intrinsics": camera_intrinsics,
+            "semantic_labels": semantic_labels,
             "simulator_outcome": "environment_reward, termination, truncation, and success when exposed by the task",
             "contact": "maximum force per available contact sensor",
             "deformable_tissue": "nodal displacement, deformation-gradient proxy, and simulator stress when exposed",
@@ -1985,7 +2205,16 @@ def save_demo(
             "clinical_thresholds_validated": False,
         },
         "context": context,
-        "procedure_annotations": list(state.procedure_events),
+        "runtime_provenance": state.runtime_provenance or runtime_provenance(state),
+        "data_governance": {
+            "study_id": STUDY_ID or None,
+            "consent_protocol": CONSENT_PROTOCOL or None,
+            "external_operator_sensors_enabled": EXTERNAL_OPERATOR_SENSORS_ENABLED,
+            "pointer_gaze_is_attention_proxy": True,
+            "patient_data_expected": False,
+            "retention_requires_study_protocol": True,
+        },
+        "procedure_annotations": procedure_annotations,
         "annotation_vocabulary": {
             "procedure_phases": PROCEDURE_PHASES,
             "procedure_events": PROCEDURE_EVENTS,
@@ -2119,12 +2348,13 @@ def main() -> None:
     # Start from the room-facing side used by the official OR scene so the
     # doctor sees the instrument, liver, table, and surrounding environment.
     camera_eye = np.asarray((0.45, 0.25, 0.28), dtype=np.float32)
+    endoscope_data_types = ["rgb"] if args_cli.sensor_profile == "efficient" else ["rgb", "distance_to_image_plane", "semantic_segmentation"]
     env_cfg.scene.endoscope = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Endoscope",
         update_period=0.04,
         height=args_cli.camera_height,
         width=args_cli.camera_width,
-        data_types=["rgb", "distance_to_image_plane", "semantic_segmentation"],
+        data_types=endoscope_data_types,
         colorize_semantic_segmentation=False,
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=22.0,
@@ -2134,23 +2364,24 @@ def main() -> None:
         ),
         offset=CameraCfg.OffsetCfg(pos=tuple(camera_eye.tolist()), rot=(1.0, 0.0, 0.0, 0.0), convention="world"),
     )
-    env_cfg.scene.endoscope_right = CameraCfg(
-        prim_path="{ENV_REGEX_NS}/EndoscopeRight",
-        update_period=0.04,
-        height=args_cli.camera_height,
-        width=args_cli.camera_width,
-        data_types=["rgb"],
-        spawn=sim_utils.PinholeCameraCfg(
-            focal_length=22.0,
-            focus_distance=0.25,
-            horizontal_aperture=20.955,
-            clipping_range=(0.01, 2.0),
-        ),
-        offset=CameraCfg.OffsetCfg(pos=tuple(camera_eye.tolist()), rot=(1.0, 0.0, 0.0, 0.0), convention="world"),
-    )
+    if args_cli.sensor_profile in {"stereo", "research"}:
+        env_cfg.scene.endoscope_right = CameraCfg(
+            prim_path="{ENV_REGEX_NS}/EndoscopeRight",
+            update_period=0.04,
+            height=args_cli.camera_height,
+            width=args_cli.camera_width,
+            data_types=["rgb"],
+            spawn=sim_utils.PinholeCameraCfg(
+                focal_length=22.0,
+                focus_distance=0.25,
+                horizontal_aperture=20.955,
+                clipping_range=(0.01, 2.0),
+            ),
+            offset=CameraCfg.OffsetCfg(pos=tuple(camera_eye.tolist()), rot=(1.0, 0.0, 0.0, 0.0), convention="world"),
+        )
     wrist_tip_name = "endo360_needle" if "STAR" in args_cli.task else "ecm_end_link" if "ECM" in args_cli.task else "psm_tool_tip_link"
     wrist_robot_names = ("Robot_1", "Robot_2") if "Dual" in args_cli.task else ("Robot",)
-    for wrist_index, wrist_robot_name in enumerate(wrist_robot_names, start=1):
+    for wrist_index, wrist_robot_name in enumerate(wrist_robot_names, start=1) if args_cli.sensor_profile == "research" else ():
         setattr(
             env_cfg.scene,
             f"wrist_{wrist_index}",
@@ -2236,9 +2467,11 @@ def main() -> None:
     env.reset()
     scene = env.unwrapped.scene
     camera = scene["endoscope"]
-    stereo_right_camera = scene["endoscope_right"]
-    wrist_cameras = [scene[f"wrist_{index}"] for index in range(1, len(wrist_robot_names) + 1)]
-    camera_sources = {"endoscope_left": camera, "endoscope_right": stereo_right_camera}
+    stereo_right_camera = scene["endoscope_right"] if args_cli.sensor_profile in {"stereo", "research"} else None
+    wrist_cameras = [scene[f"wrist_{index}"] for index in range(1, len(wrist_robot_names) + 1)] if args_cli.sensor_profile == "research" else []
+    camera_sources = {"endoscope_left": camera}
+    if stereo_right_camera is not None:
+        camera_sources["endoscope_right"] = stereo_right_camera
     camera_sources.update({f"wrist_{index}": wrist_camera for index, wrist_camera in enumerate(wrist_cameras, start=1)})
     robot_names = sorted(scene.articulations.keys())
     robots = {name: scene[name] for name in robot_names}
@@ -2290,6 +2523,7 @@ def main() -> None:
         target_throws=int(procedure.get("target_throws", 3)),
     )
     stage = None
+    showcase_prim = None
     if organ_usd.is_file():
         import omni.usd
         from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt
@@ -3039,11 +3273,30 @@ def main() -> None:
             torch.tensor([selected_eye.tolist()], device=camera.device),
             torch.tensor([selected_target.tolist()], device=camera.device),
         )
-        selected_right_eye = selected_eye + np.asarray((0.0, 0.006, 0.0), dtype=np.float32)
-        stereo_right_camera.set_world_poses_from_view(
-            torch.tensor([selected_right_eye.tolist()], device=stereo_right_camera.device),
-            torch.tensor([selected_target.tolist()], device=stereo_right_camera.device),
+        right_offset = SCENARIO_NATIVE_PROFILES.get(selected_scenario, {}).get(
+            "right_camera_offset_m", (0.0, 0.006, 0.0)
         )
+        selected_right_eye = selected_eye + np.asarray(right_offset, dtype=np.float32)
+        if stereo_right_camera is not None:
+            stereo_right_camera.set_world_poses_from_view(
+                torch.tensor([selected_right_eye.tolist()], device=stereo_right_camera.device),
+                torch.tensor([selected_target.tolist()], device=stereo_right_camera.device),
+            )
+
+    anatomy_showcase_position_w = np.asarray(anatomy_position, dtype=np.float32)
+    anatomy_showcase_quaternion_w = np.asarray((1.0, 0.0, 0.0, 0.0), dtype=np.float32)
+    if showcase_prim is not None and showcase_prim.IsValid():
+        try:
+            anatomy_world = UsdGeom.Xformable(showcase_prim).ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+            translation = anatomy_world.ExtractTranslation()
+            rotation = anatomy_world.ExtractRotationQuat()
+            imaginary = rotation.GetImaginary()
+            anatomy_showcase_position_w = np.asarray(tuple(translation), dtype=np.float32)
+            anatomy_showcase_quaternion_w = np.asarray(
+                (rotation.GetReal(), imaginary[0], imaginary[1], imaginary[2]), dtype=np.float32
+            )
+        except (AttributeError, RuntimeError):
+            pass
 
     action_dim = int(env.action_space.shape[-1])
     arms = 2 if "Dual" in args_cli.task else 1
@@ -3069,8 +3322,10 @@ def main() -> None:
         openusd_scene_loaded=bool(openusd_environment and organ_usd.is_file() and showcase_children),
         organ_proxy_visual_ready=proxy_visual_ready,
         anatomy_collision_meshes=collision_mesh_count,
+        sensor_profile=args_cli.sensor_profile,
     )
     state.camera_names = list(camera_sources)
+    state.runtime_provenance = runtime_provenance(state)
     state.camera_frame_ids = {name: 0 for name in camera_sources}
     state.camera_subscribers = {name: 0 for name in camera_sources}
     state.procedure_waypoints_total = len(room_waypoints)
@@ -3238,6 +3493,7 @@ def main() -> None:
     vision_frames: list[dict[str, np.ndarray]] = []
     demo_started_at = ""
     demo_started_monotonic = 0.0
+    recorded_bytes_estimate = 0
     last_vision_sample_time = 0.0
     last_safety_sample_time = 0.0
     latest_contact_forces: dict[str, float] = {}
@@ -3325,12 +3581,15 @@ def main() -> None:
             demo_started_at = datetime.now(timezone.utc).isoformat()
             demo_started_monotonic = time.monotonic()
             last_vision_sample_time = 0.0
+            recorded_bytes_estimate = 0
             with state.lock:
                 state.recording = True
                 state.recorded_frames = 0
+                state.recorded_bytes_estimate = 0
                 state.intervention_count = 0
                 state.procedure_phase = "setup"
                 state.procedure_event_code = 0
+                state.procedure_event_sequence = 0
                 state.procedure_events.clear()
         elif record_request == "stop":
             try:
@@ -3363,7 +3622,8 @@ def main() -> None:
         elif replay_request:
             replay_path = args_cli.demo_dir / Path(replay_request).name
             try:
-                replay_actions = np.load(replay_path)["actions"].astype(np.float32)
+                with np.load(replay_path, allow_pickle=False) as replay_data:
+                    replay_actions = np.asarray(replay_data["actions"], dtype=np.float32)
                 replay_index = 0
                 if not reset_requested:
                     with torch.inference_mode():
@@ -3383,6 +3643,8 @@ def main() -> None:
         if replay_actions is not None and replay_index < len(replay_actions):
             action_np = replay_actions[replay_index].copy()
             replay_index += 1
+            with state.lock:
+                state.operator_input_source = "supervised_replay"
             replay_profile = SCENARIO_NATIVE_PROFILES.get(scenario_id, {})
             replay_yaw = float(replay_profile.get("translation_yaw_deg", 0.0))
             if replay_yaw:
@@ -3597,6 +3859,9 @@ def main() -> None:
             if (position := tool_position_for_arm(arm)) is not None
         }
 
+        surface_compliance_scale = float(
+            SCENARIO_NATIVE_PROFILES.get(scenario_id, {}).get("surface_compliance_scale", 1.0)
+        )
         if proxy_organ and surface_mesh_model is not None:
             organ_grasp_initialized.intersection_update(assisted_grasp_joints)
             for arm, current_tool in current_tool_positions.items():
@@ -3618,7 +3883,7 @@ def main() -> None:
                             inward * (0.0035 / max(scale, 1e-6)),
                             radius_local=0.026 / max(scale, 1e-6),
                             max_displacement_local=0.018 / max(scale, 1e-6),
-                            compliance=1.0,
+                            compliance=1.0 * surface_compliance_scale,
                         ) or surface_changed
                     organ_grasp_initialized.add(arm)
                 previous_tool = previous_tool_positions.get(arm)
@@ -3631,7 +3896,7 @@ def main() -> None:
                         local_delta,
                         radius_local=0.030 / max(scale, 1e-6),
                         max_displacement_local=0.018 / max(scale, 1e-6),
-                        compliance=0.78,
+                        compliance=0.78 * surface_compliance_scale,
                     ) or surface_changed
             if not assisted_grasp_joints:
                 tissue_recovering = surface_mesh_model.recover(0.052)
@@ -3669,7 +3934,7 @@ def main() -> None:
                             local_delta,
                             radius_local=0.018 / max(scale, 1e-6),
                             max_displacement_local=0.012 / max(scale, 1e-6),
-                            compliance=0.58,
+                            compliance=0.58 * surface_compliance_scale,
                         ) or surface_changed
                 else:
                     tissue_recovering = surface_mesh_model.recover(0.018)
@@ -3929,6 +4194,7 @@ def main() -> None:
                 operator_source = state.operator_input_source
                 procedure_phase = state.procedure_phase
                 procedure_event_code = state.procedure_event_code
+                procedure_event_sequence = state.procedure_event_sequence
                 needle_puncture_active = state.needle_puncture_active
                 needle_penetration_depth_m = state.needle_penetration_depth_m
                 needle_tip_clearance_m = state.needle_tip_clearance_m
@@ -3941,6 +4207,12 @@ def main() -> None:
                 ultrasound_metrics = dict(state.mechanics["ultrasound"])
                 dissection_metrics = dict(state.mechanics["dissection"])
                 recovery_metrics = dict(state.mechanics["recovery"])
+                assisted_grasp_state = list(state.assisted_grasp_active)
+                tool_object_distances = list(state.tool_to_object_distance_m)
+                gripper_state = list(state.grippers_open)
+                camera_valid_depth_fraction = state.camera_valid_depth_fraction
+                camera_foreground_fraction = state.camera_foreground_fraction
+                camera_mean_luminance = state.camera_mean_luminance
                 state.procedure_event_code = 0
             frame = {
                 "time_s": np.array(time.monotonic() - demo_started_monotonic, dtype=np.float64),
@@ -3960,6 +4232,26 @@ def main() -> None:
                 "operator_input_source_code": np.array(OPERATOR_INPUT_SOURCES.get(operator_source, 0), dtype=np.int16),
                 "procedure_phase_code": np.array(PROCEDURE_PHASES.get(procedure_phase, 0), dtype=np.int16),
                 "procedure_event_code": np.array(procedure_event_code, dtype=np.int16),
+                "procedure_event_sequence": np.array(procedure_event_sequence, dtype=np.int64),
+                "task_grasp_state_code": np.asarray(
+                    [
+                        2 if assisted_grasp_state[arm] else 1 if not gripper_state[arm] else 0
+                        for arm in range(state.arms)
+                    ],
+                    dtype=np.int16,
+                ),
+                "tool_to_object_distance_m": np.asarray(
+                    [value if value is not None else np.nan for value in tool_object_distances], dtype=np.float32
+                ),
+                "camera_valid_depth_fraction": np.array(
+                    camera_valid_depth_fraction if camera_valid_depth_fraction is not None else np.nan, dtype=np.float32
+                ),
+                "camera_semantic_foreground_fraction": np.array(
+                    camera_foreground_fraction if camera_foreground_fraction is not None else np.nan, dtype=np.float32
+                ),
+                "camera_mean_luminance": np.array(
+                    camera_mean_luminance if camera_mean_luminance is not None else np.nan, dtype=np.float32
+                ),
                 "needle_puncture_active": np.array(needle_puncture_active, dtype=np.bool_),
                 "needle_penetration_depth_m": np.array(needle_penetration_depth_m, dtype=np.float32),
                 "needle_tip_clearance_m": np.array(
@@ -4035,8 +4327,8 @@ def main() -> None:
                 "recovery_object_reacquired": np.array(
                     recovery_metrics.get("object_reacquired", False), dtype=np.bool_
                 ),
-                "anatomy_showcase_position_w": np.asarray((-0.117, -0.0945, -0.144), dtype=np.float32),
-                "anatomy_showcase_quaternion_w": np.asarray((1.0, 0.0, 0.0, 0.0), dtype=np.float32),
+                "anatomy_showcase_position_w": anatomy_showcase_position_w.copy(),
+                "anatomy_showcase_quaternion_w": anatomy_showcase_quaternion_w.copy(),
             }
             for name, robot in robots.items():
                 frame[f"{name}_joint_positions"] = robot.data.joint_pos[0].detach().cpu().numpy().copy()
@@ -4057,11 +4349,14 @@ def main() -> None:
             for key, value in latest_deformable_safety.items():
                 frame[key] = np.array(value, dtype=np.float32)
             demo_frames.append(frame)
+            recorded_bytes_estimate += array_payload_bytes(frame)
             with state.lock:
                 state.recorded_frames = len(demo_frames)
+                state.recorded_bytes_estimate = recorded_bytes_estimate
                 if (
                     len(demo_frames) >= MAX_DEMO_FRAMES
                     or now - demo_started_monotonic >= MAX_DEMO_SECONDS
+                    or recorded_bytes_estimate >= MAX_DEMO_BYTES
                 ):
                     state.record_request = "stop"
                     state.coaching_cue = (
@@ -4073,6 +4368,12 @@ def main() -> None:
         frame_interval = 0.04 if interactive_active else 0.20
         if camera.data.output.get("rgb") is not None and now - last_frame_time >= frame_interval:
             rendered_jpegs = {}
+            dropout_profile = SCENARIO_NATIVE_PROFILES.get(scenario_id, {})
+            dropout_period = int(dropout_profile.get("dropout_period_frames", 0))
+            dropout_frames = int(dropout_profile.get("dropout_frames", 0))
+            dropout_active = bool(
+                dropout_period and (frame_count + scenario_seed % dropout_period) % dropout_period < dropout_frames
+            )
             with state.lock:
                 requested_cameras = {
                     name for name, count in state.camera_subscribers.items() if count > 0
@@ -4084,19 +4385,24 @@ def main() -> None:
                     continue
                 camera_output = sensor_camera.data.output.get("rgb")
                 if camera_output is not None:
-                    rendered_jpegs[camera_name] = encode_jpeg(camera_output[0], scenario_id)
+                    rendered_jpegs[camera_name] = encode_jpeg(camera_output[0], scenario_id, dropout_active)
             camera_rgb = camera.data.output["rgb"][0]
             if is_recording and now - last_vision_sample_time >= 0.20:
-                observation = rgb_tensor_to_image(camera_rgb, scenario_id).resize((360, 240), Image.Resampling.BILINEAR)
+                observation = rgb_tensor_to_image(camera_rgb, scenario_id, dropout_active).resize((360, 240), Image.Resampling.BILINEAR)
                 vision_frame = {
                     "time_s": np.array(now - demo_started_monotonic, dtype=np.float64),
                     "rgb": np.asarray(observation, dtype=np.uint8),
+                    "sensor_dropout_active": np.array(dropout_active, dtype=np.bool_),
                 }
+                vision_frame["mean_luminance"] = np.array(np.asarray(observation, dtype=np.float32).mean() / 255.0, dtype=np.float32)
                 depth_tensor = camera.data.output.get("distance_to_image_plane")
                 if depth_tensor is not None:
                     depth = depth_tensor[0].detach().cpu().numpy().astype(np.float32)
                     depth = np.squeeze(depth)
                     depth = np.nan_to_num(depth, nan=0.0, posinf=2.0, neginf=0.0)
+                    if dropout_active:
+                        depth.fill(0.0)
+                    vision_frame["valid_depth_fraction"] = np.array(np.mean(depth > 0.0), dtype=np.float32)
                     if state.camera_intrinsics is None:
                         try:
                             with state.lock:
@@ -4113,8 +4419,11 @@ def main() -> None:
                 semantic_tensor = camera.data.output.get("semantic_segmentation")
                 if semantic_tensor is not None:
                     semantic = np.squeeze(semantic_tensor[0].detach().cpu().numpy()).astype(np.int32)
+                    if dropout_active:
+                        semantic.fill(0)
                     semantic_image = Image.fromarray(semantic, mode="I").resize((360, 240), Image.Resampling.NEAREST)
                     vision_frame["semantic_id"] = np.asarray(semantic_image, dtype=np.uint32)
+                    vision_frame["semantic_foreground_fraction"] = np.array(np.mean(semantic != 0), dtype=np.float32)
                     if not state.semantic_labels:
                         with state.lock:
                             state.semantic_labels = camera_semantic_labels(camera)
@@ -4122,11 +4431,23 @@ def main() -> None:
                     sensor_camera = camera_sources.get(camera_name)
                     sensor_rgb = sensor_camera.data.output.get("rgb") if sensor_camera is not None else None
                     if sensor_rgb is not None:
-                        sensor_image = rgb_tensor_to_image(sensor_rgb[0], scenario_id).resize(
+                        sensor_image = rgb_tensor_to_image(sensor_rgb[0], scenario_id, dropout_active).resize(
                             (360, 240), Image.Resampling.BILINEAR
                         )
                         vision_frame[f"{camera_name}_rgb"] = np.asarray(sensor_image, dtype=np.uint8)
                 vision_frames.append(vision_frame)
+                with state.lock:
+                    state.camera_mean_luminance = float(vision_frame["mean_luminance"])
+                    if "valid_depth_fraction" in vision_frame:
+                        state.camera_valid_depth_fraction = float(vision_frame["valid_depth_fraction"])
+                    if "semantic_foreground_fraction" in vision_frame:
+                        state.camera_foreground_fraction = float(vision_frame["semantic_foreground_fraction"])
+                recorded_bytes_estimate += array_payload_bytes(vision_frame)
+                with state.lock:
+                    state.recorded_bytes_estimate = recorded_bytes_estimate
+                    if recorded_bytes_estimate >= MAX_DEMO_BYTES:
+                        state.record_request = "stop"
+                        state.coaching_cue = "The recording reached its memory budget and is being saved automatically."
                 last_vision_sample_time = now
             frame_count += 1
             elapsed = max(now - last_frame_time, 1e-6)

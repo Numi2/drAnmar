@@ -16,6 +16,32 @@ simulation, not clinical validation.
 
 ## Source audit hardening — 2026-07-20
 
+The follow-up remediation pass closed the remaining source-level gaps identified by this ledger:
+
+- browser mutations now use a 30-second single-operator lease shared by Doctor Studio and the embedded worker;
+- optional token login uses a host-wide HTTP-only cookie, bounded login attempts, and a deployment-controlled
+  HTTPS-only cookie flag;
+- demonstrations are atomically saved, structurally inspected before replay/reference/dataset use, and report
+  unreadable or too-short recordings without crashing the UI;
+- demonstration, dataset-card, experiment, and policy-card enumeration is paginated; immutable hashes are cached
+  by path, size, and modification time rather than trusted from stale manifests;
+- recording has frame, duration, and uncompressed-byte ceilings; `efficient`, `stereo`, and `research` sensor
+  profiles now control which Isaac camera sensors are instantiated and captured;
+- procedure annotations carry monotonic event sequence numbers in both manifest and trajectory, so multiple
+  between-frame events remain recoverable from the annotation ledger;
+- new manifests record source, Python, Torch, CUDA, GPU, task-configuration and workflow-metadata provenance;
+- the spawned anatomy prim world transform, task-native tip registration, explicit assisted-grasp state,
+  tool/object distance, depth-validity, semantic-foreground and luminance signals are recorded;
+- NVIDIA mode discovery validates the pinned metadata schema and fails closed on malformed or drifted modes;
+- stereo drift, seeded camera dropout, and compliant-surface response variations are real challenge scenarios;
+- immutable policy evaluation cards bind dataset, training run, checkpoint and completed challenge matrix hashes;
+- external gaze/XR input fails closed without explicit study, consent-protocol and sensor-enable configuration;
+- `docs/VALIDATION_GATES.json` separates source-ready work from host, licensed-runtime, hardware, biomechanical,
+  and clinician-evidence blockers, and CI rejects unsupported validation claims.
+
+These controls do not satisfy the live, biomechanical, hardware, or clinical evidence requests below. Gilgamesh
+remained unreachable over Tailscale and SSH during the follow-up pass, so those gates stay explicitly open.
+
 - Training now actually pauses the interactive Isaac worker and restores the exact prior procedure/anatomy
   composition; NVIDIA workflow resume uses the same full-context path.
 - GPU-owning jobs, Failure Lab matrices, room switches and interactive state mutations are lifecycle-gated.
