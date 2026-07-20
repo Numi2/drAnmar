@@ -2666,7 +2666,11 @@ def main() -> None:
         drape.CreateSizeAttr(1.0)
         drape_transform = UsdGeom.Xformable(drape.GetPrim())
         drape_transform.ClearXformOpOrder()
-        drape_transform.AddTranslateOp().Set(Gf.Vec3d(0.0, -0.12, 0.001))
+        # This is a visual-only cover over the native task table.  Keep its
+        # rendered top just below the z=0 physical support plane; otherwise
+        # thin native objects such as the 1 mm suture needle are depth-hidden
+        # until the robot lifts them above the cover.
+        drape_transform.AddTranslateOp().Set(Gf.Vec3d(0.0, -0.12, -0.0015))
         drape_transform.AddScaleOp().Set(Gf.Vec3f(0.62, 0.50, 0.002))
         drape_material = UsdShade.Material.Define(stage, f"{drape_path}/Material")
         drape_shader = UsdShade.Shader.Define(stage, f"{drape_path}/Material/Shader")
