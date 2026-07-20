@@ -2512,6 +2512,12 @@ def main() -> None:
                 )
                 procedure_target_prims.append(ring_prim)
         elif guide_kind == "ultrasound_access" and procedure_mechanics.ultrasound is not None:
+            probe_zone = UsdGeom.Sphere.Define(stage, "/World/envs/env_0/DrAnmarUltrasoundProbeZone")
+            probe_zone.CreateRadiusAttr(0.015)
+            UsdGeom.Xformable(probe_zone.GetPrim()).AddTranslateOp().Set(
+                Gf.Vec3d(*procedure_mechanics.ultrasound.scan_pose.astype(float).tolist())
+            )
+            bind_procedure_material(probe_zone.GetPrim(), "UltrasoundProbeZone", (0.08, 0.72, 0.95), 0.28)
             target = UsdGeom.Sphere.Define(stage, "/World/envs/env_0/DrAnmarUltrasoundTarget")
             target.CreateRadiusAttr(0.008)
             UsdGeom.Xformable(target.GetPrim()).AddTranslateOp().Set(
@@ -2524,14 +2530,32 @@ def main() -> None:
                 Gf.Vec3d(*procedure_mechanics.ultrasound.protected_center.astype(float).tolist())
             )
             bind_procedure_material(protected.GetPrim(), "ProtectedVessel", (0.92, 0.12, 0.12), 0.35)
-            procedure_target_prims.extend((target.GetPrim(), protected.GetPrim()))
-        elif guide_kind == "biopsy" and len(room_waypoints):
-            lesion_center = np.mean(room_waypoints, axis=0)
-            lesion = UsdGeom.Sphere.Define(stage, "/World/envs/env_0/DrAnmarLesionTarget")
-            lesion.CreateRadiusAttr(0.013)
-            UsdGeom.Xformable(lesion.GetPrim()).AddTranslateOp().Set(Gf.Vec3d(*lesion_center.astype(float).tolist()))
-            bind_procedure_material(lesion.GetPrim(), "LesionTarget", (0.76, 0.18, 0.62), 0.55)
-            procedure_target_prims.append(lesion.GetPrim())
+            define_world_curve(
+                "/World/envs/env_0/DrAnmarUltrasoundBeam",
+                np.stack((procedure_mechanics.ultrasound.scan_pose, procedure_mechanics.ultrasound.target)),
+                0.0025,
+                "UltrasoundBeam",
+                (0.22, 0.80, 0.96),
+                0.35,
+            )
+            procedure_target_prims.extend((probe_zone.GetPrim(), target.GetPrim(), protected.GetPrim()))
+        elif guide_kind in {"dissection", "biopsy"} and len(room_waypoints):
+            protected_path = room_waypoints + np.asarray((0.0, 0.028, -0.004), dtype=np.float32)
+            define_world_curve(
+                "/World/envs/env_0/DrAnmarProtectedCorridor",
+                protected_path,
+                0.010,
+                "ProtectedCorridor",
+                (0.92, 0.10, 0.10),
+                0.42,
+            )
+            if guide_kind == "biopsy":
+                lesion_center = np.mean(room_waypoints, axis=0)
+                lesion = UsdGeom.Sphere.Define(stage, "/World/envs/env_0/DrAnmarLesionTarget")
+                lesion.CreateRadiusAttr(0.013)
+                UsdGeom.Xformable(lesion.GetPrim()).AddTranslateOp().Set(Gf.Vec3d(*lesion_center.astype(float).tolist()))
+                bind_procedure_material(lesion.GetPrim(), "LesionTarget", (0.76, 0.18, 0.62), 0.55)
+                procedure_target_prims.append(lesion.GetPrim())
 
     def refresh_anatomy_guard_volumes() -> None:
         """Cache visible OpenUSD organ surfaces for shape-aware proximity and a bounds fallback."""
@@ -3717,6 +3741,20 @@ def main() -> None:
                     imageable.MakeVisible()
                 else:
                     imageable.MakeInvisible()
+            if procedure_curve is not None and len(room_waypoints) >= 5:
+                divided = bool(procedure_updates.get("vascular", {}).get("divided"))
+                if divided:
+                    first_clip = room_waypoints[1]
+                    second_clip = room_waypoints[3]
+                    axis = (second_clip - first_clip) / max(float(np.linalg.norm(second_clip - first_clip)), 1e-8)
+                    center = (first_clip + second_clip) * 0.5
+                    vessel_points = np.vstack((room_waypoints[:2], center - axis * 0.006, center + axis * 0.006, room_waypoints[3:]))
+                    procedure_curve.GetCurveVertexCountsAttr().Set(Vt.IntArray([3, 3]))
+                else:
+                    vessel_points = room_waypoints
+                    procedure_curve.GetCurveVertexCountsAttr().Set(Vt.IntArray([len(vessel_points)]))
+                procedure_curve.GetPointsAttr().Set(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(vessel_points, dtype=np.float32)))
+                procedure_curve.GetWidthsAttr().Set(Vt.FloatArray([0.009] * len(vessel_points)))
         with state.lock:
             for key in ("tube", "closure", "vascular", "ultrasound", "dissection", "recovery"):
                 state.mechanics[key] = procedure_updates.get(key, {"active": False})
