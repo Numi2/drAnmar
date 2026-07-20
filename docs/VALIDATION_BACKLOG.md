@@ -9,8 +9,9 @@ simulation, not clinical validation.
 - Implementation status: Skills Twin, Failure Lab, RGB-D and semantic recording, native scene variation,
   clinician reference comparison and path guide, tissue/contact telemetry, and automated challenge-matrix
   slices complete in source.
-- Runtime validation status: first live Gilgamesh pass completed on 2026-07-19; the remaining items below
-  are still open.
+- Runtime validation status: live Gilgamesh passes completed on 2026-07-19 and 2026-07-20. The current task,
+  OpenUSD, control, recording, and representative-room evidence is in `GILGAMESH_VALIDATION_2026-07-20.md`;
+  the remaining items below are still open.
 - Clinical validation status: not started.
 - Intended use remains simulation, education, synthetic data, and preclinical research only.
 
@@ -39,8 +40,18 @@ The follow-up remediation pass closed the remaining source-level gaps identified
 - `docs/VALIDATION_GATES.json` separates source-ready work from host, licensed-runtime, hardware, biomechanical,
   and clinician-evidence blockers, and CI rejects unsupported validation claims.
 
-These controls do not satisfy the live, biomechanical, hardware, or clinical evidence requests below. Gilgamesh
-remained unreachable over Tailscale and SSH during the follow-up pass, so those gates stay explicitly open.
+These controls do not satisfy the biomechanical, hardware, or clinical evidence requests below. Gilgamesh was
+unreachable during the initial source-only follow-up, but the later 2026-07-20 pass restored live host evidence;
+only the gates explicitly demonstrated in the new runtime report should be treated as partially closed.
+
+## Gilgamesh release-candidate evidence — 2026-07-20
+
+- All nine native interactive task families completed 40 CUDA steps with finite reported joint state.
+- Seven runtime anatomy layers and seven full room compositions passed hard scale and dependency gates.
+- The suite, one-operator boundary, gripper/drive/camera controls, recording and analysis were exercised live.
+- Ultrasound, suturing, cutting and liver-retraction rooms loaded with their intended procedural mechanics ready.
+- Full trajectories in every room, isolated performance, licensed NVIDIA provider workflows, hardware,
+  biomechanics and clinician evidence remain open. See `GILGAMESH_VALIDATION_2026-07-20.md`.
 
 - Training now actually pauses the interactive Isaac worker and restores the exact prior procedure/anatomy
   composition; NVIDIA workflow resume uses the same full-context path.

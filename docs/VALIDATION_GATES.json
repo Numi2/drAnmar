@@ -7,20 +7,24 @@
     {
       "id": "all_openusd_rooms_on_gilgamesh",
       "priority": "P0",
-      "state": "blocked_host",
+      "state": "pending_live",
       "owner": "runtime_engineering",
       "requirement": "Run all 19 procedure rooms across the supported anatomy presets on the isolated RTX 4090 host.",
-      "blocker": "Gilgamesh SSH and service ports were unreachable during the 2026-07-20 remediation pass.",
-      "evidence": []
+      "blocker": "All nine native task families and representative advanced rooms passed, but complete trajectories in all 19 rooms across all seven anatomy variants remain open.",
+      "evidence": [
+        "docs/GILGAMESH_VALIDATION_2026-07-20.md"
+      ]
     },
     {
       "id": "isolated_performance_matrix",
       "priority": "P0",
-      "state": "blocked_host",
+      "state": "pending_live",
       "owner": "runtime_engineering",
       "requirement": "Measure control rate, render rate, CPU, GPU memory, recording growth and save latency for each sensor profile.",
-      "blocker": "Requires the isolated RTX 4090 runtime.",
-      "evidence": []
+      "blocker": "A co-resident 4090 pass succeeded near 2 FPS; Jetbot workloads remained active, so the isolated sensor-profile matrix is still required.",
+      "evidence": [
+        "docs/GILGAMESH_VALIDATION_2026-07-20.md"
+      ]
     },
     {
       "id": "biomechanical_calibration",
@@ -61,25 +65,27 @@
     {
       "id": "shared_workstation_control_boundary",
       "priority": "P0",
-      "state": "source_ready",
+      "state": "pending_live",
       "owner": "deployment_operator",
       "requirement": "Configure access control and HTTPS, then verify one-operator leasing from two independent browsers.",
-      "blocker": "Source supports an optional access token and single-operator lease; deployment TLS and live two-browser evidence remain required.",
+      "blocker": "Two live operator identities proved claim, rejection and release; deployment access-token enablement, TLS and two independent physical browsers remain required.",
       "evidence": [
         "scripts/dr_anmar_operator.py",
-        "docs/DATA_GOVERNANCE.md"
+        "docs/DATA_GOVERNANCE.md",
+        "docs/GILGAMESH_VALIDATION_2026-07-20.md"
       ]
     },
     {
       "id": "dataset_and_policy_provenance",
       "priority": "P1",
-      "state": "source_ready",
+      "state": "pending_live",
       "owner": "research_engineering",
       "requirement": "Bind demonstrations, datasets, checkpoints, runtime revisions and challenge matrices with immutable hashes.",
-      "blocker": "Live end-to-end card creation remains part of the Gilgamesh matrix.",
+      "blocker": "Live demonstration recording and analysis passed; dataset, training, challenge-matrix and policy-card hash promotion remain open.",
       "evidence": [
         "scripts/dr_anmar_workstation.py",
-        "scripts/dr_anmar_hub.py"
+        "scripts/dr_anmar_hub.py",
+        "docs/GILGAMESH_VALIDATION_2026-07-20.md"
       ]
     }
   ]
