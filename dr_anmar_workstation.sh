@@ -23,7 +23,16 @@ LOG_FILE="${ROOT}/logs/workstation.log"
 mkdir -p "${ROOT}/run" "${ROOT}/logs" "${ROOT}/demos"
 
 is_running() {
-    [[ -f "${PID_FILE}" ]] && kill -0 "$(cat "${PID_FILE}")" 2>/dev/null
+    [[ -f "${PID_FILE}" ]] || return 1
+    local pid command
+    pid="$(cat "${PID_FILE}")"
+    kill -0 "${pid}" 2>/dev/null || return 1
+    if [[ -r "/proc/${pid}/cmdline" ]]; then
+        command="$(tr '\0' ' ' <"/proc/${pid}/cmdline")"
+    else
+        command="$(ps -p "${pid}" -o command= 2>/dev/null || true)"
+    fi
+    [[ "${command}" == *"dr_anmar"* ]]
 }
 
 case "${1:-status}" in

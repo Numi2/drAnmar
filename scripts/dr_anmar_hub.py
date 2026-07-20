@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -196,6 +196,7 @@ class HealthcareWorkflowRequest(BaseModel):
 
 @dataclass
 class HubState:
+    shutting_down: bool = False
     switching: bool = False
     requested_task: str | None = None
     error: str | None = None
@@ -217,6 +218,7 @@ class HubState:
     healthcare_exit_code: int | None = None
     healthcare_manifest: str | None = None
     healthcare_resume_task: str | None = None
+    healthcare_resume_context: dict[str, Any] | None = None
     matrix_status: str = "idle"
     matrix_id: str | None = None
     matrix_demo: str | None = None
@@ -232,6 +234,26 @@ state = HubState()
 app = FastAPI(title="Dr.Anmar Doctor Studio", docs_url=None, redoc_url=None)
 if RESEARCH_ROOT.is_dir():
     app.mount("/research", StaticFiles(directory=RESEARCH_ROOT), name="sufia-research")
+
+
+@app.middleware("http")
+async def protect_browser_requests(request: Request, call_next):
+    """Reject cross-site mutations while preserving local API and tailnet use."""
+    origin = request.headers.get("origin")
+    if request.method not in {"GET", "HEAD", "OPTIONS"} and origin:
+        try:
+            from urllib.parse import urlparse
+
+            if urlparse(origin).hostname != request.url.hostname:
+                return JSONResponse({"detail": "Cross-site state changes are not allowed"}, status_code=403)
+        except ValueError:
+            return JSONResponse({"detail": "Invalid request origin"}, status_code=403)
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+    return response
 
 
 def utc_now() -> str:
@@ -250,6 +272,72 @@ def write_json(path: Path, value: Any) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
     temporary.replace(path)
+
+
+def process_command(pid: int) -> str:
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+        return raw.replace(b"\0", b" ").decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def reconcile_orphaned_jobs() -> None:
+    """Stop jobs left by a previous hub and make their manifests truthful."""
+    if not EXPERIMENT_ROOT.is_dir():
+        return
+    for path in EXPERIMENT_ROOT.glob("*.json"):
+        manifest = read_json(path, {})
+        if manifest.get("status") not in {"preparing", "starting", "running", "stopping"}:
+            continue
+        if manifest.get("kind") not in {
+            "policy_training",
+            "isaac_for_healthcare_workflow",
+            "challenge_matrix",
+        }:
+            continue
+        pid = manifest.get("pid")
+        command = process_command(pid) if isinstance(pid, int) and pid > 1 else ""
+        expected = {
+            "policy_training": "dr_anmar_train",
+            "isaac_for_healthcare_workflow": "i4h",
+        }.get(manifest.get("kind"))
+        if expected and command and expected in command:
+            try:
+                os.killpg(pid, signal.SIGTERM)
+            except (OSError, ProcessLookupError):
+                pass
+        manifest.update(
+            {
+                "status": "interrupted",
+                "interrupted_at": utc_now(),
+                "interruption_reason": "hub_restart_reconciliation",
+            }
+        )
+        write_json(path, manifest)
+
+
+def terminate_managed_jobs() -> None:
+    with state.lock:
+        state.shutting_down = True
+        processes = (state.training_process, state.healthcare_process)
+        state.healthcare_resume_context = None
+    for process in processes:
+        if process is not None and process.poll() is None:
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except (OSError, ProcessLookupError):
+                pass
+
+
+@app.on_event("startup")
+def startup_reconciliation() -> None:
+    reconcile_orphaned_jobs()
+
+
+@app.on_event("shutdown")
+def shutdown_managed_jobs() -> None:
+    terminate_managed_jobs()
 
 
 def repository_revision(root: Path) -> str | None:
@@ -296,6 +384,68 @@ def worker_status() -> dict[str, Any] | None:
         return worker_json("/api/status")
     except HTTPException:
         return None
+
+
+def capture_worker_context(current: dict[str, Any] | None, enabled: bool = True) -> dict[str, Any] | None:
+    """Capture enough state to restore the exact procedure and anatomy room."""
+    if not enabled or not current or not current.get("task"):
+        return None
+    context: dict[str, Any] = {
+        "task": current["task"],
+        "procedure_id": current.get("procedure", {}).get("id", ""),
+        "anatomy_scene_id": current.get("anatomy_scene_id", ""),
+        "anatomy_title": current.get("anatomy_showcase", ""),
+    }
+    anatomy_scene = current.get("anatomy_asset")
+    environment = current.get("openusd_environment")
+    if anatomy_scene:
+        context["anatomy_scene"] = Path(anatomy_scene)
+    if environment:
+        context["openusd_environment"] = Path(environment)
+    return context
+
+
+def resume_worker(context: dict[str, Any] | None) -> None:
+    if not context:
+        return
+    with state.lock:
+        if state.shutting_down:
+            return
+        state.switching = True
+        state.requested_task = context.get("procedure_id") or context["task"]
+    switch_worker(**context)
+
+
+def ensure_worker_available(operation: str) -> None:
+    """Keep GPU-owning activities and workstation mutations mutually exclusive."""
+    training = training_payload()
+    if training["status"] in {"preparing", "running", "stopping"}:
+        raise HTTPException(409, f"Stop policy training before {operation}")
+    healthcare = healthcare_job_payload()
+    if healthcare["status"] in {"preparing", "running", "stopping"}:
+        raise HTTPException(409, f"Stop the NVIDIA healthcare workflow before {operation}")
+    matrix = matrix_payload()
+    if matrix["status"] in {"preparing", "running"}:
+        raise HTTPException(409, f"Finish the Failure Lab matrix before {operation}")
+    with state.lock:
+        if state.switching:
+            raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
+
+
+def reserve_worker_switch(label: str) -> None:
+    """Atomically reserve the interactive worker for a room transition."""
+    with state.lock:
+        if state.switching:
+            raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
+        if state.training_status in {"preparing", "running", "stopping"}:
+            raise HTTPException(409, "Stop policy training before loading another room")
+        if state.healthcare_status in {"preparing", "running", "stopping"}:
+            raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading another room")
+        if state.matrix_status in {"preparing", "running"}:
+            raise HTTPException(409, "Finish the Failure Lab matrix before loading another room")
+        state.switching = True
+        state.requested_task = label
+        state.error = None
 
 
 def switch_worker(
@@ -632,7 +782,7 @@ def run_challenge_matrix(demo: str, cases: list[tuple[str, int]], manifest_path:
     write_json(manifest_path, manifest)
 
 
-def monitor_training(process: subprocess.Popen, log_file, resume_task: str | None) -> None:
+def monitor_training(process: subprocess.Popen, log_file, resume_context: dict[str, Any] | None) -> None:
     code = process.wait()
     log_file.close()
     with state.lock:
@@ -643,11 +793,7 @@ def monitor_training(process: subprocess.Popen, log_file, resume_task: str | Non
         manifest = read_json(manifest_path, {})
         manifest.update({"status": "complete" if code == 0 else "failed", "exit_code": code, "finished_at": utc_now()})
         write_json(manifest_path, manifest)
-    if resume_task:
-        with state.lock:
-            state.switching = True
-            state.requested_task = resume_task
-        switch_worker(resume_task)
+    resume_worker(resume_context)
 
 
 def stop_interactive_worker() -> None:
@@ -662,7 +808,7 @@ def monitor_healthcare_workflow(
     log_file,
     job_id: str,
     manifest_path: Path,
-    resume_task: str | None,
+    resume_context: dict[str, Any] | None,
 ) -> None:
     code = process.wait()
     log_file.close()
@@ -675,11 +821,7 @@ def monitor_healthcare_workflow(
     manifest = read_json(manifest_path, {})
     manifest.update({"status": final_status, "exit_code": code, "finished_at": utc_now()})
     write_json(manifest_path, manifest)
-    if resume_task:
-        with state.lock:
-            state.switching = True
-            state.requested_task = resume_task
-        switch_worker(resume_task)
+    resume_worker(resume_context)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -759,21 +901,18 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
     if mode["requires_rti"] and not prerequisites["rti_dds_license"]["ready"]:
         raise HTTPException(409, "This workflow needs an RTI Connext DDS license file before it can launch")
     training = training_payload()
-    if training["status"] in {"running", "stopping"}:
+    if training["status"] in {"preparing", "running", "stopping"}:
         raise HTTPException(409, "Stop the policy training lab before launching an NVIDIA healthcare workflow")
-    if matrix_payload()["status"] == "running":
+    if matrix_payload()["status"] in {"preparing", "running"}:
         raise HTTPException(409, "Finish the active Failure Lab matrix before launching another simulator")
     with state.lock:
         if state.switching:
             raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
-        if state.healthcare_process is not None and state.healthcare_process.poll() is None:
+        if state.healthcare_status in {"preparing", "running", "stopping"}:
             raise HTTPException(409, "An NVIDIA healthcare workflow is already running")
     current = worker_status()
-    resume_task = (
-        current.get("task")
-        if current and current.get("mode") != "anatomy" and request.resume_workstation
-        else None
-    )
+    resume_context = capture_worker_context(current, request.resume_workstation)
+    resume_task = resume_context["task"] if resume_context else None
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")[:-3]
     job_id = f"healthcare_{stamp}_{request.workflow}_{request.mode}"
     HEALTHCARE_JOB_ROOT.mkdir(parents=True, exist_ok=True)
@@ -797,6 +936,10 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
         "mode_description": mode["description"],
         "configuration": {
             "resume_workstation": request.resume_workstation,
+            "resume_context": {
+                key: str(value) if isinstance(value, Path) else value
+                for key, value in (resume_context or {}).items()
+            },
             "hardware_access": False,
             "custom_arguments": False,
             "holohub_cli_commit": HOLOHUB_CLI_COMMIT,
@@ -807,6 +950,14 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
     }
     write_json(manifest_path, manifest)
     with state.lock:
+        if state.switching:
+            raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
+        if state.training_status in {"preparing", "running", "stopping"}:
+            raise HTTPException(409, "Stop policy training before launching an NVIDIA healthcare workflow")
+        if state.matrix_status in {"preparing", "running"}:
+            raise HTTPException(409, "Finish the Failure Lab matrix before launching another simulator")
+        if state.healthcare_status in {"preparing", "running", "stopping"}:
+            raise HTTPException(409, "An NVIDIA healthcare workflow is already running")
         state.healthcare_status = "preparing"
         state.healthcare_job_id = job_id
         state.healthcare_workflow = request.workflow
@@ -816,6 +967,7 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
         state.healthcare_exit_code = None
         state.healthcare_manifest = str(manifest_path)
         state.healthcare_resume_task = resume_task
+        state.healthcare_resume_context = resume_context
     log_file = log_path.open("ab", buffering=0)
     try:
         if current:
@@ -839,11 +991,8 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
             state.healthcare_exit_code = -1
         manifest.update({"status": "failed", "error": str(exc), "finished_at": utc_now()})
         write_json(manifest_path, manifest)
-        if resume_task:
-            with state.lock:
-                state.switching = True
-                state.requested_task = resume_task
-            threading.Thread(target=switch_worker, args=(resume_task,), daemon=True, name="dr-anmar-resume").start()
+        if resume_context:
+            threading.Thread(target=resume_worker, args=(resume_context,), daemon=True, name="dr-anmar-resume").start()
         raise HTTPException(500, f"The NVIDIA workflow could not start: {exc}") from exc
     started_at = utc_now()
     with state.lock:
@@ -854,7 +1003,7 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
     write_json(manifest_path, manifest)
     threading.Thread(
         target=monitor_healthcare_workflow,
-        args=(process, log_file, job_id, manifest_path, resume_task),
+        args=(process, log_file, job_id, manifest_path, resume_context),
         daemon=True,
         name="dr-anmar-healthcare-workflow",
     ).start()
@@ -970,12 +1119,7 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         raise HTTPException(404, "Unknown OpenUSD anatomy scene")
     asset = anatomy_asset(room)
     environment = openusd_environment_asset(room)
-    training = training_payload()
-    if training["status"] in {"running", "stopping"}:
-        raise HTTPException(409, "Stop the training lab before loading an operating room")
-    healthcare = healthcare_job_payload()
-    if healthcare["status"] in {"preparing", "running", "stopping"}:
-        raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading an operating room")
+    ensure_worker_available("loading an operating room")
     current = worker_status()
     if (
         current
@@ -985,12 +1129,7 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         and current.get("frame_id", 0) > 0
     ):
         return {"ok": True, "procedure_id": request.procedure_id, "already_ready": True}
-    with state.lock:
-        if state.switching:
-            raise HTTPException(409, f"Already loading {state.requested_task}")
-        state.switching = True
-        state.requested_task = procedure["title"]
-        state.error = None
+    reserve_worker_switch(procedure["title"])
     threading.Thread(
         target=switch_worker,
         args=(procedure["task"], request.procedure_id, asset, selected_anatomy, room["title"], environment),
@@ -1015,21 +1154,11 @@ def launch_anatomy(request: AnatomyLaunchRequest) -> dict[str, Any]:
         raise HTTPException(409, "This anatomy room has not finished installing")
     scene = anatomy_asset(room)
     environment = openusd_environment_asset(room)
-    training = training_payload()
-    if training["status"] in {"running", "stopping"}:
-        raise HTTPException(409, "Stop the training lab before loading an anatomy room")
-    healthcare = healthcare_job_payload()
-    if healthcare["status"] in {"preparing", "running", "stopping"}:
-        raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading an anatomy room")
+    ensure_worker_available("loading an anatomy room")
     current = worker_status()
     if current and current.get("anatomy_scene_id") == request.room_id and current.get("frame_id", 0) > 0:
         return {"ok": True, "room_id": request.room_id, "already_ready": True}
-    with state.lock:
-        if state.switching:
-            raise HTTPException(409, f"Already loading {state.requested_task}")
-        state.switching = True
-        state.requested_task = room["title"]
-        state.error = None
+    reserve_worker_switch(room["title"])
     threading.Thread(
         target=switch_worker,
         args=(
@@ -1060,6 +1189,7 @@ def demonstration_analysis(name: str) -> dict[str, Any]:
 
 @app.post("/api/demos/{name}/replay")
 def replay_demonstration(name: str) -> dict[str, Any]:
+    ensure_worker_available("replaying a demonstration")
     if Path(name).name != name or not name.endswith(".npz"):
         raise HTTPException(400, "Invalid demonstration name")
     return worker_json(f"/api/replay/{name}", method="POST", payload={})
@@ -1067,6 +1197,7 @@ def replay_demonstration(name: str) -> dict[str, Any]:
 
 @app.post("/api/demos/{name}/reference")
 def set_demonstration_reference(name: str) -> dict[str, Any]:
+    ensure_worker_available("changing the clinician reference")
     if Path(name).name != name or not name.endswith(".npz"):
         raise HTTPException(400, "Invalid demonstration name")
     return worker_json(f"/api/demos/{name}/reference", method="POST", payload={})
@@ -1074,6 +1205,9 @@ def set_demonstration_reference(name: str) -> dict[str, Any]:
 
 @app.post("/api/reference-ghost")
 def reference_ghost(request: ReferenceGhostRequest) -> dict[str, Any]:
+    ensure_worker_available("changing the reference guide")
+    if request.demo and (Path(request.demo).name != request.demo or not request.demo.endswith(".npz")):
+        raise HTTPException(400, "Invalid demonstration name")
     return worker_json(
         "/api/reference-ghost",
         method="POST",
@@ -1095,6 +1229,7 @@ def failure_scenarios() -> dict[str, Any]:
 
 @app.post("/api/failure-scenarios/apply")
 def apply_failure_scenario(request: ScenarioApplicationRequest) -> dict[str, Any]:
+    ensure_worker_available("applying a failure scenario")
     current = worker_status()
     if current is None or current.get("mode") == "anatomy":
         raise HTTPException(409, "Load a runnable lesson robot before applying a challenge")
@@ -1150,8 +1285,15 @@ def start_challenge_matrix(request: ChallengeMatrixRequest) -> dict[str, Any]:
     if request.demo not in {item.get("name") for item in worker_demos}:
         raise HTTPException(404, "Demonstration not found")
     with state.lock:
-        if state.matrix_status == "running":
+        if state.switching:
+            raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
+        if state.training_status in {"preparing", "running", "stopping"}:
+            raise HTTPException(409, "Stop policy training before starting a Failure Lab matrix")
+        if state.healthcare_status in {"preparing", "running", "stopping"}:
+            raise HTTPException(409, "Stop the NVIDIA healthcare workflow before starting a Failure Lab matrix")
+        if state.matrix_status in {"preparing", "running"}:
             raise HTTPException(409, "A challenge matrix is already running")
+        state.matrix_status = "preparing"
     cases = [(scenario_id, seed) for scenario_id in request.scenario_ids for seed in request.seeds]
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")[:-3]
     matrix_id = f"matrix_{stamp}"
@@ -1168,12 +1310,11 @@ def start_challenge_matrix(request: ChallengeMatrixRequest) -> dict[str, Any]:
         "seeds": request.seeds,
         "total": len(cases),
         "completed": 0,
-        "status": "running",
+        "status": "preparing",
         "results": [],
     }
     write_json(manifest_path, manifest)
     with state.lock:
-        state.matrix_status = "running"
         state.matrix_id = matrix_id
         state.matrix_demo = request.demo
         state.matrix_total = len(cases)
@@ -1181,6 +1322,10 @@ def start_challenge_matrix(request: ChallengeMatrixRequest) -> dict[str, Any]:
         state.matrix_results = []
         state.matrix_aggregate = {}
         state.matrix_manifest = str(manifest_path)
+    with state.lock:
+        state.matrix_status = "running"
+    manifest["status"] = "running"
+    write_json(manifest_path, manifest)
     threading.Thread(
         target=run_challenge_matrix,
         args=(request.demo, cases, manifest_path),
@@ -1192,11 +1337,13 @@ def start_challenge_matrix(request: ChallengeMatrixRequest) -> dict[str, Any]:
 
 @app.post("/api/autonomy")
 def autonomy(request: AutonomyModeRequest) -> dict[str, Any]:
+    ensure_worker_available("changing autonomy mode")
     return worker_json("/api/autonomy", method="POST", payload={"mode": request.mode})
 
 
 @app.post("/api/handoff")
 def handoff() -> dict[str, Any]:
+    ensure_worker_available("starting an assisted handoff")
     return worker_json("/api/handoff", method="POST", payload={})
 
 
@@ -1320,6 +1467,7 @@ def download_experiment(experiment_id: str) -> FileResponse:
 
 @app.post("/api/worker/{command}")
 def worker_command(command: str) -> dict[str, Any]:
+    ensure_worker_available("controlling the workstation")
     paths = {
         "reset": "/api/reset",
         "record-start": "/api/record/start",
@@ -1351,13 +1499,17 @@ def start_training(request: TrainingRequest) -> dict[str, Any]:
         raise HTTPException(400, "Starter labs support 8 to 128 parallel environments")
     if request.max_iterations not in range(1, 201):
         raise HTTPException(400, "Starter labs support 1 to 200 iterations")
+    if matrix_payload()["status"] in {"preparing", "running"}:
+        raise HTTPException(409, "Finish the Failure Lab matrix before starting policy training")
     with state.lock:
+        if state.switching:
+            raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
         if state.training_process is not None and state.training_process.poll() is None:
             raise HTTPException(409, "A training lab is already running")
-        if state.healthcare_process is not None and state.healthcare_process.poll() is None:
+        if state.healthcare_status in {"preparing", "running", "stopping"}:
             raise HTTPException(409, "Stop the NVIDIA healthcare workflow before starting policy training")
     current = worker_status()
-    resume_task = current.get("task") if current and current.get("mode") != "anatomy" and request.resume_workstation else None
+    resume_context = capture_worker_context(current, request.resume_workstation)
     TRAINING_ROOT.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     log_path = TRAINING_ROOT / f"{stamp}_{request.backend}_{item['slug']}.log"
@@ -1387,14 +1539,36 @@ def start_training(request: TrainingRequest) -> dict[str, Any]:
                 "num_envs": request.num_envs,
                 "max_iterations": request.max_iterations,
                 "resume_workstation": request.resume_workstation,
+                "resume_context": {
+                    key: str(value) if isinstance(value, Path) else value
+                    for key, value in (resume_context or {}).items()
+                },
             },
             "command": command,
             "log": str(log_path),
             "status": "starting",
         },
     )
+    with state.lock:
+        if state.switching:
+            raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
+        if state.healthcare_status in {"preparing", "running", "stopping"}:
+            raise HTTPException(409, "Stop the NVIDIA healthcare workflow before starting policy training")
+        if state.matrix_status in {"preparing", "running"}:
+            raise HTTPException(409, "Finish the Failure Lab matrix before starting policy training")
+        if state.training_process is not None and state.training_process.poll() is None:
+            raise HTTPException(409, "A training lab is already running")
+        state.training_status = "preparing"
+        state.training_task = request.task
+        state.training_backend = request.backend
+        state.training_log = str(log_path)
+        state.training_started_at = None
+        state.training_exit_code = None
+        state.training_manifest = str(manifest_path)
     log_file = log_path.open("ab", buffering=0)
     try:
+        if current:
+            stop_interactive_worker()
         process = subprocess.Popen(
             command,
             cwd=args.root,
@@ -1402,24 +1576,27 @@ def start_training(request: TrainingRequest) -> dict[str, Any]:
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
-    except Exception:
+    except Exception as exc:
         log_file.close()
-        raise
+        with state.lock:
+            state.training_status = "failed"
+            state.training_exit_code = -1
+        manifest = read_json(manifest_path, {})
+        manifest.update({"status": "failed", "error": str(exc), "finished_at": utc_now()})
+        write_json(manifest_path, manifest)
+        if resume_context:
+            threading.Thread(target=resume_worker, args=(resume_context,), daemon=True, name="dr-anmar-resume").start()
+        raise HTTPException(500, f"The training lab could not start: {exc}") from exc
     with state.lock:
         state.training_process = process
         state.training_status = "running"
-        state.training_task = request.task
-        state.training_backend = request.backend
-        state.training_log = str(log_path)
         state.training_started_at = utc_now()
-        state.training_exit_code = None
-        state.training_manifest = str(manifest_path)
     manifest = read_json(manifest_path, {})
     manifest.update({"status": "running", "pid": process.pid, "started_at": state.training_started_at})
     write_json(manifest_path, manifest)
     threading.Thread(
         target=monitor_training,
-        args=(process, log_file, resume_task),
+        args=(process, log_file, resume_context),
         daemon=True,
         name="dr-anmar-training",
     ).start()
@@ -1445,6 +1622,7 @@ def status() -> JSONResponse:
     hub.update(
         {
             "worker": worker_status(),
+            "worker_port": args.worker_port,
             "catalog_tasks": len(CATALOG),
             "interactive_tasks": len(PRIMARY_TASKS),
             "procedure_rooms": len(PROCEDURE_ROOMS),
@@ -1464,17 +1642,13 @@ def launch(request: LaunchRequest) -> dict[str, Any]:
         raise HTTPException(404, "Unknown ORBIT-Surgical task")
     if not item["browser_control"] or item["play"]:
         raise HTTPException(409, "Use the relative-IK non-play variant for the interactive workstation")
-    training = training_payload()
-    if training["status"] in {"running", "stopping"}:
-        raise HTTPException(409, "Stop the training lab before loading an operating room")
-    healthcare = healthcare_job_payload()
-    if healthcare["status"] in {"preparing", "running", "stopping"}:
-        raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading the Dr.Anmar operating room")
-    procedure = next((room for room in PROCEDURE_ROOMS if room["task"] == request.task), None)
-    selected_anatomy = anatomy_room(procedure["anatomy_scene"]) if procedure else anatomy_room(ANATOMY_SCENES[0]["archive"].removesuffix(".zip"))
+    ensure_worker_available("loading the Dr.Anmar operating room")
+    # Task-only launches intentionally do not guess among several procedure rooms
+    # that may share the same registered Isaac task.
+    selected_anatomy = anatomy_room(ANATOMY_SCENES[0]["archive"].removesuffix(".zip"))
     anatomy_scene = anatomy_asset(selected_anatomy) if selected_anatomy else None
     openusd_environment = openusd_environment_asset(selected_anatomy) if selected_anatomy else None
-    procedure_id = procedure["id"] if procedure else ""
+    procedure_id = ""
     current = worker_status()
     if (
         current
@@ -1483,12 +1657,7 @@ def launch(request: LaunchRequest) -> dict[str, Any]:
         and current.get("frame_id", 0) > 0
     ):
         return {"ok": True, "task": request.task, "already_ready": True}
-    with state.lock:
-        if state.switching:
-            raise HTTPException(409, f"Already loading {state.requested_task}")
-        state.switching = True
-        state.requested_task = request.task
-        state.error = None
+    reserve_worker_switch(request.task)
     threading.Thread(
         target=switch_worker,
         args=(

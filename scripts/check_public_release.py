@@ -7,7 +7,11 @@
 from __future__ import annotations
 
 import re
+import queue
+import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 
@@ -44,39 +48,107 @@ FORBIDDEN = (
     ("private key", re.compile(r"BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY")),
 )
 MAX_GIT_FILE = 95 * 1024 * 1024
+MAX_TEXT_FILE = 8 * 1024 * 1024
 
 
 def candidate_files():
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+            cwd=ROOT,
+            capture_output=True,
+            check=True,
+            timeout=15,
+        )
+        for raw in result.stdout.split(b"\0"):
+            if not raw:
+                continue
+            path = ROOT / raw.decode("utf-8", errors="surrogateescape")
+            if path.is_file():
+                yield path
+        return
+    except (OSError, subprocess.SubprocessError):
+        pass
     for path in ROOT.rglob("*"):
-        if not path.is_file() or ".git" in path.parts or "__pycache__" in path.parts:
+        if path.is_file() and ".git" not in path.parts and "__pycache__" not in path.parts:
+            yield path
+
+
+def scan_text(content: str, relative: str, problems: list[str]) -> None:
+    for label, pattern in FORBIDDEN:
+        if pattern.search(content):
+            problems.append(f"{label} found in {relative}")
+
+
+def read_texts_bounded(paths: list[Path], timeout: float = 12.0) -> tuple[dict[Path, str], list[str]]:
+    """Read in parallel so cloud-evicted files cannot serialize into a frozen release gate."""
+    outputs: dict[Path, bytes] = {}
+    errors: list[str] = []
+    pending: queue.Queue[Path] = queue.Queue()
+    eligible: list[Path] = []
+
+    def collect() -> None:
+        while True:
+            try:
+                path = pending.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                outputs[path] = path.read_bytes()
+            except OSError:
+                pass
+            finally:
+                pending.task_done()
+
+    for path in paths:
+        if path.stat().st_size > MAX_TEXT_FILE:
+            errors.append(f"text file exceeds bounded security-scan size: {path.relative_to(ROOT)}")
             continue
-        yield path
+        eligible.append(path)
+        pending.put(path)
+
+    deadline = time.monotonic() + timeout
+    workers = [threading.Thread(target=collect, daemon=True) for _ in range(min(128, len(eligible)))]
+    for worker in workers:
+        worker.start()
+    while pending.unfinished_tasks and time.monotonic() < deadline:
+        time.sleep(0.05)
+    for path in eligible:
+        if path not in outputs:
+            errors.append(f"could not read {path.relative_to(ROOT)} within {timeout:.0f} seconds")
+
+    decoded: dict[Path, str] = {}
+    for path, content in list(outputs.items()):
+        try:
+            decoded[path] = content.decode("utf-8")
+        except UnicodeDecodeError:
+            pass
+    return decoded, errors
 
 
 def main() -> int:
     problems: list[str] = []
+    candidates = list(candidate_files())
+    relative_candidates = {path.relative_to(ROOT).as_posix() for path in candidates}
+    text_paths = [path for path in candidates if path.suffix.lower() in TEXT_SUFFIXES]
+    text_content, read_errors = read_texts_bounded(text_paths)
+    problems.extend(read_errors)
 
     for relative in REQUIRED:
         if not (ROOT / relative).is_file():
             problems.append(f"missing required public file: {relative}")
 
     for relative in RUNTIME_DIRS:
-        if (ROOT / relative).exists():
+        if any(item == relative or item.startswith(f"{relative}/") for item in relative_candidates):
             problems.append(f"generated/runtime directory must not be committed: {relative}/")
 
-    for path in candidate_files():
+    for path in candidates:
         relative = path.relative_to(ROOT)
         if path.stat().st_size > MAX_GIT_FILE:
             problems.append(f"file approaches Git hosting size limit: {relative}")
-        if path.suffix.lower() not in TEXT_SUFFIXES:
+        if path not in text_content:
             continue
-        try:
-            content = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
-        for label, pattern in FORBIDDEN:
-            if pattern.search(content):
-                problems.append(f"{label} found in {relative}")
+        scan_text(text_content[path], relative.as_posix(), problems)
 
     if problems:
         print("Public-release check failed:", file=sys.stderr)

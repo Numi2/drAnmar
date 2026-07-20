@@ -14,6 +14,19 @@ simulation, not clinical validation.
 - Clinical validation status: not started.
 - Intended use remains simulation, education, synthetic data, and preclinical research only.
 
+## Source audit hardening — 2026-07-20
+
+- Training now actually pauses the interactive Isaac worker and restores the exact prior procedure/anatomy
+  composition; NVIDIA workflow resume uses the same full-context path.
+- GPU-owning jobs, Failure Lab matrices, room switches and interactive state mutations are lifecycle-gated.
+- Clean shutdown terminates managed GPU jobs; startup reconciles stale training, healthcare and matrix
+  manifests and stops a matching orphan process group.
+- OpenUSD startup uses a seven-scene file preflight instead of rebuilding geometry on every launch.
+- Secondary cameras are JPEG-encoded only while subscribed; raw multimodal recording remains enabled.
+- Demonstrations use atomic promotion, a data SHA-256, observed sampling rate and a bounded auto-save limit.
+- CI now checks all keyboard controls plus curriculum/task/procedure consistency and Doctor Studio JavaScript.
+- Full findings and remaining external gates are recorded in `COMPLETE_AUDIT_2026-07-20.md`.
+
 ## Gilgamesh runtime evidence — 2026-07-19
 
 Validated on the RTX 4090 host:
@@ -203,12 +216,13 @@ Known host/runtime blockers from the same pass:
   emergency stop, human handover, RTI DDS licensing, and hardware-in-the-loop isolation.
 - Define consent, privacy, retention, pseudonymization, and access controls before collecting identifiable gaze,
   operator video, voice, or real clinician performance data.
-- Confirm a hub restart can discover and resume or accurately mark an in-progress matrix; the current
-  background runner is process-local while its completed evidence is durable.
+- Confirm live that a hub restart accurately marks an in-progress process-local matrix as interrupted and
+  prevents its stale manifest from being mistaken for a completed result; source reconciliation is implemented.
 - Record package versions, simulator build, GPU, task configuration, and policy checkpoint hashes in manifests.
 - Measure CPU and GPU impact of Pillow-based stream perturbations at interactive and idle frame rates.
 - Confirm experiment and demonstration enumeration remains responsive with 1,000+ manifests.
-- Add manifest lifecycle recovery for a training process that is killed before the monitor thread updates it.
+- Validate the implemented startup lifecycle reconciliation for a training process killed before its monitor
+  thread updates the manifest, including PID-reuse protection through command-identity checks.
 - Confirm concurrent browser sessions cannot unintentionally change each other's scenario or autonomy mode.
 
 ## P2 — clinical and educational validation

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import io
 import json
 import os
@@ -25,6 +26,17 @@ from dr_anmar_procedures import PROCEDURES_BY_ID
 
 
 DATA_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
+
+
+def positive_environment_number(name: str, default: float, minimum: float) -> float:
+    try:
+        return max(minimum, float(os.environ.get(name, default)))
+    except (TypeError, ValueError):
+        return default
+
+
+MAX_DEMO_FRAMES = int(positive_environment_number("DR_ANMAR_MAX_DEMO_FRAMES", 60_000, 1_000))
+MAX_DEMO_SECONDS = positive_environment_number("DR_ANMAR_MAX_DEMO_SECONDS", 300.0, 30.0)
 
 parser = argparse.ArgumentParser(description="Run the Dr.Anmar browser workstation.")
 parser.add_argument("--task", default="Isaac-Lift-Needle-PSM-IK-Rel-v0")
@@ -49,7 +61,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
@@ -417,6 +429,7 @@ class SharedState:
     camera_frames_jpeg: dict[str, bytes] = field(default_factory=dict)
     camera_frame_ids: dict[str, int] = field(default_factory=dict)
     camera_names: list[str] = field(default_factory=list)
+    camera_subscribers: dict[str, int] = field(default_factory=dict)
     render_fps: float = 0.0
     sim_fps: float = 0.0
     sim_step: int = 0
@@ -737,6 +750,24 @@ class SharedState:
 
 def build_web_app(state: SharedState) -> FastAPI:
     app = FastAPI(title="Dr.Anmar Surgical Workstation", docs_url=None, redoc_url=None)
+
+    @app.middleware("http")
+    async def protect_browser_requests(request: Request, call_next):
+        origin = request.headers.get("origin")
+        if request.method not in {"GET", "HEAD", "OPTIONS"} and origin:
+            try:
+                from urllib.parse import urlparse
+
+                if urlparse(origin).hostname != request.url.hostname:
+                    return JSONResponse({"detail": "Cross-site state changes are not allowed"}, status_code=403)
+            except ValueError:
+                return JSONResponse({"detail": "Invalid request origin"}, status_code=403)
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+        return response
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
@@ -1183,14 +1214,22 @@ def build_web_app(state: SharedState) -> FastAPI:
     async def video() -> StreamingResponse:
         async def frames():
             last_id = -1
-            while True:
+            with state.lock:
+                state.camera_subscribers["endoscope_left"] = state.camera_subscribers.get("endoscope_left", 0) + 1
+            try:
+                while True:
+                    with state.lock:
+                        frame_id = state.frame_id
+                        jpeg = state.frame_jpeg
+                    if jpeg and frame_id != last_id:
+                        last_id = frame_id
+                        yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
+                    await asyncio.sleep(0.04)
+            finally:
                 with state.lock:
-                    frame_id = state.frame_id
-                    jpeg = state.frame_jpeg
-                if jpeg and frame_id != last_id:
-                    last_id = frame_id
-                    yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
-                await asyncio.sleep(0.04)
+                    state.camera_subscribers["endoscope_left"] = max(
+                        0, state.camera_subscribers.get("endoscope_left", 1) - 1
+                    )
 
         return StreamingResponse(frames(), media_type="multipart/x-mixed-replace; boundary=frame")
 
@@ -1201,14 +1240,22 @@ def build_web_app(state: SharedState) -> FastAPI:
 
         async def frames():
             last_id = -1
-            while True:
+            with state.lock:
+                state.camera_subscribers[camera_name] = state.camera_subscribers.get(camera_name, 0) + 1
+            try:
+                while True:
+                    with state.lock:
+                        frame_id = state.camera_frame_ids.get(camera_name, -1)
+                        jpeg = state.camera_frames_jpeg.get(camera_name, b"")
+                    if jpeg and frame_id != last_id:
+                        last_id = frame_id
+                        yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
+                    await asyncio.sleep(0.04)
+            finally:
                 with state.lock:
-                    frame_id = state.camera_frame_ids.get(camera_name, -1)
-                    jpeg = state.camera_frames_jpeg.get(camera_name, b"")
-                if jpeg and frame_id != last_id:
-                    last_id = frame_id
-                    yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
-                await asyncio.sleep(0.04)
+                    state.camera_subscribers[camera_name] = max(
+                        0, state.camera_subscribers.get(camera_name, 1) - 1
+                    )
 
         return StreamingResponse(frames(), media_type="multipart/x-mixed-replace; boundary=frame")
 
@@ -1823,6 +1870,14 @@ def analyze_demo(
     }
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def save_demo(
     state: SharedState,
     frames: list[dict[str, np.ndarray]],
@@ -1854,7 +1909,6 @@ def save_demo(
             key = f"{camera_name}_rgb"
             if all(key in frame for frame in vision_frames):
                 arrays[key] = np.stack([frame[key] for frame in vision_frames])
-    np.savez_compressed(path, **arrays)
     analysis = analyze_demo(
         arrays,
         state.task,
@@ -1862,6 +1916,14 @@ def save_demo(
         state.robot_body_names,
         str(state.procedure.get("id", "")),
     )
+    temporary_data = path.with_suffix(".npz.tmp")
+    with temporary_data.open("wb") as stream:
+        np.savez_compressed(stream, **arrays)
+    temporary_data.replace(path)
+    times = np.asarray(arrays.get("time_s", []), dtype=np.float64).reshape(-1)
+    observed_control_hz = 0.0
+    if len(times) > 1 and times[-1] > times[0]:
+        observed_control_hz = float((len(times) - 1) / (times[-1] - times[0]))
     with state.lock:
         context = {
             "scenario_id": state.scenario_id,
@@ -1889,11 +1951,13 @@ def save_demo(
         "finished_at": datetime.now(timezone.utc).isoformat(),
         "frames": len(frames),
         "vision_frames": len(vision_frames),
-        "control_hz": 50,
+        "control_hz": round(observed_control_hz, 2),
+        "control_hz_nominal": 50,
         "arrays": {key: list(value.shape) for key, value in arrays.items()},
         "data_file": name,
         "modalities": {
-            "robot_state_hz": 50,
+            "robot_state_hz": round(observed_control_hz, 2),
+            "robot_state_hz_nominal": 50,
             "endoscope_rgb_hz": 5 if vision_frames else 0,
             "endoscope_rgb_resolution": [360, 240] if vision_frames else None,
             "endoscope_depth_hz": 5 if "endoscope_depth_m" in arrays else 0,
@@ -1929,8 +1993,12 @@ def save_demo(
             "gaze_sources": {"none": 0, "pointer_attention_proxy": 1, "external_eye_tracker": 2, "xr_eye_tracking": 3},
         },
         "analysis": analysis,
+        "data_sha256": sha256_file(path),
     }
-    path.with_suffix(".json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    manifest_path = path.with_suffix(".json")
+    temporary_manifest = manifest_path.with_suffix(".json.tmp")
+    temporary_manifest.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    temporary_manifest.replace(manifest_path)
     return name
 
 
@@ -3004,6 +3072,7 @@ def main() -> None:
     )
     state.camera_names = list(camera_sources)
     state.camera_frame_ids = {name: 0 for name in camera_sources}
+    state.camera_subscribers = {name: 0 for name in camera_sources}
     state.procedure_waypoints_total = len(room_waypoints)
     state.procedure_started_at = time.monotonic()
     state.procedure_last_motion_at = state.procedure_started_at
@@ -3264,10 +3333,19 @@ def main() -> None:
                 state.procedure_event_code = 0
                 state.procedure_events.clear()
         elif record_request == "stop":
-            name = save_demo(state, demo_frames, vision_frames, demo_started_at)
+            try:
+                name = save_demo(state, demo_frames, vision_frames, demo_started_at)
+                save_error = None
+            except Exception as exc:
+                name = None
+                save_error = f"Demonstration could not be saved: {exc}"
+                traceback.print_exc()
             with state.lock:
                 state.recording = False
                 state.last_demo = name or state.last_demo
+                if save_error:
+                    state.coaching_cue = save_error
+                    state.evaluation_status = "failed"
                 if state.evaluation_status == "saving":
                     state.evaluation_status = "complete"
                 state.evaluation_output = name if state.evaluation_status in {"complete", "interrupted", "failed"} else state.evaluation_output
@@ -3981,13 +4059,29 @@ def main() -> None:
             demo_frames.append(frame)
             with state.lock:
                 state.recorded_frames = len(demo_frames)
+                if (
+                    len(demo_frames) >= MAX_DEMO_FRAMES
+                    or now - demo_started_monotonic >= MAX_DEMO_SECONDS
+                ):
+                    state.record_request = "stop"
+                    state.coaching_cue = (
+                        "The recording reached its configured safety limit and is being saved automatically."
+                    )
 
         now = time.monotonic()
         fps_steps += 1
         frame_interval = 0.04 if interactive_active else 0.20
         if camera.data.output.get("rgb") is not None and now - last_frame_time >= frame_interval:
             rendered_jpegs = {}
-            for camera_name, sensor_camera in camera_sources.items():
+            with state.lock:
+                requested_cameras = {
+                    name for name, count in state.camera_subscribers.items() if count > 0
+                }
+            requested_cameras.add("endoscope_left")
+            for camera_name in requested_cameras:
+                sensor_camera = camera_sources.get(camera_name)
+                if sensor_camera is None:
+                    continue
                 camera_output = sensor_camera.data.output.get("rgb")
                 if camera_output is not None:
                     rendered_jpegs[camera_name] = encode_jpeg(camera_output[0], scenario_id)
@@ -4058,9 +4152,12 @@ def main() -> None:
             state.wake_event.clear()
 
     if state.recording:
-        name = save_demo(state, demo_frames, vision_frames, demo_started_at)
-        if name:
-            state.last_demo = name
+        try:
+            name = save_demo(state, demo_frames, vision_frames, demo_started_at)
+            if name:
+                state.last_demo = name
+        except Exception:
+            traceback.print_exc()
     server.should_exit = True
     server_thread.join(timeout=5.0)
     env.close()

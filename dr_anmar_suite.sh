@@ -20,14 +20,33 @@ LOG_FILE="${ROOT}/logs/hub.log"
 
 mkdir -p "${ROOT}/run" "${ROOT}/logs"
 
-hub_running() { [[ -f "${PID_FILE}" ]] && kill -0 "$(cat "${PID_FILE}")" 2>/dev/null; }
+hub_running() {
+    [[ -f "${PID_FILE}" ]] || return 1
+    local pid command
+    pid="$(cat "${PID_FILE}")"
+    kill -0 "${pid}" 2>/dev/null || return 1
+    if [[ -r "/proc/${pid}/cmdline" ]]; then
+        command="$(tr '\0' ' ' <"/proc/${pid}/cmdline")"
+    else
+        command="$(ps -p "${pid}" -o command= 2>/dev/null || true)"
+    fi
+    [[ "${command}" == *"dr_anmar_hub.py"* ]]
+}
 
 case "${1:-status}" in
     start)
-        "${PYTHON}" "${ORBIT_ROOT}/scripts/dr_anmar_geometry_sanitize.py" \
-            --headless \
-            --kit_args "--portable-root ${ROOT}/isaac_portable" >/dev/null
-        "${PYTHON}" "${ORBIT_ROOT}/scripts/dr_anmar_openusd.py" >/dev/null
+        if hub_running && "${ORBIT_ROOT}/dr_anmar_workstation.sh" status "${WORKER_PORT}" >/dev/null 2>&1; then
+            echo "Dr.Anmar suite is already ready: http://localhost:${HUB_PORT}/"
+            exit 0
+        fi
+        if [[ "${DR_ANMAR_REBUILD_OPENUSD:-0}" == "1" ]] || \
+            ! "${PYTHON}" "${ORBIT_ROOT}/scripts/dr_anmar_openusd_preflight.py" --root "${ROOT}"; then
+            echo "Preparing the OpenUSD catalog (set DR_ANMAR_REBUILD_OPENUSD=1 to force this later)..."
+            "${PYTHON}" "${ORBIT_ROOT}/scripts/dr_anmar_geometry_sanitize.py" \
+                --headless \
+                --kit_args "--portable-root ${ROOT}/isaac_portable" >/dev/null
+            "${PYTHON}" "${ORBIT_ROOT}/scripts/dr_anmar_openusd.py" >/dev/null
+        fi
         if ! hub_running; then
             cd "${ORBIT_ROOT}"
             nohup "${PYTHON}" scripts/dr_anmar_hub.py --port "${HUB_PORT}" --worker_port "${WORKER_PORT}" --root "${ORBIT_ROOT}" >>"${LOG_FILE}" 2>&1 &

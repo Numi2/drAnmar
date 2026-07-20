@@ -13,11 +13,15 @@ Dr.Anmar is research software, not a hardened internet service. The hub and work
 
 - bind to all network interfaces by default;
 - do not provide authentication, authorization, or TLS;
+- reject state-changing browser requests whose Origin host differs from the service host;
+- return no-store, no-sniff, no-referrer, and same-site resource headers;
 - launch bounded local simulation/training commands; and
 - write demonstrations and state beneath `DR_ANMAR_ROOT`.
 
 Run them only on a trusted LAN or private VPN. Do not expose ports 2360 or 2361 to the public internet.
 For broader access, place the service behind an authenticated TLS reverse proxy and host firewall.
+The same-host Origin check is defense in depth against browser cross-site requests; it is not user identity,
+an authorization boundary, or protection for a directly reachable API client.
 
 ## Data and clinical safety
 

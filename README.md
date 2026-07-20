@@ -265,11 +265,15 @@ Run the public-release checks before opening a pull request:
 
 ```bash
 python3 scripts/check_public_release.py
+python3 scripts/audit_project_consistency.py
+python3 scripts/audit_keyboard_controls.py
+python3 scripts/check_web_syntax.py
 python3 -m compileall -q scripts source
 bash -n dr_anmar.sh dr_anmar_suite.sh dr_anmar_train.sh dr_anmar_workstation.sh orbitsurgical.sh
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance and [NOTICE.md](NOTICE.md) for provenance.
+See the [complete engineering audit](docs/COMPLETE_AUDIT_2026-07-20.md),
+[CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance, and [NOTICE.md](NOTICE.md) for provenance.
 
 ## ORBIT-Surgical citation
 

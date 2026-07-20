@@ -18,7 +18,10 @@ component contains a physical-robot driver or a clinical workflow integration.
 5. `web/doctor_studio.html` presents the doctor-facing learning and operating-room interface.
 
 Only one GPU worker is active at a time. Switching a lesson or anatomy room replaces that worker rather
-than accumulating Isaac Sim processes.
+than accumulating Isaac Sim processes. Training, NVIDIA healthcare workflows, Failure Lab matrices and
+interactive worker mutations are mutually exclusive. A temporary GPU job captures the exact procedure and
+OpenUSD anatomy context, pauses the workstation, and restores that context afterward. Hub startup reconciles
+stale in-progress manifests so a previous job cannot silently coexist with a new workstation.
 
 ## Storage model
 
@@ -42,7 +45,8 @@ These paths are ignored if a developer deliberately points `DR_ANMAR_ROOT` insid
 
 The hub defaults to port 2360 and the worker to port 2361. Both bind to `0.0.0.0` so a trusted device can
 operate the interface. The current research build has no authentication or TLS; deployment must provide
-a private network boundary or an authenticated reverse proxy.
+a private network boundary or an authenticated reverse proxy. Same-host Origin checks and conservative
+response headers provide browser defense in depth but are not an access-control system.
 
 ## Compatibility baseline
 
