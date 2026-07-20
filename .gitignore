@@ -63,7 +63,7 @@ _build
 .env.*
 !.env.example
 .python.env
-assets/
+/assets/
 downloads/
 demos/
 logs/
