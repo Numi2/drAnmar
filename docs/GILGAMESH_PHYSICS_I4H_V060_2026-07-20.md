@@ -26,7 +26,7 @@ The implementation now provides:
 
 - tissue-specific research material profiles and OpenUSD physics friction binding;
 - mesh-edge-coupled deformation, approximate volume preservation, attachment resistance and recovery;
-- force-gated needle puncture, hysteresis, drag, curvature alignment, work and safe-force telemetry;
+- force-gated needle puncture, hysteresis, drag, curvature alignment, work, force/torque telemetry and translational/rotational safety attenuation;
 - suture slack, strain, tension, anchor damage, pullout, breakage, knot tightness and knot security;
 - face removal plus visible incision opening, cut resistance and accumulated work;
 - vessel compression, clip retention, over-compression damage, residual flow, bleeding and rebleeding;

@@ -98,7 +98,7 @@ research engineers without exposing arbitrary or hardware-affecting commands to 
 Rooms without a validated native deformable asset use Dr.Anmar's second-generation reduced-order fallback:
 
 - edge-coupled deformation, approximate volume preservation, organ-bed attachment and elastic recovery;
-- force-gated puncture, hysteresis, needle drag, curvature-alignment resistance and a safe-force envelope;
+- force-gated puncture, hysteresis, needle drag, curvature-alignment resistance, force/torque proxies and a coupled safety envelope;
 - suture slack, strain, tension, tissue-anchor damage, pullout, strand breakage, knot tightness and security;
 - cut-face removal plus visible wound opening, cut resistance and accumulated work;
 - vessel compression, clip retention, over-compression damage, residual flow, bleeding and rebleeding.

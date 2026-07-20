@@ -57,6 +57,11 @@ class TissueMaterial:
     anchor_pullout_force_n: float
     safe_force_n: float
 
+    @property
+    def safe_torque_nm(self) -> float:
+        """Conservative tool-tip torque envelope derived from a 30 mm lever arm."""
+        return self.safe_force_n * 0.03
+
 
 TISSUE_MATERIALS: dict[str, TissueMaterial] = {
     "liver": TissueMaterial(
@@ -361,6 +366,9 @@ class NeedleTissueInteractionModel:
     penetration_depth_m: float = 0.0
     interaction_force_n: float = 0.0
     peak_force_n: float = 0.0
+    interaction_torque_nm: float = 0.0
+    peak_torque_nm: float = 0.0
+    rotation_scale: float = 1.0
     puncture_count: int = 0
     exit_count: int = 0
     puncture_work_j: float = 0.0
@@ -376,6 +384,9 @@ class NeedleTissueInteractionModel:
         self.penetration_depth_m = 0.0
         self.interaction_force_n = 0.0
         self.peak_force_n = 0.0
+        self.interaction_torque_nm = 0.0
+        self.peak_torque_nm = 0.0
+        self.rotation_scale = 1.0
         self.puncture_count = 0
         self.exit_count = 0
         self.puncture_work_j = 0.0
@@ -394,7 +405,9 @@ class NeedleTissueInteractionModel:
         max_depth_m: float,
     ) -> np.ndarray:
         adjusted = np.asarray(translation, dtype=np.float32).copy()
+        rotation_effort = float(np.linalg.norm(rotation))
         self.safe_envelope_active = False
+        self.rotation_scale = 1.0
         if clearance_m is None or outward is None:
             if self.punctured:
                 self.exit_count += 1
@@ -402,6 +415,7 @@ class NeedleTissueInteractionModel:
             self.punctured = False
             self.entry_direction = None
             self.interaction_force_n = 0.0
+            self.interaction_torque_nm = 0.0
             self.penetration_depth_m = 0.0
             self._safe_envelope_was_active = False
             return adjusted
@@ -433,7 +447,6 @@ class NeedleTissueInteractionModel:
                 adjusted -= normal * normal_command * (1.0 - transmission)
         if self.punctured:
             self.penetration_depth_m = max(0.0, -float(clearance_m))
-            rotation_effort = float(np.linalg.norm(rotation))
             depth_fraction = float(np.clip(self.penetration_depth_m / max(max_depth_m, 1e-6), 0.0, 1.0))
             required_rotation = 0.10 + 0.42 * depth_fraction
             self.curvature_alignment = float(np.clip(rotation_effort / required_rotation, 0.0, 1.0))
@@ -455,13 +468,26 @@ class NeedleTissueInteractionModel:
                 self.exit_count += 1
                 self.entry_direction = None
                 self.penetration_depth_m = 0.0
-        self.safe_envelope_active = self.safe_envelope_active or self.interaction_force_n >= self.material.safe_force_n
+        lever_arm_m = 0.008
+        if self.punctured:
+            lever_arm_m += 0.022 * (1.0 - self.curvature_alignment)
+        command_torque_nm = min(rotation_effort, 1.0) * self.material.puncture_force_n * 0.006
+        self.interaction_torque_nm = self.interaction_force_n * lever_arm_m + command_torque_nm
+        self.safe_envelope_active = self.safe_envelope_active or (
+            self.interaction_force_n >= self.material.safe_force_n
+            or self.interaction_torque_nm >= self.material.safe_torque_nm
+        )
         if self.interaction_force_n >= self.material.safe_force_n:
             adjusted *= float(np.clip(self.material.safe_force_n / max(self.interaction_force_n, 1e-6), 0.18, 1.0))
+        if self.interaction_torque_nm >= self.material.safe_torque_nm:
+            self.rotation_scale = float(
+                np.clip(self.material.safe_torque_nm / max(self.interaction_torque_nm, 1e-9), 0.25, 1.0)
+            )
         if self.safe_envelope_active and not self._safe_envelope_was_active:
             self.safe_envelope_events += 1
         self._safe_envelope_was_active = self.safe_envelope_active
         self.peak_force_n = max(self.peak_force_n, self.interaction_force_n)
+        self.peak_torque_nm = max(self.peak_torque_nm, self.interaction_torque_nm)
         self.puncture_work_j += self.interaction_force_n * command_speed_m_s * max(float(dt_s), 0.0)
         return adjusted
 
@@ -473,12 +499,16 @@ class NeedleTissueInteractionModel:
             "penetration_depth_m": round(self.penetration_depth_m, 6),
             "interaction_force_n": round(self.interaction_force_n, 4),
             "peak_force_n": round(self.peak_force_n, 4),
+            "interaction_torque_nm": round(self.interaction_torque_nm, 6),
+            "peak_torque_nm": round(self.peak_torque_nm, 6),
+            "rotation_scale": round(self.rotation_scale, 4),
             "puncture_threshold_n": self.material.puncture_force_n,
             "puncture_count": self.puncture_count,
             "exit_count": self.exit_count,
             "puncture_work_j": round(self.puncture_work_j, 7),
             "curvature_alignment": round(self.curvature_alignment, 4),
             "safe_force_n": self.material.safe_force_n,
+            "safe_torque_nm": round(self.material.safe_torque_nm, 6),
             "safe_envelope_active": self.safe_envelope_active,
             "safe_envelope_events": self.safe_envelope_events,
             "material_profile": self.material.id,
@@ -713,12 +743,16 @@ def interaction_force_snapshot(
         )
     total = float(np.sqrt(sum(value * value for value in components.values())))
     safe_force = tissue.material.safe_force_n if tissue else needle.material.safe_force_n if needle else 2.0
+    torque = float(needle.interaction_torque_nm) if needle else 0.0
+    safe_torque = tissue.material.safe_torque_nm if tissue else needle.material.safe_torque_nm if needle else 0.06
     return {
         "active": any(value > 0.0 for value in components.values()),
         "resultant_proxy_n": round(total, 4),
         "components": {key: round(value, 4) for key, value in components.items()},
         "safe_force_n": safe_force,
-        "safe_envelope_active": total >= safe_force,
+        "resultant_proxy_torque_nm": round(torque, 6),
+        "safe_torque_nm": round(safe_torque, 6),
+        "safe_envelope_active": total >= safe_force or torque >= safe_torque,
         "authority": "native_contact_sensor_preferred_fallback_coupling_only",
         "calibration_status": "research_defaults_unvalidated",
     }

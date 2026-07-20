@@ -113,7 +113,8 @@ Target-guided pickup → grasp → close-up entry → full exit while held → d
 Pickup → presentation → dual grasp → holder release → receiver recovery → organ approach, with the active keyboard controls visible throughout.</p>
 
 The instrument shaft remains outside the anatomy surface while the grasped needle tip can follow a bounded
-12 mm entry channel. Entry is force-gated, advancing resistance responds to needle-arc alignment, and the
+12 mm entry channel. Entry is force-gated, advancing resistance responds to needle-arc alignment, and bounded
+tool-tip force/torque proxies attenuate translation and rotation at the research safety envelope. The
 suturing room models visible thread slack, tension, tissue-anchor damage, pullout, breakage and knot security.
 Cutting rooms remove and open intersected OpenUSD faces while recording resistance/work; tissue handling adds
 mesh-coupled deformation, approximate volume preservation, attachment and recovery. Native Isaac tensors stay

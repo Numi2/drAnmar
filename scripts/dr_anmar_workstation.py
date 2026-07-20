@@ -684,6 +684,9 @@ class SharedState:
                     "interaction_force_proxy_n": self.mechanics.get("interaction_force", {}).get(
                         "resultant_proxy_n", 0.0
                     ),
+                    "interaction_torque_proxy_nm": self.mechanics.get("interaction_force", {}).get(
+                        "resultant_proxy_torque_nm", 0.0
+                    ),
                     "interaction_safe_envelope_active": self.mechanics.get("interaction_force", {}).get(
                         "safe_envelope_active", False
                     ),
@@ -3842,6 +3845,7 @@ def main() -> None:
                     0.02,
                     max_penetration,
                 )
+                action_np[body_slice.start + 3 : body_slice.start + 6] *= needle_tissue_model.rotation_scale
                 needle_model_updated = True
                 puncture_active = needle_tissue_model.punctured
                 needle_entry_direction = needle_tissue_model.entry_direction
@@ -3911,8 +3915,13 @@ def main() -> None:
             )
             state.needle_puncture_active = puncture_active
             state.needle_penetration_depth_m = round(min(penetration_depth, max_penetration), 5)
-            if needle_tissue_model.safe_envelope_active and needle_tissue_model.interaction_force_n >= tissue_material.safe_force_n:
-                state.coaching_cue = "Safe-force envelope reached. Pause, withdraw slightly, and improve needle-arc alignment."
+            if needle_tissue_model.safe_envelope_active:
+                state.coaching_cue = (
+                    "Safe interaction envelope reached at "
+                    f"{needle_tissue_model.interaction_force_n:.2f} N / "
+                    f"{needle_tissue_model.interaction_torque_nm:.3f} N·m proxy. "
+                    "Pause, withdraw slightly, and improve needle-arc alignment."
+                )
             elif puncture_active and penetration_depth >= max_penetration:
                 state.coaching_cue = "Maximum rehearsal depth reached. Rotate along the needle arc or withdraw."
             elif puncture_active:
@@ -4336,6 +4345,12 @@ def main() -> None:
                 ),
                 "needle_interaction_force_n": np.array(needle_metrics.get("interaction_force_n", 0.0), dtype=np.float32),
                 "needle_peak_force_n": np.array(needle_metrics.get("peak_force_n", 0.0), dtype=np.float32),
+                "needle_interaction_torque_nm": np.array(
+                    needle_metrics.get("interaction_torque_nm", 0.0), dtype=np.float32
+                ),
+                "needle_peak_torque_nm": np.array(
+                    needle_metrics.get("peak_torque_nm", 0.0), dtype=np.float32
+                ),
                 "needle_curvature_alignment": np.array(needle_metrics.get("curvature_alignment", 0.0), dtype=np.float32),
                 "needle_puncture_work_j": np.array(needle_metrics.get("puncture_work_j", 0.0), dtype=np.float32),
                 "needle_safe_envelope_active": np.array(
@@ -4343,6 +4358,9 @@ def main() -> None:
                 ),
                 "interaction_resultant_proxy_n": np.array(
                     interaction_metrics.get("resultant_proxy_n", 0.0), dtype=np.float32
+                ),
+                "interaction_resultant_proxy_torque_nm": np.array(
+                    interaction_metrics.get("resultant_proxy_torque_nm", 0.0), dtype=np.float32
                 ),
                 "suture_tension_n": np.array(thread_metrics.get("tension_n", 0.0), dtype=np.float32),
                 "suture_slack_m": np.array(thread_metrics.get("slack_m", 0.0), dtype=np.float32),
