@@ -22,7 +22,16 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA = "dr.anmar.openusd-composition.v1"
+SCHEMA = "dr.anmar.openusd-composition.v3"
+GEOMETRY_SCHEMA = "dr.anmar.openusd-geometry.v3"
+
+# The CT multi-organ asset is the correctly scaled reference supplied with the
+# collection.  Other SuFIA/MAISI layers encode the same human-scale anatomy at
+# factors ranging from centimetres to hundreds of metres while all declaring
+# metersPerUnit=1.  The sanitizer fits every anatomy layer into this reference
+# envelope without changing its proportions or topology.
+ANATOMY_REFERENCE_CENTER_M = (0.2555234942701645, 0.2514615000694796, 0.3421077997282429)
+ANATOMY_REFERENCE_EXTENT_M = 0.6855203423406471
 
 
 def usd_asset_path(asset: Path, layer_dir: Path) -> str:
@@ -51,10 +60,19 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def geometry_cache_key(source: Path) -> str:
+    """Version the geometry cache so sanitizer changes cannot remain stale."""
+
+    digest = hashlib.sha256()
+    digest.update(f"{GEOMETRY_SCHEMA}\0".encode("utf-8"))
+    digest.update(file_sha256(source).encode("ascii"))
+    return digest.hexdigest()
+
+
 def sanitized_geometry(source: Path, cache_root: Path) -> Path:
     """Resolve the deterministic geometry cache created by Isaac Sim."""
 
-    source_hash = file_sha256(source)
+    source_hash = geometry_cache_key(source)
     destination = cache_root / f"{source_hash}.usdc"
     if not destination.is_file():
         raise RuntimeError(
