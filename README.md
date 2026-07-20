@@ -31,7 +31,7 @@ Every visual below was captured from Dr.Anmar itself. No figures were copied fro
 | --- | --- | --- |
 | **Guided robotics curriculum** | 29 lessons that explain control, demonstration, vision, policies, procedures, safety and recovery in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
 | **Interactive surgical digital twin** | 19 procedure rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | Nine native ORBIT-Surgical task families, 54 registered variants, versioned OpenUSD composition and simulator telemetry |
-| **Suturing, cutting and tissue workflows** | Needle pickup/handoff, interrupted and running sutures, knot rehearsal, incision, organ retraction, shunt insertion, vascular control, dissection, biopsy and recovery rooms | Thread/tension, puncture, cut-topology, compliant-surface, shunt, flow, ultrasound and procedure-state research proxies synchronized with action |
+| **Suturing, cutting and tissue workflows** | Needle pickup/handoff, interrupted and running sutures, knot rehearsal, incision, organ retraction, shunt insertion, vascular control, dissection, biopsy and recovery rooms | Coupled tissue volume/attachment, puncture/drag, thread slack/tension/failure, cut opening/work, vessel compression/rebleed, shunt, ultrasound and procedure-state telemetry synchronized with action |
 | **Demonstrations and Skills Twin** | Record a complete attempt, replay it, see phase-aware coaching, and compare against a clinician-selected reference | Checksummed trajectory/manifest pairs, task-native tool paths, multimodal observations, analysis and content-addressed dataset cards |
 | **Failure Lab and policy evaluation** | Practise shifted viewpoints, low light, occlusion, target variation, calibration drift, tissue variation and safe hand-back | Seeded challenge matrices, interventions, native outcomes, safety events and immutable policy-evaluation cards |
 | **Multimodal study builder** | Start from a clinical question and choose what the policy should perceive | Stereo RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact, deformation, operator input and procedure annotations, with guarded NVIDIA workflow bindings |
@@ -113,9 +113,12 @@ Target-guided pickup → grasp → close-up entry → full exit while held → d
 Pickup → presentation → dual grasp → holder release → receiver recovery → organ approach, with the active keyboard controls visible throughout.</p>
 
 The instrument shaft remains outside the anatomy surface while the grasped needle tip can follow a bounded
-12 mm entry channel. The suturing room adds a rendered position-based thread with entry/exit tissue pins,
-stretch tension, live surface indentation, and a persistent cinch constraint. These are engineering training
-mechanics—not validated suture material, knot security, human-tissue constitutive behavior, or needle forces.
+12 mm entry channel. Entry is force-gated, advancing resistance responds to needle-arc alignment, and the
+suturing room models visible thread slack, tension, tissue-anchor damage, pullout, breakage and knot security.
+Cutting rooms remove and open intersected OpenUSD faces while recording resistance/work; tissue handling adds
+mesh-coupled deformation, approximate volume preservation, attachment and recovery. Native Isaac tensors stay
+authoritative. The fallback parameters are explicit unvalidated research defaults, not human-tissue or clinical
+force claims.
 
 <p align="center">
   <img src="docs/screenshots/surgical-control-panel.png" width="400" alt="Dr.Anmar game-like surgical instrument controls for speed, position, angle, and gripper">
@@ -163,16 +166,18 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
   gallbladder/dissection, image-guided intervention, anatomy navigation, tissue handling, and complication recovery.
 - A runnable ORBIT-style vascular shunt room with flexible-tube geometry, lumen alignment, insertion depth,
   buckling, wall-load, and patency telemetry.
-- Live suturing mechanics: an attached constrained strand, tissue entry/exit pins, tension response, cinch state,
-  multi-bite running closure, intracorporeal-knot and anastomosis/leak-test state, compliant surface motion,
-  reset, procedure-specific progress scoring, and synchronized recording.
+- Live suturing mechanics: constrained thread, tissue entry/exit pins, slack, strain, tension, anchor damage,
+  pullout, breakage, knot tightness/security, multi-bite closure, anastomosis/leak-test state, coupled tissue
+  response, reset, procedure scoring, and synchronized recording.
 - Action-driven vascular control, hemostasis, bimanual procedural ultrasound, tissue-plane dissection,
   lesion excision, and failure recovery: clip and control events require actual jaw actions, probe and needle
   roles are separate, and dissection progress requires both topology change and counter-traction.
-- Live incision mechanics that remove swept faces from the displayed OpenUSD liver mesh, expose the incision bed,
-  record cut length/topology revisions, and restore the exact original topology on reset.
-- Compliant liver, gallbladder, and bladder surfaces with localized jaw indentation, bounded drag deformation,
-  elastic recovery, and native ORBIT-Surgical grasp dynamics for gross organ motion.
+- Live incision mechanics that remove and separate swept OpenUSD faces, expose the incision bed, record cut
+  resistance/work and topology revisions, and restore the exact original topology on reset.
+- Reduced-order liver, gallbladder, and bladder tissue with mesh-coupled deformation, approximate volume
+  preservation, attachment resistance, elastic recovery, and native ORBIT-Surgical gross-body dynamics.
+- Force-gated needle puncture with hysteresis, drag, needle-arc alignment, depth and safe-force envelopes;
+  vessel compression, clip retention, over-compression damage, flow, bleeding and rebleeding telemetry.
 - Guided lessons, plain-language robotics explanations, progress tracking, and a robotics glossary.
 - Demonstration recording and replay for behavior-cloning experiments.
 - Surgical Skills Twin analysis with telemetry-derived coaching, phase timelines, subscores, and selected-attempt replay.
@@ -228,6 +233,8 @@ The July 20 Gilgamesh pass exercised all nine native interactive task families, 
 layers plus seven complete OpenUSD room compositions, and ran representative ultrasound, suturing, cutting,
 tissue-manipulation, recording and shared-control workflows on an RTX 4090. Exact evidence and remaining gates
 are in [`docs/GILGAMESH_VALIDATION_2026-07-20.md`](docs/GILGAMESH_VALIDATION_2026-07-20.md).
+The later coupled-physics and Isaac for Healthcare v0.6.0 pass is recorded in
+[`docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md`](docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md).
 
 Install Isaac Sim and Isaac Lab using their official instructions before continuing. NVIDIA components
 are dependencies and are not redistributed by this repository.
@@ -261,7 +268,7 @@ Start Doctor Studio:
 ./dr_anmar_suite.sh start
 ```
 
-Optionally install the pinned Isaac for Healthcare workflow source:
+Optionally install the pinned Isaac for Healthcare v0.6.0 workflow source and compatible HoloHub CLI:
 
 ```bash
 ./scripts/install_i4h_workflows.sh

@@ -5,6 +5,28 @@
   "clinical_ready": false,
   "gates": [
     {
+      "id": "isaac_healthcare_v060_adapter",
+      "priority": "P1",
+      "state": "validated",
+      "owner": "runtime_engineering",
+      "requirement": "Pin Isaac for Healthcare v0.6.0 and its compatible HoloHub CLI, preserve guarded metadata discovery, and expose source-only workflows without unsafe launch fabrication.",
+      "blocker": "Provider containers and DDS modes retain their separate dependency gate.",
+      "evidence": [
+        "docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md"
+      ]
+    },
+    {
+      "id": "coupled_surgical_physics_trajectories",
+      "priority": "P0",
+      "state": "pending_live",
+      "owner": "runtime_engineering",
+      "requirement": "Complete puncture, exit, suturing, knot, cutting, tissue recovery and vascular-control trajectories with the coupled v2 telemetry active.",
+      "blocker": "Deterministic mechanics and live room startup passed; complete interactive procedure trajectories remain open.",
+      "evidence": [
+        "docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md"
+      ]
+    },
+    {
       "id": "all_openusd_rooms_on_gilgamesh",
       "priority": "P0",
       "state": "pending_live",

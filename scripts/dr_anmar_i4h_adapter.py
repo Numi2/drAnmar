@@ -20,9 +20,11 @@ from typing import Any
 
 APP_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
 I4H_ROOT = Path(os.environ.get("DR_ANMAR_I4H_ROOT", APP_ROOT / "vendor/i4h-workflows")).expanduser()
+I4H_RELEASE = os.environ.get("DR_ANMAR_I4H_RELEASE", "v0.6.0")
+I4H_RELEASE_COMMIT = "8b03d55ecb647a43af54470b27bd09a239870aaf"
 HOLOHUB_CLI_COMMIT = os.environ.get(
     "DR_ANMAR_HOLOHUB_CLI_COMMIT",
-    "5c49897bd229d4ce46cbcd4a68c640f6258233f7",
+    "f7e791dac061e01c560d3a2c5b7da82350915b69",
 )
 
 
@@ -30,11 +32,32 @@ def runtime_prerequisites() -> dict[str, Any]:
     docker = shutil.which("docker")
     rti_value = os.environ.get("RTI_LICENSE_FILE")
     rti_path = Path(rti_value).expanduser() if rti_value else I4H_ROOT / "rti/rti_license.dat"
+    cli_pin_path = I4H_ROOT / "tools/utilities/cli/.cli_commit_hash"
+    try:
+        installed_cli_commit = cli_pin_path.read_text().strip()
+    except OSError:
+        installed_cli_commit = None
+    try:
+        workflow_head = (I4H_ROOT / ".git/HEAD").read_text().strip()
+        if workflow_head.startswith("ref: "):
+            workflow_head = (I4H_ROOT / ".git" / workflow_head[5:]).read_text().strip()
+    except OSError:
+        workflow_head = None
     return {
         "container_runtime": {"ready": bool(docker), "path": docker, "label": "Docker Engine"},
         "nvidia_gpu_device": {"ready": Path("/dev/nvidia0").exists(), "path": "/dev/nvidia0"},
         "rti_dds_license": {"ready": rti_path.is_file(), "path": str(rti_path)},
-        "holohub_cli_pin": {"ready": True, "commit": HOLOHUB_CLI_COMMIT},
+        "holohub_cli_pin": {
+            "ready": installed_cli_commit == HOLOHUB_CLI_COMMIT,
+            "expected_commit": HOLOHUB_CLI_COMMIT,
+            "installed_commit": installed_cli_commit,
+        },
+        "workflow_release_pin": {
+            "ready": workflow_head == I4H_RELEASE_COMMIT,
+            "release": I4H_RELEASE,
+            "expected_commit": I4H_RELEASE_COMMIT,
+            "installed_commit": workflow_head,
+        },
     }
 
 
@@ -66,6 +89,22 @@ WORKFLOW_BINDINGS = {
         "provides": ["wrist_camera", "room_camera", "teleoperation", "lerobot", "groot"],
         "doctor_summary": "Learn the full collect, train, evaluate, and deploy loop on an accessible robot arm.",
         "doctor_default_mode": "sim_keyboard",
+    },
+    "rheo": {
+        "title": "Rheo precision manipulation",
+        "directory": "workflows/rheo",
+        "provides": ["trocar_assembly", "bimanual_manipulation", "groot_n1_6", "online_rl", "cosmos_transfer_2_5"],
+        "doctor_summary": "Use NVIDIA's trocar-assembly and precision-manipulation references as expert research starting points.",
+        "doctor_default_mode": None,
+        "expert_source_only": True,
+    },
+    "agentic": {
+        "title": "Agentic data and policy pipeline",
+        "directory": "workflows/agentic",
+        "provides": ["teleoperation", "mimic", "vlm_annotation", "lerobot", "groot_n1_7", "openpi", "rollout_validation"],
+        "doctor_summary": "Move a reviewed study from demonstrations through curation, policy adaptation, and closed-loop evaluation.",
+        "doctor_default_mode": None,
+        "expert_source_only": True,
     },
 }
 
@@ -106,6 +145,12 @@ def workflow_modes(workflow_id: str) -> dict[str, Any]:
             "metadata_ready": False,
             "metadata_path": str(metadata_path),
             "modes": [],
+            "expert_source_only": bool(definition.get("expert_source_only")),
+            "blocked_reason": (
+                "This v0.6 workflow has no HoloHub metadata contract; use its reviewed scripts outside the clinician launcher."
+                if definition.get("expert_source_only")
+                else None
+            ),
         }
     try:
         metadata_bytes = metadata_path.read_bytes()
@@ -310,10 +355,10 @@ POLICY_STARTING_POINTS = (
     },
     {
         "id": "groot",
-        "title": "GR00T",
+        "title": "GR00T N1.7",
         "analogy": "Use a pretrained robot foundation model as a starting point instead of learning everything from zero.",
         "inputs": ["language goal", "multi-camera video", "embodiment state/action mapping"],
-        "provider": "NVIDIA Isaac GR00T",
+        "provider": "NVIDIA Isaac GR00T through Isaac for Healthcare v0.6 agentic/SO-ARM workflows",
     },
     {
         "id": "reinforcement_learning",
@@ -338,14 +383,20 @@ def platform_payload(anatomy_root: Path) -> dict[str, Any]:
                 "source_ready": path.is_dir(),
                 "runtime_validated": False,
                 "path": str(path),
-                "inspect_command": f"./i4h modes {workflow_id}",
+                "inspect_command": (
+                    f"Read {definition['directory']}/README.md"
+                    if definition.get("expert_source_only")
+                    else f"./i4h modes {workflow_id}"
+                ),
                 **launch,
             }
         )
     i4h_cli = I4H_ROOT / "i4h"
     return {
-        "schema": "dr.anmar.isaac-healthcare-capabilities.v1",
+        "schema": "dr.anmar.isaac-healthcare-capabilities.v2",
         "strategy": "wrap_not_duplicate",
+        "i4h_release": I4H_RELEASE,
+        "i4h_release_commit": I4H_RELEASE_COMMIT,
         "i4h_root": str(I4H_ROOT),
         "i4h_cli_ready": i4h_cli.is_file(),
         "runtime_prerequisites": runtime_prerequisites(),

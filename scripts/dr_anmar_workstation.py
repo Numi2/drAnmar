@@ -91,7 +91,13 @@ import orbit.surgical.tasks  # noqa: F401
 
 from dr_anmar_procedure_mechanics import ProcedureMechanics
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
-from dr_anmar_soft_tissue import SurfaceMeshModel, SutureThreadModel
+from dr_anmar_soft_tissue import (
+    NeedleTissueInteractionModel,
+    SurfaceMeshModel,
+    SutureThreadModel,
+    interaction_force_snapshot,
+    tissue_material_for_name,
+)
 
 
 FAILURE_SCENARIOS = (
@@ -557,7 +563,14 @@ class SharedState:
                 "over_tension_events": 0,
                 "knot_formed": False,
                 "knot_tightness": 0.0,
+                "knot_security": 0.0,
+                "slack_m": 0.0,
+                "tissue_tear_events": 0,
+                "anchor_pullouts": 0,
+                "thread_broken": False,
             },
+            "needle": {"active": False},
+            "interaction_force": {"active": False},
             "cut": {
                 "active": False,
                 "topology_ready": False,
@@ -572,6 +585,7 @@ class SharedState:
                 "max_displacement_m": 0.0,
                 "recovering": False,
                 "surface_revision": 0,
+                "calibration_status": "not_available",
             },
             "tube": {"active": False},
             "closure": {"active": False},
@@ -667,6 +681,14 @@ class SharedState:
                 },
                 "safety": {
                     "max_contact_force_n": self.max_contact_force_n,
+                    "interaction_force_proxy_n": self.mechanics.get("interaction_force", {}).get(
+                        "resultant_proxy_n", 0.0
+                    ),
+                    "interaction_safe_envelope_active": self.mechanics.get("interaction_force", {}).get(
+                        "safe_envelope_active", False
+                    ),
+                    "tissue_edge_strain_proxy": self.mechanics.get("tissue", {}).get("max_edge_strain", 0.0),
+                    "tissue_stress_proxy_pa": self.mechanics.get("tissue", {}).get("stress_proxy_pa", 0.0),
                     "max_tissue_displacement_m": self.max_tissue_displacement_m,
                     "max_tissue_deformation_proxy": self.max_tissue_deformation_proxy,
                     "max_tissue_stress_pa": self.max_tissue_stress_pa,
@@ -2497,6 +2519,10 @@ def main() -> None:
     surface_mesh_prim = None
     surface_mesh_model: SurfaceMeshModel | None = None
     surface_mesh_name = ""
+    tissue_material = tissue_material_for_name(
+        f"{procedure.get('anatomy_focus', '')} {procedure.get('proxy_organ', '')}"
+    )
+    needle_tissue_model = NeedleTissueInteractionModel(material=tissue_material)
     target_anchors = max(2, int(procedure.get("target_anchors", 2)))
     suture_model = (
         SutureThreadModel(
@@ -2504,6 +2530,7 @@ def main() -> None:
             segment_length_m=0.0032,
             max_tissue_anchors=target_anchors,
             required_anchors_for_knot=target_anchors,
+            anchor_pullout_force_n=tissue_material.anchor_pullout_force_n,
         )
         if guide_kind in SUTURE_GUIDE_KINDS
         else None
@@ -2671,6 +2698,26 @@ def main() -> None:
                         np.asarray([tuple(point) for point in points], dtype=np.float32),
                         np.asarray(face_counts, dtype=np.int32),
                         np.asarray(face_indices, dtype=np.int32),
+                        material=tissue_material,
+                    )
+                    candidate_mesh.CreateAttribute("drAnmar:physicsModel", Sdf.ValueTypeNames.String).Set(
+                        "reduced_order_volume_preserving_tissue_v2"
+                    )
+                    candidate_mesh.CreateAttribute("drAnmar:materialProfile", Sdf.ValueTypeNames.String).Set(
+                        tissue_material.id
+                    )
+                    candidate_mesh.CreateAttribute("drAnmar:calibrationStatus", Sdf.ValueTypeNames.String).Set(
+                        "research_defaults_unvalidated"
+                    )
+                    physics_material_path = f"/World/envs/env_0/DrAnmarPhysicsMaterials/{tissue_material.id}"
+                    physics_material = UsdShade.Material.Define(stage, physics_material_path)
+                    physics_api = UsdPhysics.MaterialAPI.Apply(physics_material.GetPrim())
+                    physics_api.CreateStaticFrictionAttr(tissue_material.static_friction)
+                    physics_api.CreateDynamicFrictionAttr(tissue_material.dynamic_friction)
+                    physics_api.CreateRestitutionAttr(0.02)
+                    UsdShade.MaterialBindingAPI.Apply(candidate_mesh).Bind(
+                        physics_material,
+                        materialPurpose="physics",
                     )
 
         if guide_kind in SUTURE_GUIDE_KINDS:
@@ -2993,6 +3040,7 @@ def main() -> None:
 
     def reset_surface_mechanics() -> None:
         incision_points_world.clear()
+        needle_tissue_model.reset()
         if surface_mesh_model is not None:
             surface_mesh_model.reset()
             author_surface_model(topology_changed=True)
@@ -3334,9 +3382,17 @@ def main() -> None:
     state.mechanics["tissue"].update(
         {
             "active": surface_mesh_model is not None,
-            "model": "bounded_compliant_openusd_surface" if surface_mesh_model is not None else "none",
+            "model": "reduced_order_volume_preserving_tissue_v2" if surface_mesh_model is not None else "none",
             "authoring_ready": surface_authoring_ready,
+            "material_profile": tissue_material.id if surface_mesh_model is not None else None,
+            "calibration_status": "research_defaults_unvalidated" if surface_mesh_model is not None else "not_available",
         }
+    )
+    state.mechanics["needle"] = {**needle_tissue_model.snapshot(), "active": needle_interaction_enabled}
+    state.mechanics["interaction_force"] = interaction_force_snapshot(
+        needle_tissue_model if needle_interaction_enabled else None,
+        surface_mesh_model,
+        suture_model,
     )
     state.mechanics.update(
         procedure_mechanics.update(
@@ -3443,7 +3499,18 @@ def main() -> None:
                     "over_tension_events": 0,
                     "knot_formed": False,
                     "knot_tightness": 0.0,
+                    "knot_security": 0.0,
+                    "slack_m": 0.0,
+                    "tissue_tear_events": 0,
+                    "anchor_pullouts": 0,
+                    "thread_broken": False,
                 }
+            )
+            state.mechanics["needle"] = {**needle_tissue_model.snapshot(), "active": needle_interaction_enabled}
+            state.mechanics["interaction_force"] = interaction_force_snapshot(
+                needle_tissue_model if needle_interaction_enabled else None,
+                surface_mesh_model,
+                suture_model,
             )
             state.mechanics["cut"].update(
                 {
@@ -3457,8 +3524,10 @@ def main() -> None:
             state.mechanics["tissue"].update(
                 {
                     "active": surface_mesh_model is not None,
-                    "model": "bounded_compliant_openusd_surface" if surface_mesh_model is not None else "none",
+                    "model": "reduced_order_volume_preserving_tissue_v2" if surface_mesh_model is not None else "none",
                     "authoring_ready": surface_authoring_ready,
+                    "material_profile": tissue_material.id if surface_mesh_model is not None else None,
+                    "calibration_status": "research_defaults_unvalidated" if surface_mesh_model is not None else "not_available",
                     "max_displacement_m": 0.0,
                     "recovering": False,
                     "surface_revision": 0,
@@ -3748,7 +3817,8 @@ def main() -> None:
 
         adaptive_precision_active = False
         virtual_fixture_active = False
-        puncture_active = bool(puncture_was_active and assisted_grasp_joints)
+        puncture_active = bool(needle_tissue_model.punctured and assisted_grasp_joints)
+        needle_model_updated = False
         anatomy_clearances: list[float] = []
         for arm in range(state.arms):
             body_slice = state.body_action_slice(arm)
@@ -3757,17 +3827,26 @@ def main() -> None:
                 feather = 0.35 + 0.65 * float(np.clip(grasp_distances[arm] / 0.035, 0.0, 1.0))
                 translation *= feather
                 adaptive_precision_active = adaptive_precision_active or bool(np.any(translation))
-            if arm in assisted_grasp_joints and needle_clearance is not None and needle_outward is not None:
-                needle_inward = float(np.dot(translation, needle_outward))
-                if not puncture_active and needle_clearance <= 0.0025 and needle_inward < 0.0:
-                    puncture_active = True
-                    translation_length = float(np.linalg.norm(translation))
-                    if translation_length > 1e-6:
-                        needle_entry_direction = translation / translation_length
-                penetration_depth = max(0.0, -needle_clearance)
-                if puncture_active and penetration_depth >= max_penetration and needle_inward < 0.0:
-                    translation -= needle_outward * needle_inward
-                    virtual_fixture_active = True
+            if (
+                needle_interaction_enabled
+                and arm in assisted_grasp_joints
+                and needle_clearance is not None
+                and needle_outward is not None
+            ):
+                rotation = action_np[body_slice.start + 3 : body_slice.start + 6]
+                translation = needle_tissue_model.update(
+                    needle_clearance,
+                    needle_outward,
+                    translation,
+                    rotation,
+                    0.02,
+                    max_penetration,
+                )
+                needle_model_updated = True
+                puncture_active = needle_tissue_model.punctured
+                needle_entry_direction = needle_tissue_model.entry_direction
+                virtual_fixture_active = virtual_fixture_active or needle_tissue_model.safe_envelope_active
+                adaptive_precision_active = adaptive_precision_active or needle_tissue_model.interaction_force_n > 0.0
             if virtual_fixture_enabled:
                 translation, clearance, guard_active = constrain_anatomy_translation(
                     tool_position_for_arm(arm),
@@ -3800,13 +3879,14 @@ def main() -> None:
                     translation *= float(np.clip(1.0 - current_displacement / 0.040, 0.42, 0.82))
                     adaptive_precision_active = True
             action_np[body_slice.start : body_slice.start + 3] = translation
-        if puncture_active and needle_clearance is not None and needle_clearance > 0.006:
+        if not needle_model_updated:
+            needle_tissue_model.update(None, None, np.zeros(3), np.zeros(3), 0.02, max_penetration)
             puncture_active = False
             needle_entry_direction = None
         if puncture_active != puncture_was_active:
             set_anatomy_collision_enabled(not puncture_active)
         show_puncture_marker(needle_surface if puncture_active else None)
-        penetration_depth = max(0.0, -needle_clearance) if needle_clearance is not None else 0.0
+        penetration_depth = needle_tissue_model.penetration_depth_m
         with state.lock:
             state.adaptive_precision_active = adaptive_precision_active
             state.virtual_fixture_active = virtual_fixture_active
@@ -3831,10 +3911,15 @@ def main() -> None:
             )
             state.needle_puncture_active = puncture_active
             state.needle_penetration_depth_m = round(min(penetration_depth, max_penetration), 5)
-            if puncture_active and penetration_depth >= max_penetration:
+            if needle_tissue_model.safe_envelope_active and needle_tissue_model.interaction_force_n >= tissue_material.safe_force_n:
+                state.coaching_cue = "Safe-force envelope reached. Pause, withdraw slightly, and improve needle-arc alignment."
+            elif puncture_active and penetration_depth >= max_penetration:
                 state.coaching_cue = "Maximum rehearsal depth reached. Rotate along the needle arc or withdraw."
             elif puncture_active:
-                state.coaching_cue = "Needle tip is inside the tissue proxy. Rotate through the curved needle arc; the shaft remains excluded."
+                state.coaching_cue = (
+                    f"Needle engaged at {needle_tissue_model.interaction_force_n:.2f} N proxy. "
+                    "Rotate through the needle arc while advancing gently."
+                )
             elif virtual_fixture_active:
                 state.coaching_cue = "Instrument boundary reached. The shaft cannot enter; align the needle tip or withdraw."
 
@@ -4001,30 +4086,24 @@ def main() -> None:
 
         previous_tool_positions = {arm: position.copy() for arm, position in current_tool_positions.items()}
         surface_scale = surface_world_scale() if surface_mesh_model is not None else 1.0
-        current_surface_displacement_m = (
-            float(
-                np.linalg.norm(surface_mesh_model.current_points - surface_mesh_model.original_points, axis=1).max(initial=0.0)
-            )
-            * surface_scale
+        thread_snapshot = suture_model.snapshot() if suture_model is not None else {"active": False}
+        tissue_snapshot = (
+            surface_mesh_model.snapshot(surface_scale)
             if surface_mesh_model is not None
-            else 0.0
+            else {"active": False, "model": "none", "calibration_status": "not_available"}
+        )
+        coupled_force = interaction_force_snapshot(
+            needle_tissue_model if needle_interaction_enabled else None,
+            surface_mesh_model,
+            suture_model,
         )
         with state.lock:
-            state.mechanics["thread"].update(
-                {
-                    "active": suture_model is not None,
-                    "visible": bool(suture_model and suture_model.initialized),
-                    "tension_n": round(suture_model.tension_n, 4) if suture_model else 0.0,
-                    "peak_tension_n": round(suture_model.peak_tension_n, 4) if suture_model else 0.0,
-                    "tissue_anchors": len(suture_model.tissue_anchor_indices) if suture_model else 0,
-                    "stitch_count": suture_model.stitch_count if suture_model else 0,
-                    "mean_bite_spacing_m": round(suture_model.mean_anchor_spacing_m, 5) if suture_model else 0.0,
-                    "spacing_variation_m": round(suture_model.spacing_variation_m, 5) if suture_model else 0.0,
-                    "over_tension_events": suture_model.over_tension_events if suture_model else 0,
-                    "knot_formed": bool(suture_model and suture_model.knot_formed),
-                    "knot_tightness": round(suture_model.knot_tightness, 4) if suture_model else 0.0,
-                }
-            )
+            state.mechanics["thread"].update(thread_snapshot)
+            state.mechanics["needle"] = {
+                **needle_tissue_model.snapshot(),
+                "active": needle_interaction_enabled,
+            }
+            state.mechanics["interaction_force"] = coupled_force
             state.mechanics["cut"].update(
                 {
                     "active": cut_active,
@@ -4032,22 +4111,17 @@ def main() -> None:
                     "length_m": round(cut_length_m, 5),
                     "faces_removed": surface_mesh_model.removed_faces if guide_kind in CUTTING_GUIDE_KINDS and surface_mesh_model else 0,
                     "topology_revision": surface_mesh_model.revision if guide_kind in CUTTING_GUIDE_KINDS and surface_mesh_model else 0,
+                    "resistance_proxy_n": round(surface_mesh_model.cut_resistance_n, 4) if surface_mesh_model else 0.0,
+                    "energy_proxy_j": round(surface_mesh_model.cut_energy_proxy_j, 7) if surface_mesh_model else 0.0,
+                    "opened_faces": surface_mesh_model.opened_faces if surface_mesh_model else 0,
+                    "calibration_status": "research_defaults_unvalidated" if surface_mesh_model else "not_available",
                 }
             )
             state.mechanics["tissue"].update(
                 {
-                    "active": surface_mesh_model is not None,
-                    "model": "bounded_compliant_openusd_surface" if surface_mesh_model is not None else "none",
+                    **tissue_snapshot,
                     "authoring_ready": surface_authoring_ready,
-                    "max_displacement_m": round(
-                        max(
-                            float(state.mechanics["tissue"].get("max_displacement_m", 0.0)),
-                            current_surface_displacement_m,
-                        ),
-                        6,
-                    ),
                     "recovering": tissue_recovering,
-                    "surface_revision": surface_mesh_model.revision if surface_mesh_model is not None else 0,
                 }
             )
 
@@ -4198,6 +4272,8 @@ def main() -> None:
                 needle_puncture_active = state.needle_puncture_active
                 needle_penetration_depth_m = state.needle_penetration_depth_m
                 needle_tip_clearance_m = state.needle_tip_clearance_m
+                needle_metrics = dict(state.mechanics["needle"])
+                interaction_metrics = dict(state.mechanics["interaction_force"])
                 thread_metrics = dict(state.mechanics["thread"])
                 cut_metrics = dict(state.mechanics["cut"])
                 tissue_metrics = dict(state.mechanics["tissue"])
@@ -4258,19 +4334,41 @@ def main() -> None:
                     needle_tip_clearance_m if needle_tip_clearance_m is not None else np.nan,
                     dtype=np.float32,
                 ),
+                "needle_interaction_force_n": np.array(needle_metrics.get("interaction_force_n", 0.0), dtype=np.float32),
+                "needle_peak_force_n": np.array(needle_metrics.get("peak_force_n", 0.0), dtype=np.float32),
+                "needle_curvature_alignment": np.array(needle_metrics.get("curvature_alignment", 0.0), dtype=np.float32),
+                "needle_puncture_work_j": np.array(needle_metrics.get("puncture_work_j", 0.0), dtype=np.float32),
+                "needle_safe_envelope_active": np.array(
+                    needle_metrics.get("safe_envelope_active", False), dtype=np.bool_
+                ),
+                "interaction_resultant_proxy_n": np.array(
+                    interaction_metrics.get("resultant_proxy_n", 0.0), dtype=np.float32
+                ),
                 "suture_tension_n": np.array(thread_metrics.get("tension_n", 0.0), dtype=np.float32),
+                "suture_slack_m": np.array(thread_metrics.get("slack_m", 0.0), dtype=np.float32),
+                "suture_strain": np.array(thread_metrics.get("strain", 0.0), dtype=np.float32),
                 "suture_tissue_anchor_count": np.array(thread_metrics.get("tissue_anchors", 0), dtype=np.int16),
                 "suture_knot_formed": np.array(thread_metrics.get("knot_formed", False), dtype=np.bool_),
                 "suture_knot_tightness": np.array(thread_metrics.get("knot_tightness", 0.0), dtype=np.float32),
+                "suture_knot_security": np.array(thread_metrics.get("knot_security", 0.0), dtype=np.float32),
+                "suture_tissue_tear_events": np.array(thread_metrics.get("tissue_tear_events", 0), dtype=np.int16),
+                "suture_anchor_pullouts": np.array(thread_metrics.get("anchor_pullouts", 0), dtype=np.int16),
+                "suture_thread_broken": np.array(thread_metrics.get("thread_broken", False), dtype=np.bool_),
                 "incision_active": np.array(cut_metrics.get("active", False), dtype=np.bool_),
                 "incision_length_m": np.array(cut_metrics.get("length_m", 0.0), dtype=np.float32),
                 "incision_faces_removed": np.array(cut_metrics.get("faces_removed", 0), dtype=np.int32),
                 "incision_topology_revision": np.array(cut_metrics.get("topology_revision", 0), dtype=np.int32),
+                "incision_resistance_proxy_n": np.array(cut_metrics.get("resistance_proxy_n", 0.0), dtype=np.float32),
+                "incision_energy_proxy_j": np.array(cut_metrics.get("energy_proxy_j", 0.0), dtype=np.float32),
                 "surface_max_tissue_displacement_m": np.array(
                     tissue_metrics.get("max_displacement_m", 0.0), dtype=np.float32
                 ),
                 "surface_tissue_recovering": np.array(tissue_metrics.get("recovering", False), dtype=np.bool_),
                 "surface_tissue_revision": np.array(tissue_metrics.get("surface_revision", 0), dtype=np.int32),
+                "surface_volume_ratio": np.array(tissue_metrics.get("volume_ratio", 1.0), dtype=np.float32),
+                "surface_max_edge_strain": np.array(tissue_metrics.get("max_edge_strain", 0.0), dtype=np.float32),
+                "surface_stress_proxy_pa": np.array(tissue_metrics.get("stress_proxy_pa", 0.0), dtype=np.float32),
+                "surface_tissue_tear_events": np.array(tissue_metrics.get("tear_events", 0), dtype=np.int16),
                 "tube_insertion_depth_m": np.array(tube_metrics.get("insertion_depth_m", 0.0), dtype=np.float32),
                 "tube_target_depth_m": np.array(tube_metrics.get("target_depth_m", 0.0), dtype=np.float32),
                 "tube_radial_error_m": np.array(tube_metrics.get("radial_error_m", 0.0), dtype=np.float32),
@@ -4296,6 +4394,16 @@ def main() -> None:
                 "vascular_protected_violations": np.array(
                     vascular_metrics.get("protected_violations", 0), dtype=np.int16
                 ),
+                "vascular_clip_retention_min": np.array(
+                    vascular_metrics.get("clip_retention_min", 0.0), dtype=np.float32
+                ),
+                "vascular_compression_force_proxy_n": np.array(
+                    vascular_metrics.get("compression_force_proxy_n", 0.0), dtype=np.float32
+                ),
+                "vascular_vessel_damage_proxy": np.array(
+                    vascular_metrics.get("vessel_damage_proxy", 0.0), dtype=np.float32
+                ),
+                "vascular_rebleed": np.array(vascular_metrics.get("rebleed", False), dtype=np.bool_),
                 "hemostasis_bleed_rate_proxy_ml_min": np.array(
                     vascular_metrics.get("bleed_rate_proxy_ml_min", 0.0), dtype=np.float32
                 ),

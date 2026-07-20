@@ -172,6 +172,9 @@ class ClosureQualityModel:
         stitches = int(getattr(thread, "stitch_count", anchors // 2)) if thread is not None else 0
         tension = float(getattr(thread, "tension_n", 0.0)) if thread is not None else 0.0
         tightness = float(getattr(thread, "knot_tightness", 0.0)) if thread is not None else 0.0
+        knot_security = float(getattr(thread, "knot_security", 0.0)) if thread is not None else 0.0
+        tissue_tear_events = int(getattr(thread, "tissue_tear_events", 0)) if thread is not None else 0
+        anchor_pullouts = int(getattr(thread, "anchor_pullouts", 0)) if thread is not None else 0
         spacing = float(getattr(thread, "mean_anchor_spacing_m", 0.0)) if thread is not None else 0.0
         variation = float(getattr(thread, "spacing_variation_m", 0.0)) if thread is not None else 0.0
         completion = float(np.clip(stitches / max(1, self.target_stitches), 0.0, 1.0))
@@ -191,7 +194,15 @@ class ClosureQualityModel:
                 self.crossing_cooldown_s = 0.32
             if side:
                 self.last_tool_side = side
-        closure_stable = bool(completion >= 1.0 and closure_gap <= 0.006 and tension <= 0.95)
+        secure_enough = knot_security >= 0.45 if self.mode in {"threading", "running_suture", "anastomosis", "knot_tying"} else True
+        closure_stable = bool(
+            completion >= 1.0
+            and closure_gap <= 0.006
+            and tension <= 0.95
+            and secure_enough
+            and tissue_tear_events == 0
+            and not bool(getattr(thread, "thread_broken", False))
+        )
         self.stable_closure_time_s = (
             self.stable_closure_time_s + max(0.0, float(dt))
             if closure_stable
@@ -199,8 +210,16 @@ class ClosureQualityModel:
         )
         if self.mode == "anastomosis" and self.stable_closure_time_s >= 0.6:
             self.pressure_kpa = min(12.0, self.pressure_kpa + 2.4 * max(0.0, float(dt)))
-        leak_rate = float(np.clip(180.0 * (closure_gap / 0.012) ** 2 + narrowing * 0.45, 0.0, 260.0))
-        slippage = float(np.clip(1.0 - tightness * 0.70 - self.throw_count / max(1, self.target_throws) * 0.30, 0.0, 1.0))
+        leak_rate = float(
+            np.clip(180.0 * (closure_gap / 0.012) ** 2 + narrowing * 0.45 + tissue_tear_events * 28.0, 0.0, 320.0)
+        )
+        slippage = float(
+            np.clip(
+                1.0 - knot_security * 0.70 - self.throw_count / max(1, self.target_throws) * 0.30 + anchor_pullouts * 0.18,
+                0.0,
+                1.0,
+            )
+        )
         return {
             "active": True,
             "mode": self.mode,
@@ -214,6 +233,10 @@ class ClosureQualityModel:
             "test_pressure_kpa": round(self.pressure_kpa, 2),
             "leak_rate_proxy_ml_min": round(leak_rate, 1),
             "over_tension_events": int(getattr(thread, "over_tension_events", 0)) if thread is not None else 0,
+            "tissue_tear_events": tissue_tear_events,
+            "anchor_pullouts": anchor_pullouts,
+            "thread_broken": bool(getattr(thread, "thread_broken", False)) if thread is not None else False,
+            "knot_security": round(knot_security, 3),
             "throw_count": self.throw_count,
             "target_throws": self.target_throws,
             "alternating_crossings": self.alternating_crossings,
@@ -242,6 +265,12 @@ class VascularControlModel:
     elapsed_s: float = 0.0
     previous_tools: dict[int, np.ndarray] = field(default_factory=dict)
     previous_open: list[bool] = field(default_factory=list)
+    clip_retention: dict[int, float] = field(default_factory=dict)
+    compression_force_proxy_n: float = 0.0
+    peak_compression_force_proxy_n: float = 0.0
+    overcompression_events: int = 0
+    overcompression_active: bool = False
+    vessel_damage: float = 0.0
 
     def __post_init__(self) -> None:
         self.waypoints = np.asarray(self.waypoints, dtype=np.float32).reshape(-1, 3)
@@ -269,6 +298,12 @@ class VascularControlModel:
         self.elapsed_s = 0.0
         self.previous_tools.clear()
         self.previous_open.clear()
+        self.clip_retention.clear()
+        self.compression_force_proxy_n = 0.0
+        self.peak_compression_force_proxy_n = 0.0
+        self.overcompression_events = 0
+        self.overcompression_active = False
+        self.vessel_damage = 0.0
 
     def snapshot(
         self,
@@ -281,6 +316,20 @@ class VascularControlModel:
         distances = [float(np.linalg.norm(position - self.source)) for position in positions.values()]
         distance = min(distances, default=1.0)
         proximity = float(np.clip(1.0 - distance / 0.045, 0.0, 1.0))
+        closed_near_source = sum(
+            arm < len(grippers_open)
+            and not grippers_open[arm]
+            and float(np.linalg.norm(position - self.source)) <= 0.032
+            for arm, position in positions.items()
+        )
+        self.compression_force_proxy_n = float(np.clip(closed_near_source * proximity * 0.82, 0.0, 2.6))
+        self.peak_compression_force_proxy_n = max(self.peak_compression_force_proxy_n, self.compression_force_proxy_n)
+        overcompressed = self.compression_force_proxy_n > 1.35
+        if overcompressed and not self.overcompression_active:
+            self.overcompression_events += 1
+        self.overcompression_active = overcompressed
+        if overcompressed:
+            self.vessel_damage = float(np.clip(self.vessel_damage + (self.compression_force_proxy_n - 1.35) * max(dt, 0.0) * 0.28, 0.0, 1.0))
         close_edges = [
             arm
             for arm, is_open in enumerate(grippers_open)
@@ -295,6 +344,7 @@ class VascularControlModel:
                 nearest = min(available, key=lambda site: float(np.linalg.norm(position - self.clip_sites[site])), default=None)
                 if nearest is not None and float(np.linalg.norm(position - self.clip_sites[nearest])) <= 0.020:
                     self.placed_sites.append(nearest)
+                    self.clip_retention[nearest] = 1.0
                 elif float(np.linalg.norm(position - self.source)) <= 0.055:
                     self.off_target_deployments += 1
             if len(self.placed_sites) >= 2 and not self.divided:
@@ -324,9 +374,28 @@ class VascularControlModel:
             clips = len(self.placed_sites)
             divided = self.divided
             safe_interval = self.division_inside_interval
-            residual_flow = 100.0 if clips == 0 else 45.0 if clips == 1 else 3.0
+            for site in list(self.placed_sites):
+                disturbance = max(
+                    (
+                        float(np.linalg.norm(position - self.previous_tools[arm]))
+                        for arm, position in positions.items()
+                        if arm in self.previous_tools
+                        and float(np.linalg.norm(position - self.clip_sites[site])) <= 0.025
+                    ),
+                    default=0.0,
+                )
+                if disturbance > 0.006:
+                    self.clip_retention[site] = max(
+                        0.0,
+                        self.clip_retention.get(site, 1.0) - (disturbance - 0.006) * 3.5,
+                    )
+            retained = sum(self.clip_retention.get(site, 0.0) >= 0.65 for site in self.placed_sites)
+            residual_flow = 100.0 if retained == 0 else 45.0 if retained == 1 else 3.0
             if divided and clips < 2:
                 residual_flow = 100.0
+            if divided and retained < 2:
+                self.rebleed = True
+                residual_flow = max(residual_flow, 72.0)
             output = {
                 "active": True,
                 "mode": self.mode,
@@ -337,14 +406,17 @@ class VascularControlModel:
                 "clip_spacing_m": round(float(np.linalg.norm(self.clip_sites[0] - self.clip_sites[1])), 5) if clips == 2 else 0.0,
                 "off_target_deployments": self.off_target_deployments,
                 "protected_violations": self.protected_violations,
+                "clips_retained": retained,
+                "clip_retention_min": round(min(self.clip_retention.values(), default=0.0), 3),
+                "compression_force_proxy_n": round(self.compression_force_proxy_n, 3),
+                "overcompression_events": self.overcompression_events,
+                "vessel_damage_proxy": round(self.vessel_damage, 3),
+                "rebleed": self.rebleed,
+                "calibration_status": "research_defaults_unvalidated",
             }
         else:
-            closed_near_source = sum(
-                arm < len(grippers_open) and not grippers_open[arm] and float(np.linalg.norm(position - self.source)) <= 0.032
-                for arm, position in positions.items()
-            )
             suction = proximity * 0.52
-            compression = min(0.48, closed_near_source * 0.34)
+            compression = min(0.58, self.compression_force_proxy_n / 1.55)
             if distance <= 0.028:
                 self.localized_time_s += max(0.0, float(dt))
             if any(
@@ -354,13 +426,15 @@ class VascularControlModel:
             ) and self.localized_time_s >= 0.35:
                 self.definitive_control = True
                 self.rebleed = False
-            if self.definitive_control and distance > 0.070 and self.stable_control_time_s < 0.8:
+            if self.definitive_control and (
+                (distance > 0.070 and self.stable_control_time_s < 0.8) or self.vessel_damage >= 0.55
+            ):
                 self.definitive_control = False
                 self.rebleed = True
                 self.stable_control_time_s = 0.0
             definitive = 0.90 if self.definitive_control else 0.0
             control = float(np.clip(max(suction + compression, definitive), 0.0, 0.98))
-            bleed_rate = self.baseline_bleed_rate_ml_min * (1.0 - control)
+            bleed_rate = self.baseline_bleed_rate_ml_min * (1.0 - control) * (1.0 + self.vessel_damage * 0.75)
             self.blood_loss_proxy_ml += bleed_rate * max(0.0, dt) / 60.0
             controlled = bleed_rate <= 35.0
             self.stable_control_time_s = self.stable_control_time_s + max(0.0, float(dt)) if controlled else 0.0
@@ -380,6 +454,11 @@ class VascularControlModel:
                 "stable_control_time_s": round(self.stable_control_time_s, 2),
                 "controlled": controlled,
                 "rebleed": self.rebleed,
+                "compression_force_proxy_n": round(self.compression_force_proxy_n, 3),
+                "peak_compression_force_proxy_n": round(self.peak_compression_force_proxy_n, 3),
+                "overcompression_events": self.overcompression_events,
+                "vessel_damage_proxy": round(self.vessel_damage, 3),
+                "calibration_status": "research_defaults_unvalidated",
             }
         self.previous_tools = {arm: position.copy() for arm, position in positions.items()}
         self.previous_open = list(grippers_open)

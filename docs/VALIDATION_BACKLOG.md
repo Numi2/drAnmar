@@ -46,6 +46,19 @@ only the gates explicitly demonstrated in the new runtime report should be treat
 
 ## Gilgamesh release-candidate evidence — 2026-07-20
 
+### Coupled-physics and i4h v0.6 update
+
+- Isaac for Healthcare source is now pinned to v0.6.0 at
+  `8b03d55ecb647a43af54470b27bd09a239870aaf`; its compatible HoloHub CLI is pinned to
+  `f7e791dac061e01c560d3a2c5b7da82350915b69`.
+- The live adapter verified both revisions and retained guarded discovery for 8 surgical, 18 ultrasound and
+  15 SO-ARM modes. Rheo and Agentic remain explicitly expert-source-only because they lack the same metadata
+  launch contract.
+- Coupled v2 tissue, needle, thread, cutting, vascular and force schemas passed deterministic execution in
+  the Isaac Python environment and loaded live in the dual-PSM interrupted-stitch room.
+- Complete trajectories and biomechanical calibration remain open. Exact evidence and boundaries are in
+  `GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md`.
+
 - All nine native interactive task families completed 40 CUDA steps with finite reported joint state.
 - Seven runtime anatomy layers and seven full room compositions passed hard scale and dependency gates.
 - The suite, one-operator boundary, gripper/drive/camera controls, recording and analysis were exercised live.

@@ -70,6 +70,10 @@ extensions should be versioned rather than silently changing these base labels.
 - `robotic_ultrasound`: B-mode sensor simulation, probe pose, acoustic configuration, π₀/GR00T, and Holoscan.
 - `so_arm_starter`: room/wrist views, accessible teleoperation, LeRobot conversion, and GR00T onboarding.
 - `telesurgery`: XR, haptics, low-latency video, RTI DDS, handover, and hardware-in-the-loop.
+- `rheo`: expert-source trocar assembly, bimanual precision manipulation, GR00T adaptation, online RL,
+  and Cosmos Transfer 2.5 references.
+- `agentic`: expert-source teleoperation recording, mimic expansion, VLM annotation, LeRobot conversion,
+  GR00T N1.7/openpi adaptation, and closed-loop rollout review.
 
 The adapter root is configured with `DR_ANMAR_I4H_ROOT`. If unset, Dr.Anmar looks in
 `~/.local/share/dr-anmar/vendor/i4h-workflows`. Missing workflows remain visible as defined connectors;
@@ -81,8 +85,27 @@ interactive operating room. Device access, interactive account login, and custom
 the clinician-facing surface. Each launch produces a log and `dr.anmar.healthcare-workflow-job.v1` manifest,
 and the prior lesson is restored when the job exits.
 
-For i4h v0.5.0, Dr.Anmar pins the compatible HoloHub CLI revision recorded by the installer. This avoids
-silently consuming a later HoloHub CLI layout that the pinned i4h wrapper cannot execute.
+Dr.Anmar pins Isaac for Healthcare workflows **v0.6.0** at
+`8b03d55ecb647a43af54470b27bd09a239870aaf` and its compatible HoloHub CLI at
+`f7e791dac061e01c560d3a2c5b7da82350915b69`. The adapter verifies both installed revisions instead of
+silently consuming a moving upstream layout. The four metadata-backed workflows retain the guarded web
+launcher. Rheo and Agentic are intentionally source-only in the doctor interface because v0.6.0 does not
+publish the same `metadata.json` launch contract for them; their reviewed scripts remain available to
+research engineers without exposing arbitrary or hardware-affecting commands to clinicians.
+
+## Coupled surgical-interaction fallback
+
+Rooms without a validated native deformable asset use Dr.Anmar's second-generation reduced-order fallback:
+
+- edge-coupled deformation, approximate volume preservation, organ-bed attachment and elastic recovery;
+- force-gated puncture, hysteresis, needle drag, curvature-alignment resistance and a safe-force envelope;
+- suture slack, strain, tension, tissue-anchor damage, pullout, strand breakage, knot tightness and security;
+- cut-face removal plus visible wound opening, cut resistance and accumulated work;
+- vessel compression, clip retention, over-compression damage, residual flow, bleeding and rebleeding.
+
+Native Isaac contact, articulation, sensor and deformable tensors remain authoritative whenever present.
+Fallback measurements are labeled `research_defaults_unvalidated` in live telemetry and demonstrations and
+must not be interpreted as calibrated human biomechanics.
 
 ## Study workflow
 

@@ -44,7 +44,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("orient", "Orient", "Rotate the needle into a controlled, readable presentation.", "tool orientation"),
             step("recover", "Recover", "Hold the final pose without dropping the needle.", "stable hold"),
         ],
-        "truth_note": "The needle and robot use simulator physics. Closing within 18 mm secures the needle until release. The instrument shaft stays outside an OpenUSD-derived surface while a grasped needle tip may enter a bounded 12 mm rigid rehearsal channel. The entry marker and depth are training aids, not deformable biomechanics or clinical validation.",
+        "truth_note": "The needle and robot use simulator physics. Closing within 18 mm secures the needle until release. The shaft stays outside the OpenUSD surface while the needle tip uses force-gated entry, puncture hysteresis, drag, curvature-alignment resistance and a 12 mm safe-depth envelope. The tissue parameters are unvalidated research defaults, not clinical biomechanics.",
     },
     {
         "id": "needle-transfer",
@@ -93,7 +93,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("knot", "Close and cinch", "Return the needle around the entry and pull until the loop cinches.", "knot constraint"),
             step("recover", "Recover", "Move the needle clear while preserving the tightened suture.", "stable hold"),
         ],
-        "truth_note": "The strand, tissue pins, stretch tension, mesh deformation and cinch constraint run live and are recorded. Parameters are engineering training proxies, not validated suture material, knot-security or human-tissue biomechanics.",
+        "truth_note": "The strand, tissue pins, slack, strain, tension, anchor damage/pullout, breakage, knot security and volume-preserving tissue response run live and are recorded. Parameters are unvalidated research defaults, not validated suture material or human-tissue biomechanics.",
     },
     {
         "id": "liver-cutting-path",
@@ -117,7 +117,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("finish", "Finish", "Reach the green endpoint and inspect the opened mesh edges.", "cut endpoint"),
             step("recover", "Recover", "Lift away from the planned incision corridor.", "tool clearance"),
         ],
-        "truth_note": "The displayed OpenUSD liver topology is changed by removing swept faces and is restored on reset. It is a geometric cutting model, not validated fracture, bleeding, cautery or human-tissue force behavior.",
+        "truth_note": "The OpenUSD liver removes and opens swept faces, deforms around the incision, records cut resistance/work, and restores exactly on reset. It is a reduced-order research model, not validated fracture, bleeding, cautery or human-tissue force behavior.",
     },
     {
         "id": "liver-retraction",
@@ -141,7 +141,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("retract", "Retract", "Lift and move the target to expose the working area.", "object displacement"),
             step("hold", "Hold", "Maintain stable exposure before release.", "stable hold"),
         ],
-        "truth_note": "The official liver surface now deforms and recovers around the live grasp while native rigid dynamics provide gross organ motion. This hybrid surface model is not validated human-tissue constitutive behavior.",
+        "truth_note": "The official liver surface now couples deformation over its mesh, approximately preserves volume, resists at an attachment region and elastically recovers while native rigid dynamics provide gross motion. Its material profile remains unvalidated research data.",
     },
     {
         "id": "gallbladder-reposition",
@@ -165,7 +165,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("place", "Place", "Move into the green placement region and open the jaws.", "target displacement"),
             step("recover", "Recover", "Withdraw without disturbing the placed target.", "tool clearance"),
         ],
-        "truth_note": "The official gallbladder surface deforms locally and recovers while a rigid core supplies stable gross motion. Material parameters remain engineering proxies pending tissue-specific calibration.",
+        "truth_note": "The official gallbladder surface uses mesh-coupled deformation, approximate volume preservation, attachment resistance and elastic recovery while a rigid core supplies stable gross motion. Its material profile awaits bench calibration.",
     },
     {
         "id": "bladder-handover",
@@ -189,7 +189,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("place", "Relocate", "Move the retained target to its indicated new position.", "object displacement"),
             step("recover", "Recover", "Release and separate both instruments.", "stable release"),
         ],
-        "truth_note": "The bladder surface responds to each grasp and recovers after release while the upstream task supplies gross-body dynamics. The hybrid response is not a validated bladder material model.",
+        "truth_note": "The bladder surface responds through coupled strain, approximate volume preservation, attachment resistance and recovery while the upstream task supplies gross-body dynamics. The research-default bladder profile is not clinically validated.",
     },
     {
         "id": "synthetic-anatomy-navigation",
@@ -275,7 +275,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("secure", "Secure", "Cinch the terminal loop and recover with stable thread tension.", "knot constraint"),
         ],
         "success_metrics": ["stitch count", "bite spacing", "closure gap", "peak tension", "over-tension events"],
-        "truth_note": "Thread, anchors, surface response and closure scoring run live. Tissue holding strength, ischemia, material friction and knot security remain engineering proxies pending material and clinician calibration.",
+        "truth_note": "Thread slack/strain, anchors, pullout, breakage, surface response, knot security and closure scoring run live. Tissue holding strength, ischemia and material parameters remain research defaults pending bench and clinician calibration.",
     },
     {
         "id": "intracorporeal-knot",
@@ -383,7 +383,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("inspect", "Inspect", "Confirm retained clips and simulated flow arrest.", "residual flow"),
         ],
         "success_metrics": ["clip count", "clip spacing", "division location", "protected contacts", "residual-flow proxy"],
-        "truth_note": "Clips, division and flow arrest are interactive engineering proxies. Energy spread, vessel burst pressure and device-specific deployment are not clinically calibrated.",
+        "truth_note": "Clips, retention, compression, over-compression damage, division, residual flow and rebleed are interactive research proxies. Energy spread, vessel burst pressure and device-specific deployment are not clinically calibrated.",
     },
     {
         "id": "bleeding-control",
@@ -409,7 +409,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("observe", "Observe for rebleed", "Hold the field stable and confirm the source remains controlled.", "rebleed test"),
         ],
         "success_metrics": ["time to localization", "blood-loss proxy", "minimum visibility", "time to control", "rebleed"],
-        "truth_note": "Bleeding, suction, compression and rebleed are deterministic visual and telemetry models. They are not a validated fluid, coagulation or energy-device simulation.",
+        "truth_note": "Bleeding, suction, compression force, accumulated vessel damage, definitive control and rebleed are coupled deterministic telemetry models. They are not a validated fluid, coagulation or energy-device simulation.",
     },
     {
         "id": "tissue-plane-dissection",
