@@ -136,6 +136,8 @@ class SutureThreadModel:
     node_count: int = 48
     segment_length_m: float = 0.0032
     damping: float = 0.965
+    max_tissue_anchors: int = 2
+    required_anchors_for_knot: int = 2
     points: np.ndarray = field(init=False)
     previous: np.ndarray = field(init=False)
     fixed: dict[int, np.ndarray] = field(default_factory=dict)
@@ -145,6 +147,10 @@ class SutureThreadModel:
     peak_tension_n: float = 0.0
     knot_formed: bool = False
     knot_tightness: float = 0.0
+    over_tension_events: int = 0
+    over_tension_active: bool = False
+    last_anchor_world: np.ndarray | None = None
+    anchor_spacings_m: list[float] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.points = np.zeros((self.node_count, 3), dtype=np.float32)
@@ -160,6 +166,10 @@ class SutureThreadModel:
         self.peak_tension_n = 0.0
         self.knot_formed = False
         self.knot_tightness = 0.0
+        self.over_tension_events = 0
+        self.over_tension_active = False
+        self.last_anchor_world = None
+        self.anchor_spacings_m.clear()
 
     def initialize(self, needle_world: np.ndarray) -> None:
         needle = np.asarray(needle_world, dtype=np.float32)
@@ -171,13 +181,17 @@ class SutureThreadModel:
         self.initialized = True
 
     def add_tissue_anchor(self, world_position: np.ndarray) -> bool:
-        if not self.initialized or len(self.tissue_anchor_indices) >= 2:
+        if not self.initialized or len(self.tissue_anchor_indices) >= self.max_tissue_anchors:
             return False
-        fraction = (0.38, 0.68)[len(self.tissue_anchor_indices)]
+        fractions = np.linspace(0.16, 0.82, max(2, self.max_tissue_anchors), dtype=np.float32)
+        fraction = float(fractions[len(self.tissue_anchor_indices)])
         index = int(round((self.node_count - 1) * fraction))
         if index in self.fixed:
             return False
         position = np.asarray(world_position, dtype=np.float32).copy()
+        if self.last_anchor_world is not None:
+            self.anchor_spacings_m.append(float(np.linalg.norm(position - self.last_anchor_world)))
+        self.last_anchor_world = position.copy()
         self.fixed[index] = position
         self.points[index] = position
         self.previous[index] = position
@@ -237,7 +251,11 @@ class SutureThreadModel:
         stretch = self._apply_constraints()
         self.tension_n = float(np.clip(stretch * 1.8, 0.0, 6.0))
         self.peak_tension_n = max(self.peak_tension_n, self.tension_n)
-        if len(self.tissue_anchor_indices) >= 2 and not self.knot_formed:
+        over_tension = self.tension_n > 1.5
+        if over_tension and not self.over_tension_active:
+            self.over_tension_events += 1
+        self.over_tension_active = over_tension
+        if len(self.tissue_anchor_indices) >= self.required_anchors_for_knot and not self.knot_formed:
             entry = self.fixed[self.tissue_anchor_indices[0]]
             loop_closed = float(np.linalg.norm(needle - entry)) <= 0.014
             routed_length = float(np.linalg.norm(np.diff(self.points, axis=0), axis=1).sum())
@@ -245,3 +263,15 @@ class SutureThreadModel:
                 self.knot_formed = True
         if self.knot_formed:
             self.knot_tightness = float(np.clip(max(self.knot_tightness, self.tension_n / 0.8), 0.0, 1.0))
+
+    @property
+    def stitch_count(self) -> int:
+        return len(self.tissue_anchor_indices) // 2
+
+    @property
+    def mean_anchor_spacing_m(self) -> float:
+        return float(np.mean(self.anchor_spacings_m)) if self.anchor_spacings_m else 0.0
+
+    @property
+    def spacing_variation_m(self) -> float:
+        return float(np.std(self.anchor_spacings_m)) if len(self.anchor_spacings_m) > 1 else 0.0

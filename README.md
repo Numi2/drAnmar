@@ -101,8 +101,15 @@ and object pose together for Behavior Cloning.
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
 - A default operating-room showcase with the surgical robot, controls, room, and liver geometry.
+- Nineteen composable operating rooms grouped into suturing/reconstruction, vascular access/control,
+  gallbladder/dissection, image-guided intervention, anatomy navigation, tissue handling, and complication recovery.
+- A runnable ORBIT-style vascular shunt room with flexible-tube geometry, lumen alignment, insertion depth,
+  buckling, wall-load, and patency telemetry.
 - Live suturing mechanics: an attached constrained strand, tissue entry/exit pins, tension response, cinch state,
-  compliant surface motion, reset, progress scoring, and synchronized recording.
+  multi-bite running closure, intracorporeal-knot and anastomosis/leak-test state, compliant surface motion,
+  reset, procedure-specific progress scoring, and synchronized recording.
+- Interactive vascular-control, hemostasis, procedural ultrasound, tissue-plane dissection, lesion-excision,
+  and failure-recovery engineering models with synchronized research telemetry.
 - Live incision mechanics that remove swept faces from the displayed OpenUSD liver mesh, expose the incision bed,
   record cut length/topology revisions, and restore the exact original topology on reset.
 - Compliant liver, gallbladder, and bladder surfaces with localized jaw indentation, bounded drag deformation,

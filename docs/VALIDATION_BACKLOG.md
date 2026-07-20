@@ -281,3 +281,36 @@ Still required before research claims expand: calibrate the interactive surface,
 independent measurements, calibrate camera projection and depth cues, verify collision/contact telemetry under every
 anatomy scene, and run clinician usability studies. This remains simulation training, not validated biomechanics or
 clinical use.
+
+## 2026-07-20 procedure-room expansion implementation
+
+- Added runnable room definitions and clinician curricula for vascular shunt insertion, single interrupted stitch,
+  running suturing, intracorporeal knot tying, needle passing/regrasping, anastomosis with pressure/leak testing,
+  clip-ligate-divide, bleeding control, tissue-plane dissection, ultrasound-guided access, biopsy/lesion excision,
+  and complication recovery. Existing anatomy navigation and organ-manipulation rooms remain available.
+- Added reusable procedure mechanics for flexible-tube alignment/depth/buckling/wall load/patency; stitch count,
+  spacing, closure gap, lumen narrowing and leak rate; clips, division and residual flow; suction/compression,
+  blood-loss and rebleed; ultrasound target confidence, needle visibility and protected clearance; topology-changing
+  dissection/excision; and randomized recovery progress.
+- Added OpenUSD training geometry for the shunt/vessel, target vessels, visible clips, bleed source, anastomosis
+  lumen ends, ultrasound target/protected vessel, and lesion target. Procedure state is displayed beside the live
+  view and recorded as synchronized NPZ channels plus final-mechanics manifest state.
+- Added task-specific research scores for shunt placement, closure/anastomosis, vascular control, hemostasis,
+  ultrasound access, dissection/excision and complication recovery. These are explicitly engineering proxies.
+
+Deferred validation gates for the expanded rooms:
+
+- Drive every new room from entry through recovery on Gilgamesh and visually confirm procedure geometry, camera
+  framing, ordered targets, dual-arm selection, reset behavior, overlays and recorded telemetry.
+- Calibrate the flexible shunt against measured tube bending, friction, insertion force, buckling and flow/patency;
+  validate different lumen diameters, curves, branching and pulsatile-flow cases.
+- Calibrate needle penetration, multi-bite thread friction, tissue holding strength, closure gap, knot slippage,
+  lumen constriction, pressure and leakage against independently measured phantoms.
+- Validate clip deployment position, spacing, retention and burst pressure; replace residual-flow and bleeding
+  proxies with a verified fluid/device model before any physiological claim.
+- Validate dissection-plane separation, protected-structure collision, excision margins and specimen release against
+  anatomy-specific task definitions; add thermal spread before enabling energy-device training claims.
+- Launch and validate NVIDIA's official robotic-ultrasound containers after Docker, NVIDIA Container Toolkit and
+  RTI licensing are present; compare the procedural B-mode proxy with official sensor output before combining data.
+- Have specialty clinicians author acceptable phases, recovery actions, error taxonomies and task-specific scoring;
+  then perform construct validity, inter-rater agreement, usability, workload and learning-transfer studies.

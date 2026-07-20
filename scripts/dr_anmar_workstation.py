@@ -63,6 +63,7 @@ from isaaclab_tasks.utils import parse_env_cfg
 
 import orbit.surgical.tasks  # noqa: F401
 
+from dr_anmar_procedure_mechanics import ProcedureMechanics
 from dr_anmar_soft_tissue import SurfaceMeshModel, SutureThreadModel
 
 
@@ -161,6 +162,9 @@ OPERATOR_INPUT_SOURCES = {
     "haptic": 5,
     "keyboard_smart_action": 6,
 }
+SUTURE_GUIDE_KINDS = {"threading", "running_suture", "knot_tying", "anastomosis"}
+CUTTING_GUIDE_KINDS = {"cutting_path", "dissection", "biopsy"}
+SURFACE_GUIDE_KINDS = SUTURE_GUIDE_KINDS | CUTTING_GUIDE_KINDS
 
 
 APP_HTML = r"""<!doctype html>
@@ -178,6 +182,7 @@ APP_HTML = r"""<!doctype html>
     main{display:grid;grid-template-columns:minmax(0,1fr) 400px;height:calc(100vh - 58px)}
     .view{position:relative;overflow:hidden;background:#020608;display:flex;align-items:center;justify-content:center}.view img{width:100%;height:100%;object-fit:contain}.camera-tabs{position:absolute;left:50%;bottom:16px;translate:-50% 0;display:flex;gap:5px;padding:5px;background:#061118cc;border:1px solid #ffffff24;border-radius:8px}.camera-tabs button,.view-presets button{min-height:31px;padding:0 10px;font-size:10px}.camera-tabs button.active,.view-presets button.active{background:var(--cyan);color:#031014}.view-presets{position:absolute;right:16px;bottom:16px;display:flex;gap:5px;padding:5px;background:#061118cc;border:1px solid #ffffff24;border-radius:8px}.gaze-cursor{position:absolute;width:18px;height:18px;border:1px solid #fff;border-radius:50%;translate:-50% -50%;pointer-events:none;opacity:0;box-shadow:0 0 0 3px #2cd2e855}.view.gaze-on .gaze-cursor{opacity:.85}
     .aim-reticle{position:absolute;left:50%;top:50%;width:34px;height:34px;translate:-50% -50%;pointer-events:none;opacity:.48}.aim-reticle:before,.aim-reticle:after{content:"";position:absolute;background:#dffcff}.aim-reticle:before{left:0;right:0;top:16px;height:1px}.aim-reticle:after{top:0;bottom:0;left:16px;width:1px}.proximity{position:absolute;right:16px;top:16px;min-width:180px;padding:9px 11px;border:1px solid #ffffff24;border-radius:8px;background:#051016d9;color:#9fc0c9;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo;backdrop-filter:blur(6px)}.proximity b{display:block;color:var(--ink);font-size:13px}.proximity.near{border-color:#ffd978}.proximity.held{border-color:var(--green);color:var(--green)}.proximity.guard{border-color:var(--cyan);color:var(--cyan)}.proximity.puncture{border-color:#ff9b83;color:#ffb09e;box-shadow:0 0 18px #ff775533}
+    .procedure-sensor{position:absolute;left:16px;bottom:62px;min-width:225px;max-width:360px;padding:10px 12px;border:1px solid #3b6d7b;border-radius:8px;background:#031018e8;backdrop-filter:blur(7px);font:10px/1.55 ui-monospace,SFMono-Regular,Menlo;color:#a9c8d1;box-shadow:0 0 24px #0008}.procedure-sensor.hidden{display:none}.procedure-sensor b{display:block;color:var(--cyan);font-size:11px;letter-spacing:.1em;margin-bottom:3px}.procedure-sensor strong{color:#efffff}.procedure-sensor .ok{color:var(--green)}.procedure-sensor .warn{color:#ffd978}
     .hud{position:absolute;left:16px;top:16px;padding:10px 13px;border:1px solid #ffffff24;border-radius:8px;background:#051016c9;backdrop-filter:blur(6px);font:12px/1.5 ui-monospace,SFMono-Regular,Menlo;color:#cfe7eb}.hud strong{color:var(--cyan)}
     .recflag{display:none;position:absolute;right:18px;top:18px;color:#fff;background:#c91f2f;padding:8px 12px;border-radius:99px;font-size:12px;font-weight:900;letter-spacing:.08em}.recflag.on{display:block}
     aside{overflow:auto;padding:17px;background:var(--panel);border-left:1px solid var(--line)}
@@ -201,7 +206,7 @@ APP_HTML = r"""<!doctype html>
 <body>
 <header><div class="brand">DR.<span>ANMAR</span></div><div class="tag">SIMULATION ONLY · NO PHYSICAL ROBOT OUTPUT</div><button class="header-keyboard" data-shortcut="?" onclick="toggleKeyboardHelp()"><kbd>?</kbd> Keyboard map</button><div class="live"><i id="dot" class="dot"></i><span id="connection">Connecting…</span></div></header>
 <main>
-  <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div class="hud"><strong id="cameraLabel">STEREO ENDOSCOPE · LEFT</strong><br><span id="hud">Waiting for Isaac Lab…</span></div><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div><div id="proximity" class="proximity"><b>Tool guidance</b><span>Acquiring target…</span></div><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="3" onclick="setCamera('endoscope_left',this)">Stereo left <kbd>3</kbd></button><button data-camera="endoscope_right" data-shortcut="4" onclick="setCamera('endoscope_right',this)">Stereo right <kbd>4</kbd></button><button data-camera="wrist_1" data-shortcut="5" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>5</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="6" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>6</kbd></button></div><div class="view-presets"><button class="active" data-view-mode="operative" data-shortcut="7" onclick="setCameraView('operative',this)">Operative <kbd>7</kbd></button><button data-view-mode="close" data-shortcut="8" onclick="setCameraView('close',this)">Close <kbd>8</kbd></button><button data-view-mode="overview" data-shortcut="9" onclick="setCameraView('overview',this)">Overview <kbd>9</kbd></button></div></section>
+  <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div class="hud"><strong id="cameraLabel">STEREO ENDOSCOPE · LEFT</strong><br><span id="hud">Waiting for Isaac Lab…</span></div><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div><div id="proximity" class="proximity"><b>Tool guidance</b><span>Acquiring target…</span></div><div id="procedureSensor" class="procedure-sensor hidden"></div><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="3" onclick="setCamera('endoscope_left',this)">Stereo left <kbd>3</kbd></button><button data-camera="endoscope_right" data-shortcut="4" onclick="setCamera('endoscope_right',this)">Stereo right <kbd>4</kbd></button><button data-camera="wrist_1" data-shortcut="5" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>5</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="6" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>6</kbd></button></div><div class="view-presets"><button class="active" data-view-mode="operative" data-shortcut="7" onclick="setCameraView('operative',this)">Operative <kbd>7</kbd></button><button data-view-mode="close" data-shortcut="8" onclick="setCameraView('close',this)">Close <kbd>8</kbd></button><button data-view-mode="overview" data-shortcut="9" onclick="setCameraView('overview',this)">Overview <kbd>9</kbd></button></div></section>
   <aside>
     <section class="control-dock">
       <div class="keyboard-quick"><div class="keyboard-quick-head"><b>SMART KEYBOARD</b><span>Hold = move · release = stop</span></div><div id="keyActionDisplay" class="keyboard-input-display" aria-live="polite"><kbd>READY</kbd><span>Keyboard control ready</span></div><button id="smartActionButton" class="smart-action" data-shortcut="Enter" onclick="smartAction()"><strong><kbd>Enter</kbd> Smart action</strong><small id="smartActionLabel">Nudge toward the target</small></button><div class="combo-grid">
@@ -316,7 +321,7 @@ async function refresh(){try{
   const truth=document.getElementById('procedureTruth');truth.textContent=p.truth_note||'';truth.classList.toggle('hidden',!p.truth_note);document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('armPanel').classList.toggle('hidden',s.arms<2);document.getElementById('gripperPanel').classList.toggle('hidden',!s.has_grippers);
   currentViewMode=s.camera_view_mode||currentViewMode;document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===currentViewMode));
   const grip=s.has_grippers?(s.grippers_open[activeArm]?' · GRIPPER OPEN':' · GRIPPER CLOSED'):'',moving=s.drive_active?' · MOVING':'';document.getElementById('hud').innerHTML=`<strong>${s.anatomy_showcase||'SURGICAL WORKSPACE'}</strong><br>${s.camera_width}×${s.camera_height} · ${s.render_fps.toFixed(1)} FPS · ${currentViewMode.toUpperCase()}<br>${p.title||s.scenario_title}${grip}${moving}`;document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record').classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[activeArm]===true);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[activeArm]===false);
-  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m,tipClearance=s.needle_tip_clearance_m,depth=s.needle_penetration_depth_m||0,thread=s.mechanics?.thread||{},cut=s.mechanics?.cut||{},tissue=s.mechanics?.tissue||{};proximity.className='proximity';let guidance='Move toward the target';if(thread.knot_formed){guidance=`Knot cinched ${Math.round((thread.knot_tightness||0)*100)}% · tension ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(cut.active){guidance=`Cutting live · ${Math.round((cut.length_m||0)*1000)} mm · ${cut.faces_removed||0} faces opened`;proximity.classList.add('puncture')}else if(s.needle_puncture_active){guidance=`Needle inserted ${Math.round(depth*1000)} mm · thread ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(tissue.recovering){guidance=`Tissue recovering · peak ${Math.round((tissue.max_displacement_m||0)*1000)} mm`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]&&tipClearance!==null&&tipClearance!==undefined&&tipClearance<=.006){guidance=`Needle tip ${Math.max(0,Math.round(tipClearance*1000))} mm from tissue · advance gently`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]){guidance=tissue.active?`Object held · deforming surface ${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'Needle held · Space releases';proximity.classList.add('held')}else if(s.virtual_fixture_active){guidance='Instrument boundary · tangential motion only';proximity.classList.add('guard')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){const direction=targetDirections(offset);guidance=`Target ${Math.round(distance*1000)} mm · ${direction||'hold course'}${s.adaptive_precision_active?' · auto precision':''}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Tool guidance</b><span>${guidance}</span>`;const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],assisted=s.assisted_grasp_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':assisted?'Lift and retract the secured object':'Open jaws and retry';
+  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m,tipClearance=s.needle_tip_clearance_m,depth=s.needle_penetration_depth_m||0,thread=s.mechanics?.thread||{},cut=s.mechanics?.cut||{},tissue=s.mechanics?.tissue||{},tube=s.mechanics?.tube||{},closure=s.mechanics?.closure||{},vascular=s.mechanics?.vascular||{},ultrasound=s.mechanics?.ultrasound||{},dissection=s.mechanics?.dissection||{},recovery=s.mechanics?.recovery||{};proximity.className='proximity';let guidance='Move toward the target';if(tube.active){guidance=tube.buckled?`Shunt buckling · withdraw and realign`:`Shunt ${Math.round((tube.insertion_depth_m||0)*1000)}/${Math.round((tube.target_depth_m||0)*1000)} mm · patency ${Math.round(tube.patency_percent||0)}%`;proximity.classList.add(tube.buckled?'puncture':'near')}else if(vascular.active&&vascular.mode==='hemostasis'){guidance=`Bleed ${Math.round(vascular.bleed_rate_proxy_ml_min||0)} mL/min proxy · visibility ${Math.round(vascular.visibility_percent||0)}%`;proximity.classList.add(vascular.controlled?'held':'puncture')}else if(ultrasound.active){guidance=`Ultrasound target ${Math.round((ultrasound.target_error_m||0)*1000)} mm · needle visibility ${Math.round((ultrasound.needle_visibility||0)*100)}%`;proximity.classList.add(ultrasound.target_contact?'held':'near')}else if(thread.knot_formed){guidance=`Knot cinched ${Math.round((thread.knot_tightness||0)*100)}% · tension ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(cut.active){guidance=`Cutting live · ${Math.round((cut.length_m||0)*1000)} mm · ${cut.faces_removed||0} faces opened`;proximity.classList.add('puncture')}else if(s.needle_puncture_active){guidance=`Needle inserted ${Math.round(depth*1000)} mm · thread ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(tissue.recovering){guidance=`Tissue recovering · peak ${Math.round((tissue.max_displacement_m||0)*1000)} mm`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]&&tipClearance!==null&&tipClearance!==undefined&&tipClearance<=.006){guidance=`Needle tip ${Math.max(0,Math.round(tipClearance*1000))} mm from tissue · advance gently`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]){guidance=tissue.active?`Object held · deforming surface ${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'Object held · Space releases';proximity.classList.add('held')}else if(s.virtual_fixture_active){guidance='Instrument boundary · tangential motion only';proximity.classList.add('guard')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){const direction=targetDirections(offset);guidance=`Target ${Math.round(distance*1000)} mm · ${direction||'hold course'}${s.adaptive_precision_active?' · auto precision':''}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Tool guidance</b><span>${guidance}</span>`;const sensor=document.getElementById('procedureSensor'),rows=[];if(tube.active)rows.push(`<b>SHUNT INSERTION</b><strong>${Math.round((tube.insertion_depth_m||0)*1000)} mm</strong> depth · ${Number(tube.wall_load_proxy_n||0).toFixed(2)} N wall-load proxy<br><span class="${tube.buckled?'warn':'ok'}">${tube.buckled?'BUCKLING — WITHDRAW':'PATENCY '+Math.round(tube.patency_percent||0)+'%'}</span>`);if(closure.active)rows.push(`<b>CLOSURE QUALITY</b><strong>${closure.stitch_count||0}/${closure.target_stitches||0}</strong> stitches · gap ${Number((closure.closure_gap_m||0)*1000).toFixed(1)} mm<br>spacing variation ${Number((closure.spacing_variation_m||0)*1000).toFixed(1)} mm · leak ${Math.round(closure.leak_rate_proxy_ml_min||0)} mL/min proxy`);if(vascular.active)rows.push(`<b>${vascular.mode==='hemostasis'?'HEMOSTASIS':'VASCULAR CONTROL'}</b>${vascular.mode==='hemostasis'?`<strong>${Math.round(vascular.bleed_rate_proxy_ml_min||0)}</strong> mL/min proxy · blood loss ${Number(vascular.blood_loss_proxy_ml||0).toFixed(1)} mL`:`<strong>${vascular.clips_placed||0}/2</strong> clips · residual flow ${Math.round(vascular.residual_flow_percent||0)}%`}`);if(ultrasound.active)rows.push(`<b>PROCEDURAL B-MODE</b>target confidence <strong>${Math.round((ultrasound.target_confidence||0)*100)}%</strong> · needle visibility ${Math.round((ultrasound.needle_visibility||0)*100)}%<br>target error ${Number((ultrasound.target_error_m||0)*1000).toFixed(1)} mm · vessel clearance ${Number((ultrasound.protected_clearance_m||0)*1000).toFixed(1)} mm`);if(dissection.active)rows.push(`<b>${dissection.mode==='biopsy'?'EXCISION':'DISSECTION PLANE'}</b><strong>${Math.round((dissection.plane_progress||0)*100)}%</strong> complete · ${dissection.faces_separated||0} faces separated<br>${dissection.mode==='biopsy'?'margin '+Math.round(dissection.margin_consistency_percent||0)+'%':'protected contact '+(dissection.protected_contact?'YES':'clear')}`);if(recovery.active)rows.push(`<b>RECOVERY STATE</b>${recovery.failure_injected?'challenge '+recovery.failure_id:'baseline'} · reacquired <strong>${recovery.object_reacquired?'YES':'NO'}</strong><br>recovery ${Math.round((recovery.recovery_progress||0)*100)}%`);sensor.innerHTML=rows.join('<br>');sensor.classList.toggle('hidden',!rows.length);const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],assisted=s.assisted_grasp_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':assisted?(tube.active?'Advance the secured shunt':'Lift and retract the secured object'):'Open jaws and retry';
   const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);
   const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Procedure: ${p.title||'Free practice'}<br>Anatomy: ${s.anatomy_showcase||'—'}<br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Instrument guard: ${s.virtual_fixture_enabled?'on':'off'}<br>Thread: ${thread.active?`${Number(thread.tension_n||0).toFixed(2)} N · ${thread.tissue_anchors||0} pins`:'—'}<br>Cut: ${cut.faces_removed?`${Math.round((cut.length_m||0)*1000)} mm · r${cut.topology_revision}`:'—'}<br>Tissue: ${tissue.active?`${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'—'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
 }catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
@@ -483,6 +488,10 @@ class SharedState:
                 "tension_n": 0.0,
                 "peak_tension_n": 0.0,
                 "tissue_anchors": 0,
+                "stitch_count": 0,
+                "mean_bite_spacing_m": 0.0,
+                "spacing_variation_m": 0.0,
+                "over_tension_events": 0,
                 "knot_formed": False,
                 "knot_tightness": 0.0,
             },
@@ -501,6 +510,12 @@ class SharedState:
                 "recovering": False,
                 "surface_revision": 0,
             },
+            "tube": {"active": False},
+            "closure": {"active": False},
+            "vascular": {"active": False},
+            "ultrasound": {"active": False},
+            "dissection": {"active": False},
+            "recovery": {"active": False},
         }
     )
 
@@ -607,21 +622,69 @@ class SharedState:
         kind = self.procedure.get("guide_kind")
         step_count = len(self.procedure.get("steps", []))
         mechanics = self.mechanics
-        if kind == "threading":
+        if kind == "tube_insertion":
+            tube = mechanics.get("tube", {})
+            completed = int(self.procedure_grasp_seen)
+            completed += int(float(tube.get("radial_error_m", 1.0)) <= 0.010)
+            completed += int(float(tube.get("insertion_depth_m", 0.0)) >= 0.4 * float(tube.get("target_depth_m", 1.0)))
+            completed += int(float(tube.get("insertion_depth_m", 0.0)) >= 0.9 * float(tube.get("target_depth_m", 1.0)))
+            completed += int(float(tube.get("patency_percent", 0.0)) >= 70.0 and not tube.get("buckled"))
+        elif kind in SUTURE_GUIDE_KINDS:
             thread = mechanics.get("thread", {})
+            closure = mechanics.get("closure", {})
             completed = int(self.procedure_grasp_seen)
             completed += int(thread.get("tissue_anchors", 0) >= 1)
-            completed += int(self.procedure_waypoints_completed >= 2)
-            completed += int(thread.get("tissue_anchors", 0) >= 2)
+            completed += int(
+                thread.get("stitch_count", 0) >= max(1, int(self.procedure.get("target_stitches", 1)) - 1)
+                or self.procedure_waypoints_completed >= 2
+            )
+            completed += int(thread.get("stitch_count", 0) >= int(self.procedure.get("target_stitches", 1)))
             completed += int(bool(thread.get("knot_formed")))
+            if kind == "anastomosis" and float(closure.get("test_pressure_kpa", 0.0)) < 8.0:
+                completed = min(completed, max(0, step_count - 1))
             if completed >= max(1, step_count - 1) and now - self.procedure_last_motion_at > 0.8:
                 completed = step_count
-        elif kind == "cutting_path":
+        elif kind in CUTTING_GUIDE_KINDS:
             cut = mechanics.get("cut", {})
             completed = int(self.procedure_motion_seen)
             completed += int(cut.get("faces_removed", 0) > 0)
             completed += int(float(cut.get("length_m", 0.0)) >= 0.025)
             completed += int(self.procedure_waypoints_completed >= self.procedure_waypoints_total > 0)
+            if completed >= max(1, step_count - 1) and now - self.procedure_last_motion_at > 0.8:
+                completed = step_count
+        elif kind == "clip_divide":
+            vascular = mechanics.get("vascular", {})
+            completed = int(self.procedure_motion_seen)
+            completed += int(int(vascular.get("clips_placed", 0)) >= 1)
+            completed += int(int(vascular.get("clips_placed", 0)) >= 2)
+            completed += int(bool(vascular.get("divided")))
+            completed += int(float(vascular.get("residual_flow_percent", 100.0)) <= 5.0)
+        elif kind == "hemostasis":
+            vascular = mechanics.get("vascular", {})
+            completed = int(self.procedure_motion_seen)
+            completed += int(float(vascular.get("source_distance_m", 1.0)) <= 0.045)
+            completed += int(float(vascular.get("bleed_rate_proxy_ml_min", 999.0)) <= 120.0)
+            completed += int(bool(vascular.get("controlled")))
+            completed += int(bool(vascular.get("controlled")) and not vascular.get("rebleed"))
+        elif kind == "ultrasound_access":
+            ultrasound = mechanics.get("ultrasound", {})
+            completed = int(bool(ultrasound.get("target_visible")))
+            completed += int(float(ultrasound.get("needle_visibility", 0.0)) >= 0.55)
+            completed += int(float(ultrasound.get("target_error_m", 1.0)) <= 0.025)
+            completed += int(bool(ultrasound.get("target_contact")))
+            completed += int(self.procedure_motion_seen and now - self.procedure_last_motion_at > 0.8 and completed >= 4)
+        elif kind == "recovery":
+            recovery = mechanics.get("recovery", {})
+            completed = int(bool(recovery.get("failure_injected")) or self.procedure_motion_seen)
+            completed += int(self.procedure_waypoints_completed >= 1)
+            completed += int(bool(recovery.get("object_reacquired")))
+            completed += int(self.procedure_object_lift_m >= 0.008)
+            completed += int(bool(recovery.get("stable_recovery")))
+        elif kind == "needle_pass":
+            completed = int(self.procedure_motion_seen)
+            completed += int(self.procedure_waypoints_completed >= 2)
+            completed += int(self.procedure_grasp_seen)
+            completed += int(self.procedure_object_motion_m >= 0.018)
             if completed >= max(1, step_count - 1) and now - self.procedure_last_motion_at > 0.8:
                 completed = step_count
         elif kind == "navigation":
@@ -1416,6 +1479,7 @@ def analyze_demo(
     task: str,
     arms: int,
     robot_body_names: dict[str, list[str]] | None = None,
+    procedure_id: str = "",
 ) -> dict[str, Any]:
     times = np.asarray(arrays["time_s"], dtype=np.float64).reshape(-1)
     actions = np.asarray(arrays["actions"], dtype=np.float64)
@@ -1510,6 +1574,26 @@ def analyze_demo(
     suture_knot_formed = bool(np.any(suture_knot)) if len(suture_knot) else False
     final_incision_length_m = float(np.max(incision_length)) if len(incision_length) else 0.0
     final_incision_faces_removed = int(np.max(incision_faces)) if len(incision_faces) else 0
+    series = lambda name, dtype=np.float64: np.asarray(arrays.get(name, []), dtype=dtype).reshape(-1)
+    tube_depth = series("tube_insertion_depth_m")
+    tube_target = series("tube_target_depth_m")
+    tube_wall_load = series("tube_wall_load_proxy_n")
+    tube_buckled = series("tube_buckled", np.bool_)
+    tube_patency = series("tube_patency_percent")
+    closure_stitches = series("closure_stitch_count", np.int32)
+    closure_gap = series("closure_gap_m")
+    closure_leak = series("closure_leak_rate_proxy_ml_min")
+    vascular_clips = series("vascular_clips_placed", np.int32)
+    vascular_divided = series("vascular_divided", np.bool_)
+    vascular_flow = series("vascular_residual_flow_percent")
+    bleed_rate = series("hemostasis_bleed_rate_proxy_ml_min")
+    blood_loss = series("hemostasis_blood_loss_proxy_ml")
+    ultrasound_error = series("ultrasound_target_error_m")
+    ultrasound_confidence = series("ultrasound_target_confidence")
+    ultrasound_visibility = series("ultrasound_needle_visibility")
+    dissection_progress = series("dissection_plane_progress")
+    recovery_progress = series("recovery_progress")
+    recovery_reacquired = series("recovery_object_reacquired", np.bool_)
     max_contact_force_n = 0.0
     max_tissue_displacement_m = 0.0
     max_tissue_deformation_proxy = 0.0
@@ -1554,7 +1638,44 @@ def analyze_demo(
     control_score = max(0.0, 100.0 - correction_rate * 9.0)
     economy_score = max(0.0, 100.0 - max(0.0, idle_ratio - 0.18) * 100.0)
     smoothness_score = max(0.0, 100.0 - smoothness_proxy * 18_000.0)
-    if native_success_available:
+    procedure_task_score: float | None = None
+    if procedure_id == "vascular-shunt-insertion" and len(tube_depth):
+        target = max(float(np.max(tube_target)), 1e-6)
+        depth_score = float(np.clip(np.max(tube_depth) / target, 0.0, 1.0))
+        load_penalty = float(np.clip(np.max(tube_wall_load) / 2.0, 0.0, 1.0)) if len(tube_wall_load) else 0.0
+        buckle_penalty = 0.25 if len(tube_buckled) and np.any(tube_buckled) else 0.0
+        patency_score = float(np.max(tube_patency) / 100.0) if len(tube_patency) else 0.0
+        procedure_task_score = 100.0 * np.clip(0.55 * depth_score + 0.45 * patency_score - 0.25 * load_penalty - buckle_penalty, 0.0, 1.0)
+    elif procedure_id in {"suture-threading-path", "running-suture", "intracorporeal-knot", "anastomosis-leak-test"}:
+        stitch_target = {"suture-threading-path": 1, "running-suture": 3, "intracorporeal-knot": 1, "anastomosis-leak-test": 4}[procedure_id]
+        stitch_score = float(np.clip(np.max(closure_stitches) / stitch_target, 0.0, 1.0)) if len(closure_stitches) else 0.0
+        knot_score = 1.0 if suture_knot_formed else 0.0
+        gap_score = 1.0 - float(np.clip(np.min(closure_gap) / 0.012, 0.0, 1.0)) if len(closure_gap) else 0.0
+        leak_score = 1.0 - float(np.clip(np.min(closure_leak) / 180.0, 0.0, 1.0)) if len(closure_leak) else 0.0
+        procedure_task_score = 100.0 * (0.38 * stitch_score + 0.27 * knot_score + 0.20 * gap_score + 0.15 * leak_score)
+    elif procedure_id == "vessel-clip-divide" and len(vascular_clips):
+        clip_score = float(np.clip(np.max(vascular_clips) / 2.0, 0.0, 1.0))
+        divide_score = 1.0 if len(vascular_divided) and np.any(vascular_divided) else 0.0
+        flow_score = 1.0 - float(np.clip(np.min(vascular_flow) / 100.0, 0.0, 1.0)) if len(vascular_flow) else 0.0
+        procedure_task_score = 100.0 * (0.4 * clip_score + 0.3 * divide_score + 0.3 * flow_score)
+    elif procedure_id == "bleeding-control" and len(bleed_rate):
+        flow_score = 1.0 - float(np.clip(np.min(bleed_rate) / 240.0, 0.0, 1.0))
+        loss_penalty = float(np.clip(np.max(blood_loss) / 80.0, 0.0, 1.0)) if len(blood_loss) else 0.0
+        procedure_task_score = 100.0 * np.clip(flow_score - 0.25 * loss_penalty, 0.0, 1.0)
+    elif procedure_id == "ultrasound-guided-access" and len(ultrasound_error):
+        accuracy = 1.0 - float(np.clip(np.min(ultrasound_error) / 0.06, 0.0, 1.0))
+        confidence = float(np.max(ultrasound_confidence)) if len(ultrasound_confidence) else 0.0
+        visibility = float(np.max(ultrasound_visibility)) if len(ultrasound_visibility) else 0.0
+        procedure_task_score = 100.0 * (0.50 * accuracy + 0.25 * confidence + 0.25 * visibility)
+    elif procedure_id in {"tissue-plane-dissection", "biopsy-lesion-excision"} and len(dissection_progress):
+        procedure_task_score = 100.0 * float(np.max(dissection_progress))
+    elif procedure_id == "complication-recovery" and len(recovery_progress):
+        reacquired = 1.0 if len(recovery_reacquired) and np.any(recovery_reacquired) else 0.0
+        procedure_task_score = 100.0 * (0.65 * float(np.max(recovery_progress)) + 0.35 * reacquired)
+
+    if procedure_task_score is not None:
+        task_score = procedure_task_score
+    elif native_success_available:
         task_score = 100.0 if native_success_observed else 0.0
     elif len(suture_knot):
         task_score = 100.0 if suture_knot_formed else min(80.0, max_suture_anchors * 32.0)
@@ -1650,6 +1771,16 @@ def analyze_demo(
             "suture_knot_formed": suture_knot_formed,
             "incision_length_m": round(final_incision_length_m, 5),
             "incision_faces_removed": final_incision_faces_removed,
+            "procedure_id": procedure_id,
+            "procedure_task_score": round(procedure_task_score, 1) if procedure_task_score is not None else None,
+            "max_tube_insertion_depth_m": round(float(np.max(tube_depth)), 5) if len(tube_depth) else 0.0,
+            "max_tube_wall_load_proxy_n": round(float(np.max(tube_wall_load)), 3) if len(tube_wall_load) else 0.0,
+            "max_tube_patency_percent": round(float(np.max(tube_patency)), 1) if len(tube_patency) else 0.0,
+            "max_closure_stitches": int(np.max(closure_stitches)) if len(closure_stitches) else 0,
+            "minimum_closure_gap_m": round(float(np.min(closure_gap)), 5) if len(closure_gap) else None,
+            "minimum_leak_rate_proxy_ml_min": round(float(np.min(closure_leak)), 1) if len(closure_leak) else None,
+            "minimum_bleed_rate_proxy_ml_min": round(float(np.min(bleed_rate)), 1) if len(bleed_rate) else None,
+            "minimum_ultrasound_target_error_m": round(float(np.min(ultrasound_error)), 5) if len(ultrasound_error) else None,
         },
         "subscores": {
             "completeness": round(completeness),
@@ -1700,7 +1831,13 @@ def save_demo(
             if all(key in frame for frame in vision_frames):
                 arrays[key] = np.stack([frame[key] for frame in vision_frames])
     np.savez_compressed(path, **arrays)
-    analysis = analyze_demo(arrays, state.task, state.arms, state.robot_body_names)
+    analysis = analyze_demo(
+        arrays,
+        state.task,
+        state.arms,
+        state.robot_body_names,
+        str(state.procedure.get("id", "")),
+    )
     with state.lock:
         context = {
             "scenario_id": state.scenario_id,
@@ -1750,6 +1887,7 @@ def save_demo(
             "contact": "maximum force per available contact sensor",
             "deformable_tissue": "nodal displacement, deformation-gradient proxy, and simulator stress when exposed",
             "surface_mechanics": "OpenUSD surface displacement/recovery, suture constraints/tension/knot state, and incision topology revisions at 50 Hz",
+            "procedure_mechanics": "Tube insertion, closure/leakage, vascular control/hemostasis, ultrasound targeting, dissection and recovery engineering telemetry at 50 Hz when active",
             "robot_and_anatomy_pose": "world-frame tool bodies, task objects, and showcase anatomy transform at 50 Hz",
             "joint_torque": "applied and computed joint torque when exposed by the articulation",
             "operator_study": "input source, normalized gaze/attention coordinates, procedure phase, and event codes at 50 Hz",
@@ -1819,6 +1957,11 @@ def native_success_from_info(info: Any) -> float:
 
 def procedure_waypoints(procedure: dict[str, Any]) -> np.ndarray:
     """Return ordered world-space guidance points in the native PSM workspace."""
+    authored = procedure.get("waypoints")
+    if authored:
+        points = np.asarray(authored, dtype=np.float32).reshape(-1, 3)
+        if len(points):
+            return points
     kind = procedure.get("guide_kind")
     if kind == "threading":
         return np.asarray(
@@ -1969,7 +2112,8 @@ def main() -> None:
         )
     procedure_id = str(procedure.get("id", ""))
     guide_kind = str(procedure.get("guide_kind", ""))
-    if guide_kind in {"threading", "cutting_path", "navigation"}:
+    room_waypoints = procedure_waypoints(procedure)
+    if guide_kind in SURFACE_GUIDE_KINDS | {"navigation", "tube_insertion", "clip_divide", "hemostasis", "ultrasound_access"}:
         anatomy_position = (-0.117, -0.0945, -0.189)
     elif procedure_id in {"needle-pickup", "needle-transfer"} or procedure.get("proxy_organ"):
         anatomy_position = (-0.117, -0.2445, -0.144)
@@ -2015,12 +2159,30 @@ def main() -> None:
     surface_mesh_prim = None
     surface_mesh_model: SurfaceMeshModel | None = None
     surface_mesh_name = ""
-    suture_model = SutureThreadModel() if guide_kind == "threading" else None
+    target_anchors = max(2, int(procedure.get("target_anchors", 2)))
+    suture_model = (
+        SutureThreadModel(
+            node_count=max(48, target_anchors * 12),
+            segment_length_m=0.0032,
+            max_tissue_anchors=target_anchors,
+            required_anchors_for_knot=target_anchors,
+        )
+        if guide_kind in SUTURE_GUIDE_KINDS
+        else None
+    )
     suture_curve = None
     suture_curve_prim = None
     incision_curve = None
     incision_curve_prim = None
     incision_points_world: list[np.ndarray] = []
+    procedure_curve = None
+    procedure_curve_prim = None
+    procedure_target_prims: list[Any] = []
+    procedure_mechanics = ProcedureMechanics(
+        guide_kind,
+        room_waypoints,
+        target_stitches=int(procedure.get("target_stitches", 1)),
+    )
     stage = None
     if organ_usd.is_file():
         import omni.usd
@@ -2114,6 +2276,10 @@ def main() -> None:
 
         proxy_organ = procedure.get("proxy_organ")
         object_prim = stage.GetPrimAtPath("/World/envs/env_0/Object")
+        if guide_kind == "tube_insertion" and object_prim.IsValid():
+            for child in object_prim.GetChildren():
+                if child.IsA(UsdGeom.Imageable):
+                    UsdGeom.Imageable(child).MakeInvisible()
         if proxy_organ and object_prim.IsValid():
             for child in object_prim.GetChildren():
                 if child.IsA(UsdGeom.Imageable):
@@ -2149,7 +2315,7 @@ def main() -> None:
         target_mesh_path = ""
         if proxy_organ:
             target_mesh_path = f"/World/envs/env_0/Object/DrAnmarOrganProxy/{proxy_organ}/{proxy_organ}"
-        elif guide_kind in {"threading", "cutting_path"}:
+        elif guide_kind in SURFACE_GUIDE_KINDS:
             target_mesh_path = f"{showcase_path}/Liver_topo_blender/Liver_topo_blender"
         if target_mesh_path:
             candidate_mesh = stage.GetPrimAtPath(target_mesh_path)
@@ -2167,7 +2333,7 @@ def main() -> None:
                         np.asarray(face_indices, dtype=np.int32),
                     )
 
-        if guide_kind == "threading":
+        if guide_kind in SUTURE_GUIDE_KINDS:
             suture_path = "/World/envs/env_0/DrAnmarSutureThread"
             suture_curve = UsdGeom.BasisCurves.Define(stage, suture_path)
             suture_curve.CreateTypeAttr(UsdGeom.Tokens.linear)
@@ -2187,7 +2353,7 @@ def main() -> None:
             UsdShade.MaterialBindingAPI.Apply(suture_curve_prim).Bind(suture_material)
             UsdGeom.Imageable(suture_curve_prim).MakeInvisible()
 
-        if guide_kind == "cutting_path":
+        if guide_kind in CUTTING_GUIDE_KINDS:
             incision_path = "/World/envs/env_0/DrAnmarIncisionBed"
             incision_curve = UsdGeom.BasisCurves.Define(stage, incision_path)
             incision_curve.CreateTypeAttr(UsdGeom.Tokens.linear)
@@ -2206,6 +2372,128 @@ def main() -> None:
             incision_material.CreateSurfaceOutput().ConnectToSource(incision_shader.ConnectableAPI(), "surface")
             UsdShade.MaterialBindingAPI.Apply(incision_curve_prim).Bind(incision_material)
             UsdGeom.Imageable(incision_curve_prim).MakeInvisible()
+
+        def bind_procedure_material(prim: Any, name: str, color: tuple[float, float, float], opacity: float = 1.0) -> None:
+            material_path = f"/World/envs/env_0/DrAnmarProcedureMaterials/{name}"
+            material = UsdShade.Material.Define(stage, material_path)
+            shader = UsdShade.Shader.Define(stage, f"{material_path}/Shader")
+            shader.CreateIdAttr("UsdPreviewSurface")
+            shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*color))
+            shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.48)
+            shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(opacity)
+            material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
+            UsdShade.MaterialBindingAPI.Apply(prim).Bind(material)
+
+        def define_world_curve(
+            path: str,
+            points: np.ndarray,
+            width: float,
+            material_name: str,
+            color: tuple[float, float, float],
+            opacity: float = 1.0,
+        ) -> tuple[Any, Any]:
+            curve = UsdGeom.BasisCurves.Define(stage, path)
+            curve.CreateTypeAttr(UsdGeom.Tokens.linear)
+            curve.CreateWrapAttr(UsdGeom.Tokens.nonperiodic)
+            curve.CreateCurveVertexCountsAttr(Vt.IntArray([len(points)]))
+            curve.CreatePointsAttr(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(points, dtype=np.float32)))
+            curve.CreateWidthsAttr(Vt.FloatArray([width] * len(points)))
+            prim = curve.GetPrim()
+            bind_procedure_material(prim, material_name, color, opacity)
+            return curve, prim
+
+        if guide_kind == "tube_insertion" and procedure_mechanics.tube is not None:
+            vessel_points = np.stack(
+                (
+                    procedure_mechanics.tube.entry - procedure_mechanics.tube.axis * 0.030,
+                    procedure_mechanics.tube.target + procedure_mechanics.tube.axis * 0.035,
+                )
+            ).astype(np.float32)
+            define_world_curve(
+                "/World/envs/env_0/DrAnmarVesselLumen",
+                vessel_points,
+                0.017,
+                "VesselLumen",
+                (0.35, 0.08, 0.09),
+                0.68,
+            )
+            initial_shunt = procedure_mechanics.tube.curve_points(None)
+            procedure_curve, procedure_curve_prim = define_world_curve(
+                "/World/envs/env_0/DrAnmarFlexibleShunt",
+                initial_shunt,
+                0.0065,
+                "FlexibleShunt",
+                (0.13, 0.74, 0.88),
+            )
+        elif guide_kind in {"clip_divide", "hemostasis"} and len(room_waypoints) >= 2:
+            procedure_curve, procedure_curve_prim = define_world_curve(
+                "/World/envs/env_0/DrAnmarTargetVessel",
+                room_waypoints,
+                0.009,
+                "TargetVessel",
+                (0.58, 0.035, 0.025),
+            )
+            if guide_kind == "hemostasis":
+                source = UsdGeom.Sphere.Define(stage, "/World/envs/env_0/DrAnmarBleedSource")
+                source.CreateRadiusAttr(0.007)
+                UsdGeom.Xformable(source.GetPrim()).AddTranslateOp().Set(Gf.Vec3d(*room_waypoints[2].astype(float).tolist()))
+                bind_procedure_material(source.GetPrim(), "BleedSource", (0.92, 0.012, 0.015), 0.88)
+                procedure_target_prims.append(source.GetPrim())
+            else:
+                for clip_index, point_index in enumerate((1, 3), start=1):
+                    center = room_waypoints[min(point_index, len(room_waypoints) - 1)]
+                    clip_points = np.stack((center + (0.0, 0.0, -0.009), center + (0.0, 0.0, 0.009))).astype(np.float32)
+                    _clip_curve, clip_prim = define_world_curve(
+                        f"/World/envs/env_0/DrAnmarVesselClip{clip_index}",
+                        clip_points,
+                        0.004,
+                        f"VesselClip{clip_index}",
+                        (0.82, 0.82, 0.74),
+                    )
+                    UsdGeom.Imageable(clip_prim).MakeInvisible()
+                    procedure_target_prims.append(clip_prim)
+        elif guide_kind == "anastomosis" and len(room_waypoints):
+            center = np.mean(room_waypoints, axis=0)
+            angles = np.linspace(0.0, 2.0 * np.pi, 33, dtype=np.float32)
+            for side, offset in enumerate((-0.012, 0.012), start=1):
+                ring = np.stack(
+                    (
+                        np.full_like(angles, center[0] + offset),
+                        center[1] + np.cos(angles) * 0.018,
+                        center[2] + np.sin(angles) * 0.018,
+                    ),
+                    axis=1,
+                ).astype(np.float32)
+                _ring_curve, ring_prim = define_world_curve(
+                    f"/World/envs/env_0/DrAnmarLumenEnd{side}",
+                    ring,
+                    0.006,
+                    f"LumenEnd{side}",
+                    (0.68, 0.31, 0.24),
+                    0.88,
+                )
+                procedure_target_prims.append(ring_prim)
+        elif guide_kind == "ultrasound_access" and procedure_mechanics.ultrasound is not None:
+            target = UsdGeom.Sphere.Define(stage, "/World/envs/env_0/DrAnmarUltrasoundTarget")
+            target.CreateRadiusAttr(0.008)
+            UsdGeom.Xformable(target.GetPrim()).AddTranslateOp().Set(
+                Gf.Vec3d(*procedure_mechanics.ultrasound.target.astype(float).tolist())
+            )
+            bind_procedure_material(target.GetPrim(), "UltrasoundTarget", (0.10, 0.92, 0.74), 0.42)
+            protected = UsdGeom.Sphere.Define(stage, "/World/envs/env_0/DrAnmarProtectedVessel")
+            protected.CreateRadiusAttr(procedure_mechanics.ultrasound.protected_radius_m)
+            UsdGeom.Xformable(protected.GetPrim()).AddTranslateOp().Set(
+                Gf.Vec3d(*procedure_mechanics.ultrasound.protected_center.astype(float).tolist())
+            )
+            bind_procedure_material(protected.GetPrim(), "ProtectedVessel", (0.92, 0.12, 0.12), 0.35)
+            procedure_target_prims.extend((target.GetPrim(), protected.GetPrim()))
+        elif guide_kind == "biopsy" and len(room_waypoints):
+            lesion_center = np.mean(room_waypoints, axis=0)
+            lesion = UsdGeom.Sphere.Define(stage, "/World/envs/env_0/DrAnmarLesionTarget")
+            lesion.CreateRadiusAttr(0.013)
+            UsdGeom.Xformable(lesion.GetPrim()).AddTranslateOp().Set(Gf.Vec3d(*lesion_center.astype(float).tolist()))
+            bind_procedure_material(lesion.GetPrim(), "LesionTarget", (0.76, 0.18, 0.62), 0.55)
+            procedure_target_prims.append(lesion.GetPrim())
 
     def refresh_anatomy_guard_volumes() -> None:
         """Cache visible OpenUSD organ surfaces for shape-aware proximity and a bounds fallback."""
@@ -2479,7 +2767,8 @@ def main() -> None:
 
     surface_authoring_ready = validate_surface_authoring()
     refresh_anatomy_guard_volumes()
-    needle_tip_offsets_local = derive_needle_tip_offsets()
+    needle_interaction_enabled = "Needle" in args_cli.task
+    needle_tip_offsets_local = derive_needle_tip_offsets() if needle_interaction_enabled else np.empty((0, 3), dtype=np.float32)
     ghost_markers = VisualizationMarkers(
         VisualizationMarkersCfg(
             prim_path="/World/DrAnmarClinicianPath",
@@ -2513,7 +2802,6 @@ def main() -> None:
     )
     ghost_markers.visualize(translations=np.zeros((1, 3), dtype=np.float32))
     ghost_markers.set_visibility(False)
-    room_waypoints = procedure_waypoints(procedure)
     procedure_markers = VisualizationMarkers(
         VisualizationMarkersCfg(
             prim_path="/World/DrAnmarProcedureGuide",
@@ -2607,7 +2895,7 @@ def main() -> None:
         return robots[robot_name].data.body_pos_w[0, tip_index, :3].detach().cpu().numpy().astype(np.float32)
 
     def needle_tip_positions_world() -> np.ndarray:
-        if not len(needle_tip_offsets_local) or not objects:
+        if not needle_interaction_enabled or not len(needle_tip_offsets_local) or not objects:
             return np.empty((0, 3), dtype=np.float32)
         needle = next(iter(objects.values()))
         position = needle.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
@@ -2664,6 +2952,18 @@ def main() -> None:
             "authoring_ready": surface_authoring_ready,
         }
     )
+    state.mechanics.update(
+        procedure_mechanics.update(
+            {},
+            [True] * state.arms,
+            False,
+            0,
+            suture_model,
+            {"faces_removed": 0},
+            0.0,
+            "baseline",
+        )
+    )
     try:
         state.camera_intrinsics = camera.data.intrinsic_matrices[0].detach().cpu().numpy().astype(float).tolist()
         state.semantic_labels = camera_semantic_labels(camera)
@@ -2681,6 +2981,7 @@ def main() -> None:
         assisted_grasp_joints.clear()
         show_puncture_marker(None)
         reset_surface_mechanics()
+        procedure_mechanics.reset()
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
@@ -2707,6 +3008,16 @@ def main() -> None:
                 UsdPhysics.CollisionAPI.Apply(child_mesh).CreateCollisionEnabledAttr().Set(visible)
                 enabled_colliders += int(visible)
         refresh_anatomy_guard_volumes()
+        initial_procedure_mechanics = procedure_mechanics.update(
+            {},
+            [True] * state.arms,
+            False,
+            0,
+            suture_model,
+            {"faces_removed": 0},
+            0.0,
+            selected_scenario,
+        )
         with state.lock:
             state.anatomy_showcase = (
                 f"{args_cli.anatomy_title or 'Official anatomy'} · multi-organ context"
@@ -2740,6 +3051,10 @@ def main() -> None:
                     "tension_n": 0.0,
                     "peak_tension_n": 0.0,
                     "tissue_anchors": 0,
+                    "stitch_count": 0,
+                    "mean_bite_spacing_m": 0.0,
+                    "spacing_variation_m": 0.0,
+                    "over_tension_events": 0,
                     "knot_formed": False,
                     "knot_tightness": 0.0,
                 }
@@ -2747,7 +3062,7 @@ def main() -> None:
             state.mechanics["cut"].update(
                 {
                     "active": False,
-                    "topology_ready": surface_authoring_ready and guide_kind == "cutting_path",
+                    "topology_ready": surface_authoring_ready and guide_kind in CUTTING_GUIDE_KINDS,
                     "length_m": 0.0,
                     "faces_removed": 0,
                     "topology_revision": 0,
@@ -2763,6 +3078,8 @@ def main() -> None:
                     "surface_revision": 0,
                 }
             )
+            for key in ("tube", "closure", "vascular", "ultrasound", "dissection", "recovery"):
+                state.mechanics[key] = initial_procedure_mechanics.get(key, {"active": False})
         with state.lock:
             selected_view_mode = state.camera_view_mode
         apply_endoscope_camera_view(selected_scenario, selected_view_mode)
@@ -2995,6 +3312,8 @@ def main() -> None:
                                     f"{focus_name} secured with localized surface compression. "
                                     "Retract smoothly; open the gripper to release and recover."
                                 )
+                            elif guide_kind == "tube_insertion":
+                                state.coaching_cue = "Shunt secured. Align the cyan tube with the vessel lumen before advancing."
                             else:
                                 state.coaching_cue = "Needle secured between the jaws. Open the gripper to release it."
             with state.lock:
@@ -3217,7 +3536,7 @@ def main() -> None:
                     surface_changed = tissue_recovering or surface_changed
 
         cut_active = False
-        if guide_kind == "cutting_path" and surface_mesh_model is not None:
+        if guide_kind in CUTTING_GUIDE_KINDS and surface_mesh_model is not None:
             current_tool = current_tool_positions.get(0)
             previous_tool = previous_tool_positions.get(0)
             if current_tool is not None and previous_tool is not None and len(room_waypoints) >= 2:
@@ -3293,6 +3612,10 @@ def main() -> None:
                     "tension_n": round(suture_model.tension_n, 4) if suture_model else 0.0,
                     "peak_tension_n": round(suture_model.peak_tension_n, 4) if suture_model else 0.0,
                     "tissue_anchors": len(suture_model.tissue_anchor_indices) if suture_model else 0,
+                    "stitch_count": suture_model.stitch_count if suture_model else 0,
+                    "mean_bite_spacing_m": round(suture_model.mean_anchor_spacing_m, 5) if suture_model else 0.0,
+                    "spacing_variation_m": round(suture_model.spacing_variation_m, 5) if suture_model else 0.0,
+                    "over_tension_events": suture_model.over_tension_events if suture_model else 0,
                     "knot_formed": bool(suture_model and suture_model.knot_formed),
                     "knot_tightness": round(suture_model.knot_tightness, 4) if suture_model else 0.0,
                 }
@@ -3300,10 +3623,10 @@ def main() -> None:
             state.mechanics["cut"].update(
                 {
                     "active": cut_active,
-                    "topology_ready": surface_authoring_ready and guide_kind == "cutting_path",
+                    "topology_ready": surface_authoring_ready and guide_kind in CUTTING_GUIDE_KINDS,
                     "length_m": round(cut_length_m, 5),
-                    "faces_removed": surface_mesh_model.removed_faces if guide_kind == "cutting_path" and surface_mesh_model else 0,
-                    "topology_revision": surface_mesh_model.revision if guide_kind == "cutting_path" and surface_mesh_model else 0,
+                    "faces_removed": surface_mesh_model.removed_faces if guide_kind in CUTTING_GUIDE_KINDS and surface_mesh_model else 0,
+                    "topology_revision": surface_mesh_model.revision if guide_kind in CUTTING_GUIDE_KINDS and surface_mesh_model else 0,
                 }
             )
             state.mechanics["tissue"].update(
@@ -3322,6 +3645,54 @@ def main() -> None:
                     "surface_revision": surface_mesh_model.revision if surface_mesh_model is not None else 0,
                 }
             )
+
+        with state.lock:
+            current_waypoint_count = state.procedure_waypoints_completed
+            cut_snapshot = dict(state.mechanics["cut"])
+        procedure_updates = procedure_mechanics.update(
+            current_tool_positions,
+            grippers_open,
+            bool(assisted_grasp_joints),
+            current_waypoint_count,
+            suture_model,
+            cut_snapshot,
+            mechanics_dt,
+            scenario_id,
+        )
+        if procedure_curve is not None and procedure_mechanics.tube is not None:
+            visual_tip = current_tool_positions.get(0)
+            if not assisted_grasp_joints and objects:
+                visual_tip = next(iter(objects.values())).data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
+            shunt_points = procedure_mechanics.tube.curve_points(visual_tip)
+            procedure_curve.GetCurveVertexCountsAttr().Set(Vt.IntArray([len(shunt_points)]))
+            procedure_curve.GetPointsAttr().Set(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(shunt_points)))
+            procedure_curve.GetWidthsAttr().Set(Vt.FloatArray([0.0065] * len(shunt_points)))
+        if guide_kind == "hemostasis" and procedure_target_prims:
+            bleed = procedure_updates.get("vascular", {})
+            intensity = float(np.clip(float(bleed.get("bleed_rate_proxy_ml_min", 0.0)) / 240.0, 0.12, 1.0))
+            UsdGeom.Sphere(procedure_target_prims[0]).GetRadiusAttr().Set(0.003 + intensity * 0.006)
+        if guide_kind == "clip_divide" and procedure_target_prims:
+            clips_placed = int(procedure_updates.get("vascular", {}).get("clips_placed", 0))
+            for index, clip_prim in enumerate(procedure_target_prims):
+                imageable = UsdGeom.Imageable(clip_prim)
+                if index < clips_placed:
+                    imageable.MakeVisible()
+                else:
+                    imageable.MakeInvisible()
+        with state.lock:
+            for key in ("tube", "closure", "vascular", "ultrasound", "dissection", "recovery"):
+                state.mechanics[key] = procedure_updates.get(key, {"active": False})
+            tube_state = state.mechanics["tube"]
+            vascular_state = state.mechanics["vascular"]
+            ultrasound_state = state.mechanics["ultrasound"]
+            if tube_state.get("buckled"):
+                state.coaching_cue = "Shunt buckling detected. Withdraw, reduce radial error, and re-enter coaxially."
+            elif tube_state.get("active") and float(tube_state.get("wall_load_proxy_n", 0.0)) > 0.8:
+                state.coaching_cue = "Wall-load proxy is rising. Pause advancement and correct the shunt axis."
+            elif vascular_state.get("mode") == "hemostasis" and vascular_state.get("controlled"):
+                state.coaching_cue = "Simulated flow is controlled. Hold the field still and observe for rebleed."
+            elif ultrasound_state.get("target_contact"):
+                state.coaching_cue = "Target zone reached with protected-vessel clearance. Hold, confirm, then withdraw on-axis."
 
         motion_active = any(bool(np.any(action_np[state.body_action_slice(arm)])) for arm in range(state.arms))
         current_time = time.monotonic()
@@ -3397,6 +3768,12 @@ def main() -> None:
                 thread_metrics = dict(state.mechanics["thread"])
                 cut_metrics = dict(state.mechanics["cut"])
                 tissue_metrics = dict(state.mechanics["tissue"])
+                tube_metrics = dict(state.mechanics["tube"])
+                closure_metrics = dict(state.mechanics["closure"])
+                vascular_metrics = dict(state.mechanics["vascular"])
+                ultrasound_metrics = dict(state.mechanics["ultrasound"])
+                dissection_metrics = dict(state.mechanics["dissection"])
+                recovery_metrics = dict(state.mechanics["recovery"])
                 state.procedure_event_code = 0
             frame = {
                 "time_s": np.array(time.monotonic() - demo_started_monotonic, dtype=np.float64),
@@ -3435,6 +3812,50 @@ def main() -> None:
                 ),
                 "surface_tissue_recovering": np.array(tissue_metrics.get("recovering", False), dtype=np.bool_),
                 "surface_tissue_revision": np.array(tissue_metrics.get("surface_revision", 0), dtype=np.int32),
+                "tube_insertion_depth_m": np.array(tube_metrics.get("insertion_depth_m", 0.0), dtype=np.float32),
+                "tube_target_depth_m": np.array(tube_metrics.get("target_depth_m", 0.0), dtype=np.float32),
+                "tube_radial_error_m": np.array(tube_metrics.get("radial_error_m", 0.0), dtype=np.float32),
+                "tube_wall_load_proxy_n": np.array(tube_metrics.get("wall_load_proxy_n", 0.0), dtype=np.float32),
+                "tube_buckled": np.array(tube_metrics.get("buckled", False), dtype=np.bool_),
+                "tube_patency_percent": np.array(tube_metrics.get("patency_percent", 0.0), dtype=np.float32),
+                "closure_stitch_count": np.array(closure_metrics.get("stitch_count", 0), dtype=np.int16),
+                "closure_gap_m": np.array(closure_metrics.get("closure_gap_m", 0.0), dtype=np.float32),
+                "closure_lumen_narrowing_percent": np.array(
+                    closure_metrics.get("lumen_narrowing_percent", 0.0), dtype=np.float32
+                ),
+                "closure_leak_rate_proxy_ml_min": np.array(
+                    closure_metrics.get("leak_rate_proxy_ml_min", 0.0), dtype=np.float32
+                ),
+                "vascular_clips_placed": np.array(vascular_metrics.get("clips_placed", 0), dtype=np.int16),
+                "vascular_divided": np.array(vascular_metrics.get("divided", False), dtype=np.bool_),
+                "vascular_residual_flow_percent": np.array(
+                    vascular_metrics.get("residual_flow_percent", 0.0), dtype=np.float32
+                ),
+                "hemostasis_bleed_rate_proxy_ml_min": np.array(
+                    vascular_metrics.get("bleed_rate_proxy_ml_min", 0.0), dtype=np.float32
+                ),
+                "hemostasis_blood_loss_proxy_ml": np.array(
+                    vascular_metrics.get("blood_loss_proxy_ml", 0.0), dtype=np.float32
+                ),
+                "ultrasound_target_error_m": np.array(
+                    ultrasound_metrics.get("target_error_m", 0.0), dtype=np.float32
+                ),
+                "ultrasound_target_confidence": np.array(
+                    ultrasound_metrics.get("target_confidence", 0.0), dtype=np.float32
+                ),
+                "ultrasound_needle_visibility": np.array(
+                    ultrasound_metrics.get("needle_visibility", 0.0), dtype=np.float32
+                ),
+                "dissection_plane_progress": np.array(
+                    dissection_metrics.get("plane_progress", 0.0), dtype=np.float32
+                ),
+                "dissection_faces_separated": np.array(
+                    dissection_metrics.get("faces_separated", 0), dtype=np.int32
+                ),
+                "recovery_progress": np.array(recovery_metrics.get("recovery_progress", 0.0), dtype=np.float32),
+                "recovery_object_reacquired": np.array(
+                    recovery_metrics.get("object_reacquired", False), dtype=np.bool_
+                ),
                 "anatomy_showcase_position_w": np.asarray((-0.117, -0.0945, -0.144), dtype=np.float32),
                 "anatomy_showcase_quaternion_w": np.asarray((1.0, 0.0, 0.0, 0.0), dtype=np.float32),
             }
