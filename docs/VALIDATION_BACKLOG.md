@@ -384,6 +384,26 @@ Deferred validation gates for the expanded rooms:
 - Have specialty clinicians author acceptable phases, recovery actions, error taxonomies and task-specific scoring;
   then perform construct validity, inter-rater agreement, usability, workload and learning-transfer studies.
 
+## 2026-07-21 surface-bound suturing upgrade
+
+- Replaced world-space visual pins with material-coordinate anchors bound to weighted OpenUSD tissue-vertex
+  neighborhoods. Entry and exit now create persistent puncture sites, the suture follows the deforming surface, and
+  each complete bite creates a paired constraint that draws the two tissue neighborhoods together under measured
+  strand tension.
+- Added retained approximation under knot security, tissue/thread frictional-slip telemetry, bite-depth telemetry,
+  overload damage, anchor pullout, tissue-tear and thread-break failure paths. The live operating room now renders
+  distinct entry/exit markers and records closure gap, closure ratio, retained closure, bite depth and anchor slip.
+- A deterministic Gilgamesh solver check reduced a representative 40.0 mm unscaled mesh gap to 25.1 mm while
+  retaining a 0.795 secured-closure drive; the live suture room loaded both v3 models and rendered near 23 FPS.
+
+Still required before stronger biomechanics claims: calibrate puncture dimpling, surface-neighborhood size, suture
+friction, tissue holding force, closure response, plastic retention, knot security, pullout, tearing and thread failure
+against physical liver/phantom experiments. Independently inspect full entry-through-exit and multi-bite trajectories,
+verify the rendered strand never tunnels through unrelated tissue, and compare recorded forces and closure gaps with
+bench instrumentation. The generic expert controller still times out before acquiring the needle in this dual-PSM
+suture room; it must not be promoted as a clean Behavior Cloning reference until the room-specific acquisition and
+needle-arc trajectory complete without degraded warnings.
+
 ## 2026-07-20 procedure-mechanics polish
 
 - Removed marker-only success shortcuts from shunt verification, knot tying, anastomosis pressure testing, clip

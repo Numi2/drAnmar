@@ -178,7 +178,16 @@ class ClosureQualityModel:
         spacing = float(getattr(thread, "mean_anchor_spacing_m", 0.0)) if thread is not None else 0.0
         variation = float(getattr(thread, "spacing_variation_m", 0.0)) if thread is not None else 0.0
         completion = float(np.clip(stitches / max(1, self.target_stitches), 0.0, 1.0))
-        closure_gap = float(np.clip(0.012 * (1.0 - completion) + max(0.0, 0.20 - tightness) * 0.003, 0.0004, 0.016))
+        physical_closure_gap = float(getattr(thread, "closure_gap_m", 0.0)) if thread is not None else 0.0
+        closure_gap = (
+            float(np.clip(physical_closure_gap, 0.0002, 0.020))
+            if physical_closure_gap > 0.0
+            else float(np.clip(0.012 * (1.0 - completion) + max(0.0, 0.20 - tightness) * 0.003, 0.0004, 0.016))
+        )
+        closure_ratio = float(getattr(thread, "closure_ratio", 0.0)) if thread is not None else 0.0
+        retained_closure = float(getattr(thread, "retained_closure", 0.0)) if thread is not None else 0.0
+        bite_depth = float(getattr(thread, "mean_bite_depth_m", 0.0)) if thread is not None else 0.0
+        anchor_slip = float(getattr(thread, "total_anchor_slip_m", 0.0)) if thread is not None else 0.0
         narrowing = float(np.clip(max(0.0, tension - 0.65) * 22.0 + max(0.0, tightness - 0.92) * 35.0, 0.0, 100.0))
         self.crossing_cooldown_s = max(0.0, self.crossing_cooldown_s - max(0.0, float(dt)))
         primary = tool_positions.get(0)
@@ -229,6 +238,10 @@ class ClosureQualityModel:
             "mean_bite_spacing_m": round(spacing, 5),
             "spacing_variation_m": round(variation, 5),
             "closure_gap_m": round(closure_gap, 5),
+            "closure_ratio": round(closure_ratio, 4),
+            "retained_closure": round(retained_closure, 4),
+            "mean_bite_depth_m": round(bite_depth, 5),
+            "anchor_slip_m": round(anchor_slip, 6),
             "lumen_narrowing_percent": round(narrowing, 1),
             "test_pressure_kpa": round(self.pressure_kpa, 2),
             "leak_rate_proxy_ml_min": round(leak_rate, 1),

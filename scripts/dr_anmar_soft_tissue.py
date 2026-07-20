@@ -91,6 +91,36 @@ def tissue_material_for_name(name: str) -> TissueMaterial:
 
 
 @dataclass
+class SurfaceSutureAnchor:
+    """A suture bite bound to a weighted neighborhood of tissue vertices."""
+
+    anchor_id: int
+    kind: str
+    vertex_indices: np.ndarray
+    weights: np.ndarray
+    rest_point_local: np.ndarray
+    normal_local: np.ndarray
+    bite_depth_m: float = 0.0
+    active: bool = True
+
+    def position(self, points: np.ndarray) -> np.ndarray:
+        return np.sum(points[self.vertex_indices] * self.weights[:, None], axis=0).astype(np.float32)
+
+
+@dataclass
+class StitchConstraintState:
+    """Persistent state for one entry/exit tissue bite pair."""
+
+    anchor_pair: tuple[int, int]
+    initial_gap_local: float
+    current_gap_local: float
+    closure_ratio: float = 0.0
+    retained_closure: float = 0.0
+    damage: float = 0.0
+    failed: bool = False
+
+
+@dataclass
 class SurfaceMeshModel:
     """Reduced-order volume-preserving tissue with mutable OpenUSD topology.
 
@@ -121,6 +151,15 @@ class SurfaceMeshModel:
     cut_energy_proxy_j: float = 0.0
     opened_faces: int = 0
     tear_events: int = 0
+    suture_anchors: dict[int, SurfaceSutureAnchor] = field(default_factory=dict)
+    stitch_constraints: dict[tuple[int, int], StitchConstraintState] = field(default_factory=dict)
+    stitch_failures: int = 0
+    suture_force_n: float = 0.0
+    max_suture_force_n: float = 0.0
+    closure_gap_local: float = 0.0
+    closure_ratio: float = 0.0
+    retained_closure: float = 0.0
+    puncture_site_count: int = 0
     _tear_active: bool = False
 
     def __post_init__(self) -> None:
@@ -234,7 +273,202 @@ class SurfaceMeshModel:
         self.cut_energy_proxy_j = 0.0
         self.opened_faces = 0
         self.tear_events = 0
+        self.suture_anchors.clear()
+        self.stitch_constraints.clear()
+        self.stitch_failures = 0
+        self.suture_force_n = 0.0
+        self.max_suture_force_n = 0.0
+        self.closure_gap_local = 0.0
+        self.closure_ratio = 0.0
+        self.retained_closure = 0.0
+        self.puncture_site_count = 0
         self._tear_active = False
+
+    def bind_suture_anchor(
+        self,
+        anchor_id: int,
+        point_local: np.ndarray,
+        kind: str,
+        normal_local: np.ndarray | None = None,
+        bite_depth_m: float = 0.0,
+        radius_local: float = 0.018,
+        world_scale: float = 1.0,
+    ) -> SurfaceSutureAnchor:
+        """Bind a thread node to tissue material coordinates around a puncture site."""
+        point = np.asarray(point_local, dtype=np.float32)
+        distances = np.linalg.norm(self.current_points - point[None, :], axis=1)
+        selected = np.flatnonzero(distances <= max(float(radius_local), 1e-6))
+        if len(selected) < 6:
+            selected = np.argsort(distances)[: min(12, len(distances))]
+        if len(selected) > 28:
+            selected = selected[np.argsort(distances[selected])[:28]]
+        local_distances = distances[selected]
+        sigma = max(float(radius_local) * 0.42, 1e-6)
+        weights = np.exp(-0.5 * (local_distances / sigma) ** 2).astype(np.float32)
+        weights /= max(float(weights.sum()), 1e-8)
+        normal = _safe_unit(
+            np.asarray(normal_local, dtype=np.float32)
+            if normal_local is not None
+            else point - np.mean(self.current_points, axis=0)
+        )
+        binding = SurfaceSutureAnchor(
+            anchor_id=int(anchor_id),
+            kind=str(kind),
+            vertex_indices=np.asarray(selected, dtype=np.int32),
+            weights=weights,
+            rest_point_local=point.copy(),
+            normal_local=normal,
+            bite_depth_m=max(0.0, float(bite_depth_m)),
+        )
+        self.suture_anchors[int(anchor_id)] = binding
+        self.puncture_site_count += 1
+
+        # Leave a small, persistent puncture dimple.  The later stitch
+        # constraint pulls the two bound neighborhoods together, while this
+        # indentation preserves the visible entry/exit tract.
+        scale = max(float(world_scale), 1e-6)
+        dimple_local = min(0.0018 / scale, (0.00045 + binding.bite_depth_m * 0.10) / scale)
+        mobility = 1.0 - self.attachment_weights[selected]
+        self.current_points[selected] -= (
+            normal[None, :] * dimple_local * (weights / max(float(weights.max()), 1e-8))[:, None] * mobility[:, None]
+        )
+        self._preserve_volume(strength=0.12)
+        self._update_mechanics()
+        self.revision += 1
+        return binding
+
+    def release_suture_anchor(self, anchor_id: int) -> None:
+        binding = self.suture_anchors.get(int(anchor_id))
+        if binding is not None:
+            binding.active = False
+
+    def suture_anchor_position(self, anchor_id: int) -> np.ndarray | None:
+        binding = self.suture_anchors.get(int(anchor_id))
+        if binding is None or not binding.active:
+            return None
+        return binding.position(self.current_points)
+
+    def apply_suture_constraints(
+        self,
+        anchor_pairs: list[tuple[int, int]],
+        tension_n: float,
+        knot_security: float,
+        dt_s: float,
+        world_scale: float = 1.0,
+    ) -> dict[str, Any]:
+        """Approximate tissue edges and retain closure while a stitch is secured.
+
+        The solver binds each entry and exit to a material-coordinate vertex
+        neighborhood.  Thread tension draws the neighborhoods together; a
+        secure knot retains the achieved approximation.  Excess load damages
+        the bite and can pull the exit anchor through the tissue.
+        """
+        valid_pairs = [
+            (int(entry), int(exit_))
+            for entry, exit_ in anchor_pairs
+            if self.suture_anchor_position(entry) is not None and self.suture_anchor_position(exit_) is not None
+        ]
+        self.suture_force_n = max(0.0, float(tension_n))
+        self.max_suture_force_n = max(self.max_suture_force_n, self.suture_force_n)
+        failed_anchor_ids: list[int] = []
+        changed = False
+        gaps: list[float] = []
+        closures: list[float] = []
+        retained: list[float] = []
+        scale = max(float(world_scale), 1e-6)
+        dt = float(np.clip(dt_s, 1.0 / 300.0, 0.1))
+
+        for pair in valid_pairs:
+            entry_binding = self.suture_anchors[pair[0]]
+            exit_binding = self.suture_anchors[pair[1]]
+            entry_position = entry_binding.position(self.current_points)
+            exit_position = exit_binding.position(self.current_points)
+            delta = exit_position - entry_position
+            gap_local = float(np.linalg.norm(delta))
+            if gap_local < 1e-8:
+                continue
+            state = self.stitch_constraints.get(pair)
+            if state is None:
+                state = StitchConstraintState(pair, gap_local, gap_local)
+                self.stitch_constraints[pair] = state
+
+            pullout = max(self.material.anchor_pullout_force_n, 1e-6)
+            load_ratio = self.suture_force_n / pullout
+            load_drive = float(np.clip(load_ratio / 0.72, 0.0, 1.0))
+            knot_drive = float(np.clip(knot_security, 0.0, 1.0))
+            live_closure = float(np.clip(load_drive * 0.72 + knot_drive * 0.48, 0.0, 1.0))
+            state.retained_closure = max(state.retained_closure, live_closure * knot_drive)
+            closure_drive = max(live_closure, state.retained_closure)
+            minimum_gap_local = 0.0012 / scale
+            target_gap_local = max(minimum_gap_local, state.initial_gap_local * (1.0 - 0.84 * closure_drive))
+            excess_gap = max(0.0, gap_local - target_gap_local)
+            response = 1.0 - np.exp(-dt * (5.0 + 9.0 * closure_drive))
+            closure_step = min(excess_gap * 0.5 * response, 0.0012 / scale)
+
+            if closure_step > 1e-8:
+                direction = delta / gap_local
+                for binding, sign in ((entry_binding, 1.0), (exit_binding, -1.0)):
+                    normalized_weights = binding.weights / max(float(binding.weights.max()), 1e-8)
+                    mobility = 1.0 - self.attachment_weights[binding.vertex_indices]
+                    self.current_points[binding.vertex_indices] += (
+                        direction[None, :]
+                        * sign
+                        * closure_step
+                        * normalized_weights[:, None]
+                        * mobility[:, None]
+                    )
+                selected = np.zeros(len(self.current_points), dtype=np.bool_)
+                selected[entry_binding.vertex_indices] = True
+                selected[exit_binding.vertex_indices] = True
+                self._couple_edges(selected, strength=0.045 + 0.035 * closure_drive)
+                changed = True
+
+            overload = max(0.0, load_ratio - 0.82)
+            state.damage = float(np.clip(state.damage + overload * dt * 0.42, 0.0, 1.2))
+            if state.damage >= 1.0 and not state.failed:
+                state.failed = True
+                failed_anchor = pair[1]
+                self.release_suture_anchor(failed_anchor)
+                failed_anchor_ids.append(failed_anchor)
+                self.stitch_failures += 1
+                self.tear_events += 1
+
+            updated_entry = entry_binding.position(self.current_points)
+            updated_exit = exit_binding.position(self.current_points)
+            state.current_gap_local = float(np.linalg.norm(updated_exit - updated_entry))
+            state.closure_ratio = float(
+                np.clip(1.0 - state.current_gap_local / max(state.initial_gap_local, 1e-8), 0.0, 1.0)
+            )
+            gaps.append(state.current_gap_local)
+            closures.append(state.closure_ratio)
+            retained.append(state.retained_closure)
+
+        if changed:
+            max_offset = 0.024 / scale
+            offsets = self.current_points - self.original_points
+            magnitudes = np.linalg.norm(offsets, axis=1)
+            over_limit = magnitudes > max_offset
+            if np.any(over_limit):
+                offsets[over_limit] *= (max_offset / magnitudes[over_limit])[:, None]
+                self.current_points[:] = self.original_points + offsets
+            self._preserve_volume(strength=0.15)
+            self.max_displacement_local = max(
+                self.max_displacement_local,
+                float(np.linalg.norm(self.current_points - self.original_points, axis=1).max(initial=0.0)),
+            )
+            self._update_mechanics()
+            self.revision += 1
+
+        self.closure_gap_local = float(np.mean(gaps)) if gaps else 0.0
+        self.closure_ratio = float(np.mean(closures)) if closures else 0.0
+        self.retained_closure = float(np.mean(retained)) if retained else 0.0
+        return {
+            "changed": changed,
+            "failed_anchor_ids": failed_anchor_ids,
+            "closure_gap_m": self.closure_gap_local * scale,
+            "closure_ratio": self.closure_ratio,
+            "retained_closure": self.retained_closure,
+        }
 
     def deform(
         self,
@@ -282,7 +516,18 @@ class SurfaceMeshModel:
         if fraction is None:
             half_life = max(self.material.recovery_half_life_s, 1e-4)
             fraction = 1.0 - 2.0 ** (-max(float(dt_s), 0.0) / half_life)
-        movable = (1.0 - 0.88 * self.attachment_weights)[:, None]
+        suture_protection = np.zeros(len(self.current_points), dtype=np.float32)
+        for anchor in self.suture_anchors.values():
+            if not anchor.active:
+                continue
+            normalized_weights = anchor.weights / max(float(anchor.weights.max()), 1e-8)
+            suture_protection[anchor.vertex_indices] = np.maximum(
+                suture_protection[anchor.vertex_indices], normalized_weights
+            )
+        movable = (
+            (1.0 - 0.88 * self.attachment_weights)
+            * (1.0 - 0.90 * suture_protection)
+        )[:, None]
         self.current_points += delta * float(np.clip(fraction, 0.0, 1.0)) * movable
         self._preserve_volume(strength=0.20)
         self._update_mechanics()
@@ -338,7 +583,7 @@ class SurfaceMeshModel:
         stress_proxy = self.material.youngs_modulus_pa * self.max_strain
         return {
             "active": True,
-            "model": "reduced_order_volume_preserving_tissue_v2",
+            "model": "surface_bound_suture_tissue_v3",
             "authority": "isaac_contacts_plus_openusd_reduced_order_fallback",
             "material_profile": self.material.id,
             "calibration_status": "research_defaults_unvalidated",
@@ -350,6 +595,15 @@ class SurfaceMeshModel:
             "volume_ratio": round(self.volume_ratio, 5),
             "attachment_load_proxy_n": round(stress_proxy * current_displacement * 2e-5, 4),
             "tear_events": self.tear_events,
+            "puncture_sites": self.puncture_site_count,
+            "bound_suture_anchors": sum(int(anchor.active) for anchor in self.suture_anchors.values()),
+            "stitch_constraints": sum(int(not stitch.failed) for stitch in self.stitch_constraints.values()),
+            "stitch_failures": self.stitch_failures,
+            "suture_force_n": round(self.suture_force_n, 4),
+            "peak_suture_force_n": round(self.max_suture_force_n, 4),
+            "closure_gap_m": round(self.closure_gap_local * float(world_scale), 6),
+            "closure_ratio": round(self.closure_ratio, 4),
+            "retained_closure": round(self.retained_closure, 4),
             "surface_revision": self.revision,
         }
 
@@ -364,6 +618,7 @@ class NeedleTissueInteractionModel:
     punctured: bool = False
     entry_direction: np.ndarray | None = None
     penetration_depth_m: float = 0.0
+    max_penetration_depth_m: float = 0.0
     interaction_force_n: float = 0.0
     peak_force_n: float = 0.0
     interaction_torque_nm: float = 0.0
@@ -382,6 +637,7 @@ class NeedleTissueInteractionModel:
         self.punctured = False
         self.entry_direction = None
         self.penetration_depth_m = 0.0
+        self.max_penetration_depth_m = 0.0
         self.interaction_force_n = 0.0
         self.peak_force_n = 0.0
         self.interaction_torque_nm = 0.0
@@ -447,6 +703,7 @@ class NeedleTissueInteractionModel:
                 adjusted -= normal * normal_command * (1.0 - transmission)
         if self.punctured:
             self.penetration_depth_m = max(0.0, -float(clearance_m))
+            self.max_penetration_depth_m = max(self.max_penetration_depth_m, self.penetration_depth_m)
             depth_fraction = float(np.clip(self.penetration_depth_m / max(max_depth_m, 1e-6), 0.0, 1.0))
             required_rotation = 0.10 + 0.42 * depth_fraction
             self.curvature_alignment = float(np.clip(rotation_effort / required_rotation, 0.0, 1.0))
@@ -497,6 +754,7 @@ class NeedleTissueInteractionModel:
             "state": self.state,
             "punctured": self.punctured,
             "penetration_depth_m": round(self.penetration_depth_m, 6),
+            "max_penetration_depth_m": round(self.max_penetration_depth_m, 6),
             "interaction_force_n": round(self.interaction_force_n, 4),
             "peak_force_n": round(self.peak_force_n, 4),
             "interaction_torque_nm": round(self.interaction_torque_nm, 6),
@@ -518,7 +776,7 @@ class NeedleTissueInteractionModel:
 
 @dataclass
 class SutureThreadModel:
-    """Position-based suture with tension, slack, anchor damage, and knot hold."""
+    """Position-based suture with surface friction, tissue failure, and knot hold."""
 
     node_count: int = 48
     segment_length_m: float = 0.0032
@@ -533,6 +791,9 @@ class SutureThreadModel:
     fixed: dict[int, np.ndarray] = field(default_factory=dict)
     tissue_anchor_indices: list[int] = field(default_factory=list)
     anchor_damage: dict[int, float] = field(default_factory=dict)
+    anchor_kinds: dict[int, str] = field(default_factory=dict)
+    anchor_bite_depth_m: dict[int, float] = field(default_factory=dict)
+    anchor_slip_m: dict[int, float] = field(default_factory=dict)
     initialized: bool = False
     tension_n: float = 0.0
     peak_tension_n: float = 0.0
@@ -547,7 +808,13 @@ class SutureThreadModel:
     anchor_pullouts: int = 0
     thread_broken: bool = False
     last_anchor_world: np.ndarray | None = None
+    last_added_anchor_index: int | None = None
     anchor_spacings_m: list[float] = field(default_factory=list)
+    closure_gap_m: float = 0.0
+    closure_ratio: float = 0.0
+    retained_closure: float = 0.0
+    surface_coupling_force_n: float = 0.0
+    failure_reason: str = ""
 
     def __post_init__(self) -> None:
         self.points = np.zeros((self.node_count, 3), dtype=np.float32)
@@ -559,6 +826,9 @@ class SutureThreadModel:
         self.fixed.clear()
         self.tissue_anchor_indices.clear()
         self.anchor_damage.clear()
+        self.anchor_kinds.clear()
+        self.anchor_bite_depth_m.clear()
+        self.anchor_slip_m.clear()
         self.initialized = False
         self.tension_n = self.peak_tension_n = self.strain = self.slack_m = 0.0
         self.knot_formed = False
@@ -568,7 +838,11 @@ class SutureThreadModel:
         self.tissue_tear_events = self.anchor_pullouts = 0
         self.thread_broken = False
         self.last_anchor_world = None
+        self.last_added_anchor_index = None
         self.anchor_spacings_m.clear()
+        self.closure_gap_m = self.closure_ratio = self.retained_closure = 0.0
+        self.surface_coupling_force_n = 0.0
+        self.failure_reason = ""
 
     @property
     def rest_length_m(self) -> float:
@@ -583,12 +857,19 @@ class SutureThreadModel:
         self.fixed = {0: tail.copy(), self.node_count - 1: needle.copy()}
         self.initialized = True
 
-    def add_tissue_anchor(self, world_position: np.ndarray) -> bool:
+    def add_tissue_anchor(
+        self,
+        world_position: np.ndarray,
+        kind: str = "entry",
+        bite_depth_m: float = 0.0,
+    ) -> bool:
         if not self.initialized or len(self.tissue_anchor_indices) >= self.max_tissue_anchors:
+            self.last_added_anchor_index = None
             return False
         fractions = np.linspace(0.16, 0.82, max(2, self.max_tissue_anchors), dtype=np.float32)
         index = int(round((self.node_count - 1) * float(fractions[len(self.tissue_anchor_indices)])))
         if index in self.fixed:
+            self.last_added_anchor_index = None
             return False
         position = np.asarray(world_position, dtype=np.float32).copy()
         if self.last_anchor_world is not None:
@@ -599,7 +880,67 @@ class SutureThreadModel:
         self.previous[index] = position
         self.tissue_anchor_indices.append(index)
         self.anchor_damage[index] = 0.0
+        self.anchor_kinds[index] = str(kind)
+        self.anchor_bite_depth_m[index] = max(0.0, float(bite_depth_m))
+        self.anchor_slip_m[index] = 0.0
+        self.last_added_anchor_index = index
         return True
+
+    def update_tissue_anchor(
+        self,
+        anchor_index: int,
+        world_position: np.ndarray,
+        static_friction: float,
+        dynamic_friction: float,
+        dt_s: float,
+    ) -> None:
+        """Move a pinned thread node with tissue and accumulate frictional slip."""
+        index = int(anchor_index)
+        if index not in self.tissue_anchor_indices:
+            return
+        target = np.asarray(world_position, dtype=np.float32)
+        previous = self.fixed.get(index, target)
+        load_ratio = self.tension_n / max(self.anchor_pullout_force_n, 1e-6)
+        static_limit = float(np.clip(static_friction, 0.05, 1.0))
+        if load_ratio > static_limit:
+            sliding_load = load_ratio - static_limit
+            slip_rate = sliding_load * (1.0 - float(np.clip(dynamic_friction, 0.0, 0.95))) * 0.0018
+            self.anchor_slip_m[index] = self.anchor_slip_m.get(index, 0.0) + slip_rate * max(float(dt_s), 0.0)
+        self.fixed[index] = target.copy()
+        # Avoid injecting surface-authoring motion as artificial strand
+        # velocity.  The tissue-bound node follows its material coordinates.
+        self.points[index] = target
+        self.previous[index] += target - previous
+
+    def detach_tissue_anchor(self, anchor_index: int, reason: str = "anchor_pullout") -> None:
+        index = int(anchor_index)
+        if index not in self.tissue_anchor_indices:
+            return
+        self.fixed.pop(index, None)
+        self.tissue_anchor_indices.remove(index)
+        self.anchor_damage.pop(index, None)
+        self.anchor_kinds.pop(index, None)
+        self.anchor_bite_depth_m.pop(index, None)
+        self.anchor_slip_m.pop(index, None)
+        self.anchor_pullouts += 1
+        self.tissue_tear_events += 1
+        self.failure_reason = str(reason)
+
+    @property
+    def active_anchor_pairs(self) -> list[tuple[int, int]]:
+        pairs: list[tuple[int, int]] = []
+        anchors = list(self.tissue_anchor_indices)
+        for index in range(0, len(anchors) - 1, 2):
+            entry, exit_ = anchors[index], anchors[index + 1]
+            if self.anchor_kinds.get(entry) == "entry" and self.anchor_kinds.get(exit_) == "exit":
+                pairs.append((entry, exit_))
+        return pairs
+
+    def record_surface_coupling(self, snapshot: dict[str, Any]) -> None:
+        self.closure_gap_m = max(0.0, float(snapshot.get("closure_gap_m", 0.0)))
+        self.closure_ratio = float(np.clip(snapshot.get("closure_ratio", 0.0), 0.0, 1.0))
+        self.retained_closure = float(np.clip(snapshot.get("retained_closure", 0.0), 0.0, 1.0))
+        self.surface_coupling_force_n = self.tension_n if self.active_anchor_pairs else 0.0
 
     def _apply_constraints(self) -> float:
         fixed_indices = sorted(self.fixed)
@@ -667,11 +1008,7 @@ class SutureThreadModel:
             excess = max(0.0, self.tension_n - self.anchor_pullout_force_n * 0.72)
             self.anchor_damage[index] = float(np.clip(self.anchor_damage.get(index, 0.0) + excess * dt / max(self.anchor_pullout_force_n, 1e-6), 0.0, 1.2))
             if self.anchor_damage[index] >= 1.0:
-                self.fixed.pop(index, None)
-                self.tissue_anchor_indices.remove(index)
-                self.anchor_pullouts += 1
-                self.tissue_tear_events += 1
-                self.anchor_damage.pop(index, None)
+                self.detach_tissue_anchor(index, "thread_load_anchor_pullout")
         if self.tension_n >= self.tensile_limit_n:
             self.thread_broken = True
             self.tension_n = 0.0
@@ -687,7 +1024,7 @@ class SutureThreadModel:
 
     @property
     def stitch_count(self) -> int:
-        return len(self.tissue_anchor_indices) // 2
+        return len(self.active_anchor_pairs)
 
     @property
     def mean_anchor_spacing_m(self) -> float:
@@ -696,6 +1033,14 @@ class SutureThreadModel:
     @property
     def spacing_variation_m(self) -> float:
         return float(np.std(self.anchor_spacings_m)) if len(self.anchor_spacings_m) > 1 else 0.0
+
+    @property
+    def mean_bite_depth_m(self) -> float:
+        return float(np.mean(list(self.anchor_bite_depth_m.values()))) if self.anchor_bite_depth_m else 0.0
+
+    @property
+    def total_anchor_slip_m(self) -> float:
+        return float(sum(self.anchor_slip_m.values()))
 
     def snapshot(self) -> dict[str, Any]:
         return {
@@ -706,9 +1051,13 @@ class SutureThreadModel:
             "strain": round(self.strain, 5),
             "slack_m": round(self.slack_m, 5),
             "tissue_anchors": len(self.tissue_anchor_indices),
+            "entry_anchors": sum(kind == "entry" for kind in self.anchor_kinds.values()),
+            "exit_anchors": sum(kind == "exit" for kind in self.anchor_kinds.values()),
             "stitch_count": self.stitch_count,
+            "mean_bite_depth_m": round(self.mean_bite_depth_m, 5),
             "mean_bite_spacing_m": round(self.mean_anchor_spacing_m, 5),
             "spacing_variation_m": round(self.spacing_variation_m, 5),
+            "anchor_slip_m": round(self.total_anchor_slip_m, 6),
             "over_tension_events": self.over_tension_events,
             "tissue_tear_events": self.tissue_tear_events,
             "anchor_pullouts": self.anchor_pullouts,
@@ -717,7 +1066,12 @@ class SutureThreadModel:
             "knot_formed": self.knot_formed,
             "knot_tightness": round(self.knot_tightness, 4),
             "knot_security": round(self.knot_security, 4),
-            "model": "position_based_suture_with_anchor_failure_v2",
+            "closure_gap_m": round(self.closure_gap_m, 6),
+            "closure_ratio": round(self.closure_ratio, 4),
+            "retained_closure": round(self.retained_closure, 4),
+            "surface_coupling_force_n": round(self.surface_coupling_force_n, 4),
+            "failure_reason": self.failure_reason,
+            "model": "surface_coupled_position_based_suture_v3",
             "calibration_status": "research_defaults_unvalidated",
         }
 

@@ -401,6 +401,7 @@ async function refresh(){try{
   currentViewMode=s.camera_view_mode||currentViewMode;document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===currentViewMode));
   const grip=s.has_grippers?(s.grippers_open[activeArm]?' · GRIPPER OPEN':' · GRIPPER CLOSED'):'',moving=s.drive_active?' · MOVING':'';document.getElementById('hud').innerHTML=`<strong>${s.anatomy_showcase||'SURGICAL WORKSPACE'}</strong><br>${s.camera_width}×${s.camera_height} · ${s.render_fps.toFixed(1)} FPS · ${currentViewMode.toUpperCase()}<br>${p.title||s.scenario_title}${grip}${moving}`;document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record').classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[activeArm]===true);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[activeArm]===false);
   const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m,tipClearance=s.needle_tip_clearance_m,depth=s.needle_penetration_depth_m||0,thread=s.mechanics?.thread||{},cut=s.mechanics?.cut||{},tissue=s.mechanics?.tissue||{},tube=s.mechanics?.tube||{},closure=s.mechanics?.closure||{},vascular=s.mechanics?.vascular||{},ultrasound=s.mechanics?.ultrasound||{},dissection=s.mechanics?.dissection||{},recovery=s.mechanics?.recovery||{};proximity.className='proximity';let guidance='Move toward the target';if(tube.active){guidance=tube.buckled?`Shunt buckling · withdraw and realign`:tube.placement_verified?'Shunt placement verified · stable and patent':`Shunt ${Math.round((tube.insertion_depth_m||0)*1000)}/${Math.round((tube.target_depth_m||0)*1000)} mm · hold ${Number(tube.stable_time_s||0).toFixed(1)} s`;proximity.classList.add(tube.buckled?'puncture':tube.placement_verified?'held':'near')}else if(vascular.active&&vascular.mode==='hemostasis'){guidance=vascular.definitive_control?`Control placed · hold ${Number(vascular.stable_control_time_s||0).toFixed(1)} s for rebleed check`:`Bleed ${Math.round(vascular.bleed_rate_proxy_ml_min||0)} mL/min proxy · localize then close`;proximity.classList.add(vascular.controlled?'held':'puncture')}else if(ultrasound.active){guidance=activeArm===0?`Probe hold ${Number(ultrasound.probe_stable_time_s||0).toFixed(1)} s · confidence ${Math.round((ultrasound.target_confidence||0)*100)}%`:`Needle target ${Math.round((ultrasound.target_error_m||0)*1000)} mm · visibility ${Math.round((ultrasound.needle_visibility||0)*100)}%`;proximity.classList.add(ultrasound.target_contact?'held':'near')}else if(closure.throw_count){guidance=`Knot throws ${closure.throw_count}/${closure.target_throws} · alternate hand crossing`;proximity.classList.add(closure.slippage_proxy<=.35?'held':'near')}else if(thread.knot_formed){guidance=`Knot cinched ${Math.round((thread.knot_tightness||0)*100)}% · tension ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(cut.active){guidance=`Cutting live · ${Math.round((cut.length_m||0)*1000)} mm · ${cut.faces_removed||0} faces opened`;proximity.classList.add('puncture')}else if(s.needle_puncture_active){guidance=`Needle inserted ${Math.round(depth*1000)} mm · thread ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(tissue.recovering){guidance=`Tissue recovering · peak ${Math.round((tissue.max_displacement_m||0)*1000)} mm`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]&&tipClearance!==null&&tipClearance!==undefined&&tipClearance<=.006){guidance=`Needle tip ${Math.max(0,Math.round(tipClearance*1000))} mm from tissue · advance gently`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]){guidance=tissue.active?`Object held · deforming surface ${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'Object held · Space releases';proximity.classList.add('held')}else if(s.virtual_fixture_active){guidance='Instrument boundary · tangential motion only';proximity.classList.add('guard')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){const direction=targetDirections(offset);guidance=`Target ${Math.round(distance*1000)} mm · ${direction||'hold course'}${s.adaptive_precision_active?' · auto precision':''}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Tool guidance</b><span>${guidance}</span>`;const sensor=document.getElementById('procedureSensor'),rows=[];if(tube.active)rows.push(`<b>SHUNT INSERTION</b><strong>${Math.round((tube.insertion_depth_m||0)*1000)} mm</strong> depth · ${Number(tube.wall_load_proxy_n||0).toFixed(2)} N wall load<br><span class="${tube.buckled?'warn':'ok'}">${tube.buckled?'BUCKLING — WITHDRAW':tube.placement_verified?'PLACEMENT VERIFIED':'PATENCY '+Math.round(tube.patency_percent||0)+'% · HOLD '+Number(tube.stable_time_s||0).toFixed(1)+' s'}</span>`);if(closure.active)rows.push(`<b>${closure.mode==='knot_tying'?'KNOT SECURITY':'CLOSURE QUALITY'}</b>${closure.mode==='knot_tying'?`<strong>${closure.throw_count||0}/${closure.target_throws||0}</strong> alternating throws · slippage ${Math.round((closure.slippage_proxy||0)*100)}%`:`<strong>${closure.stitch_count||0}/${closure.target_stitches||0}</strong> stitches · gap ${Number((closure.closure_gap_m||0)*1000).toFixed(1)} mm<br>spacing variation ${Number((closure.spacing_variation_m||0)*1000).toFixed(1)} mm · leak ${Math.round(closure.leak_rate_proxy_ml_min||0)} mL/min proxy`}`);if(vascular.active)rows.push(`<b>${vascular.mode==='hemostasis'?'HEMOSTASIS':'VASCULAR CONTROL'}</b>${vascular.mode==='hemostasis'?`<strong>${Math.round(vascular.bleed_rate_proxy_ml_min||0)}</strong> mL/min proxy · ${vascular.definitive_control?'definitive control placed':'temporary control'}`:`<strong>${vascular.clips_placed||0}/2</strong> clips · flow ${Math.round(vascular.residual_flow_percent||0)}% · violations ${vascular.protected_violations||0}`}`);if(ultrasound.active)rows.push(`<b>BIMANUAL PROCEDURAL B-MODE</b>probe confidence <strong>${Math.round((ultrasound.target_confidence||0)*100)}%</strong> · needle visibility ${Math.round((ultrasound.needle_visibility||0)*100)}%<br>needle error ${Number((ultrasound.target_error_m||0)*1000).toFixed(1)} mm · vessel clearance ${Number((ultrasound.protected_clearance_m||0)*1000).toFixed(1)} mm · contacts ${ultrasound.protected_contacts||0}`);if(dissection.active)rows.push(`<b>${dissection.mode==='biopsy'?'EXCISION':'DISSECTION PLANE'}</b><strong>${Math.round((dissection.plane_progress||0)*100)}%</strong> complete · ${dissection.faces_separated||0} faces separated<br>protected clearance ${Number((dissection.protected_clearance_m||0)*1000).toFixed(1)} mm · ${dissection.protected_contact?'CONTACT':'clear'}`);if(recovery.active)rows.push(`<b>RECOVERY STATE</b>${recovery.failure_injected?'challenge '+recovery.failure_id:'baseline'} · reacquired <strong>${recovery.object_reacquired?'YES':'NO'}</strong><br>recovery ${Math.round((recovery.recovery_progress||0)*100)}%`);sensor.innerHTML=rows.join('<br>');sensor.classList.toggle('hidden',!rows.length);const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],assisted=s.assisted_grasp_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':assisted?(tube.active?'Advance the secured shunt':'Lift and retract the secured object'):'Open jaws and retry';
+  if(thread.active&&(thread.tissue_anchors||thread.stitch_count)){rows.unshift(`<b>LIVE SUTURE–TISSUE COUPLING</b><strong>${thread.entry_anchors||0} in / ${thread.exit_anchors||0} out</strong> · ${thread.stitch_count||0} complete bite${thread.stitch_count===1?'':'s'}<br>closure ${Math.round((thread.closure_ratio||0)*100)}% · gap ${Number((thread.closure_gap_m||0)*1000).toFixed(1)} mm · depth ${Number((thread.mean_bite_depth_m||0)*1000).toFixed(1)} mm<br>tension ${Number(thread.tension_n||0).toFixed(2)} N · slip ${Number((thread.anchor_slip_m||0)*1000).toFixed(2)} mm${thread.failure_reason?`<br><span class="warn">${thread.failure_reason.replaceAll('_',' ').toUpperCase()}</span>`:''}`);sensor.innerHTML=rows.join('<br>');sensor.classList.remove('hidden')}
   const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderExpert(s.expert_demonstration);
   const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Procedure: ${p.title||'Free practice'}<br>Anatomy: ${s.anatomy_showcase||'—'}<br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Instrument guard: ${s.virtual_fixture_enabled?'on':'off'}<br>Thread: ${thread.active?`${Number(thread.tension_n||0).toFixed(2)} N · ${thread.tissue_anchors||0} pins`:'—'}<br>Cut: ${cut.faces_removed?`${Math.round((cut.length_m||0)*1000)} mm · r${cut.topology_revision}`:'—'}<br>Tissue: ${tissue.active?`${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'—'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
 }catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
@@ -580,9 +581,13 @@ class SharedState:
                 "tension_n": 0.0,
                 "peak_tension_n": 0.0,
                 "tissue_anchors": 0,
+                "entry_anchors": 0,
+                "exit_anchors": 0,
                 "stitch_count": 0,
+                "mean_bite_depth_m": 0.0,
                 "mean_bite_spacing_m": 0.0,
                 "spacing_variation_m": 0.0,
+                "anchor_slip_m": 0.0,
                 "over_tension_events": 0,
                 "knot_formed": False,
                 "knot_tightness": 0.0,
@@ -591,6 +596,11 @@ class SharedState:
                 "tissue_tear_events": 0,
                 "anchor_pullouts": 0,
                 "thread_broken": False,
+                "closure_gap_m": 0.0,
+                "closure_ratio": 0.0,
+                "retained_closure": 0.0,
+                "surface_coupling_force_n": 0.0,
+                "failure_reason": "",
             },
             "needle": {"active": False},
             "interaction_force": {"active": False},
@@ -2638,6 +2648,8 @@ def main() -> None:
     )
     suture_curve = None
     suture_curve_prim = None
+    suture_anchor_marker_prims: list[Any] = []
+    suture_anchor_marker_translates: list[Any] = []
     incision_curve = None
     incision_curve_prim = None
     incision_points_world: list[np.ndarray] = []
@@ -2806,7 +2818,7 @@ def main() -> None:
                         material=tissue_material,
                     )
                     candidate_mesh.CreateAttribute("drAnmar:physicsModel", Sdf.ValueTypeNames.String).Set(
-                        "reduced_order_volume_preserving_tissue_v2"
+                        "surface_bound_suture_tissue_v3"
                     )
                     candidate_mesh.CreateAttribute("drAnmar:materialProfile", Sdf.ValueTypeNames.String).Set(
                         tissue_material.id
@@ -2844,6 +2856,32 @@ def main() -> None:
             suture_material.CreateSurfaceOutput().ConnectToSource(suture_shader.ConnectableAPI(), "surface")
             UsdShade.MaterialBindingAPI.Apply(suture_curve_prim).Bind(suture_material)
             UsdGeom.Imageable(suture_curve_prim).MakeInvisible()
+
+            entry_marker_material = UsdShade.Material.Define(stage, f"{suture_path}/EntryMarkerMaterial")
+            entry_marker_shader = UsdShade.Shader.Define(stage, f"{suture_path}/EntryMarkerMaterial/Shader")
+            entry_marker_shader.CreateIdAttr("UsdPreviewSurface")
+            entry_marker_shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.08, 0.92, 1.0))
+            entry_marker_shader.CreateInput("emissiveColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.015, 0.25, 0.32))
+            entry_marker_material.CreateSurfaceOutput().ConnectToSource(entry_marker_shader.ConnectableAPI(), "surface")
+            exit_marker_material = UsdShade.Material.Define(stage, f"{suture_path}/ExitMarkerMaterial")
+            exit_marker_shader = UsdShade.Shader.Define(stage, f"{suture_path}/ExitMarkerMaterial/Shader")
+            exit_marker_shader.CreateIdAttr("UsdPreviewSurface")
+            exit_marker_shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.20, 1.0, 0.40))
+            exit_marker_shader.CreateInput("emissiveColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.03, 0.28, 0.06))
+            exit_marker_material.CreateSurfaceOutput().ConnectToSource(exit_marker_shader.ConnectableAPI(), "surface")
+            for marker_index in range(target_anchors):
+                marker_path = f"{suture_path}/TissueAnchor{marker_index + 1}"
+                marker = UsdGeom.Sphere.Define(stage, marker_path)
+                marker.CreateRadiusAttr(0.00225)
+                marker_transform = UsdGeom.Xformable(marker.GetPrim())
+                marker_transform.ClearXformOpOrder()
+                marker_translate = marker_transform.AddTranslateOp()
+                marker_translate.Set(Gf.Vec3d(0.0, 0.0, -10.0))
+                material = entry_marker_material if marker_index % 2 == 0 else exit_marker_material
+                UsdShade.MaterialBindingAPI.Apply(marker.GetPrim()).Bind(material)
+                UsdGeom.Imageable(marker.GetPrim()).MakeInvisible()
+                suture_anchor_marker_prims.append(marker.GetPrim())
+                suture_anchor_marker_translates.append(marker_translate)
 
         if guide_kind in CUTTING_GUIDE_KINDS:
             incision_path = "/World/envs/env_0/DrAnmarIncisionBed"
@@ -3097,6 +3135,55 @@ def main() -> None:
         value = world_to_local.TransformDir(Gf.Vec3d(*np.asarray(world_delta, dtype=float).tolist()))
         return np.asarray(tuple(value), dtype=np.float32)
 
+    def surface_world_point(local_point: np.ndarray) -> np.ndarray | None:
+        local_to_world, _world_to_local = surface_transform()
+        if local_to_world is None:
+            return None
+        value = local_to_world.Transform(Gf.Vec3d(*np.asarray(local_point, dtype=float).tolist()))
+        return np.asarray(tuple(value), dtype=np.float32)
+
+    def bind_suture_to_surface(world_position: np.ndarray, kind: str, bite_depth_m: float) -> bool:
+        if suture_model is None:
+            return False
+        if not suture_model.add_tissue_anchor(world_position, kind=kind, bite_depth_m=bite_depth_m):
+            return False
+        anchor_index = suture_model.last_added_anchor_index
+        if surface_mesh_model is not None and anchor_index is not None:
+            local_point = surface_local_point(world_position)
+            local_normal = surface_local_delta(needle_outward) if needle_outward is not None else None
+            if local_point is not None:
+                surface_mesh_model.bind_suture_anchor(
+                    anchor_index,
+                    local_point,
+                    kind,
+                    normal_local=local_normal,
+                    bite_depth_m=bite_depth_m,
+                    radius_local=0.018 / max(surface_world_scale(), 1e-6),
+                    world_scale=surface_world_scale(),
+                )
+        return True
+
+    def synchronize_suture_surface_anchors(dt_s: float) -> None:
+        if suture_model is None or surface_mesh_model is None:
+            return
+        active = set(suture_model.tissue_anchor_indices)
+        for anchor_id, binding in surface_mesh_model.suture_anchors.items():
+            if anchor_id not in active:
+                binding.active = False
+                continue
+            local_position = surface_mesh_model.suture_anchor_position(anchor_id)
+            if local_position is None:
+                continue
+            world_position = surface_world_point(local_position)
+            if world_position is not None:
+                suture_model.update_tissue_anchor(
+                    anchor_id,
+                    world_position,
+                    tissue_material.static_friction,
+                    tissue_material.dynamic_friction,
+                    dt_s,
+                )
+
     def author_surface_model(topology_changed: bool = False) -> None:
         if surface_mesh_model is None or surface_mesh_prim is None:
             return
@@ -3119,6 +3206,8 @@ def main() -> None:
             return
         if not suture_model.initialized:
             UsdGeom.Imageable(suture_curve_prim).MakeInvisible()
+            for marker_prim in suture_anchor_marker_prims:
+                UsdGeom.Imageable(marker_prim).MakeInvisible()
             return
         suture_curve.GetPointsAttr().Set(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(suture_model.points)))
         color_scale = float(np.clip(suture_model.tension_n / 1.5, 0.0, 1.0))
@@ -3128,6 +3217,19 @@ def main() -> None:
                 Gf.Vec3f(0.16 + 0.68 * color_scale, 0.32 - 0.18 * color_scale, 0.82 - 0.58 * color_scale)
             )
         UsdGeom.Imageable(suture_curve_prim).MakeVisible()
+        active_anchors = list(suture_model.tissue_anchor_indices)
+        for marker_index, (marker_prim, marker_translate) in enumerate(
+            zip(suture_anchor_marker_prims, suture_anchor_marker_translates)
+        ):
+            if marker_index >= len(active_anchors):
+                UsdGeom.Imageable(marker_prim).MakeInvisible()
+                continue
+            anchor_position = suture_model.fixed.get(active_anchors[marker_index])
+            if anchor_position is None:
+                UsdGeom.Imageable(marker_prim).MakeInvisible()
+                continue
+            marker_translate.Set(Gf.Vec3d(*np.asarray(anchor_position, dtype=float).tolist()))
+            UsdGeom.Imageable(marker_prim).MakeVisible()
 
     def update_incision_visual() -> None:
         if incision_curve is None or incision_curve_prim is None:
@@ -3496,7 +3598,7 @@ def main() -> None:
     state.mechanics["tissue"].update(
         {
             "active": surface_mesh_model is not None,
-            "model": "reduced_order_volume_preserving_tissue_v2" if surface_mesh_model is not None else "none",
+            "model": "surface_bound_suture_tissue_v3" if surface_mesh_model is not None else "none",
             "authoring_ready": surface_authoring_ready,
             "material_profile": tissue_material.id if surface_mesh_model is not None else None,
             "calibration_status": "research_defaults_unvalidated" if surface_mesh_model is not None else "not_available",
@@ -3607,9 +3709,13 @@ def main() -> None:
                     "tension_n": 0.0,
                     "peak_tension_n": 0.0,
                     "tissue_anchors": 0,
+                    "entry_anchors": 0,
+                    "exit_anchors": 0,
                     "stitch_count": 0,
+                    "mean_bite_depth_m": 0.0,
                     "mean_bite_spacing_m": 0.0,
                     "spacing_variation_m": 0.0,
+                    "anchor_slip_m": 0.0,
                     "over_tension_events": 0,
                     "knot_formed": False,
                     "knot_tightness": 0.0,
@@ -3618,6 +3724,11 @@ def main() -> None:
                     "tissue_tear_events": 0,
                     "anchor_pullouts": 0,
                     "thread_broken": False,
+                    "closure_gap_m": 0.0,
+                    "closure_ratio": 0.0,
+                    "retained_closure": 0.0,
+                    "surface_coupling_force_n": 0.0,
+                    "failure_reason": "",
                 }
             )
             state.mechanics["needle"] = {**needle_tissue_model.snapshot(), "active": needle_interaction_enabled}
@@ -4261,19 +4372,33 @@ def main() -> None:
         if suture_model is not None:
             needle_tips = needle_tip_positions_world()
             if len(needle_tips):
+                synchronize_suture_surface_anchors(mechanics_dt)
                 suture_model.update(needle_tips[0], mechanics_dt)
                 if puncture_active and not thread_was_inside_tissue and needle_surface is not None:
-                    if suture_model.add_tissue_anchor(needle_surface):
+                    if bind_suture_to_surface(
+                        needle_surface,
+                        "entry",
+                        needle_tissue_model.max_penetration_depth_m,
+                    ):
                         with state.lock:
-                            state.coaching_cue = "Tissue entry pinned. Rotate the needle through and pull the suture toward the exit."
+                            state.coaching_cue = (
+                                "Needle entered the tissue and the suture is bound to the entry bite. "
+                                "Follow the needle curve toward the exit."
+                            )
                 if puncture_active and needle_surface is not None:
                     thread_last_surface = needle_surface.copy()
                 elif thread_was_inside_tissue and thread_last_surface is not None:
-                    if suture_model.add_tissue_anchor(thread_last_surface):
+                    if bind_suture_to_surface(
+                        thread_last_surface,
+                        "exit",
+                        needle_tissue_model.max_penetration_depth_m,
+                    ):
                         with state.lock:
-                            state.coaching_cue = "Suture exited the tissue. Bring the loop back toward entry, then pull to cinch."
+                            state.coaching_cue = (
+                                "Needle exited: the thread now passes through a complete tissue bite. "
+                                "Pull evenly to approximate the two marked tissue edges."
+                            )
                 thread_was_inside_tissue = puncture_active
-                update_suture_visual()
             if surface_mesh_model is not None:
                 if puncture_active and needle_surface is not None:
                     local_center = surface_local_point(needle_surface)
@@ -4295,6 +4420,24 @@ def main() -> None:
                 else:
                     tissue_recovering = surface_mesh_model.recover(0.018)
                     surface_changed = tissue_recovering or surface_changed
+
+                coupling = surface_mesh_model.apply_suture_constraints(
+                    suture_model.active_anchor_pairs,
+                    suture_model.tension_n,
+                    suture_model.knot_security,
+                    mechanics_dt,
+                    surface_world_scale(),
+                )
+                surface_changed = bool(coupling.get("changed")) or surface_changed
+                for failed_anchor_id in coupling.get("failed_anchor_ids", []):
+                    suture_model.detach_tissue_anchor(failed_anchor_id, "tissue_bite_pullout")
+                    with state.lock:
+                        state.coaching_cue = (
+                            "The suture tore through the tissue bite. Reduce tension, choose a fresh bite, and re-approximate."
+                        )
+                synchronize_suture_surface_anchors(mechanics_dt)
+                suture_model.record_surface_coupling(coupling)
+            update_suture_visual()
 
         cut_active = False
         if guide_kind in CUTTING_GUIDE_KINDS and surface_mesh_model is not None:
@@ -4640,6 +4783,14 @@ def main() -> None:
                 "suture_slack_m": np.array(thread_metrics.get("slack_m", 0.0), dtype=np.float32),
                 "suture_strain": np.array(thread_metrics.get("strain", 0.0), dtype=np.float32),
                 "suture_tissue_anchor_count": np.array(thread_metrics.get("tissue_anchors", 0), dtype=np.int16),
+                "suture_entry_anchor_count": np.array(thread_metrics.get("entry_anchors", 0), dtype=np.int16),
+                "suture_exit_anchor_count": np.array(thread_metrics.get("exit_anchors", 0), dtype=np.int16),
+                "suture_stitch_count": np.array(thread_metrics.get("stitch_count", 0), dtype=np.int16),
+                "suture_bite_depth_m": np.array(thread_metrics.get("mean_bite_depth_m", 0.0), dtype=np.float32),
+                "suture_closure_gap_m": np.array(thread_metrics.get("closure_gap_m", 0.0), dtype=np.float32),
+                "suture_closure_ratio": np.array(thread_metrics.get("closure_ratio", 0.0), dtype=np.float32),
+                "suture_retained_closure": np.array(thread_metrics.get("retained_closure", 0.0), dtype=np.float32),
+                "suture_anchor_slip_m": np.array(thread_metrics.get("anchor_slip_m", 0.0), dtype=np.float32),
                 "suture_knot_formed": np.array(thread_metrics.get("knot_formed", False), dtype=np.bool_),
                 "suture_knot_tightness": np.array(thread_metrics.get("knot_tightness", 0.0), dtype=np.float32),
                 "suture_knot_security": np.array(thread_metrics.get("knot_security", 0.0), dtype=np.float32),
