@@ -74,6 +74,13 @@ DATASET_CARD_ROOT = DR_ANMAR_ROOT / "dataset_cards"
 POLICY_CARD_ROOT = DR_ANMAR_ROOT / "policy_evaluation_cards"
 STUDY_ROOT = DR_ANMAR_ROOT / "studies"
 HEALTHCARE_JOB_ROOT = DR_ANMAR_ROOT / "healthcare_jobs"
+WORKSTATION_LOG_PATH = DR_ANMAR_ROOT / "logs/workstation.log"
+WORKER_FATAL_MARKERS = (
+    "Traceback (most recent call last):",
+    "Out of GPU memory",
+    "CUBLAS_STATUS_ALLOC_FAILED",
+    "ModuleNotFoundError:",
+)
 
 
 ANATOMY_SCENES = (
@@ -528,6 +535,31 @@ def reserve_worker_switch(label: str) -> None:
         state.error = None
 
 
+def worker_startup_failure(log_offset: int) -> str | None:
+    """Return a concise fatal startup error written after *log_offset*."""
+    try:
+        with WORKSTATION_LOG_PATH.open("rb") as stream:
+            stream.seek(min(log_offset, WORKSTATION_LOG_PATH.stat().st_size))
+            output = stream.read(2_000_000).decode("utf-8", errors="replace")
+    except OSError:
+        return None
+    if not any(marker in output for marker in WORKER_FATAL_MARKERS):
+        return None
+    if "Out of GPU memory" in output or "CUBLAS_STATUS_ALLOC_FAILED" in output:
+        return (
+            "The operating room could not start because the GPU is out of memory. "
+            "Pause another GPU workload or select the efficient sensor profile, then try again."
+        )
+    exception_lines = [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith(("RuntimeError:", "ModuleNotFoundError:", "ImportError:", "KeyError:"))
+    ]
+    return f"The operating-room worker failed during startup: {exception_lines[-1]}" if exception_lines else (
+        "The operating-room worker failed during startup. Review the workstation log for the complete traceback."
+    )
+
+
 def switch_worker(
     task: str,
     procedure_id: str = "",
@@ -536,6 +568,7 @@ def switch_worker(
     anatomy_title: str = "",
     openusd_environment: Path | None = None,
 ) -> None:
+    log_offset = WORKSTATION_LOG_PATH.stat().st_size if WORKSTATION_LOG_PATH.exists() else 0
     try:
         command = [
             str(args.root / "dr_anmar_workstation.sh"),
@@ -559,9 +592,19 @@ def switch_worker(
                     state.error = None
                     state.switching = False
                 return
+            if failure := worker_startup_failure(log_offset):
+                try:
+                    stop_interactive_worker()
+                except Exception:
+                    pass
+                raise RuntimeError(failure)
             time.sleep(1.0)
         raise TimeoutError(f"Timed out starting {task}")
     except Exception as exc:
+        try:
+            stop_interactive_worker()
+        except Exception:
+            pass
         with state.lock:
             state.error = str(exc)
             state.switching = False

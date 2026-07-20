@@ -22,6 +22,11 @@ parser.add_argument("--disable_fabric", action="store_true", default=False)
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 
+# The ECM task authors a camera in its native scene configuration. Isaac Lab
+# requires the renderer to be enabled before that environment is constructed.
+if "Reach-ECM" in args_cli.task:
+    args_cli.enable_cameras = True
+
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
@@ -44,7 +49,17 @@ def main() -> None:
     env = gym.make(args_cli.task, cfg=env_cfg)
     env.reset()
 
-    robot = env.unwrapped.scene["robot"]
+    scene = env.unwrapped.scene
+    robot_names: list[str] = []
+    robots = []
+    for name in ("robot", "robot_1", "robot_2"):
+        try:
+            robots.append(scene[name])
+            robot_names.append(name)
+        except KeyError:
+            continue
+    if not robot_names:
+        raise RuntimeError(f"No supported robot entity was found in {args_cli.task}")
     completed_steps = 0
     for completed_steps in range(1, args_cli.steps + 1):
         if not simulation_app.is_running():
@@ -59,12 +74,26 @@ def main() -> None:
         "num_envs": args_cli.num_envs,
         "completed_steps": completed_steps,
         "device": str(env.unwrapped.device),
-        "joint_count": len(robot.joint_names),
-        "joint_names": list(robot.joint_names),
-        "body_count": len(robot.body_names),
-        "body_names": list(robot.body_names),
-        "joint_positions_finite": bool(torch.isfinite(robot.data.joint_pos).all().item()),
-        "joint_velocities_finite": bool(torch.isfinite(robot.data.joint_vel).all().item()),
+        "robot_count": len(robots),
+        "robots": [
+            {
+                "name": name,
+                "joint_count": len(robot.joint_names),
+                "joint_names": list(robot.joint_names),
+                "body_count": len(robot.body_names),
+                "body_names": list(robot.body_names),
+                "joint_positions_finite": bool(torch.isfinite(robot.data.joint_pos).all().item()),
+                "joint_velocities_finite": bool(torch.isfinite(robot.data.joint_vel).all().item()),
+            }
+            for name, robot in zip(robot_names, robots, strict=True)
+        ],
+        # Preserve the original single-robot summary for existing tooling.
+        "joint_count": len(robots[0].joint_names),
+        "joint_names": list(robots[0].joint_names),
+        "body_count": len(robots[0].body_names),
+        "body_names": list(robots[0].body_names),
+        "joint_positions_finite": all(bool(torch.isfinite(robot.data.joint_pos).all().item()) for robot in robots),
+        "joint_velocities_finite": all(bool(torch.isfinite(robot.data.joint_vel).all().item()) for robot in robots),
     }
     args_cli.report.parent.mkdir(parents=True, exist_ok=True)
     args_cli.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -73,10 +102,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    exit_code = 0
     try:
         main()
     except BaseException:
         traceback.print_exc()
-        raise
+        exit_code = 1
     finally:
         simulation_app.close()
+    raise SystemExit(exit_code)
