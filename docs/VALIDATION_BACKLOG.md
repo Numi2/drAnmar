@@ -66,6 +66,11 @@ only the gates explicitly demonstrated in the new runtime report should be treat
 - Full trajectories in every room, isolated performance, licensed NVIDIA provider workflows, hardware,
   biomechanics and clinician evidence remain open. See `GILGAMESH_VALIDATION_2026-07-20.md`.
 
+- The reusable eight-phase executable expert controller is source-complete for all 19 procedure rooms. A live
+  needle-pickup pass proved phase dwell, pause/resume, exact-state takeover, synchronized recording, clean
+  candidate qualification, and browser rendering. The other 18 room-specific trajectories remain on this
+  backlog for complete runtime and clinician review before they may be treated as reference-quality examples.
+
 - Training now actually pauses the interactive Isaac worker and restores the exact prior procedure/anatomy
   composition; NVIDIA workflow resume uses the same full-context path.
 - GPU-owning jobs, Failure Lab matrices, room switches and interactive state mutations are lifecycle-gated.

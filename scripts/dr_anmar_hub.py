@@ -1711,6 +1711,10 @@ def worker_command(command: str) -> dict[str, Any]:
         "record-stop": "/api/record/stop",
         "replay-last": "/api/replay-last",
         "stop": "/api/stop",
+        "expert-start": "/api/expert/start",
+        "expert-pause": "/api/expert/pause",
+        "expert-resume": "/api/expert/resume",
+        "expert-take-control": "/api/expert/take-control",
     }
     path = paths.get(command)
     if path is None:

@@ -1,0 +1,478 @@
+# Copyright (c) 2026, Dr.Anmar Project Developers.
+# SPDX-License-Identifier: BSD-3-Clause
+
+"""Closed-loop expert demonstrations for Dr.Anmar procedure rooms.
+
+The controller emits the same relative-IK action vectors and gripper states as
+the browser controls.  It deliberately remains above Isaac Lab: Isaac owns
+robot dynamics, contacts, collisions and task state, while this module owns the
+observable teaching sequence and its bounded procedural targets.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+import time
+from typing import Any
+
+import numpy as np
+
+
+EXPERT_CONTROLLER_VERSION = "dr-anmar-expert-v1"
+EXPERT_PHASES: tuple[dict[str, str], ...] = (
+    {"id": "rest", "title": "Rest", "instruction": "Confirm the neutral pose, anatomy and operative camera."},
+    {"id": "approach", "title": "Approach", "instruction": "Move above the first target with the jaws open."},
+    {"id": "align", "title": "Align", "instruction": "Set depth, angle and working-axis alignment before contact."},
+    {"id": "contact", "title": "Contact", "instruction": "Enter the interaction zone slowly and preserve the safety envelope."},
+    {"id": "grasp", "title": "Grasp", "instruction": "Close deliberately and verify that the intended object or tissue follows."},
+    {"id": "manipulate", "title": "Manipulate", "instruction": "Execute the room-specific path, handoff or tissue interaction."},
+    {"id": "verify", "title": "Verify", "instruction": "Hold still while task, force and tissue evidence are inspected."},
+    {"id": "recover", "title": "Recover", "instruction": "Withdraw to a stable pose without undoing the completed work."},
+)
+EXPERT_PHASE_IDS = tuple(phase["id"] for phase in EXPERT_PHASES)
+
+
+@dataclass
+class ExpertCommand:
+    action: np.ndarray
+    grippers_open: list[bool]
+    phase_changed: bool = False
+    completed: bool = False
+
+
+@dataclass
+class ExpertDemonstrationController:
+    procedure_id: str
+    guide_kind: str
+    action_dim: int
+    arms: int
+    has_grippers: bool
+    waypoints: np.ndarray
+    status: str = "idle"
+    phase_index: int = -1
+    phase_ticks: int = 0
+    target_ticks: int = 0
+    target_index: int = 0
+    manipulation_step: int = 0
+    completed_phases: list[str] = field(default_factory=list)
+    degraded_reasons: list[str] = field(default_factory=list)
+    takeover_phase: str | None = None
+    paused_reason: str | None = None
+    phase_anchor_tools: dict[int, np.ndarray] = field(default_factory=dict)
+    object_anchor: np.ndarray | None = None
+    phase_started_at: float = field(default_factory=time.monotonic)
+    paused_at: float | None = None
+
+    def __post_init__(self) -> None:
+        self.waypoints = np.asarray(self.waypoints, dtype=np.float32).reshape(-1, 3)
+        self.group_width = 7 if self.has_grippers else 6
+
+    @property
+    def phase(self) -> str | None:
+        if 0 <= self.phase_index < len(EXPERT_PHASE_IDS):
+            return EXPERT_PHASE_IDS[self.phase_index]
+        return None
+
+    @property
+    def active(self) -> bool:
+        return self.status in {"running", "paused"}
+
+    @property
+    def phase_elapsed_s(self) -> float:
+        end = self.paused_at if self.paused_at is not None else time.monotonic()
+        return max(0.0, end - self.phase_started_at)
+
+    def start(self) -> None:
+        self.status = "running"
+        self.phase_index = 0
+        self.phase_ticks = 0
+        self.target_ticks = 0
+        self.target_index = 0
+        self.manipulation_step = 0
+        self.completed_phases.clear()
+        self.degraded_reasons.clear()
+        self.takeover_phase = None
+        self.paused_reason = None
+        self.phase_started_at = time.monotonic()
+        self.paused_at = None
+        self.phase_anchor_tools.clear()
+        self.object_anchor = None
+
+    def pause(self, reason: str = "Doctor paused the expert demonstration for inspection.") -> None:
+        if self.status == "running":
+            self.status = "paused"
+            self.paused_reason = reason
+            self.paused_at = time.monotonic()
+
+    def resume(self) -> None:
+        if self.status == "paused":
+            if self.paused_at is not None:
+                self.phase_started_at += time.monotonic() - self.paused_at
+            self.status = "running"
+            self.paused_reason = None
+            self.paused_at = None
+
+    def take_over(self) -> None:
+        if self.active:
+            self.takeover_phase = self.phase
+            self.status = "taken_over"
+            self.paused_reason = None
+            self.paused_at = None
+
+    def cancel(self) -> None:
+        if self.active:
+            self.status = "cancelled"
+
+    def snapshot(self, reference_demo: str | None = None) -> dict[str, Any]:
+        phases = []
+        for index, definition in enumerate(EXPERT_PHASES):
+            phase_id = definition["id"]
+            phase_status = (
+                "complete"
+                if phase_id in self.completed_phases
+                else "active"
+                if index == self.phase_index and self.active
+                else "pending"
+            )
+            phases.append({**definition, "status": phase_status})
+        return {
+            "controller": EXPERT_CONTROLLER_VERSION,
+            "available": bool(self.procedure_id),
+            "status": self.status,
+            "phase": self.phase,
+            "phase_index": self.phase_index,
+            "phase_ticks": self.phase_ticks,
+            "phase_elapsed_s": round(self.phase_elapsed_s, 2) if self.phase is not None else 0.0,
+            "phases": phases,
+            "completed_phases": list(self.completed_phases),
+            "progress_percent": round(100 * len(self.completed_phases) / len(EXPERT_PHASES)),
+            "paused_reason": self.paused_reason,
+            "takeover_phase": self.takeover_phase,
+            "clean_reference_eligible": self.status == "completed" and not self.degraded_reasons,
+            "degraded_reasons": list(self.degraded_reasons),
+            "reference_demo": reference_demo,
+            "recording_contract": "actions + robot state + cameras + mechanics + eight phase labels",
+        }
+
+    def _action(self) -> np.ndarray:
+        return np.zeros(self.action_dim, dtype=np.float32)
+
+    def _set_motion(
+        self,
+        action: np.ndarray,
+        arm: int,
+        current: np.ndarray | None,
+        target: np.ndarray | None,
+        rotation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    ) -> float | None:
+        if arm >= self.arms or current is None or target is None:
+            return None
+        delta = np.asarray(target, dtype=np.float32) - np.asarray(current, dtype=np.float32)
+        start = arm * self.group_width
+        action[start : start + 3] = np.clip(delta * 0.82, -0.022, 0.022)
+        action[start + 3 : start + 6] = np.asarray(rotation, dtype=np.float32)
+        return float(np.linalg.norm(delta))
+
+    def _phase_target(self, object_position: np.ndarray | None) -> np.ndarray | None:
+        if object_position is not None and self.guide_kind in {
+            "pickup", "handover", "retraction", "reposition", "needle_pass", "tube_insertion", "recovery"
+        }:
+            return np.asarray(object_position, dtype=np.float32)
+        if len(self.waypoints):
+            return self.waypoints[0]
+        return np.asarray(object_position, dtype=np.float32) if object_position is not None else None
+
+    def _reached_or_timeout(self, distance: float | None, tolerance: float, timeout: int, label: str) -> bool:
+        if distance is not None and distance <= tolerance:
+            return True
+        if self.phase_ticks >= timeout:
+            if distance is None:
+                reason = f"{label}: target pose unavailable"
+            else:
+                reason = f"{label}: bounded target timeout at {distance * 1000:.1f} mm"
+            if reason not in self.degraded_reasons:
+                self.degraded_reasons.append(reason)
+            return True
+        return False
+
+    def _advance(self, tool_positions: dict[int, np.ndarray]) -> bool:
+        current = self.phase
+        if current and current not in self.completed_phases:
+            self.completed_phases.append(current)
+        self.phase_index += 1
+        self.phase_ticks = 0
+        self.target_ticks = 0
+        self.target_index = 0
+        self.manipulation_step = 0
+        self.phase_anchor_tools = {arm: value.copy() for arm, value in tool_positions.items()}
+        self.phase_started_at = time.monotonic()
+        if self.phase_index >= len(EXPERT_PHASES):
+            self.phase_index = len(EXPERT_PHASES) - 1
+            self.status = "completed"
+            return True
+        return False
+
+    def _follow_waypoints(
+        self,
+        action: np.ndarray,
+        tool_positions: dict[int, np.ndarray],
+        arm: int,
+        targets: np.ndarray,
+        rotation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    ) -> bool:
+        if not len(targets):
+            return True
+        index = min(self.target_index, len(targets) - 1)
+        distance = self._set_motion(action, arm, tool_positions.get(arm), targets[index], rotation)
+        self.target_ticks += 1
+        if (distance is not None and distance <= 0.011) or self.target_ticks >= 80:
+            if self.target_ticks >= 80 and (distance is None or distance > 0.018):
+                self.degraded_reasons.append(f"manipulate waypoint {index + 1}: bounded convergence timeout")
+            self.target_index += 1
+            self.target_ticks = 0
+        return self.target_index >= len(targets)
+
+    def _handover(
+        self,
+        action: np.ndarray,
+        tools: dict[int, np.ndarray],
+        object_position: np.ndarray | None,
+        grippers: list[bool],
+    ) -> bool:
+        if self.arms < 2:
+            self.degraded_reasons.append("handover requires two instruments")
+            return True
+        primary_anchor = self.phase_anchor_tools.get(0, tools.get(0))
+        secondary_anchor = self.phase_anchor_tools.get(1, tools.get(1))
+        if self.manipulation_step == 0:
+            target = primary_anchor + np.asarray((0.0, 0.0, 0.045), dtype=np.float32) if primary_anchor is not None else None
+            distance = self._set_motion(action, 0, tools.get(0), target)
+            if self._reached_or_timeout(distance, 0.012, 80, "handover presentation"):
+                self.manipulation_step = 1
+                self.phase_ticks = 0
+        elif self.manipulation_step == 1:
+            target = np.asarray(object_position, dtype=np.float32) + (0.0, 0.0, 0.004) if object_position is not None else None
+            distance = self._set_motion(action, 1, tools.get(1), target)
+            if self._reached_or_timeout(distance, 0.013, 80, "handover receiver approach"):
+                grippers[1] = False
+                self.manipulation_step = 2
+                self.phase_ticks = 0
+        elif self.manipulation_step == 2:
+            grippers[1] = False
+            if self.phase_ticks >= 4:
+                grippers[0] = True
+                self.manipulation_step = 3
+                self.phase_ticks = 0
+        else:
+            grippers[0] = True
+            grippers[1] = False
+            target = secondary_anchor + np.asarray((0.040, 0.015, 0.045), dtype=np.float32) if secondary_anchor is not None else None
+            distance = self._set_motion(action, 1, tools.get(1), target)
+            return self._reached_or_timeout(distance, 0.014, 80, "handover receiver recovery")
+        return False
+
+    def _clip_divide(self, action: np.ndarray, tools: dict[int, np.ndarray], grippers: list[bool]) -> bool:
+        if not len(self.waypoints):
+            return True
+        center = np.mean(self.waypoints, axis=0)
+        if self.arms > 1:
+            self._set_motion(action, 1, tools.get(1), center + np.asarray((0.0, 0.020, 0.012), dtype=np.float32))
+            grippers[1] = False
+        index = min(self.target_index, len(self.waypoints) - 1)
+        distance = self._set_motion(action, 0, tools.get(0), self.waypoints[index])
+        is_clip_site = index in {1, 3}
+        if is_clip_site and self.manipulation_step == 0:
+            grippers[0] = True
+        if (distance is not None and distance <= 0.012) or self.target_ticks >= 80:
+            if is_clip_site and self.manipulation_step == 0:
+                grippers[0] = False
+                self.manipulation_step = 1
+                self.target_ticks = 0
+            elif is_clip_site and self.manipulation_step == 1 and self.target_ticks >= 3:
+                grippers[0] = True
+                self.manipulation_step = 0
+                self.target_index += 1
+                self.target_ticks = 0
+            elif not is_clip_site:
+                self.target_index += 1
+                self.target_ticks = 0
+        self.target_ticks += 1
+        return self.target_index >= len(self.waypoints)
+
+    def _knot(self, action: np.ndarray, tools: dict[int, np.ndarray], grippers: list[bool]) -> bool:
+        if self.arms < 2:
+            return self._follow_waypoints(action, tools, 0, self.waypoints, (0.025, 0.0, 0.0))
+        center = np.mean(self.waypoints, axis=0) if len(self.waypoints) else np.zeros(3, dtype=np.float32)
+        side = 1.0 if self.manipulation_step % 2 == 0 else -1.0
+        target0 = center + np.asarray((0.022 * side, -0.008, 0.018), dtype=np.float32)
+        target1 = center + np.asarray((-0.022 * side, 0.008, 0.018), dtype=np.float32)
+        d0 = self._set_motion(action, 0, tools.get(0), target0, (0.018 * side, 0.0, 0.0))
+        d1 = self._set_motion(action, 1, tools.get(1), target1, (-0.018 * side, 0.0, 0.0))
+        grippers[0] = grippers[1] = False
+        self.target_ticks += 1
+        if ((d0 is not None and d0 <= 0.014) and (d1 is not None and d1 <= 0.014)) or self.target_ticks >= 60:
+            self.manipulation_step += 1
+            self.target_ticks = 0
+        return self.manipulation_step >= 6
+
+    def _ultrasound(self, action: np.ndarray, tools: dict[int, np.ndarray], grippers: list[bool]) -> bool:
+        if self.arms < 2 or not len(self.waypoints):
+            return self._follow_waypoints(action, tools, 0, self.waypoints)
+        self._set_motion(action, 0, tools.get(0), self.waypoints[0])
+        grippers[0] = False
+        needle_path = self.waypoints[1:] if len(self.waypoints) > 1 else self.waypoints
+        if self.manipulation_step == 0:
+            complete = self._follow_waypoints(action, tools, 1, needle_path, (0.020, 0.0, 0.0))
+            grippers[1] = False
+            if complete:
+                self.manipulation_step = 1
+                self.target_index = max(0, len(needle_path) - 2)
+                self.target_ticks = 0
+        else:
+            withdrawal = needle_path[: max(1, self.target_index + 1)][::-1]
+            return self._follow_waypoints(action, tools, 1, withdrawal, (-0.015, 0.0, 0.0))
+        return False
+
+    def _manipulate(
+        self,
+        action: np.ndarray,
+        tools: dict[int, np.ndarray],
+        object_position: np.ndarray | None,
+        grippers: list[bool],
+    ) -> bool:
+        kind = self.guide_kind
+        if kind == "pickup":
+            anchor = self.phase_anchor_tools.get(0, tools.get(0))
+            target = anchor + np.asarray((0.0, 0.0, 0.040), dtype=np.float32) if anchor is not None else None
+            distance = self._set_motion(action, 0, tools.get(0), target)
+            object_lift = (
+                float(object_position[2] - self.object_anchor[2])
+                if object_position is not None and self.object_anchor is not None
+                else 0.0
+            )
+            if object_lift >= 0.025:
+                return True
+            return self._reached_or_timeout(distance, 0.014, 120, "pickup manipulation")
+        if kind == "handover":
+            return self._handover(action, tools, object_position, grippers)
+        if kind == "needle_pass":
+            if self.target_index < min(2, len(self.waypoints)):
+                return self._follow_waypoints(action, tools, 0, self.waypoints[:2], (0.020, 0.0, 0.0)) and self._handover(
+                    action, tools, object_position, grippers
+                )
+            return self._handover(action, tools, object_position, grippers)
+        if kind == "clip_divide":
+            return self._clip_divide(action, tools, grippers)
+        if kind == "hemostasis":
+            target = self.waypoints[min(2, len(self.waypoints) - 1)] if len(self.waypoints) else None
+            distance = self._set_motion(action, 0, tools.get(0), target)
+            grippers[0] = self.phase_ticks < 20
+            return self.phase_ticks >= 48 or (distance is not None and distance <= 0.012 and self.phase_ticks >= 32)
+        if kind == "ultrasound_access":
+            return self._ultrasound(action, tools, grippers)
+        if kind == "knot_tying":
+            return self._knot(action, tools, grippers)
+        if kind in {"dissection", "biopsy"} and self.arms > 1 and len(self.waypoints):
+            center = np.mean(self.waypoints, axis=0)
+            self._set_motion(action, 1, tools.get(1), center + np.asarray((0.0, 0.035, 0.016), dtype=np.float32))
+            grippers[1] = False
+            grippers[0] = False
+            return self._follow_waypoints(action, tools, 0, self.waypoints)
+        if len(self.waypoints):
+            rotation = (0.024, 0.0, 0.0) if kind in {"threading", "running_suture", "anastomosis", "needle_pass"} else (0.0, 0.0, 0.0)
+            return self._follow_waypoints(action, tools, 0, self.waypoints, rotation)
+        anchor = self.phase_anchor_tools.get(0, tools.get(0))
+        offsets = {
+            "pickup": (0.0, 0.0, 0.060),
+            "retraction": (0.040, 0.015, 0.060),
+            "reposition": (0.050, 0.020, 0.045),
+        }
+        target = anchor + np.asarray(offsets.get(kind, (0.035, 0.0, 0.035)), dtype=np.float32) if anchor is not None else None
+        distance = self._set_motion(action, 0, tools.get(0), target)
+        return self._reached_or_timeout(distance, 0.013, 120, f"{kind} manipulation")
+
+    def step(
+        self,
+        tool_positions: dict[int, np.ndarray],
+        object_position: np.ndarray | None,
+        grippers_open: list[bool],
+        safety_envelope_active: bool = False,
+    ) -> ExpertCommand:
+        action = self._action()
+        grippers = list(grippers_open)
+        if self.status != "running":
+            return ExpertCommand(action, grippers)
+        if safety_envelope_active:
+            self.pause("Research safety envelope reached. Inspect forces before resuming or take control.")
+            return ExpertCommand(action, grippers)
+        if not self.phase_anchor_tools:
+            self.phase_anchor_tools = {arm: value.copy() for arm, value in tool_positions.items()}
+        if self.object_anchor is None and object_position is not None:
+            self.object_anchor = np.asarray(object_position, dtype=np.float32).copy()
+        self.phase_ticks += 1
+        phase = self.phase
+        phase_changed = False
+        completed = False
+        primary = tool_positions.get(0)
+        base = self._phase_target(object_position)
+        if phase == "rest":
+            if self.has_grippers:
+                grippers = [True] * self.arms
+            if self.phase_ticks >= 12 and self.phase_elapsed_s >= 1.0:
+                completed = self._advance(tool_positions)
+                phase_changed = True
+        elif phase == "approach":
+            target = base + np.asarray((0.0, 0.0, 0.045), dtype=np.float32) if base is not None else None
+            distance = self._set_motion(action, 0, primary, target)
+            if self._reached_or_timeout(distance, 0.014, 120, "approach") and self.phase_elapsed_s >= 0.9:
+                completed = self._advance(tool_positions)
+                phase_changed = True
+        elif phase == "align":
+            target = base + np.asarray((0.0, 0.0, 0.014), dtype=np.float32) if base is not None else None
+            distance = self._set_motion(action, 0, primary, target, (0.0, 0.012, 0.0))
+            if self._reached_or_timeout(distance, 0.010, 100, "align") and self.phase_elapsed_s >= 0.9:
+                completed = self._advance(tool_positions)
+                phase_changed = True
+        elif phase == "contact":
+            distance = self._set_motion(action, 0, primary, base)
+            if self._reached_or_timeout(distance, 0.009, 100, "contact") and self.phase_elapsed_s >= 0.8:
+                completed = self._advance(tool_positions)
+                phase_changed = True
+        elif phase == "grasp":
+            if self.has_grippers:
+                grippers[0] = False
+            if self.phase_ticks >= 12 and self.phase_elapsed_s >= 0.9:
+                completed = self._advance(tool_positions)
+                phase_changed = True
+        elif phase == "manipulate":
+            if self._manipulate(action, tool_positions, object_position, grippers) and self.phase_elapsed_s >= 1.4:
+                completed = self._advance(tool_positions)
+                phase_changed = True
+        elif phase == "verify":
+            if self.guide_kind == "reposition" and self.has_grippers and self.phase_ticks >= 4:
+                grippers[0] = True
+            if self.phase_ticks >= 30 and self.phase_elapsed_s >= 1.4:
+                completed = self._advance(tool_positions)
+                phase_changed = True
+        elif phase == "recover":
+            arm = 1 if self.guide_kind in {"handover", "needle_pass"} and self.arms > 1 else 0
+            anchor = self.phase_anchor_tools.get(arm, tool_positions.get(arm))
+            target = anchor + np.asarray((0.015, 0.0, 0.030), dtype=np.float32) if anchor is not None else None
+            current = tool_positions.get(arm)
+            distance = self._set_motion(action, arm, current, target) if self.manipulation_step == 0 else None
+            displacement = float(np.linalg.norm(current - anchor)) if current is not None and anchor is not None else 0.0
+            if self.manipulation_step == 0 and (
+                displacement >= 0.025 or (distance is not None and distance <= 0.014)
+            ):
+                self.manipulation_step = 1
+                self.phase_ticks = 0
+                self.phase_started_at = time.monotonic()
+            elif self.manipulation_step == 0 and self.phase_ticks >= 120:
+                self.degraded_reasons.append(f"recover: bounded target timeout at {distance * 1000:.1f} mm" if distance is not None else "recover: target pose unavailable")
+                self.manipulation_step = 1
+                self.phase_ticks = 0
+                self.phase_started_at = time.monotonic()
+            elif self.manipulation_step == 1 and self.phase_ticks >= 24 and self.phase_elapsed_s >= 1.4:
+                completed = self._advance(tool_positions)
+                phase_changed = True
+        return ExpertCommand(action, grippers, phase_changed=phase_changed, completed=completed)

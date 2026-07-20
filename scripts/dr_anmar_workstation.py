@@ -90,6 +90,7 @@ from isaaclab_tasks.utils import parse_env_cfg
 import orbit.surgical.tasks  # noqa: F401
 
 from dr_anmar_procedure_mechanics import ProcedureMechanics
+from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
 from dr_anmar_soft_tissue import (
     NeedleTissueInteractionModel,
@@ -208,7 +209,19 @@ RESEARCH_ADVISORY_LIMITS = {
     "tissue_displacement_m": 0.015,
     "deformation_gradient_proxy": 0.50,
 }
-PROCEDURE_PHASES = {"setup": 0, "approach": 1, "grasp": 2, "manipulation": 3, "recovery": 4}
+PROCEDURE_PHASES = {
+    "setup": 0,
+    "rest": 0,
+    "approach": 1,
+    "align": 2,
+    "contact": 3,
+    "grasp": 4,
+    "manipulate": 5,
+    "manipulation": 5,
+    "verify": 6,
+    "recover": 7,
+    "recovery": 7,
+}
 PROCEDURE_EVENTS = {"none": 0, "target_visible": 1, "contact": 2, "grasp": 3, "task_complete": 4, "handoff": 5, "safety_review": 6}
 OPERATOR_INPUT_SOURCES = {
     "none": 0,
@@ -256,6 +269,7 @@ APP_HTML = r"""<!doctype html>
     .supervision{border-color:#356475;background:linear-gradient(135deg,#0d2731,#09171e)}.supervision-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.supervision-state b{color:var(--cyan)}.cue{min-height:32px;margin-top:9px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#9fc0c9;font-size:11px}.take-control{width:100%;margin-top:8px;background:#ffd978;color:#251b02;border-color:#ffd978}
     .safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.safety-metric{padding:8px;background:#061219;border:1px solid #1c3742}.safety-metric b{display:block;color:var(--green);font:15px ui-monospace,monospace}.safety-metric span{color:var(--muted);font-size:9px}.ghost-state{margin-top:8px;color:var(--muted);font-size:11px}.ghost-state.on{color:var(--green)}
     .control-dock{position:relative;margin:2px 0 18px;padding:42px 13px 4px;border:2px solid var(--cyan);border-radius:13px;background:linear-gradient(145deg,#0d2630,#08151c 68%);box-shadow:0 0 0 1px #2cd2e829,0 0 24px #2cd2e820}.control-dock:before{content:"INSTRUMENT CONTROL";position:absolute;left:14px;top:12px;color:var(--cyan);font:900 13px/1 ui-sans-serif,system-ui;letter-spacing:.15em}.control-dock:after{content:"LIVE";position:absolute;right:14px;top:9px;padding:4px 7px;border-radius:99px;background:#123a32;color:var(--green);font:900 9px/1 ui-monospace,monospace;letter-spacing:.12em}.control-dock h2{color:#d7f9fc;margin-top:8px}.control-dock .card{border-color:#356675;background:#07151c;margin-bottom:10px}.control-dock .move-button{min-height:62px;border-width:2px;border-color:#3d6d7b;font-size:14px}.control-dock .stop-center{border-width:2px}.control-dock #gripperPanel .primary{box-shadow:0 0 18px #2cd2e82e}.control-dock .hint{font-size:10px}
+    .expert-demo{margin:2px 0 14px;padding:13px;border:1px solid #557586;border-radius:12px;background:linear-gradient(145deg,#102a35,#07151d 72%);box-shadow:0 0 24px #2cd2e81c}.expert-head{display:flex;align-items:start;justify-content:space-between;gap:10px}.expert-head .eyebrow{color:var(--cyan);font:900 10px/1 ui-monospace,SFMono-Regular,Menlo;letter-spacing:.13em}.expert-head b{display:block;margin-top:5px;font-size:15px}.expert-status{padding:4px 7px;border:1px solid #365867;border-radius:99px;color:#a8c0c8;font:800 9px/1 ui-monospace,monospace;text-transform:uppercase}.expert-status.running{border-color:var(--green);color:var(--green)}.expert-status.paused{border-color:#ffd978;color:#ffd978}.expert-rail{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:11px 0}.expert-phase{min-width:0;padding:7px 3px;border:1px solid #203f4b;background:#071219;color:#6f8b95;text-align:center;font:800 8px/1 ui-monospace,monospace;text-transform:uppercase}.expert-phase.complete{border-color:#2d725c;color:var(--green);background:#0a251f}.expert-phase.active{border-color:var(--cyan);color:#eaffff;background:#103a48;box-shadow:0 0 12px #2cd2e82b}.expert-instruction{min-height:42px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#b7cbd1;font-size:10px}.expert-actions{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:6px;margin-top:9px}.expert-actions button{min-height:43px;font-size:10px}.expert-meta{display:flex;justify-content:space-between;gap:10px;margin-top:8px;color:#718d97;font:9px/1.4 ui-monospace,monospace}.expert-meta .ready{color:var(--green)}
     kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 6px;border:1px solid #567482;border-bottom-width:2px;border-radius:5px;background:#09141a;color:#dffbff;font:800 10px/1 ui-monospace,SFMono-Regular,Menlo;white-space:nowrap}.header-keyboard{min-height:32px;margin-left:4px;padding:0 10px;background:#10252e;color:#cfe7eb;font-size:11px}.header-keyboard kbd{margin-right:5px}.keyboard-quick{margin:0 0 11px;padding:11px;border:1px solid #46788a;border-radius:10px;background:linear-gradient(135deg,#0b222c,#07151c)}.keyboard-quick-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.keyboard-quick-head b{color:var(--cyan);font-size:11px;letter-spacing:.12em}.keyboard-quick-head span{color:var(--muted);font-size:9px}.keyboard-input-display{display:flex;align-items:center;gap:8px;min-height:35px;margin-bottom:8px;padding:6px 8px;border:1px solid #284d5b;border-radius:7px;background:#061219;color:#9eb7bf;font-size:10px}.keyboard-input-display kbd{min-width:48px;color:var(--green);border-color:#3b7a67}.keyboard-input-display.active{border-color:var(--green);box-shadow:inset 0 0 14px #42e49b16}.keyboard-input-display.active span{color:#e5ffff}.smart-action{width:100%;min-height:48px;margin-bottom:8px;background:linear-gradient(90deg,var(--cyan),#5ee8ca);border-color:#8ff7f5;color:#031014;text-align:left;padding:8px 11px;box-shadow:0 0 18px #2cd2e829}.smart-action strong{display:block;font-size:13px}.smart-action small{display:block;color:#174851;margin-top:2px}.combo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.combo-button{min-height:42px;padding:5px;border-color:#315a69;background:#0c2029;font-size:9px;line-height:1.15}.combo-button kbd{display:flex;width:max-content;margin:0 auto 3px}.combo-button.held{background:var(--cyan);color:#031014;box-shadow:0 0 15px #2cd2e855}.combo-button.held kbd{border-color:#174851;background:#d9fbff;color:#031014}.modifier-row{display:flex;gap:6px;margin-top:7px}.modifier-chip{flex:1;padding:5px 6px;border:1px solid #244653;border-radius:6px;color:#89a8b3;font-size:9px;text-align:center}.modifier-chip.active{border-color:var(--green);color:var(--green);background:#0b2b25}.keyboard-coverage{margin-top:7px;color:var(--green);font:9px/1.4 ui-monospace,SFMono-Regular,Menlo}.keyboard-coverage.bad{color:var(--red)}button.key-active,button.state-active{border-color:var(--green)!important;box-shadow:0 0 0 2px #42e49b66,0 0 22px #42e49b45!important;background:#174a42!important;color:#efffff!important}button.key-active kbd,button.state-active kbd{border-color:#9bffe0;background:#dcfff5;color:#09281f}.smart-action.key-active{background:linear-gradient(90deg,#8bffe0,#edff9d)!important;color:#041a13!important;transform:scale(1.015)}
     .keyboard-help{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:24px;background:#02080dd9;backdrop-filter:blur(7px)}.keyboard-help.hidden{display:none}.keyboard-help-panel{width:min(940px,96vw);max-height:90vh;overflow:auto;border:1px solid #4c7c8d;border-radius:14px;background:#09171e;box-shadow:0 24px 90px #000;padding:18px}.keyboard-help-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}.keyboard-help-head h1{margin:0;color:#e7fbfd;font-size:21px}.keyboard-help-head p{margin:3px 0 0;color:var(--muted);font-size:11px}.keyboard-help-head button{min-height:36px;padding:0 12px}.shortcut-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.shortcut-group{padding:12px;border:1px solid #203e49;border-radius:9px;background:#071219}.shortcut-group h3{margin:0 0 8px;color:var(--cyan);font-size:11px;letter-spacing:.11em}.shortcut-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid #152c35;color:#bdd1d7;font-size:10px}.shortcut-line:first-of-type{border-top:0}.shortcut-line span{text-align:right}.shortcut-group.wide{grid-column:span 3}.shortcut-group.wide .shortcut-list{display:grid;grid-template-columns:repeat(3,1fr);gap:0 14px}
     #toast{position:fixed;left:50%;bottom:20px;translate:-50% 20px;opacity:0;background:#e9f8fa;color:#061116;border-radius:8px;padding:10px 15px;font-weight:750;transition:.2s;pointer-events:none}#toast.show{opacity:1;translate:-50% 0}
@@ -268,6 +282,7 @@ APP_HTML = r"""<!doctype html>
 <main>
   <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div class="hud"><strong id="cameraLabel">STEREO ENDOSCOPE · LEFT</strong><br><span id="hud">Waiting for Isaac Lab…</span></div><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div><div id="proximity" class="proximity"><b>Tool guidance</b><span>Acquiring target…</span></div><div id="procedureSensor" class="procedure-sensor hidden"></div><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="3" onclick="setCamera('endoscope_left',this)">Stereo left <kbd>3</kbd></button><button data-camera="endoscope_right" data-shortcut="4" onclick="setCamera('endoscope_right',this)">Stereo right <kbd>4</kbd></button><button data-camera="wrist_1" data-shortcut="5" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>5</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="6" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>6</kbd></button></div><div class="view-presets"><button class="active" data-view-mode="operative" data-shortcut="7" onclick="setCameraView('operative',this)">Operative <kbd>7</kbd></button><button data-view-mode="close" data-shortcut="8" onclick="setCameraView('close',this)">Close <kbd>8</kbd></button><button data-view-mode="overview" data-shortcut="9" onclick="setCameraView('overview',this)">Overview <kbd>9</kbd></button></div></section>
   <aside>
+    <section id="expertDemo" class="expert-demo"><div class="expert-head"><div><div class="eyebrow">EXECUTABLE TEACHING</div><b>Watch the robot perform this room</b></div><span id="expertStatus" class="expert-status">READY</span></div><div id="expertRail" class="expert-rail"></div><div id="expertInstruction" class="expert-instruction">The expert executes the full procedure in the live simulation. Pause at any phase, inspect the views and forces, or take control from the current pose.</div><div class="expert-actions"><button id="expertStart" class="primary" data-shortcut="L" onclick="startExpert()">Watch expert <kbd>L</kbd></button><button id="expertPause" data-shortcut="I" onclick="toggleExpertPause()" disabled>Pause <kbd>I</kbd></button><button id="expertTakeover" data-shortcut="Esc" onclick="takeControl()" disabled>Take control <kbd>Esc</kbd></button></div><div class="expert-meta"><span id="expertProgress">8 teachable phases</span><span id="expertReference">BC reference captured on completion</span></div></section>
     <section class="control-dock">
       <div class="keyboard-quick"><div class="keyboard-quick-head"><b>SMART KEYBOARD</b><span>Hold = move · release = stop</span></div><div id="keyActionDisplay" class="keyboard-input-display" aria-live="polite"><kbd>READY</kbd><span>Keyboard control ready</span></div><button id="smartActionButton" class="smart-action" data-shortcut="Enter" onclick="smartAction()"><strong><kbd>Enter</kbd> Smart action</strong><small id="smartActionLabel">Nudge toward the target</small></button><div class="combo-grid">
         <button class="combo-button" data-combo-key="KeyZ" data-shortcut="Z"><kbd>Z</kbd>Orbit left</button><button class="combo-button" data-combo-key="KeyX" data-shortcut="X"><kbd>X</kbd>Orbit right</button><button class="combo-button" data-combo-key="KeyV" data-shortcut="V"><kbd>V</kbd>Drive needle</button>
@@ -304,7 +319,7 @@ APP_HTML = r"""<!doctype html>
   <div class="shortcut-group"><h3>SMART ACTION</h3><div class="shortcut-line"><kbd>Enter</kbd><span>Approach → grasp → lift</span></div><div class="shortcut-line"><kbd>Z / X</kbd><span>Orbit left / right</span></div><div class="shortcut-line"><kbd>V / B</kbd><span>Drive / reverse needle</span></div><div class="shortcut-line"><kbd>N</kbd><span>Lift + retract</span></div><div class="shortcut-line"><kbd>K</kbd><span>Lower + approach</span></div></div>
   <div class="shortcut-group"><h3>ROBOT + SPEED</h3><div class="shortcut-line"><kbd>1 / 2</kbd><span>Instrument 1 / 2</span></div><div class="shortcut-line"><kbd>,</kbd><span>Precision speed</span></div><div class="shortcut-line"><kbd>.</kbd><span>Normal speed</span></div><div class="shortcut-line"><kbd>/</kbd><span>Fast speed</span></div><div class="shortcut-line"><kbd>M / G</kbd><span>Manual / guided</span></div></div>
   <div class="shortcut-group"><h3>CAMERAS</h3><div class="shortcut-line"><kbd>3 / 4</kbd><span>Stereo left / right</span></div><div class="shortcut-line"><kbd>5 / 6</kbd><span>Wrist 1 / 2</span></div><div class="shortcut-line"><kbd>7 / 8 / 9</kbd><span>Operative / close / overview</span></div><div class="shortcut-line"><kbd>C</kbd><span>Next camera sensor</span></div><div class="shortcut-line"><kbd>⇧C</kbd><span>Next camera view</span></div></div>
-  <div class="shortcut-group"><h3>SESSION</h3><div class="shortcut-line"><kbd>Y / U</kbd><span>Start / stop + save</span></div><div class="shortcut-line"><kbd>J</kbd><span>Replay last</span></div><div class="shortcut-line"><kbd>Delete</kbd><span>Reset scene</span></div><div class="shortcut-line"><kbd>H</kbd><span>Toggle clinician path</span></div><div class="shortcut-line"><kbd>?</kbd><span>Toggle this map</span></div></div>
+  <div class="shortcut-group"><h3>EXPERT + SESSION</h3><div class="shortcut-line"><kbd>L</kbd><span>Run live expert</span></div><div class="shortcut-line"><kbd>I</kbd><span>Pause / resume expert</span></div><div class="shortcut-line"><kbd>Esc</kbd><span>Take control at current pose</span></div><div class="shortcut-line"><kbd>Y / U</kbd><span>Start / stop + save</span></div><div class="shortcut-line"><kbd>J / H</kbd><span>Replay / path guide</span></div></div>
   <div class="shortcut-group wide"><h3>PROCEDURE ANNOTATIONS</h3><div class="shortcut-list"><div class="shortcut-line"><kbd>⇧1</kbd><span>Approach</span></div><div class="shortcut-line"><kbd>⇧2</kbd><span>Grasp</span></div><div class="shortcut-line"><kbd>⇧3</kbd><span>Manipulate</span></div><div class="shortcut-line"><kbd>⇧4</kbd><span>Recovery</span></div><div class="shortcut-line"><kbd>⇧5</kbd><span>Task event</span></div><div class="shortcut-line"><kbd>⇧6</kbd><span>Safety event</span></div></div></div>
 </div></div></div><div id="toast"></div>
 <script>
@@ -352,6 +367,9 @@ async function annotateEvent(event){try{const x=await post('/api/annotation',{ev
 async function resetScene(){try{await post('/api/reset');toast('Scene reset')}catch(e){toast(e.message)}}
 async function setAutonomy(mode){try{const x=await post('/api/autonomy',{mode});toast(x.message)}catch(e){toast(e.message)}}
 async function takeControl(){stopDrive(false);try{const x=await post('/api/handoff');toast(x.message)}catch(e){toast(e.message)}}
+async function startExpert(){try{const x=await post('/api/expert/start');toast(x.message)}catch(e){toast(e.message)}}
+async function toggleExpertPause(){const status=latestStatus?.expert_demonstration?.status;try{const x=await post(status==='paused'?'/api/expert/resume':'/api/expert/pause');toast(x.message)}catch(e){toast(e.message)}}
+function renderExpert(expert={}){const phases=expert.phases||['rest','approach','align','contact','grasp','manipulate','verify','recover'].map(id=>({id,title:id,status:'pending'})),status=expert.status||'idle',active=status==='running'||status==='paused';document.getElementById('expertRail').innerHTML=phases.map(phase=>`<div class="expert-phase ${phase.status||'pending'}" title="${phase.instruction||phase.title}">${phase.title}</div>`).join('');const current=phases.find(phase=>phase.id===expert.phase),statusLabel={idle:'ready',running:'executing',paused:'paused',completed:'complete',taken_over:'doctor control',cancelled:'cancelled'}[status]||status.replaceAll('_',' '),badge=document.getElementById('expertStatus');badge.textContent=statusLabel;badge.className=`expert-status ${status}`;document.getElementById('expertInstruction').textContent=status==='paused'?(expert.paused_reason||current?.instruction||'Paused for inspection.'):status==='taken_over'?`You took control during ${expert.takeover_phase||'the procedure'}. The simulation pose and recording were preserved.`:status==='completed'?'All eight phases completed in the live room. Review the generated trajectory before using it for research.':(current?.instruction||'The expert executes the full procedure in the live simulation. Pause, inspect, or take control at any phase.');document.getElementById('expertStart').disabled=active;const pause=document.getElementById('expertPause');pause.disabled=!active;pause.innerHTML=status==='paused'?'Resume <kbd>I</kbd>':'Pause <kbd>I</kbd>';document.getElementById('expertTakeover').disabled=!active;document.getElementById('expertProgress').textContent=`${expert.completed_phases?.length||0}/8 phases · ${expert.progress_percent||0}%`;const reference=document.getElementById('expertReference');reference.textContent=expert.reference_demo?'Simulation expert reference saved':active?'Recording synchronized BC candidate':'BC candidate saved after a complete run';reference.classList.toggle('ready',!!expert.reference_demo)}
 function toggleReferenceGhost(){referenceGhost(!latestStatus?.reference_ghost?.enabled)}
 function toggleKeyboardHelp(force){const help=document.getElementById('keyboardHelp'),show=force??help.classList.contains('hidden');help.classList.toggle('hidden',!show);if(show)stopDrive(false)}
 function auditKeyboardCoverage(){const buttons=[...document.querySelectorAll('button')],missing=buttons.filter(button=>!button.dataset.shortcut);const coverage=document.getElementById('keyboardCoverage');coverage.classList.toggle('bad',missing.length>0);coverage.textContent=missing.length?`${buttons.length-missing.length}/${buttons.length} controls mapped · ${missing.length} missing`:`✓ ${buttons.length}/${buttons.length} controls mapped to keyboard`;if(missing.length)console.warn('Buttons missing keyboard shortcuts',missing)}
@@ -368,7 +386,7 @@ function handleDiscreteShortcut(event){const {code}=event;if(code==='Slash'&&eve
   Digit1:['1','Instrument 1',()=>setArm(0)],Digit2:['2','Instrument 2',()=>setArm(1)],Space:['Space','Toggle gripper',()=>toggleGrip()],Enter:null,Escape:null,
   KeyO:['O','Open jaws',()=>grip(true)],KeyP:['P','Close / grasp',()=>grip(false)],KeyC:[event.shiftKey?'⇧C':'C',event.shiftKey?'Next camera view':'Next camera sensor',()=>event.shiftKey?cycleCameraView():cycleSensorCamera()],
   Comma:[',','Precision speed',()=>setSpeedShortcut(.35)],Period:['.','Normal speed',()=>setSpeedShortcut(1)],Slash:['/','Fast speed',()=>setSpeedShortcut(1.7)],
-  KeyM:['M','Manual control',()=>setAutonomy('manual')],KeyG:['G','Guided control',()=>setAutonomy('guided')],KeyH:['H','Toggle clinician path',()=>toggleReferenceGhost()],
+  KeyM:['M','Manual control',()=>setAutonomy('manual')],KeyG:['G','Guided control',()=>setAutonomy('guided')],KeyH:['H','Toggle clinician path',()=>toggleReferenceGhost()],KeyL:['L','Run live expert',()=>startExpert()],KeyI:['I','Pause or resume expert',()=>toggleExpertPause()],
   KeyY:['Y','Start recording',()=>recording(true)],KeyU:['U','Stop and save',()=>recording(false)],KeyJ:['J','Replay last',()=>replay()],Delete:['Delete','Reset scene',()=>resetScene()]
 };if(code==='Enter'){if(!event.repeat)smartAction();return true}if(code==='Escape'){if(!event.repeat)emergencyStop();return true}const command=commands[code];if(!command)return false;if(!event.repeat)runShortcut(...command);return true}
 document.addEventListener('keydown',event=>{if(isTypingTarget(event.target)||event.metaKey||event.ctrlKey)return;const helpOpen=!document.getElementById('keyboardHelp').classList.contains('hidden');if(helpOpen&&event.code!=='Slash'&&event.code!=='Escape'){event.preventDefault();return}if(event.code==='ShiftLeft'||event.code==='ShiftRight'){heldModifiers.add('fast');showKeyAction('⇧','Fast clutch',true);syncKeyVisuals();if(driveWasActive)updateDrive();return}if(event.code==='AltLeft'||event.code==='AltRight'){event.preventDefault();heldModifiers.add('precision');showKeyAction('⌥','Precision clutch',true);syncKeyVisuals();if(driveWasActive)updateDrive();return}if(handleDiscreteShortcut(event)){event.preventDefault();if(event.code==='Escape'&&helpOpen)toggleKeyboardHelp(false);return}if(!keyMap[event.code]&&!comboMap[event.code])return;event.preventDefault();if(!event.repeat&&!heldKeys.has(event.code))keyDownAt.set(event.code,performance.now());if(event.shiftKey)heldModifiers.add('fast');if(event.altKey)heldModifiers.add('precision');inputSource='keyboard_pointer';heldKeys.add(event.code);updateDrive();showKeyAction(event.key.length===1?event.key.toUpperCase():event.key,activeDriveLabel(),true)});
@@ -383,7 +401,7 @@ async function refresh(){try{
   currentViewMode=s.camera_view_mode||currentViewMode;document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===currentViewMode));
   const grip=s.has_grippers?(s.grippers_open[activeArm]?' · GRIPPER OPEN':' · GRIPPER CLOSED'):'',moving=s.drive_active?' · MOVING':'';document.getElementById('hud').innerHTML=`<strong>${s.anatomy_showcase||'SURGICAL WORKSPACE'}</strong><br>${s.camera_width}×${s.camera_height} · ${s.render_fps.toFixed(1)} FPS · ${currentViewMode.toUpperCase()}<br>${p.title||s.scenario_title}${grip}${moving}`;document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record').classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[activeArm]===true);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[activeArm]===false);
   const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m,tipClearance=s.needle_tip_clearance_m,depth=s.needle_penetration_depth_m||0,thread=s.mechanics?.thread||{},cut=s.mechanics?.cut||{},tissue=s.mechanics?.tissue||{},tube=s.mechanics?.tube||{},closure=s.mechanics?.closure||{},vascular=s.mechanics?.vascular||{},ultrasound=s.mechanics?.ultrasound||{},dissection=s.mechanics?.dissection||{},recovery=s.mechanics?.recovery||{};proximity.className='proximity';let guidance='Move toward the target';if(tube.active){guidance=tube.buckled?`Shunt buckling · withdraw and realign`:tube.placement_verified?'Shunt placement verified · stable and patent':`Shunt ${Math.round((tube.insertion_depth_m||0)*1000)}/${Math.round((tube.target_depth_m||0)*1000)} mm · hold ${Number(tube.stable_time_s||0).toFixed(1)} s`;proximity.classList.add(tube.buckled?'puncture':tube.placement_verified?'held':'near')}else if(vascular.active&&vascular.mode==='hemostasis'){guidance=vascular.definitive_control?`Control placed · hold ${Number(vascular.stable_control_time_s||0).toFixed(1)} s for rebleed check`:`Bleed ${Math.round(vascular.bleed_rate_proxy_ml_min||0)} mL/min proxy · localize then close`;proximity.classList.add(vascular.controlled?'held':'puncture')}else if(ultrasound.active){guidance=activeArm===0?`Probe hold ${Number(ultrasound.probe_stable_time_s||0).toFixed(1)} s · confidence ${Math.round((ultrasound.target_confidence||0)*100)}%`:`Needle target ${Math.round((ultrasound.target_error_m||0)*1000)} mm · visibility ${Math.round((ultrasound.needle_visibility||0)*100)}%`;proximity.classList.add(ultrasound.target_contact?'held':'near')}else if(closure.throw_count){guidance=`Knot throws ${closure.throw_count}/${closure.target_throws} · alternate hand crossing`;proximity.classList.add(closure.slippage_proxy<=.35?'held':'near')}else if(thread.knot_formed){guidance=`Knot cinched ${Math.round((thread.knot_tightness||0)*100)}% · tension ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(cut.active){guidance=`Cutting live · ${Math.round((cut.length_m||0)*1000)} mm · ${cut.faces_removed||0} faces opened`;proximity.classList.add('puncture')}else if(s.needle_puncture_active){guidance=`Needle inserted ${Math.round(depth*1000)} mm · thread ${Number(thread.tension_n||0).toFixed(2)} N`;proximity.classList.add('puncture')}else if(tissue.recovering){guidance=`Tissue recovering · peak ${Math.round((tissue.max_displacement_m||0)*1000)} mm`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]&&tipClearance!==null&&tipClearance!==undefined&&tipClearance<=.006){guidance=`Needle tip ${Math.max(0,Math.round(tipClearance*1000))} mm from tissue · advance gently`;proximity.classList.add('near')}else if(s.assisted_grasp_active?.[activeArm]){guidance=tissue.active?`Object held · deforming surface ${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'Object held · Space releases';proximity.classList.add('held')}else if(s.virtual_fixture_active){guidance='Instrument boundary · tangential motion only';proximity.classList.add('guard')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){const direction=targetDirections(offset);guidance=`Target ${Math.round(distance*1000)} mm · ${direction||'hold course'}${s.adaptive_precision_active?' · auto precision':''}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Tool guidance</b><span>${guidance}</span>`;const sensor=document.getElementById('procedureSensor'),rows=[];if(tube.active)rows.push(`<b>SHUNT INSERTION</b><strong>${Math.round((tube.insertion_depth_m||0)*1000)} mm</strong> depth · ${Number(tube.wall_load_proxy_n||0).toFixed(2)} N wall load<br><span class="${tube.buckled?'warn':'ok'}">${tube.buckled?'BUCKLING — WITHDRAW':tube.placement_verified?'PLACEMENT VERIFIED':'PATENCY '+Math.round(tube.patency_percent||0)+'% · HOLD '+Number(tube.stable_time_s||0).toFixed(1)+' s'}</span>`);if(closure.active)rows.push(`<b>${closure.mode==='knot_tying'?'KNOT SECURITY':'CLOSURE QUALITY'}</b>${closure.mode==='knot_tying'?`<strong>${closure.throw_count||0}/${closure.target_throws||0}</strong> alternating throws · slippage ${Math.round((closure.slippage_proxy||0)*100)}%`:`<strong>${closure.stitch_count||0}/${closure.target_stitches||0}</strong> stitches · gap ${Number((closure.closure_gap_m||0)*1000).toFixed(1)} mm<br>spacing variation ${Number((closure.spacing_variation_m||0)*1000).toFixed(1)} mm · leak ${Math.round(closure.leak_rate_proxy_ml_min||0)} mL/min proxy`}`);if(vascular.active)rows.push(`<b>${vascular.mode==='hemostasis'?'HEMOSTASIS':'VASCULAR CONTROL'}</b>${vascular.mode==='hemostasis'?`<strong>${Math.round(vascular.bleed_rate_proxy_ml_min||0)}</strong> mL/min proxy · ${vascular.definitive_control?'definitive control placed':'temporary control'}`:`<strong>${vascular.clips_placed||0}/2</strong> clips · flow ${Math.round(vascular.residual_flow_percent||0)}% · violations ${vascular.protected_violations||0}`}`);if(ultrasound.active)rows.push(`<b>BIMANUAL PROCEDURAL B-MODE</b>probe confidence <strong>${Math.round((ultrasound.target_confidence||0)*100)}%</strong> · needle visibility ${Math.round((ultrasound.needle_visibility||0)*100)}%<br>needle error ${Number((ultrasound.target_error_m||0)*1000).toFixed(1)} mm · vessel clearance ${Number((ultrasound.protected_clearance_m||0)*1000).toFixed(1)} mm · contacts ${ultrasound.protected_contacts||0}`);if(dissection.active)rows.push(`<b>${dissection.mode==='biopsy'?'EXCISION':'DISSECTION PLANE'}</b><strong>${Math.round((dissection.plane_progress||0)*100)}%</strong> complete · ${dissection.faces_separated||0} faces separated<br>protected clearance ${Number((dissection.protected_clearance_m||0)*1000).toFixed(1)} mm · ${dissection.protected_contact?'CONTACT':'clear'}`);if(recovery.active)rows.push(`<b>RECOVERY STATE</b>${recovery.failure_injected?'challenge '+recovery.failure_id:'baseline'} · reacquired <strong>${recovery.object_reacquired?'YES':'NO'}</strong><br>recovery ${Math.round((recovery.recovery_progress||0)*100)}%`);sensor.innerHTML=rows.join('<br>');sensor.classList.toggle('hidden',!rows.length);const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],assisted=s.assisted_grasp_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':assisted?(tube.active?'Advance the secured shunt':'Lift and retract the secured object'):'Open jaws and retry';
-  const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);
+  const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderExpert(s.expert_demonstration);
   const ghost=document.getElementById('ghostState');ghost.classList.toggle('on',!!s.reference_ghost?.enabled);ghost.textContent=s.reference_ghost?.enabled?`${s.reference_ghost.point_count} registered path points · ${s.reference_ghost.reference}`:'Clinician path hidden';document.getElementById('status').innerHTML=`Task<br><b>${s.task}</b><br>Procedure: ${p.title||'Free practice'}<br>Anatomy: ${s.anatomy_showcase||'—'}<br>Scenario: ${s.scenario_title}<br>Robots: ${s.robot_names.join(', ')}<br>Autonomy: ${labels[s.autonomy_mode]||s.autonomy_mode}<br>Phase: ${s.operator_study.procedure_phase}<br>Input: ${s.operator_study.input_source}<br>Annotations: ${s.operator_study.annotation_count}<br>Interventions: ${s.intervention_count}<br>Simulation: ${s.sim_fps.toFixed(1)} Hz<br>Controls: ${s.drive_active?'moving':'ready'}<br>Instrument guard: ${s.virtual_fixture_enabled?'on':'off'}<br>Thread: ${thread.active?`${Number(thread.tension_n||0).toFixed(2)} N · ${thread.tissue_anchors||0} pins`:'—'}<br>Cut: ${cut.faces_removed?`${Math.round((cut.length_m||0)*1000)} mm · r${cut.topology_revision}`:'—'}<br>Tissue: ${tissue.active?`${Math.round((tissue.max_displacement_m||0)*1000)} mm`:'—'}<br>Recorded frames: ${s.recorded_frames}<br>Replay: ${s.replaying?'running':'idle'}`;if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
 }catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
 auditKeyboardCoverage();setInterval(updateDrive,90);setInterval(refresh,500);setInterval(()=>post('/api/operator/heartbeat').catch(()=>{}),10000);refresh();
@@ -511,6 +529,11 @@ class SharedState:
     last_demo: str | None = None
     replay_request: str | None = None
     replaying: bool = False
+    expert_request: str | None = None
+    expert_demonstration: dict[str, Any] = field(default_factory=dict)
+    expert_reference_pending: bool = False
+    expert_reference_demo: str | None = None
+    expert_clean_run: bool = False
     scenario_id: str = "baseline"
     scenario_seed: int = 7777
     autonomy_mode: str = "manual"
@@ -665,6 +688,7 @@ class SharedState:
                 "runtime_provenance": self.runtime_provenance,
                 "last_demo": self.last_demo,
                 "replaying": self.replaying,
+                "expert_demonstration": self.expert_demonstration,
                 "scenario_id": self.scenario_id,
                 "scenario_seed": self.scenario_seed,
                 "scenario_title": SCENARIOS_BY_ID[self.scenario_id]["title"],
@@ -709,7 +733,9 @@ class SharedState:
                     "procedure_phase": self.procedure_phase,
                     "annotation_count": len(self.procedure_events),
                 },
-                "drive_active": self.drive_until > time.monotonic() and bool(np.any(self.drive)),
+                "drive_active": (
+                    self.drive_until > time.monotonic() and bool(np.any(self.drive))
+                ) or self.expert_demonstration.get("status") == "running",
             }
 
     def _procedure_status(self) -> dict[str, Any]:
@@ -948,6 +974,9 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.operator_input_source = request.source
             state.drive_until = time.monotonic() + hold_seconds if active else 0.0
             if active:
+                if state.expert_demonstration.get("status") in {"running", "paused"}:
+                    state.expert_request = "take_over"
+                    state.expert_clean_run = False
                 if state.replaying or state.autonomy_mode == "supervised_replay":
                     state.intervention_count += 1
                     state.replaying = False
@@ -977,6 +1006,9 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.drive.fill(0.0)
             state.drive_until = 0.0
             state.replay_request = "stop"
+            if state.expert_demonstration.get("status") in {"running", "paused"}:
+                state.expert_request = "take_over"
+                state.expert_clean_run = False
         state.wake_event.set()
         return {"ok": True}
 
@@ -997,6 +1029,9 @@ def build_web_app(state: SharedState) -> FastAPI:
         if request.arm not in range(state.arms):
             raise HTTPException(400, f"arm must be between 0 and {state.arms - 1}")
         with state.lock:
+            if state.expert_demonstration.get("status") in {"running", "paused"}:
+                state.expert_request = "take_over"
+                state.expert_clean_run = False
             state.grippers_open[request.arm] = request.open
         state.wake_event.set()
         return {"ok": True, "open": request.open, "arm": request.arm}
@@ -1008,6 +1043,9 @@ def build_web_app(state: SharedState) -> FastAPI:
         if request.arm not in range(state.arms):
             raise HTTPException(400, f"arm must be between 0 and {state.arms - 1}")
         with state.lock:
+            if state.expert_demonstration.get("status") in {"running", "paused"}:
+                state.expert_request = "take_over"
+                state.expert_clean_run = False
             state.grippers_open[request.arm] = not state.grippers_open[request.arm]
             is_open = state.grippers_open[request.arm]
         state.wake_event.set()
@@ -1020,6 +1058,8 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.drive.fill(0.0)
             state.drive_until = 0.0
             state.replay_request = "stop"
+            state.expert_request = "cancel"
+            state.expert_clean_run = False
             state.grippers_open = [True] * state.arms
         state.wake_event.set()
         return {"ok": True}
@@ -1091,6 +1131,9 @@ def build_web_app(state: SharedState) -> FastAPI:
         if request.mode not in {"manual", "guided"}:
             raise HTTPException(400, "Choose manual or guided control")
         with state.lock:
+            if state.expert_demonstration.get("status") in {"running", "paused"}:
+                state.expert_request = "take_over"
+                state.expert_clean_run = False
             state.autonomy_mode = request.mode
             state.coaching_cue = (
                 "Dr.Anmar will surface movement cues while you retain full control."
@@ -1102,11 +1145,15 @@ def build_web_app(state: SharedState) -> FastAPI:
     @app.post("/api/handoff")
     def handoff() -> dict[str, Any]:
         with state.lock:
-            was_automatic = state.replaying or state.autonomy_mode == "supervised_replay"
+            expert_active = state.expert_demonstration.get("status") in {"running", "paused"}
+            was_automatic = state.replaying or state.autonomy_mode in {"supervised_replay", "expert_demonstration"}
             if was_automatic:
                 state.intervention_count += 1
             state.replay_request = "stop"
             state.replaying = False
+            if expert_active:
+                state.expert_request = "take_over"
+                state.expert_clean_run = False
             state.autonomy_mode = "manual"
             state.operator_input_source = "keyboard_pointer"
             state.drive.fill(0.0)
@@ -1117,6 +1164,51 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.coaching_cue = "Control returned to the doctor. The intervention is recorded in this session."
         state.wake_event.set()
         return {"ok": True, "intervention_recorded": was_automatic, "message": "Manual control restored immediately"}
+
+    @app.post("/api/expert/start")
+    def expert_start() -> dict[str, Any]:
+        with state.lock:
+            if not state.procedure:
+                raise HTTPException(409, "Load a procedure room before starting its expert demonstration")
+            if state.recording or state.record_request == "start":
+                raise HTTPException(409, "Stop the current recording before starting the expert")
+            if state.replaying or state.evaluation_status in {"running", "saving"}:
+                raise HTTPException(409, "Stop replay or evaluation before starting the expert")
+            if state.expert_demonstration.get("status") in {"running", "paused"}:
+                raise HTTPException(409, "The expert demonstration is already active")
+            state.reset_requested = True
+            state.record_request = "start"
+            state.expert_request = "start"
+            state.expert_reference_pending = False
+            state.expert_clean_run = True
+            state.intervention_count = 0
+            state.autonomy_mode = "expert_demonstration"
+            state.operator_input_source = "automation_policy"
+            state.coaching_cue = "Expert demonstration starting from the neutral pose. Pause or take control at any phase."
+        state.wake_event.set()
+        return {"ok": True, "message": "Live expert demonstration starting", "phases": list(EXPERT_PHASES)}
+
+    @app.post("/api/expert/pause")
+    def expert_pause() -> dict[str, Any]:
+        with state.lock:
+            if state.expert_demonstration.get("status") != "running":
+                raise HTTPException(409, "The expert demonstration is not running")
+            state.expert_request = "pause"
+        state.wake_event.set()
+        return {"ok": True, "message": "Expert paused; simulator state is preserved"}
+
+    @app.post("/api/expert/resume")
+    def expert_resume() -> dict[str, Any]:
+        with state.lock:
+            if state.expert_demonstration.get("status") != "paused":
+                raise HTTPException(409, "The expert demonstration is not paused")
+            state.expert_request = "resume"
+        state.wake_event.set()
+        return {"ok": True, "message": "Expert demonstration resumed"}
+
+    @app.post("/api/expert/take-control")
+    def expert_take_control() -> dict[str, Any]:
+        return handoff()
 
     @app.post("/api/record/start")
     def record_start() -> dict[str, bool]:
@@ -2178,6 +2270,11 @@ def save_demo(
             "anatomy_scene_id": state.anatomy_scene_id,
             "anatomy_asset": state.anatomy_asset,
             "final_mechanics": json.loads(json.dumps(state.mechanics)),
+            "expert_demonstration": json.loads(json.dumps(state.expert_demonstration)),
+            "expert_controller": EXPERT_CONTROLLER_VERSION if state.expert_demonstration else None,
+            "behavior_cloning_reference_candidate": bool(state.expert_clean_run),
+            "reference_origin": "simulation_expert" if state.expert_clean_run else "operator_demonstration",
+            "reference_review_status": "pending_clinician_review" if state.expert_clean_run else "not_applicable",
         }
         procedure_annotations = list(state.procedure_events)
         camera_intrinsics = state.camera_intrinsics
@@ -3376,6 +3473,15 @@ def main() -> None:
         sensor_profile=args_cli.sensor_profile,
     )
     state.camera_names = list(camera_sources)
+    expert_controller = ExpertDemonstrationController(
+        procedure_id=str(procedure.get("id", "")),
+        guide_kind=guide_kind,
+        action_dim=action_dim,
+        arms=arms,
+        has_grippers=has_grippers,
+        waypoints=room_waypoints,
+    )
+    state.expert_demonstration = expert_controller.snapshot()
     state.runtime_provenance = runtime_provenance(state)
     state.camera_frame_ids = {name: 0 for name in camera_sources}
     state.camera_subscribers = {name: 0 for name in camera_sources}
@@ -3598,6 +3704,8 @@ def main() -> None:
             state.record_request = None
             replay_request = state.replay_request
             state.replay_request = None
+            expert_request = state.expert_request
+            state.expert_request = None
             scenario_id = state.scenario_id
             scenario_seed = state.scenario_seed
             camera_view_request = state.camera_view_request
@@ -3643,6 +3751,45 @@ def main() -> None:
             thread_last_surface = None
             cut_length_m = 0.0
 
+        if expert_request == "start":
+            expert_controller.start()
+            with state.lock:
+                state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
+                state.procedure_phase = "rest"
+                state.operator_input_source = "automation_policy"
+                state.autonomy_mode = "expert_demonstration"
+                state.coaching_cue = EXPERT_PHASES[0]["instruction"]
+        elif expert_request == "pause":
+            expert_controller.pause()
+            with state.lock:
+                state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
+                state.coaching_cue = expert_controller.paused_reason or "Expert paused."
+        elif expert_request == "resume":
+            expert_controller.resume()
+            with state.lock:
+                state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
+                state.coaching_cue = next(
+                    (phase["instruction"] for phase in EXPERT_PHASES if phase["id"] == expert_controller.phase),
+                    "Expert demonstration resumed.",
+                )
+        elif expert_request == "take_over":
+            expert_controller.take_over()
+            with state.lock:
+                state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
+                state.autonomy_mode = "manual"
+                state.operator_input_source = "keyboard_pointer"
+                state.coaching_cue = (
+                    f"Control transferred during {expert_controller.takeover_phase or 'the procedure'}. "
+                    "The current simulator state and recording are preserved."
+                )
+        elif expert_request == "cancel":
+            expert_controller.cancel()
+            with state.lock:
+                state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
+                state.expert_clean_run = False
+                if state.recording:
+                    state.record_request = "stop"
+
         if camera_view_request is not None and not reset_requested:
             with torch.inference_mode():
                 apply_endoscope_camera_view(scenario_id, camera_view_request)
@@ -3659,10 +3806,23 @@ def main() -> None:
                 state.recorded_frames = 0
                 state.recorded_bytes_estimate = 0
                 state.intervention_count = 0
-                state.procedure_phase = "setup"
+                state.procedure_phase = expert_controller.phase if expert_controller.active else "setup"
                 state.procedure_event_code = 0
                 state.procedure_event_sequence = 0
                 state.procedure_events.clear()
+                if expert_controller.active:
+                    state.procedure_events.append(
+                        {
+                            "time": datetime.now(timezone.utc).isoformat(),
+                            "recorded_frame": 0,
+                            "frame_alignment": "next_control_frame_index",
+                            "sim_step": state.sim_step,
+                            "phase": "rest",
+                            "event": None,
+                            "event_sequence": 0,
+                            "note": "Expert state machine started from the neutral pose",
+                        }
+                    )
         elif record_request == "stop":
             try:
                 name = save_demo(state, demo_frames, vision_frames, demo_started_at)
@@ -3672,8 +3832,30 @@ def main() -> None:
                 save_error = f"Demonstration could not be saved: {exc}"
                 traceback.print_exc()
             with state.lock:
+                expert_reference_pending = state.expert_reference_pending
+            expert_reference_saved = False
+            if name and expert_reference_pending:
+                try:
+                    references = read_reference_map(state.demo_dir)
+                    references[state.task] = name
+                    write_reference_map(state.demo_dir, references)
+                    expert_reference_saved = True
+                except OSError as exc:
+                    save_error = f"Expert trajectory saved, but its reference index could not be updated: {exc}"
+            with state.lock:
                 state.recording = False
                 state.last_demo = name or state.last_demo
+                state.expert_reference_pending = False
+                if expert_reference_saved and name:
+                    state.expert_reference_demo = name
+                    state.reference_ghost_demo = name
+                    state.reference_ghost_enabled = True
+                    state.reference_ghost_update = name
+                    state.expert_demonstration = expert_controller.snapshot(name)
+                    state.coaching_cue = (
+                        "Simulation expert trajectory saved and selected as a Behavior Cloning reference candidate. "
+                        "Clinician review is still required before research use."
+                    )
                 if save_error:
                     state.coaching_cue = save_error
                     state.evaluation_status = "failed"
@@ -3712,7 +3894,82 @@ def main() -> None:
                         state.record_request = "stop"
                     state.coaching_cue = "Replay could not start. Manual control remains active."
 
-        if replay_actions is not None and replay_index < len(replay_actions):
+        if expert_controller.active:
+            expert_tools = {
+                arm: position
+                for arm in range(state.arms)
+                if (position := tool_position_for_arm(arm)) is not None
+            }
+            expert_object = None
+            if objects:
+                expert_object = next(iter(objects.values())).data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
+            with state.lock:
+                expert_safety_active = bool(
+                    state.mechanics.get("interaction_force", {}).get("safe_envelope_active", False)
+                )
+            expert_command = expert_controller.step(
+                expert_tools,
+                expert_object,
+                grippers_open,
+                safety_envelope_active=expert_safety_active,
+            )
+            action_np = expert_command.action
+            grippers_open = expert_command.grippers_open
+            with state.lock:
+                state.grippers_open = list(grippers_open)
+                state.operator_input_source = "automation_policy"
+                state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
+                state.expert_clean_run = state.expert_clean_run and not expert_controller.degraded_reasons
+                if expert_command.phase_changed:
+                    phase = expert_controller.phase or "recover"
+                    state.procedure_phase = phase
+                    event = {
+                        "approach": "target_visible",
+                        "contact": "contact",
+                        "grasp": "grasp",
+                    }.get(phase)
+                    if event:
+                        state.procedure_event_code = PROCEDURE_EVENTS[event]
+                        state.procedure_event_sequence += 1
+                    annotation = {
+                        "time": datetime.now(timezone.utc).isoformat(),
+                        "recorded_frame": state.recorded_frames,
+                        "frame_alignment": "next_control_frame_index",
+                        "sim_step": state.sim_step,
+                        "phase": phase,
+                        "event": event,
+                        "event_sequence": state.procedure_event_sequence,
+                        "note": "Expert state-machine phase transition",
+                    }
+                    state.procedure_events.append(annotation)
+                    state.coaching_cue = next(
+                        (item["instruction"] for item in EXPERT_PHASES if item["id"] == phase),
+                        "Expert demonstration running.",
+                    )
+                if expert_command.completed:
+                    state.procedure_phase = "recover"
+                    state.procedure_event_code = PROCEDURE_EVENTS["task_complete"]
+                    state.procedure_event_sequence += 1
+                    state.procedure_events.append(
+                        {
+                            "time": datetime.now(timezone.utc).isoformat(),
+                            "recorded_frame": state.recorded_frames,
+                            "frame_alignment": "next_control_frame_index",
+                            "sim_step": state.sim_step,
+                            "phase": "recover",
+                            "event": "task_complete",
+                            "event_sequence": state.procedure_event_sequence,
+                            "note": "Expert state machine completed all eight phases",
+                        }
+                    )
+                    state.expert_reference_pending = bool(state.expert_clean_run)
+                    state.record_request = "stop"
+                    state.coaching_cue = (
+                        "Expert trajectory complete. Saving a Behavior Cloning reference candidate for clinician review."
+                        if state.expert_clean_run
+                        else "Expert trajectory completed with qualification warnings; saving without automatic reference approval."
+                    )
+        elif replay_actions is not None and replay_index < len(replay_actions):
             action_np = replay_actions[replay_index].copy()
             replay_index += 1
             with state.lock:

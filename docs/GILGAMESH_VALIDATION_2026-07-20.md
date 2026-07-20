@@ -39,6 +39,17 @@ joint-velocity array remained finite; dual-arm tasks reported two robots.
 
 ### Live doctor workflow
 
+- Every procedure room now exposes the same live eight-phase expert controller: rest, approach, align, contact,
+  grasp, manipulate, verify, and recover. It drives the room's actual relative-IK actions and grippers rather
+  than playing a video.
+- Needle-pickup pause/resume was exercised live: the phase clock remained at 0.12 seconds during a 1.5-second
+  inspection pause while the Isaac simulation continued advancing and the recording remained open. Manual
+  takeover preserved the exact simulator state and recording and incremented the intervention count once.
+- A UI-launched uninterrupted expert run completed all eight phases with zero controller warnings, lifted the
+  native needle 46.1 mm, and saved 372 synchronized frames over 9.29 seconds. Its manifest marks it as a
+  simulation-expert Behavior Cloning candidate with clinician review still pending.
+- The rendered operating room showed the active phase rail, live camera, force/safety surfaces, Pause and Take
+  control actions, and `54/54 controls mapped to keyboard`; the browser console contained no warnings or errors.
 - Doctor Studio listed all 19 procedure rooms and all seven installed anatomy presets.
 - The default needle-pickup room loaded the repaired OpenUSD scene and a live endoscopic camera.
 - Gripper close/open, bounded drive, explicit stop, and Close camera view were exercised through the live worker.
@@ -67,6 +78,9 @@ co-resident operation but is not an isolated performance result.
 
 ## Still open
 
+- Exercise and independently review complete expert trajectories in the other 18 rooms; controller availability
+  and room-specific plans are implemented, but only needle pickup received a complete end-to-end live review in
+  this pass.
 - Run complete clinician-like trajectories, not only startup/state checks, in all 19 rooms and across all seven
   anatomy variants.
 - Exercise actual puncture, stitch, knot, full cut, tissue recovery, shunt placement, bleeding control,
