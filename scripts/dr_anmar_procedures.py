@@ -81,7 +81,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "robot": "Dual dVRK PSM",
         "instrument": "Two needle drivers",
         "objective": "Drive the curved needle through tissue, pull the attached suture through the entry and exit, close the loop, and cinch it before recovery.",
-        "interaction": "Physical needle manipulation with a constrained suture strand, tissue entry and exit pins, stretch/tension response, deforming OpenUSD tissue, and a persistent cinch constraint.",
+        "interaction": "Physical needle manipulation with a constrained suture strand, material-coordinate entry and exit anchors, surface friction, live tissue approximation, and a persistent cinch constraint.",
         "fidelity": "interactive_suture_mechanics",
         "guide_kind": "threading",
         "proxy_organ": None,
@@ -93,7 +93,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("knot", "Close and cinch", "Return the needle around the entry and pull until the loop cinches.", "knot constraint"),
             step("recover", "Recover", "Move the needle clear while preserving the tightened suture.", "stable hold"),
         ],
-        "truth_note": "The strand, tissue pins, slack, strain, tension, anchor damage/pullout, breakage, knot security and volume-preserving tissue response run live and are recorded. Parameters are unvalidated research defaults, not validated suture material or human-tissue biomechanics.",
+        "truth_note": "The strand, surface-bound entry/exit anchors, puncture dimples, slack, strain, tension, frictional slip, tissue approximation, pullout, tearing, breakage and knot retention run live and are recorded. Parameters are unvalidated research defaults, not validated suture material or human-tissue biomechanics.",
     },
     {
         "id": "liver-cutting-path",
