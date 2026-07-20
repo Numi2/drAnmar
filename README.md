@@ -1,24 +1,64 @@
 # Dr.Anmar
 
-Dr.Anmar is a browser-first surgical robotics research and teaching environment built on
-[ORBIT-Surgical](https://github.com/orbit-surgical/orbit-surgical), NVIDIA Isaac Sim, and Isaac Lab.
-It turns the underlying simulator into a guided workstation where doctors and robotics researchers can
-inspect anatomy, operate simulated instruments, record demonstrations, and explore imitation-learning
-and reinforcement-learning workflows.
+Dr.Anmar is a clinician-facing surgical robotics learning and research studio built on
+[ORBIT-Surgical](https://github.com/orbit-surgical/orbit-surgical), NVIDIA Isaac Sim, Isaac Lab, and
+optional Isaac for Healthcare workflows. It turns a robotics simulator into one coherent place where a
+doctor can learn robot control, practise complete simulated procedures, record demonstrations, inspect
+performance, and understand how data becomes a behavior-cloning or reinforcement-learning policy.
+
+Researchers use the same workstation to compose OpenUSD anatomy, instruments and tasks; collect synchronized
+multimodal trajectories; reproduce controlled failures; compare policies; and preserve dataset, experiment and
+runtime provenance. Dr.Anmar is the pedagogical and workflow layer—the NVIDIA and ORBIT runtimes remain the
+simulation engines underneath it.
 
 <p align="center">
-  <img src="docs/screenshots/dr-anmar-ui-showcase.gif" width="960" alt="Dr.Anmar interface showcase covering surgical teaching, robot simulation, controls, and anatomy">
+  <img src="docs/screenshots/dr-anmar-live-controls-2026.gif" width="960" alt="Live Dr.Anmar OpenUSD operating room showing the simulated surgical instrument, anatomy, keyboard controls, camera views, gripper feedback, and guided supervision">
 </p>
 
-<p align="center"><strong>From clinical lesson to live digital twin</strong><br>
-Guided teaching, simulated robot control, anatomy variation, and policy learning in one doctor-facing workspace.</p>
+<p align="center"><strong>A surgical robotics lab that begins with the doctor—not the simulator manual</strong><br>
+Live digital-twin control, procedural mechanics, training data, coaching, failure studies, and robot learning in one browser.</p>
 
-All visuals below are project-owner-approved Dr.Anmar interface screens.
+Every visual below was captured from Dr.Anmar itself. No figures were copied from research papers.
 
 > [!WARNING]
 > Dr.Anmar is research software for simulation, synthetic data, and education. It is not a medical
 > device, is not clinically validated, and must not be used for diagnosis, treatment, patient-specific
 > planning, or control of physical surgical hardware.
+
+## What Dr.Anmar offers
+
+| Offering | What the doctor sees | What the researcher gets |
+| --- | --- | --- |
+| **Guided robotics curriculum** | 29 lessons that explain control, demonstration, vision, policies, procedures, safety and recovery in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
+| **Interactive surgical digital twin** | 19 procedure rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | Nine native ORBIT-Surgical task families, 54 registered variants, versioned OpenUSD composition and simulator telemetry |
+| **Suturing, cutting and tissue workflows** | Needle pickup/handoff, interrupted and running sutures, knot rehearsal, incision, organ retraction, shunt insertion, vascular control, dissection, biopsy and recovery rooms | Thread/tension, puncture, cut-topology, compliant-surface, shunt, flow, ultrasound and procedure-state research proxies synchronized with action |
+| **Demonstrations and Skills Twin** | Record a complete attempt, replay it, see phase-aware coaching, and compare against a clinician-selected reference | Checksummed trajectory/manifest pairs, task-native tool paths, multimodal observations, analysis and content-addressed dataset cards |
+| **Failure Lab and policy evaluation** | Practise shifted viewpoints, low light, occlusion, target variation, calibration drift, tissue variation and safe hand-back | Seeded challenge matrices, interventions, native outcomes, safety events and immutable policy-evaluation cards |
+| **Multimodal study builder** | Start from a clinical question and choose what the policy should perceive | Stereo RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact, deformation, operator input and procedure annotations, with guarded NVIDIA workflow bindings |
+
+<p align="center">
+  <img src="docs/screenshots/dr-anmar-platform-tour-2026.gif" width="960" alt="Fresh tour of Dr.Anmar Learn, Skills Twin, Failure Lab, Multimodal Lab, Policy Lab, and Anatomy Library workspaces">
+</p>
+
+<p align="center"><strong>One connected workflow</strong><br>
+Learn → operate → record → receive coaching → stress-test → build a study → train and compare.</p>
+
+### Live surgical digital twin
+
+The operating room composes a procedure, an official anatomy preset, the correct dVRK or STAR task, its
+instrument controls, safety boundary, camera views, teaching steps and measurable completion signals. The
+doctor changes rooms from a plain-language procedure menu; Dr.Anmar handles the Isaac worker lifecycle and
+restores the room after bounded training or an external workflow.
+
+<p align="center">
+  <img src="docs/screenshots/dr-anmar-live-operating-room-2026.png" width="960" alt="Live Dr.Anmar liver-retraction operating room with OpenUSD anatomy, dVRK instrument, complete keyboard control dock, guidance, and camera HUD">
+</p>
+
+The current library includes foundations such as needle pickup and handoff; reconstruction work such as
+single and running sutures, knot tying and anastomosis; vascular shunt, clipping and bleeding control;
+ultrasound-guided access; organ retraction and repositioning; cutting, dissection and biopsy; and explicit
+complication recovery. Their physics are transparent engineering models for research and teaching—not claims
+of validated human tissue, force, diagnostic imaging or clinical skill assessment.
 
 ## Control pedagogy designed for doctors
 
@@ -97,6 +137,24 @@ and object pose together for Behavior Cloning.
 
 ![Dr.Anmar Demonstrations workspace showing recording controls and example-quality guidance](docs/screenshots/doctor-studio-demonstrations.png)
 
+<p align="center">
+  <img src="docs/screenshots/dr-anmar-skills-twin-2026.png" width="960" alt="Fresh Dr.Anmar Surgical Skills Twin view showing a recorded attempt, telemetry, phase timeline, coaching, replay, and reference-path controls">
+</p>
+
+The Skills Twin turns one saved attempt into an inspectable coaching record: tool path, object lift, grasp drift,
+corrections, recovery hold, available contact and tissue signals, native simulator outcome, phase timeline and
+reference comparison. Scores and cues are deliberately labeled as research proxies pending clinician validation.
+
+### Multimodal studies without infrastructure-first UX
+
+The Multimodal Lab starts with a medical research question, then explains each sensor or state channel by the
+decision it helps a policy make. It generates a study manifest and binds selected modalities to the appropriate
+Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until their prerequisites exist.
+
+<p align="center">
+  <img src="docs/screenshots/dr-anmar-multimodal-lab-2026.png" width="960" alt="Fresh Dr.Anmar Multimodal Study Builder showing clinician explanations, robotic surgery and ultrasound workflows, and selectable stereo, depth, segmentation, point-cloud, wrist-camera, pose and physical-interaction signals">
+</p>
+
 ## What is included
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
@@ -166,6 +224,11 @@ The current validated baseline is:
 - Isaac Lab 2.3.2
 - Python 3.10 or newer inside the Isaac environment
 
+The July 20 Gilgamesh pass exercised all nine native interactive task families, audited seven runtime anatomy
+layers plus seven complete OpenUSD room compositions, and ran representative ultrasound, suturing, cutting,
+tissue-manipulation, recording and shared-control workflows on an RTX 4090. Exact evidence and remaining gates
+are in [`docs/GILGAMESH_VALIDATION_2026-07-20.md`](docs/GILGAMESH_VALIDATION_2026-07-20.md).
+
 Install Isaac Sim and Isaac Lab using their official instructions before continuing. NVIDIA components
 are dependencies and are not redistributed by this repository.
 
@@ -218,8 +281,10 @@ Open [http://localhost:2360](http://localhost:2360). Useful service commands are
 ```
 
 The hub and worker listen on all network interfaces by default so another trusted device can reach the
-workstation. There is no built-in authentication. Keep it on a trusted LAN or private VPN and never
-expose ports 2360 or 2361 directly to the public internet. See [SECURITY.md](SECURITY.md).
+workstation. Optional token authentication and a single-operator browser lease are built in, but authentication
+is disabled until `DR_ANMAR_ACCESS_TOKEN` is configured. Keep the service on a trusted LAN or private VPN,
+enable the token for shared deployments, terminate HTTPS in front of it, and never expose ports 2360 or 2361
+directly to the public internet. See [SECURITY.md](SECURITY.md).
 
 ## Anatomy scenes
 
