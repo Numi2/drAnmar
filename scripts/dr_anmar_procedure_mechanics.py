@@ -673,6 +673,7 @@ class SurgeonsKnotModel:
     maximum_seat_separation_m: float = 0.0
     slippage_m: float = 0.0
     seat_symmetry: float = 0.0
+    demonstrated_turns: float = 0.0
 
     def __post_init__(self) -> None:
         self.center = np.asarray(self.center, dtype=np.float32)
@@ -685,6 +686,7 @@ class SurgeonsKnotModel:
         self.maximum_seat_separation_m = 0.0
         self.slippage_m = 0.0
         self.seat_symmetry = 0.0
+        self.demonstrated_turns = 0.0
 
     @property
     def phase(self) -> str:
@@ -729,6 +731,8 @@ class SurgeonsKnotModel:
         hoop_passed: bool,
         thread: Any | None,
         dt: float,
+        expert_guidance_active: bool = False,
+        expert_manipulation_step: int = 0,
     ) -> dict[str, Any]:
         primary = tool_positions.get(0)
         secondary = tool_positions.get(1)
@@ -743,7 +747,14 @@ class SurgeonsKnotModel:
         midpoint = (primary + secondary) * 0.5 if both_closed else self.center
         field_error = float(np.linalg.norm(midpoint - self.center))
 
-        if hoop_passed and both_closed and field_error <= 0.10 and len(self.throws) < 3:
+        if expert_guidance_active:
+            demonstrated_by_step = {2: 2.0, 3: 2.0, 4: 3.0, 5: 3.0, 6: 4.0, 7: 4.0}
+            self.demonstrated_turns = max(
+                self.demonstrated_turns,
+                demonstrated_by_step.get(int(expert_manipulation_step), 0.0),
+            )
+
+        if (hoop_passed or expert_guidance_active) and both_closed and field_error <= 0.10 and len(self.throws) < 3:
             relative = primary - secondary
             angle = float(np.arctan2(relative[1], relative[0]))
             if separation <= 0.058:
@@ -777,6 +788,8 @@ class SurgeonsKnotModel:
             "active": True,
             "phase": self.phase,
             "hoop_passed": hoop_passed,
+            "expert_guidance_active": expert_guidance_active,
+            "demonstration_turns": self.demonstrated_turns,
             "throw_count": len(self.throws),
             "target_throws": 3,
             "expected_sequence": "2-1-1",
@@ -797,7 +810,7 @@ class SurgeonsKnotModel:
         """Return a compact strand curve showing completed and active throws."""
         completed_turns = sum(int(item["wraps"]) for item in self.throws)
         active_turns = min(2.0, abs(self.accumulated_angle_rad) / (2.0 * np.pi))
-        turns = float(completed_turns) + active_turns
+        turns = max(float(completed_turns) + active_turns, self.demonstrated_turns)
         if turns < 0.08:
             return np.empty((0, 3), dtype=np.float32)
         samples = max(18, int(np.ceil(turns * 32.0)))
@@ -868,6 +881,8 @@ class ProcedureMechanics:
         dt: float,
         scenario_id: str,
         needle_points: np.ndarray | None = None,
+        expert_guidance_active: bool = False,
+        expert_manipulation_step: int = 0,
     ) -> dict[str, dict[str, Any]]:
         primary = tool_positions.get(0)
         secondary = tool_positions.get(1)
@@ -891,6 +906,8 @@ class ProcedureMechanics:
                 bool(self.hoop and self.hoop.pass_count >= 1),
                 thread,
                 dt,
+                expert_guidance_active,
+                expert_manipulation_step,
             )
         if self.kind in {"dissection", "biopsy"}:
             faces = int(cut.get("faces_removed", 0))
