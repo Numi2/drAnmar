@@ -283,7 +283,7 @@ APP_HTML = r"""<!doctype html>
 <main>
   <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div></section>
   <aside>
-    <section class="view-toolbar" aria-label="Camera controls"><div class="view-toolbar-row"><span class="view-toolbar-label">Camera</span><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="4" onclick="setCamera('endoscope_left',this)">Left <kbd>4</kbd></button><button data-camera="endoscope_right" data-shortcut="5" onclick="setCamera('endoscope_right',this)">Right <kbd>5</kbd></button><button data-camera="wrist_1" data-shortcut="6" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>6</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="7" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>7</kbd></button></div></div><div class="view-toolbar-row"><span class="view-toolbar-label">Framing</span><div class="view-presets"><button class="active" data-view-mode="operative" data-shortcut="F1" onclick="setCameraView('operative',this)">Operative <kbd>F1</kbd></button><button data-view-mode="close" data-shortcut="F2" onclick="setCameraView('close',this)">Close <kbd>F2</kbd></button><button data-view-mode="overview" data-shortcut="F3" onclick="setCameraView('overview',this)">Overview <kbd>F3</kbd></button></div></div></section>
+    <section class="view-toolbar" aria-label="Camera controls"><div class="view-toolbar-row"><span class="view-toolbar-label">Camera</span><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="4" onclick="setCamera('endoscope_left',this)">Left <kbd>4</kbd></button><button data-camera="endoscope_right" data-shortcut="5" onclick="setCamera('endoscope_right',this)">Right <kbd>5</kbd></button><button data-camera="wrist_1" data-shortcut="6" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>6</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="7" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>7</kbd></button></div></div><div class="view-toolbar-row"><span class="view-toolbar-label">Angle</span><div class="view-presets"><button class="active" data-view-mode="operative" data-shortcut="F1" onclick="setCameraView('operative',this)">Operative <kbd>F1</kbd></button><button data-view-mode="close" data-shortcut="F2" onclick="setCameraView('close',this)">Close <kbd>F2</kbd></button><button data-view-mode="overview" data-shortcut="F3" onclick="setCameraView('overview',this)">Wide <kbd>F3</kbd></button><button data-view-mode="overhead" data-shortcut="F4" onclick="setCameraView('overhead',this)">Overhead <kbd>F4</kbd></button><button data-view-mode="left_oblique" data-shortcut="F5" onclick="setCameraView('left_oblique',this)">Left angle <kbd>F5</kbd></button><button data-view-mode="right_oblique" data-shortcut="F6" onclick="setCameraView('right_oblique',this)">Right angle <kbd>F6</kbd></button><button data-view-mode="opposite" data-shortcut="F7" onclick="setCameraView('opposite',this)">Opposite <kbd>F7</kbd></button></div></div></section>
     <section id="expertDemo" class="expert-demo"><div class="expert-head"><div><div class="eyebrow">EXECUTABLE TEACHING</div><b>Watch the robot perform this room</b></div><span id="expertStatus" class="expert-status">READY</span></div><div id="expertRail" class="expert-rail"></div><div id="expertInstruction" class="expert-instruction">The expert executes the full procedure in the live simulation. Pause at any phase, inspect the views and forces, or take control from the current pose.</div><div class="expert-actions"><button id="expertStart" class="primary" data-shortcut="F9" onclick="startExpert()">Watch expert <kbd>F9</kbd></button><button id="expertPause" data-shortcut="F10" onclick="toggleExpertPause()" disabled>Pause <kbd>F10</kbd></button><button id="expertTakeover" data-shortcut="Esc" onclick="takeControl()" disabled>Take control <kbd>Esc</kbd></button></div><div class="expert-meta"><span id="expertProgress">8 teachable phases</span><span id="expertReference">BC reference captured on completion</span></div></section>
     <section class="control-dock">
       <div class="keyboard-quick"><div class="keyboard-quick-head"><b>BIMANUAL GAME CONTROLS</b><span>Both hands move together · release = stop</span></div><div id="keyActionDisplay" class="keyboard-input-display" aria-live="polite"><kbd>READY</kbd><span>Keyboard control ready</span></div><button id="smartActionButton" class="smart-action" data-shortcut="F12" onclick="smartAction()"><strong><kbd>F12</kbd> Smart context action</strong><small id="smartActionLabel">Nudge toward the target</small></button><div id="proximity" class="proximity"><b>Next</b><span>Acquiring target…</span></div><div class="combo-grid">
@@ -320,7 +320,7 @@ APP_HTML = r"""<!doctype html>
   <div class="shortcut-group"><h3>RIGHT ROBOT · RIGHT HAND</h3><div class="shortcut-line"><kbd>I / K</kbd><span>Up / down</span></div><div class="shortcut-line"><kbd>J / L</kbd><span>Left / right</span></div><div class="shortcut-line"><kbd>U / O</kbd><span>Toward / away</span></div><div class="shortcut-line"><kbd>Right Shift + move</kbd><span>Rotate wrist</span></div><div class="shortcut-line"><kbd>Enter</kbd><span>Toggle right gripper</span></div></div>
   <div class="shortcut-group"><h3>SPEED + SAFETY</h3><div class="shortcut-line"><kbd>1 / 2 / 3</kbd><span>Left precision / normal / fast</span></div><div class="shortcut-line"><kbd>8 / 9 / 0</kbd><span>Right precision / normal / fast</span></div><div class="shortcut-line"><kbd>Backspace</kbd><span>Stop both robots</span></div><div class="shortcut-line"><kbd>Esc</kbd><span>Stop + take control</span></div><div class="shortcut-line"><kbd>[ / ]</kbd><span>Select pointer-control robot</span></div></div>
   <div class="shortcut-group"><h3>BOUNDED COMBINED MOVES</h3><div class="shortcut-line"><kbd>Z / X</kbd><span>Orbit left / right</span></div><div class="shortcut-line"><kbd>V / B</kbd><span>Drive / reverse needle</span></div><div class="shortcut-line"><kbd>N / F</kbd><span>Lift / lower + approach</span></div><div class="shortcut-line"><kbd>F12</kbd><span>Context action</span></div><div class="shortcut-line"><kbd>Space / Enter</kbd><span>Independent grippers</span></div></div>
-  <div class="shortcut-group"><h3>CAMERAS</h3><div class="shortcut-line"><kbd>4 / 5</kbd><span>Stereo left / right</span></div><div class="shortcut-line"><kbd>6 / 7</kbd><span>Wrist 1 / 2</span></div><div class="shortcut-line"><kbd>F1 / F2 / F3</kbd><span>Operative / close / overview</span></div><div class="shortcut-line"><kbd>C</kbd><span>Next camera sensor</span></div><div class="shortcut-line"><kbd>⇧C</kbd><span>Next camera view</span></div></div>
+  <div class="shortcut-group"><h3>CAMERAS</h3><div class="shortcut-line"><kbd>4 / 5</kbd><span>Stereo left / right</span></div><div class="shortcut-line"><kbd>6 / 7</kbd><span>Wrist 1 / 2</span></div><div class="shortcut-line"><kbd>F1 / F2 / F3</kbd><span>Operative / close / wide</span></div><div class="shortcut-line"><kbd>F4 / F5 / F6 / F7</kbd><span>Overhead / left / right / opposite</span></div><div class="shortcut-line"><kbd>C / ⇧C</kbd><span>Next sensor / next angle</span></div></div>
   <div class="shortcut-group"><h3>EXPERT + SESSION</h3><div class="shortcut-line"><kbd>F9 / F10</kbd><span>Run / pause expert</span></div><div class="shortcut-line"><kbd>Y / T</kbd><span>Start / stop + save</span></div><div class="shortcut-line"><kbd>R / H</kbd><span>Replay / path guide</span></div><div class="shortcut-line"><kbd>M / G</kbd><span>Manual / guided</span></div><div class="shortcut-line"><kbd>Delete</kbd><span>Reset scene</span></div></div>
   <div class="shortcut-group wide"><h3>PROCEDURE ANNOTATIONS</h3><div class="shortcut-list"><div class="shortcut-line"><kbd>⌥1</kbd><span>Approach</span></div><div class="shortcut-line"><kbd>⌥2</kbd><span>Grasp</span></div><div class="shortcut-line"><kbd>⌥3</kbd><span>Manipulate</span></div><div class="shortcut-line"><kbd>⌥4</kbd><span>Recovery</span></div><div class="shortcut-line"><kbd>⌥5</kbd><span>Task event</span></div><div class="shortcut-line"><kbd>⌥6</kbd><span>Safety event</span></div></div></div>
 </div></div></div><div id="toast"></div>
@@ -370,7 +370,7 @@ async function referenceGhost(enabled){try{const x=await post('/api/reference-gh
 function setCamera(name,button){currentCamera=name;document.getElementById('cameraImage').src=`/video/${name}?t=${Date.now()}`;document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===button))}
 function setCameraShortcut(name){const button=document.querySelector(`[data-camera="${name}"]`);if(!button||button.classList.contains('hidden')){toast(`${name.replace('_',' ')} is not available in this room`);return}setCamera(name,button);toast(`${button.textContent.trim()} camera`)}
 async function setCameraView(mode,button){try{const result=await post('/api/camera-view',{mode});currentViewMode=result.mode;document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===result.mode));toast(`${button?.textContent||result.mode} camera ready`)}catch(e){toast(e.message)}}
-function cycleCameraView(){const modes=['operative','close','overview'],mode=modes[(modes.indexOf(currentViewMode)+1)%modes.length],button=document.querySelector(`[data-view-mode="${mode}"]`);setCameraView(mode,button)}
+function cycleCameraView(){const modes=['operative','close','overview','overhead','left_oblique','right_oblique','opposite'],mode=modes[(modes.indexOf(currentViewMode)+1)%modes.length],button=document.querySelector(`[data-view-mode="${mode}"]`);setCameraView(mode,button)}
 function cycleSensorCamera(){const buttons=[...document.querySelectorAll('[data-camera]:not(.hidden)')];if(!buttons.length)return;const index=buttons.findIndex(button=>button.dataset.camera===currentCamera),button=buttons[(index+1)%buttons.length];setCamera(button.dataset.camera,button);toast(`${button.textContent.trim()} camera`)}
 async function annotatePhase(phase){try{const x=await post('/api/annotation',{phase});toast(x.message)}catch(e){toast(e.message)}}
 async function annotateEvent(event){try{const x=await post('/api/annotation',{event});toast('Procedure event saved')}catch(e){toast(e.message)}}
@@ -392,7 +392,7 @@ document.querySelectorAll('.move-button').forEach(button=>bindPointerHold(button
 document.querySelectorAll('.combo-button').forEach(button=>bindPointerHold(button,{comboCode:button.dataset.comboKey,label:comboMap[button.dataset.comboKey].label}));
 function isTypingTarget(target){return ['INPUT','SELECT','TEXTAREA'].includes(target.tagName)||target.isContentEditable}
 function annotationShortcut(code){return {Digit1:['⌥1','Approach annotation',()=>annotatePhase('approach')],Digit2:['⌥2','Grasp annotation',()=>annotatePhase('grasp')],Digit3:['⌥3','Manipulation annotation',()=>annotatePhase('manipulation')],Digit4:['⌥4','Recovery annotation',()=>annotatePhase('recovery')],Digit5:['⌥5','Task event',()=>annotateEvent('task_complete')],Digit6:['⌥6','Safety event',()=>annotateEvent('safety_review')]}[code]}
-function handleDiscreteShortcut(event){const {code}=event;if(code==='Slash'&&event.shiftKey){if(!event.repeat)runShortcut('?','Keyboard map',()=>toggleKeyboardHelp());return true}const annotation=event.altKey?annotationShortcut(code):null;if(annotation){if(!event.repeat)runShortcut(...annotation);return true}const speeds={Digit1:[0,.35,'1'],Digit2:[0,1,'2'],Digit3:[0,1.7,'3'],Digit8:[1,.35,'8'],Digit9:[1,1,'9'],Digit0:[1,1.7,'0'],Numpad8:[1,.35,'8'],Numpad9:[1,1,'9'],Numpad0:[1,1.7,'0']};if(speeds[code]){if(!event.repeat)setHandSpeed(...speeds[code]);return true}const cameraSensors={Digit4:['4','Stereo left camera','endoscope_left'],Digit5:['5','Stereo right camera','endoscope_right'],Digit6:['6','Wrist 1 camera','wrist_1'],Digit7:['7','Wrist 2 camera','wrist_2']},cameraViews={F1:['F1','Operative view','operative'],F2:['F2','Close view','close'],F3:['F3','Overview view','overview']};if(cameraSensors[code]){if(!event.repeat){const [shortcut,label,name]=cameraSensors[code];runShortcut(shortcut,label,()=>setCameraShortcut(name))}return true}if(cameraViews[code]){if(!event.repeat){const [shortcut,label,mode]=cameraViews[code];runShortcut(shortcut,label,()=>setCameraView(mode,document.querySelector(`[data-view-mode="${mode}"]`)))}return true}const commands={
+function handleDiscreteShortcut(event){const {code}=event;if(code==='Slash'&&event.shiftKey){if(!event.repeat)runShortcut('?','Keyboard map',()=>toggleKeyboardHelp());return true}const annotation=event.altKey?annotationShortcut(code):null;if(annotation){if(!event.repeat)runShortcut(...annotation);return true}const speeds={Digit1:[0,.35,'1'],Digit2:[0,1,'2'],Digit3:[0,1.7,'3'],Digit8:[1,.35,'8'],Digit9:[1,1,'9'],Digit0:[1,1.7,'0'],Numpad8:[1,.35,'8'],Numpad9:[1,1,'9'],Numpad0:[1,1.7,'0']};if(speeds[code]){if(!event.repeat)setHandSpeed(...speeds[code]);return true}const cameraSensors={Digit4:['4','Stereo left camera','endoscope_left'],Digit5:['5','Stereo right camera','endoscope_right'],Digit6:['6','Wrist 1 camera','wrist_1'],Digit7:['7','Wrist 2 camera','wrist_2']},cameraViews={F1:['F1','Operative view','operative'],F2:['F2','Close view','close'],F3:['F3','Wide view','overview'],F4:['F4','Overhead view','overhead'],F5:['F5','Left oblique view','left_oblique'],F6:['F6','Right oblique view','right_oblique'],F7:['F7','Opposite-side view','opposite']};if(cameraSensors[code]){if(!event.repeat){const [shortcut,label,name]=cameraSensors[code];runShortcut(shortcut,label,()=>setCameraShortcut(name))}return true}if(cameraViews[code]){if(!event.repeat){const [shortcut,label,mode]=cameraViews[code];runShortcut(shortcut,label,()=>setCameraView(mode,document.querySelector(`[data-view-mode="${mode}"]`)))}return true}const commands={
   Space:['Space','Instrument 1 gripper',()=>toggleGrip(0)],Enter:['Enter','Instrument 2 gripper',()=>toggleGrip((latestStatus?.arms||1)>1?1:0)],NumpadEnter:['Enter','Instrument 2 gripper',()=>toggleGrip((latestStatus?.arms||1)>1?1:0)],Backspace:null,Escape:null,
   BracketLeft:['[','Pointer controls · instrument 1',()=>setArm(0)],BracketRight:[']','Pointer controls · instrument 2',()=>setArm(1)],KeyC:[event.shiftKey?'⇧C':'C',event.shiftKey?'Next camera view':'Next camera sensor',()=>event.shiftKey?cycleCameraView():cycleSensorCamera()],
   Comma:[',','Pointer precision speed',()=>setSpeedShortcut(.35)],Period:['.','Pointer normal speed',()=>setSpeedShortcut(1)],Slash:['/','Pointer fast speed',()=>setSpeedShortcut(1.7)],
@@ -1145,8 +1145,17 @@ def build_web_app(state: SharedState) -> FastAPI:
 
     @app.post("/api/camera-view")
     def camera_view(request: CameraViewRequest) -> dict[str, Any]:
-        if request.mode not in {"operative", "close", "overview"}:
-            raise HTTPException(400, "camera view must be operative, close, or overview")
+        camera_modes = {
+            "operative",
+            "close",
+            "overview",
+            "overhead",
+            "left_oblique",
+            "right_oblique",
+            "opposite",
+        }
+        if request.mode not in camera_modes:
+            raise HTTPException(400, f"camera view must be one of: {', '.join(sorted(camera_modes))}")
         with state.lock:
             state.camera_view_mode = request.mode
             state.camera_view_request = request.mode
@@ -2547,11 +2556,31 @@ def scenario_camera_pose(base_eye: np.ndarray, base_target: np.ndarray, scenario
 def camera_view_pose(eye: np.ndarray, target: np.ndarray, mode: str) -> tuple[np.ndarray, np.ndarray]:
     """Move the existing stereo pair without adding another rendered sensor."""
     view_vector = eye - target
+    distance = max(float(np.linalg.norm(view_vector)), 0.20)
     if mode == "close":
         eye = target + view_vector * 0.68
     elif mode == "overview":
         eye = target + view_vector * 1.48 + np.asarray((0.0, 0.0, 0.11), dtype=np.float32)
         target = target + np.asarray((0.0, 0.0, 0.015), dtype=np.float32)
+    elif mode == "overhead":
+        # A slight fore-aft offset avoids the look-at singularity of a perfectly
+        # vertical camera while keeping the operative field centered.
+        eye = target + np.asarray((0.0, -0.12 * distance, 1.05 * distance), dtype=np.float32)
+    elif mode in {"left_oblique", "right_oblique"}:
+        angle = np.deg2rad(58.0 if mode == "left_oblique" else -58.0)
+        cosine, sine = np.cos(angle), np.sin(angle)
+        rotated = np.asarray(
+            (
+                cosine * view_vector[0] - sine * view_vector[1],
+                sine * view_vector[0] + cosine * view_vector[1],
+                max(view_vector[2] * 0.92, 0.18 * distance),
+            ),
+            dtype=np.float32,
+        )
+        eye = target + rotated
+    elif mode == "opposite":
+        eye = target - view_vector * 0.92 + np.asarray((0.0, 0.0, 0.32 * distance), dtype=np.float32)
+        target = target + np.asarray((0.0, 0.0, 0.02 * distance), dtype=np.float32)
     return eye.astype(np.float32), target.astype(np.float32)
 
 
