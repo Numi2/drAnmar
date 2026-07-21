@@ -63,6 +63,7 @@ class ExpertDemonstrationController:
     phase_started_at: float = field(default_factory=time.monotonic)
     paused_at: float | None = None
     primary_arm: int | None = None
+    tail_captured: bool = False
 
     def __post_init__(self) -> None:
         self.waypoints = np.asarray(self.waypoints, dtype=np.float32).reshape(-1, 3)
@@ -99,6 +100,7 @@ class ExpertDemonstrationController:
         self.phase_anchor_tools.clear()
         self.object_anchor = None
         self.primary_arm = None
+        self.tail_captured = False
 
     def pause(self, reason: str = "Doctor paused the expert demonstration for inspection.") -> None:
         if self.status == "running":
@@ -146,6 +148,7 @@ class ExpertDemonstrationController:
             "phase_ticks": self.phase_ticks,
             "manipulation_step": self.manipulation_step,
             "primary_arm": self.primary_arm,
+            "tail_captured": self.tail_captured,
             "procedure_instruction": self._procedure_instruction(),
             "phase_elapsed_s": round(self.phase_elapsed_s, 2) if self.phase is not None else 0.0,
             "phases": phases,
@@ -334,7 +337,13 @@ class ExpertDemonstrationController:
             self.target_ticks = 0
         return self.manipulation_step >= 6
 
-    def _surgeons_knot(self, action: np.ndarray, tools: dict[int, np.ndarray], grippers: list[bool]) -> bool:
+    def _surgeons_knot(
+        self,
+        action: np.ndarray,
+        tools: dict[int, np.ndarray],
+        grippers: list[bool],
+        thread_tail_position: np.ndarray | None,
+    ) -> bool:
         """Demonstrate the canonical 2-1-1 bimanual surgeon's-knot sequence."""
         if self.arms < 2:
             if "surgeon's knot requires two instruments" not in self.degraded_reasons:
@@ -353,6 +362,28 @@ class ExpertDemonstrationController:
 
         if step == 1:
             target0 = center + np.asarray((0.024, 0.0, 0.010), dtype=np.float32)
+            if not self.tail_captured and thread_tail_position is not None:
+                tail_target = np.asarray(thread_tail_position, dtype=np.float32) + np.asarray(
+                    (0.0, 0.0, 0.0025), dtype=np.float32
+                )
+                self._set_motion(action, primary_arm, tools.get(primary_arm), target0)
+                tail_distance = self._set_motion(
+                    action,
+                    receiver_arm,
+                    tools.get(receiver_arm),
+                    tail_target,
+                )
+                grippers[receiver_arm] = True
+                if tail_distance is not None and tail_distance <= 0.010:
+                    grippers[receiver_arm] = False
+                    self.tail_captured = True
+                    self.target_ticks = 0
+                elif self.target_ticks >= 110:
+                    grippers[receiver_arm] = False
+                    self.tail_captured = True
+                    self.target_ticks = 0
+                    self.degraded_reasons.append("thread-tail pickup: bounded convergence timeout")
+                return False
             target1 = center + np.asarray((-0.024, 0.0, 0.010), dtype=np.float32)
             d0 = self._set_motion(action, primary_arm, tools.get(primary_arm), target0)
             d1 = self._set_motion(action, receiver_arm, tools.get(receiver_arm), target1)
@@ -417,6 +448,7 @@ class ExpertDemonstrationController:
         tools: dict[int, np.ndarray],
         object_position: np.ndarray | None,
         grippers: list[bool],
+        thread_tail_position: np.ndarray | None = None,
     ) -> bool:
         kind = self.guide_kind
         if kind == "pickup":
@@ -448,7 +480,7 @@ class ExpertDemonstrationController:
                     self.target_ticks = 0
                     self.target_index = 0
                 return False
-            return self._surgeons_knot(action, tools, grippers)
+            return self._surgeons_knot(action, tools, grippers, thread_tail_position)
         if kind == "clip_divide":
             return self._clip_divide(action, tools, grippers)
         if kind == "hemostasis":
@@ -485,6 +517,7 @@ class ExpertDemonstrationController:
         object_position: np.ndarray | None,
         grippers_open: list[bool],
         safety_envelope_active: bool = False,
+        thread_tail_position: np.ndarray | None = None,
     ) -> ExpertCommand:
         action = self._action()
         grippers = list(grippers_open)
@@ -540,7 +573,13 @@ class ExpertDemonstrationController:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "manipulate":
-            if self._manipulate(action, tool_positions, object_position, grippers) and self.phase_elapsed_s >= 1.4:
+            if self._manipulate(
+                action,
+                tool_positions,
+                object_position,
+                grippers,
+                thread_tail_position,
+            ) and self.phase_elapsed_s >= 1.4:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "verify":

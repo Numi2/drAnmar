@@ -4233,6 +4233,11 @@ def main() -> None:
                 expert_object,
                 grippers_open,
                 safety_envelope_active=expert_safety_active,
+                thread_tail_position=(
+                    suture_model.points[0].copy()
+                    if suture_model is not None and suture_model.initialized
+                    else None
+                ),
             )
             action_np = expert_command.action
             grippers_open = expert_command.grippers_open
@@ -4625,9 +4630,26 @@ def main() -> None:
                     and not grippers_open[tail_arm]
                     and tail_arm in current_tool_positions
                     and procedure_mechanics.hoop is not None
-                    and (procedure_mechanics.hoop.pass_count >= 1 or expert_knot_guidance)
+                    and (
+                        (
+                            expert_knot_guidance
+                            and expert_controller.tail_captured
+                        )
+                        or (
+                            procedure_mechanics.hoop.pass_count >= 1
+                            and float(
+                                np.linalg.norm(
+                                    current_tool_positions[tail_arm] - suture_model.points[0]
+                                )
+                            )
+                            <= 0.018
+                        )
+                    )
                 ):
-                    suture_model.set_tail_world(current_tool_positions[tail_arm])
+                    suture_model.set_tail_world(
+                        current_tool_positions[tail_arm],
+                        maximum_step_m=0.004,
+                    )
                 suture_model.update(needle_eye, mechanics_dt)
                 if puncture_active and not thread_was_inside_tissue and needle_surface is not None:
                     if bind_suture_to_surface(

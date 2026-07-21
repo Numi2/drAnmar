@@ -885,12 +885,16 @@ class SutureThreadModel:
         self.fixed = {0: tail.copy(), self.node_count - 1: needle.copy()}
         self.initialized = True
 
-    def set_tail_world(self, tail_world: np.ndarray) -> None:
+    def set_tail_world(self, tail_world: np.ndarray, maximum_step_m: float | None = None) -> None:
         """Move the free strand end with a grasping second instrument."""
         if not self.initialized or self.thread_broken:
             return
         target = np.asarray(tail_world, dtype=np.float32).copy()
         previous_target = self.fixed.get(0, self.points[0]).copy()
+        delta_to_target = target - previous_target
+        distance_to_target = float(np.linalg.norm(delta_to_target))
+        if maximum_step_m is not None and distance_to_target > max(float(maximum_step_m), 1e-6):
+            target = previous_target + delta_to_target * (float(maximum_step_m) / distance_to_target)
         delta = target - previous_target
         self.fixed[0] = target
         self.points[0] = target
