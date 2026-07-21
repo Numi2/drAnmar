@@ -15,6 +15,27 @@ simulation, not clinical validation.
 - Clinical validation status: not started.
 - Intended use remains simulation, education, synthetic data, and preclinical research only.
 
+## Physics-next implementation — 2026-07-21
+
+- Added a fail-closed multi-solver authority manifest covering reduced-order v3, PhysX FEM, Newton VBD and
+  CRESSim-MPM, including explicit scope, maturity, topology and two-way-coupling boundaries.
+- Added the canonical surgical-asset schema, an unvalidated liver material seed and matched liver-retraction
+  and curved-needle benchmark contracts.
+- Added an isolated Isaac Sim 6.0.1 / Isaac Lab 3.0 beta2 installer and a cross-backend CUDA tissue-coupon
+  runner that uses identical material, attachment, pull trajectory, step and telemetry definitions.
+- Installed that runtime on Gilgamesh without disturbing the stable service, authored the watertight CT liver
+  as a backend-neutral 33,274-node / 165,031-tetrahedron OpenUSD TetMesh, and preserved source, mesh and USD hashes.
+- Executed a deterministic Newton VBD replay pair. Finite state, 19.687 ms p95, 4.916% global-volume error and
+  0.0 m replay RMSE pass; rigid-tool contact penetration remains unmeasured, so promotion remains blocked.
+- The stable workstation now records the effective backend and manifest hash in live status, runtime provenance
+  and demonstration sidecars. It does not activate an experimental backend.
+
+Still required: explicitly accept NVIDIA's Omniverse Kit EULA before executing the isolated PhysX FEM pass;
+add matched rigid-tool contact/force telemetry; author anatomically reviewed attachment and vascular regions;
+run the patient-specific TetMesh in both solvers; integrate and benchmark CRESSim-MPM topology change; collect
+physical indentation, puncture, cutting and pullout references; and complete clinician review before any
+biomechanical or clinical-fidelity claim.
+
 ## Source audit hardening — 2026-07-20
 
 The follow-up remediation pass closed the remaining source-level gaps identified by this ledger:

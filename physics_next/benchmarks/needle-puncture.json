@@ -1,0 +1,38 @@
+{
+  "schema": "dr.anmar.physics-benchmark.v1",
+  "id": "needle-puncture",
+  "title": "Canonical curved-needle entry, tract and exit",
+  "purpose": "Measure puncture discontinuity, curved tract following, shaft friction and persistent entry/exit state.",
+  "candidate_backends": ["cressim_mpm", "physx_fem", "reduced_order_v3"],
+  "phases": [
+    {"id": "rest", "duration_s": 0.5},
+    {"id": "approach", "duration_s": 1.0},
+    {"id": "indent", "duration_s": 0.8},
+    {"id": "puncture", "duration_s": 0.4},
+    {"id": "follow_curvature", "duration_s": 2.0},
+    {"id": "exit", "duration_s": 0.6},
+    {"id": "withdraw", "duration_s": 1.0},
+    {"id": "recover", "duration_s": 2.0}
+  ],
+  "required_metrics": [
+    "entry_event_count",
+    "exit_event_count",
+    "puncture_force_n",
+    "withdrawal_force_n",
+    "shaft_drag_n_mean",
+    "tract_curvature_error_m",
+    "entry_hole_residual_m",
+    "exit_hole_residual_m",
+    "unintended_surface_crossings",
+    "physics_step_ms_p95"
+  ],
+  "engineering_gates": {
+    "entry_event_count": 1,
+    "exit_event_count": 1,
+    "unintended_surface_crossings": 0,
+    "physics_step_ms_p95_max": 20.0
+  },
+  "biomechanical_reference_required": true,
+  "clinical_validation": false
+}
+

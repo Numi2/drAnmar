@@ -1,0 +1,40 @@
+{
+  "schema": "dr.anmar.physics-benchmark.v1",
+  "id": "liver-retraction",
+  "title": "Canonical liver grasp and retraction",
+  "purpose": "Compare intact-tissue deformation and two-way tool contact across solvers.",
+  "asset_contract": "../assets/canonical_asset.schema.json",
+  "candidate_backends": ["physx_fem", "newton_vbd", "reduced_order_v3"],
+  "phases": [
+    {"id": "rest", "duration_s": 1.0},
+    {"id": "approach", "duration_s": 1.5},
+    {"id": "contact", "duration_s": 0.5},
+    {"id": "grasp", "duration_s": 0.8},
+    {"id": "retract", "duration_s": 2.0},
+    {"id": "hold", "duration_s": 1.0},
+    {"id": "release", "duration_s": 0.5},
+    {"id": "recover", "duration_s": 3.0}
+  ],
+  "required_metrics": [
+    "finite_state_fraction",
+    "physics_step_ms_p50",
+    "physics_step_ms_p95",
+    "contact_penetration_m_max",
+    "volume_error_fraction_max",
+    "tool_force_n_peak",
+    "tool_force_n_integral",
+    "tissue_displacement_m_peak",
+    "recovery_residual_m",
+    "deterministic_replay_position_rmse_m"
+  ],
+  "engineering_gates": {
+    "finite_state_fraction_min": 1.0,
+    "physics_step_ms_p95_max": 20.0,
+    "contact_penetration_m_max": 0.001,
+    "volume_error_fraction_max": 0.05,
+    "deterministic_replay_position_rmse_m_max": 0.0005
+  },
+  "biomechanical_reference_required": true,
+  "clinical_validation": false
+}
+

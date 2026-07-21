@@ -1,0 +1,38 @@
+{
+  "schema": "dr.anmar.tissue-material.v1",
+  "id": "liver_research_default_2026_07",
+  "tissue": "liver",
+  "units": "metres-kilograms-seconds",
+  "calibration_status": "research_defaults_unvalidated",
+  "source": "Seeded from the existing Dr.Anmar liver fallback; not a claim about human tissue.",
+  "intact_tissue": {
+    "constitutive_family": "nearly_incompressible_visco_hyperelastic_candidate",
+    "youngs_modulus_pa_seed": 18000.0,
+    "poisson_ratio_seed": 0.47,
+    "density_kg_m3_seed": 1060.0,
+    "damping_ratio_seed": 0.24
+  },
+  "contact": {
+    "static_friction_seed": 0.34,
+    "dynamic_friction_seed": 0.22
+  },
+  "puncture": {
+    "force_n_seed": 0.55,
+    "hysteresis_n_seed": 0.16,
+    "shaft_drag_n_seed": 0.18
+  },
+  "failure": {
+    "yield_strain_seed": 0.32,
+    "tear_strain_seed": 0.58,
+    "cut_toughness_n_seed": 0.42,
+    "suture_pullout_n_seed": 1.25
+  },
+  "required_calibration_experiments": [
+    "indentation_relaxation",
+    "cyclic_grasp_hysteresis",
+    "needle_insertion_withdrawal",
+    "blade_cut_force",
+    "suture_pullout"
+  ]
+}
+

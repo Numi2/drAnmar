@@ -210,6 +210,8 @@ The multimodal architecture and study schema are described in
 - RSL-RL, RL-Games, Stable-Baselines3, SKRL, and Robomimic workflows inherited from ORBIT-Surgical.
 - A resumable installer for seven official ORBIT-Surgical v0.1.0 anatomy scene archives.
 - An Isaac Sim 5.1 / Isaac Lab 2.3.2 compatibility port of the upstream environments.
+- An isolated `physics-next` authority contract for side-by-side PhysX FEM, Newton VBD and CRESSim-MPM
+  development without changing the stable doctor-facing runtime or silently relabeling fallback telemetry.
 
 Downloaded anatomy, demonstrations, checkpoints, logs, and runtime state are deliberately kept outside
 the Git repository.
@@ -229,6 +231,17 @@ The current validated baseline is:
 - NVIDIA Isaac Sim 5.1
 - Isaac Lab 2.3.2
 - Python 3.10 or newer inside the Isaac environment
+
+The optional research runtime is installed separately with `./dr_anmar_physics_next.sh install`. It targets
+Isaac Sim 6.0.1 and Isaac Lab 3.0 beta2, records the backend that actually generated each result, and keeps
+Newton VBD and CRESSim-MPM experimental until their canonical benchmark and calibration gates are complete.
+Its versioned asset, material and benchmark contracts live in [`physics_next/`](physics_next/README.md), with
+measured evidence and unfinished promotion gates in
+[`docs/PHYSICS_NEXT_VALIDATION_LOG.md`](docs/PHYSICS_NEXT_VALIDATION_LOG.md).
+The first Gilgamesh Newton VBD replay pair completed 600/600 finite steps at 19.687 ms p95, held global
+tetrahedral-volume error to 4.916%, produced no inverted elements, and reproduced the final state exactly.
+It remains a non-clinical solver coupon—not a promoted patient-tissue model—because matched tool contact,
+patient-asset, calibration and clinician-review gates are still open.
 
 The July 20 Gilgamesh pass exercised all nine native interactive task families, audited seven runtime anatomy
 layers plus seven complete OpenUSD room compositions, and ran representative ultrasound, suturing, cutting,

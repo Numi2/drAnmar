@@ -92,6 +92,7 @@ import orbit.surgical.tasks  # noqa: F401
 from dr_anmar_procedure_mechanics import ProcedureMechanics
 from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
+from dr_anmar_physics_authority import load_physics_authority
 from dr_anmar_soft_tissue import (
     NeedleTissueInteractionModel,
     SurfaceMeshModel,
@@ -546,6 +547,7 @@ class SharedState:
     camera_intrinsics: list[list[float]] | None = None
     semantic_labels: dict[str, Any] = field(default_factory=dict)
     runtime_provenance: dict[str, Any] = field(default_factory=dict)
+    physics_authority: dict[str, Any] = field(default_factory=dict)
     camera_valid_depth_fraction: float | None = None
     camera_foreground_fraction: float | None = None
     camera_mean_luminance: float | None = None
@@ -697,6 +699,7 @@ class SharedState:
                 "recording_limit_bytes": MAX_DEMO_BYTES,
                 "sensor_profile": self.sensor_profile,
                 "runtime_provenance": self.runtime_provenance,
+                "physics_authority": self.physics_authority,
                 "last_demo": self.last_demo,
                 "replaying": self.replaying,
                 "expert_demonstration": self.expert_demonstration,
@@ -2197,6 +2200,7 @@ def runtime_provenance(state: SharedState) -> dict[str, Any]:
         "procedure": state.procedure,
         "anatomy_scene_id": state.anatomy_scene_id,
         "sensor_profile": state.sensor_profile,
+        "physics_authority": state.physics_authority,
     }
     return {
         "source_revision": revision,
@@ -2210,6 +2214,7 @@ def runtime_provenance(state: SharedState) -> dict[str, Any]:
             json.dumps(configuration, sort_keys=True, default=str, separators=(",", ":")).encode()
         ).hexdigest(),
         "policy_checkpoint_sha256": None,
+        "physics_authority": state.physics_authority,
     }
 
 
@@ -2339,6 +2344,7 @@ def save_demo(
         },
         "context": context,
         "runtime_provenance": state.runtime_provenance or runtime_provenance(state),
+        "physics_authority": state.physics_authority,
         "data_governance": {
             "study_id": STUDY_ID or None,
             "consent_protocol": CONSENT_PROTOCOL or None,
@@ -3580,6 +3586,10 @@ def main() -> None:
         sensor_profile=args_cli.sensor_profile,
     )
     state.camera_names = list(camera_sources)
+    state.physics_authority = load_physics_authority().runtime_payload(
+        native_deformable_count=len(deformables),
+        runtime_family="isaac-sim-5.1-stable",
+    )
     expert_controller = ExpertDemonstrationController(
         procedure_id=str(procedure.get("id", "")),
         guide_kind=guide_kind,

@@ -16,6 +16,10 @@ component contains a physical-robot driver or a clinical workflow integration.
 4. `scripts/dr_anmar_anatomy_viewer.py` provides a low-overhead static preview for an installed official
    anatomy scene without keeping an Isaac worker active.
 5. `web/doctor_studio.html` presents the doctor-facing learning and operating-room interface.
+6. `scripts/dr_anmar_physics_authority.py` reports which tissue backend actually generated telemetry and
+   prevents an experimental or fallback result from being presented as calibrated biomechanics.
+7. `dr_anmar_physics_next.sh` manages a separate Isaac Sim 6 / Isaac Lab 3 environment under mutable runtime
+   storage. It never replaces or stops the stable worker.
 
 Only one GPU worker is active at a time. Switching a lesson or anatomy room replaces that worker rather
 than accumulating Isaac Sim processes. Training, NVIDIA healthcare workflows, Failure Lab matrices and
@@ -53,3 +57,18 @@ response headers provide browser defense in depth but are not an access-control 
 This derivative ports the upstream Isaac Sim 4.1-era environment code to the installed Isaac Sim 5.1 /
 Isaac Lab 2.3.2 APIs. The upstream environment namespace and asset layout remain intact to preserve
 workflow and checkpoint compatibility where the underlying API permits it.
+
+## Multi-solver surgical physics
+
+OpenUSD remains the common scene and rendering layer. A promoted organ asset has separate render, collision
+and simulation representations, explicit mappings, attachments, material regions, calibration provenance and
+an optional vascular graph. The procedure determines the preferred solver:
+
+- PhysX volumetric FEM for intact palpation, grasping and retraction;
+- Newton VBD for high-throughput deformable learning and two-way solver comparison;
+- CRESSim-MPM for topology-changing cutting, puncture tracts and thread passage;
+- Dr.Anmar reduced-order v3 as the explicit deterministic fallback.
+
+The stable process reports `requested_backend`, `effective_backend`, native deformable count, manifest hash,
+calibration state and clinical-validation boundary through `/api/status` and every new demonstration sidecar.
+Experimental activation is never inferred merely because a package is installed.

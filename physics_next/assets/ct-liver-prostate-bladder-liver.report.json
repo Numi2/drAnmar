@@ -1,0 +1,38 @@
+{
+  "schema": "dr.anmar.physics-asset-build-report.v1",
+  "id": "ct-liver-prostate-bladder_liver_interactive_8mm_2026_07_21",
+  "host": "gilgamesh",
+  "source": {
+    "scene_asset": "scenes/openusd/_geometry/4133f6e4178ea3da9345c0c1a1613159d29d4bd1c1c37aa79330db960876407c.usdc",
+    "source_sha256": "b013654bf83f2c3b5197f868748268a609f265f67bbc61f14697562ea3b61d8f",
+    "prim": "/root/Liver_topo_blender/Liver_topo_blender",
+    "surface_sha256": "cc4fe197dfc357e0cf29ebd1cc32a648ec35733606fbe963a46da1d4800e4665",
+    "surface_points": 7174,
+    "surface_triangles": 14344,
+    "boundary_edges": 0,
+    "non_manifold_edges": 0,
+    "watertight_surface_candidate": true
+  },
+  "tetrahedralization": {
+    "tool": "pytetwild 0.3.0 / fTetWild",
+    "edge_length_m": 0.008,
+    "vertices": 33274,
+    "tetrahedra": 165031,
+    "stored_negative_orientation_tetrahedra": 0,
+    "volume_m3": 0.0068361615244521175,
+    "normalized_volume_quality_min": 0.059001518159776355,
+    "normalized_volume_quality_p01": 0.17773938730223365,
+    "normalized_volume_quality_median": 0.5187429303299167,
+    "render_mapping_distance_m_max": 0.0047504981886900164,
+    "render_mapping_distance_m_p95": 0.0003999722416266167,
+    "mesh_npz_sha256": "e901c47fad363458c55f5cbe1d0a513c1f8decc67c6e3a7e0a668885a1c0824b",
+    "mesh_vtk_sha256": "2219fbf31ddf98ccef5c7d2a961680f958aeec98ed7f7fbb454ff5b9fd5b0873",
+    "usd_surface_triangles": 19992,
+    "usd_sha256": "064a5fc0a57d7233317c7768c558fca529a7aa70605f05282546b1d4d087d589",
+    "backend_neutral_tetmesh": true
+  },
+  "artifact_root": "$DR_ANMAR_PHYSICS_NEXT_ROOT/assets/ct-liver-prostate-bladder/liver/interactive-8mm",
+  "promotion_status": "attachments_and_benchmarks_pending",
+  "calibration_status": "research_defaults_unvalidated",
+  "clinical_validation": false
+}

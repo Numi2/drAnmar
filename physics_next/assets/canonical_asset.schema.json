@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dranmar.org/schemas/physics-asset-v1.json",
+  "title": "Dr.Anmar canonical surgical physics asset",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "render_mesh_usd",
+    "collision_mesh_usd",
+    "simulation_representation",
+    "material_regions",
+    "attachments",
+    "mapping",
+    "calibration"
+  ],
+  "properties": {
+    "schema": {"const": "dr.anmar.physics-asset.v1"},
+    "id": {"type": "string", "minLength": 1},
+    "render_mesh_usd": {"type": "string", "minLength": 1},
+    "collision_mesh_usd": {"type": "string", "minLength": 1},
+    "simulation_representation": {
+      "type": "object",
+      "required": ["kind", "path", "units"],
+      "properties": {
+        "kind": {"enum": ["tetrahedral_fem", "vbd_tetrahedra", "mpm_particles"]},
+        "path": {"type": "string", "minLength": 1},
+        "units": {"const": "metres-kilograms-seconds"},
+        "usd_path": {"type": "string", "minLength": 1},
+        "usd_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "material_regions": {"type": "array", "minItems": 1},
+    "attachments": {"type": "array"},
+    "vascular_graph": {"type": ["string", "null"]},
+    "mapping": {
+      "type": "object",
+      "required": ["render_to_sim", "collision_to_sim"]
+    },
+    "calibration": {
+      "type": "object",
+      "required": ["status", "dataset_sha256"],
+      "properties": {
+        "status": {"enum": ["research_defaults_unvalidated", "phantom_calibrated", "ex_vivo_calibrated"]},
+        "dataset_sha256": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
