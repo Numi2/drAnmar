@@ -3706,7 +3706,22 @@ def main() -> None:
         return robots[robot_name].data.body_pos_w[0, tip_index, :3].detach().cpu().numpy().astype(np.float32)
 
     def needle_tip_positions_world() -> np.ndarray:
-        if not needle_interaction_enabled or not len(needle_tip_offsets_local) or stage is None:
+        if not needle_interaction_enabled or not len(needle_tip_offsets_local):
+            return np.empty((0, 3), dtype=np.float32)
+        scaled_offsets = needle_tip_offsets_local * configured_needle_scale[None, :]
+        if objects:
+            needle_object = next(iter(objects.values()))
+            position = needle_object.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
+            quaternion = needle_object.data.root_quat_w[0].detach().cpu().numpy().astype(np.float32)
+            scalar = float(quaternion[0])
+            vector = quaternion[1:4]
+            tangent = 2.0 * np.cross(np.repeat(vector[None, :], len(scaled_offsets), axis=0), scaled_offsets)
+            rotated = scaled_offsets + scalar * tangent + np.cross(
+                np.repeat(vector[None, :], len(scaled_offsets), axis=0),
+                tangent,
+            )
+            return position[None, :] + rotated
+        if stage is None:
             return np.empty((0, 3), dtype=np.float32)
         object_prim = stage.GetPrimAtPath("/World/envs/env_0/Object")
         if not object_prim.IsValid():
@@ -3715,7 +3730,7 @@ def main() -> None:
         return np.stack(
             [
                 np.asarray(tuple(object_to_world.Transform(Gf.Vec3d(*offset.astype(float).tolist()))), dtype=np.float32)
-                for offset in needle_tip_offsets_local * configured_needle_scale[None, :]
+                for offset in scaled_offsets
             ]
         )
 
