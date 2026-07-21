@@ -121,5 +121,11 @@ must not be interpreted as calibrated human biomechanics.
 10. Evaluate across sensor, anatomy, calibration, and supervision challenges.
 11. Review failures, safety events, and interventions with clinicians.
 
+When the starting point is Dr.Anmar's executable simulation expert, inspect `clean_reference_eligible`,
+`degraded_reasons`, `behavior_cloning_reference_candidate` and `reference_review_status` before adding the
+trajectory to a study. Eight completed phases alone are not evidence of task success or expert quality. The
+controller and capture semantics are documented in
+[`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md).
+
 Every output remains for simulation, education, synthetic data, and preclinical research. It is not a
 clinical decision, diagnostic output, or authorization to control a clinical robot.

@@ -12,7 +12,8 @@
       "requirement": "Pin Isaac for Healthcare v0.6.0 and its compatible HoloHub CLI, preserve guarded metadata discovery, and expose source-only workflows without unsafe launch fabrication.",
       "blocker": "Provider containers and DDS modes retain their separate dependency gate.",
       "evidence": [
-        "docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md"
+        "docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md",
+        "docs/EXECUTABLE_EXPERT_GUIDANCE.md"
       ]
     },
     {
@@ -34,7 +35,8 @@
       "requirement": "Run all 19 procedure rooms across the supported anatomy presets on the isolated RTX 4090 host.",
       "blocker": "All nine native task families and representative advanced rooms passed, but complete trajectories in all 19 rooms across all seven anatomy variants remain open.",
       "evidence": [
-        "docs/GILGAMESH_VALIDATION_2026-07-20.md"
+        "docs/GILGAMESH_VALIDATION_2026-07-20.md",
+        "docs/EXECUTABLE_EXPERT_GUIDANCE.md"
       ]
     },
     {
@@ -107,7 +109,8 @@
       "evidence": [
         "scripts/dr_anmar_workstation.py",
         "scripts/dr_anmar_hub.py",
-        "docs/GILGAMESH_VALIDATION_2026-07-20.md"
+        "docs/GILGAMESH_VALIDATION_2026-07-20.md",
+        "docs/EXECUTABLE_EXPERT_GUIDANCE.md"
       ]
     }
   ]

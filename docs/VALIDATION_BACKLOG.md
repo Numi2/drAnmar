@@ -91,8 +91,10 @@ only the gates explicitly demonstrated in the new runtime report should be treat
 
 - The reusable eight-phase executable expert controller is source-complete for all 19 procedure rooms. A live
   needle-pickup pass proved phase dwell, pause/resume, exact-state takeover, synchronized recording, clean
-  candidate qualification, and browser rendering. The other 18 room-specific trajectories remain on this
-  backlog for complete runtime and clinician review before they may be treated as reference-quality examples.
+  candidate qualification, and browser rendering. On July 21, interrupted suturing, needle handover and
+  ultrasound-guided access also completed 8/8 phase traversal and saved 606, 687 and 574 state frames. Their
+  bounded convergence warnings correctly produced `clean_reference_eligible=false` and no BC candidate.
+  Fifteen rooms still lack complete live capture; all 19 require clinician review before reference promotion.
 
 - Training now actually pauses the interactive Isaac worker and restores the exact prior procedure/anatomy
   composition; NVIDIA workflow resume uses the same full-context path.
@@ -338,6 +340,8 @@ Captured on Gilgamesh in the running Isaac workstation rather than from mocked U
   to 21.51 mm. Capture stopped before the receiving grasp or release, as intended for the pre-handoff view.
 - The resulting GIF holds control highlights for readable frames and includes close, overview, instrument-select,
   entry, reverse, and pre-handoff states.
+- This dated capture predates the expert-start, expert-pause and final combined-action additions. The current
+  workstation and CI audit report `54/54`; the added expert keys are documented in `KEYBOARD_CONTROLS.md`.
 - A second live dual-PSM capture completed the transfer rather than stopping at pre-handoff: instrument 2 first
   acquired and lifted the needle, instrument 1 closed at 1.91 mm while both assisted grasps were active, then
   instrument 2 opened. Final simulator state reported assisted grasp `[true, false]`, grippers `[closed, open]`,

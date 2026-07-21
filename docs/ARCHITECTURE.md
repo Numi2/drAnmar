@@ -20,6 +20,8 @@ component contains a physical-robot driver or a clinical workflow integration.
    prevents an experimental or fallback result from being presented as calibrated biomechanics.
 7. `dr_anmar_physics_next.sh` manages a separate Isaac Sim 6 / Isaac Lab 3 environment under mutable runtime
    storage. It never replaces or stops the stable worker.
+8. `scripts/dr_anmar_expert.py` runs the shared eight-phase expert state machine. The workstation maps each
+   phase into room-specific actions, records the trajectory, and keeps degraded runs out of the reference set.
 
 Only one GPU worker is active at a time. Switching a lesson or anatomy room replaces that worker rather
 than accumulating Isaac Sim processes. Training, NVIDIA healthcare workflows, Failure Lab matrices and
@@ -45,12 +47,31 @@ isaac_portable/        isolated Isaac caches and settings
 
 These paths are ignored if a developer deliberately points `DR_ANMAR_ROOT` inside the repository.
 
+## Expert execution and qualification
+
+```mermaid
+flowchart LR
+    A["Doctor Studio: Watch / Pause / Take control"] --> B["Hub lifecycle gate"]
+    B --> C["Isaac workstation"]
+    C --> D["Eight-phase expert controller"]
+    D --> E["OpenUSD room + procedure mechanics"]
+    D --> F["Synchronized NPZ + JSON trajectory"]
+    F --> G{"Clean and uninterrupted?"}
+    G -->|Yes| H["BC candidate pending clinician review"]
+    G -->|No| I["Saved diagnostic run with degraded reasons"]
+```
+
+`completed` describes phase traversal, not task success. Reference qualification additionally requires no
+bounded-convergence warnings, no intervention, complete recording, and later clinician review. The browser
+GIFs and exact evidence are documented in [`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md).
+
 ## Network model
 
 The hub defaults to port 2360 and the worker to port 2361. Both bind to `0.0.0.0` so a trusted device can
-operate the interface. The current research build has no authentication or TLS; deployment must provide
-a private network boundary or an authenticated reverse proxy. Same-host Origin checks and conservative
-response headers provide browser defense in depth but are not an access-control system.
+operate the interface. Deployments can require `DR_ANMAR_ACCESS_TOKEN`; shared or non-private deployments must
+also provide HTTPS and set `DR_ANMAR_COOKIE_SECURE=1`. Same-host Origin checks, one-operator leases and
+conservative response headers provide defense in depth, but they do not replace institutional identity,
+authorization and network controls.
 
 ## Compatibility baseline
 

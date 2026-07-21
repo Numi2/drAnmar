@@ -65,8 +65,10 @@ of validated human tissue, force, diagnostic imaging or clinical skill assessmen
 Every procedure room can run a live expert controller through **Rest → Approach → Align → Contact → Grasp →
 Manipulate → Verify → Recover**. This is not a prerecorded video: the robot acts inside the current OpenUSD
 room while camera, task, force, tissue and phase telemetry update. A doctor can pause for inspection or take
-manual control from the current phase, and a complete uninterrupted trajectory is saved as a reviewable
-Behavior Cloning candidate.
+manual control from the current phase. Complete runs are saved and qualified; only clean uninterrupted runs
+become Behavior Cloning candidates, and clinician review is still required before reference promotion. The
+full workflow and honest qualification boundary are documented in
+[`docs/EXECUTABLE_EXPERT_GUIDANCE.md`](docs/EXECUTABLE_EXPERT_GUIDANCE.md).
 
 <p align="center">
   <img src="docs/screenshots/expert-guidance-suturing.gif" width="960" alt="Live Dr.Anmar expert guidance performing the interrupted-suturing room while the eight teaching phases, operative camera, controls, and suture telemetry update">
@@ -210,6 +212,8 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
   vessel compression, clip retention, over-compression damage, flow, bleeding and rebleeding telemetry.
 - Guided lessons, plain-language robotics explanations, progress tracking, and a robotics glossary.
 - Demonstration recording and replay for behavior-cloning experiments.
+- Executable eight-phase simulation experts in all 19 rooms, with live pause/resume, exact-state manual
+  takeover, synchronized recording, degraded-run warnings and fail-closed reference qualification.
 - Surgical Skills Twin analysis with telemetry-derived coaching, phase timelines, subscores, and selected-attempt replay.
 - Registered task-native dVRK/STAR tool-tip paths rendered as an optional phase-coloured guide inside the live
   OpenUSD operating room, with a legacy trajectory fallback.

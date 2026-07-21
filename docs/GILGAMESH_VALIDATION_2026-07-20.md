@@ -57,8 +57,9 @@ joint-velocity array remained finite; dual-arm tasks reported two robots.
   `dr_anmar_lift_needle_psm_ik_rel_20260720_164313_401.npz`; the live analysis endpoint accepted it.
 - Two operator identities exercised the shared-workstation lease: the owner received HTTP 200, the second
   operator received HTTP 423, and explicit release succeeded.
-- The browser-rendered workstation reported `51/51 controls mapped to keyboard`; gripper state feedback changed
-  from OPEN to CLOSED in the endoscopic HUD and control dock.
+- The earlier browser-control capture reported `51/51 controls mapped to keyboard`; later combined-action and
+  expert controls expanded the current audited surface to `54/54`. Gripper state feedback changed from OPEN to
+  CLOSED in the endoscopic HUD and control dock.
 
 ### Representative advanced rooms
 
@@ -78,9 +79,9 @@ co-resident operation but is not an isolated performance result.
 
 ## Still open
 
-- Exercise and independently review complete expert trajectories in the other 18 rooms; controller availability
-  and room-specific plans are implemented, but only needle pickup received a complete end-to-end live review in
-  this pass.
+- Exercise and independently review clean expert trajectories in the other 18 rooms; controller availability
+  and room-specific plans are implemented, but only needle pickup received a clean end-to-end live review in
+  this pass. The July 21 addendum below adds three complete phase traversals, all correctly rejected as references.
 - Run complete clinician-like trajectories, not only startup/state checks, in all 19 rooms and across all seven
   anatomy variants.
 - Exercise actual puncture, stitch, knot, full cut, tissue recovery, shunt placement, bleeding control,
@@ -92,3 +93,20 @@ co-resident operation but is not an isolated performance result.
   not a diagnostic ultrasound simulator.
 - Obtain tissue, needle, suture, cutting, flow, force, hardware, clinician-construct, and learning-transfer
   evidence before making biomechanical, clinical, or educational-effectiveness claims.
+
+## 2026-07-21 executable-guidance capture addendum
+
+Three additional UI-launched live experts traversed all eight phases and saved synchronized trajectories while
+the operative camera, phase rail, controls and room telemetry remained visible:
+
+| Procedure | State frames | Camera frames | Control rate | Qualification |
+| --- | ---: | ---: | ---: | --- |
+| Single interrupted stitch | 606 | 62 | 43.38 Hz | Rejected: align/contact/manipulation convergence warnings |
+| Needle handover | 687 | 64 | 48.98 Hz | Rejected: approach/align/contact residual warnings |
+| Ultrasound-guided access | 574 | 53 | 49.54 Hz | Rejected: align/contact residual warnings |
+
+This proves repeatable eight-phase execution, recording and fail-closed qualification in three more rooms. It
+does not prove task success: all three manifests set `clean_reference_eligible=false` and
+`behavior_cloning_reference_candidate=false`. The captures and exact semantics are in
+[`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md). Fifteen rooms still lack a complete live expert
+capture, and all rooms require clinician review before reference use.

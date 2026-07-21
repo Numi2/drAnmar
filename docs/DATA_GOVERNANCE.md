@@ -19,3 +19,16 @@ study and consent-protocol identifiers so an ungoverned dataset cannot be mistak
 Access to a shared deployment should use `DR_ANMAR_ACCESS_TOKEN` and HTTPS with
 `DR_ANMAR_COOKIE_SECURE=1`. The application lease prevents simultaneous robot commands; it is not a substitute
 for institutional identity, authorization, audit logging, or a managed research-data repository.
+
+## Simulation-expert trajectories
+
+Executable expert runs contain generated robot actions and simulated sensor/mechanics data; they are not human
+expert recordings. Each manifest records controller status, phase completion, interventions, degraded reasons,
+physics authority and calibration state. A clean uninterrupted run may be marked
+`behavior_cloning_reference_candidate=true`, but remains `pending_clinician_review` until a qualified reviewer
+accepts it under the study protocol. A warning-laden run is retained for debugging and Failure Lab analysis and
+must not be silently mixed into an approved reference dataset.
+
+Documentation GIFs are visual explanations only. They are not dataset inputs and do not replace the checksummed
+NPZ/JSON trajectory pair. See [`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md) for the phase,
+qualification and capture contract.

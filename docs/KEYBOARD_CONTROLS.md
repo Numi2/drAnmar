@@ -18,6 +18,8 @@ bounded input conveniences, not autonomous clinical actions.
 | Arrow keys | Pitch and yaw |
 | `Space` | Toggle the gripper |
 | `Enter` | Context action: approach, grasp, then lift |
+| `L` | Start or rerun the live simulation expert |
+| `I` | Pause or resume the active expert for inspection |
 | `Esc` | Stop immediately and take manual control |
 | `?` | Open or close the complete keyboard map |
 
@@ -64,7 +66,7 @@ the sampled curved surface cannot make the tip wander during insertion or withdr
 | Camera views | `7` operative, `8` close, `9` overview, `Shift+C` cycle |
 | Base speed | `,` precision, `.` normal, `/` fast |
 | Gripper | `O` open, `P` close, `Space` toggle |
-| Supervision | `M` manual, `G` guided, `Esc` stop and take control |
+| Supervision | `M` manual, `G` guided, `L` start expert, `I` pause/resume expert, `Esc` stop and take control |
 | Expert path | `H` show/hide |
 | Recording | `Y` start, `U` stop and save, `J` replay, `Delete` reset scene |
 | Annotations | `Shift+1` approach, `Shift+2` grasp, `Shift+3` manipulate, `Shift+4` recovery |
@@ -73,3 +75,9 @@ the sampled curved surface cannot make the tip wander during insertion or withdr
 Keyboard commands are ignored while the user is typing into a text field. Losing browser focus or hiding the
 page clears held commands and sends a stop command. The live interface audits its own buttons and displays
 `all controls mapped` only when every visible button declares a keyboard equivalent.
+
+Starting the expert with `L` opens a synchronized demonstration automatically. `I` pauses only the expert
+phase clock so the current camera, state and telemetry can be inspected. `Esc` preserves the current simulator
+state, records a takeover intervention, stops expert authority and returns movement to the doctor. A completed
+run is not automatically an approved reference; see
+[`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md).

@@ -83,3 +83,12 @@ domain evidence:
 
 The detailed validation backlog remains in `docs/VALIDATION_BACKLOG.md`; machine-readable gate state is in
 `docs/VALIDATION_GATES.json` and fails closed in CI if a validated claim lacks evidence.
+
+## Post-audit evidence — 2026-07-21
+
+- The visible keyboard surface now audits 54/54 mappings, including `L` expert start and `I` pause/resume.
+- Interrupted suturing, needle handover and ultrasound-guided access each completed the eight-phase controller
+  and saved synchronized trajectories, but bounded convergence warnings correctly prevented reference
+  qualification. The original audit's clinician-review gate therefore remains open.
+- Three live UI GIFs and the exact completion-versus-qualification boundary are documented in
+  [`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md).
