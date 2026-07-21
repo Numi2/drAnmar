@@ -864,7 +864,7 @@ class SharedState:
             knot = mechanics.get("surgeons_knot", {})
             completed = int(self.procedure_grasp_seen)
             completed += int(int(hoop.get("pass_count", 0)) >= 1 and bool(hoop.get("passed_cleanly")))
-            completed += int(bool(knot.get("hoop_passed")) and self.arms >= 2 and not self.grippers_open[1])
+            completed += int(bool(knot.get("hoop_passed")) and self.arms >= 2 and all(not value for value in self.grippers_open[:2]))
             completed += int(bool(knot.get("first_throw_double")))
             completed += int(int(knot.get("throw_count", 0)) >= 2 and bool(knot.get("directions_alternate")))
             completed += int(bool(knot.get("sequence_valid")))
@@ -4239,6 +4239,9 @@ def main() -> None:
             )
             action_np = expert_command.action
             grippers_open = expert_command.grippers_open
+            if state.has_grippers:
+                for arm, is_open in enumerate(grippers_open):
+                    action_np[state.gripper_action_index(arm)] = 1.0 if is_open else -1.0
             with state.lock:
                 state.grippers_open = list(grippers_open)
                 state.operator_input_source = "automation_policy"
@@ -4598,15 +4601,17 @@ def main() -> None:
                     suture_eye_endpoint_index = 1 - sharp_tip_index
                 needle_eye = needle_tips[min(suture_eye_endpoint_index, len(needle_tips) - 1)]
                 synchronize_suture_surface_anchors(mechanics_dt)
+                needle_arm = next(iter(assisted_grasp_joints), expert_controller.primary_arm or 0)
+                tail_arm = 1 - needle_arm if state.arms >= 2 else 0
                 if (
                     guide_kind == "hoop_threading"
                     and len(grippers_open) >= 2
-                    and not grippers_open[1]
-                    and 1 in current_tool_positions
+                    and not grippers_open[tail_arm]
+                    and tail_arm in current_tool_positions
                     and procedure_mechanics.hoop is not None
                     and procedure_mechanics.hoop.pass_count >= 1
                 ):
-                    suture_model.set_tail_world(current_tool_positions[1])
+                    suture_model.set_tail_world(current_tool_positions[tail_arm])
                 suture_model.update(needle_eye, mechanics_dt)
                 if puncture_active and not thread_was_inside_tissue and needle_surface is not None:
                     if bind_suture_to_surface(

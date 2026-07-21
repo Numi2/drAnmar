@@ -62,6 +62,7 @@ class ExpertDemonstrationController:
     object_anchor: np.ndarray | None = None
     phase_started_at: float = field(default_factory=time.monotonic)
     paused_at: float | None = None
+    primary_arm: int | None = None
 
     def __post_init__(self) -> None:
         self.waypoints = np.asarray(self.waypoints, dtype=np.float32).reshape(-1, 3)
@@ -97,6 +98,7 @@ class ExpertDemonstrationController:
         self.paused_at = None
         self.phase_anchor_tools.clear()
         self.object_anchor = None
+        self.primary_arm = None
 
     def pause(self, reason: str = "Doctor paused the expert demonstration for inspection.") -> None:
         if self.status == "running":
@@ -143,6 +145,7 @@ class ExpertDemonstrationController:
             "phase_index": self.phase_index,
             "phase_ticks": self.phase_ticks,
             "manipulation_step": self.manipulation_step,
+            "primary_arm": self.primary_arm,
             "procedure_instruction": self._procedure_instruction(),
             "phase_elapsed_s": round(self.phase_elapsed_s, 2) if self.phase is not None else 0.0,
             "phases": phases,
@@ -343,14 +346,16 @@ class ExpertDemonstrationController:
             else np.asarray((0.080, 0.0, 0.040), dtype=np.float32)
         )
         grippers[0] = grippers[1] = False
+        primary_arm = self.primary_arm if self.primary_arm in {0, 1} else 0
+        receiver_arm = 1 - primary_arm
         step = self.manipulation_step
         self.target_ticks += 1
 
         if step == 1:
             target0 = center + np.asarray((0.024, 0.0, 0.010), dtype=np.float32)
             target1 = center + np.asarray((-0.024, 0.0, 0.010), dtype=np.float32)
-            d0 = self._set_motion(action, 0, tools.get(0), target0)
-            d1 = self._set_motion(action, 1, tools.get(1), target1)
+            d0 = self._set_motion(action, primary_arm, tools.get(primary_arm), target0)
+            d1 = self._set_motion(action, receiver_arm, tools.get(receiver_arm), target1)
             complete = bool(d0 is not None and d1 is not None and d0 <= 0.012 and d1 <= 0.012)
             if complete or self.target_ticks >= 70:
                 self.manipulation_step = 2
@@ -367,8 +372,8 @@ class ExpertDemonstrationController:
             progress = float(np.clip(self.target_ticks / max(duration, 1), 0.0, 1.0))
             angle = direction * turns * 2.0 * np.pi * progress
             radial = np.asarray((0.024 * np.cos(angle), 0.024 * np.sin(angle), 0.010), dtype=np.float32)
-            self._set_motion(action, 0, tools.get(0), center + radial, (0.0, 0.0, 0.018 * direction))
-            self._set_motion(action, 1, tools.get(1), center - radial + np.asarray((0.0, 0.0, 0.020), dtype=np.float32), (0.0, 0.0, -0.018 * direction))
+            self._set_motion(action, primary_arm, tools.get(primary_arm), center + radial, (0.0, 0.0, 0.018 * direction))
+            self._set_motion(action, receiver_arm, tools.get(receiver_arm), center - radial + np.asarray((0.0, 0.0, 0.020), dtype=np.float32), (0.0, 0.0, -0.018 * direction))
             if self.target_ticks >= duration:
                 self.manipulation_step += 1
                 self.target_ticks = 0
@@ -377,8 +382,8 @@ class ExpertDemonstrationController:
         if step in {3, 5, 7}:
             target0 = center + np.asarray((0.043, 0.0, 0.010), dtype=np.float32)
             target1 = center + np.asarray((-0.043, 0.0, 0.010), dtype=np.float32)
-            d0 = self._set_motion(action, 0, tools.get(0), target0)
-            d1 = self._set_motion(action, 1, tools.get(1), target1)
+            d0 = self._set_motion(action, primary_arm, tools.get(primary_arm), target0)
+            d1 = self._set_motion(action, receiver_arm, tools.get(receiver_arm), target1)
             complete = bool(d0 is not None and d1 is not None and d0 <= 0.010 and d1 <= 0.010)
             if complete or self.target_ticks >= 58:
                 if step == 7:
@@ -435,9 +440,10 @@ class ExpertDemonstrationController:
                 )
             return self._handover(action, tools, object_position, grippers)
         if kind == "hoop_threading":
+            primary_arm = self.primary_arm if self.primary_arm in range(self.arms) else 0
             if self.manipulation_step == 0:
-                grippers[0] = False
-                if self._follow_waypoints(action, tools, 0, self.waypoints, (0.024, 0.0, 0.0)):
+                grippers[primary_arm] = False
+                if self._follow_waypoints(action, tools, primary_arm, self.waypoints, (0.024, 0.0, 0.0)):
                     self.manipulation_step = 1
                     self.target_ticks = 0
                     self.target_index = 0
@@ -491,11 +497,18 @@ class ExpertDemonstrationController:
             self.phase_anchor_tools = {arm: value.copy() for arm, value in tool_positions.items()}
         if self.object_anchor is None and object_position is not None:
             self.object_anchor = np.asarray(object_position, dtype=np.float32).copy()
+        if self.guide_kind == "hoop_threading" and self.primary_arm is None and object_position is not None:
+            candidates = [
+                (float(np.linalg.norm(position - object_position)), arm)
+                for arm, position in tool_positions.items()
+            ]
+            self.primary_arm = min(candidates)[1] if candidates else 0
         self.phase_ticks += 1
         phase = self.phase
         phase_changed = False
         completed = False
-        primary = tool_positions.get(0)
+        primary_arm = self.primary_arm if self.guide_kind == "hoop_threading" and self.primary_arm is not None else 0
+        primary = tool_positions.get(primary_arm)
         base = self._phase_target(object_position)
         if phase == "rest":
             if self.has_grippers:
@@ -505,24 +518,24 @@ class ExpertDemonstrationController:
                 phase_changed = True
         elif phase == "approach":
             target = base + np.asarray((0.0, 0.0, 0.045), dtype=np.float32) if base is not None else None
-            distance = self._set_motion(action, 0, primary, target)
+            distance = self._set_motion(action, primary_arm, primary, target)
             if self._reached_or_timeout(distance, 0.014, 120, "approach") and self.phase_elapsed_s >= 0.9:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "align":
             target = base + np.asarray((0.0, 0.0, 0.014), dtype=np.float32) if base is not None else None
-            distance = self._set_motion(action, 0, primary, target, (0.0, 0.012, 0.0))
+            distance = self._set_motion(action, primary_arm, primary, target, (0.0, 0.012, 0.0))
             if self._reached_or_timeout(distance, 0.010, 100, "align") and self.phase_elapsed_s >= 0.9:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "contact":
-            distance = self._set_motion(action, 0, primary, base)
+            distance = self._set_motion(action, primary_arm, primary, base)
             if self._reached_or_timeout(distance, 0.009, 100, "contact") and self.phase_elapsed_s >= 0.8:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "grasp":
             if self.has_grippers:
-                grippers[0] = False
+                grippers[primary_arm] = False
             if self.phase_ticks >= 12 and self.phase_elapsed_s >= 0.9:
                 completed = self._advance(tool_positions)
                 phase_changed = True
@@ -537,7 +550,7 @@ class ExpertDemonstrationController:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "recover":
-            arm = 1 if self.guide_kind in {"handover", "needle_pass"} and self.arms > 1 else 0
+            arm = primary_arm if self.guide_kind == "hoop_threading" else 1 if self.guide_kind in {"handover", "needle_pass"} and self.arms > 1 else 0
             anchor = self.phase_anchor_tools.get(arm, tool_positions.get(arm))
             target = anchor + np.asarray((0.015, 0.0, 0.030), dtype=np.float32) if anchor is not None else None
             current = tool_positions.get(arm)
