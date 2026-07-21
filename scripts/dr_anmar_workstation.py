@@ -266,7 +266,7 @@ APP_HTML = r"""<!doctype html>
     .brand{font-weight:900;letter-spacing:.08em;white-space:nowrap}.brand span{color:var(--cyan)}
     .live{margin-left:auto;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:13px}.dot{width:9px;height:9px;border-radius:50%;background:var(--red)}.dot.ok{background:var(--green);box-shadow:0 0 12px #42e49b99}
     main{display:grid;grid-template-columns:minmax(0,1fr) 470px;height:calc(100vh - 64px)}
-    .view{position:relative;overflow:hidden;background:#020608;display:flex;align-items:center;justify-content:center}.view img{width:100%;height:100%;object-fit:contain}.view-toolbar{padding:9px;border:1px solid #294956;border-radius:10px;background:#07151c}.view-toolbar-row{display:grid;grid-template-columns:62px 1fr;align-items:center;gap:7px}.view-toolbar-row+.view-toolbar-row{margin-top:7px}.view-toolbar-label{color:#6f909b;font:800 9px/1 ui-monospace,SFMono-Regular,Menlo;letter-spacing:.1em;text-transform:uppercase}.camera-tabs,.view-presets{display:grid;gap:5px}.camera-tabs{grid-template-columns:repeat(4,1fr)}.view-presets{grid-template-columns:repeat(7,1fr)}.camera-tabs button,.view-presets button{min-height:32px;padding:0 5px;font-size:9px}.camera-tabs button.active,.view-presets button.active{background:var(--cyan);border-color:var(--cyan);color:#031014}.header-camera-toolbar{min-width:0;flex:1;display:flex;align-items:center;gap:10px;padding:0;border:0;border-radius:0;background:transparent}.header-camera-toolbar .view-toolbar-row{display:flex;min-width:0;gap:6px}.header-camera-toolbar .view-toolbar-row+.view-toolbar-row{margin-top:0}.header-camera-toolbar .camera-tabs,.header-camera-toolbar .view-presets{display:flex;min-width:0;gap:4px}.header-camera-toolbar button{min-width:56px;min-height:34px;padding:0 6px}.header-camera-toolbar .view-presets button{min-width:64px}.gaze-cursor{position:absolute;width:18px;height:18px;border:1px solid #fff;border-radius:50%;translate:-50% -50%;pointer-events:none;opacity:0;box-shadow:0 0 0 3px #2cd2e855}.view.gaze-on .gaze-cursor{opacity:.85}
+    .view{position:relative;overflow:hidden;background:#020608;display:flex;align-items:center;justify-content:center}.view img{width:100%;height:100%;object-fit:contain}.view-toolbar{padding:9px;border:1px solid #294956;border-radius:10px;background:#07151c}.view-toolbar-row{display:grid;grid-template-columns:62px 1fr;align-items:center;gap:7px}.view-toolbar-row+.view-toolbar-row{margin-top:7px}.view-toolbar-label{color:#6f909b;font:800 9px/1 ui-monospace,SFMono-Regular,Menlo;letter-spacing:.1em;text-transform:uppercase}.camera-tabs,.view-presets{display:grid;gap:5px}.camera-tabs{grid-template-columns:repeat(4,1fr)}.view-presets{grid-template-columns:repeat(9,1fr)}.camera-tabs button,.view-presets button{min-height:32px;padding:0 5px;font-size:9px}.camera-tabs button.active,.view-presets button.active{background:var(--cyan);border-color:var(--cyan);color:#031014}.header-camera-toolbar{min-width:0;flex:1;display:flex;align-items:center;gap:10px;padding:0;border:0;border-radius:0;background:transparent}.header-camera-toolbar .view-toolbar-row{display:flex;min-width:0;gap:6px}.header-camera-toolbar .view-toolbar-row+.view-toolbar-row{margin-top:0}.header-camera-toolbar .camera-tabs,.header-camera-toolbar .view-presets{display:flex;min-width:0;gap:4px}.header-camera-toolbar button{min-width:56px;min-height:34px;padding:0 6px}.header-camera-toolbar .view-presets button{min-width:64px}.gaze-cursor{position:absolute;width:18px;height:18px;border:1px solid #fff;border-radius:50%;translate:-50% -50%;pointer-events:none;opacity:0;box-shadow:0 0 0 3px #2cd2e855}.view.gaze-on .gaze-cursor{opacity:.85}.view.free-camera{cursor:grab;touch-action:none}.view.free-camera.dragging{cursor:grabbing}.free-camera-hud{position:absolute;left:14px;bottom:14px;padding:7px 10px;border:1px solid #3b6472;border-radius:7px;background:#031017d9;color:#dffbff;font:800 10px/1.2 ui-monospace,SFMono-Regular,Menlo;pointer-events:none;backdrop-filter:blur(5px)}
     .aim-reticle{position:absolute;left:50%;top:50%;width:28px;height:28px;translate:-50% -50%;pointer-events:none;opacity:.2}.aim-reticle:before,.aim-reticle:after{content:"";position:absolute;background:#dffcff}.aim-reticle:before{left:0;right:0;top:13px;height:1px}.aim-reticle:after{top:0;bottom:0;left:13px;width:1px}.proximity{margin:0 0 10px;padding:9px 11px;border:1px solid #294956;border-radius:8px;background:#061219;color:#9fc0c9;font:10px/1.45 ui-monospace,SFMono-Regular,Menlo}.proximity b{display:inline;color:var(--ink);font-size:10px;margin-right:7px}.proximity.near{border-color:#7a693d}.proximity.held{border-color:#34715f;color:var(--green)}.proximity.guard{border-color:#2c7180;color:var(--cyan)}.proximity.puncture{border-color:#78483e;color:#ffb09e}
     .mechanics-details{margin:0 0 12px;border:1px solid #24404d;border-radius:8px;background:#07151c}.mechanics-details summary{cursor:pointer;padding:9px 11px;color:#8ba8b2;font-size:10px;font-weight:800;letter-spacing:.08em;list-style:none}.mechanics-details summary::-webkit-details-marker{display:none}.mechanics-details summary:after{content:"+";float:right;color:var(--cyan)}.mechanics-details[open] summary:after{content:"−"}.procedure-sensor{margin:0 9px 9px;padding:10px;border-top:1px solid #23434f;font:9px/1.5 ui-monospace,SFMono-Regular,Menlo;color:#9fb9c1}.procedure-sensor.hidden{display:none}.procedure-sensor b{display:block;color:var(--cyan);font-size:10px;letter-spacing:.08em;margin-bottom:3px}.procedure-sensor strong{color:#efffff}.procedure-sensor .ok{color:var(--green)}.procedure-sensor .warn{color:#ffd978}
     .recflag{display:none;position:absolute;right:18px;top:18px;color:#fff;background:#c91f2f;padding:8px 12px;border-radius:99px;font-size:12px;font-weight:900;letter-spacing:.08em}.recflag.on{display:block}
@@ -291,9 +291,9 @@ APP_HTML = r"""<!doctype html>
   </style>
 </head>
 <body>
-<header><div class="brand">DR.<span>ANMAR</span></div><section class="view-toolbar header-camera-toolbar" aria-label="Camera controls"><div class="view-toolbar-row"><span class="view-toolbar-label">Camera</span><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="4" onclick="setCamera('endoscope_left',this)">Left <kbd>4</kbd></button><button data-camera="endoscope_right" data-shortcut="5" onclick="setCamera('endoscope_right',this)">Right <kbd>5</kbd></button><button data-camera="wrist_1" data-shortcut="6" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>6</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="7" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>7</kbd></button></div></div><div class="view-toolbar-row"><span class="view-toolbar-label">Angle</span><div class="view-presets"><button class="active" data-view-mode="operative" data-shortcut="F1" onclick="setCameraView('operative',this)">Operative <kbd>F1</kbd></button><button data-view-mode="close" data-shortcut="F2" onclick="setCameraView('close',this)">Close <kbd>F2</kbd></button><button data-view-mode="overview" data-shortcut="F3" onclick="setCameraView('overview',this)">Wide <kbd>F3</kbd></button><button data-view-mode="overhead" data-shortcut="F4" onclick="setCameraView('overhead',this)">Overhead <kbd>F4</kbd></button><button data-view-mode="left_oblique" data-shortcut="F5" onclick="setCameraView('left_oblique',this)">Left angle <kbd>F5</kbd></button><button data-view-mode="right_oblique" data-shortcut="F6" onclick="setCameraView('right_oblique',this)">Right angle <kbd>F6</kbd></button><button data-view-mode="opposite" data-shortcut="F7" onclick="setCameraView('opposite',this)">Opposite <kbd>F7</kbd></button></div></div></section><button class="header-keyboard" data-shortcut="?" onclick="toggleKeyboardHelp()"><kbd>?</kbd> Keyboard map</button><div class="live"><i id="dot" class="dot"></i><span id="connection">Connecting…</span></div></header>
+<header><div class="brand">DR.<span>ANMAR</span></div><section class="view-toolbar header-camera-toolbar" aria-label="Camera controls"><div class="view-toolbar-row"><span class="view-toolbar-label">Camera</span><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="4" onclick="setCamera('endoscope_left',this)">Left <kbd>4</kbd></button><button data-camera="endoscope_right" data-shortcut="5" onclick="setCamera('endoscope_right',this)">Right <kbd>5</kbd></button><button data-camera="wrist_1" data-shortcut="6" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>6</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="7" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>7</kbd></button></div></div><div class="view-toolbar-row"><span class="view-toolbar-label">Angle</span><div class="view-presets"><button class="active" data-view-mode="operative" data-shortcut="F1" onclick="setCameraView('operative',this)">Operative <kbd>F1</kbd></button><button data-view-mode="close" data-shortcut="F2" onclick="setCameraView('close',this)">Close <kbd>F2</kbd></button><button data-view-mode="overview" data-shortcut="F3" onclick="setCameraView('overview',this)">Wide <kbd>F3</kbd></button><button data-view-mode="overhead" data-shortcut="F4" onclick="setCameraView('overhead',this)">Overhead <kbd>F4</kbd></button><button data-view-mode="left_oblique" data-shortcut="F5" onclick="setCameraView('left_oblique',this)">Left angle <kbd>F5</kbd></button><button data-view-mode="right_oblique" data-shortcut="F6" onclick="setCameraView('right_oblique',this)">Right angle <kbd>F6</kbd></button><button data-view-mode="opposite" data-shortcut="F7" onclick="setCameraView('opposite',this)">Opposite <kbd>F7</kbd></button><button id="freeCameraButton" data-shortcut="F8" onclick="toggleFreeCamera()">Free <kbd>F8</kbd></button><button id="resetCameraButton" data-shortcut="Home" onclick="resetFreeCamera()">Reset <kbd>Home</kbd></button></div></div></section><button class="header-keyboard" data-shortcut="?" onclick="toggleKeyboardHelp()"><kbd>?</kbd> Keyboard map</button><div class="live"><i id="dot" class="dot"></i><span id="connection">Connecting…</span></div></header>
 <main>
-  <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div></section>
+  <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div><div id="freeCameraHud" class="free-camera-hud hidden">Drag orbit · Shift-drag pan · wheel zoom</div></section>
   <aside>
     <section class="control-dock">
       <div class="keyboard-quick"><div class="keyboard-quick-head"><b>Two-hand shortcuts</b><span>Both hands move together · release = stop</span></div><div id="keyActionDisplay" class="keyboard-input-display" aria-live="polite"><kbd>READY</kbd><span>Keyboard control ready</span></div><button id="smartActionButton" class="smart-action" data-shortcut="F12" onclick="smartAction()"><strong><kbd>F12</kbd> Smart assist</strong><small id="smartActionLabel">Nudge toward the target</small></button><div id="proximity" class="proximity"><b>Next</b><span>Acquiring target…</span></div><div class="combo-grid">
@@ -326,7 +326,7 @@ APP_HTML = r"""<!doctype html>
   <div class="shortcut-group"><h3>RIGHT ROBOT · RIGHT HAND</h3><div class="shortcut-line"><kbd>I / K</kbd><span>Up / down</span></div><div class="shortcut-line"><kbd>J / L</kbd><span>Left / right</span></div><div class="shortcut-line"><kbd>U / O</kbd><span>Toward / away</span></div><div class="shortcut-line"><kbd>Right Shift + move</kbd><span>Rotate wrist</span></div><div class="shortcut-line"><kbd>Enter</kbd><span>Toggle right gripper</span></div></div>
   <div class="shortcut-group"><h3>SPEED + SAFETY</h3><div class="shortcut-line"><kbd>1 / 2 / 3</kbd><span>Left precision / normal / fast</span></div><div class="shortcut-line"><kbd>8 / 9 / 0</kbd><span>Right precision / normal / fast</span></div><div class="shortcut-line"><kbd>Backspace</kbd><span>Stop both robots</span></div><div class="shortcut-line"><kbd>Esc</kbd><span>Stop + take control</span></div><div class="shortcut-line"><kbd>[ / ]</kbd><span>Select pointer-control robot</span></div></div>
   <div class="shortcut-group"><h3>BOUNDED COMBINED MOVES</h3><div class="shortcut-line"><kbd>Z / X</kbd><span>Orbit left / right</span></div><div class="shortcut-line"><kbd>V / B</kbd><span>Drive / reverse needle</span></div><div class="shortcut-line"><kbd>N / F</kbd><span>Lift / lower + approach</span></div><div class="shortcut-line"><kbd>F12</kbd><span>Context action</span></div><div class="shortcut-line"><kbd>Space / Enter</kbd><span>Independent grippers</span></div></div>
-  <div class="shortcut-group"><h3>CAMERAS</h3><div class="shortcut-line"><kbd>4 / 5</kbd><span>Stereo left / right</span></div><div class="shortcut-line"><kbd>6 / 7</kbd><span>Wrist 1 / 2</span></div><div class="shortcut-line"><kbd>F1 / F2 / F3</kbd><span>Operative / close / wide</span></div><div class="shortcut-line"><kbd>F4 / F5 / F6 / F7</kbd><span>Overhead / left / right / opposite</span></div><div class="shortcut-line"><kbd>C / ⇧C</kbd><span>Next sensor / next angle</span></div></div>
+  <div class="shortcut-group"><h3>CAMERAS</h3><div class="shortcut-line"><kbd>4 / 5</kbd><span>Stereo left / right</span></div><div class="shortcut-line"><kbd>6 / 7</kbd><span>Wrist 1 / 2</span></div><div class="shortcut-line"><kbd>F1 / F2 / F3</kbd><span>Operative / close / wide</span></div><div class="shortcut-line"><kbd>F4–F7</kbd><span>Overhead / oblique / opposite</span></div><div class="shortcut-line"><kbd>F8 / Home</kbd><span>Free camera / reset</span></div><div class="shortcut-line"><kbd>Drag / ⇧Drag / Wheel</kbd><span>Orbit / pan / zoom</span></div><div class="shortcut-line"><kbd>C / ⇧C</kbd><span>Next sensor / next angle</span></div></div>
   <div class="shortcut-group"><h3>EXPERT + SESSION</h3><div class="shortcut-line"><kbd>F9 / F10</kbd><span>Run / pause expert</span></div><div class="shortcut-line"><kbd>Y / T</kbd><span>Start / stop + save</span></div><div class="shortcut-line"><kbd>R / H</kbd><span>Replay / path guide</span></div><div class="shortcut-line"><kbd>M / G</kbd><span>Manual / guided</span></div><div class="shortcut-line"><kbd>Delete</kbd><span>Reset scene</span></div></div>
   <div class="shortcut-group wide"><h3>PROCEDURE ANNOTATIONS</h3><div class="shortcut-list"><div class="shortcut-line"><kbd>⌥1</kbd><span>Approach</span></div><div class="shortcut-line"><kbd>⌥2</kbd><span>Grasp</span></div><div class="shortcut-line"><kbd>⌥3</kbd><span>Manipulate</span></div><div class="shortcut-line"><kbd>⌥4</kbd><span>Recovery</span></div><div class="shortcut-line"><kbd>⌥5</kbd><span>Task event</span></div><div class="shortcut-line"><kbd>⌥6</kbd><span>Safety event</span></div></div></div>
 </div></div></div><div id="toast"></div>
@@ -338,7 +338,7 @@ const rotationKeyMaps=[{KeyW:[4,-1,'Pitch up'],KeyS:[4,1,'Pitch down'],KeyA:[5,-
 const dualMovementCodes=new Set([...Object.keys(handKeyMaps[0]),...Object.keys(handKeyMaps[1])]);
 const comboMap={KeyZ:{label:'Orbit left',values:[0,.72,0,0,0,-.72]},KeyX:{label:'Orbit right',values:[0,-.72,0,0,0,.72]},KeyV:{label:'Drive needle',values:[-.68,0,0,.68,0,0]},KeyB:{label:'Reverse needle',values:[.68,0,0,-.68,0,0]},KeyN:{label:'Lift + retract',values:[.68,0,.68,0,0,0]},KeyF:{label:'Lower + approach',values:[-.68,0,-.68,0,0,0]}};
 function comboValues(code){return comboMap[code]?.values||Array(6).fill(0)}
-let activeArm=0,driveSpeed=1,keyboardSpeeds=[1,1],driveInFlight=false,queuedDrive=null,driveWasActive=false,bimanualInFlight=false,queuedBimanual=null,bimanualWasActive=false,inputSource='keyboard_pointer',lastGazeSend=0,currentCamera='endoscope_left',currentViewMode='operative',lastGamepadGrip=false,lastGamepadCamera=false,latestStatus=null,macroPulseTimer=null,keyFlashTimer=null;
+let activeArm=0,driveSpeed=1,keyboardSpeeds=[1,1],driveInFlight=false,queuedDrive=null,driveWasActive=false,bimanualInFlight=false,queuedBimanual=null,bimanualWasActive=false,inputSource='keyboard_pointer',lastGazeSend=0,currentCamera='endoscope_left',currentViewMode='operative',lastGamepadGrip=false,lastGamepadCamera=false,latestStatus=null,workerInstanceId=null,macroPulseTimer=null,keyFlashTimer=null,cameraAdjustMode=false,cameraDrag=null,cameraAdjustPending={},cameraAdjustTimer=null,cameraAdjustInFlight=false;
 const heldKeys=new Set(),heldModifiers=new Set(),pointerMoves=new Map(),keyDownAt=new Map();
 async function post(url,body={}){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.detail||'Request failed');return data}
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1600)}
@@ -375,7 +375,14 @@ async function replay(){try{const x=await post('/api/replay-last');toast(x.messa
 async function referenceGhost(enabled){try{const x=await post('/api/reference-ghost',{enabled});toast(x.message)}catch(e){toast(e.message)}}
 function setCamera(name,button){currentCamera=name;document.getElementById('cameraImage').src=`/video/${name}?t=${Date.now()}`;document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===button))}
 function setCameraShortcut(name){const button=document.querySelector(`[data-camera="${name}"]`);if(!button||button.classList.contains('hidden')){toast(`${name.replace('_',' ')} is not available in this room`);return}setCamera(name,button);toast(`${button.textContent.trim()} camera`)}
-async function setCameraView(mode,button){try{const result=await post('/api/camera-view',{mode});currentViewMode=result.mode;document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===result.mode));toast(`${button?.textContent||result.mode} camera ready`)}catch(e){toast(e.message)}}
+async function setCameraView(mode,button){try{const result=await post('/api/camera-view',{mode});currentViewMode=result.mode;renderFreeCamera({enabled:false});document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===result.mode));toast(`${button?.textContent||result.mode} camera ready`)}catch(e){toast(e.message)}}
+function renderFreeCamera(adjustable={}){cameraAdjustMode=!!adjustable.enabled;const view=document.getElementById('cameraView');view.classList.toggle('free-camera',cameraAdjustMode);if(!cameraAdjustMode)view.classList.remove('dragging');document.getElementById('freeCameraHud').classList.toggle('hidden',!cameraAdjustMode);document.getElementById('freeCameraButton').classList.toggle('active',cameraAdjustMode);document.getElementById('resetCameraButton').classList.toggle('state-active',cameraAdjustMode)}
+function ensureAdjustableCameraSensor(){if(currentCamera.startsWith('endoscope_'))return;const button=document.querySelector('[data-camera="endoscope_left"]');setCamera('endoscope_left',button)}
+async function toggleFreeCamera(){try{const enable=!cameraAdjustMode;if(enable)ensureAdjustableCameraSensor();const result=await post('/api/camera-adjust',{enabled:enable});currentViewMode=result.mode;renderFreeCamera(result);document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.remove('active'));if(!result.enabled)document.querySelector(`[data-view-mode="${result.mode}"]`)?.classList.add('active');toast(result.enabled?'Free camera · drag, Shift-drag, or scroll':'Fixed camera restored')}catch(e){toast(e.message)}}
+async function resetFreeCamera(){try{ensureAdjustableCameraSensor();const result=await post('/api/camera-adjust',{enabled:true,reset:true});currentViewMode='free';renderFreeCamera(result);document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.remove('active'));toast('Free camera reset')}catch(e){toast(e.message)}}
+function scheduleCameraAdjustment(){if(cameraAdjustTimer||cameraAdjustInFlight||!Object.keys(cameraAdjustPending).length)return;cameraAdjustTimer=setTimeout(flushCameraAdjustment,45)}
+function queueCameraAdjustment(delta){for(const [key,value] of Object.entries(delta))cameraAdjustPending[key]=(cameraAdjustPending[key]||0)+value;scheduleCameraAdjustment()}
+async function flushCameraAdjustment(){cameraAdjustTimer=null;if(cameraAdjustInFlight||!Object.keys(cameraAdjustPending).length)return;const delta=cameraAdjustPending;cameraAdjustPending={};cameraAdjustInFlight=true;try{const result=await post('/api/camera-adjust',{enabled:true,...delta});currentViewMode='free';renderFreeCamera(result)}catch(e){toast(e.message)}finally{cameraAdjustInFlight=false;scheduleCameraAdjustment()}}
 function cycleCameraView(){const modes=['operative','close','overview','overhead','left_oblique','right_oblique','opposite'],mode=modes[(modes.indexOf(currentViewMode)+1)%modes.length],button=document.querySelector(`[data-view-mode="${mode}"]`);setCameraView(mode,button)}
 function cycleSensorCamera(){const buttons=[...document.querySelectorAll('[data-camera]:not(.hidden)')];if(!buttons.length)return;const index=buttons.findIndex(button=>button.dataset.camera===currentCamera),button=buttons[(index+1)%buttons.length];setCamera(button.dataset.camera,button);toast(`${button.textContent.trim()} camera`)}
 async function annotatePhase(phase){try{const x=await post('/api/annotation',{phase});toast(x.message)}catch(e){toast(e.message)}}
@@ -398,7 +405,7 @@ document.querySelectorAll('.move-button').forEach(button=>bindPointerHold(button
 document.querySelectorAll('.combo-button').forEach(button=>bindPointerHold(button,{comboCode:button.dataset.comboKey,label:comboMap[button.dataset.comboKey].label}));
 function isTypingTarget(target){return ['INPUT','SELECT','TEXTAREA'].includes(target.tagName)||target.isContentEditable}
 function annotationShortcut(code){return {Digit1:['⌥1','Approach annotation',()=>annotatePhase('approach')],Digit2:['⌥2','Grasp annotation',()=>annotatePhase('grasp')],Digit3:['⌥3','Manipulation annotation',()=>annotatePhase('manipulation')],Digit4:['⌥4','Recovery annotation',()=>annotatePhase('recovery')],Digit5:['⌥5','Task event',()=>annotateEvent('task_complete')],Digit6:['⌥6','Safety event',()=>annotateEvent('safety_review')]}[code]}
-function handleDiscreteShortcut(event){const {code}=event;if(code==='Slash'&&event.shiftKey){if(!event.repeat)runShortcut('?','Keyboard map',()=>toggleKeyboardHelp());return true}const annotation=event.altKey?annotationShortcut(code):null;if(annotation){if(!event.repeat)runShortcut(...annotation);return true}const speeds={Digit1:[0,.35,'1'],Digit2:[0,1,'2'],Digit3:[0,1.7,'3'],Digit8:[1,.35,'8'],Digit9:[1,1,'9'],Digit0:[1,1.7,'0'],Numpad8:[1,.35,'8'],Numpad9:[1,1,'9'],Numpad0:[1,1.7,'0']};if(speeds[code]){if(!event.repeat)setHandSpeed(...speeds[code]);return true}const cameraSensors={Digit4:['4','Stereo left camera','endoscope_left'],Digit5:['5','Stereo right camera','endoscope_right'],Digit6:['6','Wrist 1 camera','wrist_1'],Digit7:['7','Wrist 2 camera','wrist_2']},cameraViews={F1:['F1','Operative view','operative'],F2:['F2','Close view','close'],F3:['F3','Wide view','overview'],F4:['F4','Overhead view','overhead'],F5:['F5','Left oblique view','left_oblique'],F6:['F6','Right oblique view','right_oblique'],F7:['F7','Opposite-side view','opposite']};if(cameraSensors[code]){if(!event.repeat){const [shortcut,label,name]=cameraSensors[code];runShortcut(shortcut,label,()=>setCameraShortcut(name))}return true}if(cameraViews[code]){if(!event.repeat){const [shortcut,label,mode]=cameraViews[code];runShortcut(shortcut,label,()=>setCameraView(mode,document.querySelector(`[data-view-mode="${mode}"]`)))}return true}const commands={
+function handleDiscreteShortcut(event){const {code}=event;if(code==='Slash'&&event.shiftKey){if(!event.repeat)runShortcut('?','Keyboard map',()=>toggleKeyboardHelp());return true}if(code==='F8'){if(!event.repeat)runShortcut('F8','Toggle free camera',()=>toggleFreeCamera());return true}if(code==='Home'){if(!event.repeat)runShortcut('Home','Reset free camera',()=>resetFreeCamera());return true}const annotation=event.altKey?annotationShortcut(code):null;if(annotation){if(!event.repeat)runShortcut(...annotation);return true}const speeds={Digit1:[0,.35,'1'],Digit2:[0,1,'2'],Digit3:[0,1.7,'3'],Digit8:[1,.35,'8'],Digit9:[1,1,'9'],Digit0:[1,1.7,'0'],Numpad8:[1,.35,'8'],Numpad9:[1,1,'9'],Numpad0:[1,1.7,'0']};if(speeds[code]){if(!event.repeat)setHandSpeed(...speeds[code]);return true}const cameraSensors={Digit4:['4','Stereo left camera','endoscope_left'],Digit5:['5','Stereo right camera','endoscope_right'],Digit6:['6','Wrist 1 camera','wrist_1'],Digit7:['7','Wrist 2 camera','wrist_2']},cameraViews={F1:['F1','Operative view','operative'],F2:['F2','Close view','close'],F3:['F3','Wide view','overview'],F4:['F4','Overhead view','overhead'],F5:['F5','Left oblique view','left_oblique'],F6:['F6','Right oblique view','right_oblique'],F7:['F7','Opposite-side view','opposite']};if(cameraSensors[code]){if(!event.repeat){const [shortcut,label,name]=cameraSensors[code];runShortcut(shortcut,label,()=>setCameraShortcut(name))}return true}if(cameraViews[code]){if(!event.repeat){const [shortcut,label,mode]=cameraViews[code];runShortcut(shortcut,label,()=>setCameraView(mode,document.querySelector(`[data-view-mode="${mode}"]`)))}return true}const commands={
   Space:['Space','Instrument 1 gripper',()=>toggleGrip(0)],Enter:['Enter','Instrument 2 gripper',()=>toggleGrip((latestStatus?.arms||1)>1?1:0)],NumpadEnter:['Enter','Instrument 2 gripper',()=>toggleGrip((latestStatus?.arms||1)>1?1:0)],Backspace:null,Escape:null,
   BracketLeft:['[','Pointer controls · instrument 1',()=>setArm(0)],BracketRight:[']','Pointer controls · instrument 2',()=>setArm(1)],KeyC:[event.shiftKey?'⇧C':'C',event.shiftKey?'Next camera view':'Next camera sensor',()=>event.shiftKey?cycleCameraView():cycleSensorCamera()],
   Comma:[',','Pointer precision speed',()=>setSpeedShortcut(.35)],Period:['.','Pointer normal speed',()=>setSpeedShortcut(1)],Slash:['/','Pointer fast speed',()=>setSpeedShortcut(1.7)],
@@ -408,13 +415,17 @@ function handleDiscreteShortcut(event){const {code}=event;if(code==='Slash'&&eve
 document.addEventListener('keydown',event=>{if(isTypingTarget(event.target)||event.metaKey||event.ctrlKey)return;const helpOpen=!document.getElementById('keyboardHelp').classList.contains('hidden');if(helpOpen&&event.code!=='Slash'&&event.code!=='Escape'&&event.code!=='Backspace'){event.preventDefault();return}if(event.code==='ShiftLeft'||event.code==='ShiftRight'){event.preventDefault();heldModifiers.add(event.code==='ShiftLeft'?'rotate-left':'rotate-right');showKeyAction(event.code==='ShiftLeft'?'L⇧':'R⇧',`${event.code==='ShiftLeft'?'Left':'Right'} wrist rotation mode`,true);syncKeyVisuals();updateDrive();return}if(event.code==='AltLeft'||event.code==='AltRight'){event.preventDefault();heldModifiers.add('precision');syncKeyVisuals();return}if(handleDiscreteShortcut(event)){event.preventDefault();if((event.code==='Escape'||event.code==='Backspace')&&helpOpen)toggleKeyboardHelp(false);return}if(!dualMovementCodes.has(event.code)&&!comboMap[event.code])return;event.preventDefault();if(!event.repeat&&!heldKeys.has(event.code))keyDownAt.set(event.code,performance.now());inputSource='keyboard_pointer';heldKeys.add(event.code);updateDrive();showKeyAction(event.key.length===1?event.key.toUpperCase():event.key,activeDriveLabel(),true)});
 document.addEventListener('keyup',event=>{if(event.code==='ShiftLeft'||event.code==='ShiftRight'){event.preventDefault();heldModifiers.delete(event.code==='ShiftLeft'?'rotate-left':'rotate-right');syncKeyVisuals();updateDrive();if(!bimanualWasActive)showKeyAction('READY','Wrist rotation mode released',false);return}if(event.code==='AltLeft'||event.code==='AltRight'){event.preventDefault();heldModifiers.delete('precision');syncKeyVisuals();return}if(!dualMovementCodes.has(event.code)&&!comboMap[event.code])return;event.preventDefault();const pressedAt=keyDownAt.get(event.code);keyDownAt.delete(event.code);heldKeys.delete(event.code);updateDrive();if(comboMap[event.code]&&pressedAt!==undefined&&performance.now()-pressedAt<220){const label=comboMap[event.code].label,shortcut=event.key.length===1?event.key.toUpperCase():event.key;flashShortcut(shortcut,`${label} · precision tap`,1050);pulseDrive(comboValues(event.code),`${label} · precision tap`,simulatorReadablePulse(700),Math.max(.35,effectiveSpeed()*.55));return}showKeyAction(heldKeys.size?'HOLD':'READY',heldKeys.size?activeDriveLabel():'Released · motion stopped',heldKeys.size>0)});
 window.addEventListener('blur',()=>stopDrive(false));document.addEventListener('visibilitychange',()=>{if(document.hidden)stopDrive(false)});
-document.getElementById('cameraView').addEventListener('pointermove',event=>{const view=event.currentTarget,rect=view.getBoundingClientRect();const u=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),v=Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height));const cursor=document.getElementById('gazeCursor');cursor.style.left=`${u*100}%`;cursor.style.top=`${v*100}%`;view.classList.add('gaze-on');const now=performance.now();if(now-lastGazeSend>100){lastGazeSend=now;post('/api/gaze',{u,v,valid:true,source:'pointer_attention_proxy'}).catch(()=>{})}});document.getElementById('cameraView').addEventListener('pointerleave',()=>document.getElementById('cameraView').classList.remove('gaze-on'));
+const cameraView=document.getElementById('cameraView');
+cameraView.addEventListener('pointerdown',event=>{if(!cameraAdjustMode||event.button!==0)return;event.preventDefault();cameraView.setPointerCapture(event.pointerId);cameraDrag={pointerId:event.pointerId,x:event.clientX,y:event.clientY,pan:event.shiftKey};cameraView.classList.add('dragging');cameraView.classList.remove('gaze-on')});
+cameraView.addEventListener('pointermove',event=>{if(cameraDrag&&cameraDrag.pointerId===event.pointerId){event.preventDefault();const dx=event.clientX-cameraDrag.x,dy=event.clientY-cameraDrag.y;cameraDrag.x=event.clientX;cameraDrag.y=event.clientY;if(cameraDrag.pan)queueCameraAdjustment({pan_x_delta_m:-dx*.00055,pan_y_delta_m:dy*.00055});else queueCameraAdjustment({orbit_yaw_delta_deg:dx*.22,orbit_pitch_delta_deg:dy*.20});return}const rect=cameraView.getBoundingClientRect(),u=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),v=Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height));const cursor=document.getElementById('gazeCursor');cursor.style.left=`${u*100}%`;cursor.style.top=`${v*100}%`;cameraView.classList.add('gaze-on');const now=performance.now();if(now-lastGazeSend>100){lastGazeSend=now;post('/api/gaze',{u,v,valid:true,source:'pointer_attention_proxy'}).catch(()=>{})}});
+function finishCameraDrag(event){if(!cameraDrag||cameraDrag.pointerId!==event.pointerId)return;cameraDrag=null;cameraView.classList.remove('dragging')}
+cameraView.addEventListener('pointerup',finishCameraDrag);cameraView.addEventListener('pointercancel',finishCameraDrag);cameraView.addEventListener('lostpointercapture',finishCameraDrag);cameraView.addEventListener('pointerleave',()=>{if(!cameraDrag)cameraView.classList.remove('gaze-on')});cameraView.addEventListener('wheel',event=>{if(!cameraAdjustMode)return;event.preventDefault();queueCameraAdjustment({zoom_delta:Math.sign(event.deltaY)*.08})},{passive:false});
 function targetDirections(offset){if(!offset)return'';const choices=[];if(Math.abs(offset[2])>.004)choices.push([Math.abs(offset[2]),offset[2]>0?'Up':'Down']);if(Math.abs(offset[1])>.004)choices.push([Math.abs(offset[1]),offset[1]>0?'Left':'Right']);if(Math.abs(offset[0])>.004)choices.push([Math.abs(offset[0]),offset[0]<0?'Toward':'Away']);return choices.sort((a,b)=>b[0]-a[0]).slice(0,2).map(x=>x[1]).join(' + ')}
 async function refresh(){try{
-  const s=await(await fetch('/api/status',{cache:'no-store'})).json();latestStatus=s;if(activeArm>=s.arms){activeArm=0;document.getElementById('arm0').classList.add('active');document.getElementById('arm1').classList.remove('active')}document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';
+  const s=await(await fetch('/api/status',{cache:'no-store'})).json();if(workerInstanceId&&s.instance_id!==workerInstanceId){location.reload();return}workerInstanceId=s.instance_id;latestStatus=s;if(activeArm>=s.arms){activeArm=0;document.getElementById('arm0').classList.add('active');document.getElementById('arm1').classList.remove('active')}document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';
   const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;document.getElementById('procedureSteps').innerHTML=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join('');
   const truth=document.getElementById('procedureTruth');truth.textContent=p.truth_note||'';truth.classList.toggle('hidden',!p.truth_note);document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('rightInstrumentControls').classList.toggle('hidden',s.arms<2);document.getElementById('instrumentGrid').classList.toggle('single',s.arms<2);document.querySelectorAll('.gripper-control').forEach(button=>button.classList.toggle('hidden',!s.has_grippers));
-  currentViewMode=s.camera_view_mode||currentViewMode;document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===currentViewMode));
+  currentViewMode=s.camera_view_mode||currentViewMode;renderFreeCamera(s.camera_adjustable||{});document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',!cameraAdjustMode&&x.dataset.viewMode===currentViewMode));
   document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record').classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[0]===false);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[(s.arms||1)>1?1:0]===false);
 	  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m;proximity.className='proximity';let guidance='Move toward the target';if(s.native_grasp_contact_active?.[activeArm]){guidance='Native jaw contact detected · lift smoothly';proximity.classList.add('held')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){guidance=`Target ${Math.round(distance*1000)} mm · ${targetDirections(offset)||'hold course'}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Next</b><span>${guidance}</span>`;const sensor=document.getElementById('procedureSensor');sensor.innerHTML='';sensor.classList.add('hidden');const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],contact=s.native_grasp_contact_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':contact?'Lift the physically held object':'Open jaws and retry';
   const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderExpert(s.expert_demonstration);
@@ -459,6 +470,16 @@ class GripperToggleRequest(BaseModel):
 
 class CameraViewRequest(BaseModel):
     mode: str
+
+
+class CameraAdjustRequest(BaseModel):
+    enabled: bool = True
+    orbit_yaw_delta_deg: float = 0.0
+    orbit_pitch_delta_deg: float = 0.0
+    zoom_delta: float = 0.0
+    pan_x_delta_m: float = 0.0
+    pan_y_delta_m: float = 0.0
+    reset: bool = False
 
 
 class ScenarioRequest(BaseModel):
@@ -535,6 +556,13 @@ class SharedState:
     grasp_capture_radius_m: float = 0.018
     camera_view_mode: str = "operative"
     camera_view_request: str | None = None
+    camera_free_enabled: bool = False
+    camera_free_base_mode: str = "operative"
+    camera_free_yaw_deg: float = 0.0
+    camera_free_pitch_deg: float = 0.0
+    camera_free_zoom: float = 1.0
+    camera_free_pan_x_m: float = 0.0
+    camera_free_pan_y_m: float = 0.0
     virtual_fixture_enabled: bool = False
     virtual_fixture_active: bool = False
     closest_anatomy_clearance_m: float | None = None
@@ -618,6 +646,17 @@ class SharedState:
             raise ValueError("This task has no gripper action")
         return arm * 7 + 6
 
+    def camera_adjustment(self) -> dict[str, float | str]:
+        """Return the native camera adjustment while the caller owns ``lock``."""
+        return {
+            "base_mode": self.camera_free_base_mode,
+            "yaw_deg": self.camera_free_yaw_deg,
+            "pitch_deg": self.camera_free_pitch_deg,
+            "zoom": self.camera_free_zoom,
+            "pan_x_m": self.camera_free_pan_x_m,
+            "pan_y_m": self.camera_free_pan_y_m,
+        }
+
     def status(self) -> dict[str, Any]:
         with self.lock:
             procedure_status = self._procedure_status()
@@ -666,6 +705,15 @@ class SharedState:
                 "tool_to_object_offset_m": self.tool_to_object_offset_m,
                 "grasp_capture_radius_m": self.grasp_capture_radius_m,
                 "camera_view_mode": self.camera_view_mode,
+                "camera_adjustable": {
+                    "enabled": self.camera_free_enabled,
+                    "base_mode": self.camera_free_base_mode,
+                    "yaw_deg": self.camera_free_yaw_deg,
+                    "pitch_deg": self.camera_free_pitch_deg,
+                    "zoom": self.camera_free_zoom,
+                    "pan_x_m": self.camera_free_pan_x_m,
+                    "pan_y_m": self.camera_free_pan_y_m,
+                },
                 "virtual_fixture_enabled": self.virtual_fixture_enabled,
                 "virtual_fixture_active": self.virtual_fixture_active,
                 "closest_anatomy_clearance_m": self.closest_anatomy_clearance_m,
@@ -1007,8 +1055,64 @@ def build_web_app(state: SharedState) -> FastAPI:
         with state.lock:
             state.camera_view_mode = request.mode
             state.camera_view_request = request.mode
+            state.camera_free_enabled = False
+            state.camera_free_base_mode = request.mode
+            state.camera_free_yaw_deg = 0.0
+            state.camera_free_pitch_deg = 0.0
+            state.camera_free_zoom = 1.0
+            state.camera_free_pan_x_m = 0.0
+            state.camera_free_pan_y_m = 0.0
         state.wake_event.set()
         return {"ok": True, "mode": request.mode}
+
+    @app.post("/api/camera-adjust")
+    def camera_adjust(request: CameraAdjustRequest) -> dict[str, Any]:
+        def finite_delta(value: float, limit: float) -> float:
+            numeric = float(value)
+            if not np.isfinite(numeric):
+                raise HTTPException(400, "camera adjustments must be finite numbers")
+            return float(np.clip(numeric, -limit, limit))
+
+        with state.lock:
+            if not request.enabled:
+                state.camera_free_enabled = False
+                state.camera_view_mode = state.camera_free_base_mode
+                state.camera_view_request = state.camera_free_base_mode
+                result = {"enabled": False, "mode": state.camera_view_mode, **state.camera_adjustment()}
+            else:
+                if not state.camera_free_enabled and state.camera_view_mode != "free":
+                    state.camera_free_base_mode = state.camera_view_mode
+                if request.reset:
+                    state.camera_free_yaw_deg = 0.0
+                    state.camera_free_pitch_deg = 0.0
+                    state.camera_free_zoom = 1.0
+                    state.camera_free_pan_x_m = 0.0
+                    state.camera_free_pan_y_m = 0.0
+                state.camera_free_yaw_deg = (
+                    state.camera_free_yaw_deg + finite_delta(request.orbit_yaw_delta_deg, 45.0) + 180.0
+                ) % 360.0 - 180.0
+                state.camera_free_pitch_deg = float(
+                    np.clip(
+                        state.camera_free_pitch_deg + finite_delta(request.orbit_pitch_delta_deg, 30.0),
+                        -75.0,
+                        75.0,
+                    )
+                )
+                state.camera_free_zoom = float(
+                    np.clip(state.camera_free_zoom + finite_delta(request.zoom_delta, 0.35), 0.35, 2.5)
+                )
+                state.camera_free_pan_x_m = float(
+                    np.clip(state.camera_free_pan_x_m + finite_delta(request.pan_x_delta_m, 0.1), -0.45, 0.45)
+                )
+                state.camera_free_pan_y_m = float(
+                    np.clip(state.camera_free_pan_y_m + finite_delta(request.pan_y_delta_m, 0.1), -0.45, 0.45)
+                )
+                state.camera_free_enabled = True
+                state.camera_view_mode = "free"
+                state.camera_view_request = "free"
+                result = {"enabled": True, "mode": "free", **state.camera_adjustment()}
+        state.wake_event.set()
+        return {"ok": True, **result}
 
     @app.post("/api/gripper")
     def gripper(request: GripperRequest) -> dict[str, Any]:
@@ -2125,6 +2229,50 @@ def camera_view_pose(eye: np.ndarray, target: np.ndarray, mode: str) -> tuple[np
     return eye.astype(np.float32), target.astype(np.float32)
 
 
+def rotate_camera_vector(vector: np.ndarray, axis: np.ndarray, angle_deg: float) -> np.ndarray:
+    axis_norm = float(np.linalg.norm(axis))
+    if axis_norm < 1.0e-6 or abs(angle_deg) < 1.0e-6:
+        return vector.copy()
+    unit_axis = axis / axis_norm
+    angle = np.deg2rad(angle_deg)
+    return (
+        vector * np.cos(angle)
+        + np.cross(unit_axis, vector) * np.sin(angle)
+        + unit_axis * float(np.dot(unit_axis, vector)) * (1.0 - np.cos(angle))
+    ).astype(np.float32)
+
+
+def adjustable_camera_pose(
+    eye: np.ndarray,
+    target: np.ndarray,
+    yaw_deg: float,
+    pitch_deg: float,
+    zoom: float,
+    pan_x_m: float,
+    pan_y_m: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Apply bounded clinician camera controls to an Isaac camera pose."""
+    world_up = np.asarray((0.0, 0.0, 1.0), dtype=np.float32)
+    view_vector = rotate_camera_vector(eye - target, world_up, yaw_deg)
+    forward = -view_vector / max(float(np.linalg.norm(view_vector)), 1.0e-6)
+    right = np.cross(forward, world_up).astype(np.float32)
+    if float(np.linalg.norm(right)) < 1.0e-5:
+        right = np.asarray((1.0, 0.0, 0.0), dtype=np.float32)
+    right /= max(float(np.linalg.norm(right)), 1.0e-6)
+    view_vector = rotate_camera_vector(view_vector, right, pitch_deg) * float(zoom)
+    forward = -view_vector / max(float(np.linalg.norm(view_vector)), 1.0e-6)
+    right = np.cross(forward, world_up).astype(np.float32)
+    if float(np.linalg.norm(right)) < 1.0e-5:
+        right = np.asarray((1.0, 0.0, 0.0), dtype=np.float32)
+    right /= max(float(np.linalg.norm(right)), 1.0e-6)
+    camera_up = np.cross(right, forward).astype(np.float32)
+    camera_up /= max(float(np.linalg.norm(camera_up)), 1.0e-6)
+    pan = right * float(pan_x_m) + camera_up * float(pan_y_m)
+    adjusted_target = target + pan
+    adjusted_eye = adjusted_target + view_vector
+    return adjusted_eye.astype(np.float32), adjusted_target.astype(np.float32)
+
+
 def scalar_value(value: Any, default: float = 0.0) -> float:
     try:
         if isinstance(value, torch.Tensor):
@@ -2823,9 +2971,24 @@ def main() -> None:
         return max(observed, default=0.0)
 
 
-    def apply_endoscope_camera_view(selected_scenario: str, view_mode: str) -> None:
+    def apply_endoscope_camera_view(
+        selected_scenario: str,
+        view_mode: str,
+        adjustment: dict[str, float] | None = None,
+    ) -> None:
         selected_eye, selected_target = scenario_camera_pose(camera_eye, camera_target, selected_scenario)
-        selected_eye, selected_target = camera_view_pose(selected_eye, selected_target, view_mode)
+        base_mode = str((adjustment or {}).get("base_mode", "operative")) if view_mode == "free" else view_mode
+        selected_eye, selected_target = camera_view_pose(selected_eye, selected_target, base_mode)
+        if view_mode == "free" and adjustment:
+            selected_eye, selected_target = adjustable_camera_pose(
+                selected_eye,
+                selected_target,
+                float(adjustment.get("yaw_deg", 0.0)),
+                float(adjustment.get("pitch_deg", 0.0)),
+                float(adjustment.get("zoom", 1.0)),
+                float(adjustment.get("pan_x_m", 0.0)),
+                float(adjustment.get("pan_y_m", 0.0)),
+            )
         camera.set_world_poses_from_view(
             torch.tensor([selected_eye.tolist()], device=camera.device),
             torch.tensor([selected_target.tolist()], device=camera.device),
@@ -2984,7 +3147,8 @@ def main() -> None:
             state.native_telemetry = {}
         with state.lock:
             selected_view_mode = state.camera_view_mode
-        apply_endoscope_camera_view(selected_scenario, selected_view_mode)
+            selected_camera_adjustment = state.camera_adjustment()
+        apply_endoscope_camera_view(selected_scenario, selected_view_mode, selected_camera_adjustment)
         update_wrist_camera_poses()
     task_slug = args_cli.task.lower().replace("isaac-", "").replace("-v0", "").replace("-", "_")
     existing = sorted(args_cli.demo_dir.glob(f"dr_anmar_{task_slug}_*.npz"), reverse=True)
@@ -3045,6 +3209,7 @@ def main() -> None:
             scenario_seed = state.scenario_seed
             camera_view_request = state.camera_view_request
             state.camera_view_request = None
+            camera_adjustment = state.camera_adjustment()
             ghost_update = state.reference_ghost_update
             state.reference_ghost_update = None
             ghost_enabled = state.reference_ghost_enabled
@@ -3122,7 +3287,7 @@ def main() -> None:
 
         if camera_view_request is not None and not reset_requested:
             with torch.inference_mode():
-                apply_endoscope_camera_view(scenario_id, camera_view_request)
+                apply_endoscope_camera_view(scenario_id, camera_view_request, camera_adjustment)
 
         if record_request == "start":
             demo_frames.clear()
