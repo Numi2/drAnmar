@@ -3609,7 +3609,9 @@ def main() -> None:
     def update_procedure_waypoint_marker(index: int, force: bool = False) -> None:
         """Show one unobtrusive next-step cue instead of covering the field."""
         nonlocal visible_procedure_waypoint_index
-        if not procedure.get("show_waypoint_markers", True):
+        with state.lock:
+            guided_markers_active = state.autonomy_mode == "guided"
+        if not procedure.get("show_waypoint_markers", True) or not guided_markers_active:
             visible_procedure_waypoint_index = -1
             procedure_markers.set_visibility(False)
             return
