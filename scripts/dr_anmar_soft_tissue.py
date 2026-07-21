@@ -912,6 +912,61 @@ class SutureThreadModel:
         )
         self.instrument_contact_radius_m = max(float(radius_m), self.collision_radius_m * 2.0)
 
+    def _slack_connector(
+        self,
+        start: np.ndarray,
+        end: np.ndarray,
+        segment_count: int,
+        bend_sign: float,
+    ) -> np.ndarray:
+        """Return a smooth connector whose arc length consumes its strand nodes."""
+        count = max(1, int(segment_count))
+        start = np.asarray(start, dtype=np.float32)
+        end = np.asarray(end, dtype=np.float32)
+        t = np.linspace(0.0, 1.0, count + 1, dtype=np.float32)
+        straight = start[None, :] * (1.0 - t[:, None]) + end[None, :] * t[:, None]
+        available_length = count * self.segment_length_m
+        direct = end - start
+        direct_length = float(np.linalg.norm(direct))
+        if count <= 1 or direct_length >= available_length * 0.995:
+            return straight.astype(np.float32)
+
+        horizontal = np.asarray((direct[0], direct[1], 0.0), dtype=np.float32)
+        if float(np.linalg.norm(horizontal)) < 1e-7:
+            horizontal = np.asarray((1.0, 0.0, 0.0), dtype=np.float32)
+        perpendicular = np.asarray((-horizontal[1], horizontal[0], 0.0), dtype=np.float32)
+        perpendicular /= max(float(np.linalg.norm(perpendicular)), 1e-8)
+        perpendicular *= 1.0 if bend_sign >= 0.0 else -1.0
+        envelope = np.sin(np.pi * t)[:, None]
+
+        def curve(amplitude: float) -> np.ndarray:
+            lateral = perpendicular[None, :] * float(amplitude)
+            minimum_height = max(
+                0.0,
+                min(float(start[2]), float(end[2]))
+                - (float(self.support_plane_z_m or 0.0) + self.collision_radius_m),
+            )
+            drop = min(float(amplitude) * 0.22, minimum_height * 0.78)
+            sag = np.asarray((0.0, 0.0, -drop), dtype=np.float32)[None, :]
+            return straight + envelope * (lateral + sag)
+
+        low = 0.0
+        high = 0.004
+        while high < 0.14:
+            candidate = curve(high)
+            if float(np.linalg.norm(np.diff(candidate, axis=0), axis=1).sum()) >= available_length:
+                break
+            high *= 1.7
+        for _ in range(18):
+            middle = (low + high) * 0.5
+            candidate = curve(middle)
+            length = float(np.linalg.norm(np.diff(candidate, axis=0), axis=1).sum())
+            if length < available_length:
+                low = middle
+            else:
+                high = middle
+        return curve((low + high) * 0.5).astype(np.float32)
+
     def set_knot_route(
         self,
         route_points: np.ndarray,
@@ -946,7 +1001,30 @@ class SutureThreadModel:
                 )
             crossing_pairs = remapped_pairs
 
-        target_indices = {start_index + offset for offset in range(len(route))}
+        full_targets: dict[int, np.ndarray] = {}
+        if len(route):
+            loop_end_index = start_index + len(route) - 1
+            prefix = self._slack_connector(
+                self.fixed.get(0, self.points[0]),
+                route[0],
+                start_index,
+                bend_sign=-1.0,
+            )
+            for index in range(1, start_index):
+                full_targets[index] = prefix[index]
+            for offset, target in enumerate(route):
+                full_targets[start_index + offset] = target
+            suffix_segments = self.node_count - 1 - loop_end_index
+            suffix = self._slack_connector(
+                route[-1],
+                self.fixed.get(self.node_count - 1, self.points[-1]),
+                suffix_segments,
+                bend_sign=1.0,
+            )
+            for offset in range(1, suffix_segments):
+                full_targets[loop_end_index + offset] = suffix[offset]
+
+        target_indices = set(full_targets)
         for index in list(self.knot_guide_weights):
             if index not in target_indices:
                 weight = self.knot_guide_weights[index] * 0.78
@@ -956,8 +1034,7 @@ class SutureThreadModel:
                 else:
                     self.knot_guide_weights[index] = weight
 
-        for offset, target in enumerate(route):
-            index = start_index + offset
+        for index, target in full_targets.items():
             previous_target = self.knot_guide_targets.get(index)
             self.knot_guide_targets[index] = (
                 target.copy()

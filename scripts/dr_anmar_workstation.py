@@ -2718,7 +2718,7 @@ def main() -> None:
     suture_model = (
         SutureThreadModel(
             node_count=128 if guide_kind == "hoop_threading" else max(48, target_anchors * 12),
-            segment_length_m=0.0018 if guide_kind == "hoop_threading" else 0.0032,
+            segment_length_m=0.0021 if guide_kind == "hoop_threading" else 0.0032,
             max_tissue_anchors=target_anchors,
             required_anchors_for_knot=target_anchors,
             anchor_pullout_force_n=tissue_material.anchor_pullout_force_n,

@@ -905,7 +905,7 @@ class SurgeonsKnotModel:
                 seat = self.active_cinch_progress
             else:
                 seat = 0.0
-            radius = float((1.0 - seat) * 0.0066 + seat * 0.0042)
+            radius = float((1.0 - seat) * 0.0066 + seat * 0.0052)
             samples_per_turn = 20
             samples = max(3, int(np.ceil(used_turns * samples_per_turn)) + 1)
             theta = np.linspace(0.0, direction * used_turns * 2.0 * np.pi, samples, dtype=np.float32)
