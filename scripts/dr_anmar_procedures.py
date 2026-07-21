@@ -326,7 +326,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "target_throws": 3,
         "waypoints": ((-0.045, 0.000, 0.065), (0.000, 0.000, 0.065), (0.045, 0.000, 0.065)),
         "steps": [
-            step("pickup", "Pick up the threaded needle", "Close on the middle third of the needle and confirm that the blue strand follows from its eye.", "needle and strand custody"),
+            step("pickup", "Pick up the threaded needle", "Close on the middle third of the needle and confirm that the suture follows continuously from its eye.", "needle and suture custody"),
             step("pass", "Pass the hoop", "Center the sharp tip, follow the needle curvature through the opening, and clear the ring without contact.", "clean plane crossing"),
             step("tail", "Control both ends", "Use Instrument 2 to secure the free tail and bring both strand ends into the knot field.", "bimanual tail control"),
             step("double", "Double first throw", "Wrap twice in one direction, capture the tail, and pull both ends apart evenly to seat the first throw.", "two wraps"),
