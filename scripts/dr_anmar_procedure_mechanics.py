@@ -674,6 +674,8 @@ class SurgeonsKnotModel:
     slippage_m: float = 0.0
     seat_symmetry: float = 0.0
     demonstrated_turns: float = 0.0
+    primary_position: np.ndarray | None = None
+    secondary_position: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         self.center = np.asarray(self.center, dtype=np.float32)
@@ -687,6 +689,8 @@ class SurgeonsKnotModel:
         self.slippage_m = 0.0
         self.seat_symmetry = 0.0
         self.demonstrated_turns = 0.0
+        self.primary_position = None
+        self.secondary_position = None
 
     @property
     def phase(self) -> str:
@@ -746,6 +750,9 @@ class SurgeonsKnotModel:
         separation = float(np.linalg.norm(primary - secondary)) if both_closed else 0.0
         midpoint = (primary + secondary) * 0.5 if both_closed else self.center
         field_error = float(np.linalg.norm(midpoint - self.center))
+        if both_closed:
+            self.primary_position = np.asarray(primary, dtype=np.float32).copy()
+            self.secondary_position = np.asarray(secondary, dtype=np.float32).copy()
 
         if expert_guidance_active:
             demonstrated_by_step = {2: 2.0, 3: 2.0, 4: 3.0, 5: 3.0, 6: 4.0, 7: 4.0}
@@ -807,20 +814,35 @@ class SurgeonsKnotModel:
         }
 
     def visual_points(self) -> np.ndarray:
-        """Return a compact strand curve showing completed and active throws."""
+        """Return one connected bimanual strand showing completed/active throws."""
         completed_turns = sum(int(item["wraps"]) for item in self.throws)
         active_turns = min(2.0, abs(self.accumulated_angle_rad) / (2.0 * np.pi))
         turns = max(float(completed_turns) + active_turns, self.demonstrated_turns)
-        if turns < 0.08:
+        if turns < 0.08 or self.primary_position is None or self.secondary_position is None:
             return np.empty((0, 3), dtype=np.float32)
-        samples = max(18, int(np.ceil(turns * 32.0)))
-        theta = np.linspace(0.0, turns * 2.0 * np.pi, samples, dtype=np.float32)
         radius = max(0.0030, 0.0060 - 0.00055 * min(float(len(self.throws)), 3.0))
-        points = np.repeat(self.center[None, :], samples, axis=0)
-        points[:, 0] += np.linspace(-0.003, 0.003, samples, dtype=np.float32)
-        points[:, 1] += np.sin(theta) * radius
-        points[:, 2] += np.sin(theta * 2.0) * radius * 0.55
-        return points.astype(np.float32)
+        remaining = turns
+        loop_segments: list[np.ndarray] = []
+        sequence = ((2.0, 1.0), (1.0, -1.0), (1.0, 1.0))
+        for throw_index, (available_turns, direction) in enumerate(sequence):
+            used_turns = min(remaining, available_turns)
+            if used_turns <= 0.0:
+                break
+            samples = max(16, int(np.ceil(used_turns * 30.0)))
+            theta = np.linspace(0.0, direction * used_turns * 2.0 * np.pi, samples, dtype=np.float32)
+            segment = np.repeat(self.center[None, :], samples, axis=0)
+            x_center = (throw_index - 1.0) * 0.0018
+            segment[:, 0] += x_center + np.linspace(-0.0012, 0.0012, samples, dtype=np.float32)
+            segment[:, 1] += np.sin(theta) * radius
+            segment[:, 2] += np.sin(theta * 2.0) * radius * 0.55
+            loop_segments.append(segment)
+            remaining -= used_turns
+        if not loop_segments:
+            return np.empty((0, 3), dtype=np.float32)
+        loops = np.concatenate(loop_segments, axis=0)
+        entry = np.linspace(self.secondary_position, loops[0], 8, dtype=np.float32)
+        exit_ = np.linspace(loops[-1], self.primary_position, 8, dtype=np.float32)
+        return np.concatenate((entry[:-1], loops, exit_[1:]), axis=0).astype(np.float32)
 
 
 @dataclass

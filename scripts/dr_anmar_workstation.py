@@ -4813,6 +4813,8 @@ def main() -> None:
                 )
                 surgeons_knot_curve.GetWidthsAttr().Set(Vt.FloatArray([0.00145] * len(knot_points)))
                 UsdGeom.Imageable(surgeons_knot_curve_prim).MakeVisible()
+                if suture_curve_prim is not None:
+                    UsdGeom.Imageable(suture_curve_prim).MakeInvisible()
             else:
                 UsdGeom.Imageable(surgeons_knot_curve_prim).MakeInvisible()
         if procedure_curve is not None and procedure_mechanics.tube is not None:
