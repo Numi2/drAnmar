@@ -3112,11 +3112,15 @@ def main() -> None:
                 collider.CreateHeightAttr(segment_length)
                 collider_xform = UsdGeom.Xformable(collider.GetPrim())
                 collider_xform.AddTranslateOp().Set(Gf.Vec3d(*midpoint.astype(float).tolist()))
+                rotation_quat = Gf.Rotation(
+                    Gf.Vec3d(0.0, 0.0, 1.0),
+                    Gf.Vec3d(*tangent.astype(float).tolist()),
+                ).GetQuat()
                 collider_xform.AddOrientOp().Set(
-                    Gf.Rotation(
-                        Gf.Vec3d(0.0, 0.0, 1.0),
-                        Gf.Vec3d(*tangent.astype(float).tolist()),
-                    ).GetQuat()
+                    Gf.Quatf(
+                        float(rotation_quat.GetReal()),
+                        Gf.Vec3f(*np.asarray(rotation_quat.GetImaginary(), dtype=np.float32).tolist()),
+                    )
                 )
                 UsdPhysics.CollisionAPI.Apply(collider.GetPrim()).CreateCollisionEnabledAttr().Set(True)
                 UsdGeom.Imageable(collider.GetPrim()).MakeInvisible()
