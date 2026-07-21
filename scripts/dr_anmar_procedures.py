@@ -552,16 +552,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
 )
 
 
-RETIRED_EXPERIMENTAL_ROOM_IDS = {"needle-hoop-threading"}
-
-# Keep experimental implementations in source for research history, but do not
-# expose them as clinician-facing NVIDIA capabilities.  The public workflow is
-# authoritative and currently publishes rigid suture-needle manipulation only.
-PROCEDURE_ROOMS = tuple(
-    room
-    for room in PROCEDURE_ROOMS + ADVANCED_PROCEDURE_ROOMS
-    if room["id"] not in RETIRED_EXPERIMENTAL_ROOM_IDS
-)
+PROCEDURE_ROOMS = PROCEDURE_ROOMS + ADVANCED_PROCEDURE_ROOMS
 
 
 PROCEDURE_SUITES: tuple[dict[str, Any], ...] = (
@@ -569,7 +560,7 @@ PROCEDURE_SUITES: tuple[dict[str, Any], ...] = (
         "id": "suturing-suite",
         "title": "Suturing and reconstruction",
         "description": "Progress from needle handling through continuous closure and pressure-tested anastomosis.",
-        "rooms": ["needle-pickup", "needle-passing-regrasp", "suture-threading-path", "running-suture", "intracorporeal-knot", "anastomosis-leak-test"],
+        "rooms": ["needle-pickup", "needle-hoop-threading", "needle-passing-regrasp", "suture-threading-path", "running-suture", "intracorporeal-knot", "anastomosis-leak-test"],
     },
     {
         "id": "vascular-suite",

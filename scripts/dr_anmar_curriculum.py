@@ -271,6 +271,18 @@ COURSES.extend(
                     "concepts": ["loop topology", "opposing throws", "knot security"],
                 },
                 {
+                    "id": "needle-hoop-threading-live",
+                    "title": "Hoop pass and surgeon's knot",
+                    "eyebrow": "Runnable bimanual dry-lab sequence · 25 min",
+                    "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
+                    "procedure_id": "needle-hoop-threading",
+                    "video": None,
+                    "mode": "live",
+                    "summary": "Control a threaded curved needle through the physical hoop, then form a double first throw followed by two opposing securing throws.",
+                    "goal": "Complete a clean pass and seat a symmetric 2-1-1 surgeon's-knot sequence without strand slippage or excess tension.",
+                    "concepts": ["hand-eye coordination", "thread control", "double first throw", "opposing throws", "knot security"],
+                },
+                {
                     "id": "needle-passing-regrasp-live",
                     "title": "Needle passing and regrasping",
                     "eyebrow": "Runnable bimanual orientation lab · 25 min",
