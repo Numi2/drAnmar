@@ -551,6 +551,8 @@ class SharedState:
     camera_valid_depth_fraction: float | None = None
     camera_foreground_fraction: float | None = None
     camera_mean_luminance: float | None = None
+    camera_nonblank_seen: bool = False
+    needle_visual_ready: bool = False
     reference_ghost_enabled: bool = False
     reference_ghost_demo: str | None = None
     reference_ghost_update: str | None = None
@@ -652,6 +654,22 @@ class SharedState:
     def status(self) -> dict[str, Any]:
         with self.lock:
             procedure_status = self._procedure_status()
+            guide_kind = str(self.procedure.get("guide_kind", ""))
+            thread_required = guide_kind in SUTURE_GUIDE_KINDS
+            needle_required = thread_required or guide_kind in {"needle_pass", "needle_pickup"}
+            thread_geometry_ready = not thread_required or bool(self.mechanics.get("thread", {}).get("visible"))
+            needle_geometry_ready = not needle_required or self.needle_visual_ready
+            camera_frame_ready = bool(self.frame_id > 0 and self.frame_jpeg and self.camera_nonblank_seen)
+            render_contract = {
+                "ready": bool(camera_frame_ready and needle_geometry_ready and thread_geometry_ready),
+                "camera_frame_ready": camera_frame_ready,
+                "camera_nonblank_seen": self.camera_nonblank_seen,
+                "needle_required": needle_required,
+                "needle_geometry_ready": needle_geometry_ready,
+                "thread_required": thread_required,
+                "thread_geometry_ready": thread_geometry_ready,
+                "target_anchor_markers": int(self.procedure.get("target_anchors", 0)) if thread_required else 0,
+            }
             return {
                 "task": self.task,
                 "instance_id": self.instance_id,
@@ -740,6 +758,7 @@ class SharedState:
                     "semantic_foreground_fraction": self.camera_foreground_fraction,
                     "mean_luminance": self.camera_mean_luminance,
                 },
+                "render_contract": render_contract,
                 "operator_study": {
                     "gaze_valid": self.gaze_valid,
                     "gaze_source": self.gaze_source,
@@ -1541,10 +1560,13 @@ def rgb_tensor_to_image(rgb: torch.Tensor, scenario_id: str = "baseline", dropou
     return Image.new("RGB", image.size, (0, 0, 0)) if dropout else apply_visual_scenario(image, scenario_id)
 
 
-def encode_jpeg(rgb: torch.Tensor, scenario_id: str = "baseline", dropout: bool = False) -> bytes:
+def encode_jpeg(rgb: torch.Tensor, scenario_id: str = "baseline", dropout: bool = False) -> tuple[bytes, float]:
+    image = rgb_tensor_to_image(rgb, scenario_id, dropout)
+    sample = np.asarray(image.resize((32, 24), Image.Resampling.BILINEAR), dtype=np.float32)
+    mean_luminance = float(sample.mean() / 255.0)
     buffer = io.BytesIO()
-    rgb_tensor_to_image(rgb, scenario_id, dropout).save(buffer, "JPEG", quality=86, optimize=False)
-    return buffer.getvalue()
+    image.save(buffer, "JPEG", quality=86, optimize=False)
+    return buffer.getvalue(), mean_luminance
 
 
 def depth_to_point_cloud(depth_m: np.ndarray, intrinsics: np.ndarray, stride: int = 16) -> np.ndarray:
@@ -3602,6 +3624,7 @@ def main() -> None:
         organ_proxy_visual_ready=proxy_visual_ready,
         anatomy_collision_meshes=collision_mesh_count,
         sensor_profile=args_cli.sensor_profile,
+        needle_visual_ready=bool(len(needle_tip_offsets_local) == 2),
     )
     state.camera_names = list(camera_sources)
     state.physics_authority = load_physics_authority().runtime_payload(
@@ -4961,6 +4984,7 @@ def main() -> None:
         frame_interval = 0.04 if interactive_active else 0.20
         if camera.data.output.get("rgb") is not None and now - last_frame_time >= frame_interval:
             rendered_jpegs = {}
+            rendered_luminance: float | None = None
             dropout_profile = SCENARIO_NATIVE_PROFILES.get(scenario_id, {})
             dropout_period = int(dropout_profile.get("dropout_period_frames", 0))
             dropout_frames = int(dropout_profile.get("dropout_frames", 0))
@@ -4978,7 +5002,10 @@ def main() -> None:
                     continue
                 camera_output = sensor_camera.data.output.get("rgb")
                 if camera_output is not None:
-                    rendered_jpegs[camera_name] = encode_jpeg(camera_output[0], scenario_id, dropout_active)
+                    jpeg, mean_luminance = encode_jpeg(camera_output[0], scenario_id, dropout_active)
+                    rendered_jpegs[camera_name] = jpeg
+                    if camera_name == "endoscope_left":
+                        rendered_luminance = mean_luminance
             camera_rgb = camera.data.output["rgb"][0]
             if is_recording and now - last_vision_sample_time >= 0.20:
                 observation = rgb_tensor_to_image(camera_rgb, scenario_id, dropout_active).resize((360, 240), Image.Resampling.BILINEAR)
@@ -5051,6 +5078,10 @@ def main() -> None:
                 state.frame_jpeg = rendered_jpegs.get("endoscope_left", state.frame_jpeg)
                 state.frame_id += 1
                 state.render_fps = 1.0 / elapsed if last_frame_time else 0.0
+                if rendered_luminance is not None:
+                    state.camera_mean_luminance = rendered_luminance
+                    if rendered_luminance > 0.01:
+                        state.camera_nonblank_seen = True
             last_frame_time = now
         if now - last_fps_time >= 1.0:
             with state.lock:
