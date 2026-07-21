@@ -748,15 +748,19 @@ class SurgeonsKnotModel:
         expert_guidance_active: bool = False,
         expert_manipulation_step: int = 0,
         expert_step_progress: float = 0.0,
+        expert_tail_captured: bool = False,
+        expert_primary_arm: int | None = None,
     ) -> dict[str, Any]:
-        primary = tool_positions.get(0)
-        secondary = tool_positions.get(1)
+        primary_arm = expert_primary_arm if expert_primary_arm in {0, 1} else 0
+        secondary_arm = 1 - primary_arm
+        primary = tool_positions.get(primary_arm)
+        secondary = tool_positions.get(secondary_arm)
         both_closed = bool(
             primary is not None
             and secondary is not None
             and len(grippers_open) >= 2
-            and not grippers_open[0]
-            and not grippers_open[1]
+            and not grippers_open[primary_arm]
+            and not grippers_open[secondary_arm]
         )
         separation = float(np.linalg.norm(primary - secondary)) if both_closed else 0.0
         midpoint = (primary + secondary) * 0.5 if both_closed else self.center
@@ -765,7 +769,7 @@ class SurgeonsKnotModel:
             self.primary_position = np.asarray(primary, dtype=np.float32).copy()
             self.secondary_position = np.asarray(secondary, dtype=np.float32).copy()
 
-        if expert_guidance_active:
+        if expert_guidance_active and hoop_passed and expert_tail_captured and both_closed:
             step = int(expert_manipulation_step)
             progress = float(np.clip(expert_step_progress, 0.0, 1.0))
             demonstrated_by_step = {
@@ -796,8 +800,25 @@ class SurgeonsKnotModel:
             self.expert_manipulation_step = step
             self.expert_step_progress = progress
             self.active_cinch_progress = progress if step in {3, 5, 7} else 0.0
+            canonical_directions = (1, -1, 1)
+            while len(self.throws) < self.demonstrated_completed_throws:
+                throw_index = len(self.throws)
+                expected = self.expected_wraps[throw_index]
+                direction = canonical_directions[throw_index]
+                self.throws.append(
+                    {
+                        "index": throw_index + 1,
+                        "wraps": expected,
+                        "expected_wraps": expected,
+                        "direction": direction,
+                        "direction_label": "clockwise" if direction > 0 else "counter-clockwise",
+                        "wrap_count_ok": True,
+                        "direction_ok": throw_index == 0 or direction == -canonical_directions[throw_index - 1],
+                    }
+                )
+                self.maximum_seat_separation_m = max(self.maximum_seat_separation_m, separation)
 
-        if (hoop_passed or expert_guidance_active) and both_closed and field_error <= 0.10 and len(self.throws) < 3:
+        if hoop_passed and not expert_guidance_active and both_closed and field_error <= 0.10 and len(self.throws) < 3:
             relative = primary - secondary
             angle = float(np.arctan2(relative[1], relative[0]))
             if separation <= 0.058:
@@ -826,7 +847,13 @@ class SurgeonsKnotModel:
             and directions_alternate
         )
         tension = float(getattr(thread, "tension_n", 0.0)) if thread is not None else 0.0
-        secure = bool(sequence_valid and self.slippage_m <= 0.008 and self.seat_symmetry >= 0.55)
+        secure = bool(
+            hoop_passed
+            and sequence_valid
+            and self.slippage_m <= 0.008
+            and self.seat_symmetry >= 0.55
+            and (not expert_guidance_active or expert_tail_captured)
+        )
         return {
             "active": True,
             "phase": self.phase,
@@ -1019,6 +1046,8 @@ class ProcedureMechanics:
         expert_guidance_active: bool = False,
         expert_manipulation_step: int = 0,
         expert_step_progress: float = 0.0,
+        expert_tail_captured: bool = False,
+        expert_primary_arm: int | None = None,
     ) -> dict[str, dict[str, Any]]:
         primary = tool_positions.get(0)
         secondary = tool_positions.get(1)
@@ -1045,6 +1074,8 @@ class ProcedureMechanics:
                 expert_guidance_active,
                 expert_manipulation_step,
                 expert_step_progress,
+                expert_tail_captured,
+                expert_primary_arm,
             )
         if self.kind in {"dissection", "biopsy"}:
             faces = int(cut.get("faces_removed", 0))

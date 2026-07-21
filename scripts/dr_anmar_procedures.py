@@ -309,7 +309,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
     },
     {
         "id": "needle-hoop-threading",
-        "title": "Needle hoop pass and surgeon's knot",
+        "title": "Threaded needle ring pass and surgeon's knot",
         "category": "Needle skills",
         "difficulty": "Intermediate",
         "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
@@ -317,7 +317,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "anatomy_focus": "Dry-lab training field",
         "robot": "Dual dVRK PSM",
         "instrument": "Two needle drivers",
-        "objective": "Control a visibly threaded needle through the physical hoop, then use both instruments to form and seat a proper 2-1-1 surgeon's knot.",
+        "objective": "Pick up the threaded needle, rotate its sharp tip through the physical ring, complete a true bimanual handoff, then form and seat a proper 2-1-1 surgeon's knot.",
         "interaction": "Rigid OpenUSD hoop and stand, live position-based strand, needle-tip crossing telemetry, bimanual wrap recognition, throw-direction checks, seating symmetry, tension and slippage feedback.",
         "fidelity": "native_needle_rigid_hoop_plus_bimanual_knot_training",
         "implementation_origin": "dr_anmar_nvidia_stack_extension",

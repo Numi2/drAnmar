@@ -18,7 +18,7 @@ from typing import Any
 import numpy as np
 
 
-EXPERT_CONTROLLER_VERSION = "dr-anmar-expert-v2-surgeons-knot"
+EXPERT_CONTROLLER_VERSION = "dr-anmar-expert-v3-threaded-ring-pass"
 EXPERT_PHASES: tuple[dict[str, str], ...] = (
     {"id": "rest", "title": "Rest", "instruction": "Confirm the neutral pose, anatomy and operative camera."},
     {"id": "approach", "title": "Approach", "instruction": "Move above the first target with the jaws open."},
@@ -64,6 +64,7 @@ class ExpertDemonstrationController:
     paused_at: float | None = None
     primary_arm: int | None = None
     tail_captured: bool = False
+    needle_point_index: int | None = None
 
     def __post_init__(self) -> None:
         self.waypoints = np.asarray(self.waypoints, dtype=np.float32).reshape(-1, 3)
@@ -101,6 +102,7 @@ class ExpertDemonstrationController:
         self.object_anchor = None
         self.primary_arm = None
         self.tail_captured = False
+        self.needle_point_index = None
 
     def pause(self, reason: str = "Doctor paused the expert demonstration for inspection.") -> None:
         if self.status == "running":
@@ -149,6 +151,7 @@ class ExpertDemonstrationController:
             "manipulation_step": self.manipulation_step,
             "primary_arm": self.primary_arm,
             "tail_captured": self.tail_captured,
+            "needle_point_index": self.needle_point_index,
             "procedure_instruction": self._procedure_instruction(),
             "phase_elapsed_s": round(self.phase_elapsed_s, 2) if self.phase is not None else 0.0,
             "phases": phases,
@@ -166,7 +169,7 @@ class ExpertDemonstrationController:
         if self.guide_kind != "hoop_threading" or self.phase != "manipulate":
             return None
         return {
-            0: "Follow the needle curvature through the hoop while the physical suture follows continuously from the eye.",
+            0: "Lead with the needle tip: approach, center it in the hoop, rotate the curved needle through, then clear the far side.",
             1: "Bring both instruments into the knot field and control one strand end with each gripper.",
             2: "First throw: rotate through two complete wraps in the same direction around the receiving instrument.",
             3: "Capture the tail and pull both ends apart evenly to seat the double first throw.",
@@ -253,6 +256,57 @@ class ExpertDemonstrationController:
             self.target_index += 1
             self.target_ticks = 0
         return self.target_index >= len(targets)
+
+    def _follow_needle_tip_through_hoop(
+        self,
+        action: np.ndarray,
+        tools: dict[int, np.ndarray],
+        arm: int,
+        needle_points: np.ndarray | None,
+    ) -> bool:
+        """Drive the rigid needle's sharp endpoint through the hoop opening.
+
+        Relative-IK still moves the instrument, but the closed-loop error is
+        measured at the needle tip.  This keeps the jaws and shaft outside the
+        ring instead of incorrectly steering the tool origin through it.
+        """
+        points = (
+            np.asarray(needle_points, dtype=np.float32).reshape(-1, 3)
+            if needle_points is not None
+            else np.empty((0, 3), dtype=np.float32)
+        )
+        if not len(points) or not len(self.waypoints):
+            if self.target_ticks >= 40:
+                self.pause("Needle pose is unavailable. Reset the room before continuing the expert pass.")
+            self.target_ticks += 1
+            return False
+        if self.target_index >= len(self.waypoints):
+            return True
+        if self.needle_point_index is None or self.needle_point_index >= len(points):
+            self.needle_point_index = int(
+                np.argmin(np.linalg.norm(points - self.waypoints[0][None, :], axis=1))
+            )
+        index = min(self.target_index, len(self.waypoints) - 1)
+        needle_tip = points[self.needle_point_index]
+        direction = 1.0 if index < 2 else -0.35
+        distance = self._set_motion(
+            action,
+            arm,
+            needle_tip,
+            self.waypoints[index],
+            (0.020 * direction, 0.0, 0.0),
+        )
+        self.target_ticks += 1
+        if distance is not None and distance <= 0.0075:
+            self.target_index += 1
+            self.target_ticks = 0
+        elif self.target_ticks >= 180:
+            millimeters = distance * 1000.0 if distance is not None else float("nan")
+            self.pause(
+                f"Needle tip could not reach ring waypoint {index + 1} "
+                f"({millimeters:.1f} mm remaining). Reset and retry rather than skipping the pass."
+            )
+        return self.target_index >= len(self.waypoints)
 
     def _handover(
         self,
@@ -343,6 +397,7 @@ class ExpertDemonstrationController:
         tools: dict[int, np.ndarray],
         grippers: list[bool],
         thread_tail_position: np.ndarray | None,
+        knot_secure: bool,
     ) -> bool:
         """Demonstrate the canonical 2-1-1 bimanual surgeon's-knot sequence."""
         if self.arms < 2:
@@ -362,6 +417,10 @@ class ExpertDemonstrationController:
 
         if step == 1:
             target0 = center + np.asarray((0.024, 0.0, 0.010), dtype=np.float32)
+            if not self.tail_captured and thread_tail_position is None:
+                if self.target_ticks >= 40:
+                    self.pause("The physical suture tail is not visible. Reset the room before attempting the knot.")
+                return False
             if not self.tail_captured and thread_tail_position is not None:
                 tail_target = np.asarray(thread_tail_position, dtype=np.float32) + np.asarray(
                     (0.0, 0.0, 0.0025), dtype=np.float32
@@ -379,18 +438,18 @@ class ExpertDemonstrationController:
                     self.tail_captured = True
                     self.target_ticks = 0
                 elif self.target_ticks >= 110:
-                    grippers[receiver_arm] = False
-                    self.tail_captured = True
-                    self.target_ticks = 0
-                    self.degraded_reasons.append("thread-tail pickup: bounded convergence timeout")
+                    grippers[receiver_arm] = True
+                    self.pause("The receiving instrument missed the free suture tail. Reset and retry the handoff.")
                 return False
             target1 = center + np.asarray((-0.024, 0.0, 0.010), dtype=np.float32)
             d0 = self._set_motion(action, primary_arm, tools.get(primary_arm), target0)
             d1 = self._set_motion(action, receiver_arm, tools.get(receiver_arm), target1)
             complete = bool(d0 is not None and d1 is not None and d0 <= 0.012 and d1 <= 0.012)
-            if complete or self.target_ticks >= 70:
+            if complete:
                 self.manipulation_step = 2
                 self.target_ticks = 0
+            elif self.target_ticks >= 140:
+                self.pause("Both strand ends could not be positioned in the knot field. Reset and retry.")
             return False
 
         wrap_specs = {
@@ -416,13 +475,19 @@ class ExpertDemonstrationController:
             d0 = self._set_motion(action, primary_arm, tools.get(primary_arm), target0)
             d1 = self._set_motion(action, receiver_arm, tools.get(receiver_arm), target1)
             complete = bool(d0 is not None and d1 is not None and d0 <= 0.010 and d1 <= 0.010)
-            if complete or self.target_ticks >= 58:
-                if step == 7:
-                    return True
+            if complete:
                 self.manipulation_step += 1
                 self.target_ticks = 0
+            elif self.target_ticks >= 120:
+                self.pause(f"Knot throw {(step - 1) // 2} did not seat symmetrically. Reset and retry.")
             return False
-        return step >= 8
+        if step >= 8:
+            if knot_secure:
+                return True
+            if self.target_ticks >= 80:
+                self.pause("The 2-1-1 knot did not satisfy the physical security checks. Inspect or reset the room.")
+            return False
+        return False
 
     def _ultrasound(self, action: np.ndarray, tools: dict[int, np.ndarray], grippers: list[bool]) -> bool:
         if self.arms < 2 or not len(self.waypoints):
@@ -449,6 +514,9 @@ class ExpertDemonstrationController:
         object_position: np.ndarray | None,
         grippers: list[bool],
         thread_tail_position: np.ndarray | None = None,
+        needle_points: np.ndarray | None = None,
+        hoop_passed: bool = False,
+        knot_secure: bool = False,
     ) -> bool:
         kind = self.guide_kind
         if kind == "pickup":
@@ -475,12 +543,28 @@ class ExpertDemonstrationController:
             primary_arm = self.primary_arm if self.primary_arm in range(self.arms) else 0
             if self.manipulation_step == 0:
                 grippers[primary_arm] = False
-                if self._follow_waypoints(action, tools, primary_arm, self.waypoints, (0.024, 0.0, 0.0)):
+                path_complete = self._follow_needle_tip_through_hoop(
+                    action,
+                    tools,
+                    primary_arm,
+                    needle_points,
+                )
+                if path_complete and hoop_passed:
                     self.manipulation_step = 1
                     self.target_ticks = 0
                     self.target_index = 0
+                elif path_complete:
+                    self.target_ticks += 1
+                    if self.target_ticks >= 80:
+                        self.pause("The needle cleared the path but no physical hoop crossing was detected. Reset and retry.")
                 return False
-            return self._surgeons_knot(action, tools, grippers, thread_tail_position)
+            return self._surgeons_knot(
+                action,
+                tools,
+                grippers,
+                thread_tail_position,
+                knot_secure,
+            )
         if kind == "clip_divide":
             return self._clip_divide(action, tools, grippers)
         if kind == "hemostasis":
@@ -518,6 +602,9 @@ class ExpertDemonstrationController:
         grippers_open: list[bool],
         safety_envelope_active: bool = False,
         thread_tail_position: np.ndarray | None = None,
+        needle_points: np.ndarray | None = None,
+        hoop_passed: bool = False,
+        knot_secure: bool = False,
     ) -> ExpertCommand:
         action = self._action()
         grippers = list(grippers_open)
@@ -579,6 +666,9 @@ class ExpertDemonstrationController:
                 object_position,
                 grippers,
                 thread_tail_position,
+                needle_points,
+                hoop_passed,
+                knot_secure,
             ) and self.phase_elapsed_s >= 1.4:
                 completed = self._advance(tool_positions)
                 phase_changed = True

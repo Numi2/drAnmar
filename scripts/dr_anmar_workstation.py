@@ -2728,6 +2728,18 @@ def main() -> None:
         if guide_kind in THREAD_GUIDE_KINDS
         else None
     )
+    if suture_model is not None and guide_kind == "hoop_threading" and len(room_waypoints) >= 3:
+        hoop_normal = room_waypoints[2] - room_waypoints[0]
+        hoop_normal /= max(float(np.linalg.norm(hoop_normal)), 1e-8)
+        suture_model.initial_tail_axis = np.asarray((0.0, -1.0, 0.0), dtype=np.float32)
+        hoop_inner_radius = float(procedure.get("hoop_inner_radius_m", 0.017))
+        hoop_tube_radius = float(procedure.get("hoop_tube_radius_m", 0.0025))
+        suture_model.set_ring_collider(
+            room_waypoints[1],
+            hoop_normal,
+            hoop_inner_radius + hoop_tube_radius,
+            hoop_tube_radius,
+        )
     suture_curve = None
     suture_curve_prim = None
     suture_anchor_marker_prims: list[Any] = []
@@ -3069,7 +3081,7 @@ def main() -> None:
             hoop_mesh.CreateFaceVertexIndicesAttr(Vt.IntArray(hoop_faces))
             hoop_mesh.CreateSubdivisionSchemeAttr(UsdGeom.Tokens.none)
             hoop_prim = hoop_mesh.GetPrim()
-            bind_procedure_material(hoop_prim, "NeedleHoop", (0.56, 0.63, 0.66), 1.0)
+            bind_procedure_material(hoop_prim, "NeedleHoop", (0.055, 0.065, 0.070), 1.0)
             UsdPhysics.CollisionAPI.Apply(hoop_prim).CreateCollisionEnabledAttr().Set(True)
             UsdPhysics.MeshCollisionAPI.Apply(hoop_prim).CreateApproximationAttr().Set("none")
             hoop_prim.CreateAttribute("drAnmar:trainingTarget", Sdf.ValueTypeNames.String).Set("needle_hoop")
@@ -3082,7 +3094,7 @@ def main() -> None:
             UsdGeom.Xformable(stand.GetPrim()).AddTranslateOp().Set(
                 Gf.Vec3d(float(hoop_center[0]), float(hoop_center[1]), stand_top * 0.5)
             )
-            bind_procedure_material(stand.GetPrim(), "NeedleHoopStand", (0.22, 0.27, 0.29), 1.0)
+            bind_procedure_material(stand.GetPrim(), "NeedleHoopStand", (0.07, 0.08, 0.085), 1.0)
             UsdPhysics.CollisionAPI.Apply(stand.GetPrim()).CreateCollisionEnabledAttr().Set(True)
             base = UsdGeom.Cylinder.Define(stage, "/World/envs/env_0/DrAnmarNeedleHoopBase")
             base.CreateRadiusAttr(0.014)
@@ -4224,6 +4236,12 @@ def main() -> None:
                 expert_safety_active = bool(
                     state.mechanics.get("interaction_force", {}).get("safe_envelope_active", False)
                 )
+                expert_knot_secure = bool(state.mechanics.get("surgeons_knot", {}).get("secure", False))
+            expert_needle_points = (
+                needle_tip_positions_world()
+                if guide_kind == "hoop_threading"
+                else np.empty((0, 3), dtype=np.float32)
+            )
             expert_command = expert_controller.step(
                 expert_tools,
                 expert_object,
@@ -4234,6 +4252,9 @@ def main() -> None:
                     if suture_model is not None and suture_model.initialized
                     else None
                 ),
+                needle_points=expert_needle_points,
+                hoop_passed=bool(procedure_mechanics.hoop and procedure_mechanics.hoop.pass_count >= 1),
+                knot_secure=expert_knot_secure,
             )
             action_np = expert_command.action
             grippers_open = expert_command.grippers_open
@@ -4826,6 +4847,8 @@ def main() -> None:
             expert_knot_guidance,
             expert_knot_step,
             expert_knot_progress,
+            expert_controller.tail_captured,
+            expert_controller.primary_arm,
         )
         if suture_model is not None:
             if procedure_mechanics.surgeons_knot is not None:

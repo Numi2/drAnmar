@@ -826,6 +826,11 @@ class SutureThreadModel:
         default_factory=lambda: np.empty((0, 3), dtype=np.float32)
     )
     instrument_contact_radius_m: float = 0.0024
+    initial_tail_axis: np.ndarray | None = None
+    ring_center_world: np.ndarray | None = None
+    ring_normal_world: np.ndarray | None = None
+    ring_major_radius_m: float = 0.0
+    ring_tube_radius_m: float = 0.0
     knot_throw_count: int = 0
     knot_slippage_m: float = 0.0
     knot_center_world: np.ndarray | None = None
@@ -866,21 +871,57 @@ class SutureThreadModel:
         self.knot_slippage_m = 0.0
         self.knot_center_world = None
 
+    def set_ring_collider(
+        self,
+        center_world: np.ndarray,
+        normal_world: np.ndarray,
+        major_radius_m: float,
+        tube_radius_m: float,
+    ) -> None:
+        """Configure the rigid training-ring contact used by the strand solver."""
+        normal = np.asarray(normal_world, dtype=np.float32).reshape(3)
+        normal_length = float(np.linalg.norm(normal))
+        if normal_length < 1e-8:
+            raise ValueError("Ring normal must be non-zero")
+        self.ring_center_world = np.asarray(center_world, dtype=np.float32).reshape(3)
+        self.ring_normal_world = normal / normal_length
+        self.ring_major_radius_m = max(0.0, float(major_radius_m))
+        self.ring_tube_radius_m = max(0.0, float(tube_radius_m))
+
     @property
     def rest_length_m(self) -> float:
         return self.segment_length_m * (self.node_count - 1)
 
     def initialize(self, needle_world: np.ndarray) -> None:
         needle = np.asarray(needle_world, dtype=np.float32)
-        tail = needle + np.asarray((0.0, -min(self.rest_length_m * 0.60, 0.095), 0.0), dtype=np.float32)
+        tail_distance = min(self.rest_length_m * 0.72, 0.170)
+        tail_axis = (
+            np.asarray(self.initial_tail_axis, dtype=np.float32).reshape(3)
+            if self.initial_tail_axis is not None
+            else np.asarray((0.0, -1.0, 0.0), dtype=np.float32)
+        )
+        tail_axis[2] = 0.0
+        tail_axis /= max(float(np.linalg.norm(tail_axis)), 1e-8)
+        tail = needle + tail_axis * tail_distance
         if self.support_plane_z_m is not None:
             tail[2] = max(float(self.support_plane_z_m) + self.collision_radius_m, min(float(needle[2]), 0.0015))
         alpha = np.linspace(0.0, 1.0, self.node_count, dtype=np.float32)[:, None]
         self.points[:] = tail[None, :] * (1.0 - alpha) + needle[None, :] * alpha
+        if self.support_plane_z_m is not None and self.initial_tail_axis is not None:
+            support_height = float(self.support_plane_z_m) + self.collision_radius_m
+            lift = np.clip((alpha[:, 0] - 0.72) / 0.28, 0.0, 1.0)
+            lift = lift * lift * (3.0 - 2.0 * lift)
+            self.points[:, 2] = support_height * (1.0 - lift) + float(needle[2]) * lift
         # Lay the initial slack in a visible, table-supported S curve instead
         # of allowing all excess length to collapse into the support plane.
         slack_amplitude = min(0.018, max(0.006, self.rest_length_m * 0.11))
-        self.points[:, 0] += np.sin(alpha[:, 0] * np.pi * 2.0) * slack_amplitude
+        lateral = np.cross(tail_axis, np.asarray((0.0, 0.0, 1.0), dtype=np.float32))
+        if float(np.linalg.norm(lateral)) < 1e-8:
+            lateral = np.asarray((0.0, 1.0, 0.0), dtype=np.float32)
+        lateral /= max(float(np.linalg.norm(lateral)), 1e-8)
+        self.points += (
+            np.sin(alpha[:, 0] * np.pi * 2.0) * slack_amplitude
+        )[:, None] * lateral[None, :]
         self.previous[:] = self.points
         self.fixed = {0: tail.copy(), self.node_count - 1: needle.copy()}
         self.initialized = True
@@ -1328,6 +1369,42 @@ class SutureThreadModel:
         self.previous[contacts, :2] = self.points[contacts, :2] - velocity_xy * retained_velocity
         return int(np.count_nonzero(contacts))
 
+    def _apply_ring_contact(self) -> int:
+        """Project strand particles out of the ring tube while preserving its opening."""
+        if (
+            self.ring_center_world is None
+            or self.ring_normal_world is None
+            or self.ring_major_radius_m <= 0.0
+            or self.ring_tube_radius_m <= 0.0
+        ):
+            return 0
+        offset = self.points - self.ring_center_world[None, :]
+        axial = offset @ self.ring_normal_world
+        planar = offset - axial[:, None] * self.ring_normal_world[None, :]
+        radial = np.linalg.norm(planar, axis=1)
+        safe_radial = np.maximum(radial, 1e-8)
+        radial_direction = planar / safe_radial[:, None]
+        radial_delta = radial - self.ring_major_radius_m
+        tube_distance = np.sqrt(radial_delta * radial_delta + axial * axial)
+        required_distance = self.ring_tube_radius_m + self.collision_radius_m
+        contacts = tube_distance < required_distance
+        for index in self.fixed:
+            contacts[index] = False
+        contact_indices = np.flatnonzero(contacts)
+        for index in contact_indices:
+            distance = float(tube_distance[index])
+            if distance < 1e-8:
+                direction = self.ring_normal_world.copy()
+            else:
+                direction = (
+                    radial_direction[index] * (float(radial_delta[index]) / distance)
+                    + self.ring_normal_world * (float(axial[index]) / distance)
+                )
+            correction = direction * (required_distance - distance + 1e-5)
+            self.points[index] += correction
+            self.previous[index] += correction
+        return int(len(contact_indices))
+
     def update(self, needle_world: np.ndarray, dt: float) -> None:
         needle = np.asarray(needle_world, dtype=np.float32)
         if not self.initialized:
@@ -1343,10 +1420,12 @@ class SutureThreadModel:
         for index, position in self.fixed.items():
             self.points[index] = position
         self.strain = self._apply_constraints()
+        self._apply_ring_contact()
         self._apply_support_contact()
         # Projection onto the table can perturb adjacent segment lengths, so
         # settle once more before the final contact projection.
         self.strain = max(self.strain, self._apply_constraints())
+        self._apply_ring_contact()
         self._apply_support_contact()
         self.tension_n = 0.0 if self.thread_broken else float(np.clip(self.strain * self.linear_stiffness_n, 0.0, 8.0))
         routed_length = float(np.linalg.norm(np.diff(self.points, axis=0), axis=1).sum())
