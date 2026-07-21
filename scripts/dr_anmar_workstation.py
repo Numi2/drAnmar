@@ -2732,7 +2732,9 @@ def main() -> None:
     if suture_model is not None and guide_kind == "hoop_threading" and len(room_waypoints) >= 3:
         hoop_normal = room_waypoints[2] - room_waypoints[0]
         hoop_normal /= max(float(np.linalg.norm(hoop_normal)), 1e-8)
-        suture_model.initial_tail_axis = np.asarray((0.0, -1.0, 0.0), dtype=np.float32)
+        # Present the free tail on the approach-side instrument's half of the
+        # dry-lab table so it can be grasped after the far-side needle handoff.
+        suture_model.initial_tail_axis = np.asarray((0.0, 1.0, 0.0), dtype=np.float32)
         hoop_inner_radius = float(procedure.get("hoop_inner_radius_m", 0.017))
         hoop_tube_radius = float(procedure.get("hoop_tube_radius_m", 0.0025))
         suture_model.set_ring_collider(
@@ -4296,6 +4298,9 @@ def main() -> None:
                 needle_points=expert_needle_points,
                 hoop_passed=bool(procedure_mechanics.hoop and procedure_mechanics.hoop.pass_count >= 1),
                 knot_secure=expert_knot_secure,
+                assisted_grasp_active=[
+                    arm in assisted_grasp_joints for arm in range(state.arms)
+                ],
             )
             action_np = expert_command.action
             grippers_open = expert_command.grippers_open
