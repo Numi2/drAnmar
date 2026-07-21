@@ -3466,35 +3466,46 @@ def main() -> None:
             prim_path="/World/DrAnmarProcedureGuide",
             markers={
                 "start": sim_utils.SphereCfg(
-                    radius=0.006,
+                    radius=0.0026,
                     visual_material=sim_utils.PreviewSurfaceCfg(
-                        diffuse_color=(0.08, 0.92, 1.0), emissive_color=(0.02, 0.38, 0.50), opacity=0.82
+                        diffuse_color=(0.08, 0.92, 1.0), emissive_color=(0.01, 0.12, 0.16), opacity=0.42
                     ),
                 ),
                 "path": sim_utils.SphereCfg(
-                    radius=0.005,
+                    radius=0.0022,
                     visual_material=sim_utils.PreviewSurfaceCfg(
-                        diffuse_color=(1.0, 0.64, 0.16), emissive_color=(0.40, 0.16, 0.01), opacity=0.78
+                        diffuse_color=(1.0, 0.64, 0.16), emissive_color=(0.12, 0.04, 0.0), opacity=0.34
                     ),
                 ),
                 "finish": sim_utils.SphereCfg(
-                    radius=0.006,
+                    radius=0.0026,
                     visual_material=sim_utils.PreviewSurfaceCfg(
-                        diffuse_color=(0.20, 0.95, 0.48), emissive_color=(0.02, 0.38, 0.14), opacity=0.84
+                        diffuse_color=(0.20, 0.95, 0.48), emissive_color=(0.01, 0.14, 0.05), opacity=0.42
                     ),
                 ),
             },
         )
     )
-    if len(room_waypoints):
-        marker_indices = np.ones(len(room_waypoints), dtype=np.int32)
-        marker_indices[0] = 0
-        marker_indices[-1] = 2
-        procedure_markers.visualize(translations=room_waypoints, marker_indices=marker_indices)
+    visible_procedure_waypoint_index: int | None = None
+
+    def update_procedure_waypoint_marker(index: int, force: bool = False) -> None:
+        """Show one unobtrusive next-step cue instead of covering the field."""
+        nonlocal visible_procedure_waypoint_index
+        normalized_index = int(index) if 0 <= int(index) < len(room_waypoints) else -1
+        if not force and normalized_index == visible_procedure_waypoint_index:
+            return
+        visible_procedure_waypoint_index = normalized_index
+        if normalized_index < 0:
+            procedure_markers.set_visibility(False)
+            return
+        marker_kind = 0 if normalized_index == 0 else 2 if normalized_index == len(room_waypoints) - 1 else 1
+        procedure_markers.visualize(
+            translations=room_waypoints[normalized_index : normalized_index + 1],
+            marker_indices=np.asarray([marker_kind], dtype=np.int32),
+        )
         procedure_markers.set_visibility(True)
-    else:
-        procedure_markers.visualize(translations=np.zeros((1, 3), dtype=np.float32))
-        procedure_markers.set_visibility(False)
+
+    update_procedure_waypoint_marker(0, force=True)
 
     def update_wrist_camera_poses() -> None:
         """Keep a close oblique camera behind each instrument and aimed at its jaws."""
@@ -3691,6 +3702,7 @@ def main() -> None:
         show_puncture_marker(None)
         reset_surface_mechanics()
         procedure_mechanics.reset()
+        update_procedure_waypoint_marker(0, force=True)
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
@@ -4704,6 +4716,8 @@ def main() -> None:
                 if float(np.linalg.norm(tool_position - room_waypoints[waypoint_index])) <= 0.014:
                     state.procedure_waypoints_completed += 1
                     state.procedure_last_motion_at = current_time
+            next_waypoint_index = state.procedure_waypoints_completed
+        update_procedure_waypoint_marker(next_waypoint_index)
 
         with state.lock:
             is_recording = state.recording
