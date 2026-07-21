@@ -175,7 +175,7 @@ class ExpertDemonstrationController:
 
     def _phase_target(self, object_position: np.ndarray | None) -> np.ndarray | None:
         if object_position is not None and self.guide_kind in {
-            "pickup", "handover", "retraction", "reposition", "needle_pass", "tube_insertion", "recovery"
+            "pickup", "handover", "retraction", "reposition", "needle_pass", "hoop_threading", "tube_insertion", "recovery"
         }:
             return np.asarray(object_position, dtype=np.float32)
         if len(self.waypoints):
@@ -361,6 +361,9 @@ class ExpertDemonstrationController:
                     action, tools, object_position, grippers
                 )
             return self._handover(action, tools, object_position, grippers)
+        if kind == "hoop_threading":
+            grippers[0] = False
+            return self._follow_waypoints(action, tools, 0, self.waypoints, (0.024, 0.0, 0.0))
         if kind == "clip_divide":
             return self._clip_divide(action, tools, grippers)
         if kind == "hemostasis":
@@ -379,7 +382,7 @@ class ExpertDemonstrationController:
             grippers[0] = False
             return self._follow_waypoints(action, tools, 0, self.waypoints)
         if len(self.waypoints):
-            rotation = (0.024, 0.0, 0.0) if kind in {"threading", "running_suture", "anastomosis", "needle_pass"} else (0.0, 0.0, 0.0)
+            rotation = (0.024, 0.0, 0.0) if kind in {"threading", "running_suture", "anastomosis", "needle_pass", "hoop_threading"} else (0.0, 0.0, 0.0)
             return self._follow_waypoints(action, tools, 0, self.waypoints, rotation)
         anchor = self.phase_anchor_tools.get(0, tools.get(0))
         offsets = {

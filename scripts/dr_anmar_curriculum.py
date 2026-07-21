@@ -271,6 +271,18 @@ COURSES.extend(
                     "concepts": ["loop topology", "opposing throws", "knot security"],
                 },
                 {
+                    "id": "needle-hoop-threading-live",
+                    "title": "Needle through the hoop",
+                    "eyebrow": "Runnable dry-lab coordination exercise · 15 min",
+                    "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
+                    "procedure_id": "needle-hoop-threading",
+                    "video": None,
+                    "mode": "live",
+                    "summary": "Pick up and orient a curved needle, then pass its sharp tip through a physical hoop without touching the rim.",
+                    "goal": "Complete a centered clean pass, preserve needle custody, and recover in a usable orientation.",
+                    "concepts": ["hand-eye coordination", "depth perception", "needle orientation", "radial clearance"],
+                },
+                {
                     "id": "needle-passing-regrasp-live",
                     "title": "Needle passing and regrasping",
                     "eyebrow": "Runnable bimanual orientation lab · 25 min",

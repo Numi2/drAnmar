@@ -551,6 +551,111 @@ class UltrasoundAccessModel:
 
 
 @dataclass
+class HoopThreadingModel:
+    """Score a curved needle passing through a rigid training hoop."""
+
+    approach: np.ndarray
+    center: np.ndarray
+    exit: np.ndarray
+    inner_radius_m: float = 0.017
+    tube_radius_m: float = 0.0025
+    previous_points: np.ndarray | None = None
+    approach_seen: bool = False
+    pass_count: int = 0
+    ring_contacts: int = 0
+    contact_active: bool = False
+    minimum_center_error_m: float = 1.0
+    best_clearance_m: float = -1.0
+    passed_cleanly: bool = False
+    recovered: bool = False
+
+    def __post_init__(self) -> None:
+        self.approach = np.asarray(self.approach, dtype=np.float32)
+        self.center = np.asarray(self.center, dtype=np.float32)
+        self.exit = np.asarray(self.exit, dtype=np.float32)
+        self.normal = _safe_unit(self.exit - self.approach)
+
+    def reset(self) -> None:
+        self.previous_points = None
+        self.approach_seen = False
+        self.pass_count = 0
+        self.ring_contacts = 0
+        self.contact_active = False
+        self.minimum_center_error_m = 1.0
+        self.best_clearance_m = -1.0
+        self.passed_cleanly = False
+        self.recovered = False
+
+    def _coordinates(self, point: np.ndarray) -> tuple[float, float]:
+        offset = np.asarray(point, dtype=np.float32) - self.center
+        axial = float(np.dot(offset, self.normal))
+        radial = float(np.linalg.norm(offset - self.normal * axial))
+        return axial, radial
+
+    def snapshot(self, needle_points: np.ndarray | None) -> dict[str, Any]:
+        points = np.asarray(needle_points, dtype=np.float32).reshape(-1, 3) if needle_points is not None else np.empty((0, 3), dtype=np.float32)
+        if not len(points):
+            return {
+                "active": True,
+                "needle_visible": False,
+                "pass_count": self.pass_count,
+                "ring_contacts": self.ring_contacts,
+                "passed_cleanly": self.passed_cleanly,
+            }
+
+        coordinates = [self._coordinates(point) for point in points]
+        closest_axial, closest_radial = min(coordinates, key=lambda value: abs(value[0]))
+        center_error = float(np.hypot(closest_axial, closest_radial))
+        self.minimum_center_error_m = min(self.minimum_center_error_m, center_error)
+        clearance = self.inner_radius_m - closest_radial
+        self.best_clearance_m = max(self.best_clearance_m, clearance)
+        self.approach_seen = self.approach_seen or any(axial <= -0.008 for axial, _radial in coordinates)
+
+        ring_contact = any(
+            abs(axial) <= self.tube_radius_m * 1.45
+            and abs(radial - (self.inner_radius_m + self.tube_radius_m)) <= self.tube_radius_m * 1.55
+            for axial, radial in coordinates
+        )
+        if ring_contact and not self.contact_active:
+            self.ring_contacts += 1
+        self.contact_active = ring_contact
+
+        if self.previous_points is not None and self.approach_seen:
+            for previous, current in zip(self.previous_points, points):
+                previous_axial, _ = self._coordinates(previous)
+                current_axial, _ = self._coordinates(current)
+                if previous_axial >= -0.001 or current_axial <= 0.001:
+                    continue
+                fraction = -previous_axial / max(current_axial - previous_axial, 1e-8)
+                intersection = previous + float(np.clip(fraction, 0.0, 1.0)) * (current - previous)
+                _axial, radial = self._coordinates(intersection)
+                if radial <= self.inner_radius_m - 0.0008:
+                    self.pass_count += 1
+                    self.best_clearance_m = max(self.best_clearance_m, self.inner_radius_m - radial)
+                    self.passed_cleanly = self.ring_contacts == 0
+                    break
+        if self.pass_count and any(axial >= 0.025 for axial, _radial in coordinates):
+            self.recovered = True
+        self.previous_points = points.copy()
+        return {
+            "active": True,
+            "needle_visible": True,
+            "approach_seen": self.approach_seen,
+            "center_error_m": round(center_error, 5),
+            "minimum_center_error_m": round(self.minimum_center_error_m, 5),
+            "inner_radius_m": round(self.inner_radius_m, 5),
+            "clearance_m": round(clearance, 5),
+            "best_clearance_m": round(self.best_clearance_m, 5),
+            "ring_contact": ring_contact,
+            "ring_contacts": self.ring_contacts,
+            "pass_count": self.pass_count,
+            "passed_cleanly": self.passed_cleanly,
+            "recovered": self.recovered,
+            "calibration_status": "training_phantom_engineering_geometry",
+        }
+
+
+@dataclass
 class ProcedureMechanics:
     kind: str
     waypoints: np.ndarray
@@ -560,6 +665,7 @@ class ProcedureMechanics:
     closure: ClosureQualityModel | None = field(init=False, default=None)
     vascular: VascularControlModel | None = field(init=False, default=None)
     ultrasound: UltrasoundAccessModel | None = field(init=False, default=None)
+    hoop: HoopThreadingModel | None = field(init=False, default=None)
     traction_time_s: float = field(init=False, default=0.0)
 
     def __post_init__(self) -> None:
@@ -575,6 +681,8 @@ class ProcedureMechanics:
             protected = target + np.asarray((0.018, -0.012, -0.004), dtype=np.float32)
             scan_pose = self.waypoints[0] if len(self.waypoints) else target + (-0.035, -0.020, 0.025)
             self.ultrasound = UltrasoundAccessModel(target, protected, scan_pose=scan_pose)
+        if self.kind == "hoop_threading" and len(self.waypoints) >= 3:
+            self.hoop = HoopThreadingModel(self.waypoints[0], self.waypoints[1], self.waypoints[2])
 
     def reset(self) -> None:
         self.traction_time_s = 0.0
@@ -584,6 +692,8 @@ class ProcedureMechanics:
             self.vascular.reset()
         if self.ultrasound:
             self.ultrasound.reset()
+        if self.hoop:
+            self.hoop.reset()
         if self.closure:
             self.closure.reset()
 
@@ -597,6 +707,7 @@ class ProcedureMechanics:
         cut: dict[str, Any],
         dt: float,
         scenario_id: str,
+        needle_points: np.ndarray | None = None,
     ) -> dict[str, dict[str, Any]]:
         primary = tool_positions.get(0)
         secondary = tool_positions.get(1)
@@ -611,6 +722,8 @@ class ProcedureMechanics:
             result["vascular"] = self.vascular.snapshot(tool_positions, grippers_open, dt)
         if self.ultrasound:
             result["ultrasound"] = self.ultrasound.snapshot(primary, secondary, self.waypoints, dt)
+        if self.hoop:
+            result["hoop"] = self.hoop.snapshot(needle_points)
         if self.kind in {"dissection", "biopsy"}:
             faces = int(cut.get("faces_removed", 0))
             cut_length = float(cut.get("length_m", 0.0))
