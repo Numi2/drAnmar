@@ -3536,7 +3536,9 @@ def main() -> None:
 
     surface_authoring_ready = validate_surface_authoring()
     refresh_anatomy_guard_volumes()
-    needle_interaction_enabled = "Needle" in args_cli.task
+    needle_interaction_enabled = (
+        "Needle" in args_cli.task and procedure.get("fidelity") != "nvidia_i4h_reference"
+    )
     needle_tip_offsets_local = derive_needle_tip_offsets() if needle_interaction_enabled else np.empty((0, 3), dtype=np.float32)
     needle_object_cfg = getattr(env_cfg.scene, "object", None)
     configured_needle_scale = np.asarray(
@@ -3607,6 +3609,10 @@ def main() -> None:
     def update_procedure_waypoint_marker(index: int, force: bool = False) -> None:
         """Show one unobtrusive next-step cue instead of covering the field."""
         nonlocal visible_procedure_waypoint_index
+        if not procedure.get("show_waypoint_markers", True):
+            visible_procedure_waypoint_index = -1
+            procedure_markers.set_visibility(False)
+            return
         normalized_index = int(index) if 0 <= int(index) < len(room_waypoints) else -1
         if not force and normalized_index == visible_procedure_waypoint_index:
             return

@@ -24,7 +24,7 @@ def step(step_id: str, title: str, instruction: str, signal: str) -> dict[str, s
 PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
     {
         "id": "needle-pickup",
-        "title": "Needle pickup",
+        "title": "NVIDIA suture needle lift",
         "category": "Needle skills",
         "difficulty": "Foundation",
         "task": "Isaac-Lift-Needle-PSM-IK-Rel-v0",
@@ -32,9 +32,11 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "anatomy_focus": "CT liver field",
         "robot": "dVRK PSM",
         "instrument": "Large needle driver",
-        "objective": "Approach the curved needle, grasp its body, lift it clear of the tray, and hold a stable recovery pose.",
-        "interaction": "ORBIT-Surgical rigid-body needle physics with an 18 mm jaw-capture zone, adaptive fine control, protected instrument surfaces, and a bounded needle-tip entry channel.",
-        "fidelity": "native_object_physics",
+        "objective": "Follow NVIDIA's published sequence: rest, approach the curved needle, close the gripper, lift, and hold the rigid needle stably.",
+        "interaction": "NVIDIA Isaac for Healthcare lift_needle_organs reference boundary: dVRK PSM control, rigid-body suture needle, jaw contact and grasp, lift, and anatomy-aware operating-room context.",
+        "fidelity": "nvidia_i4h_reference",
+        "source_workflow": "robotic_surgery/lift_needle_organs",
+        "show_waypoint_markers": False,
         "guide_kind": "pickup",
         "proxy_organ": None,
         "steps": [
@@ -44,7 +46,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("orient", "Orient", "Rotate the needle into a controlled, readable presentation.", "tool orientation"),
             step("recover", "Recover", "Hold the final pose without dropping the needle.", "stable hold"),
         ],
-        "truth_note": "The needle and robot use simulator physics. Closing within 18 mm secures the needle until release. The shaft stays outside the OpenUSD surface while the needle tip uses force-gated entry, puncture hysteresis, drag, curvature-alignment resistance and a 12 mm safe-depth envelope. The tissue parameters are unvalidated research defaults, not clinical biomechanics.",
+        "truth_note": "Faithful to the public NVIDIA task boundary: the needle is a rigid body and the lesson covers contact, grasp and lift. It does not simulate a suture thread, knot, tissue puncture, cutting or deformation.",
     },
     {
         "id": "needle-transfer",
@@ -550,7 +552,16 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
 )
 
 
-PROCEDURE_ROOMS = PROCEDURE_ROOMS + ADVANCED_PROCEDURE_ROOMS
+RETIRED_EXPERIMENTAL_ROOM_IDS = {"needle-hoop-threading"}
+
+# Keep experimental implementations in source for research history, but do not
+# expose them as clinician-facing NVIDIA capabilities.  The public workflow is
+# authoritative and currently publishes rigid suture-needle manipulation only.
+PROCEDURE_ROOMS = tuple(
+    room
+    for room in PROCEDURE_ROOMS + ADVANCED_PROCEDURE_ROOMS
+    if room["id"] not in RETIRED_EXPERIMENTAL_ROOM_IDS
+)
 
 
 PROCEDURE_SUITES: tuple[dict[str, Any], ...] = (
@@ -558,7 +569,7 @@ PROCEDURE_SUITES: tuple[dict[str, Any], ...] = (
         "id": "suturing-suite",
         "title": "Suturing and reconstruction",
         "description": "Progress from needle handling through continuous closure and pressure-tested anastomosis.",
-        "rooms": ["needle-pickup", "needle-hoop-threading", "needle-passing-regrasp", "suture-threading-path", "running-suture", "intracorporeal-knot", "anastomosis-leak-test"],
+        "rooms": ["needle-pickup", "needle-passing-regrasp", "suture-threading-path", "running-suture", "intracorporeal-knot", "anastomosis-leak-test"],
     },
     {
         "id": "vascular-suite",
@@ -591,7 +602,8 @@ def procedure_payload() -> dict[str, Any]:
         "rooms": [dict(room) for room in PROCEDURE_ROOMS],
         "suites": [dict(suite) for suite in PROCEDURE_SUITES],
         "fidelity_legend": {
-            "native_object_physics": "Native ORBIT-Surgical grasp/manipulation physics.",
+            "nvidia_i4h_reference": "Published NVIDIA Isaac for Healthcare task boundary with rigid-body manipulation physics.",
+            "native_object_physics": "Native rigid-body grasp/manipulation physics.",
             "path_guided_rehearsal": "Interactive tool control with ordered 3D guidance.",
             "interactive_suture_mechanics": "Constrained thread, tissue pins, tension telemetry, deformation, and cinch constraint.",
             "topology_changing_cut": "The swept tool removes faces from the live OpenUSD anatomy surface.",
