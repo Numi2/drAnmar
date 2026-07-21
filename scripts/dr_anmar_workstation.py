@@ -4403,15 +4403,22 @@ def main() -> None:
             grasp_object = next(iter(objects.values()))
             object_position = grasp_object.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
             for arm, is_open in enumerate(grippers_open):
+                tail_only_grasp = bool(
+                    guide_kind == "hoop_threading"
+                    and expert_controller.active
+                    and expert_controller.tail_captured
+                    and arm != expert_controller.primary_arm
+                )
                 tool_position_for_grasp = tool_position_for_arm(arm)
                 if tool_position_for_grasp is not None:
                     object_offset = object_position - tool_position_for_grasp
                     grasp_distances[arm] = float(np.linalg.norm(object_offset))
                     grasp_offsets[arm] = object_offset.astype(float).round(5).tolist()
-                if is_open and arm in assisted_grasp_joints:
+                if (is_open or tail_only_grasp) and arm in assisted_grasp_joints:
                     stage.RemovePrim(assisted_grasp_joints.pop(arm))
                 elif (
                     not is_open
+                    and not tail_only_grasp
                     and arm not in assisted_grasp_joints
                     and grasp_distances[arm] is not None
                     and grasp_distances[arm] <= state.grasp_capture_radius_m
