@@ -159,13 +159,22 @@ case "${1:-status}" in
         [[ -f "${canonical}" ]] && arguments+=(--canonical "${canonical}")
         "${usd_python}" "${REPOSITORY_ROOT}/scripts/dr_anmar_tet_to_usd.py" "${arguments[@]}"
         ;;
+    patient-liver-smoke)
+        mesh="${2:-${NEXT_ROOT}/assets/ct-liver-prostate-bladder/liver/interactive-8mm/simulation-tetrahedra.npz}"
+        output="${3:-${NEXT_ROOT}/benchmarks/patient-liver-newton-$(date -u +%Y%m%dT%H%M%SZ).json}"
+        [[ -f "${mesh}" ]] || { echo "patient liver TetMesh not found: ${mesh}" >&2; exit 1; }
+        [[ -x "${ENV_ROOT}/bin/python" ]] || { echo "physics-next environment is not installed" >&2; exit 1; }
+        "${ENV_ROOT}/bin/python" "${REPOSITORY_ROOT}/scripts/dr_anmar_patient_liver_newton_smoke.py" \
+            --mesh "${mesh}" --output "${output}" --device cuda:0
+        echo "Patient liver smoke result: ${output}"
+        ;;
     compare)
         shift
         [[ "$#" -gt 0 ]] || { echo "Usage: $0 compare RESULT_JSON [...]" >&2; exit 2; }
         "${ISAAC_PYTHON:-python3}" "${REPOSITORY_ROOT}/scripts/dr_anmar_physics_next_compare.py" "$@"
         ;;
     *)
-        echo "Usage: $0 {install|status|logs|probe|benchmark [physx|newton]|compare RESULT [...]|extract-liver SCENE [OUTPUT] [PRIM]|tetrahedralize-liver EXTRACTION [OUTPUT] [EDGE]|author-liver-usd TETRA_NPZ [OUTPUT_USD]}" >&2
+        echo "Usage: $0 {install|status|logs|probe|benchmark [physx|newton]|compare RESULT [...]|extract-liver SCENE [OUTPUT] [PRIM]|tetrahedralize-liver EXTRACTION [OUTPUT] [EDGE]|author-liver-usd TETRA_NPZ [OUTPUT_USD]|patient-liver-smoke [TETRA_NPZ] [OUTPUT]}" >&2
         exit 2
         ;;
 esac

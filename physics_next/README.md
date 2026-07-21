@@ -35,6 +35,14 @@ the wrapper never accepts that agreement or hides the resulting activation gate.
 the versioned contract and records an unmeasured gate as incomplete, never as a
 pass.
 
+`./dr_anmar_physics_next.sh patient-liver-smoke` loads the authored patient
+liver NPZ into kitless Newton VBD, applies a small geometric fixture/retraction,
+and records finite state, timing, volume and inversion evidence. This command is
+explicitly a patient-asset solver-integration smoke: its coordinate-selected
+fixture bands are not anatomical boundary conditions and cannot promote the
+asset. The default 8-iteration canonical coupon is separate from the lighter
+2-iteration patient-mesh smoke.
+
 `scripts/dr_anmar_physics_asset_prepare.py` extracts the normalized patient
 surface and reports boundary/non-manifold edges before meshing. It never repairs
 or tetrahedralizes silently; the extraction manifest and hashes become the

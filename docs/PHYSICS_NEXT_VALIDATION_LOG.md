@@ -33,21 +33,39 @@ not convert research simulation results into clinical claims.
 ### Newton VBD coupon result
 
 - Executed twice through the kitless Newton 1.2.1 VBD runtime on the RTX 4090,
-  with 10 substeps, 10 iterations and one captured CUDA graph per 100 Hz frame.
+  with 10 substeps, 8 iterations and one captured CUDA graph per 100 Hz frame.
 - Both 600-step trajectories remained finite and produced the identical final
   state hash, establishing a deterministic replay RMSE of exactly 0 for this
   coupon and configuration.
-- Physics step time was 17.732 ms p50 and 19.687 ms p95.
-- Peak global tetrahedral-volume error was 4.916%; no tetrahedra inverted.
-- Recovery residual was 0.461 micrometres after release.
+- Physics step time was 15.198 ms p50 and 17.074 ms p95.
+- Peak global tetrahedral-volume error was 4.787%; no tetrahedra inverted.
+- A driven 8 mm spherical rigid-contact probe generated 287 positive contact
+  samples, 0.0136 mm peak penetration, a 1.019 N peak net elastic normal
+  reaction and 0.0766 N s normal-force integral. Tangential friction is not
+  included in that scalar reaction diagnostic.
+- Recovery residual was 1.950 micrometres after release.
 - This run exposed and corrected a backend-adapter error: the canonical
   dimensionless damping seed had initially been passed as Newton `k_damp=120`.
   The explicit Newton adapter now uses an unvalidated `k_damp=0.01` seed; it
   must still be calibrated against physical tissue or phantom data.
-- Four of five engineering gates pass. Rigid-tool contact penetration remains
-  unmeasured, so `promotion_allowed` correctly remains false.
+- All five canonical Newton coupon engineering gates pass. This promotes only
+  the coupon result inside the benchmark comparison; it does not activate
+  Newton in the stable runtime or validate patient-tissue biomechanics.
 - The result is a procedural 702-node solver coupon. It does not validate or
   promote the patient-specific liver TetMesh.
+
+### Patient liver Newton integration smoke
+
+- Loaded all 33,274 vertices and 165,031 tetrahedra from the authored 8 mm
+  patient liver candidate into Newton VBD; graph coloring completed in 0.817 s.
+- A 12-step, 2-iteration geometric retraction displaced the tissue by 2.087 mm.
+  All states remained finite, the final global volume error was 0.080%, and no
+  tetrahedra inverted.
+- Median solve time was 1.591 ms; this short, low-iteration smoke is not a
+  canonical runtime benchmark.
+- The coordinate-selected fixture and pull bands are intentionally labeled
+  non-anatomical. The result proves asset/solver interoperability, not material,
+  attachment or clinical fidelity, and `promotion_allowed` remains false.
 
 ### PhysX FEM activation boundary
 
@@ -60,9 +78,8 @@ benchmark remains pending that explicit activation.
 
 - Run the same canonical coupon trajectory on PhysX FEM after explicit Kit
   EULA activation.
-- Add rigid-tool contact to both solver coupons and measure penetration and
-  force; Newton's finite-state, runtime, global-volume and deterministic-replay
-  gates already pass.
+- Add the same rigid-tool fixture and force diagnostic to the PhysX coupon so
+  the two backends can be compared directly.
 - Author reviewed liver attachment and vascular regions instead of guessing
   them from coordinates.
 - Calibrate indentation, relaxation, puncture, withdrawal, cutting and suture
@@ -70,6 +87,7 @@ benchmark remains pending that explicit activation.
 - Add two-way dVRK/tool coupling and quantify penetration, force and runtime.
 - Integrate CRESSim-MPM behind the canonical state interface, then validate
   topology-changing cut and needle-tract behavior separately.
-- Record patient-asset deterministic replay, failure modes and clinician review.
+- Record a canonical patient-asset deterministic replay with reviewed boundary
+  conditions, failure modes and clinician review.
 
 All entries remain simulation/research-only and not clinically validated.

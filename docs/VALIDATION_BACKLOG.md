@@ -25,16 +25,18 @@ simulation, not clinical validation.
   runner that uses identical material, attachment, pull trajectory, step and telemetry definitions.
 - Installed that runtime on Gilgamesh without disturbing the stable service, authored the watertight CT liver
   as a backend-neutral 33,274-node / 165,031-tetrahedron OpenUSD TetMesh, and preserved source, mesh and USD hashes.
-- Executed a deterministic Newton VBD replay pair. Finite state, 19.687 ms p95, 4.916% global-volume error and
-  0.0 m replay RMSE pass; rigid-tool contact penetration remains unmeasured, so promotion remains blocked.
+- Executed a deterministic Newton VBD rigid-contact replay pair. Finite state, 17.074 ms p95, 4.787%
+  global-volume error, 0.0136 mm peak tool penetration, 1.019 N peak normal reaction and 0.0 m replay RMSE pass
+  all five coupon gates. The patient liver also completed a finite 33,274-node / 165,031-tetrahedron Newton
+  integration smoke with zero inversion; its geometric fixtures remain explicitly non-anatomical.
 - The stable workstation now records the effective backend and manifest hash in live status, runtime provenance
   and demonstration sidecars. It does not activate an experimental backend.
 
 Still required: explicitly accept NVIDIA's Omniverse Kit EULA before executing the isolated PhysX FEM pass;
-add matched rigid-tool contact/force telemetry; author anatomically reviewed attachment and vascular regions;
-run the patient-specific TetMesh in both solvers; integrate and benchmark CRESSim-MPM topology change; collect
-physical indentation, puncture, cutting and pullout references; and complete clinician review before any
-biomechanical or clinical-fidelity claim.
+run its matched rigid-tool contact/force trajectory; author anatomically reviewed attachment and vascular
+regions; run the patient-specific TetMesh through the canonical trajectories in both solvers; integrate and
+benchmark CRESSim-MPM topology change; collect physical indentation, puncture, cutting and pullout references;
+and complete clinician review before any biomechanical or clinical-fidelity claim.
 
 ## Source audit hardening — 2026-07-20
 

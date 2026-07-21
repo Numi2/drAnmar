@@ -238,10 +238,13 @@ Newton VBD and CRESSim-MPM experimental until their canonical benchmark and cali
 Its versioned asset, material and benchmark contracts live in [`physics_next/`](physics_next/README.md), with
 measured evidence and unfinished promotion gates in
 [`docs/PHYSICS_NEXT_VALIDATION_LOG.md`](docs/PHYSICS_NEXT_VALIDATION_LOG.md).
-The first Gilgamesh Newton VBD replay pair completed 600/600 finite steps at 19.687 ms p95, held global
-tetrahedral-volume error to 4.916%, produced no inverted elements, and reproduced the final state exactly.
-It remains a non-clinical solver coupon—not a promoted patient-tissue model—because matched tool contact,
-patient-asset, calibration and clinician-review gates are still open.
+The current Gilgamesh Newton VBD replay pair completed 600/600 finite steps at 17.074 ms p95, held global
+tetrahedral-volume error to 4.787%, limited rigid-probe penetration to 0.0136 mm, measured a 1.019 N peak
+normal reaction, produced no inverted elements, and reproduced the final state exactly. The canonical Newton
+coupon therefore passes all five engineering gates. The authored 33,274-node / 165,031-tetrahedron patient
+liver also loads and advances finitely through Newton with zero inversion in its separate integration smoke.
+These remain non-clinical research results—not a promoted biomechanical patient model—because matched PhysX,
+anatomical attachment, material calibration and clinician-review gates are still open.
 
 The July 20 Gilgamesh pass exercised all nine native interactive task families, audited seven runtime anatomy
 layers plus seven complete OpenUSD room compositions, and ran representative ultrasound, suturing, cutting,

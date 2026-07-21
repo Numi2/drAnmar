@@ -24,13 +24,17 @@ def load(path: Path) -> dict[str, Any]:
 
 def evaluate_gate(name: str, limit: float, metrics: dict[str, Any]) -> dict[str, Any]:
     if name.endswith("_min"):
-        metric = name.removesuffix("_min")
+        shorthand_metric = name.removesuffix("_min")
         direction = "minimum"
+        # Some canonical metric names themselves end in _min/_max. Prefer an
+        # exact result key, then fall back to the compact gate-key shorthand.
+        metric = name if isinstance(metrics.get(name), (int, float)) else shorthand_metric
         observed = metrics.get(metric)
         passed = observed >= limit if isinstance(observed, (int, float)) else None
     elif name.endswith("_max"):
-        metric = name.removesuffix("_max")
+        shorthand_metric = name.removesuffix("_max")
         direction = "maximum"
+        metric = name if isinstance(metrics.get(name), (int, float)) else shorthand_metric
         observed = metrics.get(metric)
         passed = observed <= limit if isinstance(observed, (int, float)) else None
     else:
