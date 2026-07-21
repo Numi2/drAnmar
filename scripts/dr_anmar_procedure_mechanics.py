@@ -674,6 +674,10 @@ class SurgeonsKnotModel:
     slippage_m: float = 0.0
     seat_symmetry: float = 0.0
     demonstrated_turns: float = 0.0
+    demonstrated_completed_throws: int = 0
+    expert_manipulation_step: int = 0
+    expert_step_progress: float = 0.0
+    active_cinch_progress: float = 0.0
     primary_position: np.ndarray | None = None
     secondary_position: np.ndarray | None = None
 
@@ -689,6 +693,10 @@ class SurgeonsKnotModel:
         self.slippage_m = 0.0
         self.seat_symmetry = 0.0
         self.demonstrated_turns = 0.0
+        self.demonstrated_completed_throws = 0
+        self.expert_manipulation_step = 0
+        self.expert_step_progress = 0.0
+        self.active_cinch_progress = 0.0
         self.primary_position = None
         self.secondary_position = None
 
@@ -737,6 +745,7 @@ class SurgeonsKnotModel:
         dt: float,
         expert_guidance_active: bool = False,
         expert_manipulation_step: int = 0,
+        expert_step_progress: float = 0.0,
     ) -> dict[str, Any]:
         primary = tool_positions.get(0)
         secondary = tool_positions.get(1)
@@ -755,11 +764,36 @@ class SurgeonsKnotModel:
             self.secondary_position = np.asarray(secondary, dtype=np.float32).copy()
 
         if expert_guidance_active:
-            demonstrated_by_step = {2: 2.0, 3: 2.0, 4: 3.0, 5: 3.0, 6: 4.0, 7: 4.0}
+            step = int(expert_manipulation_step)
+            progress = float(np.clip(expert_step_progress, 0.0, 1.0))
+            demonstrated_by_step = {
+                2: 2.0 * progress,
+                3: 2.0,
+                4: 2.0 + progress,
+                5: 3.0,
+                6: 3.0 + progress,
+                7: 4.0,
+            }
             self.demonstrated_turns = max(
                 self.demonstrated_turns,
-                demonstrated_by_step.get(int(expert_manipulation_step), 0.0),
+                demonstrated_by_step.get(step, 0.0),
             )
+            completed_throws = (
+                3
+                if step >= 8 or (step == 7 and progress >= 0.82)
+                else 2
+                if step >= 6 or (step == 5 and progress >= 0.82)
+                else 1
+                if step >= 4 or (step == 3 and progress >= 0.82)
+                else 0
+            )
+            self.demonstrated_completed_throws = max(
+                self.demonstrated_completed_throws,
+                completed_throws,
+            )
+            self.expert_manipulation_step = step
+            self.expert_step_progress = progress
+            self.active_cinch_progress = progress if step in {3, 5, 7} else 0.0
 
         if (hoop_passed or expert_guidance_active) and both_closed and field_error <= 0.10 and len(self.throws) < 3:
             relative = primary - secondary
@@ -797,6 +831,8 @@ class SurgeonsKnotModel:
             "hoop_passed": hoop_passed,
             "expert_guidance_active": expert_guidance_active,
             "demonstration_turns": self.demonstrated_turns,
+            "demonstration_completed_throws": self.demonstrated_completed_throws,
+            "demonstration_step_progress": round(self.expert_step_progress, 3),
             "throw_count": len(self.throws),
             "target_throws": 3,
             "expected_sequence": "2-1-1",
@@ -813,36 +849,104 @@ class SurgeonsKnotModel:
             "calibration_status": "dry_lab_gesture_proxy_pending_clinician_validation",
         }
 
-    def visual_points(self) -> np.ndarray:
-        """Return one connected bimanual strand showing completed/active throws."""
+    def constraint_route(self) -> dict[str, Any]:
+        """Build progressive contact targets consumed by the physical strand.
+
+        These points are never rendered directly.  They describe the opposing
+        strand contact path while the PBD suture remains the geometry and
+        dynamics authority.
+        """
         completed_turns = sum(int(item["wraps"]) for item in self.throws)
         active_turns = min(2.0, abs(self.accumulated_angle_rad) / (2.0 * np.pi))
         turns = max(float(completed_turns) + active_turns, self.demonstrated_turns)
         if turns < 0.08 or self.primary_position is None or self.secondary_position is None:
-            return np.empty((0, 3), dtype=np.float32)
-        radius = max(0.0030, 0.0060 - 0.00055 * min(float(len(self.throws)), 3.0))
-        remaining = turns
-        loop_segments: list[np.ndarray] = []
+            return {
+                "points": np.empty((0, 3), dtype=np.float32),
+                "crossings": [],
+                "completed_turns": 0,
+                "completed_throws": 0,
+                "cinch_progress": 0.0,
+                "center": self.center.copy(),
+            }
+
+        axis = self.primary_position - self.secondary_position
+        axis_length = float(np.linalg.norm(axis))
+        axis = axis / axis_length if axis_length >= 1e-8 else np.asarray((1.0, 0.0, 0.0), dtype=np.float32)
+        up = np.asarray((0.0, 0.0, 1.0), dtype=np.float32)
+        if abs(float(np.dot(axis, up))) >= 0.88:
+            up = np.asarray((0.0, 1.0, 0.0), dtype=np.float32)
+        side = np.cross(up, axis)
+        side /= max(float(np.linalg.norm(side)), 1e-8)
+        up = np.cross(axis, side)
+        up /= max(float(np.linalg.norm(up)), 1e-8)
+
+        completed_throws = (
+            self.demonstrated_completed_throws
+            if self.demonstrated_turns > 0.0
+            else len(self.throws)
+        )
+        current_cinch_throw = (
+            (self.expert_manipulation_step - 3) // 2
+            if self.expert_manipulation_step in {3, 5, 7}
+            else -1
+        )
+        remaining = min(turns, 4.0)
+        route_parts: list[np.ndarray] = []
+        crossing_pairs: list[tuple[int, int]] = []
+        route_length = 0
         sequence = ((2.0, 1.0), (1.0, -1.0), (1.0, 1.0))
         for throw_index, (available_turns, direction) in enumerate(sequence):
             used_turns = min(remaining, available_turns)
             if used_turns <= 0.0:
                 break
-            samples = max(16, int(np.ceil(used_turns * 30.0)))
+            if throw_index < completed_throws:
+                seat = 1.0
+            elif throw_index == current_cinch_throw:
+                seat = self.active_cinch_progress
+            else:
+                seat = 0.0
+            radius = float((1.0 - seat) * 0.0066 + seat * 0.0042)
+            samples_per_turn = 20
+            samples = max(3, int(np.ceil(used_turns * samples_per_turn)) + 1)
             theta = np.linspace(0.0, direction * used_turns * 2.0 * np.pi, samples, dtype=np.float32)
-            segment = np.repeat(self.center[None, :], samples, axis=0)
-            x_center = (throw_index - 1.0) * 0.0018
-            segment[:, 0] += x_center + np.linspace(-0.0012, 0.0012, samples, dtype=np.float32)
-            segment[:, 1] += np.sin(theta) * radius
-            segment[:, 2] += np.sin(theta * 2.0) * radius * 0.55
-            loop_segments.append(segment)
+            normalized_turn = np.abs(theta) / (2.0 * np.pi)
+            pitch = (normalized_turn - used_turns * 0.5) * 0.00145
+            throw_center = self.center + axis * ((throw_index - 1.0) * 0.0020)
+            segment = (
+                throw_center[None, :]
+                + side[None, :] * (np.cos(theta) * radius)[:, None]
+                + up[None, :] * (np.sin(theta) * radius)[:, None]
+                + axis[None, :] * pitch[:, None]
+            ).astype(np.float32)
+            if route_parts:
+                previous = route_parts[-1][-1]
+                # Keep a stable node-to-crossing map while the instruments
+                # move; changing connector resolution would move retained
+                # crossings onto unrelated strand particles.
+                bridge = np.linspace(previous, segment[0], 4, dtype=np.float32)[1:-1]
+                route_parts.append(bridge)
+                route_length += len(bridge)
+            segment_start = route_length
+            route_parts.append(segment)
+            for turn_index in range(int(np.floor(used_turns + 1e-4))):
+                crossing_pairs.append(
+                    (
+                        segment_start + turn_index * samples_per_turn,
+                        segment_start + (turn_index + 1) * samples_per_turn,
+                    )
+                )
+            route_length += len(segment)
             remaining -= used_turns
-        if not loop_segments:
-            return np.empty((0, 3), dtype=np.float32)
-        loops = np.concatenate(loop_segments, axis=0)
-        entry = np.linspace(self.secondary_position, loops[0], 8, dtype=np.float32)
-        exit_ = np.linspace(loops[-1], self.primary_position, 8, dtype=np.float32)
-        return np.concatenate((entry[:-1], loops, exit_[1:]), axis=0).astype(np.float32)
+        points = np.concatenate(route_parts, axis=0) if route_parts else np.empty((0, 3), dtype=np.float32)
+        completed_turn_count = sum(self.expected_wraps[:completed_throws])
+        return {
+            "points": points,
+            "crossings": crossing_pairs,
+            "completed_turns": completed_turn_count,
+            "completed_throws": completed_throws,
+            "cinch_progress": self.active_cinch_progress,
+            "center": self.center.copy(),
+        }
 
 
 @dataclass
@@ -905,6 +1009,7 @@ class ProcedureMechanics:
         needle_points: np.ndarray | None = None,
         expert_guidance_active: bool = False,
         expert_manipulation_step: int = 0,
+        expert_step_progress: float = 0.0,
     ) -> dict[str, dict[str, Any]]:
         primary = tool_positions.get(0)
         secondary = tool_positions.get(1)
@@ -930,6 +1035,7 @@ class ProcedureMechanics:
                 dt,
                 expert_guidance_active,
                 expert_manipulation_step,
+                expert_step_progress,
             )
         if self.kind in {"dissection", "biopsy"}:
             faces = int(cut.get("faces_removed", 0))

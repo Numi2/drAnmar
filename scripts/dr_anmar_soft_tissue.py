@@ -818,6 +818,16 @@ class SutureThreadModel:
     retained_closure: float = 0.0
     surface_coupling_force_n: float = 0.0
     failure_reason: str = ""
+    knot_guide_targets: dict[int, np.ndarray] = field(default_factory=dict)
+    knot_guide_weights: dict[int, float] = field(default_factory=dict)
+    retained_crossings: dict[tuple[int, int], np.ndarray] = field(default_factory=dict)
+    instrument_contact_centers: np.ndarray = field(
+        default_factory=lambda: np.empty((0, 3), dtype=np.float32)
+    )
+    instrument_contact_radius_m: float = 0.0024
+    knot_throw_count: int = 0
+    knot_slippage_m: float = 0.0
+    knot_center_world: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         self.points = np.zeros((self.node_count, 3), dtype=np.float32)
@@ -846,6 +856,13 @@ class SutureThreadModel:
         self.closure_gap_m = self.closure_ratio = self.retained_closure = 0.0
         self.surface_coupling_force_n = 0.0
         self.failure_reason = ""
+        self.knot_guide_targets.clear()
+        self.knot_guide_weights.clear()
+        self.retained_crossings.clear()
+        self.instrument_contact_centers = np.empty((0, 3), dtype=np.float32)
+        self.knot_throw_count = 0
+        self.knot_slippage_m = 0.0
+        self.knot_center_world = None
 
     @property
     def rest_length_m(self) -> float:
@@ -876,6 +893,179 @@ class SutureThreadModel:
         self.fixed[0] = target
         self.points[0] = target
         self.previous[0] += delta
+
+    def set_instrument_contacts(
+        self,
+        centers_world: list[np.ndarray] | tuple[np.ndarray, ...],
+        radius_m: float = 0.0024,
+    ) -> None:
+        """Set tool-tip collision proxies used by the strand solver."""
+        valid = [np.asarray(center, dtype=np.float32).reshape(3) for center in centers_world if center is not None]
+        self.instrument_contact_centers = (
+            np.stack(valid).astype(np.float32) if valid else np.empty((0, 3), dtype=np.float32)
+        )
+        self.instrument_contact_radius_m = max(float(radius_m), self.collision_radius_m * 2.0)
+
+    def set_knot_route(
+        self,
+        route_points: np.ndarray,
+        crossing_pairs: list[tuple[int, int]],
+        completed_turn_count: int,
+        completed_throw_count: int,
+        cinch_progress: float,
+        center_world: np.ndarray,
+    ) -> None:
+        """Apply progressive contact guides to the real strand.
+
+        The guides act like contact with the opposing strand.  They do not
+        replace the PBD points or create a second render curve: segment length,
+        gravity, tool contacts, self-collision, retained crossings and endpoint
+        motion continue to determine the visible thread.
+        """
+        if not self.initialized or self.thread_broken:
+            return
+        route = np.asarray(route_points, dtype=np.float32).reshape(-1, 3)
+        start_index = max(4, self.node_count // 6)
+        maximum_points = max(0, self.node_count - start_index - 5)
+        if len(route) > maximum_points:
+            sample_indices = np.linspace(0, len(route) - 1, maximum_points, dtype=np.int32)
+            route = route[sample_indices]
+            remapped_pairs: list[tuple[int, int]] = []
+            for left, right in crossing_pairs:
+                remapped_pairs.append(
+                    (
+                        int(round(left * max(maximum_points - 1, 1) / max(len(route_points) - 1, 1))),
+                        int(round(right * max(maximum_points - 1, 1) / max(len(route_points) - 1, 1))),
+                    )
+                )
+            crossing_pairs = remapped_pairs
+
+        target_indices = {start_index + offset for offset in range(len(route))}
+        for index in list(self.knot_guide_weights):
+            if index not in target_indices:
+                weight = self.knot_guide_weights[index] * 0.78
+                if weight < 0.025:
+                    self.knot_guide_weights.pop(index, None)
+                    self.knot_guide_targets.pop(index, None)
+                else:
+                    self.knot_guide_weights[index] = weight
+
+        for offset, target in enumerate(route):
+            index = start_index + offset
+            previous_target = self.knot_guide_targets.get(index)
+            self.knot_guide_targets[index] = (
+                target.copy()
+                if previous_target is None
+                else previous_target * 0.62 + target * 0.38
+            )
+            self.knot_guide_weights[index] = min(
+                1.0,
+                self.knot_guide_weights.get(index, 0.0) + 0.085,
+            )
+
+        retained_limit = max(0, min(int(completed_turn_count), len(crossing_pairs)))
+        minimum_separation = self.collision_radius_m * 2.15
+        for left, right in crossing_pairs[:retained_limit]:
+            first = start_index + int(left)
+            second = start_index + int(right)
+            if first == second or first < 0 or second >= self.node_count:
+                continue
+            key = (min(first, second), max(first, second))
+            if key in self.retained_crossings:
+                continue
+            offset = self.knot_guide_targets.get(second, self.points[second]) - self.knot_guide_targets.get(
+                first, self.points[first]
+            )
+            distance = float(np.linalg.norm(offset))
+            if distance < 1e-7:
+                offset = np.asarray((0.0, 0.0, minimum_separation), dtype=np.float32)
+            elif distance < minimum_separation:
+                offset = offset * (minimum_separation / distance)
+            self.retained_crossings[key] = np.asarray(offset, dtype=np.float32)
+
+        self.knot_center_world = np.asarray(center_world, dtype=np.float32).copy()
+        self.knot_throw_count = max(self.knot_throw_count, int(completed_throw_count))
+        self.knot_formed = self.knot_formed or self.knot_throw_count >= 1
+        completed_ratio = float(np.clip(self.knot_throw_count / 3.0, 0.0, 1.0))
+        cinch = float(np.clip(cinch_progress, 0.0, 1.0))
+        self.knot_tightness = max(self.knot_tightness, completed_ratio * 0.78 + cinch * 0.22)
+        slip_penalty = float(np.clip(self.knot_slippage_m / 0.008, 0.0, 1.0))
+        self.knot_security = float(
+            np.clip(max(self.knot_security, self.knot_tightness * (1.0 - 0.55 * slip_penalty)), 0.0, 1.0)
+        )
+
+    def _apply_knot_guides(self) -> None:
+        for index, target in self.knot_guide_targets.items():
+            if index in self.fixed or index < 0 or index >= self.node_count:
+                continue
+            weight = float(np.clip(self.knot_guide_weights.get(index, 0.0), 0.0, 1.0))
+            self.points[index] += (target - self.points[index]) * (0.045 + 0.16 * weight)
+
+    def _apply_retained_crossings(self) -> None:
+        for (first, second), target_offset in self.retained_crossings.items():
+            if first >= self.node_count or second >= self.node_count:
+                continue
+            error = (self.points[second] - self.points[first]) - target_offset
+            first_fixed = first in self.fixed
+            second_fixed = second in self.fixed
+            if first_fixed and not second_fixed:
+                self.points[second] -= error * 0.42
+            elif second_fixed and not first_fixed:
+                self.points[first] += error * 0.42
+            elif not first_fixed and not second_fixed:
+                self.points[first] += error * 0.21
+                self.points[second] -= error * 0.21
+
+    def _apply_self_collision(self) -> int:
+        if not self.knot_guide_targets and not self.retained_crossings:
+            return 0
+        minimum_distance = self.collision_radius_m * 2.15
+        delta = self.points[:, None, :] - self.points[None, :, :]
+        distance_sq = np.sum(delta * delta, axis=2)
+        mask = np.triu(np.ones((self.node_count, self.node_count), dtype=bool), k=3)
+        mask &= distance_sq < minimum_distance * minimum_distance
+        pairs = np.argwhere(mask)
+        contacts = 0
+        for first, second in pairs[:384]:
+            separation = self.points[second] - self.points[first]
+            distance = float(np.linalg.norm(separation))
+            if distance < 1e-8:
+                separation = np.asarray((0.0, 0.0, minimum_distance), dtype=np.float32)
+                distance = minimum_distance
+            correction = separation * ((minimum_distance - distance) / distance)
+            first_fixed = int(first) in self.fixed
+            second_fixed = int(second) in self.fixed
+            if first_fixed and not second_fixed:
+                self.points[second] += correction
+            elif second_fixed and not first_fixed:
+                self.points[first] -= correction
+            elif not first_fixed and not second_fixed:
+                self.points[first] -= correction * 0.5
+                self.points[second] += correction * 0.5
+            contacts += 1
+        return contacts
+
+    def _apply_instrument_contacts(self) -> int:
+        if not len(self.instrument_contact_centers):
+            return 0
+        contact_radius = self.instrument_contact_radius_m + self.collision_radius_m
+        contacts = 0
+        for center in self.instrument_contact_centers:
+            offsets = self.points - center[None, :]
+            distances = np.linalg.norm(offsets, axis=1)
+            for index in np.flatnonzero(distances < contact_radius):
+                index = int(index)
+                if index in self.fixed:
+                    continue
+                distance = float(distances[index])
+                direction = (
+                    offsets[index] / distance
+                    if distance >= 1e-8
+                    else np.asarray((0.0, 0.0, 1.0), dtype=np.float32)
+                )
+                self.points[index] = center + direction * contact_radius
+                contacts += 1
+        return contacts
 
     def add_tissue_anchor(
         self,
@@ -962,14 +1152,14 @@ class SutureThreadModel:
         self.retained_closure = float(np.clip(snapshot.get("retained_closure", 0.0), 0.0, 1.0))
         self.surface_coupling_force_n = self.tension_n if self.active_anchor_pairs else 0.0
 
-    def _apply_constraints(self) -> float:
+    def _apply_constraints(self, iterations: int = 8) -> float:
         fixed_indices = sorted(self.fixed)
         raw_stretch = 0.0
         for left, right in zip(fixed_indices[:-1], fixed_indices[1:]):
             available = (right - left) * self.segment_length_m
             routed_span = float(np.linalg.norm(self.fixed[right] - self.fixed[left]))
             raw_stretch = max(raw_stretch, max(0.0, routed_span / max(available, 1e-8) - 1.0))
-        for _ in range(8):
+        for _ in range(max(1, int(iterations))):
             for index in range(self.node_count - 1):
                 delta = self.points[index + 1] - self.points[index]
                 length = float(np.linalg.norm(delta))
@@ -985,7 +1175,7 @@ class SutureThreadModel:
                 elif not left_fixed and not right_fixed:
                     self.points[index] += correction * 0.5
                     self.points[index + 1] -= correction * 0.5
-            if self.knot_formed:
+            if self.knot_formed and not self.retained_crossings:
                 near = max(2, self.node_count // 4)
                 far = min(self.node_count - 3, (self.node_count * 3) // 4)
                 delta = self.points[far] - self.points[near]
@@ -997,9 +1187,49 @@ class SutureThreadModel:
                         self.points[near] += correction
                     if far not in self.fixed:
                         self.points[far] -= correction
+            self._apply_knot_guides()
+            self._apply_retained_crossings()
+            self._apply_self_collision()
+            self._apply_instrument_contacts()
             for index, position in self.fixed.items():
                 self.points[index] = position
+        residual_lengths = np.linalg.norm(np.diff(self.points, axis=0), axis=1)
+        residual_stretch = max(
+            0.0,
+            float(np.max(residual_lengths, initial=0.0)) / max(self.segment_length_m, 1e-8) - 1.0,
+        )
+        raw_stretch = max(raw_stretch, residual_stretch)
         return raw_stretch
+
+    def project_knot_constraints(self, iterations: int = 4) -> None:
+        """Project the latest wrap/contact state before authoring the USD curve."""
+        if not self.initialized:
+            return
+        before = self.points.copy()
+        projected_strain = self._apply_constraints(iterations)
+        self._apply_support_contact()
+        displacement = self.points - before
+        self.previous += displacement
+        self.strain = max(self.strain, projected_strain)
+        if not self.thread_broken:
+            self.tension_n = float(np.clip(self.strain * self.linear_stiffness_n, 0.0, 8.0))
+            self.peak_tension_n = max(self.peak_tension_n, self.tension_n)
+        if self.retained_crossings and self.knot_center_world is not None:
+            crossing_points = [
+                (self.points[first] + self.points[second]) * 0.5
+                for first, second in self.retained_crossings
+                if first < self.node_count and second < self.node_count
+            ]
+            if crossing_points:
+                knot_midpoint = np.mean(np.stack(crossing_points), axis=0)
+                self.knot_slippage_m = max(
+                    self.knot_slippage_m,
+                    float(np.linalg.norm(knot_midpoint - self.knot_center_world)),
+                )
+                slip_penalty = float(np.clip(self.knot_slippage_m / 0.008, 0.0, 1.0))
+                self.knot_security = float(
+                    np.clip(self.knot_tightness * (1.0 - 0.55 * slip_penalty), 0.0, 1.0)
+                )
 
     def _apply_support_contact(self) -> int:
         """Keep the free strand above the instrument table and damp sliding."""
@@ -1108,12 +1338,15 @@ class SutureThreadModel:
             "knot_formed": self.knot_formed,
             "knot_tightness": round(self.knot_tightness, 4),
             "knot_security": round(self.knot_security, 4),
+            "knot_throw_count": self.knot_throw_count,
+            "retained_crossings": len(self.retained_crossings),
+            "knot_slippage_m": round(self.knot_slippage_m, 6),
             "closure_gap_m": round(self.closure_gap_m, 6),
             "closure_ratio": round(self.closure_ratio, 4),
             "retained_closure": round(self.retained_closure, 4),
             "surface_coupling_force_n": round(self.surface_coupling_force_n, 4),
             "failure_reason": self.failure_reason,
-            "model": "surface_coupled_position_based_suture_v3",
+            "model": "surface_coupled_position_based_suture_v4",
             "calibration_status": "research_defaults_unvalidated",
         }
 

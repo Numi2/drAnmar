@@ -2717,20 +2717,19 @@ def main() -> None:
     target_anchors = max(2, int(procedure.get("target_anchors", 2)))
     suture_model = (
         SutureThreadModel(
-            node_count=max(48, target_anchors * 12),
-            segment_length_m=0.0032,
+            node_count=128 if guide_kind == "hoop_threading" else max(48, target_anchors * 12),
+            segment_length_m=0.0018 if guide_kind == "hoop_threading" else 0.0032,
             max_tissue_anchors=target_anchors,
             required_anchors_for_knot=target_anchors,
             anchor_pullout_force_n=tissue_material.anchor_pullout_force_n,
             support_plane_z_m=0.0,
+            collision_radius_m=0.00065 if guide_kind == "hoop_threading" else 0.00045,
         )
         if guide_kind in THREAD_GUIDE_KINDS
         else None
     )
     suture_curve = None
     suture_curve_prim = None
-    surgeons_knot_curve = None
-    surgeons_knot_curve_prim = None
     suture_anchor_marker_prims: list[Any] = []
     suture_anchor_marker_translates: list[Any] = []
     incision_curve = None
@@ -3090,23 +3089,6 @@ def main() -> None:
             )
             bind_procedure_material(base.GetPrim(), "NeedleHoopBase", (0.12, 0.15, 0.16), 1.0)
             UsdPhysics.CollisionAPI.Apply(base.GetPrim()).CreateCollisionEnabledAttr().Set(True)
-
-            knot_seed = np.asarray(
-                (
-                    procedure_mechanics.surgeons_knot.center,
-                    procedure_mechanics.surgeons_knot.center + np.asarray((0.0001, 0.0, 0.0), dtype=np.float32),
-                ),
-                dtype=np.float32,
-            )
-            surgeons_knot_curve, surgeons_knot_curve_prim = define_world_curve(
-                "/World/envs/env_0/DrAnmarSurgeonsKnotStrand",
-                knot_seed,
-                0.00145,
-                "SurgeonsKnotStrand",
-                (0.10, 0.58, 1.0),
-                1.0,
-            )
-            UsdGeom.Imageable(surgeons_knot_curve_prim).MakeInvisible()
 
         if guide_kind == "tube_insertion" and procedure_mechanics.tube is not None:
             vessel_points = np.stack(
@@ -4604,6 +4586,19 @@ def main() -> None:
             and expert_controller.phase == "manipulate"
             and expert_controller.manipulation_step >= 1
         )
+        expert_knot_step = expert_controller.manipulation_step if expert_knot_guidance else 0
+        knot_step_durations = {1: 70, 2: 118, 3: 58, 4: 76, 5: 58, 6: 76, 7: 58}
+        expert_knot_progress = (
+            float(
+                np.clip(
+                    expert_controller.target_ticks / max(knot_step_durations.get(expert_knot_step, 1), 1),
+                    0.0,
+                    1.0,
+                )
+            )
+            if expert_knot_guidance
+            else 0.0
+        )
         if suture_model is not None:
             needle_tips = procedure_needle_points
             if len(needle_tips):
@@ -4697,8 +4692,6 @@ def main() -> None:
                         )
                 synchronize_suture_surface_anchors(mechanics_dt)
                 suture_model.record_surface_coupling(coupling)
-            update_suture_visual()
-
         cut_active = False
         if guide_kind in CUTTING_GUIDE_KINDS and surface_mesh_model is not None:
             current_tool = current_tool_positions.get(0)
@@ -4813,25 +4806,34 @@ def main() -> None:
             scenario_id,
             procedure_needle_points,
             expert_knot_guidance,
-            expert_controller.manipulation_step if expert_knot_guidance else 0,
+            expert_knot_step,
+            expert_knot_progress,
         )
-        if surgeons_knot_curve is not None and surgeons_knot_curve_prim is not None:
-            knot_points = (
-                procedure_mechanics.surgeons_knot.visual_points()
-                if procedure_mechanics.surgeons_knot is not None
-                else np.empty((0, 3), dtype=np.float32)
-            )
-            if len(knot_points) >= 2:
-                surgeons_knot_curve.GetCurveVertexCountsAttr().Set(Vt.IntArray([len(knot_points)]))
-                surgeons_knot_curve.GetPointsAttr().Set(
-                    Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(knot_points, dtype=np.float32))
+        if suture_model is not None:
+            if procedure_mechanics.surgeons_knot is not None:
+                contact_centers = [
+                    position
+                    for _arm, position in sorted(current_tool_positions.items())
+                ]
+                suture_model.set_instrument_contacts(contact_centers, radius_m=0.0025)
+                knot_route = procedure_mechanics.surgeons_knot.constraint_route()
+                suture_model.set_knot_route(
+                    knot_route["points"],
+                    knot_route["crossings"],
+                    knot_route["completed_turns"],
+                    knot_route["completed_throws"],
+                    knot_route["cinch_progress"],
+                    knot_route["center"],
                 )
-                surgeons_knot_curve.GetWidthsAttr().Set(Vt.FloatArray([0.00145] * len(knot_points)))
-                UsdGeom.Imageable(surgeons_knot_curve_prim).MakeVisible()
-                if suture_curve_prim is not None:
-                    UsdGeom.Imageable(suture_curve_prim).MakeInvisible()
-            else:
-                UsdGeom.Imageable(surgeons_knot_curve_prim).MakeInvisible()
+                suture_model.project_knot_constraints(iterations=4)
+            update_suture_visual()
+            with state.lock:
+                state.mechanics["thread"].update(suture_model.snapshot())
+                state.mechanics["interaction_force"] = interaction_force_snapshot(
+                    needle_tissue_model if needle_interaction_enabled else None,
+                    surface_mesh_model,
+                    suture_model,
+                )
         if procedure_curve is not None and procedure_mechanics.tube is not None:
             visual_tip = current_tool_positions.get(0)
             if not assisted_grasp_joints and objects:
