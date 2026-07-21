@@ -1196,9 +1196,10 @@ class SutureThreadModel:
             for index, position in self.fixed.items():
                 self.points[index] = position
         residual_lengths = np.linalg.norm(np.diff(self.points, axis=0), axis=1)
+        routed_length = float(np.sum(residual_lengths))
         residual_stretch = max(
             0.0,
-            float(np.max(residual_lengths, initial=0.0)) / max(self.segment_length_m, 1e-8) - 1.0,
+            routed_length / max(self.rest_length_m, 1e-8) - 1.0,
         )
         raw_stretch = max(raw_stretch, residual_stretch)
         return raw_stretch
