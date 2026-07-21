@@ -692,13 +692,11 @@ class ExpertDemonstrationController:
                 ):
                     return False
                 primary_arm = self.primary_arm if self.primary_arm in range(self.arms) else primary_arm
-            return self._surgeons_knot(
-                action,
-                tools,
-                grippers,
-                thread_tail_position,
-                knot_secure,
+            self.pause(
+                "The native PhysX deformable-thread phase is not available. "
+                "Projected knot routes and scripted knot completion are disabled."
             )
+            return False
         if kind == "clip_divide":
             return self._clip_divide(action, tools, grippers)
         if kind == "hemostasis":

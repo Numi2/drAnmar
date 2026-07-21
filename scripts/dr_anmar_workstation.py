@@ -1218,6 +1218,14 @@ def build_web_app(state: SharedState) -> FastAPI:
         with state.lock:
             if not state.procedure:
                 raise HTTPException(409, "Load a procedure room before starting its expert demonstration")
+            if not state.procedure.get("simulation_ready", True):
+                raise HTTPException(
+                    409,
+                    state.procedure.get(
+                        "readiness_reason",
+                        "This room is unavailable until its native physics is ready.",
+                    ),
+                )
             if state.recording or state.record_request == "start":
                 raise HTTPException(409, "Stop the current recording before starting the expert")
             if state.replaying or state.evaluation_status in {"running", "saving"}:
@@ -4905,25 +4913,6 @@ def main() -> None:
             expert_controller.primary_arm,
         )
         if suture_model is not None:
-            if procedure_mechanics.surgeons_knot is not None:
-                contact_centers = [
-                    position
-                    for _arm, position in sorted(current_tool_positions.items())
-                ]
-                knot_route = procedure_mechanics.surgeons_knot.constraint_route()
-                suture_model.set_instrument_contacts(
-                    contact_centers if len(knot_route["points"]) else [],
-                    radius_m=0.00115,
-                )
-                suture_model.set_knot_route(
-                    knot_route["points"],
-                    knot_route["crossings"],
-                    knot_route["completed_turns"],
-                    knot_route["completed_throws"],
-                    knot_route["cinch_progress"],
-                    knot_route["center"],
-                )
-                suture_model.project_knot_constraints(iterations=4)
             update_suture_visual()
             with state.lock:
                 state.mechanics["thread"].update(suture_model.snapshot())

@@ -1071,8 +1071,6 @@ class ProcedureMechanics:
             self.ultrasound = UltrasoundAccessModel(target, protected, scan_pose=scan_pose)
         if self.kind == "hoop_threading" and len(self.waypoints) >= 3:
             self.hoop = HoopThreadingModel(self.waypoints[0], self.waypoints[1], self.waypoints[2])
-            knot_center = self.waypoints[2] + np.asarray((0.035, 0.0, -0.025), dtype=np.float32)
-            self.surgeons_knot = SurgeonsKnotModel(knot_center)
 
     def reset(self) -> None:
         self.traction_time_s = 0.0

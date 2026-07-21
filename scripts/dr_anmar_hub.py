@@ -1240,7 +1240,11 @@ def procedure_rooms() -> dict[str, Any]:
     available_anatomy = {scene["id"]: scene for scene in anatomy_payload()["scenes"]}
     for room in payload["rooms"]:
         anatomy = available_anatomy.get(room["anatomy_scene"])
-        room["ready"] = bool(anatomy and anatomy.get("openusd_ready"))
+        room["ready"] = bool(
+            anatomy
+            and anatomy.get("openusd_ready")
+            and room.get("simulation_ready", True)
+        )
         room["anatomy_title"] = anatomy["title"] if anatomy else room["anatomy_scene"]
     return payload
 
@@ -1250,6 +1254,14 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
     procedure = PROCEDURES_BY_ID.get(request.procedure_id)
     if procedure is None:
         raise HTTPException(404, "Unknown procedure room")
+    if not procedure.get("simulation_ready", True):
+        raise HTTPException(
+            409,
+            procedure.get(
+                "readiness_reason",
+                "This procedure room is unavailable until its native simulation is ready.",
+            ),
+        )
     selected_anatomy = request.anatomy_scene or procedure["anatomy_scene"]
     room = anatomy_room(selected_anatomy)
     if room is None:
