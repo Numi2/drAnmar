@@ -24,7 +24,7 @@ def step(step_id: str, title: str, instruction: str, signal: str) -> dict[str, s
 PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
     {
         "id": "needle-pickup",
-        "title": "NVIDIA suture needle lift",
+        "title": "Needle pickup",
         "category": "Needle skills",
         "difficulty": "Foundation",
         "task": "Isaac-Lift-Needle-PSM-IK-Rel-v0",
@@ -32,8 +32,8 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "anatomy_focus": "CT liver field",
         "robot": "dVRK PSM",
         "instrument": "Large needle driver",
-        "objective": "Follow NVIDIA's published sequence: rest, approach the curved needle, close the gripper, lift, and hold the rigid needle stably.",
-        "interaction": "NVIDIA Isaac for Healthcare lift_needle_organs reference boundary: dVRK PSM control, rigid-body suture needle, jaw contact and grasp, lift, and anatomy-aware operating-room context.",
+        "objective": "Approach the curved needle, grasp its body, lift it clear of the tray, and hold it stably.",
+        "interaction": "Rigid curved needle with physical contact, grasp and lift.",
         "fidelity": "nvidia_i4h_reference",
         "source_workflow": "robotic_surgery/lift_needle_organs",
         "show_waypoint_markers": False,
@@ -46,7 +46,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("orient", "Orient", "Rotate the needle into a controlled, readable presentation.", "tool orientation"),
             step("recover", "Recover", "Hold the final pose without dropping the needle.", "stable hold"),
         ],
-        "truth_note": "Faithful to the public NVIDIA task boundary: the needle is a rigid body and the lesson covers contact, grasp and lift. It does not simulate a suture thread, knot, tissue puncture, cutting or deformation.",
+        "truth_note": "Foundation room: rigid needle handling without thread or tissue interaction.",
     },
     {
         "id": "needle-transfer",
