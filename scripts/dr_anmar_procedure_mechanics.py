@@ -568,6 +568,8 @@ class HoopThreadingModel:
     best_clearance_m: float = -1.0
     passed_cleanly: bool = False
     recovered: bool = False
+    entered_endpoint_indices: set[int] = field(default_factory=set)
+    passed_endpoint_indices: set[int] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         self.approach = np.asarray(self.approach, dtype=np.float32)
@@ -585,6 +587,8 @@ class HoopThreadingModel:
         self.best_clearance_m = -1.0
         self.passed_cleanly = False
         self.recovered = False
+        self.entered_endpoint_indices.clear()
+        self.passed_endpoint_indices.clear()
 
     def _coordinates(self, point: np.ndarray) -> tuple[float, float]:
         offset = np.asarray(point, dtype=np.float32) - self.center
@@ -620,8 +624,21 @@ class HoopThreadingModel:
             self.ring_contacts += 1
         self.contact_active = ring_contact
 
-        if self.previous_points is not None and self.approach_seen:
-            for previous, current in zip(self.previous_points, points):
+        crossing_detected = False
+        for index, (axial, radial) in enumerate(coordinates):
+            if axial <= -0.002 and radial <= self.inner_radius_m - 0.0008:
+                self.entered_endpoint_indices.add(index)
+            if (
+                index in self.entered_endpoint_indices
+                and index not in self.passed_endpoint_indices
+                and axial >= 0.002
+                and radial <= self.inner_radius_m - 0.0008
+            ):
+                self.passed_endpoint_indices.add(index)
+                crossing_detected = True
+
+        if self.previous_points is not None and self.approach_seen and not crossing_detected:
+            for index, (previous, current) in enumerate(zip(self.previous_points, points)):
                 previous_axial, _ = self._coordinates(previous)
                 current_axial, _ = self._coordinates(current)
                 if previous_axial >= -0.001 or current_axial <= 0.001:
@@ -630,10 +647,13 @@ class HoopThreadingModel:
                 intersection = previous + float(np.clip(fraction, 0.0, 1.0)) * (current - previous)
                 _axial, radial = self._coordinates(intersection)
                 if radial <= self.inner_radius_m - 0.0008:
-                    self.pass_count += 1
-                    self.best_clearance_m = max(self.best_clearance_m, self.inner_radius_m - radial)
-                    self.passed_cleanly = self.ring_contacts == 0
+                    self.passed_endpoint_indices.add(index)
+                    crossing_detected = True
                     break
+        if crossing_detected:
+            self.pass_count += 1
+            self.best_clearance_m = max(self.best_clearance_m, clearance)
+            self.passed_cleanly = self.ring_contacts == 0
         if self.pass_count and any(axial >= 0.025 for axial, _radial in coordinates):
             self.recovered = True
         self.previous_points = points.copy()
@@ -651,6 +671,10 @@ class HoopThreadingModel:
             "pass_count": self.pass_count,
             "passed_cleanly": self.passed_cleanly,
             "recovered": self.recovered,
+            "needle_coordinates_m": [
+                {"axial": round(axial, 5), "radial": round(radial, 5)}
+                for axial, radial in coordinates
+            ],
             "calibration_status": "training_phantom_engineering_geometry",
         }
 

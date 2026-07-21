@@ -3082,10 +3082,44 @@ def main() -> None:
             hoop_mesh.CreateSubdivisionSchemeAttr(UsdGeom.Tokens.none)
             hoop_prim = hoop_mesh.GetPrim()
             bind_procedure_material(hoop_prim, "NeedleHoop", (0.055, 0.065, 0.070), 1.0)
-            UsdPhysics.CollisionAPI.Apply(hoop_prim).CreateCollisionEnabledAttr().Set(True)
-            UsdPhysics.MeshCollisionAPI.Apply(hoop_prim).CreateApproximationAttr().Set("none")
             hoop_prim.CreateAttribute("drAnmar:trainingTarget", Sdf.ValueTypeNames.String).Set("needle_hoop")
             procedure_target_prims.append(hoop_prim)
+
+            # Use overlapping convex capsules for the actual PhysX ring.  A
+            # concave display mesh is not a dependable contact shape for a
+            # moving surgical needle; these segments make the opening truly
+            # solid while keeping the smooth torus as the visible geometry.
+            collision_segments = 40
+            for segment_index in range(collision_segments):
+                angle_a = 2.0 * np.pi * segment_index / collision_segments
+                angle_b = 2.0 * np.pi * (segment_index + 1) / collision_segments
+                point_a = hoop_center + major_radius * (
+                    np.cos(angle_a) * hoop_axis_u + np.sin(angle_a) * hoop_axis_v
+                )
+                point_b = hoop_center + major_radius * (
+                    np.cos(angle_b) * hoop_axis_u + np.sin(angle_b) * hoop_axis_v
+                )
+                midpoint = (point_a + point_b) * 0.5
+                tangent = point_b - point_a
+                segment_length = float(np.linalg.norm(tangent))
+                tangent /= max(segment_length, 1e-8)
+                collider = UsdGeom.Capsule.Define(
+                    stage,
+                    f"/World/envs/env_0/DrAnmarNeedleHoopColliders/Segment_{segment_index:02d}",
+                )
+                collider.CreateAxisAttr(UsdGeom.Tokens.z)
+                collider.CreateRadiusAttr(tube_radius * 1.04)
+                collider.CreateHeightAttr(segment_length)
+                collider_xform = UsdGeom.Xformable(collider.GetPrim())
+                collider_xform.AddTranslateOp().Set(Gf.Vec3d(*midpoint.astype(float).tolist()))
+                collider_xform.AddOrientOp().Set(
+                    Gf.Rotation(
+                        Gf.Vec3d(0.0, 0.0, 1.0),
+                        Gf.Vec3d(*tangent.astype(float).tolist()),
+                    ).GetQuat()
+                )
+                UsdPhysics.CollisionAPI.Apply(collider.GetPrim()).CreateCollisionEnabledAttr().Set(True)
+                UsdGeom.Imageable(collider.GetPrim()).MakeInvisible()
 
             stand_top = max(0.008, float(hoop_center[2]) - major_radius - tube_radius)
             stand = UsdGeom.Cylinder.Define(stage, "/World/envs/env_0/DrAnmarNeedleHoopStand")
@@ -4607,6 +4641,7 @@ def main() -> None:
             and expert_controller.status == "running"
             and expert_controller.phase == "manipulate"
             and expert_controller.manipulation_step >= 1
+            and expert_controller.ring_handoff_complete
         )
         expert_knot_step = expert_controller.manipulation_step if expert_knot_guidance else 0
         knot_step_durations = {1: 70, 2: 118, 3: 58, 4: 76, 5: 58, 6: 76, 7: 58}

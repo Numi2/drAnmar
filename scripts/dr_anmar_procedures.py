@@ -331,7 +331,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "hoop_inner_radius_m": 0.017,
         "hoop_tube_radius_m": 0.0025,
         "target_throws": 3,
-        "waypoints": ((-0.045, 0.000, 0.065), (0.000, 0.000, 0.065), (0.045, 0.000, 0.065)),
+        "waypoints": ((-0.035, 0.000, 0.065), (0.000, 0.000, 0.065), (0.012, 0.000, 0.065)),
         "steps": [
             step("pickup", "Pick up the threaded needle", "Close on the middle third of the needle and confirm that the suture follows continuously from its eye.", "needle and suture custody"),
             step("pass", "Pass the hoop", "Center the sharp tip, follow the needle curvature through the opening, and clear the ring without contact.", "clean plane crossing"),

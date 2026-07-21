@@ -65,6 +65,9 @@ class ExpertDemonstrationController:
     primary_arm: int | None = None
     tail_captured: bool = False
     needle_point_index: int | None = None
+    ring_handoff_step: int = 0
+    ring_handoff_anchor: np.ndarray | None = None
+    ring_handoff_complete: bool = False
 
     def __post_init__(self) -> None:
         self.waypoints = np.asarray(self.waypoints, dtype=np.float32).reshape(-1, 3)
@@ -103,6 +106,9 @@ class ExpertDemonstrationController:
         self.primary_arm = None
         self.tail_captured = False
         self.needle_point_index = None
+        self.ring_handoff_step = 0
+        self.ring_handoff_anchor = None
+        self.ring_handoff_complete = False
 
     def pause(self, reason: str = "Doctor paused the expert demonstration for inspection.") -> None:
         if self.status == "running":
@@ -152,6 +158,7 @@ class ExpertDemonstrationController:
             "primary_arm": self.primary_arm,
             "tail_captured": self.tail_captured,
             "needle_point_index": self.needle_point_index,
+            "ring_handoff_complete": self.ring_handoff_complete,
             "procedure_instruction": self._procedure_instruction(),
             "phase_elapsed_s": round(self.phase_elapsed_s, 2) if self.phase is not None else 0.0,
             "phases": phases,
@@ -168,6 +175,8 @@ class ExpertDemonstrationController:
     def _procedure_instruction(self) -> str | None:
         if self.guide_kind != "hoop_threading" or self.phase != "manipulate":
             return None
+        if self.manipulation_step == 1 and not self.ring_handoff_complete:
+            return "The tip has crossed: the far-side instrument now grasps the needle, the first releases, and the receiver pulls the threaded needle clear."
         return {
             0: "Lead with the needle tip: approach, center it in the hoop, rotate the curved needle through, then clear the far side.",
             1: "Bring both instruments into the knot field and control one strand end with each gripper.",
@@ -288,16 +297,35 @@ class ExpertDemonstrationController:
             )
         index = min(self.target_index, len(self.waypoints) - 1)
         needle_tip = points[self.needle_point_index]
-        direction = 1.0 if index < 2 else -0.35
+        normal = self.waypoints[-1] - self.waypoints[0]
+        normal /= max(float(np.linalg.norm(normal)), 1e-8)
+        target = self.waypoints[index].copy()
+        rotation = (0.0, 0.0, 0.0)
+        path_ready = True
+        if index == 1:
+            # Stop just before the metal ring.  The next stage is a deliberate
+            # wrist-driven needle arc, never a straight tool translation.
+            target = self.waypoints[1] - normal * 0.006
+            rotation = (0.010, 0.0, 0.0)
+        elif index == 2:
+            arc_progress = float(np.clip(self.target_ticks / 96.0, 0.0, 1.0))
+            smooth = arc_progress * arc_progress * (3.0 - 2.0 * arc_progress)
+            target = (
+                self.waypoints[1]
+                + normal * (-0.006 + 0.018 * smooth)
+                + np.asarray((0.0, 0.0, 0.0045 * np.sin(np.pi * smooth)), dtype=np.float32)
+            )
+            rotation = (0.030, 0.0, 0.0)
+            path_ready = arc_progress >= 1.0
         distance = self._set_motion(
             action,
             arm,
             needle_tip,
-            self.waypoints[index],
-            (0.020 * direction, 0.0, 0.0),
+            target,
+            rotation,
         )
         self.target_ticks += 1
-        if distance is not None and distance <= 0.0075:
+        if path_ready and distance is not None and distance <= 0.0075:
             self.target_index += 1
             self.target_ticks = 0
         elif self.target_ticks >= 180:
@@ -307,6 +335,66 @@ class ExpertDemonstrationController:
                 f"({millimeters:.1f} mm remaining). Reset and retry rather than skipping the pass."
             )
         return self.target_index >= len(self.waypoints)
+
+    def _threaded_ring_handoff(
+        self,
+        action: np.ndarray,
+        tools: dict[int, np.ndarray],
+        object_position: np.ndarray | None,
+        grippers: list[bool],
+        primary_arm: int,
+    ) -> bool:
+        """Transfer the passed needle to the far-side gripper and withdraw it."""
+        if self.arms < 2 or object_position is None or len(self.waypoints) < 2:
+            self.pause("The physical needle handoff pose is unavailable. Reset the room and retry.")
+            return False
+        receiver_arm = 1 - primary_arm
+        normal = self.waypoints[-1] - self.waypoints[0]
+        normal /= max(float(np.linalg.norm(normal)), 1e-8)
+        self.target_ticks += 1
+        if self.ring_handoff_step == 0:
+            grippers[primary_arm] = False
+            grippers[receiver_arm] = True
+            receiver_target = np.asarray(object_position, dtype=np.float32) + normal * 0.009
+            distance = self._set_motion(
+                action,
+                receiver_arm,
+                tools.get(receiver_arm),
+                receiver_target,
+            )
+            if distance is not None and distance <= 0.012:
+                grippers[receiver_arm] = False
+                grippers[primary_arm] = True
+                self.ring_handoff_anchor = (
+                    tools[receiver_arm].copy() if receiver_arm in tools else receiver_target.copy()
+                )
+                self.ring_handoff_step = 1
+                self.target_ticks = 0
+            elif self.target_ticks >= 180:
+                self.pause("The far-side instrument could not reach the passed needle. Reset and retry the handoff.")
+            return False
+
+        grippers[primary_arm] = True
+        grippers[receiver_arm] = False
+        withdrawal_target = (
+            self.ring_handoff_anchor + normal * 0.038 + np.asarray((0.0, 0.0, 0.010), dtype=np.float32)
+            if self.ring_handoff_anchor is not None
+            else None
+        )
+        distance = self._set_motion(
+            action,
+            receiver_arm,
+            tools.get(receiver_arm),
+            withdrawal_target,
+        )
+        if distance is not None and distance <= 0.013:
+            self.primary_arm = receiver_arm
+            self.ring_handoff_complete = True
+            self.target_ticks = 0
+            return True
+        if self.target_ticks >= 180:
+            self.pause("The receiving instrument could not withdraw the threaded needle clear of the ring.")
+        return False
 
     def _handover(
         self,
@@ -558,6 +646,16 @@ class ExpertDemonstrationController:
                     if self.target_ticks >= 80:
                         self.pause("The needle cleared the path but no physical hoop crossing was detected. Reset and retry.")
                 return False
+            if not self.ring_handoff_complete:
+                if not self._threaded_ring_handoff(
+                    action,
+                    tools,
+                    object_position,
+                    grippers,
+                    primary_arm,
+                ):
+                    return False
+                primary_arm = self.primary_arm if self.primary_arm in range(self.arms) else primary_arm
             return self._surgeons_knot(
                 action,
                 tools,
