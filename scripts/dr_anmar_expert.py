@@ -166,7 +166,7 @@ class ExpertDemonstrationController:
         if self.guide_kind != "hoop_threading" or self.phase != "manipulate":
             return None
         return {
-            0: "Follow the needle curvature through the hoop while the blue strand follows from the eye.",
+            0: "Follow the needle curvature through the hoop while the physical blue suture follows continuously from the eye.",
             1: "Bring both instruments into the knot field and control one strand end with each gripper.",
             2: "First throw: rotate through two complete wraps in the same direction around the receiving instrument.",
             3: "Capture the tail and pull both ends apart evenly to seat the double first throw.",

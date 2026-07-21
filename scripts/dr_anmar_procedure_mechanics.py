@@ -893,6 +893,7 @@ class SurgeonsKnotModel:
             if self.demonstrated_turns > 0.0
             else len(self.throws)
         )
+        route_center = (self.primary_position + self.secondary_position) * 0.5
         current_cinch_throw = (
             (self.expert_manipulation_step - 3) // 2
             if self.expert_manipulation_step in {3, 5, 7}
@@ -919,7 +920,7 @@ class SurgeonsKnotModel:
             theta = np.linspace(0.0, direction * used_turns * 2.0 * np.pi, samples, dtype=np.float32)
             normalized_turn = np.abs(theta) / (2.0 * np.pi)
             pitch = (normalized_turn - used_turns * 0.5) * 0.00145
-            throw_center = self.center + axis * ((throw_index - 1.0) * 0.0020)
+            throw_center = route_center + axis * ((throw_index - 1.0) * 0.0020)
             segment = (
                 throw_center[None, :]
                 + side[None, :] * (np.cos(theta) * radius)[:, None]
@@ -953,7 +954,7 @@ class SurgeonsKnotModel:
             "completed_turns": completed_turn_count,
             "completed_throws": completed_throws,
             "cinch_progress": self.active_cinch_progress,
-            "center": self.center.copy(),
+            "center": route_center.astype(np.float32),
         }
 
 

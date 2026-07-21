@@ -1036,15 +1036,18 @@ class SutureThreadModel:
 
         for index, target in full_targets.items():
             previous_target = self.knot_guide_targets.get(index)
-            self.knot_guide_targets[index] = (
-                target.copy()
-                if previous_target is None
-                else previous_target * 0.62 + target * 0.38
-            )
-            self.knot_guide_weights[index] = min(
-                1.0,
-                self.knot_guide_weights.get(index, 0.0) + 0.085,
-            )
+            if previous_target is None:
+                # A newly activated guide begins at the strand's current physical
+                # position.  This prevents the knot route from materialising in
+                # mid-air on the first solver frame.
+                self.knot_guide_targets[index] = self.points[index].copy()
+                self.knot_guide_weights[index] = 0.0
+            else:
+                self.knot_guide_targets[index] = previous_target * 0.88 + target * 0.12
+                self.knot_guide_weights[index] = min(
+                    1.0,
+                    self.knot_guide_weights.get(index, 0.0) + 0.03,
+                )
 
         retained_limit = max(0, min(int(completed_turn_count), len(crossing_pairs)))
         minimum_separation = self.collision_radius_m * 2.15
@@ -1082,7 +1085,7 @@ class SutureThreadModel:
             if index in self.fixed or index < 0 or index >= self.node_count:
                 continue
             weight = float(np.clip(self.knot_guide_weights.get(index, 0.0), 0.0, 1.0))
-            self.points[index] += (target - self.points[index]) * (0.045 + 0.16 * weight)
+            self.points[index] += (target - self.points[index]) * (0.018 + 0.10 * weight)
 
     def _apply_retained_crossings(self) -> None:
         for (first, second), target_offset in self.retained_crossings.items():
