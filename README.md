@@ -60,6 +60,35 @@ ultrasound-guided access; organ retraction and repositioning; cutting, dissectio
 complication recovery. Their physics are transparent engineering models for research and teaching—not claims
 of validated human tissue, force, diagnostic imaging or clinical skill assessment.
 
+### Executable expert guidance
+
+Every procedure room can run a live expert controller through **Rest → Approach → Align → Contact → Grasp →
+Manipulate → Verify → Recover**. This is not a prerecorded video: the robot acts inside the current OpenUSD
+room while camera, task, force, tissue and phase telemetry update. A doctor can pause for inspection or take
+manual control from the current phase, and a complete uninterrupted trajectory is saved as a reviewable
+Behavior Cloning candidate.
+
+<p align="center">
+  <img src="docs/screenshots/expert-guidance-suturing.gif" width="960" alt="Live Dr.Anmar expert guidance performing the interrupted-suturing room while the eight teaching phases, operative camera, controls, and suture telemetry update">
+</p>
+
+<p align="center"><strong>Interrupted-suture expert</strong><br>
+Room-specific needle and tissue interaction with the active teaching phase and manual takeover controls visible.</p>
+
+<p align="center">
+  <img src="docs/screenshots/expert-guidance-needle-handover.gif" width="960" alt="Live Dr.Anmar expert guidance performing a dual-instrument needle handover through approach, grasp, manipulation, verification, and recovery">
+</p>
+
+<p align="center"><strong>Dual-instrument needle handover</strong><br>
+Pickup → presentation → receiving grasp → release → separation, performed in the live dual-PSM room.</p>
+
+<p align="center">
+  <img src="docs/screenshots/expert-guidance-ultrasound.gif" width="960" alt="Live Dr.Anmar expert guidance performing ultrasound-guided needle access with bimanual probe and needle telemetry">
+</p>
+
+<p align="center"><strong>Ultrasound-guided access expert</strong><br>
+Bimanual probe alignment and needle approach with confidence, visibility, target-error, and vessel-clearance telemetry.</p>
+
 ## Control pedagogy designed for doctors
 
 Dr.Anmar exposes robotics progressively instead of presenting a wall of simulator controls:
