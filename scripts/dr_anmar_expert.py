@@ -18,7 +18,7 @@ from typing import Any
 import numpy as np
 
 
-EXPERT_CONTROLLER_VERSION = "dr-anmar-expert-v1"
+EXPERT_CONTROLLER_VERSION = "dr-anmar-expert-v2-surgeons-knot"
 EXPERT_PHASES: tuple[dict[str, str], ...] = (
     {"id": "rest", "title": "Rest", "instruction": "Confirm the neutral pose, anatomy and operative camera."},
     {"id": "approach", "title": "Approach", "instruction": "Move above the first target with the jaws open."},
@@ -142,6 +142,8 @@ class ExpertDemonstrationController:
             "phase": self.phase,
             "phase_index": self.phase_index,
             "phase_ticks": self.phase_ticks,
+            "manipulation_step": self.manipulation_step,
+            "procedure_instruction": self._procedure_instruction(),
             "phase_elapsed_s": round(self.phase_elapsed_s, 2) if self.phase is not None else 0.0,
             "phases": phases,
             "completed_phases": list(self.completed_phases),
@@ -153,6 +155,20 @@ class ExpertDemonstrationController:
             "reference_demo": reference_demo,
             "recording_contract": "actions + robot state + cameras + mechanics + eight phase labels",
         }
+
+    def _procedure_instruction(self) -> str | None:
+        if self.guide_kind != "hoop_threading" or self.phase != "manipulate":
+            return None
+        return {
+            0: "Follow the needle curvature through the hoop while the blue strand follows from the eye.",
+            1: "Bring both instruments into the knot field and control one strand end with each gripper.",
+            2: "First throw: rotate through two complete wraps in the same direction around the receiving instrument.",
+            3: "Capture the tail and pull both ends apart evenly to seat the double first throw.",
+            4: "Second throw: reverse the crossing direction and form one complete opposing wrap.",
+            5: "Seat the opposing throw without releasing the tension retained by the first throw.",
+            6: "Final throw: return to the original crossing direction and form one securing wrap.",
+            7: "Draw both ends down symmetrically, then hold still while slippage and knot security are inspected.",
+        }.get(self.manipulation_step)
 
     def _action(self) -> np.ndarray:
         return np.zeros(self.action_dim, dtype=np.float32)
@@ -315,6 +331,63 @@ class ExpertDemonstrationController:
             self.target_ticks = 0
         return self.manipulation_step >= 6
 
+    def _surgeons_knot(self, action: np.ndarray, tools: dict[int, np.ndarray], grippers: list[bool]) -> bool:
+        """Demonstrate the canonical 2-1-1 bimanual surgeon's-knot sequence."""
+        if self.arms < 2:
+            if "surgeon's knot requires two instruments" not in self.degraded_reasons:
+                self.degraded_reasons.append("surgeon's knot requires two instruments")
+            return True
+        center = (
+            self.waypoints[-1] + np.asarray((0.035, 0.0, -0.025), dtype=np.float32)
+            if len(self.waypoints)
+            else np.asarray((0.080, 0.0, 0.040), dtype=np.float32)
+        )
+        grippers[0] = grippers[1] = False
+        step = self.manipulation_step
+        self.target_ticks += 1
+
+        if step == 1:
+            target0 = center + np.asarray((0.024, 0.0, 0.010), dtype=np.float32)
+            target1 = center + np.asarray((-0.024, 0.0, 0.010), dtype=np.float32)
+            d0 = self._set_motion(action, 0, tools.get(0), target0)
+            d1 = self._set_motion(action, 1, tools.get(1), target1)
+            complete = bool(d0 is not None and d1 is not None and d0 <= 0.012 and d1 <= 0.012)
+            if complete or self.target_ticks >= 70:
+                self.manipulation_step = 2
+                self.target_ticks = 0
+            return False
+
+        wrap_specs = {
+            2: (2.0, 1.0, 118),
+            4: (1.0, -1.0, 76),
+            6: (1.0, 1.0, 76),
+        }
+        if step in wrap_specs:
+            turns, direction, duration = wrap_specs[step]
+            progress = float(np.clip(self.target_ticks / max(duration, 1), 0.0, 1.0))
+            angle = direction * turns * 2.0 * np.pi * progress
+            radial = np.asarray((0.024 * np.cos(angle), 0.024 * np.sin(angle), 0.010), dtype=np.float32)
+            self._set_motion(action, 0, tools.get(0), center + radial, (0.0, 0.0, 0.018 * direction))
+            self._set_motion(action, 1, tools.get(1), center - radial + np.asarray((0.0, 0.0, 0.020), dtype=np.float32), (0.0, 0.0, -0.018 * direction))
+            if self.target_ticks >= duration:
+                self.manipulation_step += 1
+                self.target_ticks = 0
+            return False
+
+        if step in {3, 5, 7}:
+            target0 = center + np.asarray((0.043, 0.0, 0.010), dtype=np.float32)
+            target1 = center + np.asarray((-0.043, 0.0, 0.010), dtype=np.float32)
+            d0 = self._set_motion(action, 0, tools.get(0), target0)
+            d1 = self._set_motion(action, 1, tools.get(1), target1)
+            complete = bool(d0 is not None and d1 is not None and d0 <= 0.010 and d1 <= 0.010)
+            if complete or self.target_ticks >= 58:
+                if step == 7:
+                    return True
+                self.manipulation_step += 1
+                self.target_ticks = 0
+            return False
+        return step >= 8
+
     def _ultrasound(self, action: np.ndarray, tools: dict[int, np.ndarray], grippers: list[bool]) -> bool:
         if self.arms < 2 or not len(self.waypoints):
             return self._follow_waypoints(action, tools, 0, self.waypoints)
@@ -362,8 +435,14 @@ class ExpertDemonstrationController:
                 )
             return self._handover(action, tools, object_position, grippers)
         if kind == "hoop_threading":
-            grippers[0] = False
-            return self._follow_waypoints(action, tools, 0, self.waypoints, (0.024, 0.0, 0.0))
+            if self.manipulation_step == 0:
+                grippers[0] = False
+                if self._follow_waypoints(action, tools, 0, self.waypoints, (0.024, 0.0, 0.0)):
+                    self.manipulation_step = 1
+                    self.target_ticks = 0
+                    self.target_index = 0
+                return False
+            return self._surgeons_knot(action, tools, grippers)
         if kind == "clip_divide":
             return self._clip_divide(action, tools, grippers)
         if kind == "hemostasis":

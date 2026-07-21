@@ -656,6 +656,161 @@ class HoopThreadingModel:
 
 
 @dataclass
+class SurgeonsKnotModel:
+    """Recognize and score the canonical 2-1-1 surgeon's-knot hand sequence.
+
+    This is an observable dry-lab gesture model.  The OpenUSD/Isaac thread and
+    instruments remain the geometry and dynamics authority; this model labels
+    wraps, opposing throw direction, seating symmetry and post-seat slippage.
+    """
+
+    center: np.ndarray
+    expected_wraps: tuple[int, int, int] = (2, 1, 1)
+    accumulated_angle_rad: float = 0.0
+    previous_angle_rad: float | None = None
+    wrapping: bool = False
+    throws: list[dict[str, Any]] = field(default_factory=list)
+    maximum_seat_separation_m: float = 0.0
+    slippage_m: float = 0.0
+    seat_symmetry: float = 0.0
+
+    def __post_init__(self) -> None:
+        self.center = np.asarray(self.center, dtype=np.float32)
+
+    def reset(self) -> None:
+        self.accumulated_angle_rad = 0.0
+        self.previous_angle_rad = None
+        self.wrapping = False
+        self.throws.clear()
+        self.maximum_seat_separation_m = 0.0
+        self.slippage_m = 0.0
+        self.seat_symmetry = 0.0
+
+    @property
+    def phase(self) -> str:
+        return (
+            "double_first_throw"
+            if len(self.throws) == 0
+            else "opposing_single_throw"
+            if len(self.throws) == 1
+            else "final_securing_throw"
+            if len(self.throws) == 2
+            else "secure_and_inspect"
+        )
+
+    def _finalize_throw(self, separation_m: float) -> None:
+        if len(self.throws) >= len(self.expected_wraps):
+            return
+        turns = abs(self.accumulated_angle_rad) / (2.0 * np.pi)
+        observed_wraps = max(1, int(round(turns)))
+        direction = 1 if self.accumulated_angle_rad >= 0.0 else -1
+        expected = self.expected_wraps[len(self.throws)]
+        direction_ok = not self.throws or direction == -int(self.throws[-1]["direction"])
+        self.throws.append(
+            {
+                "index": len(self.throws) + 1,
+                "wraps": observed_wraps,
+                "expected_wraps": expected,
+                "direction": direction,
+                "direction_label": "clockwise" if direction > 0 else "counter-clockwise",
+                "wrap_count_ok": observed_wraps == expected,
+                "direction_ok": direction_ok,
+            }
+        )
+        self.maximum_seat_separation_m = max(self.maximum_seat_separation_m, separation_m)
+        self.accumulated_angle_rad = 0.0
+        self.previous_angle_rad = None
+        self.wrapping = False
+
+    def snapshot(
+        self,
+        tool_positions: dict[int, np.ndarray],
+        grippers_open: list[bool],
+        hoop_passed: bool,
+        thread: Any | None,
+        dt: float,
+    ) -> dict[str, Any]:
+        primary = tool_positions.get(0)
+        secondary = tool_positions.get(1)
+        both_closed = bool(
+            primary is not None
+            and secondary is not None
+            and len(grippers_open) >= 2
+            and not grippers_open[0]
+            and not grippers_open[1]
+        )
+        separation = float(np.linalg.norm(primary - secondary)) if both_closed else 0.0
+        midpoint = (primary + secondary) * 0.5 if both_closed else self.center
+        field_error = float(np.linalg.norm(midpoint - self.center))
+
+        if hoop_passed and both_closed and field_error <= 0.10 and len(self.throws) < 3:
+            relative = primary - secondary
+            angle = float(np.arctan2(relative[1], relative[0]))
+            if separation <= 0.058:
+                if self.previous_angle_rad is not None:
+                    delta = angle - self.previous_angle_rad
+                    delta = (delta + np.pi) % (2.0 * np.pi) - np.pi
+                    self.accumulated_angle_rad += delta
+                self.previous_angle_rad = angle
+                self.wrapping = True
+            elif self.wrapping and separation >= 0.066:
+                minimum_turns = 1.45 if not self.throws else 0.65
+                if abs(self.accumulated_angle_rad) >= minimum_turns * 2.0 * np.pi:
+                    self._finalize_throw(separation)
+
+        if self.throws and both_closed and separation >= 0.060:
+            self.maximum_seat_separation_m = max(self.maximum_seat_separation_m, separation)
+            self.slippage_m = max(self.slippage_m, max(0.0, self.maximum_seat_separation_m - separation))
+            self.seat_symmetry = max(self.seat_symmetry, float(np.clip(1.0 - field_error / 0.025, 0.0, 1.0)))
+
+        first_throw_double = bool(self.throws and self.throws[0]["wrap_count_ok"])
+        directions_alternate = all(item["direction_ok"] for item in self.throws[1:])
+        sequence_valid = bool(
+            len(self.throws) >= 3
+            and first_throw_double
+            and all(item["wrap_count_ok"] for item in self.throws)
+            and directions_alternate
+        )
+        tension = float(getattr(thread, "tension_n", 0.0)) if thread is not None else 0.0
+        secure = bool(sequence_valid and self.slippage_m <= 0.008 and self.seat_symmetry >= 0.55)
+        return {
+            "active": True,
+            "phase": self.phase,
+            "hoop_passed": hoop_passed,
+            "throw_count": len(self.throws),
+            "target_throws": 3,
+            "expected_sequence": "2-1-1",
+            "pending_turns": round(abs(self.accumulated_angle_rad) / (2.0 * np.pi), 2),
+            "pending_direction": "clockwise" if self.accumulated_angle_rad >= 0.0 else "counter-clockwise",
+            "throws": list(self.throws),
+            "first_throw_double": first_throw_double,
+            "directions_alternate": directions_alternate,
+            "sequence_valid": sequence_valid,
+            "seat_symmetry": round(self.seat_symmetry, 3),
+            "tension_n": round(tension, 4),
+            "slippage_m": round(self.slippage_m, 5),
+            "secure": secure,
+            "calibration_status": "dry_lab_gesture_proxy_pending_clinician_validation",
+        }
+
+    def visual_points(self) -> np.ndarray:
+        """Return a compact strand curve showing completed and active throws."""
+        completed_turns = sum(int(item["wraps"]) for item in self.throws)
+        active_turns = min(2.0, abs(self.accumulated_angle_rad) / (2.0 * np.pi))
+        turns = float(completed_turns) + active_turns
+        if turns < 0.08:
+            return np.empty((0, 3), dtype=np.float32)
+        samples = max(18, int(np.ceil(turns * 32.0)))
+        theta = np.linspace(0.0, turns * 2.0 * np.pi, samples, dtype=np.float32)
+        radius = max(0.0030, 0.0060 - 0.00055 * min(float(len(self.throws)), 3.0))
+        points = np.repeat(self.center[None, :], samples, axis=0)
+        points[:, 0] += np.linspace(-0.003, 0.003, samples, dtype=np.float32)
+        points[:, 1] += np.sin(theta) * radius
+        points[:, 2] += np.sin(theta * 2.0) * radius * 0.55
+        return points.astype(np.float32)
+
+
+@dataclass
 class ProcedureMechanics:
     kind: str
     waypoints: np.ndarray
@@ -666,6 +821,7 @@ class ProcedureMechanics:
     vascular: VascularControlModel | None = field(init=False, default=None)
     ultrasound: UltrasoundAccessModel | None = field(init=False, default=None)
     hoop: HoopThreadingModel | None = field(init=False, default=None)
+    surgeons_knot: SurgeonsKnotModel | None = field(init=False, default=None)
     traction_time_s: float = field(init=False, default=0.0)
 
     def __post_init__(self) -> None:
@@ -683,6 +839,8 @@ class ProcedureMechanics:
             self.ultrasound = UltrasoundAccessModel(target, protected, scan_pose=scan_pose)
         if self.kind == "hoop_threading" and len(self.waypoints) >= 3:
             self.hoop = HoopThreadingModel(self.waypoints[0], self.waypoints[1], self.waypoints[2])
+            knot_center = self.waypoints[2] + np.asarray((0.035, 0.0, -0.025), dtype=np.float32)
+            self.surgeons_knot = SurgeonsKnotModel(knot_center)
 
     def reset(self) -> None:
         self.traction_time_s = 0.0
@@ -694,6 +852,8 @@ class ProcedureMechanics:
             self.ultrasound.reset()
         if self.hoop:
             self.hoop.reset()
+        if self.surgeons_knot:
+            self.surgeons_knot.reset()
         if self.closure:
             self.closure.reset()
 
@@ -724,6 +884,14 @@ class ProcedureMechanics:
             result["ultrasound"] = self.ultrasound.snapshot(primary, secondary, self.waypoints, dt)
         if self.hoop:
             result["hoop"] = self.hoop.snapshot(needle_points)
+        if self.surgeons_knot:
+            result["surgeons_knot"] = self.surgeons_knot.snapshot(
+                tool_positions,
+                grippers_open,
+                bool(self.hoop and self.hoop.pass_count >= 1),
+                thread,
+                dt,
+            )
         if self.kind in {"dissection", "biopsy"}:
             faces = int(cut.get("faces_removed", 0))
             cut_length = float(cut.get("length_m", 0.0))

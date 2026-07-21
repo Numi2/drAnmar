@@ -866,6 +866,17 @@ class SutureThreadModel:
         self.fixed = {0: tail.copy(), self.node_count - 1: needle.copy()}
         self.initialized = True
 
+    def set_tail_world(self, tail_world: np.ndarray) -> None:
+        """Move the free strand end with a grasping second instrument."""
+        if not self.initialized or self.thread_broken:
+            return
+        target = np.asarray(tail_world, dtype=np.float32).copy()
+        previous_target = self.fixed.get(0, self.points[0]).copy()
+        delta = target - previous_target
+        self.fixed[0] = target
+        self.points[0] = target
+        self.previous[0] += delta
+
     def add_tissue_anchor(
         self,
         world_position: np.ndarray,
