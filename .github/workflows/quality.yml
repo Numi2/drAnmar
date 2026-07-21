@@ -22,7 +22,7 @@ jobs:
         run: |
           python scripts/audit_project_consistency.py
           python scripts/audit_keyboard_controls.py
-          python scripts/audit_validation_gates.py
+          python scripts/dr_anmar_physics_next.py validate
           python scripts/audit_operator_lease.py
           python scripts/check_web_syntax.py
       - name: Compile Python source

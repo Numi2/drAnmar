@@ -16,8 +16,8 @@ component contains a physical-robot driver or a clinical workflow integration.
 4. `scripts/dr_anmar_anatomy_viewer.py` provides a low-overhead static preview for an installed official
    anatomy scene without keeping an Isaac worker active.
 5. `web/doctor_studio.html` presents the doctor-facing learning and operating-room interface.
-6. `scripts/dr_anmar_physics_authority.py` reports which tissue backend actually generated telemetry and
-   prevents an experimental or fallback result from being presented as calibrated biomechanics.
+6. `scripts/dr_anmar_physics_authority.py` is the single executable capability contract. It decides whether
+   the active native solver can own a procedure's complete physical state.
 7. `dr_anmar_physics_next.sh` manages a separate Isaac Sim 6 / Isaac Lab 3 environment under mutable runtime
    storage. It never replaces or stops the stable worker.
 8. `scripts/dr_anmar_expert.py` runs the shared eight-phase expert state machine. The workstation maps each
@@ -51,11 +51,13 @@ These paths are ignored if a developer deliberately points `DR_ANMAR_ROOT` insid
 
 ```mermaid
 flowchart LR
-    A["Doctor Studio: Watch / Pause / Take control"] --> B["Hub lifecycle gate"]
-    B --> C["Isaac workstation"]
-    C --> D["Eight-phase expert controller"]
-    D --> E["OpenUSD room + procedure mechanics"]
-    D --> F["Synchronized NPZ + JSON trajectory"]
+    A["Doctor Studio: Watch / Pause / Take control"] --> B["Hub lifecycle"]
+    B --> C["Native-capability decision"]
+    C -->|available| D["Isaac workstation"]
+    C -->|missing| J["Room remains unavailable"]
+    D --> E["Eight-phase expert controller"]
+    E --> K["PhysX / VBD / MPM physical state"]
+    E --> F["Synchronized NPZ + JSON trajectory"]
     F --> G{"Clean and uninterrupted?"}
     G -->|Yes| H["BC candidate pending clinician review"]
     G -->|No| I["Saved diagnostic run with degraded reasons"]
@@ -88,8 +90,9 @@ an optional vascular graph. The procedure determines the preferred solver:
 - PhysX volumetric FEM for intact palpation, grasping and retraction;
 - Newton VBD for high-throughput deformable learning and two-way solver comparison;
 - CRESSim-MPM for topology-changing cutting, puncture tracts and thread passage;
-- Dr.Anmar reduced-order v3 as the explicit deterministic fallback.
+- PhysX rigid-body dynamics for the current doctor-facing manipulation rooms.
 
-The stable process reports `requested_backend`, `effective_backend`, native deformable count, manifest hash,
-calibration state and clinical-validation boundary through `/api/status` and every new demonstration sidecar.
-Experimental activation is never inferred merely because a package is installed.
+There is no reduced-order runtime fallback. The hub and direct worker CLI use the same capability decision;
+missing native tissue, strand, topology, fluid or ultrasound capabilities make the room unavailable. The
+stable process reports `requested_backend`, `effective_backend`, capabilities, manifest hash, calibration
+state and clinical-validation boundary through `/api/status` and every new demonstration sidecar.

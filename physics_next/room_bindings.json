@@ -1,0 +1,27 @@
+{
+  "schema": "dr.anmar.native-room-bindings.v1",
+  "clinical_validation": false,
+  "rooms": {
+    "liver-retraction": {
+      "backend": "physx_fem",
+      "asset": "physics-next/assets/ct-liver-prostate-bladder/liver/stable-physx/liver-surface.usd",
+      "asset_contract": "physics-next/assets/ct-liver-prostate-bladder/liver/interactive-8mm/canonical-asset.json",
+      "alternate_tetmesh_asset": "physics-next/assets/ct-liver-prostate-bladder/liver/interactive-8mm/liver-tetmesh.usda",
+      "representation": "openusd_surface_with_native_physx_tetrahedralization",
+      "stage_key": "native_tissue",
+      "spawn": {
+        "translation_m": [-0.117, -0.2445, -0.144],
+        "scale": [0.35, 0.35, 0.35]
+      },
+      "attachment": {
+        "kind": "axis_band",
+        "axis": "x",
+        "side": "minimum",
+        "width_m": 0.008
+      },
+      "material": "physics_next/materials/liver-research-default.json",
+      "authority": "isaac_lab_physx_native_deformable",
+      "calibration_status": "research_defaults_unvalidated"
+    }
+  }
+}

@@ -159,6 +159,21 @@ case "${1:-status}" in
         [[ -f "${canonical}" ]] && arguments+=(--canonical "${canonical}")
         "${usd_python}" "${REPOSITORY_ROOT}/scripts/dr_anmar_tet_to_usd.py" "${arguments[@]}"
         ;;
+    author-liver-physx)
+        surface="${2:?Usage: $0 author-liver-physx SURFACE_OBJ [OUTPUT_USD] [ISAACLAB_ROOT]}"
+        output="${3:-$(dirname "${surface}")/stable-physx/liver-surface.usd}"
+        converter_root="${4:-${DR_ANMAR_STABLE_ISAACLAB_ROOT:-${ISAACLAB_ROOT}}}"
+        converter="${converter_root}/scripts/tools/convert_mesh.py"
+        converter_python="${ISAAC_PYTHON:-${ENV_ROOT}/bin/python}"
+        [[ -f "${converter}" ]] || { echo "Isaac Lab mesh converter not found: ${converter}" >&2; exit 1; }
+        [[ -x "${converter_python}" ]] || { echo "Isaac Python not found: ${converter_python}" >&2; exit 1; }
+        mkdir -p "$(dirname "${output}")"
+        "${converter_python}" "${converter}" "${surface}" "${output}" \
+            --collision-approximation none \
+            --headless \
+            --kit_args "--portable-root ${DATA_ROOT}/isaac_portable"
+        echo "PhysX surface asset: ${output}"
+        ;;
     patient-liver-smoke)
         mesh="${2:-${NEXT_ROOT}/assets/ct-liver-prostate-bladder/liver/interactive-8mm/simulation-tetrahedra.npz}"
         output="${3:-${NEXT_ROOT}/benchmarks/patient-liver-newton-$(date -u +%Y%m%dT%H%M%SZ).json}"
@@ -174,7 +189,7 @@ case "${1:-status}" in
         "${ISAAC_PYTHON:-python3}" "${REPOSITORY_ROOT}/scripts/dr_anmar_physics_next_compare.py" "$@"
         ;;
     *)
-        echo "Usage: $0 {install|status|logs|probe|benchmark [physx|newton]|compare RESULT [...]|extract-liver SCENE [OUTPUT] [PRIM]|tetrahedralize-liver EXTRACTION [OUTPUT] [EDGE]|author-liver-usd TETRA_NPZ [OUTPUT_USD]|patient-liver-smoke [TETRA_NPZ] [OUTPUT]}" >&2
+        echo "Usage: $0 {install|status|logs|probe|benchmark [physx|newton]|compare RESULT [...]|extract-liver SCENE [OUTPUT] [PRIM]|tetrahedralize-liver EXTRACTION [OUTPUT] [EDGE]|author-liver-usd TETRA_NPZ [OUTPUT_USD]|author-liver-physx SURFACE_OBJ [OUTPUT_USD] [ISAACLAB_ROOT]|patient-liver-smoke [TETRA_NPZ] [OUTPUT]}" >&2
         exit 2
         ;;
 esac

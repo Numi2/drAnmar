@@ -3,7 +3,7 @@
   "id": "needle-puncture",
   "title": "Canonical curved-needle entry, tract and exit",
   "purpose": "Measure puncture discontinuity, curved tract following, shaft friction and persistent entry/exit state.",
-  "candidate_backends": ["cressim_mpm", "physx_fem", "reduced_order_v3"],
+  "candidate_backends": ["cressim_mpm"],
   "phases": [
     {"id": "rest", "duration_s": 0.5},
     {"id": "approach", "duration_s": 1.0},
@@ -35,4 +35,3 @@
   "biomechanical_reference_required": true,
   "clinical_validation": false
 }
-

@@ -23,10 +23,56 @@ from typing import Any
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = REPOSITORY_ROOT / "physics_next/manifest.json"
 SUPPORTED_BACKENDS = {
-    "reduced_order_v3",
+    "physx_rigid",
     "physx_fem",
     "newton_vbd",
     "cressim_mpm",
+}
+
+# One solver-capability contract replaces room-specific readiness gates.  A
+# procedure may add teaching, recording, or scoring around the simulator, but
+# its physical outcome is runnable only when the active NVIDIA backend owns all
+# capabilities listed here.
+FIDELITY_REQUIREMENTS: dict[str, tuple[str, ...]] = {
+    "nvidia_i4h_reference": ("rigid_body", "articulation", "contact"),
+    "native_object_physics": ("rigid_body", "articulation", "contact"),
+    "anatomy_context": ("rigid_body", "articulation"),
+    "interactive_recovery_scenarios": ("rigid_body", "articulation", "contact"),
+    "native_volume_deformable": ("volume_deformable", "two_way_robot_tissue"),
+    "native_suturing": (
+        "volume_deformable",
+        "deformable_strand",
+        "native_attachment",
+        "strand_self_contact",
+        "tissue_puncture",
+    ),
+    "native_suturing_drylab": (
+        "deformable_strand",
+        "native_attachment",
+        "strand_self_contact",
+    ),
+    "native_topology_change": ("topology_change", "two_way_robot_tissue"),
+    "native_flexible_shunt": ("flexible_body", "two_way_robot_tissue"),
+    "native_fluid_structure": ("volume_deformable", "fluid_structure"),
+    "native_vascular_flow": ("volume_deformable", "vascular_flow"),
+    "native_hemostasis": ("fluid_dynamics", "coagulation"),
+    "nvidia_medical_ultrasound": ("medical_ultrasound",),
+}
+
+CAPABILITY_LABELS = {
+    "volume_deformable": "native volumetric deformable tissue",
+    "two_way_robot_tissue": "two-way robot-tissue coupling",
+    "deformable_strand": "native deformable thread",
+    "native_attachment": "native needle/thread attachment",
+    "strand_self_contact": "thread self-contact",
+    "tissue_puncture": "native puncture and tract mechanics",
+    "topology_change": "native topology-changing tissue",
+    "flexible_body": "native flexible tube mechanics",
+    "fluid_structure": "native fluid-structure coupling",
+    "vascular_flow": "native vascular flow",
+    "fluid_dynamics": "native fluid dynamics",
+    "coagulation": "native hemostasis mechanics",
+    "medical_ultrasound": "physics-based medical ultrasound",
 }
 
 
@@ -61,7 +107,7 @@ class PhysicsAuthority:
         return authority
 
     def validate(self) -> None:
-        if self.manifest.get("schema") != "dr.anmar.physics-authority.v1":
+        if self.manifest.get("schema") != "dr.anmar.physics-authority.v2":
             raise ValueError("Unsupported Dr.Anmar physics-authority schema")
         backends = self.manifest.get("backends")
         if not isinstance(backends, dict) or set(backends) != SUPPORTED_BACKENDS:
@@ -75,6 +121,9 @@ class PhysicsAuthority:
                 raise ValueError(f"Backend {backend_id} must remain explicitly non-clinical")
             if not backend.get("authority_scope"):
                 raise ValueError(f"Backend {backend_id} needs an authority_scope")
+            capabilities = backend.get("capabilities")
+            if not isinstance(capabilities, list) or not capabilities:
+                raise ValueError(f"Backend {backend_id} needs explicit native capabilities")
         for relative_path in self.manifest.get("required_contracts", []):
             target = (self.manifest_path.parent / relative_path).resolve()
             if not target.is_file():
@@ -106,12 +155,15 @@ class PhysicsAuthority:
         *,
         native_deformable_count: int = 0,
         runtime_family: str = "isaac-sim-5.1-stable",
+        effective_backend: str | None = None,
     ) -> dict[str, Any]:
         requested = self.requested_backend
-        # The stable process is never relabelled as the isolated Isaac Sim 6
-        # PhysX FEM lane merely because an older native deformable exists in a
-        # room. Only the physics-next worker may later declare that authority.
-        effective = str(self.manifest["stable_default"])
+        # The stable workstation is native PhysX rigid-body simulation.  It is
+        # never relabelled as FEM/VBD/MPM merely because a visual organ or a
+        # Python proxy happens to exist in the stage.
+        effective = effective_backend or str(self.manifest["stable_default"])
+        if effective not in SUPPORTED_BACKENDS:
+            raise ValueError(f"Unknown effective native backend: {effective}")
         experimental_requested = requested in {"newton_vbd", "cressim_mpm"}
         experimental_permitted = os.environ.get("DR_ANMAR_ENABLE_EXPERIMENTAL_PHYSICS", "0") == "1"
         data_root = Path(
@@ -127,10 +179,10 @@ class PhysicsAuthority:
             "effective_backend": effective,
             "experimental_backend_requested": experimental_requested,
             "experimental_backend_permitted": experimental_permitted,
-            "experimental_backend_active": False,
+            "experimental_backend_active": effective in {"newton_vbd", "cressim_mpm"},
             "native_deformable_count": int(native_deformable_count),
-            "fallback_explicit": effective == "reduced_order_v3",
-            "fallback_reason": "stable_reduced_order_authority",
+            "fallback_explicit": False,
+            "fallback_reason": None,
             "clinical_validation": False,
             "calibration_status": "research_defaults_unvalidated",
             "manifest_sha256": _sha256(self.manifest_path),
@@ -147,6 +199,41 @@ class PhysicsAuthority:
                     "warp": _module_available("warp"),
                 },
             },
+        }
+
+    def procedure_readiness(
+        self,
+        procedure: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Return one fail-closed native-physics decision for a procedure."""
+
+        runtime = runtime or self.runtime_payload()
+        fidelity = str(procedure.get("fidelity", ""))
+        requirements = FIDELITY_REQUIREMENTS.get(fidelity)
+        if requirements is None:
+            requirements = ("unclassified_native_physics",)
+        available = set(runtime.get("backend", {}).get("capabilities", []))
+        missing = [capability for capability in requirements if capability not in available]
+        ready = not missing
+        backend = str(runtime.get("effective_backend", "unknown"))
+        if ready:
+            reason = f"Native {backend} owns this room's physical state."
+        else:
+            readable = ", ".join(CAPABILITY_LABELS.get(item, item.replace("_", " ")) for item in missing)
+            reason = (
+                f"Unavailable until the active Isaac Lab worker provides {readable}. "
+                "Dr.Anmar will not substitute projected motion or proxy mechanics."
+            )
+        return {
+            "schema": "dr.anmar.native-physics-readiness.v1",
+            "ready": ready,
+            "fidelity": fidelity,
+            "backend": backend,
+            "required_capabilities": list(requirements),
+            "available_capabilities": sorted(available),
+            "missing_capabilities": missing,
+            "reason": reason,
         }
 
 

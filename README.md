@@ -16,7 +16,7 @@ simulation engines underneath it.
 </p>
 
 <p align="center"><strong>A surgical robotics lab that begins with the doctor—not the simulator manual</strong><br>
-Live digital-twin control, procedural mechanics, training data, coaching, failure studies, and robot learning in one browser.</p>
+Live native NVIDIA simulation control, training data, coaching, failure studies, and robot learning in one browser.</p>
 
 Every visual below was captured from Dr.Anmar itself. No figures were copied from research papers.
 
@@ -30,8 +30,8 @@ Every visual below was captured from Dr.Anmar itself. No figures were copied fro
 | Offering | What the doctor sees | What the researcher gets |
 | --- | --- | --- |
 | **Guided robotics curriculum** | 30 lessons that explain control, demonstration, vision, policies, procedures, safety and recovery in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
-| **Interactive surgical digital twin** | 20 procedure rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | Nine native ORBIT-Surgical task families, 54 registered variants, versioned OpenUSD composition and simulator telemetry |
-| **Suturing, cutting and tissue workflows** | Needle pickup/handoff, dry-lab hoop threading, interrupted and running sutures, knot rehearsal, incision, organ retraction, shunt insertion, vascular control, dissection, biopsy and recovery rooms | Coupled tissue volume/attachment, puncture/drag, thread slack/tension/failure, cut opening/work, vessel compression/rebleed, shunt, ultrasound and procedure-state telemetry synchronized with action |
+| **Interactive surgical digital twin** | Native-ready rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | ORBIT-Surgical tasks, versioned OpenUSD composition, PhysX contact sensing and simulator telemetry |
+| **Native-physics procedure roadmap** | The complete suturing, cutting, tissue, shunt, vascular and ultrasound curriculum remains visible without pretending unfinished physics works | One capability contract routes each family to PhysX FEM, coupled Newton VBD, CRESSim-MPM or an official NVIDIA healthcare workflow; missing capabilities fail closed |
 | **Demonstrations and Skills Twin** | Record a complete attempt, replay it, see phase-aware coaching, and compare against a clinician-selected reference | Checksummed trajectory/manifest pairs, task-native tool paths, multimodal observations, analysis and content-addressed dataset cards |
 | **Failure Lab and policy evaluation** | Practise shifted viewpoints, low light, occlusion, target variation, calibration drift, tissue variation and safe hand-back | Seeded challenge matrices, interventions, native outcomes, safety events and immutable policy-evaluation cards |
 | **Multimodal study builder** | Start from a clinical question and choose what the policy should perceive | Stereo RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact, deformation, operator input and procedure annotations, with guarded NVIDIA workflow bindings |
@@ -54,15 +54,15 @@ restores the room after bounded training or an external workflow.
   <img src="docs/screenshots/dr-anmar-live-operating-room-2026.png" width="960" alt="Live Dr.Anmar liver-retraction operating room with OpenUSD anatomy, dVRK instrument, complete keyboard control dock, guidance, and camera HUD">
 </p>
 
-The current library includes foundations such as needle pickup and handoff; reconstruction work such as
-single and running sutures, knot tying and anastomosis; vascular shunt, clipping and bleeding control;
-ultrasound-guided access; organ retraction and repositioning; cutting, dissection and biopsy; and explicit
-complication recovery. Their physics are transparent engineering models for research and teaching—not claims
-of validated human tissue, force, diagnostic imaging or clinical skill assessment.
+The current native-ready library includes needle pickup, needle handoff, needle passing/regrasp, anatomy
+navigation and complication recovery. Suturing, knots, organ deformation, cutting, shunts, vascular flow,
+hemostasis and ultrasound remain in the curriculum but cannot launch until an active NVIDIA-stack worker owns
+their required physics. Dr.Anmar never replaces those missing capabilities with projected trajectories,
+unbreakable attachments or browser-side mechanics.
 
 ### Executable expert guidance
 
-Every procedure room can run a live expert controller through **Rest → Approach → Align → Contact → Grasp →
+Every native-ready procedure room can run a live expert controller through **Rest → Approach → Align → Contact → Grasp →
 Manipulate → Verify → Recover**. This is not a prerecorded video: the robot acts inside the current OpenUSD
 room while camera, task, force, tissue and phase telemetry update. A doctor can pause for inspection or take
 manual control from the current phase. Complete runs are saved and qualified; only clean uninterrupted runs
@@ -74,8 +74,9 @@ full workflow and honest qualification boundary are documented in
   <img src="docs/screenshots/expert-guidance-suturing.gif" width="960" alt="Live Dr.Anmar expert guidance performing the interrupted-suturing room while the eight teaching phases, operative camera, controls, and suture telemetry update">
 </p>
 
-<p align="center"><strong>Interrupted-suture expert</strong><br>
-Room-specific needle and tissue interaction with the active teaching phase and manual takeover controls visible.</p>
+<p align="center"><strong>Archived interface study</strong><br>
+This capture documents the teaching and takeover interface only. Its retired reduced-order tissue motion is
+not accepted as simulation evidence and the room is unavailable in the native-only runtime.</p>
 
 <p align="center">
   <img src="docs/screenshots/expert-guidance-needle-handover.gif" width="960" alt="Live Dr.Anmar expert guidance performing a dual-instrument needle handover through approach, grasp, manipulation, verification, and recovery">
@@ -88,8 +89,9 @@ Pickup → presentation → receiving grasp → release → separation, performe
   <img src="docs/screenshots/expert-guidance-ultrasound.gif" width="960" alt="Live Dr.Anmar expert guidance performing ultrasound-guided needle access with bimanual probe and needle telemetry">
 </p>
 
-<p align="center"><strong>Ultrasound-guided access expert</strong><br>
-Bimanual probe alignment and needle approach with confidence, visibility, target-error, and vessel-clearance telemetry.</p>
+<p align="center"><strong>Archived ultrasound interface study</strong><br>
+The former drawn B-mode implementation is retired. The room now delegates to NVIDIA Isaac for Healthcare
+v0.6.0 robotic ultrasound and remains unavailable until its Docker and RTI DDS prerequisites are installed.</p>
 
 ## Control pedagogy designed for doctors
 
@@ -121,8 +123,8 @@ learn immediately:
 - `Enter` becomes a contextual approach → grasp → lift control, while six hold-to-move surgical combinations
   provide orbiting, curved needle driving, reversal, lift/retract, and lower/approach with one key each.
 - A quick tap performs a bounded precision nudge; holding the same combination key gives continuous motion.
-- Needle driving uses the actual OpenUSD surface direction, locks the entry vector at puncture, and reverses that
-  vector during withdrawal so the same two keys remain intuitive across entry and exit.
+- Combined movement keys remain control conveniences only; they never create contacts, attachments, punctures
+  or task success outside the native simulator.
 - `Option` and `Shift` act as temporary precision and fast clutches; `Esc` always stops and restores manual control.
 - Gripper and demonstration controls sit beside movement so practice naturally becomes training data.
 
@@ -133,8 +135,9 @@ The complete keyboard map and the rationale for each combined movement are docum
   <img src="docs/screenshots/keyboard-surgical-control-workflow.gif" width="960" alt="Live Dr.Anmar keyboard workflow grasping a curved needle, visibly entering and fully withdrawing from the anatomy surface while held, then presenting it to a second instrument before handoff">
 </p>
 
-<p align="center"><strong>Keyboard-first needle workflow in the live simulator</strong><br>
-Target-guided pickup → grasp → close-up entry → full exit while held → dual-instrument pre-handoff.</p>
+<p align="center"><strong>Archived keyboard workflow study</strong><br>
+The control presentation remains useful; its former projected puncture sequence has been removed from the
+runnable workstation.</p>
 
 <p align="center">
   <img src="docs/screenshots/fast-needle-pickup-and-handoff.gif" width="960" alt="Live dual-arm Dr.Anmar workflow rapidly picking up a curved needle, presenting it to the receiving instrument, closing the receiving jaws, releasing the original holder, and carrying the retained needle toward the organ">
@@ -143,14 +146,9 @@ Target-guided pickup → grasp → close-up entry → full exit while held → d
 <p align="center"><strong>Fast dual-instrument pickup and completed handoff</strong><br>
 Pickup → presentation → dual grasp → holder release → receiver recovery → organ approach, with the active keyboard controls visible throughout.</p>
 
-The instrument shaft remains outside the anatomy surface while the grasped needle tip can follow a bounded
-12 mm entry channel. Entry is force-gated, advancing resistance responds to needle-arc alignment, and bounded
-tool-tip force/torque proxies attenuate translation and rotation at the research safety envelope. The
-suturing room models visible thread slack, tension, tissue-anchor damage, pullout, breakage and knot security.
-Cutting rooms remove and open intersected OpenUSD faces while recording resistance/work; tissue handling adds
-mesh-coupled deformation, approximate volume preservation, attachment and recovery. Native Isaac tensors stay
-authoritative. The fallback parameters are explicit unvalidated research defaults, not human-tissue or clinical
-force claims.
+Robot articulation, rigid objects, jaw contact and object motion are governed by PhysX. Dr.Anmar observes that
+state for teaching and recording but does not attach objects, disable anatomy collisions or project instrument
+motion. Advanced tissue and device interactions return only through native deformable/topology/fluid workers.
 
 <p align="center">
   <img src="docs/screenshots/surgical-control-panel.png" width="400" alt="Dr.Anmar game-like surgical instrument controls for speed, position, angle, and gripper">
@@ -193,32 +191,17 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
 ## What is included
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
-- A default operating-room showcase with the surgical robot, controls, room, and liver geometry.
-- Twenty composable operating rooms grouped into suturing/reconstruction, vascular access/control,
-  gallbladder/dissection, image-guided intervention, anatomy navigation, tissue handling, and complication recovery.
-- A runnable ORBIT-style vascular shunt room with flexible-tube geometry, lumen alignment, insertion depth,
-  buckling, wall-load, and patency telemetry.
-- A beginner needle-through-hoop dry lab with a collidable OpenUSD ring and stand, centered plane-crossing
-  detection, radial-clearance/contact telemetry, clean-pass scoring, recording, and executable expert guidance.
-- Live suturing mechanics: constrained thread, tissue entry/exit pins, slack, strain, tension, anchor damage,
-  pullout, breakage, knot tightness/security, multi-bite closure, anastomosis/leak-test state, coupled tissue
-  response, reset, procedure scoring, and synchronized recording.
-- Action-driven vascular control, hemostasis, bimanual procedural ultrasound, tissue-plane dissection,
-  lesion excision, and failure recovery: clip and control events require actual jaw actions, probe and needle
-  roles are separate, and dissection progress requires both topology change and counter-traction.
-- Live incision mechanics that remove and separate swept OpenUSD faces, expose the incision bed, record cut
-  resistance/work and topology revisions, and restore the exact original topology on reset.
-- Reduced-order liver, gallbladder, and bladder tissue with mesh-coupled deformation, approximate volume
-  preservation, attachment resistance, elastic recovery, and native ORBIT-Surgical gross-body dynamics.
-- Force-gated needle puncture with hysteresis, drag, needle-arc alignment, depth and safe-force envelopes;
-  vessel compression, clip retention, over-compression damage, flow, bleeding and rebleeding telemetry.
+- OpenUSD operating rooms and seven official ORBIT-Surgical anatomy choices.
+- Native PhysX rigid-body needle pickup, dual-arm handover, passing/regrasp, navigation and recovery rooms.
+- PhysX contact sensors on the gripper bodies; no synthetic grasp joints or collision-disabling puncture paths.
+- One native-capability authority shared by the hub, direct worker CLI, runtime status and recordings.
+- A complete procedure curriculum whose non-rigid rooms remain unavailable until their native solver worker
+  provides the necessary deformation, strand, attachment, puncture, topology, flow or ultrasound capability.
 - Guided lessons, plain-language robotics explanations, progress tracking, and a robotics glossary.
 - Demonstration recording and replay for behavior-cloning experiments.
-- Executable eight-phase simulation experts in all 19 rooms, with live pause/resume, exact-state manual
-  takeover, synchronized recording, degraded-run warnings and fail-closed reference qualification.
+- Executable eight-phase simulation experts in native-ready rooms, with live pause/resume, exact-state manual
+  takeover, synchronized recording and degraded-run warnings.
 - Surgical Skills Twin analysis with telemetry-derived coaching, phase timelines, subscores, and selected-attempt replay.
-- Registered task-native dVRK/STAR tool-tip paths rendered as an optional phase-coloured guide inside the live
-  OpenUSD operating room, with a legacy trajectory fallback.
 - Needle-lift Failure Lab with reproducible camera and visual challenges, supervision state, and immediate doctor handoff.
 - Synchronized endoscopic RGB, robot state, native simulator outcomes, and available contact-force evidence in new demonstrations.
 - Clinician-selected reference demonstrations with normalized trajectory comparison and coaching.
@@ -245,8 +228,7 @@ The multimodal architecture and study schema are described in
 - RSL-RL, RL-Games, Stable-Baselines3, SKRL, and Robomimic workflows inherited from ORBIT-Surgical.
 - A resumable installer for seven official ORBIT-Surgical v0.1.0 anatomy scene archives.
 - An Isaac Sim 5.1 / Isaac Lab 2.3.2 compatibility port of the upstream environments.
-- An isolated `physics-next` authority contract for side-by-side PhysX FEM, Newton VBD and CRESSim-MPM
-  development without changing the stable doctor-facing runtime or silently relabeling fallback telemetry.
+- An isolated `physics-next` environment for PhysX FEM, coupled Newton VBD and CRESSim-MPM development.
 
 Downloaded anatomy, demonstrations, checkpoints, logs, and runtime state are deliberately kept outside
 the Git repository.
@@ -268,23 +250,22 @@ The current validated baseline is:
 - Python 3.10 or newer inside the Isaac environment
 
 The optional research runtime is installed separately with `./dr_anmar_physics_next.sh install`. It targets
-Isaac Sim 6.0.1 and Isaac Lab 3.0 beta2, records the backend that actually generated each result, and keeps
-Newton VBD and CRESSim-MPM experimental until their canonical benchmark and calibration gates are complete.
-Its versioned asset, material and benchmark contracts live in [`physics_next/`](physics_next/README.md), with
-measured evidence and unfinished promotion gates in
+Isaac Sim 6.0.1 and Isaac Lab 3.0 beta2 and records the backend that actually generated each result. Its
+versioned native-capability, asset, material and benchmark contracts live in
+[`physics_next/`](physics_next/README.md), with measured evidence and unfinished calibration work in
 [`docs/PHYSICS_NEXT_VALIDATION_LOG.md`](docs/PHYSICS_NEXT_VALIDATION_LOG.md).
 The current Gilgamesh Newton VBD replay pair completed 600/600 finite steps at 17.074 ms p95, held global
 tetrahedral-volume error to 4.787%, limited rigid-probe penetration to 0.0136 mm, measured a 1.019 N peak
 normal reaction, produced no inverted elements, and reproduced the final state exactly. The canonical Newton
-coupon therefore passes all five engineering gates. The authored 33,274-node / 165,031-tetrahedron patient
+coupon met all five recorded engineering criteria. The authored 33,274-node / 165,031-tetrahedron patient
 liver also loads and advances finitely through Newton with zero inversion in its separate integration smoke.
 These remain non-clinical research results—not a promoted biomechanical patient model—because matched PhysX,
-anatomical attachment, material calibration and clinician-review gates are still open.
+anatomical attachment, material calibration and clinician review are incomplete.
 
-The July 20 Gilgamesh pass exercised all nine native interactive task families, audited seven runtime anatomy
-layers plus seven complete OpenUSD room compositions, and ran representative ultrasound, suturing, cutting,
-tissue-manipulation, recording and shared-control workflows on an RTX 4090. Exact evidence and remaining gates
-are in [`docs/GILGAMESH_VALIDATION_2026-07-20.md`](docs/GILGAMESH_VALIDATION_2026-07-20.md).
+The July 20 Gilgamesh pass exercised the earlier prototype surface across its OpenUSD room compositions.
+Those captures remain development history and are not evidence of native ultrasound, suturing, cutting or
+tissue mechanics. Exact evidence is in
+[`docs/GILGAMESH_VALIDATION_2026-07-20.md`](docs/GILGAMESH_VALIDATION_2026-07-20.md).
 The later coupled-physics and Isaac for Healthcare v0.6.0 pass is recorded in
 [`docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md`](docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md).
 

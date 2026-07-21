@@ -69,10 +69,10 @@ The capture shows both instruments entering the shared workspace and the live ph
 manipulation and recovery. The run saved 687 robot-state frames plus 64 camera frames. Large approach, align and
 contact residuals correctly prevented it from becoming a Behavior Cloning reference.
 
-### Ultrasound-guided needle access
+### Archived ultrasound-guided interface study
 
 <p align="center">
-  <img src="screenshots/expert-guidance-ultrasound.gif" width="960" alt="Live bimanual ultrasound-guided access simulation expert with targeting telemetry">
+  <img src="screenshots/expert-guidance-ultrasound.gif" width="960" alt="Archived Dr.Anmar ultrasound interface study; not native ultrasound evidence">
 </p>
 
 The capture shows separate probe and access-needle roles with confidence, needle visibility, target error and
@@ -87,9 +87,10 @@ timeouts correctly kept it out of the reference set.
 | Needle handover | 687 | 48.98 Hz | Completed 8/8 | Not eligible; 3 degraded reasons |
 | Ultrasound-guided access | 574 | 49.54 Hz | Completed 8/8 | Not eligible; 2 degraded reasons |
 
-All three captures used the stable `reduced_order_v3` authority. They do not demonstrate activation of the
-experimental Newton, PhysX FEM or CRESSim-MPM lanes. Exact runtime provenance remains in each generated
-demonstration manifest outside the public repository.
+These historical captures used the retired reduced-order prototype and are not evidence of native tissue,
+thread, ultrasound or cutting physics. The current workstation will not launch those procedure families until
+an Isaac Lab worker supplies their required native capabilities. Exact runtime provenance remains in each
+generated demonstration manifest outside the public repository.
 
 ## Research data contract
 

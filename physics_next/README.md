@@ -1,18 +1,23 @@
 # Dr.Anmar physics-next
 
-This directory is the versioned contract for Dr.Anmar's multi-solver surgical
-physics. It does not replace the stable doctor-facing Isaac Sim 5.1 runtime.
+This directory is the versioned contract for Dr.Anmar's native multi-solver
+surgical physics. The stable doctor-facing Isaac Sim worker is the PhysX rigid
+lane; Dr.Anmar never substitutes a browser or Python mechanics model for a
+missing simulator capability.
 
-The stable workstation reports the backend that actually produced its tissue
-telemetry. Isaac Sim 6 / PhysX FEM, Newton VBD and CRESSim-MPM run in isolated
-environments until their canonical benchmark and calibration gates are met.
+The stable workstation reports the backend that actually produced its state.
+Its first promoted deformable room imports the patient liver surface through
+NVIDIA's mesh converter and lets native PhysX cook the simulation tetrahedra.
+The explicit OpenUSD `TetMesh` is retained for Isaac Sim 6 / Isaac Lab 3 and
+Newton work. Newton VBD and CRESSim-MPM remain isolated until they are connected
+as workers with every native capability required by a room.
 
 ## Authority ladder
 
-1. `reduced_order_v3`: fast, deterministic interaction rehearsal and fallback.
+1. `physx_rigid`: robot articulation, rigid objects, contacts and sensors.
 2. `physx_fem`: intact volumetric tissue, native contact and stress telemetry.
 3. `newton_vbd`: high-throughput two-way deformable comparison and policy work.
-4. `cressim_mpm`: topology-changing cutting, puncture tracts and suturing research.
+4. `cressim_mpm`: topology-changing cutting and puncture research.
 
 OpenUSD remains the common scene and visual-asset layer. A canonical organ has
 separate render, collision and simulation representations plus explicit mapping,
@@ -26,8 +31,10 @@ the isolated runtime without touching the live Dr.Anmar suite.
 After installation, `./dr_anmar_physics_next.sh benchmark physx` and
 `./dr_anmar_physics_next.sh benchmark newton` execute the same material seed,
 attachment pattern, retraction trajectory and telemetry collection on both
-backends. The first procedural tissue coupon is deliberately a solver benchmark;
-the patient-specific tetrahedral liver asset is promoted separately.
+backends. The first procedural tissue coupon is deliberately a solver benchmark.
+The patient-specific liver has two solver-native OpenUSD representations: a
+surface mesh cooked by the live PhysX worker and an explicit `TetMesh` for the
+new Omni Physics API.
 Newton executes kitlessly and records a paired exact-state replay. The PhysX
 command requires the operator to accept NVIDIA's Omniverse Kit EULA explicitly;
 the wrapper never accepts that agreement or hides the resulting activation gate.

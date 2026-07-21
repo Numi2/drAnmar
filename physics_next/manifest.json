@@ -1,28 +1,31 @@
 {
-  "schema": "dr.anmar.physics-authority.v1",
-  "stable_default": "reduced_order_v3",
-  "purpose": "Multi-solver surgical physics with explicit authority, calibration, and fallback boundaries.",
+  "schema": "dr.anmar.physics-authority.v2",
+  "stable_default": "physx_rigid",
+  "purpose": "Native NVIDIA physics authority for every runnable Dr.Anmar procedure.",
   "required_contracts": [
     "assets/canonical_asset.schema.json",
     "materials/liver-research-default.json",
+    "room_bindings.json",
     "benchmarks/liver-retraction.json",
     "benchmarks/needle-puncture.json"
   ],
   "backends": {
-    "reduced_order_v3": {
-      "id": "reduced_order_v3",
-      "runtime": "Isaac Sim 5.1 / Isaac Lab 2.3.2 plus Dr.Anmar surface mechanics",
-      "maturity": "stable-fallback",
-      "authority_scope": ["browser teaching", "interaction rehearsal", "fast deterministic fallback"],
-      "topology_change": true,
+    "physx_rigid": {
+      "id": "physx_rigid",
+      "runtime": "Isaac Sim 5.1 / Isaac Lab 2.3.2 / PhysX",
+      "maturity": "doctor-facing-native",
+      "authority_scope": ["rigid bodies", "robot articulations", "contacts", "camera and force sensors"],
+      "capabilities": ["rigid_body", "articulation", "contact", "camera_sensor", "force_sensor"],
+      "topology_change": false,
       "two_way_robot_tissue": false,
       "clinical_validation": false
     },
     "physx_fem": {
       "id": "physx_fem",
-      "runtime": "Isaac Sim 6.0.1 volume deformables",
-      "maturity": "physics-next-baseline",
+      "runtime": "Isaac Lab native PhysX volume deformables",
+      "maturity": "doctor-facing-native-first-room",
       "authority_scope": ["intact tissue deformation", "grasping", "palpation", "retraction", "native stress telemetry"],
+      "capabilities": ["rigid_body", "articulation", "contact", "volume_deformable", "two_way_robot_tissue", "stress_telemetry"],
       "topology_change": false,
       "two_way_robot_tissue": true,
       "clinical_validation": false
@@ -32,6 +35,7 @@
       "runtime": "Isaac Lab 3.0 beta2 coupled MJWarp/Featherstone plus VBD",
       "maturity": "experimental-comparison",
       "authority_scope": ["high-throughput deformable learning", "two-way contact", "solver A/B comparison"],
+      "capabilities": ["rigid_body", "articulation", "contact", "volume_deformable", "two_way_robot_tissue", "stress_telemetry"],
       "topology_change": false,
       "two_way_robot_tissue": true,
       "clinical_validation": false
@@ -41,6 +45,7 @@
       "runtime": "CRESSim-MPM CUDA subsolver behind the Dr.Anmar OpenUSD contract",
       "maturity": "research-integration",
       "authority_scope": ["cutting", "puncture tract", "needle and thread passage", "large topology change"],
+      "capabilities": ["rigid_body", "contact", "volume_deformable", "two_way_robot_tissue", "topology_change", "tissue_puncture"],
       "topology_change": true,
       "two_way_robot_tissue": true,
       "clinical_validation": false
@@ -58,13 +63,14 @@
     "pytetwild": {"version": "0.3.0"}
   },
   "routing": {
-    "palpation": ["physx_fem", "newton_vbd", "reduced_order_v3"],
-    "organ_retraction": ["physx_fem", "newton_vbd", "reduced_order_v3"],
-    "needle_puncture": ["cressim_mpm", "physx_fem", "reduced_order_v3"],
-    "suturing": ["cressim_mpm", "physx_fem", "reduced_order_v3"],
-    "cutting": ["cressim_mpm", "reduced_order_v3"],
-    "policy_training": ["newton_vbd", "physx_fem", "reduced_order_v3"]
+    "rigid_manipulation": ["physx_rigid"],
+    "palpation": ["physx_fem", "newton_vbd"],
+    "organ_retraction": ["physx_fem", "newton_vbd"],
+    "needle_puncture": ["cressim_mpm"],
+    "suturing": ["cressim_mpm"],
+    "cutting": ["cressim_mpm"],
+    "policy_training": ["newton_vbd", "physx_fem", "physx_rigid"]
   },
-  "promotion_rule": "No backend becomes the doctor-facing default until the canonical benchmark, material calibration, deterministic replay, and clinician review gates are recorded.",
+  "promotion_rule": "A procedure becomes runnable only when its active native backend owns every required physical capability and its calibration and replay evidence are recorded.",
   "clinical_validation": false
 }

@@ -343,7 +343,7 @@ class ExpertDemonstrationController:
         object_position: np.ndarray | None,
         grippers: list[bool],
         primary_arm: int,
-        assisted_grasp_active: list[bool],
+        native_grasp_contact_active: list[bool],
     ) -> bool:
         """Transfer the passed needle to the far-side gripper and withdraw it."""
         if self.arms < 2 or object_position is None or len(self.waypoints) < 2:
@@ -378,8 +378,8 @@ class ExpertDemonstrationController:
             grippers[primary_arm] = False
             grippers[receiver_arm] = False
             receiver_has_custody = (
-                receiver_arm < len(assisted_grasp_active)
-                and assisted_grasp_active[receiver_arm]
+                receiver_arm < len(native_grasp_contact_active)
+                and native_grasp_contact_active[receiver_arm]
             )
             if receiver_has_custody:
                 grippers[primary_arm] = True
@@ -397,8 +397,8 @@ class ExpertDemonstrationController:
         grippers[primary_arm] = True
         grippers[receiver_arm] = False
         receiver_has_custody = (
-            receiver_arm < len(assisted_grasp_active)
-            and assisted_grasp_active[receiver_arm]
+            receiver_arm < len(native_grasp_contact_active)
+            and native_grasp_contact_active[receiver_arm]
         )
         if not receiver_has_custody:
             self.pause("The receiving instrument lost physical needle custody during withdrawal.")
@@ -632,7 +632,7 @@ class ExpertDemonstrationController:
         needle_points: np.ndarray | None = None,
         hoop_passed: bool = False,
         knot_secure: bool = False,
-        assisted_grasp_active: list[bool] | None = None,
+        native_grasp_contact_active: list[bool] | None = None,
     ) -> bool:
         kind = self.guide_kind
         if kind == "pickup":
@@ -657,7 +657,7 @@ class ExpertDemonstrationController:
             return self._handover(action, tools, object_position, grippers)
         if kind == "hoop_threading":
             primary_arm = self.primary_arm if self.primary_arm in range(self.arms) else 0
-            physical_grasps = assisted_grasp_active or [False] * self.arms
+            physical_grasps = native_grasp_contact_active or [False] * self.arms
             if (
                 self.manipulation_step == 0
                 and (primary_arm >= len(physical_grasps) or not physical_grasps[primary_arm])
@@ -737,7 +737,7 @@ class ExpertDemonstrationController:
         needle_points: np.ndarray | None = None,
         hoop_passed: bool = False,
         knot_secure: bool = False,
-        assisted_grasp_active: list[bool] | None = None,
+        native_grasp_contact_active: list[bool] | None = None,
     ) -> ExpertCommand:
         action = self._action()
         grippers = list(grippers_open)
@@ -789,7 +789,7 @@ class ExpertDemonstrationController:
         elif phase == "grasp":
             if self.has_grippers:
                 grippers[primary_arm] = False
-            physical_grasps = assisted_grasp_active or [False] * self.arms
+            physical_grasps = native_grasp_contact_active or [False] * self.arms
             grasp_confirmed = (
                 primary_arm < len(physical_grasps)
                 and physical_grasps[primary_arm]
@@ -813,7 +813,7 @@ class ExpertDemonstrationController:
                 needle_points,
                 hoop_passed,
                 knot_secure,
-                assisted_grasp_active,
+                native_grasp_contact_active,
             ) and self.phase_elapsed_s >= 1.4:
                 completed = self._advance(tool_positions)
                 phase_changed = True

@@ -4,7 +4,7 @@
   "title": "Canonical liver grasp and retraction",
   "purpose": "Compare intact-tissue deformation and two-way tool contact across solvers.",
   "asset_contract": "../assets/canonical_asset.schema.json",
-  "candidate_backends": ["physx_fem", "newton_vbd", "reduced_order_v3"],
+  "candidate_backends": ["physx_fem", "newton_vbd"],
   "phases": [
     {"id": "rest", "duration_s": 1.0},
     {"id": "approach", "duration_s": 1.5},
@@ -37,4 +37,3 @@
   "biomechanical_reference_required": true,
   "clinical_validation": false
 }
-

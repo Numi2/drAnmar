@@ -93,19 +93,13 @@ launcher. Rheo and Agentic are intentionally source-only in the doctor interface
 publish the same `metadata.json` launch contract for them; their reviewed scripts remain available to
 research engineers without exposing arbitrary or hardware-affecting commands to clinicians.
 
-## Coupled surgical-interaction fallback
+## Native physics boundary
 
-Rooms without a validated native deformable asset use Dr.Anmar's second-generation reduced-order fallback:
-
-- edge-coupled deformation, approximate volume preservation, organ-bed attachment and elastic recovery;
-- force-gated puncture, hysteresis, needle drag, curvature-alignment resistance, force/torque proxies and a coupled safety envelope;
-- suture slack, strain, tension, tissue-anchor damage, pullout, strand breakage, knot tightness and security;
-- cut-face removal plus visible wound opening, cut resistance and accumulated work;
-- vessel compression, clip retention, over-compression damage, residual flow, bleeding and rebleeding.
-
-Native Isaac contact, articulation, sensor and deformable tensors remain authoritative whenever present.
-Fallback measurements are labeled `research_defaults_unvalidated` in live telemetry and demonstrations and
-must not be interpreted as calibrated human biomechanics.
+Dr.Anmar has no surgical-interaction fallback. A room launches only when an active native worker owns its
+complete physical state. PhysX owns rigid manipulation and the promoted liver-retraction deformable; the
+official Isaac for Healthcare workflow owns ultrasound ray tracing and B-mode output; Newton VBD and the
+topology-changing research backend remain unavailable to doctors until their room contracts are complete.
+Missing tissue, strand, puncture, cut, flow or ultrasound capabilities keep the corresponding room closed.
 
 ## Study workflow
 

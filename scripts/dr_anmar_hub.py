@@ -42,6 +42,8 @@ from dr_anmar_i4h_adapter import (
     workflow_modes,
 )
 from dr_anmar_procedures import PROCEDURES_BY_ID, PROCEDURE_ROOMS, procedure_payload
+from dr_anmar_physics_authority import load_physics_authority
+from dr_anmar_native_rooms import resolve_native_room
 from dr_anmar_operator import (
     ACCESS_COOKIE,
     OPERATOR_HEADER,
@@ -1238,14 +1240,67 @@ def anatomy() -> dict[str, Any]:
 def procedure_rooms() -> dict[str, Any]:
     payload = procedure_payload()
     available_anatomy = {scene["id"]: scene for scene in anatomy_payload()["scenes"]}
+    authority = load_physics_authority()
+    runtime = authority.runtime_payload(runtime_family="isaac-sim-5.1-stable")
     for room in payload["rooms"]:
         anatomy = available_anatomy.get(room["anatomy_scene"])
+        if room.get("fidelity") == "nvidia_medical_ultrasound":
+            catalog = workflow_modes("robotic_ultrasound")
+            mode = next(
+                (item for item in catalog.get("modes", []) if item.get("id") == "teleop_with_ultrasound"),
+                None,
+            )
+            ready = bool(mode and mode.get("launch_ready"))
+            missing = list(mode.get("missing_prerequisites", [])) if mode else ["NVIDIA workflow metadata"]
+            reason = (
+                "NVIDIA Isaac for Healthcare owns ultrasound ray tracing, probe state, B-mode output and stepping."
+                if ready
+                else "Official NVIDIA robotic ultrasound is installed but cannot launch until "
+                + ", ".join(missing)
+                + "."
+            )
+            physics = {
+                "schema": "dr.anmar.native-physics-readiness.v1",
+                "ready": ready,
+                "fidelity": room["fidelity"],
+                "backend": "nvidia_i4h_robotic_ultrasound_v0.6.0",
+                "required_capabilities": ["medical_ultrasound"],
+                "available_capabilities": ["medical_ultrasound"] if ready else [],
+                "missing_capabilities": [] if ready else ["medical_ultrasound"],
+                "reason": reason,
+            }
+            room["physics"] = physics
+            room["simulation_ready"] = ready
+            room["readiness_reason"] = reason
+            room["ready"] = ready
+            room["anatomy_title"] = "NVIDIA robotic ultrasound patient model"
+            continue
+        binding = resolve_native_room(str(room["id"]))
+        room_runtime = authority.runtime_payload(
+            runtime_family="isaac-sim-5.1-stable",
+            effective_backend=(
+                str(binding["backend"])
+                if binding and binding.get("available")
+                else None
+            ),
+        )
+        physics = authority.procedure_readiness(room, room_runtime)
+        if binding and not binding.get("available"):
+            physics = {
+                **physics,
+                "ready": False,
+                "reason": "The native OpenUSD physical asset is not installed on this worker.",
+            }
+        room["physics"] = physics
+        room["simulation_ready"] = physics["ready"]
+        room["readiness_reason"] = physics["reason"]
         room["ready"] = bool(
             anatomy
             and anatomy.get("openusd_ready")
-            and room.get("simulation_ready", True)
+            and physics["ready"]
         )
         room["anatomy_title"] = anatomy["title"] if anatomy else room["anatomy_scene"]
+    payload["physics_authority"] = runtime
     return payload
 
 
@@ -1254,14 +1309,41 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
     procedure = PROCEDURES_BY_ID.get(request.procedure_id)
     if procedure is None:
         raise HTTPException(404, "Unknown procedure room")
-    if not procedure.get("simulation_ready", True):
-        raise HTTPException(
-            409,
-            procedure.get(
-                "readiness_reason",
-                "This procedure room is unavailable until its native simulation is ready.",
-            ),
+    if procedure.get("fidelity") == "nvidia_medical_ultrasound":
+        result = start_healthcare_job(
+            HealthcareWorkflowRequest(
+                workflow="robotic_ultrasound",
+                mode="teleop_with_ultrasound",
+                resume_workstation=True,
+            )
         )
+        return {
+            **result,
+            "procedure_id": request.procedure_id,
+            "title": procedure["title"],
+            "native_provider": "NVIDIA Isaac for Healthcare v0.6.0",
+        }
+    authority = load_physics_authority()
+    binding = resolve_native_room(str(procedure["id"]))
+    physics = authority.procedure_readiness(
+        procedure,
+        authority.runtime_payload(
+            runtime_family="isaac-sim-5.1-stable",
+            effective_backend=(
+                str(binding["backend"])
+                if binding and binding.get("available")
+                else None
+            ),
+        ),
+    )
+    if binding and not binding.get("available"):
+        physics = {
+            **physics,
+            "ready": False,
+            "reason": "The native OpenUSD physical asset is not installed on this worker.",
+        }
+    if not physics["ready"]:
+        raise HTTPException(409, physics["reason"])
     selected_anatomy = request.anatomy_scene or procedure["anatomy_scene"]
     room = anatomy_room(selected_anatomy)
     if room is None:

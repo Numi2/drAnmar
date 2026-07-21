@@ -60,8 +60,8 @@ The follow-up remediation pass closed the remaining source-level gaps identified
 - stereo drift, seeded camera dropout, and compliant-surface response variations are real challenge scenarios;
 - immutable policy evaluation cards bind dataset, training run, checkpoint and completed challenge matrix hashes;
 - external gaze/XR input fails closed without explicit study, consent-protocol and sensor-enable configuration;
-- `docs/VALIDATION_GATES.json` separates source-ready work from host, licensed-runtime, hardware, biomechanical,
-  and clinician-evidence blockers, and CI rejects unsupported validation claims.
+- `physics_next/manifest.json` is the only executable readiness authority. This backlog records host,
+  hardware, biomechanical and clinician evidence without changing runtime physics or room availability.
 
 These controls do not satisfy the biomechanical, hardware, or clinical evidence requests below. Gilgamesh was
 unreachable during the initial source-only follow-up, but the later 2026-07-20 pass restored live host evidence;
@@ -85,7 +85,7 @@ only the gates explicitly demonstrated in the new runtime report should be treat
 - All nine native interactive task families completed 40 CUDA steps with finite reported joint state.
 - Seven runtime anatomy layers and seven full room compositions passed hard scale and dependency gates.
 - The suite, one-operator boundary, gripper/drive/camera controls, recording and analysis were exercised live.
-- Ultrasound, suturing, cutting and liver-retraction rooms loaded with their intended procedural mechanics ready.
+- Ultrasound, suturing and cutting remain unavailable until their native NVIDIA backends are integrated; liver retraction is the first native PhysX deformable promotion target.
 - Full trajectories in every room, isolated performance, licensed NVIDIA provider workflows, hardware,
   biomechanics and clinician evidence remain open. See `GILGAMESH_VALIDATION_2026-07-20.md`.
 
@@ -407,7 +407,7 @@ Deferred validation gates for the expanded rooms:
 - Validate dissection-plane separation, protected-structure collision, excision margins and specimen release against
   anatomy-specific task definitions; add thermal spread before enabling energy-device training claims.
 - Launch and validate NVIDIA's official robotic-ultrasound containers after Docker, NVIDIA Container Toolkit and
-  RTI licensing are present; compare the procedural B-mode proxy with official sensor output before combining data.
+  RTI licensing are present; only official NVIDIA sensor output may enter new datasets.
 - Have specialty clinicians author acceptable phases, recovery actions, error taxonomies and task-specific scoring;
   then perform construct validity, inter-rater agreement, usability, workload and learning-transfer studies.
 

@@ -81,8 +81,9 @@ domain evidence:
 - Validate optional RTI DDS, Clarius, haptic, XR, eye tracking and physical hardware only after their licensed
   runtimes and explicit safety boundaries are available.
 
-The detailed validation backlog remains in `docs/VALIDATION_BACKLOG.md`; machine-readable gate state is in
-`docs/VALIDATION_GATES.json` and fails closed in CI if a validated claim lacks evidence.
+The detailed evidence backlog remains in `docs/VALIDATION_BACKLOG.md`. Runtime availability is now derived
+from the single native solver-capability contract in `physics_next/manifest.json` rather than a parallel list
+of room-specific gates.
 
 ## Post-audit evidence — 2026-07-21
 
