@@ -29,9 +29,9 @@ Every visual below was captured from Dr.Anmar itself. No figures were copied fro
 
 | Offering | What the doctor sees | What the researcher gets |
 | --- | --- | --- |
-| **Guided robotics curriculum** | 29 lessons that explain control, demonstration, vision, policies, procedures, safety and recovery in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
-| **Interactive surgical digital twin** | 19 procedure rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | Nine native ORBIT-Surgical task families, 54 registered variants, versioned OpenUSD composition and simulator telemetry |
-| **Suturing, cutting and tissue workflows** | Needle pickup/handoff, interrupted and running sutures, knot rehearsal, incision, organ retraction, shunt insertion, vascular control, dissection, biopsy and recovery rooms | Coupled tissue volume/attachment, puncture/drag, thread slack/tension/failure, cut opening/work, vessel compression/rebleed, shunt, ultrasound and procedure-state telemetry synchronized with action |
+| **Guided robotics curriculum** | 30 lessons that explain control, demonstration, vision, policies, procedures, safety and recovery in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
+| **Interactive surgical digital twin** | 20 procedure rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | Nine native ORBIT-Surgical task families, 54 registered variants, versioned OpenUSD composition and simulator telemetry |
+| **Suturing, cutting and tissue workflows** | Needle pickup/handoff, dry-lab hoop threading, interrupted and running sutures, knot rehearsal, incision, organ retraction, shunt insertion, vascular control, dissection, biopsy and recovery rooms | Coupled tissue volume/attachment, puncture/drag, thread slack/tension/failure, cut opening/work, vessel compression/rebleed, shunt, ultrasound and procedure-state telemetry synchronized with action |
 | **Demonstrations and Skills Twin** | Record a complete attempt, replay it, see phase-aware coaching, and compare against a clinician-selected reference | Checksummed trajectory/manifest pairs, task-native tool paths, multimodal observations, analysis and content-addressed dataset cards |
 | **Failure Lab and policy evaluation** | Practise shifted viewpoints, low light, occlusion, target variation, calibration drift, tissue variation and safe hand-back | Seeded challenge matrices, interventions, native outcomes, safety events and immutable policy-evaluation cards |
 | **Multimodal study builder** | Start from a clinical question and choose what the policy should perceive | Stereo RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact, deformation, operator input and procedure annotations, with guarded NVIDIA workflow bindings |
@@ -194,10 +194,12 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
 - A default operating-room showcase with the surgical robot, controls, room, and liver geometry.
-- Nineteen composable operating rooms grouped into suturing/reconstruction, vascular access/control,
+- Twenty composable operating rooms grouped into suturing/reconstruction, vascular access/control,
   gallbladder/dissection, image-guided intervention, anatomy navigation, tissue handling, and complication recovery.
 - A runnable ORBIT-style vascular shunt room with flexible-tube geometry, lumen alignment, insertion depth,
   buckling, wall-load, and patency telemetry.
+- A beginner needle-through-hoop dry lab with a collidable OpenUSD ring and stand, centered plane-crossing
+  detection, radial-clearance/contact telemetry, clean-pass scoring, recording, and executable expert guidance.
 - Live suturing mechanics: constrained thread, tissue entry/exit pins, slack, strain, tension, anchor damage,
   pullout, breakage, knot tightness/security, multi-bite closure, anastomosis/leak-test state, coupled tissue
   response, reset, procedure scoring, and synchronized recording.

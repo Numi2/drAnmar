@@ -431,6 +431,19 @@ bench instrumentation. The generic expert controller still times out before acqu
 suture room; it must not be promoted as a clean Behavior Cloning reference until the room-specific acquisition and
 needle-arc trajectory complete without degraded warnings.
 
+## 2026-07-21 needle-through-hoop dry lab
+
+- Added a dedicated beginner room with a physical OpenUSD torus, stand and base; the organ layer is hidden so the
+  curved needle, instruments and target remain visually legible.
+- Added needle-endpoint plane-crossing detection, center error, radial clearance, rim contacts, clean-pass and
+  recovery state to the live HUD, demonstration recordings and Skills Twin scoring.
+- Added a six-step clinician-facing lesson and an executable eight-phase expert-controller path. The room reuses
+  native dual-PSM and needle rigid-body physics while keeping its dry-lab targets separate from tissue suturing.
+
+Still required: clinician-set proficiency thresholds for ring diameter, allowable contacts, completion time,
+needle presentation and regrasp quality; verify the expert acquires and carries the needle cleanly before promoting
+its generated trajectory as a Behavior Cloning reference; and compare transfer to a physical box-trainer exercise.
+
 ## 2026-07-20 procedure-mechanics polish
 
 - Removed marker-only success shortcuts from shunt verification, knot tying, anastomosis pressure testing, clip
