@@ -44,6 +44,14 @@ from dr_anmar_i4h_adapter import (
 from dr_anmar_procedures import PROCEDURES_BY_ID, PROCEDURE_ROOMS, procedure_payload
 from dr_anmar_physics_authority import load_physics_authority
 from dr_anmar_native_rooms import resolve_native_room
+from dr_anmar_sonogym_adapter import (
+    SONOGYM_COMMIT,
+    SONOGYM_ROOT,
+    launch_command as sonogym_launch_command,
+    platform_workflow as sonogym_platform_workflow,
+    runtime_prerequisites as sonogym_runtime_prerequisites,
+    workflow_modes as sonogym_workflow_modes,
+)
 from dr_anmar_operator import (
     ACCESS_COOKIE,
     OPERATOR_HEADER,
@@ -379,6 +387,7 @@ def reconcile_orphaned_jobs() -> None:
         if manifest.get("kind") not in {
             "policy_training",
             "isaac_for_healthcare_workflow",
+            "sonogym_orthopedic_workflow",
             "challenge_matrix",
         }:
             continue
@@ -387,6 +396,7 @@ def reconcile_orphaned_jobs() -> None:
         expected = {
             "policy_training": "dr_anmar_train",
             "isaac_for_healthcare_workflow": "i4h",
+            "sonogym_orthopedic_workflow": "dr_anmar_sonogym_worker",
         }.get(manifest.get("kind"))
         if expected and command and expected in command:
             try:
@@ -512,7 +522,7 @@ def ensure_worker_available(operation: str) -> None:
         raise HTTPException(409, f"Stop policy training before {operation}")
     healthcare = healthcare_job_payload()
     if healthcare["status"] in {"preparing", "running", "stopping"}:
-        raise HTTPException(409, f"Stop the NVIDIA healthcare workflow before {operation}")
+        raise HTTPException(409, f"Stop the native healthcare workflow before {operation}")
     matrix = matrix_payload()
     if matrix["status"] in {"preparing", "running"}:
         raise HTTPException(409, f"Finish the Failure Lab matrix before {operation}")
@@ -529,7 +539,7 @@ def reserve_worker_switch(label: str) -> None:
         if state.training_status in {"preparing", "running", "stopping"}:
             raise HTTPException(409, "Stop policy training before loading another room")
         if state.healthcare_status in {"preparing", "running", "stopping"}:
-            raise HTTPException(409, "Stop the NVIDIA healthcare workflow before loading another room")
+            raise HTTPException(409, "Stop the native healthcare workflow before loading another room")
         if state.matrix_status in {"preparing", "running"}:
             raise HTTPException(409, "Finish the Failure Lab matrix before loading another room")
         state.switching = True
@@ -987,7 +997,18 @@ def curriculum() -> dict[str, Any]:
 
 @app.get("/api/healthcare-platform")
 def healthcare_platform() -> dict[str, Any]:
-    return platform_payload(ANATOMY_ROOT)
+    payload = platform_payload(ANATOMY_ROOT)
+    payload["workflows"].append(sonogym_platform_workflow())
+    payload["runtime_boundary"]["native_research_providers"] = {
+        "SonoGym": [
+            "orthopedic patient assets",
+            "ultrasound simulation",
+            "robot environments",
+            "observations and rewards",
+            "safe-action constraints",
+        ]
+    }
+    return payload
 
 
 @app.get("/api/healthcare-job")
@@ -1001,7 +1022,7 @@ def healthcare_job_log() -> dict[str, Any]:
         log_value = state.healthcare_log
         job_id = state.healthcare_job_id
     if not log_value:
-        return {"job_id": job_id, "text": "No NVIDIA workflow has been launched yet."}
+        return {"job_id": job_id, "text": "No native research workflow has been launched yet."}
     path = Path(log_value).resolve()
     root = HEALTHCARE_JOB_ROOT.resolve()
     if root not in path.parents or not path.is_file():
@@ -1019,34 +1040,65 @@ def healthcare_job_log() -> dict[str, Any]:
 
 @app.post("/api/healthcare-job/start")
 def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
-    definition = WORKFLOW_BINDINGS.get(request.workflow)
-    if definition is None:
-        raise HTTPException(404, "Unknown NVIDIA healthcare workflow")
-    mode_catalog = workflow_modes(request.workflow)
+    is_sonogym = request.workflow == "sonogym_orthopedics"
+    if is_sonogym:
+        definition = sonogym_platform_workflow()
+        mode_catalog = sonogym_workflow_modes()
+    else:
+        definition = WORKFLOW_BINDINGS.get(request.workflow)
+        if definition is None:
+            raise HTTPException(404, "Unknown native healthcare workflow")
+        mode_catalog = workflow_modes(request.workflow)
     mode = next((item for item in mode_catalog["modes"] if item["id"] == request.mode), None)
     if mode is None:
-        raise HTTPException(404, "This mode is not present in the pinned NVIDIA workflow metadata")
+        raise HTTPException(404, "This mode is not present in the pinned provider metadata")
     if not mode["launchable"]:
         raise HTTPException(409, mode["blocked_reason"] or "This mode needs advanced workstation setup")
-    workflow_root = I4H_ROOT / definition["directory"]
-    i4h_cli = I4H_ROOT / "i4h"
-    if not workflow_root.is_dir() or not i4h_cli.is_file():
-        raise HTTPException(409, "Install the pinned Isaac for Healthcare workflows before launching this mode")
-    prerequisites = runtime_prerequisites()
-    if not prerequisites["container_runtime"]["ready"]:
-        raise HTTPException(409, "Gilgamesh needs Docker Engine before official NVIDIA workflow containers can launch")
-    if mode["requires_rti"] and not prerequisites["rti_dds_license"]["ready"]:
-        raise HTTPException(409, "This workflow needs an RTI Connext DDS license file before it can launch")
+    if not mode.get("launch_ready"):
+        missing = ", ".join(mode.get("missing_prerequisites", [])) or "provider runtime"
+        raise HTTPException(409, f"Install or configure {missing} before launching this lab")
+    if is_sonogym:
+        workflow_root = SONOGYM_ROOT
+        prerequisites = sonogym_runtime_prerequisites()
+        if not all(item["ready"] for item in prerequisites.values()):
+            raise HTTPException(409, "The pinned SonoGym source, runtime, assets and ultrasound models must all be ready")
+        command = sonogym_launch_command(
+            mode_id=request.mode,
+            bridge=args.root / "scripts/dr_anmar_sonogym_worker.py",
+            port=args.worker_port,
+        )
+        process_cwd = SONOGYM_ROOT
+        process_env = os.environ.copy()
+        process_env.setdefault("OMNI_KIT_ACCEPT_EULA", "Y")
+        process_env.setdefault("PRIVACY_CONSENT", "Y")
+        process_env.setdefault("WANDB_MODE", "disabled")
+        process_env.setdefault("WANDB_SILENT", "true")
+    else:
+        workflow_root = I4H_ROOT / definition["directory"]
+        i4h_cli = I4H_ROOT / "i4h"
+        if not workflow_root.is_dir() or not i4h_cli.is_file():
+            raise HTTPException(409, "Install the pinned Isaac for Healthcare workflows before launching this mode")
+        prerequisites = runtime_prerequisites()
+        if not prerequisites["container_runtime"]["ready"]:
+            raise HTTPException(409, "Gilgamesh needs Docker Engine before official NVIDIA workflow containers can launch")
+        if mode["requires_rti"] and not prerequisites["rti_dds_license"]["ready"]:
+            raise HTTPException(409, "This workflow needs an RTI Connext DDS license file before it can launch")
+        command = [str(i4h_cli), "run", request.workflow, request.mode]
+        process_cwd = I4H_ROOT
+        process_env = os.environ.copy()
+        process_env["CLI_PINNED_COMMIT"] = HOLOHUB_CLI_COMMIT
+        if not (I4H_ROOT / "tools/utilities/cli/holohub.py").is_file():
+            process_env["CLI_FORCE_UPDATE"] = "1"
     training = training_payload()
     if training["status"] in {"preparing", "running", "stopping"}:
-        raise HTTPException(409, "Stop the policy training lab before launching an NVIDIA healthcare workflow")
+        raise HTTPException(409, "Stop the policy training lab before launching another native workflow")
     if matrix_payload()["status"] in {"preparing", "running"}:
         raise HTTPException(409, "Finish the active Failure Lab matrix before launching another simulator")
     with state.lock:
         if state.switching:
             raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
         if state.healthcare_status in {"preparing", "running", "stopping"}:
-            raise HTTPException(409, "An NVIDIA healthcare workflow is already running")
+            raise HTTPException(409, "A native healthcare workflow is already running")
     current = worker_status()
     resume_context = capture_worker_context(current, request.resume_workstation)
     resume_task = resume_context["task"] if resume_context else None
@@ -1056,17 +1108,17 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
     EXPERIMENT_ROOT.mkdir(parents=True, exist_ok=True)
     log_path = HEALTHCARE_JOB_ROOT / f"{job_id}.log"
     manifest_path = EXPERIMENT_ROOT / f"{job_id}.json"
-    command = [str(i4h_cli), "run", request.workflow, request.mode]
     manifest = {
         "schema": "dr.anmar.healthcare-workflow-job.v1",
         "experiment_id": job_id,
-        "kind": "isaac_for_healthcare_workflow",
+        "kind": "sonogym_orthopedic_workflow" if is_sonogym else "isaac_for_healthcare_workflow",
         "simulation_only": True,
         "clinical_use": False,
         "created_at": utc_now(),
         "source_revision": source_revision(),
         "runtime_provenance": (current or {}).get("runtime_provenance", {}),
-        "i4h_revision": repository_revision(I4H_ROOT),
+        "i4h_revision": None if is_sonogym else repository_revision(I4H_ROOT),
+        "sonogym_revision": repository_revision(SONOGYM_ROOT) if is_sonogym else None,
         "workflow_metadata_sha256": mode_catalog.get("metadata_sha256"),
         "workflow": request.workflow,
         "workflow_title": definition["title"],
@@ -1081,7 +1133,8 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
             },
             "hardware_access": False,
             "custom_arguments": False,
-            "holohub_cli_commit": HOLOHUB_CLI_COMMIT,
+            "holohub_cli_commit": None if is_sonogym else HOLOHUB_CLI_COMMIT,
+            "sonogym_source_commit": SONOGYM_COMMIT if is_sonogym else None,
         },
         "command": command,
         "log": str(log_path),
@@ -1092,11 +1145,11 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
         if state.switching:
             raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
         if state.training_status in {"preparing", "running", "stopping"}:
-            raise HTTPException(409, "Stop policy training before launching an NVIDIA healthcare workflow")
+            raise HTTPException(409, "Stop policy training before launching a native healthcare workflow")
         if state.matrix_status in {"preparing", "running"}:
             raise HTTPException(409, "Finish the Failure Lab matrix before launching another simulator")
         if state.healthcare_status in {"preparing", "running", "stopping"}:
-            raise HTTPException(409, "An NVIDIA healthcare workflow is already running")
+            raise HTTPException(409, "A native healthcare workflow is already running")
         state.healthcare_status = "preparing"
         state.healthcare_job_id = job_id
         state.healthcare_workflow = request.workflow
@@ -1109,15 +1162,12 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
         state.healthcare_resume_context = resume_context
     log_file = log_path.open("ab", buffering=0)
     try:
-        if current:
-            stop_interactive_worker()
-        process_env = os.environ.copy()
-        process_env["CLI_PINNED_COMMIT"] = HOLOHUB_CLI_COMMIT
-        if not (I4H_ROOT / "tools/utilities/cli/holohub.py").is_file():
-            process_env["CLI_FORCE_UPDATE"] = "1"
+        # Stop by PID even when the old workstation is still booting and has
+        # not begun answering /api/status yet.
+        stop_interactive_worker()
         process = subprocess.Popen(
             command,
-            cwd=I4H_ROOT,
+            cwd=process_cwd,
             stdout=log_file,
             stderr=subprocess.STDOUT,
             start_new_session=True,
@@ -1132,7 +1182,7 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
         write_json(manifest_path, manifest)
         if resume_context:
             threading.Thread(target=resume_worker, args=(resume_context,), daemon=True, name="dr-anmar-resume").start()
-        raise HTTPException(500, f"The NVIDIA workflow could not start: {exc}") from exc
+        raise HTTPException(500, f"The native workflow could not start: {exc}") from exc
     started_at = utc_now()
     with state.lock:
         state.healthcare_process = process
@@ -1154,7 +1204,7 @@ def stop_healthcare_job() -> dict[str, Any]:
     with state.lock:
         process = state.healthcare_process
     if process is None or process.poll() is not None:
-        raise HTTPException(409, "No NVIDIA healthcare workflow is running")
+        raise HTTPException(409, "No native healthcare workflow is running")
     os.killpg(process.pid, signal.SIGTERM)
     with state.lock:
         state.healthcare_status = "stopping"
@@ -1275,6 +1325,35 @@ def procedure_rooms() -> dict[str, Any]:
             room["ready"] = ready
             room["anatomy_title"] = "NVIDIA robotic ultrasound patient model"
             continue
+        if room.get("external_provider") == "sonogym_orthopedics":
+            catalog = sonogym_workflow_modes()
+            mode = next(
+                (item for item in catalog.get("modes", []) if item.get("id") == room.get("provider_mode")),
+                None,
+            )
+            ready = bool(mode and mode.get("launch_ready"))
+            missing = list(mode.get("missing_prerequisites", [])) if mode else ["SonoGym task metadata"]
+            reason = (
+                "SonoGym owns the CT-derived orthopedic assets, ultrasound simulation, robot task, observations, rewards and safety constraints."
+                if ready
+                else "The native SonoGym orthopedic room needs " + ", ".join(missing) + "."
+            )
+            physics = {
+                "schema": "dr.anmar.native-physics-readiness.v1",
+                "ready": ready,
+                "fidelity": room["fidelity"],
+                "backend": "sonogym_isaaclab_2.1.0",
+                "required_capabilities": ["orthopedic_ultrasound"],
+                "available_capabilities": ["orthopedic_ultrasound"] if ready else [],
+                "missing_capabilities": [] if ready else ["orthopedic_ultrasound"],
+                "reason": reason,
+            }
+            room["physics"] = physics
+            room["simulation_ready"] = ready
+            room["readiness_reason"] = reason
+            room["ready"] = ready
+            room["anatomy_title"] = "SonoGym CT-derived lumbar patient · L4 vertebra"
+            continue
         binding = resolve_native_room(str(room["id"]))
         room_runtime = authority.runtime_payload(
             runtime_family="isaac-sim-5.1-stable",
@@ -1322,6 +1401,20 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
             "procedure_id": request.procedure_id,
             "title": procedure["title"],
             "native_provider": "NVIDIA Isaac for Healthcare v0.6.0",
+        }
+    if procedure.get("external_provider") == "sonogym_orthopedics":
+        result = start_healthcare_job(
+            HealthcareWorkflowRequest(
+                workflow="sonogym_orthopedics",
+                mode=str(procedure["provider_mode"]),
+                resume_workstation=True,
+            )
+        )
+        return {
+            **result,
+            "procedure_id": request.procedure_id,
+            "title": procedure["title"],
+            "native_provider": "SonoGym on Isaac Lab 2.1.0",
         }
     authority = load_physics_authority()
     binding = resolve_native_room(str(procedure["id"]))
@@ -1525,7 +1618,7 @@ def start_challenge_matrix(request: ChallengeMatrixRequest) -> dict[str, Any]:
         if state.training_status in {"preparing", "running", "stopping"}:
             raise HTTPException(409, "Stop policy training before starting a Failure Lab matrix")
         if state.healthcare_status in {"preparing", "running", "stopping"}:
-            raise HTTPException(409, "Stop the NVIDIA healthcare workflow before starting a Failure Lab matrix")
+            raise HTTPException(409, "Stop the native healthcare workflow before starting a Failure Lab matrix")
         if state.matrix_status in {"preparing", "running"}:
             raise HTTPException(409, "A challenge matrix is already running")
         state.matrix_status = "preparing"
@@ -1842,7 +1935,7 @@ def start_training(request: TrainingRequest) -> dict[str, Any]:
         if state.training_process is not None and state.training_process.poll() is None:
             raise HTTPException(409, "A training lab is already running")
         if state.healthcare_status in {"preparing", "running", "stopping"}:
-            raise HTTPException(409, "Stop the NVIDIA healthcare workflow before starting policy training")
+            raise HTTPException(409, "Stop the native healthcare workflow before starting policy training")
     current = worker_status()
     resume_context = capture_worker_context(current, request.resume_workstation)
     TRAINING_ROOT.mkdir(parents=True, exist_ok=True)
@@ -1889,7 +1982,7 @@ def start_training(request: TrainingRequest) -> dict[str, Any]:
         if state.switching:
             raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
         if state.healthcare_status in {"preparing", "running", "stopping"}:
-            raise HTTPException(409, "Stop the NVIDIA healthcare workflow before starting policy training")
+            raise HTTPException(409, "Stop the native healthcare workflow before starting policy training")
         if state.matrix_status in {"preparing", "running"}:
             raise HTTPException(409, "Finish the Failure Lab matrix before starting policy training")
         if state.training_process is not None and state.training_process.poll() is None:

@@ -533,7 +533,89 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
 )
 
 
-PROCEDURE_ROOMS = PROCEDURE_ROOMS + ADVANCED_PROCEDURE_ROOMS
+SONOGYM_ORTHOPEDIC_ROOMS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "orthopedic-l4-ultrasound-navigation",
+        "title": "L4 ultrasound navigation",
+        "category": "Orthopedic ultrasound",
+        "difficulty": "Foundation",
+        "task": "Isaac-robot-US-guidance-v0",
+        "anatomy_scene": "sonogym-lumbar-l4",
+        "anatomy_focus": "CT-derived lumbar anatomy and L4 vertebra",
+        "robot": "KUKA LBR with ultrasound probe",
+        "instrument": "Robotic ultrasound probe",
+        "objective": "Find the transverse ultrasound plane through the centre of L4 and hold a stable diagnostic view.",
+        "interaction": "SonoGym native CT-derived ultrasound navigation, robot control, observations and reward.",
+        "fidelity": "sonogym_native_ultrasound",
+        "external_provider": "sonogym_orthopedics",
+        "provider_mode": "l4_ultrasound_navigation",
+        "guide_kind": "orthopedic_ultrasound_navigation",
+        "waypoints": (),
+        "steps": [
+            step("survey", "Survey", "Sweep the lumbar surface and identify the L4 acoustic appearance.", "target visibility"),
+            step("orient", "Orient", "Rotate into a transverse view without losing contact.", "probe orientation"),
+            step("centre", "Centre L4", "Translate until the centre of L4 is aligned with the target plane.", "plane error"),
+            step("hold", "Hold view", "Maintain the plane steadily before completing the attempt.", "view stability"),
+        ],
+        "success_metrics": ["plane error", "probe path length", "view stability", "episode reward"],
+        "truth_note": "Runs the upstream SonoGym Isaac Lab task. SonoGym currently uses CT-derived rigid patient geometry; its authors identify soft-tissue deformation and real-system clinical validation as future work.",
+    },
+    {
+        "id": "orthopedic-l4-surface-reconstruction",
+        "title": "L4 ultrasound surface reconstruction",
+        "category": "Orthopedic ultrasound",
+        "difficulty": "Intermediate",
+        "task": "Isaac-robot-US-reconstruction-v0",
+        "anatomy_scene": "sonogym-lumbar-l4",
+        "anatomy_focus": "CT-derived lumbar anatomy and L4 surface",
+        "robot": "KUKA LBR with ultrasound probe",
+        "instrument": "Robotic ultrasound probe",
+        "objective": "Acquire complementary ultrasound sweeps that reconstruct the L4 bone surface with efficient coverage.",
+        "interaction": "SonoGym native reconstruction state, coverage observation, submodular reward and Isaac Lab stepping.",
+        "fidelity": "sonogym_native_reconstruction",
+        "external_provider": "sonogym_orthopedics",
+        "provider_mode": "l4_surface_reconstruction",
+        "guide_kind": "orthopedic_ultrasound_reconstruction",
+        "waypoints": (),
+        "steps": [
+            step("localize", "Localize L4", "Acquire an initial view of the L4 target surface.", "initial localization"),
+            step("sweep", "Build coverage", "Sweep through complementary views instead of repeating the same plane.", "surface coverage"),
+            step("inspect", "Inspect gaps", "Use the reconstruction observation to find uncovered regions.", "uncovered surface"),
+            step("complete", "Complete model", "Finish with stable, efficient coverage of the target surface.", "coverage efficiency"),
+        ],
+        "success_metrics": ["surface coverage", "uncovered points", "trajectory length", "episode reward"],
+        "truth_note": "Runs SonoGym's upstream anatomy-reconstruction environment and observation. The reconstructed target is the simulated L4 surface, not a validated clinical diagnosis.",
+    },
+    {
+        "id": "orthopedic-l4-ultrasound-guided-surgery",
+        "title": "L4 ultrasound-guided orthopedic trajectory",
+        "category": "Orthopedic ultrasound",
+        "difficulty": "Advanced research",
+        "task": "Isaac-robot-US-guided-surgery-v0",
+        "anatomy_scene": "sonogym-lumbar-l4",
+        "anatomy_focus": "CT-derived lumbar anatomy and protected L4 target",
+        "robot": "FR3 ultrasound robot + KUKA orthopedic instrument robot",
+        "instrument": "Ultrasound probe and orthopedic drill trajectory",
+        "objective": "Localize L4 with ultrasound, align the orthopedic trajectory, and advance while respecting SonoGym's safety cost.",
+        "interaction": "SonoGym native dual-robot ultrasound-guided surgery environment with safe-action constraints.",
+        "fidelity": "sonogym_native_guided_surgery",
+        "external_provider": "sonogym_orthopedics",
+        "provider_mode": "l4_ultrasound_guided_surgery",
+        "guide_kind": "orthopedic_ultrasound_guided_surgery",
+        "waypoints": (),
+        "steps": [
+            step("localize", "Localize", "Acquire and stabilize the L4 ultrasound target.", "target visibility"),
+            step("plan", "Plan", "Align the approach trajectory with the target and safety corridor.", "trajectory alignment"),
+            step("advance", "Advance", "Use short, controlled actions while monitoring ultrasound and safety state.", "target error"),
+            step("verify", "Verify", "Stop at the planned endpoint and inspect the final target and cost state.", "safe endpoint"),
+        ],
+        "success_metrics": ["target error", "trajectory length", "unsafe-action cost", "episode reward"],
+        "truth_note": "Runs SonoGym's upstream ultrasound-guided surgery task. It is a research benchmark around L4 targeting, not a clinical drilling simulator or permission for autonomous intervention.",
+    },
+)
+
+
+PROCEDURE_ROOMS = PROCEDURE_ROOMS + ADVANCED_PROCEDURE_ROOMS + SONOGYM_ORTHOPEDIC_ROOMS
 
 
 PROCEDURE_SUITES: tuple[dict[str, Any], ...] = (
@@ -561,6 +643,16 @@ PROCEDURE_SUITES: tuple[dict[str, Any], ...] = (
         "description": "Develop anatomy navigation, ultrasound targeting, access and complication recovery skills.",
         "rooms": ["synthetic-anatomy-navigation", "ultrasound-guided-access", "vascular-shunt-insertion", "complication-recovery"],
     },
+    {
+        "id": "orthopedic-ultrasound-suite",
+        "title": "Orthopedic robotic ultrasound",
+        "description": "Progress from L4 plane localization through surface reconstruction to ultrasound-guided orthopedic trajectory research.",
+        "rooms": [
+            "orthopedic-l4-ultrasound-navigation",
+            "orthopedic-l4-surface-reconstruction",
+            "orthopedic-l4-ultrasound-guided-surgery",
+        ],
+    },
 )
 
 
@@ -586,6 +678,9 @@ def procedure_payload() -> dict[str, Any]:
             "native_vascular_flow": "Native deformable vessel and vascular flow.",
             "native_hemostasis": "Native fluid and hemostasis mechanics.",
             "nvidia_medical_ultrasound": "NVIDIA medical-ultrasound workflow output.",
+            "sonogym_native_ultrasound": "SonoGym native CT-derived orthopedic ultrasound navigation.",
+            "sonogym_native_reconstruction": "SonoGym native ultrasound-based L4 surface reconstruction.",
+            "sonogym_native_guided_surgery": "SonoGym native dual-robot ultrasound-guided orthopedic surgery benchmark.",
             "interactive_recovery_scenarios": "Injected failures with stop, reacquisition, safety and hand-back telemetry.",
         },
         "provenance_legend": {

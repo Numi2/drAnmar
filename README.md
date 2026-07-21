@@ -1,7 +1,7 @@
 # Dr.Anmar
 
 Dr.Anmar is a clinician-facing surgical robotics learning and research studio built on
-[ORBIT-Surgical](https://github.com/orbit-surgical/orbit-surgical), NVIDIA Isaac Sim, Isaac Lab, and
+[ORBIT-Surgical](https://github.com/orbit-surgical/orbit-surgical), [SonoGym](https://sonogym.github.io/), NVIDIA Isaac Sim, Isaac Lab, and
 optional Isaac for Healthcare workflows. It turns a robotics simulator into one coherent place where a
 doctor can learn robot control, practise complete simulated procedures, record demonstrations, inspect
 performance, and understand how data becomes a behavior-cloning or reinforcement-learning policy.
@@ -29,7 +29,7 @@ Every visual below was captured from Dr.Anmar itself. No figures were copied fro
 
 | Offering | What the doctor sees | What the researcher gets |
 | --- | --- | --- |
-| **Guided robotics curriculum** | 30 lessons that explain control, demonstration, vision, policies, procedures, safety and recovery in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
+| **Guided robotics curriculum** | 33 lessons that explain control, demonstration, vision, policies, procedures, safety, recovery and orthopedic ultrasound in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
 | **Interactive surgical digital twin** | Native-ready rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | ORBIT-Surgical tasks, versioned OpenUSD composition, PhysX contact sensing and simulator telemetry |
 | **Native-physics procedure roadmap** | The complete suturing, cutting, tissue, shunt, vascular and ultrasound curriculum remains visible without pretending unfinished physics works | One capability contract routes each family to PhysX FEM, coupled Newton VBD, CRESSim-MPM or an official NVIDIA healthcare workflow; missing capabilities fail closed |
 | **Demonstrations and Skills Twin** | Record a complete attempt, replay it, see phase-aware coaching, and compare against a clinician-selected reference | Checksummed trajectory/manifest pairs, task-native tool paths, multimodal observations, analysis and content-addressed dataset cards |
@@ -92,6 +92,30 @@ Pickup → presentation → receiving grasp → release → separation, performe
 <p align="center"><strong>Archived ultrasound interface study</strong><br>
 The former drawn B-mode implementation is retired. The room now delegates to NVIDIA Isaac for Healthcare
 v0.6.0 robotic ultrasound and remains unavailable until its Docker and RTI DDS prerequisites are installed.</p>
+
+### Orthopedic robotic ultrasound with SonoGym
+
+The Orthopedics course delegates three L4 research tasks to the pinned upstream SonoGym environments:
+
+- robotic probe navigation to the transverse plane through the centre of L4;
+- ultrasound-based L4 surface reconstruction with coverage observations; and
+- dual-robot ultrasound-guided orthopedic trajectory research with SonoGym's safety cost.
+
+Dr.Anmar runs these tasks headlessly on the GPU and transports the native ultrasound observation and action
+vector into the existing browser. It does not recreate SonoGym's patient assets, ultrasound generator,
+kinematics, rewards, task stepping, or safety constraints. The provider remains isolated on Isaac Lab 2.1.0
+because that is the version required by the pinned upstream source. Its CT-derived patient is presently rigid;
+soft-tissue deformation and clinical validation are explicitly outside the current upstream capability.
+
+Install the public source, patient assets, ultrasound models and isolated runtime with:
+
+```bash
+./scripts/install_sonogym.sh
+```
+
+The installer pins SonoGym source commit `e67be58334d1a5274f0913af36f56e4b0b7ffe5a` and the public asset/model
+dataset revision `b37b080a8673f856266a2306724e48d5e034521a`. Downloaded assets and the Isaac
+runtime stay outside this Git repository. See [`docs/ORTHOPEDIC_ULTRASOUND.md`](docs/ORTHOPEDIC_ULTRASOUND.md).
 
 ## Control pedagogy designed for doctors
 
@@ -213,6 +237,8 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
   to NVIDIA's robotic-surgery, robotic-ultrasound, SO-ARM/GR00T, and telesurgery workflows.
 - A guarded NVIDIA workflow runner with live mode discovery, plain-language prerequisites, job logs,
   provenance manifests, automatic lesson restoration, and privileged hardware modes locked out by default.
+- A pinned SonoGym provider with three native L4 orthopedic-ultrasound rooms, browser keyboard control,
+  native observation streaming, isolated Isaac Lab 2.1.0 runtime, and source/asset provenance.
 - Simulator-native target-pose, control-calibration, and multi-organ context challenges beside the camera and
   image stressors.
 - Automated challenge summaries with per-scenario descriptive statistics, intervention rate, native success,
