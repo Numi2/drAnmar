@@ -2648,6 +2648,7 @@ def main() -> None:
             max_tissue_anchors=target_anchors,
             required_anchors_for_knot=target_anchors,
             anchor_pullout_force_n=tissue_material.anchor_pullout_force_n,
+            support_plane_z_m=0.0,
         )
         if guide_kind in SUTURE_GUIDE_KINDS
         else None
@@ -2852,13 +2853,18 @@ def main() -> None:
             suture_curve.CreatePointsAttr(
                 Vt.Vec3fArray.FromNumpy(np.zeros((suture_model.node_count, 3), dtype=np.float32))
             )
-            suture_curve.CreateWidthsAttr(Vt.FloatArray([0.00115] * suture_model.node_count))
+            suture_curve.CreateWidthsAttr(Vt.FloatArray([0.00135] * suture_model.node_count))
+            suture_curve.SetWidthsInterpolation(UsdGeom.Tokens.vertex)
+            suture_curve.CreateDisplayColorPrimvar(UsdGeom.Tokens.constant).Set(
+                Vt.Vec3fArray([Gf.Vec3f(0.10, 0.58, 1.0)])
+            )
             suture_curve_prim = suture_curve.GetPrim()
             suture_material = UsdShade.Material.Define(stage, f"{suture_path}/Material")
             suture_shader = UsdShade.Shader.Define(stage, f"{suture_path}/Material/Shader")
             suture_shader.CreateIdAttr("UsdPreviewSurface")
-            suture_shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.16, 0.32, 0.82))
-            suture_shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.58)
+            suture_shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.10, 0.58, 1.0))
+            suture_shader.CreateInput("emissiveColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.015, 0.10, 0.22))
+            suture_shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.42)
             suture_material.CreateSurfaceOutput().ConnectToSource(suture_shader.ConnectableAPI(), "surface")
             UsdShade.MaterialBindingAPI.Apply(suture_curve_prim).Bind(suture_material)
             UsdGeom.Imageable(suture_curve_prim).MakeInvisible()
@@ -2878,7 +2884,7 @@ def main() -> None:
             for marker_index in range(target_anchors):
                 marker_path = f"{suture_path}/TissueAnchor{marker_index + 1}"
                 marker = UsdGeom.Sphere.Define(stage, marker_path)
-                marker.CreateRadiusAttr(0.00225)
+                marker.CreateRadiusAttr(0.00125)
                 marker_transform = UsdGeom.Xformable(marker.GetPrim())
                 marker_transform.ClearXformOpOrder()
                 marker_translate = marker_transform.AddTranslateOp()
@@ -3217,11 +3223,15 @@ def main() -> None:
             return
         suture_curve.GetPointsAttr().Set(Vt.Vec3fArray.FromNumpy(np.ascontiguousarray(suture_model.points)))
         color_scale = float(np.clip(suture_model.tension_n / 1.5, 0.0, 1.0))
+        strand_color = Gf.Vec3f(
+            0.10 + 0.78 * color_scale,
+            0.58 - 0.38 * color_scale,
+            1.0 - 0.70 * color_scale,
+        )
         shader = UsdShade.Shader(stage.GetPrimAtPath(f"{suture_curve_prim.GetPath()}/Material/Shader"))
         if shader:
-            shader.GetInput("diffuseColor").Set(
-                Gf.Vec3f(0.16 + 0.68 * color_scale, 0.32 - 0.18 * color_scale, 0.82 - 0.58 * color_scale)
-            )
+            shader.GetInput("diffuseColor").Set(strand_color)
+        UsdGeom.Gprim(suture_curve_prim).GetDisplayColorPrimvar().Set(Vt.Vec3fArray([strand_color]))
         UsdGeom.Imageable(suture_curve_prim).MakeVisible()
         active_anchors = list(suture_model.tissue_anchor_indices)
         for marker_index, (marker_prim, marker_translate) in enumerate(
@@ -3394,6 +3404,7 @@ def main() -> None:
     refresh_anatomy_guard_volumes()
     needle_interaction_enabled = "Needle" in args_cli.task
     needle_tip_offsets_local = derive_needle_tip_offsets() if needle_interaction_enabled else np.empty((0, 3), dtype=np.float32)
+    suture_eye_endpoint_index: int | None = None
     ghost_markers = VisualizationMarkers(
         VisualizationMarkersCfg(
             prim_path="/World/DrAnmarClinicianPath",
@@ -4382,8 +4393,22 @@ def main() -> None:
         if suture_model is not None:
             needle_tips = needle_tip_positions_world()
             if len(needle_tips):
+                if suture_eye_endpoint_index is None:
+                    if len(needle_tips) == 2 and len(room_waypoints):
+                        sharp_tip_index = int(
+                            np.argmin(np.linalg.norm(needle_tips - room_waypoints[0][None, :], axis=1))
+                        )
+                        suture_eye_endpoint_index = 1 - sharp_tip_index
+                    else:
+                        suture_eye_endpoint_index = 0
+                if puncture_active and needle_tip_selected is not None and len(needle_tips) == 2:
+                    sharp_tip_index = int(
+                        np.argmin(np.linalg.norm(needle_tips - needle_tip_selected[None, :], axis=1))
+                    )
+                    suture_eye_endpoint_index = 1 - sharp_tip_index
+                needle_eye = needle_tips[min(suture_eye_endpoint_index, len(needle_tips) - 1)]
                 synchronize_suture_surface_anchors(mechanics_dt)
-                suture_model.update(needle_tips[0], mechanics_dt)
+                suture_model.update(needle_eye, mechanics_dt)
                 if puncture_active and not thread_was_inside_tissue and needle_surface is not None:
                     if bind_suture_to_surface(
                         needle_surface,

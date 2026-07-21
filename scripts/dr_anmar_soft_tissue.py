@@ -786,6 +786,9 @@ class SutureThreadModel:
     linear_stiffness_n: float = 2.4
     tensile_limit_n: float = 3.8
     anchor_pullout_force_n: float = 1.1
+    support_plane_z_m: float | None = None
+    collision_radius_m: float = 0.00045
+    support_friction: float = 0.76
     points: np.ndarray = field(init=False)
     previous: np.ndarray = field(init=False)
     fixed: dict[int, np.ndarray] = field(default_factory=dict)
@@ -850,9 +853,15 @@ class SutureThreadModel:
 
     def initialize(self, needle_world: np.ndarray) -> None:
         needle = np.asarray(needle_world, dtype=np.float32)
-        tail = needle + np.asarray((0.0, -self.rest_length_m * 0.78, 0.018), dtype=np.float32)
+        tail = needle + np.asarray((0.0, -min(self.rest_length_m * 0.60, 0.095), 0.0), dtype=np.float32)
+        if self.support_plane_z_m is not None:
+            tail[2] = max(float(self.support_plane_z_m) + self.collision_radius_m, min(float(needle[2]), 0.0015))
         alpha = np.linspace(0.0, 1.0, self.node_count, dtype=np.float32)[:, None]
         self.points[:] = tail[None, :] * (1.0 - alpha) + needle[None, :] * alpha
+        # Lay the initial slack in a visible, table-supported S curve instead
+        # of allowing all excess length to collapse into the support plane.
+        slack_amplitude = min(0.018, max(0.006, self.rest_length_m * 0.11))
+        self.points[:, 0] += np.sin(alpha[:, 0] * np.pi * 2.0) * slack_amplitude
         self.previous[:] = self.points
         self.fixed = {0: tail.copy(), self.node_count - 1: needle.copy()}
         self.initialized = True
@@ -981,6 +990,23 @@ class SutureThreadModel:
                 self.points[index] = position
         return raw_stretch
 
+    def _apply_support_contact(self) -> int:
+        """Keep the free strand above the instrument table and damp sliding."""
+        if self.support_plane_z_m is None:
+            return 0
+        support_height = float(self.support_plane_z_m) + self.collision_radius_m
+        contacts = self.points[:, 2] < support_height
+        for index in self.fixed:
+            contacts[index] = False
+        if not bool(np.any(contacts)):
+            return 0
+        velocity_xy = self.points[contacts, :2] - self.previous[contacts, :2]
+        self.points[contacts, 2] = support_height
+        self.previous[contacts, 2] = support_height
+        retained_velocity = 1.0 - float(np.clip(self.support_friction, 0.0, 0.98))
+        self.previous[contacts, :2] = self.points[contacts, :2] - velocity_xy * retained_velocity
+        return int(np.count_nonzero(contacts))
+
     def update(self, needle_world: np.ndarray, dt: float) -> None:
         needle = np.asarray(needle_world, dtype=np.float32)
         if not self.initialized:
@@ -996,6 +1022,11 @@ class SutureThreadModel:
         for index, position in self.fixed.items():
             self.points[index] = position
         self.strain = self._apply_constraints()
+        self._apply_support_contact()
+        # Projection onto the table can perturb adjacent segment lengths, so
+        # settle once more before the final contact projection.
+        self.strain = max(self.strain, self._apply_constraints())
+        self._apply_support_contact()
         self.tension_n = 0.0 if self.thread_broken else float(np.clip(self.strain * self.linear_stiffness_n, 0.0, 8.0))
         routed_length = float(np.linalg.norm(np.diff(self.points, axis=0), axis=1).sum())
         self.slack_m = max(0.0, self.rest_length_m - routed_length)
