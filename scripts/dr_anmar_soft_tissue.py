@@ -789,6 +789,7 @@ class SutureThreadModel:
     support_plane_z_m: float | None = None
     collision_radius_m: float = 0.00045
     support_friction: float = 0.76
+    constraint_iterations: int = 8
     points: np.ndarray = field(init=False)
     previous: np.ndarray = field(init=False)
     fixed: dict[int, np.ndarray] = field(default_factory=dict)
@@ -1409,24 +1410,37 @@ class SutureThreadModel:
         needle = np.asarray(needle_world, dtype=np.float32)
         if not self.initialized:
             self.initialize(needle)
+        previous_needle = self.fixed.get(self.node_count - 1, needle).copy()
         if self.thread_broken:
             self.fixed.pop(self.node_count - 1, None)
-        else:
-            self.fixed[self.node_count - 1] = needle.copy()
         dt = float(np.clip(dt, 1.0 / 240.0, 1.0 / 15.0))
-        velocity = (self.points - self.previous) * self.damping
-        self.previous[:] = self.points
-        self.points += velocity + np.asarray((0.0, 0.0, -1.4), dtype=np.float32)[None, :] * (dt * dt)
-        for index, position in self.fixed.items():
-            self.points[index] = position
-        self.strain = self._apply_constraints()
-        self._apply_ring_contact()
-        self._apply_support_contact()
-        # Projection onto the table can perturb adjacent segment lengths, so
-        # settle once more before the final contact projection.
-        self.strain = max(self.strain, self._apply_constraints())
-        self._apply_ring_contact()
-        self._apply_support_contact()
+        needle_travel = float(np.linalg.norm(needle - previous_needle))
+        substeps = 1 if self.thread_broken else int(np.clip(np.ceil(needle_travel / 0.0035), 1, 8))
+        step_dt = dt / substeps
+        step_damping = float(self.damping ** (1.0 / substeps))
+        maximum_strain = 0.0
+        for substep in range(substeps):
+            if not self.thread_broken:
+                fraction = float(substep + 1) / substeps
+                self.fixed[self.node_count - 1] = previous_needle + (needle - previous_needle) * fraction
+            velocity = (self.points - self.previous) * step_damping
+            self.previous[:] = self.points
+            self.points += velocity + np.asarray((0.0, 0.0, -1.4), dtype=np.float32)[None, :] * (step_dt * step_dt)
+            for index, position in self.fixed.items():
+                self.points[index] = position
+            projected_strain = self._apply_constraints(self.constraint_iterations)
+            self._apply_ring_contact()
+            self._apply_support_contact()
+            # Contact projection can perturb adjacent lengths. Settle again
+            # within the same substep so the rendered polyline stays intact.
+            projected_strain = max(
+                projected_strain,
+                self._apply_constraints(self.constraint_iterations),
+            )
+            self._apply_ring_contact()
+            self._apply_support_contact()
+            maximum_strain = max(maximum_strain, projected_strain)
+        self.strain = maximum_strain
         self.tension_n = 0.0 if self.thread_broken else float(np.clip(self.strain * self.linear_stiffness_n, 0.0, 8.0))
         routed_length = float(np.linalg.norm(np.diff(self.points, axis=0), axis=1).sum())
         self.slack_m = max(0.0, self.rest_length_m - routed_length)
@@ -1478,6 +1492,11 @@ class SutureThreadModel:
         return float(sum(self.anchor_slip_m.values()))
 
     def snapshot(self) -> dict[str, Any]:
+        segment_lengths = (
+            np.linalg.norm(np.diff(self.points, axis=0), axis=1)
+            if self.initialized and self.node_count > 1
+            else np.empty(0, dtype=np.float32)
+        )
         return {
             "active": True,
             "visible": self.initialized,
@@ -1485,6 +1504,11 @@ class SutureThreadModel:
             "peak_tension_n": round(self.peak_tension_n, 4),
             "strain": round(self.strain, 5),
             "slack_m": round(self.slack_m, 5),
+            "maximum_segment_length_m": round(float(segment_lengths.max(initial=0.0)), 6),
+            "strand_continuous": bool(
+                not len(segment_lengths)
+                or float(segment_lengths.max(initial=0.0)) <= self.segment_length_m * 1.85
+            ),
             "tissue_anchors": len(self.tissue_anchor_indices),
             "entry_anchors": sum(kind == "entry" for kind in self.anchor_kinds.values()),
             "exit_anchors": sum(kind == "exit" for kind in self.anchor_kinds.values()),

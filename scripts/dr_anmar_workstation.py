@@ -2724,6 +2724,7 @@ def main() -> None:
             anchor_pullout_force_n=tissue_material.anchor_pullout_force_n,
             support_plane_z_m=0.0,
             collision_radius_m=0.00065 if guide_kind == "hoop_threading" else 0.00045,
+            constraint_iterations=16 if guide_kind == "hoop_threading" else 8,
         )
         if guide_kind in THREAD_GUIDE_KINDS
         else None
@@ -2938,8 +2939,10 @@ def main() -> None:
             suture_width = 0.00045 if guide_kind == "hoop_threading" else 0.00060
             suture_color = Gf.Vec3f(0.44, 0.45, 0.46)
             suture_curve = UsdGeom.BasisCurves.Define(stage, suture_path)
-            suture_curve.CreateTypeAttr(UsdGeom.Tokens.cubic)
-            suture_curve.CreateBasisAttr(UsdGeom.Tokens.catmullRom)
+            # A dense linear strand is visually smooth but cannot overshoot
+            # between particles.  Catmull-Rom produced apparent gaps when a
+            # constrained particle bent sharply around the metal ring.
+            suture_curve.CreateTypeAttr(UsdGeom.Tokens.linear)
             suture_curve.CreateWrapAttr(UsdGeom.Tokens.nonperiodic)
             suture_curve.CreateCurveVertexCountsAttr(Vt.IntArray([suture_model.node_count]))
             suture_curve.CreatePointsAttr(

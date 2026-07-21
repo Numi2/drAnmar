@@ -511,7 +511,7 @@ class ExpertDemonstrationController:
                 return False
             if not self.tail_captured and thread_tail_position is not None:
                 tail_target = np.asarray(thread_tail_position, dtype=np.float32) + np.asarray(
-                    (0.0, 0.0, 0.0025), dtype=np.float32
+                    (0.0, 0.0, 0.010), dtype=np.float32
                 )
                 self._set_motion(action, primary_arm, tools.get(primary_arm), target0)
                 tail_distance = self._set_motion(
@@ -521,11 +521,11 @@ class ExpertDemonstrationController:
                     tail_target,
                 )
                 grippers[receiver_arm] = True
-                if tail_distance is not None and tail_distance <= 0.010:
+                if tail_distance is not None and tail_distance <= 0.014:
                     grippers[receiver_arm] = False
                     self.tail_captured = True
                     self.target_ticks = 0
-                elif self.target_ticks >= 110:
+                elif self.target_ticks >= 180:
                     grippers[receiver_arm] = True
                     self.pause("The receiving instrument missed the free suture tail. Reset and retry the handoff.")
                 return False
