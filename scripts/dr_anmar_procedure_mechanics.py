@@ -680,6 +680,7 @@ class SurgeonsKnotModel:
     active_cinch_progress: float = 0.0
     primary_position: np.ndarray | None = None
     secondary_position: np.ndarray | None = None
+    loop_side: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         self.center = np.asarray(self.center, dtype=np.float32)
@@ -699,6 +700,7 @@ class SurgeonsKnotModel:
         self.active_cinch_progress = 0.0
         self.primary_position = None
         self.secondary_position = None
+        self.loop_side = None
 
     @property
     def phase(self) -> str:
@@ -869,14 +871,20 @@ class SurgeonsKnotModel:
                 "center": self.center.copy(),
             }
 
-        axis = self.primary_position - self.secondary_position
-        axis_length = float(np.linalg.norm(axis))
-        axis = axis / axis_length if axis_length >= 1e-8 else np.asarray((1.0, 0.0, 0.0), dtype=np.float32)
-        up = np.asarray((0.0, 0.0, 1.0), dtype=np.float32)
-        if abs(float(np.dot(axis, up))) >= 0.88:
-            up = np.asarray((0.0, 1.0, 0.0), dtype=np.float32)
-        side = np.cross(up, axis)
-        side /= max(float(np.linalg.norm(side)), 1e-8)
+        # The expert tools orbit in the horizontal operative plane.  Preserve
+        # that plane for the full knot so an active partial wrap cannot rotate
+        # edge-on as the hands circle one another.
+        if self.loop_side is None:
+            radial = self.primary_position - self.secondary_position
+            radial = np.asarray((radial[0], radial[1], 0.0), dtype=np.float32)
+            radial_length = float(np.linalg.norm(radial))
+            self.loop_side = (
+                radial / radial_length
+                if radial_length >= 1e-8
+                else np.asarray((1.0, 0.0, 0.0), dtype=np.float32)
+            )
+        axis = np.asarray((0.0, 0.0, 1.0), dtype=np.float32)
+        side = self.loop_side
         up = np.cross(axis, side)
         up /= max(float(np.linalg.norm(up)), 1e-8)
 
