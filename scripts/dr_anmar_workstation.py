@@ -3342,15 +3342,14 @@ def main() -> None:
         return clearance, outward, surface
 
     def derive_needle_tip_offsets() -> np.ndarray:
-        """Derive the two open ends of the official semicircular needle in Object-local metres."""
-        if stage is None:
+        """Derive both needle ends in rigid-body local metres, preserving asset scale."""
+        if stage is None or not objects:
             return np.empty((0, 3), dtype=np.float32)
         object_prim = stage.GetPrimAtPath("/World/envs/env_0/Object")
         if not object_prim.IsValid():
             return np.empty((0, 3), dtype=np.float32)
         cache = UsdGeom.XformCache(Usd.TimeCode.Default())
-        world_to_object = cache.GetLocalToWorldTransform(object_prim).GetInverse()
-        local_points: list[np.ndarray] = []
+        world_points: list[np.ndarray] = []
         for prim in Usd.PrimRange(object_prim):
             if not prim.IsA(UsdGeom.Mesh):
                 continue
@@ -3360,11 +3359,17 @@ def main() -> None:
             mesh_to_world = cache.GetLocalToWorldTransform(prim)
             for point in points:
                 world_point = mesh_to_world.Transform(point)
-                local_point = world_to_object.Transform(world_point)
-                local_points.append(np.asarray(tuple(local_point), dtype=np.float32))
-        if not local_points:
+                world_points.append(np.asarray(tuple(world_point), dtype=np.float32))
+        if not world_points:
             return np.empty((0, 3), dtype=np.float32)
-        vertices = np.stack(local_points)
+        rigid_object = next(iter(objects.values()))
+        root_position = rigid_object.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
+        root_quaternion = rigid_object.data.root_quat_w[0, :4].detach().cpu().numpy().astype(np.float32)
+        inverse_quaternion = root_quaternion.copy()
+        inverse_quaternion[1:4] *= -1.0
+        vertices = np.stack(
+            [rotate_wxyz(inverse_quaternion, point - root_position) for point in world_points]
+        )
         span = np.ptp(vertices, axis=0)
         thickness_axis = int(np.argmin(span))
         curve_axes = [axis for axis in range(3) if axis != thickness_axis]
