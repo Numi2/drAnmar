@@ -1117,7 +1117,7 @@ class SutureThreadModel:
         completed_ratio = float(np.clip(self.knot_throw_count / 3.0, 0.0, 1.0))
         cinch = float(np.clip(cinch_progress, 0.0, 1.0))
         self.knot_tightness = max(self.knot_tightness, completed_ratio * 0.78 + cinch * 0.22)
-        slip_penalty = float(np.clip(self.knot_slippage_m / 0.008, 0.0, 1.0))
+        slip_penalty = float(np.clip(self.knot_slippage_m / 0.012, 0.0, 1.0))
         self.knot_security = float(
             np.clip(max(self.knot_security, self.knot_tightness * (1.0 - 0.55 * slip_penalty)), 0.0, 1.0)
         )
@@ -1344,11 +1344,13 @@ class SutureThreadModel:
             ]
             if crossing_points:
                 knot_midpoint = np.mean(np.stack(crossing_points), axis=0)
-                self.knot_slippage_m = max(
-                    self.knot_slippage_m,
-                    float(np.linalg.norm(knot_midpoint - self.knot_center_world)),
+                current_slip = float(np.linalg.norm(knot_midpoint - self.knot_center_world))
+                self.knot_slippage_m = (
+                    current_slip
+                    if self.knot_slippage_m <= 0.0
+                    else self.knot_slippage_m * 0.82 + current_slip * 0.18
                 )
-                slip_penalty = float(np.clip(self.knot_slippage_m / 0.008, 0.0, 1.0))
+                slip_penalty = float(np.clip(self.knot_slippage_m / 0.012, 0.0, 1.0))
                 self.knot_security = float(
                     np.clip(self.knot_tightness * (1.0 - 0.55 * slip_penalty), 0.0, 1.0)
                 )

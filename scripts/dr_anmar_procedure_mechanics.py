@@ -705,6 +705,7 @@ class SurgeonsKnotModel:
     primary_position: np.ndarray | None = None
     secondary_position: np.ndarray | None = None
     loop_side: np.ndarray | None = None
+    stable_security_time_s: float = 0.0
 
     def __post_init__(self) -> None:
         self.center = np.asarray(self.center, dtype=np.float32)
@@ -725,6 +726,7 @@ class SurgeonsKnotModel:
         self.primary_position = None
         self.secondary_position = None
         self.loop_side = None
+        self.stable_security_time_s = 0.0
 
     @property
     def phase(self) -> str:
@@ -859,7 +861,9 @@ class SurgeonsKnotModel:
 
         if self.throws and both_closed and separation >= 0.060:
             self.maximum_seat_separation_m = max(self.maximum_seat_separation_m, separation)
-            self.slippage_m = max(self.slippage_m, max(0.0, self.maximum_seat_separation_m - separation))
+            # Knot slippage is displacement of the seated knot field, not a
+            # reduction in hand separation as the surgeon relaxes the pull.
+            self.slippage_m = field_error
             self.seat_symmetry = max(self.seat_symmetry, float(np.clip(1.0 - field_error / 0.025, 0.0, 1.0)))
 
         first_throw_double = bool(self.throws and self.throws[0]["wrap_count_ok"])
@@ -871,12 +875,39 @@ class SurgeonsKnotModel:
             and directions_alternate
         )
         tension = float(getattr(thread, "tension_n", 0.0)) if thread is not None else 0.0
-        secure = bool(
+        strand_continuous = bool(
+            thread is None
+            or (
+                not bool(getattr(thread, "thread_broken", False))
+                and (
+                    len(getattr(thread, "points", ())) < 2
+                    or float(
+                        np.linalg.norm(
+                            np.diff(np.asarray(thread.points, dtype=np.float32), axis=0),
+                            axis=1,
+                        ).max(initial=0.0)
+                    )
+                    <= float(getattr(thread, "segment_length_m", 0.0032)) * 1.85
+                )
+            )
+        )
+        thread_tightness = float(getattr(thread, "knot_tightness", 1.0)) if thread is not None else 1.0
+        security_candidate = bool(
             hoop_passed
             and sequence_valid
-            and self.slippage_m <= 0.008
+            and self.slippage_m <= 0.012
             and self.seat_symmetry >= 0.55
+            and strand_continuous
+            and thread_tightness >= 0.75
             and (not expert_guidance_active or expert_tail_captured)
+        )
+        self.stable_security_time_s = (
+            self.stable_security_time_s + max(0.0, float(dt))
+            if security_candidate
+            else max(0.0, self.stable_security_time_s - max(0.0, float(dt)) * 2.0)
+        )
+        secure = bool(
+            security_candidate and self.stable_security_time_s >= 0.30
         )
         return {
             "active": True,
@@ -898,6 +929,8 @@ class SurgeonsKnotModel:
             "seat_symmetry": round(self.seat_symmetry, 3),
             "tension_n": round(tension, 4),
             "slippage_m": round(self.slippage_m, 5),
+            "strand_continuous": strand_continuous,
+            "stable_security_time_s": round(self.stable_security_time_s, 2),
             "secure": secure,
             "calibration_status": "dry_lab_gesture_proxy_pending_clinician_validation",
         }
