@@ -807,6 +807,7 @@ class SutureThreadModel:
     knot_security: float = 0.0
     over_tension_events: int = 0
     over_tension_active: bool = False
+    tensile_overload_s: float = 0.0
     tissue_tear_events: int = 0
     anchor_pullouts: int = 0
     thread_broken: bool = False
@@ -848,6 +849,7 @@ class SutureThreadModel:
         self.knot_tightness = self.knot_security = 0.0
         self.over_tension_events = 0
         self.over_tension_active = False
+        self.tensile_overload_s = 0.0
         self.tissue_tear_events = self.anchor_pullouts = 0
         self.thread_broken = False
         self.last_anchor_world = None
@@ -1282,6 +1284,10 @@ class SutureThreadModel:
             if self.anchor_damage[index] >= 1.0:
                 self.detach_tissue_anchor(index, "thread_load_anchor_pullout")
         if self.tension_n >= self.tensile_limit_n:
+            self.tensile_overload_s += dt
+        else:
+            self.tensile_overload_s = max(0.0, self.tensile_overload_s - dt * 2.0)
+        if self.tensile_overload_s >= 0.30:
             self.thread_broken = True
             self.tension_n = 0.0
         if len(self.tissue_anchor_indices) >= self.required_anchors_for_knot and not self.knot_formed:
@@ -1331,6 +1337,7 @@ class SutureThreadModel:
             "spacing_variation_m": round(self.spacing_variation_m, 5),
             "anchor_slip_m": round(self.total_anchor_slip_m, 6),
             "over_tension_events": self.over_tension_events,
+            "tensile_overload_s": round(self.tensile_overload_s, 4),
             "tissue_tear_events": self.tissue_tear_events,
             "anchor_pullouts": self.anchor_pullouts,
             "anchor_damage_max": round(max(self.anchor_damage.values(), default=0.0), 4),

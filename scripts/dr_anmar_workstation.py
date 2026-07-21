@@ -4815,8 +4815,11 @@ def main() -> None:
                     position
                     for _arm, position in sorted(current_tool_positions.items())
                 ]
-                suture_model.set_instrument_contacts(contact_centers, radius_m=0.0025)
                 knot_route = procedure_mechanics.surgeons_knot.constraint_route()
+                suture_model.set_instrument_contacts(
+                    contact_centers if len(knot_route["points"]) else [],
+                    radius_m=0.00115,
+                )
                 suture_model.set_knot_route(
                     knot_route["points"],
                     knot_route["crossings"],
