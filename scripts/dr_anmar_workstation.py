@@ -2847,7 +2847,8 @@ def main() -> None:
         if guide_kind in SUTURE_GUIDE_KINDS:
             suture_path = "/World/envs/env_0/DrAnmarSutureThread"
             suture_curve = UsdGeom.BasisCurves.Define(stage, suture_path)
-            suture_curve.CreateTypeAttr(UsdGeom.Tokens.linear)
+            suture_curve.CreateTypeAttr(UsdGeom.Tokens.cubic)
+            suture_curve.CreateBasisAttr(UsdGeom.Tokens.catmullRom)
             suture_curve.CreateWrapAttr(UsdGeom.Tokens.nonperiodic)
             suture_curve.CreateCurveVertexCountsAttr(Vt.IntArray([suture_model.node_count]))
             suture_curve.CreatePointsAttr(
@@ -3378,11 +3379,6 @@ def main() -> None:
             )
         ).astype(np.float32)
 
-    def rotate_wxyz(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
-        vector_part = quaternion[1:4]
-        cross = 2.0 * np.cross(vector_part, vector)
-        return vector + quaternion[0] * cross + np.cross(vector_part, cross)
-
     def constrain_anatomy_translation(
         tool_position: np.ndarray | None,
         translation: np.ndarray,
@@ -3404,6 +3400,11 @@ def main() -> None:
     refresh_anatomy_guard_volumes()
     needle_interaction_enabled = "Needle" in args_cli.task
     needle_tip_offsets_local = derive_needle_tip_offsets() if needle_interaction_enabled else np.empty((0, 3), dtype=np.float32)
+    needle_object_cfg = getattr(env_cfg.scene, "object", None)
+    configured_needle_scale = np.asarray(
+        getattr(getattr(needle_object_cfg, "spawn", None), "scale", (1.0, 1.0, 1.0)),
+        dtype=np.float32,
+    )
     suture_eye_endpoint_index: int | None = None
     ghost_markers = VisualizationMarkers(
         VisualizationMarkersCfg(
@@ -3540,7 +3541,7 @@ def main() -> None:
         return np.stack(
             [
                 np.asarray(tuple(object_to_world.Transform(Gf.Vec3d(*offset.astype(float).tolist()))), dtype=np.float32)
-                for offset in needle_tip_offsets_local
+                for offset in needle_tip_offsets_local * configured_needle_scale[None, :]
             ]
         )
 
