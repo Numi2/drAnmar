@@ -257,6 +257,7 @@ class HubState:
     healthcare_manifest: str | None = None
     healthcare_resume_task: str | None = None
     healthcare_resume_context: dict[str, Any] | None = None
+    healthcare_skip_resume_job_id: str | None = None
     matrix_status: str = "idle"
     matrix_id: str | None = None
     matrix_demo: str | None = None
@@ -962,13 +963,18 @@ def monitor_healthcare_workflow(
     with state.lock:
         requested_stop = state.healthcare_job_id == job_id and state.healthcare_status == "stopping"
         final_status = "stopped" if requested_stop else ("complete" if code == 0 else "failed")
+        skip_resume = state.healthcare_skip_resume_job_id == job_id
+        if skip_resume:
+            state.healthcare_skip_resume_job_id = None
+        resume_target = state.healthcare_resume_context if state.healthcare_job_id == job_id else resume_context
         if state.healthcare_job_id == job_id:
             state.healthcare_exit_code = code
             state.healthcare_status = final_status
     manifest = read_json(manifest_path, {})
     manifest.update({"status": final_status, "exit_code": code, "finished_at": utc_now()})
     write_json(manifest_path, manifest)
-    resume_worker(resume_context)
+    if not skip_resume:
+        resume_worker(resume_target)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -1383,6 +1389,96 @@ def procedure_rooms() -> dict[str, Any]:
     return payload
 
 
+def launch_sonogym_procedure(procedure: dict[str, Any], force_restart: bool = False) -> dict[str, Any]:
+    """Launch or seamlessly replace one native SonoGym operating room."""
+    requested_mode = str(procedure["provider_mode"])
+    current_worker = worker_status()
+    with state.lock:
+        active = state.healthcare_status in {"preparing", "running", "stopping"}
+        active_workflow = state.healthcare_workflow
+        active_mode = state.healthcare_mode
+        active_process = state.healthcare_process
+        active_job_id = state.healthcare_job_id
+        preserved_resume = state.healthcare_resume_context
+    if (
+        active
+        and active_workflow == "sonogym_orthopedics"
+        and active_mode == requested_mode
+        and not force_restart
+        and current_worker
+        and current_worker.get("worker_kind") == "sonogym_native"
+        and current_worker.get("frame_id", 0) > 0
+    ):
+        return {"ok": True, **healthcare_job_payload(), "already_ready": True}
+    replacing = active and active_workflow == "sonogym_orthopedics"
+    if replacing:
+        if active_process is None or active_process.poll() is not None:
+            with state.lock:
+                state.healthcare_status = "failed"
+            raise HTTPException(503, "The previous SonoGym room exited unexpectedly; choose the room again")
+        with state.lock:
+            state.healthcare_skip_resume_job_id = active_job_id
+            state.healthcare_status = "stopping"
+        os.killpg(active_process.pid, signal.SIGTERM)
+        try:
+            active_process.wait(timeout=45)
+        except subprocess.TimeoutExpired as exc:
+            raise HTTPException(504, "The previous SonoGym room did not finish closing") from exc
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            with state.lock:
+                finished = state.healthcare_status not in {"preparing", "running", "stopping"}
+            if finished:
+                break
+            time.sleep(0.05)
+        else:
+            raise HTTPException(504, "The previous SonoGym room did not release the native runtime")
+    result = start_healthcare_job(
+        HealthcareWorkflowRequest(
+            workflow="sonogym_orthopedics",
+            mode=requested_mode,
+            resume_workstation=not replacing,
+        )
+    )
+    if replacing and preserved_resume:
+        with state.lock:
+            state.healthcare_resume_context = preserved_resume
+            state.healthcare_resume_task = preserved_resume.get("task")
+            manifest_value = state.healthcare_manifest
+        if manifest_value:
+            manifest_path = Path(manifest_value)
+            manifest = read_json(manifest_path, {})
+            manifest.setdefault("configuration", {})["resume_workstation"] = True
+            manifest.setdefault("configuration", {})["resume_context"] = {
+                key: str(value) if isinstance(value, Path) else value
+                for key, value in preserved_resume.items()
+            }
+            write_json(manifest_path, manifest)
+        result["resume_task"] = preserved_resume.get("task")
+    return result
+
+
+@app.post("/api/healthcare-job/restart")
+def restart_healthcare_job() -> dict[str, Any]:
+    with state.lock:
+        workflow = state.healthcare_workflow
+        mode = state.healthcare_mode
+        running = state.healthcare_status in {"preparing", "running", "stopping"}
+    if not running or workflow != "sonogym_orthopedics" or not mode:
+        raise HTTPException(409, "A native SonoGym room is not running")
+    procedure = next(
+        (
+            item
+            for item in PROCEDURE_ROOMS
+            if item.get("external_provider") == "sonogym_orthopedics" and item.get("provider_mode") == mode
+        ),
+        None,
+    )
+    if procedure is None:
+        raise HTTPException(404, "The active SonoGym procedure is not in the room catalog")
+    return launch_sonogym_procedure(procedure, force_restart=True)
+
+
 @app.post("/api/procedure-rooms/launch")
 def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
     procedure = PROCEDURES_BY_ID.get(request.procedure_id)
@@ -1403,13 +1499,7 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
             "native_provider": "NVIDIA Isaac for Healthcare v0.6.0",
         }
     if procedure.get("external_provider") == "sonogym_orthopedics":
-        result = start_healthcare_job(
-            HealthcareWorkflowRequest(
-                workflow="sonogym_orthopedics",
-                mode=str(procedure["provider_mode"]),
-                resume_workstation=True,
-            )
-        )
+        result = launch_sonogym_procedure(procedure)
         return {
             **result,
             "procedure_id": request.procedure_id,

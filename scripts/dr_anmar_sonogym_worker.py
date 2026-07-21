@@ -112,13 +112,14 @@ class BridgeState:
         self.lock = threading.Lock()
         self.action = np.zeros(action_dimensions, dtype=np.float32)
         self.action_updated = 0.0
-        self.reset_requested = False
         self.stop_requested = False
         self.frame_jpeg: bytes | None = None
         self.frame_id = 0
         self.step = 0
         self.fps = 0.0
         self.reward: float | None = None
+        self.applied_action = np.zeros(action_dimensions, dtype=np.float32)
+        self.native_feedback: dict[str, Any] = {}
         self.last_error: str | None = None
         self.started_at = time.time()
 
@@ -143,6 +144,9 @@ def status_payload() -> dict[str, Any]:
             "frame_id": frame_id,
             "fps": round(state.fps, 1),
             "reward": state.reward,
+            "applied_action": state.applied_action.tolist(),
+            "command_active": bool(np.any(np.abs(state.applied_action) > 1.0e-5)),
+            "native_feedback": dict(state.native_feedback),
             "last_error": state.last_error,
             "recording": False,
             "recorded_frames": 0,
@@ -185,28 +189,35 @@ def page_html() -> bytes:
     return f"""<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{args.title}</title><style>
-:root{{--bg:#020608;--panel:#071923;--line:#244651;--cyan:#35d0e6;--text:#edf7f8;--muted:#8ca7af}}
+:root{{--bg:#020608;--panel:#071923;--line:#244651;--cyan:#35d0e6;--green:#57e5aa;--text:#edf7f8;--muted:#8ca7af}}
 *{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,sans-serif;overflow:hidden}}
-.shell{{height:100vh;display:grid;grid-template-rows:58px minmax(0,1fr) 86px}}header{{display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:#06141c;border-bottom:1px solid var(--line)}}
-header b{{font-size:17px}}header span,.hint{{color:var(--muted)}}.live{{color:#57e5aa}}main{{display:grid;place-items:center;min-height:0;padding:14px;background:radial-gradient(circle at center,#0a2631 0,#020608 68%)}}
-.scan{{height:100%;max-height:760px;aspect-ratio:4/3;max-width:100%;border:1px solid var(--line);background:#000;position:relative;display:grid;place-items:center}}
-.scan img{{width:100%;height:100%;object-fit:contain;image-rendering:auto}}.badge{{position:absolute;left:14px;top:14px;padding:8px 10px;background:#06141cdd;border:1px solid var(--line);font:12px ui-monospace,monospace}}
-footer{{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:12px 22px;background:var(--panel);border-top:1px solid var(--line)}}
-.keys{{display:flex;gap:7px;flex-wrap:wrap}}button{{min-width:52px;height:42px;border:1px solid var(--line);background:#0a202a;color:var(--text);font-weight:700;cursor:pointer}}button.active{{background:var(--cyan);color:#001117}}button.reset{{min-width:100px}}@media(max-width:800px){{footer{{grid-template-columns:1fr}}}}
+.shell{{height:100vh;min-height:0;display:grid;grid-template-rows:58px minmax(0,1fr) auto}}header{{display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:#06141c;border-bottom:1px solid var(--line)}}
+header b{{font-size:17px}}header span,.hint{{color:var(--muted)}}.live{{color:var(--green)}}main{{display:grid;place-items:center;min-height:0;overflow:hidden;padding:10px;background:radial-gradient(circle at center,#0a2631 0,#020608 68%)}}
+.scan{{width:min(100%,calc((100vh - 184px)*4/3));aspect-ratio:4/3;max-height:100%;border:1px solid var(--line);background:#000;position:relative;display:grid;place-items:center}}
+.scan img{{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;image-rendering:auto}}.badge{{position:absolute;left:12px;top:12px;padding:7px 9px;background:#06141ce8;border:1px solid var(--line);font:12px ui-monospace,monospace}}
+footer{{min-height:116px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:10px 20px;background:var(--panel);border-top:1px solid var(--line)}}
+.control-state{{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-weight:750;color:var(--green)}}.control-state i{{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}}.control-state.moving{{color:var(--cyan)}}
+.keys{{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px}}button{{min-width:54px;height:44px;border:1px solid #376371;background:#0a202a;color:var(--text);font-weight:800;cursor:pointer;border-radius:3px}}button:hover{{border-color:var(--cyan)}}button.active{{background:var(--cyan);border-color:var(--cyan);color:#001117;box-shadow:0 0 18px #35d0e655}}button.reset{{min-width:110px}}.native-progress{{font:12px ui-monospace,monospace;color:var(--muted);margin-top:4px}}
+@media(max-width:800px){{header{{padding:0 12px}}.shell{{grid-template-rows:54px minmax(0,1fr) auto}}.scan{{width:min(100%,calc((100vh - 230px)*4/3))}}footer{{grid-template-columns:1fr;padding:9px 12px}}button.reset{{position:absolute;right:12px;bottom:10px}}.hint{{padding-right:120px}}}}
 </style></head><body tabindex="0"><div class="shell"><header><div><b>{args.title}</b><div class="hint">{meta['anatomy']}</div></div><div class="live">● SonoGym native</div></header>
 <main><div class="scan"><img id="frame" alt="Live SonoGym ultrasound"><div class="badge" id="telemetry">Starting native environment…</div></div></main>
-<footer><div><div class="keys" id="keys"></div><div class="hint">{controls}</div></div><button class="reset" onclick="resetRoom()">Reset</button></footer></div>
+<footer><div><div class="control-state" id="controlState"><i></i><span>Keyboard ready — hold a movement key</span></div><div class="keys" id="keys"></div><div class="hint">{controls}</div><div class="native-progress" id="nativeProgress">Waiting for native simulator state…</div></div><button class="reset" onclick="resetRoom()">Reset</button></footer></div>
 <script>
-const operatorId=new URLSearchParams(location.search).get('operator')||`browser-${{Date.now().toString(36)}}-${{Math.random().toString(36).slice(2)}}`,dims={action_dimensions},held=new Set();
+const operatorId=new URLSearchParams(location.search).get('operator')||`browser-${{Date.now().toString(36)}}-${{Math.random().toString(36).slice(2)}}`,dims={action_dimensions},held=new Set();let lastCommand='',lastCommandAt=0,actionError='';
 const maps=dims===3?{{w:[0,1],s:[0,-1],a:[1,-1],d:[1,1],q:[2,-1],e:[2,1]}}:dims===4?{{w:[0,1],s:[0,-1],a:[1,-1],d:[1,1],q:[2,-1],e:[2,1],r:[3,1],f:[3,-1]}}:{{w:[0,1],s:[0,-1],a:[1,-1],d:[1,1],r:[2,1],f:[2,-1],q:[3,-1],e:[3,1],arrowup:[4,1],arrowdown:[4,-1],arrowleft:[5,-1],arrowright:[5,1]}};
-const labels={{arrowup:'↑',arrowdown:'↓',arrowleft:'←',arrowright:'→'}};document.getElementById('keys').innerHTML=Object.keys(maps).map(k=>`<button data-key="${{k}}">${{labels[k]||k.toUpperCase()}}</button>`).join('');
-function send(){{const a=Array(dims).fill(0);for(const k of held){{const m=maps[k];if(m)a[m[0]]+=m[1]}}fetch('/api/action',{{method:'POST',headers:{{'content-type':'application/json','x-dr-anmar-operator':operatorId}},body:JSON.stringify({{action:a}})}}).catch(()=>{{}});document.querySelectorAll('[data-key]').forEach(b=>b.classList.toggle('active',held.has(b.dataset.key)))}}
-addEventListener('keydown',e=>{{const k=e.key.toLowerCase();if(maps[k]){{e.preventDefault();held.add(k);send()}}}});addEventListener('keyup',e=>{{const k=e.key.toLowerCase();if(maps[k]){{e.preventDefault();held.delete(k);send()}}}});addEventListener('blur',()=>{{held.clear();send()}});
-document.querySelectorAll('[data-key]').forEach(b=>{{b.onpointerdown=()=>{{held.add(b.dataset.key);send()}};b.onpointerup=b.onpointerleave=()=>{{held.delete(b.dataset.key);send()}}}});
-setInterval(()=>{{if(held.size)send()}},75);
-async function resetRoom(){{await fetch('/api/reset',{{method:'POST',headers:{{'x-dr-anmar-operator':operatorId}}}})}}
+const labels={{arrowup:'↑',arrowdown:'↓',arrowleft:'←',arrowright:'→'}},commandNames=dims===3?{{w:'Scanning forward',s:'Scanning back',a:'Scanning left',d:'Scanning right',q:'Rotating left',e:'Rotating right'}}:dims===4?{{w:'Sweeping forward',s:'Sweeping back',a:'Sweeping left',d:'Sweeping right',q:'Tilting left',e:'Tilting right',r:'Rotating clockwise',f:'Rotating counter-clockwise'}}:{{w:'Advancing in depth',s:'Retracting in depth',a:'Moving left',d:'Moving right',r:'Moving up',f:'Moving down',q:'Rolling left',e:'Rolling right',arrowup:'Pitching up',arrowdown:'Pitching down',arrowleft:'Yawing left',arrowright:'Yawing right'}};
+document.getElementById('keys').innerHTML=Object.keys(maps).map(k=>`<button data-key="${{k}}" aria-label="${{commandNames[k]}}">${{labels[k]||k.toUpperCase()}}</button>`).join('');
+function renderControlState(){{const names=[...held].map(k=>commandNames[k]).filter(Boolean),el=document.getElementById('controlState'),recent=lastCommand&&Date.now()-lastCommandAt<1800;el.classList.toggle('moving',names.length>0);el.querySelector('span').textContent=actionError||names.length&&names.join(' + ')||recent&&`Last command — ${{lastCommand}}`||'Keyboard ready — hold a movement key';document.querySelectorAll('[data-key]').forEach(b=>b.classList.toggle('active',held.has(b.dataset.key)))}}
+function send(){{const a=Array(dims).fill(0);for(const k of held){{const m=maps[k];if(m)a[m[0]]+=m[1]}}renderControlState();fetch('/api/action',{{method:'POST',headers:{{'content-type':'application/json','x-dr-anmar-operator':operatorId}},body:JSON.stringify({{action:a}})}}).then(async r=>{{if(!r.ok){{const body=await r.json().catch(()=>({{}}));throw Error(body.detail||body.error||'Control command was rejected')}}actionError=''}}).catch(e=>{{actionError=e.message;renderControlState()}})}}
+function setHeld(key,down){{const k=String(key||'').toLowerCase();if(!maps[k])return;if(down){{held.add(k);lastCommand=commandNames[k];lastCommandAt=Date.now()}}else held.delete(k);send()}}
+function releaseAll(){{if(!held.size)return;held.clear();send()}}
+addEventListener('keydown',e=>{{const k=e.key.toLowerCase();if(maps[k]){{e.preventDefault();setHeld(k,true)}}}});addEventListener('keyup',e=>{{const k=e.key.toLowerCase();if(maps[k]){{e.preventDefault();setHeld(k,false)}}}});addEventListener('blur',releaseAll);
+addEventListener('message',e=>{{let sameHost=false;try{{sameHost=new URL(e.origin).hostname===location.hostname}}catch(_error){{}}if(e.source!==parent||!sameHost||e.data?.type!=='dr-anmar-sonogym-key')return;if(e.data.releaseAll)releaseAll();else setHeld(e.data.key,!!e.data.down)}});
+document.querySelectorAll('[data-key]').forEach(b=>{{b.onpointerdown=e=>{{e.preventDefault();b.setPointerCapture?.(e.pointerId);setHeld(b.dataset.key,true)}};b.onpointerup=b.onpointercancel=b.onpointerleave=()=>setHeld(b.dataset.key,false)}});
+setInterval(()=>{{if(held.size)send();else renderControlState()}},75);
+async function resetRoom(){{releaseAll();let parentOrigin='';try{{parentOrigin=new URL(document.referrer).origin}}catch(_error){{}}if(parent!==window&&parentOrigin){{parent.postMessage({{type:'dr-anmar-sonogym-reset'}},parentOrigin);document.getElementById('nativeProgress').textContent='Restarting the native SonoGym room…';return}}const response=await fetch('/api/reset',{{method:'POST',headers:{{'x-dr-anmar-operator':operatorId}}}});if(!response.ok)document.getElementById('nativeProgress').textContent='Open this lab through Dr.Anmar to restart it safely.'}}
 const img=document.getElementById('frame');function nextFrame(){{img.src='/frame.jpg?t='+Date.now()}}img.onload=()=>setTimeout(nextFrame,70);img.onerror=()=>setTimeout(nextFrame,500);nextFrame();
-async function status(){{try{{const s=await fetch('/api/status').then(r=>r.json());document.getElementById('telemetry').textContent=`${{s.fps}} FPS · step ${{s.frame_id}}${{s.reward===null?'':' · reward '+s.reward.toFixed(3)}}`}}catch(e){{}}setTimeout(status,500)}}status();document.body.focus();
+async function status(){{try{{const s=await fetch('/api/status').then(r=>r.json()),feedback=s.native_feedback||{{}};document.getElementById('telemetry').textContent=`${{s.fps}} FPS · native step ${{s.frame_id}}`;let progress='Native action and ultrasound state are live';if(feedback.coverage_ratio!==undefined)progress=`Reconstruction coverage ${{(feedback.coverage_ratio*100).toFixed(1)}}% · path ${{(feedback.path_length||0).toFixed(3)}}`;else if(feedback.tip_to_trajectory_m!==undefined)progress=`Trajectory gap ${{(feedback.tip_to_trajectory_m*1000).toFixed(1)}} mm · insertion ${{(feedback.insertion_m*1000).toFixed(1)}} mm · ${{feedback.safe?'safe envelope':'outside safe envelope'}}`;else if(feedback.distance_to_goal!==undefined)progress=`Native target error ${{feedback.distance_to_goal.toFixed(3)}} · ${{feedback.trend||'tracking'}}`;document.getElementById('nativeProgress').textContent=progress}}catch(e){{}}setTimeout(status,300)}}status();document.body.focus();
 </script></body></html>""".encode("utf-8")
 
 
@@ -291,9 +302,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(_json_bytes({"error": "Invalid action vector"}), "application/json", 400)
             return
         if self.path == "/api/reset":
-            with state.lock:
-                state.reset_requested = True
-            self._send(_json_bytes({"ok": True}), "application/json")
+            self._send(
+                _json_bytes({"detail": "Restart this native room through the Dr.Anmar hub"}),
+                "application/json",
+                HTTPStatus.CONFLICT,
+            )
             return
         self._send(b"not found", "text/plain", HTTPStatus.NOT_FOUND)
 
@@ -360,12 +373,49 @@ def _configure_upstream_task() -> None:
 
 
 def request_stop(_signum: int, _frame: Any) -> None:
+    print(f"Dr.Anmar SonoGym bridge received signal {_signum}", flush=True)
     with state.lock:
         state.stop_requested = True
 
 
 signal.signal(signal.SIGTERM, request_stop)
 signal.signal(signal.SIGINT, request_stop)
+
+
+def _native_task_feedback(env: Any) -> dict[str, Any]:
+    """Expose native task state for human feedback without changing task behavior."""
+    unwrapped = env.unwrapped
+    result: dict[str, Any] = {}
+    distance = getattr(unwrapped, "distance_to_goal", None)
+    if isinstance(distance, torch.Tensor) and distance.numel():
+        result["distance_to_goal"] = float(distance.detach().reshape(-1)[0].item())
+    current = getattr(unwrapped, "cur_cmd_pose", None)
+    goal = getattr(unwrapped, "goal_cmd_pose", None)
+    if isinstance(current, torch.Tensor) and current.numel():
+        result["current_pose"] = current.detach().reshape(current.shape[0], -1)[0].float().cpu().tolist()
+    if isinstance(goal, torch.Tensor) and goal.numel():
+        result["goal_pose"] = goal.detach().reshape(goal.shape[0], -1)[0].float().cpu().tolist()
+    scalar_fields = {
+        "cov_ratio": "coverage_ratio",
+        "total_length": "path_length",
+        "tip_to_traj_dist": "tip_to_trajectory_m",
+        "tip_pos_along_traj": "insertion_m",
+        "angle": "trajectory_angle_deg",
+    }
+    for source_name, result_name in scalar_fields.items():
+        value = getattr(unwrapped, source_name, None)
+        if isinstance(value, torch.Tensor) and value.numel():
+            result[result_name] = float(value.detach().reshape(-1)[0].item())
+    if hasattr(unwrapped, "surface_reconstructor"):
+        incremental = getattr(unwrapped.surface_reconstructor, "incremental_cov", None)
+        if isinstance(incremental, torch.Tensor) and incremental.numel():
+            result["incremental_coverage"] = float(incremental.detach().reshape(-1)[0].item())
+    cost = getattr(unwrapped, "extras", {}).get("cost") if isinstance(getattr(unwrapped, "extras", None), dict) else None
+    if isinstance(cost, torch.Tensor) and cost.numel():
+        result["safe"] = bool(cost.detach().reshape(-1)[0].item() < 0.5)
+    elif "tip_to_trajectory_m" in result:
+        result["safe"] = True
+    return result
 
 
 def main() -> None:
@@ -403,20 +453,24 @@ def main() -> None:
             with state.lock:
                 if state.stop_requested:
                     break
-                do_reset = state.reset_requested
-                state.reset_requested = False
                 action = state.action.copy()
                 stale = time.monotonic() - state.action_updated > 0.25
             if stale:
                 action.fill(0.0)
-            if do_reset:
-                observation, _info = env.reset()
             actions = torch.as_tensor(action, device=env.unwrapped.device).reshape(1, -1)
             observation, reward, _terminated, _truncated, _info = env.step(actions)
+            native_feedback = _native_task_feedback(env)
             now = time.monotonic()
             with state.lock:
                 state.step += 1
                 state.reward = float(torch.as_tensor(reward).float().mean().item())
+                previous_distance = state.native_feedback.get("distance_to_goal")
+                current_distance = native_feedback.get("distance_to_goal")
+                if current_distance is not None and previous_distance is not None:
+                    delta = previous_distance - current_distance
+                    native_feedback["trend"] = "closer" if delta > 1.0e-4 else "farther" if delta < -1.0e-4 else "steady"
+                state.native_feedback = native_feedback
+                state.applied_action = action.copy()
             if now - last_frame_time >= 1.0 / 15.0:
                 frame = _observation_image(env, observation)
                 if frame is not None:
@@ -429,6 +483,12 @@ def main() -> None:
                     state.fps = (state.step - last_fps_step) / (now - last_fps_time)
                 last_fps_step = state.step
                 last_fps_time = now
+        print(
+            f"SonoGym loop exited: app_running={simulation_app.is_running()} stop_requested={state.stop_requested}",
+            flush=True,
+        )
+        if not state.stop_requested:
+            raise RuntimeError("Isaac Sim stopped before the native SonoGym room was closed by Dr.Anmar")
     except Exception as exc:
         with state.lock:
             state.last_error = f"{type(exc).__name__}: {exc}"
