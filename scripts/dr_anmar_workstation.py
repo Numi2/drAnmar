@@ -668,7 +668,7 @@ class SharedState:
                 "needle_geometry_ready": needle_geometry_ready,
                 "thread_required": thread_required,
                 "thread_geometry_ready": thread_geometry_ready,
-                "target_anchor_markers": int(self.procedure.get("target_anchors", 0)) if thread_required else 0,
+                "target_anchor_markers": max(2, int(self.procedure.get("target_anchors", 2))) if thread_required else 0,
             }
             return {
                 "task": self.task,
