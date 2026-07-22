@@ -42,26 +42,39 @@ normal precision close to the target. Isaac Lab remains authoritative for whethe
 
 ## Xbox-style controller
 
-Connect a standard-mapping controller while the operating room has focus. With one controller, the D-pad selects the
-robot. With two controllers, controller 1 owns Instrument 1 and controller 2 owns Instrument 2, enabling simultaneous
-bimanual control.
+Connect one standard-mapping controller to the computer running the browser, then press any controller button while
+the operating room has focus. The browser streams the controller commands to Isaac Lab on Gilgamesh; the controller
+does not need to be paired with the remote server itself.
+
+The default layout is permanently bimanual. The left side of the controller owns Instrument 1 and the right side owns
+Instrument 2, so neither robot needs to be selected and both can move simultaneously.
 
 | Control | Action |
 | --- | --- |
-| Left stick | Toward / away and left / right |
-| Right stick | Wrist pitch and yaw |
-| `LB` / `RB` | Wrist roll left / right |
-| `LT` / `RT` | Down / up |
-| `A` | Toggle the assigned gripper |
+| Left / right stick | Move the left / right instrument in the camera plane |
+| Hold `X` + both sticks | Each stick controls its instrument's depth and wrist roll |
+| Hold `Y` + both sticks | Each stick controls its instrument's wrist pitch and yaw |
+| `LB` / `LT` | Close / open the left gripper |
+| `RB` / `RT` | Close / open the right gripper |
+| Hold `L3` / `R3` | Temporary precision speed for the left / right instrument |
+| `A` | Smart context action for the instrument moved most recently |
 | `B` | Emergency stop both robots |
-| `X` | Smart context action |
-| `Y` | Next camera angle |
-| D-pad left / right | Select Instrument 1 / 2 when using one controller |
-| D-pad down / up | Fine / fast speed |
-| View / Menu | Next sensor / toggle adjustable camera |
+| D-pad up / down | Increase / decrease both instruments' base speed |
+| D-pad left / right | Next camera sensor / next camera angle |
+| Hold `View` | Camera layer: left stick pans, right stick orbits, triggers zoom |
+| Camera layer `LB` / `RB` | Next sensor / next angle |
+| Camera layer `Y` or `R3` | Reset the adjustable camera |
 
-The UI polls the standard browser Gamepad API at 20 Hz, applies an analog deadzone, normalizes translation and
-rotation separately, and coalesces simulator requests so a slow rendered frame cannot create an unbounded queue.
+Hold `Menu` for the session layer. `Menu+A` starts or stops recording, `Menu+X` starts or pauses the live expert,
+`Menu+Y` toggles manual/guided control, `Menu+LB/RB` changes sensor/angle, `Menu+L3` toggles the reference path,
+`Menu+R3` takes control, and `Menu+D-pad up/down` replays or resets the scene. `B` remains an emergency stop in every
+layer.
+
+The UI samples the standard browser Gamepad API on animation frames, uses a radial deadzone and progressive response
+curve for precise center motion and full edge speed, and sends coalesced simulator commands at about 30 Hz. The two
+translation/rotation vectors are normalized independently, so diagonal movement cannot exceed the configured speed.
+Visible stick/mode feedback is always present. Supported controllers also provide short haptic cues for connection,
+mode changes, gripper commands, native grasp contact, and emergency stop; haptics never replace visual feedback.
 
 ## Voice and typed commands
 
