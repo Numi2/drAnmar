@@ -297,9 +297,9 @@ APP_HTML = r"""<!doctype html>
   </style>
 </head>
 <body>
-<header><div class="brand">DR.<span>ANMAR</span></div><section class="view-toolbar header-camera-toolbar" aria-label="Camera controls"><div class="view-toolbar-row"><span class="view-toolbar-label">Camera</span><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="4" onclick="setCamera('endoscope_left',this)">Left <kbd>4</kbd></button><button data-camera="endoscope_right" data-shortcut="5" onclick="setCamera('endoscope_right',this)">Right <kbd>5</kbd></button><button data-camera="wrist_1" data-shortcut="6" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>6</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="7" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>7</kbd></button></div></div><div class="view-toolbar-row"><span class="view-toolbar-label">Angle</span><div class="view-presets"><button class="active" data-view-mode="operative" data-shortcut="F1" onclick="setCameraView('operative',this)">Operative <kbd>F1</kbd></button><button data-view-mode="close" data-shortcut="F2" onclick="setCameraView('close',this)">Close <kbd>F2</kbd></button><button data-view-mode="overview" data-shortcut="F3" onclick="setCameraView('overview',this)">Wide <kbd>F3</kbd></button><button data-view-mode="overhead" data-shortcut="F4" onclick="setCameraView('overhead',this)">Overhead <kbd>F4</kbd></button><button data-view-mode="left_oblique" data-shortcut="F5" onclick="setCameraView('left_oblique',this)">Left angle <kbd>F5</kbd></button><button data-view-mode="right_oblique" data-shortcut="F6" onclick="setCameraView('right_oblique',this)">Right angle <kbd>F6</kbd></button><button data-view-mode="opposite" data-shortcut="F7" onclick="setCameraView('opposite',this)">Opposite <kbd>F7</kbd></button><button id="freeCameraButton" data-shortcut="F8" onclick="toggleFreeCamera()">Free <kbd>F8</kbd></button><button id="resetCameraButton" data-shortcut="Home" onclick="resetFreeCamera()">Reset <kbd>Home</kbd></button></div></div></section><button class="header-keyboard" data-shortcut="?" onclick="toggleKeyboardHelp()"><kbd>?</kbd> Keyboard map</button><div class="live"><i id="dot" class="dot"></i><span id="connection">Connecting…</span></div></header>
+<header><div class="brand">DR.<span>ANMAR</span></div><section class="view-toolbar header-camera-toolbar" aria-label="Camera controls"><div class="view-toolbar-row"><span class="view-toolbar-label">Camera</span><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="4" onclick="setCamera('endoscope_left',this)">Left <kbd>4</kbd></button><button data-camera="endoscope_right" data-shortcut="5" onclick="setCamera('endoscope_right',this)">Right <kbd>5</kbd></button><button data-camera="wrist_1" data-shortcut="6" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>6</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="7" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>7</kbd></button></div></div><div class="view-toolbar-row"><span class="view-toolbar-label">Angle</span><div class="view-presets"><button data-view-mode="operative" data-shortcut="F1" onclick="setCameraView('operative',this)">Operative <kbd>F1</kbd></button><button data-view-mode="close" data-shortcut="F2" onclick="setCameraView('close',this)">Close <kbd>F2</kbd></button><button data-view-mode="overview" data-shortcut="F3" onclick="setCameraView('overview',this)">Wide <kbd>F3</kbd></button><button data-view-mode="overhead" data-shortcut="F4" onclick="setCameraView('overhead',this)">Overhead <kbd>F4</kbd></button><button data-view-mode="left_oblique" data-shortcut="F5" onclick="setCameraView('left_oblique',this)">Left angle <kbd>F5</kbd></button><button data-view-mode="right_oblique" data-shortcut="F6" onclick="setCameraView('right_oblique',this)">Right angle <kbd>F6</kbd></button><button data-view-mode="opposite" data-shortcut="F7" onclick="setCameraView('opposite',this)">Opposite <kbd>F7</kbd></button><button id="freeCameraButton" class="active" data-shortcut="F8" onclick="toggleFreeCamera()">Free <kbd>F8</kbd></button><button id="resetCameraButton" class="state-active" data-shortcut="Home" onclick="resetFreeCamera()">Reset <kbd>Home</kbd></button></div></div></section><button class="header-keyboard" data-shortcut="?" onclick="toggleKeyboardHelp()"><kbd>?</kbd> Keyboard map</button><div class="live"><i id="dot" class="dot"></i><span id="connection">Connecting…</span></div></header>
 <main>
-  <section id="cameraView" class="view"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div><div id="freeCameraHud" class="free-camera-hud hidden">Drag orbit · Shift-drag pan · wheel zoom</div></section>
+  <section id="cameraView" class="view free-camera"><img id="cameraImage" src="/video/endoscope_left" alt="Live simulated medical sensor view"><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div><div id="freeCameraHud" class="free-camera-hud">Drag orbit · Shift-drag pan · wheel zoom</div></section>
   <aside>
     <section class="control-dock">
       <div class="keyboard-quick"><div class="keyboard-quick-head"><b>Two-hand shortcuts</b><span>Both hands move together · release = stop</span></div><div id="keyActionDisplay" class="keyboard-input-display" aria-live="polite"><kbd>READY</kbd><span>Keyboard control ready</span></div><button id="smartActionButton" class="smart-action" data-shortcut="F12" onclick="smartAction()"><strong><kbd>F12</kbd> Smart assist</strong><small id="smartActionLabel">Nudge toward the target</small></button><div id="proximity" class="proximity"><b>Next</b><span>Acquiring target…</span></div><div class="combo-grid">
@@ -340,7 +340,7 @@ const rotationKeyMaps=[{KeyW:[4,-1,'Pitch up'],KeyS:[4,1,'Pitch down'],KeyA:[5,-
 const dualMovementCodes=new Set([...Object.keys(handKeyMaps[0]),...Object.keys(handKeyMaps[1])]);
 const comboMap={KeyZ:{label:'Orbit left',values:[0,.72,0,0,0,-.72]},KeyX:{label:'Orbit right',values:[0,-.72,0,0,0,.72]},KeyV:{label:'Drive needle',values:[-.68,0,0,.68,0,0]},KeyB:{label:'Reverse needle',values:[.68,0,0,-.68,0,0]},KeyN:{label:'Lift + retract',values:[.68,0,.68,0,0,0]},KeyF:{label:'Lower + approach',values:[-.68,0,-.68,0,0,0]}};
 function comboValues(code){return comboMap[code]?.values||Array(6).fill(0)}
-let activeArm=0,driveSpeed=1,keyboardSpeeds=[1,1],driveInFlight=false,queuedDrive=null,driveWasActive=false,bimanualInFlight=false,queuedBimanual=null,bimanualWasActive=false,inputSource='keyboard_pointer',lastGazeSend=0,currentCamera='endoscope_left',currentViewMode='operative',lastGamepadGrip=false,lastGamepadCamera=false,latestStatus=null,workerInstanceId=null,macroPulseTimer=null,keyFlashTimer=null,toastTimer=null,cameraAdjustMode=false,cameraDrag=null,cameraAdjustPending={},cameraAdjustTimer=null,cameraAdjustInFlight=false,refreshInFlight=false,heartbeatInFlight=false,pageDisposed=false;
+let activeArm=0,driveSpeed=1,keyboardSpeeds=[1,1],driveInFlight=false,queuedDrive=null,driveWasActive=false,bimanualInFlight=false,queuedBimanual=null,bimanualWasActive=false,inputSource='keyboard_pointer',lastGazeSend=0,currentCamera='endoscope_left',currentViewMode='free',lastGamepadGrip=false,lastGamepadCamera=false,latestStatus=null,workerInstanceId=null,macroPulseTimer=null,keyFlashTimer=null,toastTimer=null,cameraAdjustMode=true,cameraDrag=null,cameraAdjustPending={},cameraAdjustTimer=null,cameraAdjustInFlight=false,refreshInFlight=false,heartbeatInFlight=false,pageDisposed=false;
 const heldKeys=new Set(),heldModifiers=new Set(),pointerMoves=new Map();
 const activeFetchControllers=new Set();
 async function requestJson(url,options={},timeoutMs=5000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);activeFetchControllers.add(controller);try{const r=await fetch(url,{...options,signal:controller.signal});let data={};try{data=await r.json()}catch(_error){}if(!r.ok)throw Error(data.detail||'Request failed');return data}catch(error){if(error.name==='AbortError')throw Error('Simulator request timed out');throw error}finally{clearTimeout(timer);activeFetchControllers.delete(controller)}}
@@ -569,9 +569,9 @@ class SharedState:
     tool_to_object_distance_m: list[float | None] = field(init=False)
     tool_to_object_offset_m: list[list[float] | None] = field(init=False)
     grasp_capture_radius_m: float = 0.018
-    camera_view_mode: str = "operative"
+    camera_view_mode: str = "free"
     camera_view_request: str | None = None
-    camera_free_enabled: bool = False
+    camera_free_enabled: bool = True
     camera_free_base_mode: str = "operative"
     camera_free_yaw_deg: float = 0.0
     camera_free_pitch_deg: float = 0.0
@@ -848,7 +848,10 @@ class SharedState:
                 "tool_to_object_offset_m": [list(value) if value is not None else None for value in self.tool_to_object_offset_m],
                 "grasp_capture_radius_m": self.grasp_capture_radius_m,
                 "camera_view_mode": self.camera_view_mode,
-                "camera_adjustable": self.camera_adjustment(),
+                "camera_adjustable": {
+                    "enabled": self.camera_free_enabled,
+                    **self.camera_adjustment(),
+                },
                 "closest_anatomy_clearance_m": self.closest_anatomy_clearance_m,
                 "recording": self.recording,
                 "last_demo": self.last_demo,
@@ -3480,7 +3483,18 @@ def main() -> None:
     action_dim = int(env.action_space.shape[-1])
     arms = 2 if "Dual" in args_cli.task else 1
     has_grippers = action_dim >= arms * 7
-    apply_endoscope_camera_view("baseline", "operative")
+    apply_endoscope_camera_view(
+        "baseline",
+        "free",
+        {
+            "base_mode": "operative",
+            "yaw_deg": 0.0,
+            "pitch_deg": 0.0,
+            "zoom": 1.0,
+            "pan_x_m": 0.0,
+            "pan_y_m": 0.0,
+        },
+    )
     update_wrist_camera_poses()
 
     state = SharedState(

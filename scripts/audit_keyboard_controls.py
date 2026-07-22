@@ -79,6 +79,8 @@ def main() -> int:
         "hold_seconds = max(0.30": "simulator-rate-aware command lifetime",
         "semantic_target_far": "far-target semantic travel scaling",
         "needle_entry_direction": "stable tissue entry vector",
+        'camera_view_mode: str = "free"': "adjustable camera default mode",
+        "camera_free_enabled: bool = True": "adjustable camera enabled by default",
     }
     missing_backend = [
         label for source, label in required_backend.items() if source not in workstation_source
