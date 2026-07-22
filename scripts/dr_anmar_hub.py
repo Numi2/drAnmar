@@ -318,10 +318,17 @@ def create_access_session(request: AccessSessionRequest, http_request: Request) 
     client = http_request.client.host if http_request.client else "unknown"
     now = time.monotonic()
     with access_attempts_lock:
+        for stale_client, attempts in list(access_attempts.items()):
+            active = [attempt for attempt in attempts if now - attempt < 60.0]
+            if active:
+                access_attempts[stale_client] = active
+            else:
+                access_attempts.pop(stale_client, None)
         recent = [attempt for attempt in access_attempts.get(client, []) if now - attempt < 60.0]
         if len(recent) >= 5:
             raise HTTPException(429, "Too many access attempts; try again in one minute")
-        access_attempts[client] = recent
+        if recent:
+            access_attempts[client] = recent
     if not access_is_authorized(None, request.token):
         with access_attempts_lock:
             access_attempts.setdefault(client, []).append(now)

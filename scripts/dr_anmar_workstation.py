@@ -17,6 +17,7 @@ import subprocess
 import threading
 import time
 import traceback
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -387,7 +388,7 @@ async function setAutonomy(mode){try{const x=await post('/api/autonomy',{mode});
 async function takeControl(){stopDrive(false);try{const x=await post('/api/handoff');toast(x.message)}catch(e){toast(e.message)}}
 async function startExpert(){try{const x=await post('/api/expert/start');toast(x.message)}catch(e){toast(e.message)}}
 async function toggleExpertPause(){const status=latestStatus?.expert_demonstration?.status;try{const x=await post(status==='paused'?'/api/expert/resume':'/api/expert/pause');toast(x.message)}catch(e){toast(e.message)}}
-function renderExpert(expert={}){const phases=expert.phases||['rest','approach','align','contact','grasp','manipulate','verify','recover'].map(id=>({id,title:id,status:'pending'})),status=expert.status||'idle',active=status==='running'||status==='paused';document.getElementById('expertRail').innerHTML=phases.map(phase=>`<div class="expert-phase ${phase.status||'pending'}" title="${phase.instruction||phase.title}">${phase.title}</div>`).join('');const current=phases.find(phase=>phase.id===expert.phase),statusLabel={idle:'ready',running:'executing',paused:'paused',completed:'complete',taken_over:'doctor control',cancelled:'cancelled'}[status]||status.replaceAll('_',' '),badge=document.getElementById('expertStatus');badge.textContent=statusLabel;badge.className=`expert-status ${status}`;document.getElementById('expertInstruction').textContent=status==='paused'?(expert.paused_reason||expert.procedure_instruction||current?.instruction||'Paused for inspection.'):status==='taken_over'?`You took control during ${expert.takeover_phase||'the procedure'}. The simulation pose and recording were preserved.`:status==='completed'?'All eight phases completed in the live room. Review the generated trajectory before using it for research.':(expert.procedure_instruction||current?.instruction||'The expert executes the full procedure in the live simulation. Pause, inspect, or take control at any phase.');document.getElementById('expertStart').disabled=active;const pause=document.getElementById('expertPause');pause.disabled=!active;pause.innerHTML=status==='paused'?'Resume <kbd>F10</kbd>':'Pause <kbd>F10</kbd>';document.getElementById('expertTakeover').disabled=!active}
+function renderExpert(expert={}){const phases=expert.phases||['rest','approach','align','contact','grasp','manipulate','verify','recover'].map(id=>({id,title:id,status:'pending'})),status=expert.status||'idle',active=status==='running'||status==='paused',phaseMarkup=phases.map(phase=>`<div class="expert-phase ${phase.status||'pending'}" title="${phase.instruction||phase.title}">${phase.title}</div>`).join(''),rail=document.getElementById('expertRail');if(rail.dataset.markup!==phaseMarkup){rail.innerHTML=phaseMarkup;rail.dataset.markup=phaseMarkup}const current=phases.find(phase=>phase.id===expert.phase),statusLabel={idle:'ready',running:'executing',paused:'paused',completed:'complete',taken_over:'doctor control',cancelled:'cancelled'}[status]||status.replaceAll('_',' '),badge=document.getElementById('expertStatus');badge.textContent=statusLabel;badge.className=`expert-status ${status}`;document.getElementById('expertInstruction').textContent=status==='paused'?(expert.paused_reason||expert.procedure_instruction||current?.instruction||'Paused for inspection.'):status==='taken_over'?`You took control during ${expert.takeover_phase||'the procedure'}. The simulation pose and recording were preserved.`:status==='completed'?'All eight phases completed in the live room. Review the generated trajectory before using it for research.':(expert.procedure_instruction||current?.instruction||'The expert executes the full procedure in the live simulation. Pause, inspect, or take control at any phase.');document.getElementById('expertStart').disabled=active;const pause=document.getElementById('expertPause');pause.disabled=!active;pause.innerHTML=status==='paused'?'Resume <kbd>F10</kbd>':'Pause <kbd>F10</kbd>';document.getElementById('expertTakeover').disabled=!active}
 function toggleReferenceGhost(){referenceGhost(!latestStatus?.reference_ghost?.enabled)}
 function toggleKeyboardHelp(force){const help=document.getElementById('keyboardHelp'),show=force??help.classList.contains('hidden');help.classList.toggle('hidden',!show);if(show)stopDrive(false)}
 function auditKeyboardCoverage(){const buttons=[...document.querySelectorAll('button')],missing=buttons.filter(button=>!button.dataset.shortcut);const coverage=document.getElementById('keyboardCoverage');coverage.classList.toggle('bad',missing.length>0);coverage.textContent=missing.length?`${buttons.length-missing.length}/${buttons.length} controls mapped · ${missing.length} missing`:`✓ ${buttons.length}/${buttons.length} controls mapped to keyboard`;if(missing.length)console.warn('Buttons missing keyboard shortcuts',missing)}
@@ -417,8 +418,8 @@ function finishCameraDrag(event){if(!cameraDrag||cameraDrag.pointerId!==event.po
 cameraView.addEventListener('pointerup',finishCameraDrag);cameraView.addEventListener('pointercancel',finishCameraDrag);cameraView.addEventListener('lostpointercapture',finishCameraDrag);cameraView.addEventListener('pointerleave',()=>{if(!cameraDrag)cameraView.classList.remove('gaze-on')});cameraView.addEventListener('wheel',event=>{if(!cameraAdjustMode)return;event.preventDefault();queueCameraAdjustment({zoom_delta:Math.sign(event.deltaY)*.08})},{passive:false});
 function targetDirections(offset){if(!offset)return'';const choices=[];if(Math.abs(offset[2])>.004)choices.push([Math.abs(offset[2]),offset[2]>0?'Up':'Down']);if(Math.abs(offset[1])>.004)choices.push([Math.abs(offset[1]),offset[1]>0?'Left':'Right']);if(Math.abs(offset[0])>.004)choices.push([Math.abs(offset[0]),offset[0]<0?'Toward':'Away']);return choices.sort((a,b)=>b[0]-a[0]).slice(0,2).map(x=>x[1]).join(' + ')}
 async function refresh(){try{
-  const s=await(await fetch('/api/status',{cache:'no-store'})).json();if(workerInstanceId&&s.instance_id!==workerInstanceId){location.reload();return}workerInstanceId=s.instance_id;latestStatus=s;if(activeArm>=s.arms){activeArm=0;document.getElementById('arm0').classList.add('active');document.getElementById('arm1').classList.remove('active')}document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';
-  const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;document.getElementById('procedureSteps').innerHTML=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join('');
+  const s=await(await fetch('/api/status/live',{cache:'no-store'})).json();if(workerInstanceId&&s.instance_id!==workerInstanceId){location.reload();return}workerInstanceId=s.instance_id;latestStatus=s;if(activeArm>=s.arms){activeArm=0;document.getElementById('arm0').classList.add('active');document.getElementById('arm1').classList.remove('active')}document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';
+  const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;const procedureMarkup=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join(''),procedureSteps=document.getElementById('procedureSteps');if(procedureSteps.dataset.markup!==procedureMarkup){procedureSteps.innerHTML=procedureMarkup;procedureSteps.dataset.markup=procedureMarkup}
   const truth=document.getElementById('procedureTruth');truth.textContent=p.truth_note||'';truth.classList.toggle('hidden',!p.truth_note);document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('rightInstrumentControls').classList.toggle('hidden',s.arms<2);document.getElementById('instrumentGrid').classList.toggle('single',s.arms<2);document.querySelectorAll('.gripper-control').forEach(button=>button.classList.toggle('hidden',!s.has_grippers));
   currentViewMode=s.camera_view_mode||currentViewMode;renderFreeCamera(s.camera_adjustable||{});document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',!cameraAdjustMode&&x.dataset.viewMode===currentViewMode));
   document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record').classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[0]===false);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[(s.arms||1)>1?1:0]===false);
@@ -612,7 +613,7 @@ class SharedState:
     procedure_phase: str = "setup"
     procedure_event_code: int = 0
     procedure_event_sequence: int = 0
-    procedure_events: list[dict[str, Any]] = field(default_factory=list)
+    procedure_events: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=4096))
     procedure_waypoints_total: int = 0
     procedure_waypoints_completed: int = 0
     procedure_motion_seen: bool = False
@@ -766,6 +767,52 @@ class SharedState:
                 ) or self.expert_demonstration.get("status") == "running",
             }
 
+    def live_status(self) -> dict[str, Any]:
+        """Return only the rapidly changing fields consumed by the workstation UI."""
+        with self.lock:
+            procedure = self._procedure_status()
+            steps = [
+                {
+                    "title": item.get("title", ""),
+                    "instruction": item.get("instruction", ""),
+                    "status": item.get("status", "pending"),
+                }
+                for item in procedure.get("steps", [])
+            ]
+            expert = dict(self.expert_demonstration)
+            expert["phases"] = [dict(item) for item in self.expert_demonstration.get("phases", [])]
+            return {
+                "instance_id": self.instance_id,
+                "camera_names": list(self.camera_names),
+                "arms": self.arms,
+                "has_grippers": self.has_grippers,
+                "procedure": {
+                    "title": procedure.get("title", "Free practice"),
+                    "objective": procedure.get("objective", "Use the robot controls to explore the digital twin."),
+                    "progress_percent": procedure.get("progress_percent", 0),
+                    "steps": steps,
+                    "truth_note": procedure.get("truth_note", ""),
+                },
+                "grippers_open": list(self.grippers_open),
+                "native_grasp_contact_active": list(self.native_grasp_contact_active),
+                "tool_to_object_distance_m": list(self.tool_to_object_distance_m),
+                "tool_to_object_offset_m": [list(value) if value is not None else None for value in self.tool_to_object_offset_m],
+                "grasp_capture_radius_m": self.grasp_capture_radius_m,
+                "camera_view_mode": self.camera_view_mode,
+                "camera_adjustable": self.camera_adjustment(),
+                "closest_anatomy_clearance_m": self.closest_anatomy_clearance_m,
+                "recording": self.recording,
+                "last_demo": self.last_demo,
+                "expert_demonstration": expert,
+                "autonomy_mode": self.autonomy_mode,
+                "coaching_cue": self.coaching_cue,
+                "safety": {
+                    "max_contact_force_n": self.max_contact_force_n,
+                    "max_tissue_displacement_m": self.max_tissue_displacement_m,
+                    "max_tissue_stress_pa": self.max_tissue_stress_pa,
+                },
+            }
+
     def _procedure_status(self) -> dict[str, Any]:
         if not self.procedure:
             return {}
@@ -848,6 +895,10 @@ def build_web_app(state: SharedState) -> FastAPI:
     @app.get("/api/status")
     def status() -> JSONResponse:
         return JSONResponse({**state.status(), "operator_lease": operator_lease.status()})
+
+    @app.get("/api/status/live")
+    def live_status() -> JSONResponse:
+        return JSONResponse(state.live_status())
 
     @app.post("/api/operator/heartbeat")
     def operator_heartbeat() -> dict[str, Any]:
@@ -2037,6 +2088,15 @@ def array_payload_bytes(frame: dict[str, np.ndarray]) -> int:
     return sum(int(np.asarray(value).nbytes) for value in frame.values())
 
 
+def stack_frame_field(frames: list[dict[str, np.ndarray]], key: str) -> np.ndarray:
+    """Stack one field while releasing the per-frame source arrays immediately."""
+    values = [frame.pop(key) for frame in frames]
+    try:
+        return np.stack(values)
+    finally:
+        values.clear()
+
+
 def save_demo(
     state: SharedState,
     frames: list[dict[str, np.ndarray]],
@@ -2049,28 +2109,33 @@ def save_demo(
     task_slug = state.task.lower().replace("isaac-", "").replace("-v0", "").replace("-", "_")
     name = f"dr_anmar_{task_slug}_{stamp}.npz"
     path = state.demo_dir / name
+    control_frame_count = len(frames)
+    vision_frame_count = len(vision_frames)
     keys = tuple(sorted(set.intersection(*(set(frame.keys()) for frame in frames))))
-    arrays = {key: np.stack([frame[key] for frame in frames]) for key in keys}
+    arrays = {key: stack_frame_field(frames, key) for key in keys}
     if vision_frames:
-        arrays["endoscope_time_s"] = np.stack([frame["time_s"] for frame in vision_frames])
-        arrays["endoscope_rgb"] = np.stack([frame["rgb"] for frame in vision_frames])
+        arrays["endoscope_time_s"] = stack_frame_field(vision_frames, "time_s")
+        arrays["endoscope_rgb"] = stack_frame_field(vision_frames, "rgb")
         arrays["endoscope_sensor_dropout_active"] = np.stack(
-            [frame.get("sensor_dropout_active", np.array(False, dtype=np.bool_)) for frame in vision_frames]
+            [frame.pop("sensor_dropout_active", np.array(False, dtype=np.bool_)) for frame in vision_frames]
         )
         if all("depth_m" in frame for frame in vision_frames):
-            arrays["endoscope_depth_m"] = np.stack([frame["depth_m"] for frame in vision_frames])
+            arrays["endoscope_depth_m"] = stack_frame_field(vision_frames, "depth_m")
         if all("semantic_id" in frame for frame in vision_frames):
-            arrays["endoscope_semantic_id"] = np.stack([frame["semantic_id"] for frame in vision_frames])
+            arrays["endoscope_semantic_id"] = stack_frame_field(vision_frames, "semantic_id")
         if all("point_cloud_camera_m" in frame for frame in vision_frames):
             point_counts = {len(frame["point_cloud_camera_m"]) for frame in vision_frames}
             if len(point_counts) == 1:
-                arrays["endoscope_point_cloud_camera_m"] = np.stack(
-                    [frame["point_cloud_camera_m"] for frame in vision_frames]
+                arrays["endoscope_point_cloud_camera_m"] = stack_frame_field(
+                    vision_frames, "point_cloud_camera_m"
                 )
         for camera_name in ("endoscope_right", "wrist_1", "wrist_2"):
             key = f"{camera_name}_rgb"
             if all(key in frame for frame in vision_frames):
-                arrays[key] = np.stack([frame[key] for frame in vision_frames])
+                arrays[key] = stack_frame_field(vision_frames, key)
+    frames.clear()
+    vision_frames.clear()
+    uncompressed_payload_bytes = sum(int(value.nbytes) for value in arrays.values())
     analysis = analyze_demo(
         arrays,
         state.task,
@@ -2119,10 +2184,10 @@ def save_demo(
         "action_dim": state.action_dim,
         "started_at": started_at,
         "finished_at": datetime.now(timezone.utc).isoformat(),
-        "frames": len(frames),
-        "vision_frames": len(vision_frames),
+        "frames": control_frame_count,
+        "vision_frames": vision_frame_count,
         "sensor_profile": state.sensor_profile,
-        "uncompressed_payload_bytes": sum(array_payload_bytes(frame) for frame in frames + vision_frames),
+        "uncompressed_payload_bytes": uncompressed_payload_bytes,
         "control_hz": round(observed_control_hz, 2),
         "control_hz_nominal": 50,
         "arrays": {key: list(value.shape) for key, value in arrays.items()},
@@ -2131,8 +2196,8 @@ def save_demo(
         "modalities": {
             "robot_state_hz": round(observed_control_hz, 2),
             "robot_state_hz_nominal": 50,
-            "endoscope_rgb_hz": 5 if vision_frames else 0,
-            "endoscope_rgb_resolution": [360, 240] if vision_frames else None,
+            "endoscope_rgb_hz": 5 if vision_frame_count else 0,
+            "endoscope_rgb_resolution": [360, 240] if vision_frame_count else None,
             "endoscope_depth_hz": 5 if "endoscope_depth_m" in arrays else 0,
             "endoscope_depth_units": "metres" if "endoscope_depth_m" in arrays else None,
             "endoscope_semantic_hz": 5 if "endoscope_semantic_id" in arrays else 0,
@@ -2181,6 +2246,7 @@ def save_demo(
     temporary_manifest = manifest_path.with_suffix(".json.tmp")
     temporary_manifest.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     temporary_manifest.replace(manifest_path)
+    arrays.clear()
     return name
 
 
@@ -3321,6 +3387,12 @@ def main() -> None:
                 name = None
                 save_error = f"Demonstration could not be saved: {exc}"
                 traceback.print_exc()
+            finally:
+                # A completed or failed save must never pin captured arrays in
+                # the long-lived Isaac process.
+                demo_frames.clear()
+                vision_frames.clear()
+                recorded_bytes_estimate = 0
             with state.lock:
                 expert_reference_pending = state.expert_reference_pending
             expert_reference_saved = False
