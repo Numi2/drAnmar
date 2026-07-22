@@ -197,7 +197,11 @@ class EventCfg:
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (0.0, 0.0)},
+            # The needle asset's default root height is +0.05 m and the native
+            # table support surface is at 0.00 m.  Offset it by -0.05 m so the
+            # episode begins at physical support height: neither falling from
+            # mid-air nor embedded deeply enough for solver depenetration.
+            "pose_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (-0.05, -0.05)},
             "velocity_range": {},
             "asset_cfg": SceneEntityCfg("object", body_names="Object"),
         },

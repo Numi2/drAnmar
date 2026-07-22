@@ -2888,6 +2888,23 @@ def main() -> None:
         num_envs=1,
         use_fabric=not args_cli.disable_fabric,
     )
+    # RL environments end and auto-reset episodes on success, dropped
+    # objects, force thresholds, and time limits.  That is correct during
+    # policy training but disastrous during clinician teleoperation: a
+    # contact or mistake must remain visible and recoverable until the doctor
+    # explicitly presses Reset.  Preserve the terms in the task configs for
+    # RL and disable them only for this interactive workstation process.
+    interactive_terminations = getattr(env_cfg, "terminations", None)
+    if interactive_terminations is not None:
+        for term_name in (
+            "time_out",
+            "object_dropping",
+            "success",
+            "excessive_object_force",
+            "protected_surface_force",
+        ):
+            if hasattr(interactive_terminations, term_name):
+                setattr(interactive_terminations, term_name, None)
     env_cfg.episode_length_s = 3600.0
     env_cfg.scene.num_envs = 1
     native_room = _native_room if _native_room and _native_room.get("available") else None
