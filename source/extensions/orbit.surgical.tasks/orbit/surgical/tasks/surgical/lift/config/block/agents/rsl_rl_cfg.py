@@ -14,6 +14,8 @@ from isaaclab_rl.rsl_rl import (
 
 @configclass
 class LiftBlockPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    obs_groups = {"policy": ["policy"], "critic": ["policy"]}
+    clip_actions = 1.0
     num_steps_per_env = 24
     max_iterations = 1500
     save_interval = 50

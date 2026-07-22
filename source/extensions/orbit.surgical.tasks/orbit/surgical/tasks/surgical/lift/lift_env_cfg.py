@@ -18,6 +18,7 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg, UsdFileCfg
 from isaaclab.utils import configclass
@@ -42,6 +43,19 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     ee_frame: FrameTransformerCfg = MISSING
     # target object: will be populated by agent env cfg
     object: RigidObjectCfg = MISSING
+
+    # Native PhysX contacts establish a bilateral grasp. The MDP also subtracts
+    # filtered object force from total jaw force to detect unintended contact.
+    jaw_1_object_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/psm_tool_gripper1_link",
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
+        history_length=2,
+    )
+    jaw_2_object_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/psm_tool_gripper2_link",
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
+        history_length=2,
+    )
 
     # Table
     table = AssetBaseCfg(
@@ -76,7 +90,7 @@ class CommandsCfg:
     object_pose = mdp.UniformPoseCommandCfg(
         asset_name="robot",
         body_name=MISSING,  # will be set by agent env cfg
-        resampling_time_range=(1.0, 1.0),
+        resampling_time_range=(10.0, 10.0),
         debug_vis=False,
         ranges=mdp.UniformPoseCommandCfg.Ranges(
             pos_x=(-0.05, 0.05),
@@ -97,8 +111,8 @@ class ActionsCfg:
     """Action specifications for the MDP."""
 
     # will be set by agent env cfg
-    body_joint_pos: mdp.JointPositionActionCfg = MISSING
-    finger_joint_pos: mdp.BinaryJointPositionActionCfg = MISSING
+    body_action: mdp.JointPositionActionCfg = MISSING
+    gripper_action: mdp.BinaryJointPositionActionCfg = MISSING
 
 
 @configclass
@@ -109,10 +123,13 @@ class ObservationsCfg:
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
 
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
-        object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("robot")})
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("robot")})
+        end_effector_pose = ObsTerm(func=mdp.end_effector_pose_in_robot_root_frame)
+        object_pose = ObsTerm(func=mdp.object_pose_in_robot_root_frame)
+        object_velocity = ObsTerm(func=mdp.object_velocity_in_robot_root_frame)
         target_object_position = ObsTerm(func=mdp.generated_commands, params={"command_name": "object_pose"})
+        jaw_contact_forces = ObsTerm(func=mdp.jaw_contact_forces, params={"scale": 0.2}, clip=(0.0, 5.0))
         actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
@@ -144,20 +161,68 @@ class EventCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.05}, weight=2.0)
 
-    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.02}, weight=15.0)
+    bilateral_grasp = RewTerm(func=mdp.bilateral_grasp, params={"threshold": 0.01}, weight=4.0)
+
+    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.025}, weight=6.0)
 
     object_goal_tracking = RewTerm(
         func=mdp.object_goal_distance,
-        params={"std": 0.3, "minimal_height": 0.02, "command_name": "object_pose"},
-        weight=16.0,
+        params={"std": 0.08, "minimal_height": 0.025, "command_name": "object_pose"},
+        weight=8.0,
     )
 
     object_goal_tracking_fine_grained = RewTerm(
         func=mdp.object_goal_distance,
-        params={"std": 0.05, "minimal_height": 0.02, "command_name": "object_pose"},
-        weight=5.0,
+        params={"std": 0.015, "minimal_height": 0.025, "command_name": "object_pose"},
+        weight=6.0,
+    )
+
+    object_goal_orientation = RewTerm(
+        func=mdp.object_goal_orientation,
+        params={"std": 0.35, "command_name": "object_pose", "contact_threshold": 0.01},
+        weight=4.0,
+    )
+
+    stable_grasp = RewTerm(
+        func=mdp.stable_object_motion,
+        params={"linear_std": 0.08, "angular_std": 1.5, "contact_threshold": 0.01},
+        weight=2.0,
+    )
+
+    success = RewTerm(
+        func=mdp.successful_lift,
+        params={
+            "command_name": "object_pose",
+            "position_threshold": 0.015,
+            "orientation_threshold": 0.35,
+            "contact_threshold": 0.01,
+            "maximum_linear_speed": 0.08,
+            "maximum_angular_speed": 1.5,
+        },
+        weight=30.0,
+    )
+
+    object_force_excess = RewTerm(
+        func=mdp.contact_force_excess,
+        params={"sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"), "soft_limit": 1.0},
+        weight=-0.5,
+    )
+
+    protected_surface_contact = RewTerm(
+        func=mdp.non_object_contact_force_excess,
+        params={
+            "sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"),
+            "soft_limit": 0.0,
+        },
+        weight=-2.0,
+    )
+
+    rcm_motion = RewTerm(
+        func=mdp.rcm_motion,
+        params={"robot_cfg": SceneEntityCfg("robot", body_names="psm_remote_center_link")},
+        weight=-2.0,
     )
 
     # action penalty
@@ -178,6 +243,28 @@ class TerminationsCfg:
 
     object_dropping = DoneTerm(
         func=mdp.root_height_below_minimum, params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("object")}
+    )
+
+    success = DoneTerm(
+        func=mdp.successful_lift,
+        params={
+            "command_name": "object_pose",
+            "position_threshold": 0.015,
+            "orientation_threshold": 0.35,
+            "contact_threshold": 0.01,
+            "maximum_linear_speed": 0.08,
+            "maximum_angular_speed": 1.5,
+        },
+    )
+
+    excessive_object_force = DoneTerm(
+        func=mdp.excessive_contact_force,
+        params={"sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"), "hard_limit": 5.0},
+    )
+
+    protected_surface_force = DoneTerm(
+        func=mdp.excessive_non_object_contact_force,
+        params={"sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"), "hard_limit": 2.0},
     )
 
 
@@ -220,7 +307,7 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
         # general settings
         self.decimation = 4
         self.sim.render_interval = self.decimation
-        self.episode_length_s = 2.0
+        self.episode_length_s = 8.0
         # simulation settings
         self.sim.dt = 1.0 / 200.0
         self.viewer.eye = (0.2, 0.2, 0.1)

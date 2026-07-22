@@ -2028,13 +2028,11 @@ def training_status() -> dict[str, Any]:
 
 @app.post("/api/training/start")
 def start_training(request: TrainingRequest) -> dict[str, Any]:
-    if request.backend not in {"rsl_rl", "rl_games", "sb3", "skrl"}:
-        raise HTTPException(400, "Choose RSL-RL, RL-Games, SB3, or SKRL")
+    if request.backend != "rsl_rl":
+        raise HTTPException(400, "The validated Cartesian training backbone currently uses RSL-RL")
     item = TASKS_BY_ID.get(request.task)
-    if item is None or item["play"] or item["variant"] != "joint":
-        raise HTTPException(400, "Training requires a registered non-play joint-position task")
-    if request.backend in {"sb3", "skrl"} and item["procedure"] not in {"lift", "handover"}:
-        raise HTTPException(409, f"{request.backend} is configured here for lift and handover tasks")
+    if item is None or item["play"] or item["variant"] != "ik-rel":
+        raise HTTPException(400, "Training requires a registered non-play Cartesian IK-relative task")
     if request.num_envs not in range(8, 129):
         raise HTTPException(400, "Starter labs support 8 to 128 parallel environments")
     if request.max_iterations not in range(1, 201):

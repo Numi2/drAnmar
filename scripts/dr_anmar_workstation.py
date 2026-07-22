@@ -52,6 +52,13 @@ SENSOR_PROFILES = {"efficient", "stereo", "research"}
 EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"
 STUDY_ID = os.environ.get("DR_ANMAR_STUDY_ID", "").strip()
 CONSENT_PROTOCOL = os.environ.get("DR_ANMAR_CONSENT_PROTOCOL", "").strip()
+ACTION_CONTRACT = {
+    "id": "dr-anmar-cartesian-ik-relative-v1",
+    "bounds": [-1.0, 1.0],
+    "translation_scale_m": 0.01,
+    "rotation_scale_rad": 0.05,
+    "gripper": "binary normalized action per instrument",
+}
 
 parser = argparse.ArgumentParser(description="Run the Dr.Anmar browser workstation.")
 parser.add_argument("--task", default="Isaac-Lift-Needle-PSM-IK-Rel-v0")
@@ -761,6 +768,7 @@ class SharedState:
                 "sim_fps": self.sim_fps,
                 "sim_step": self.sim_step,
                 "action_dim": self.action_dim,
+                "action_contract": ACTION_CONTRACT,
                 "arms": self.arms,
                 "has_grippers": self.has_grippers,
                 "robot_names": self.robot_names,
@@ -1059,7 +1067,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             raise HTTPException(400, f"arm must be between 0 and {state.arms - 1}")
         command = np.zeros(state.action_dim, dtype=np.float32)
         body_slice = state.body_action_slice(request.arm)
-        command[body_slice.start + request.axis] = (0.02 if request.axis < 3 else 0.08) * request.direction
+        command[body_slice.start + request.axis] = 0.5 * request.direction
         with state.lock:
             state.pulse = command
             state.pulse_steps = 1
@@ -1110,11 +1118,10 @@ def build_web_app(state: SharedState) -> FastAPI:
                 and state.tool_to_object_distance_m[request.arm] > 0.050
             )
         translation_boost = 6.0 if semantic_far_field else 3.0 if semantic_target_far else 1.0
-        scales = np.asarray(
-            (0.006 * translation_boost,) * 3 + (0.03, 0.03, 0.03),
-            dtype=np.float32,
+        calibrated_values[:3] *= translation_boost
+        command[state.body_action_slice(request.arm)] = np.clip(
+            calibrated_values * request.speed, -1.0, 1.0
         )
-        command[state.body_action_slice(request.arm)] = calibrated_values * scales * request.speed
         active = bool(np.any(values))
         with state.lock:
             # Keep a command alive long enough for at least one slow Isaac step.
@@ -1165,7 +1172,6 @@ def build_web_app(state: SharedState) -> FastAPI:
             profile = SCENARIO_NATIVE_PROFILES.get(state.scenario_id, {})
         yaw_degrees = float(profile.get("translation_yaw_deg", 0.0))
         axis_scale = np.asarray(profile.get("axis_scale", (1.0, 1.0, 1.0)), dtype=np.float32)
-        scales = np.asarray((0.006,) * 3 + (0.03, 0.03, 0.03), dtype=np.float32)
         active = False
         for arm_command in request.commands:
             if arm_command.arm not in range(state.arms) or arm_command.arm in seen_arms:
@@ -1187,7 +1193,9 @@ def build_web_app(state: SharedState) -> FastAPI:
                     dtype=np.float32,
                 )
             calibrated_values[:3] = translation * axis_scale
-            command[state.body_action_slice(arm_command.arm)] = calibrated_values * scales * arm_command.speed
+            command[state.body_action_slice(arm_command.arm)] = np.clip(
+                calibrated_values * arm_command.speed, -1.0, 1.0
+            )
             active = active or bool(np.any(values))
             seen_arms.add(arm_command.arm)
 
@@ -2020,12 +2028,19 @@ def inspect_demo_file(path: Path) -> dict[str, Any]:
                     raise ValueError("time_s is not finite and frame-aligned")
                 if len(times) > 1 and np.any(np.diff(times) < 0):
                     raise ValueError("time_s is not monotonic")
+            manifest = read_demo_manifest(path)
+            contract = manifest.get("action_contract", {})
+            contract_matches = contract.get("id") == ACTION_CONTRACT["id"]
             warnings = [] if frame_count >= 2 else ["Recording has fewer than two control frames"]
+            if not contract_matches:
+                warnings.append("Recording predates the normalized Cartesian IK-relative action contract")
             result = {
                 "valid": True,
-                "training_eligible": frame_count >= 2,
+                "training_eligible": frame_count >= 2 and contract_matches,
                 "frames": frame_count,
                 "action_dim": int(actions.shape[1]),
+                "action_contract": contract or None,
+                "action_contract_current": contract_matches,
                 "bytes": stat.st_size,
                 "warnings": warnings,
                 "error": None,
@@ -2051,6 +2066,8 @@ def require_replayable_demo(path: Path) -> dict[str, Any]:
     if not inspection.get("valid"):
         raise HTTPException(422, inspection.get("error", "The demonstration is unreadable"))
     if not inspection.get("training_eligible"):
+        if not inspection.get("action_contract_current", False):
+            raise HTTPException(422, "This demonstration uses a legacy action scale and must be migrated before replay or training")
         raise HTTPException(422, "The demonstration is too short to replay or train from")
     return inspection
 
@@ -2632,6 +2649,7 @@ def save_demo(
         "robots": state.robot_names,
         "robot_body_names": state.robot_body_names,
         "action_dim": state.action_dim,
+        "action_contract": ACTION_CONTRACT,
         "started_at": started_at,
         "finished_at": datetime.now(timezone.utc).isoformat(),
         "frames": control_frame_count,
@@ -4266,7 +4284,7 @@ def main() -> None:
                 state.recording_buffered_frames = capture_spool.buffered_frames
                 if (
                     capture_spool.control_count >= MAX_DEMO_FRAMES
-                    or now - demo_started_monotonic >= MAX_DEMO_SECONDS
+                    or loop_started - demo_started_monotonic >= MAX_DEMO_SECONDS
                     or capture_spool.payload_bytes >= MAX_DEMO_BYTES
                 ):
                     state.record_request = "stop"

@@ -24,9 +24,12 @@ class NeedleLiftEnvCfg(joint_pos_env_cfg.NeedleLiftEnvCfg):
         # Set PSM as robot
         # We switch here to a stiffer PD controller for IK tracking to be better.
         self.scene.robot = PSM_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot.spawn.activate_contact_sensors = True
+        self.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
+        self.scene.robot.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
 
         # Set actions for the specific robot type (PSM)
-        self.actions.body_joint_pos = DifferentialInverseKinematicsActionCfg(
+        self.actions.body_action = DifferentialInverseKinematicsActionCfg(
             asset_name="robot",
             joint_names=[
                 "psm_yaw_joint",
@@ -38,7 +41,8 @@ class NeedleLiftEnvCfg(joint_pos_env_cfg.NeedleLiftEnvCfg):
             ],
             body_name="psm_tool_tip_link",
             controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
-            scale=0.5,
+            scale=(0.01, 0.01, 0.01, 0.05, 0.05, 0.05),
+            clip={".*": (-1.0, 1.0)},
         )
 
 

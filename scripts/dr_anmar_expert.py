@@ -18,7 +18,7 @@ from typing import Any
 import numpy as np
 
 
-EXPERT_CONTROLLER_VERSION = "dr-anmar-expert-v3-threaded-ring-pass"
+EXPERT_CONTROLLER_VERSION = "dr-anmar-expert-v4-normalized-relative-ik"
 EXPERT_PHASES: tuple[dict[str, str], ...] = (
     {"id": "rest", "title": "Rest", "instruction": "Confirm the neutral pose, anatomy and operative camera."},
     {"id": "approach", "title": "Approach", "instruction": "Move above the first target with the jaws open."},
@@ -203,8 +203,10 @@ class ExpertDemonstrationController:
             return None
         delta = np.asarray(target, dtype=np.float32) - np.asarray(current, dtype=np.float32)
         start = arm * self.group_width
-        action[start : start + 3] = np.clip(delta * 0.82, -0.022, 0.022)
-        action[start + 3 : start + 6] = np.asarray(rotation, dtype=np.float32)
+        action[start : start + 3] = np.clip(delta * (0.82 / 0.01), -1.0, 1.0)
+        action[start + 3 : start + 6] = np.clip(
+            np.asarray(rotation, dtype=np.float32) / 0.05, -1.0, 1.0
+        )
         return float(np.linalg.norm(delta))
 
     def _phase_target(self, object_position: np.ndarray | None) -> np.ndarray | None:

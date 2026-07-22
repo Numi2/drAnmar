@@ -18,6 +18,7 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg, UsdFileCfg
 from isaaclab.utils import configclass
@@ -44,6 +45,29 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
     ee_2_frame: FrameTransformerCfg = MISSING
     # target object: will be populated by agent env cfg
     object: RigidObjectCfg = MISSING
+
+    # Exact per-jaw sensors are required for filtered contact pairs in Isaac
+    # Lab. They expose physical object ownership and unintended-contact force.
+    robot_1_jaw_1_object_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot_1/psm_tool_gripper1_link",
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
+        history_length=2,
+    )
+    robot_1_jaw_2_object_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot_1/psm_tool_gripper2_link",
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
+        history_length=2,
+    )
+    robot_2_jaw_1_object_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot_2/psm_tool_gripper1_link",
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
+        history_length=2,
+    )
+    robot_2_jaw_2_object_contact = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot_2/psm_tool_gripper2_link",
+        filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
+        history_length=2,
+    )
 
     # Table
     table = AssetBaseCfg(
@@ -78,7 +102,7 @@ class CommandsCfg:
     ee_1_pose = mdp.UniformPoseCommandCfg(
         asset_name="robot_1",
         body_name=MISSING,  # will be set by agent env cfg
-        resampling_time_range=(5.0, 5.0),
+        resampling_time_range=(30.0, 30.0),
         debug_vis=False,
         ranges=mdp.UniformPoseCommandCfg.Ranges(
             pos_x=(-0.05, 0.05),
@@ -93,34 +117,15 @@ class CommandsCfg:
     ee_1_pose.goal_pose_visualizer_cfg.markers["frame"].scale = (0.01, 0.01, 0.01)
     ee_1_pose.current_pose_visualizer_cfg.markers["frame"].scale = (0.01, 0.01, 0.01)
 
-    ee_2_pose = mdp.UniformPoseCommandCfg(
-        asset_name="robot_2",
-        body_name=MISSING,  # will be set by agent env cfg
-        resampling_time_range=(5.0, 5.0),
-        debug_vis=False,
-        ranges=mdp.UniformPoseCommandCfg.Ranges(
-            pos_x=(-0.05, 0.05),
-            pos_y=(-0.05, 0.05),
-            pos_z=(-0.12, -0.08),
-            roll=(0.0, 0.0),
-            pitch=(0.0, 0.0),
-            yaw=(0.0, 0.0),
-        ),
-    )
-    # set the scale of the visualization markers to (0.01, 0.01, 0.01)
-    ee_2_pose.goal_pose_visualizer_cfg.markers["frame"].scale = (0.01, 0.01, 0.01)
-    ee_2_pose.current_pose_visualizer_cfg.markers["frame"].scale = (0.01, 0.01, 0.01)
-
-
 @configclass
 class ActionsCfg:
     """Action specifications for the MDP."""
 
     # will be set by agent env cfg
-    body_1_joint_pos: mdp.JointPositionActionCfg = MISSING
-    finger_1_joint_pos: mdp.BinaryJointPositionActionCfg = MISSING
-    body_2_joint_pos: mdp.JointPositionActionCfg = MISSING
-    finger_2_joint_pos: mdp.BinaryJointPositionActionCfg = MISSING
+    robot_1_body_action: mdp.JointPositionActionCfg = MISSING
+    robot_1_gripper_action: mdp.BinaryJointPositionActionCfg = MISSING
+    robot_2_body_action: mdp.JointPositionActionCfg = MISSING
+    robot_2_gripper_action: mdp.BinaryJointPositionActionCfg = MISSING
 
 
 @configclass
@@ -131,8 +136,47 @@ class ObservationsCfg:
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
 
-        # TODO
-
+        robot_1_joint_pos = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("robot_1")})
+        robot_1_joint_vel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("robot_1")})
+        robot_2_joint_pos = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("robot_2")})
+        robot_2_joint_vel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("robot_2")})
+        robot_1_ee_pose = ObsTerm(
+            func=mdp.end_effector_pose_in_robot_root_frame,
+            params={"frame_cfg": SceneEntityCfg("ee_1_frame"), "robot_cfg": SceneEntityCfg("robot_1")},
+        )
+        robot_2_ee_pose = ObsTerm(
+            func=mdp.end_effector_pose_in_robot_root_frame,
+            params={"frame_cfg": SceneEntityCfg("ee_2_frame"), "robot_cfg": SceneEntityCfg("robot_2")},
+        )
+        object_pose_robot_1 = ObsTerm(
+            func=mdp.object_pose_in_robot_root_frame, params={"robot_cfg": SceneEntityCfg("robot_1")}
+        )
+        object_pose_robot_2 = ObsTerm(
+            func=mdp.object_pose_in_robot_root_frame, params={"robot_cfg": SceneEntityCfg("robot_2")}
+        )
+        object_velocity = ObsTerm(
+            func=mdp.object_velocity_in_robot_root_frame, params={"robot_cfg": SceneEntityCfg("robot_1")}
+        )
+        robot_1_contacts = ObsTerm(
+            func=mdp.jaw_contact_forces,
+            params={
+                "sensor_1_name": "robot_1_jaw_1_object_contact",
+                "sensor_2_name": "robot_1_jaw_2_object_contact",
+                "scale": 0.2,
+            },
+            clip=(0.0, 5.0),
+        )
+        robot_2_contacts = ObsTerm(
+            func=mdp.jaw_contact_forces,
+            params={
+                "sensor_1_name": "robot_2_jaw_1_object_contact",
+                "sensor_2_name": "robot_2_jaw_2_object_contact",
+                "scale": 0.2,
+            },
+            clip=(0.0, 5.0),
+        )
+        receiver_goal = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_1_pose"})
+        handover_phase = ObsTerm(func=mdp.handover_phase)
         actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
@@ -153,7 +197,7 @@ class EventCfg:
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (-0.05, 0.05), "y": (-0.05, 0.05), "z": (-0.1, -0.1)},
+            "pose_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (0.0, 0.0)},
             "velocity_range": {},
             "asset_cfg": SceneEntityCfg("object", body_names="Object"),
         },
@@ -164,7 +208,92 @@ class EventCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    # TODO
+    giver_reach = RewTerm(
+        func=mdp.end_effector_object_distance,
+        params={"std": 0.06, "frame_name": "ee_2_frame", "minimum_phase": 0},
+        weight=2.0,
+    )
+
+    giver_grasp = RewTerm(
+        func=mdp.bilateral_grasp,
+        params={
+            "sensor_1_name": "robot_2_jaw_1_object_contact",
+            "sensor_2_name": "robot_2_jaw_2_object_contact",
+            "threshold": 0.01,
+        },
+        weight=4.0,
+    )
+
+    receiver_reach = RewTerm(
+        func=mdp.end_effector_object_distance,
+        params={"std": 0.06, "frame_name": "ee_1_frame", "minimum_phase": 1},
+        weight=3.0,
+    )
+
+    receiver_grasp = RewTerm(
+        func=mdp.bilateral_grasp,
+        params={
+            "sensor_1_name": "robot_1_jaw_1_object_contact",
+            "sensor_2_name": "robot_1_jaw_2_object_contact",
+            "threshold": 0.01,
+            "minimum_phase": 2,
+        },
+        weight=5.0,
+    )
+
+    stable_dual_grasp = RewTerm(
+        func=mdp.stable_dual_grasp,
+        params={"linear_std": 0.1, "angular_std": 2.0},
+        weight=3.0,
+    )
+
+    receiver_goal = RewTerm(
+        func=mdp.receiver_goal_tracking,
+        params={"position_std": 0.04, "orientation_std": 0.5},
+        weight=8.0,
+    )
+
+    phase_progress = RewTerm(func=mdp.phase_progress, weight=10.0)
+    success = RewTerm(func=mdp.successful_handover, weight=40.0)
+
+    object_force_excess = RewTerm(
+        func=mdp.contact_force_excess,
+        params={
+            "sensor_names": (
+                "robot_1_jaw_1_object_contact",
+                "robot_1_jaw_2_object_contact",
+                "robot_2_jaw_1_object_contact",
+                "robot_2_jaw_2_object_contact",
+            ),
+            "soft_limit": 1.0,
+        },
+        weight=-0.5,
+    )
+
+    protected_surface_contact = RewTerm(
+        func=mdp.non_object_contact_force_excess,
+        params={
+            "sensor_names": (
+                "robot_1_jaw_1_object_contact",
+                "robot_1_jaw_2_object_contact",
+                "robot_2_jaw_1_object_contact",
+                "robot_2_jaw_2_object_contact",
+            ),
+            "soft_limit": 0.0,
+        },
+        weight=-2.0,
+    )
+
+    robot_1_rcm_motion = RewTerm(
+        func=mdp.rcm_motion,
+        params={"robot_cfg": SceneEntityCfg("robot_1", body_names="psm_remote_center_link")},
+        weight=-2.0,
+    )
+    robot_2_rcm_motion = RewTerm(
+        func=mdp.rcm_motion,
+        params={"robot_cfg": SceneEntityCfg("robot_2", body_names="psm_remote_center_link")},
+        weight=-2.0,
+    )
 
     # action penalty
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-3)
@@ -178,6 +307,34 @@ class TerminationsCfg:
 
     object_dropping = DoneTerm(
         func=mdp.root_height_below_minimum, params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("object")}
+    )
+
+    success = DoneTerm(func=mdp.successful_handover)
+
+    excessive_object_force = DoneTerm(
+        func=mdp.excessive_contact_force,
+        params={
+            "sensor_names": (
+                "robot_1_jaw_1_object_contact",
+                "robot_1_jaw_2_object_contact",
+                "robot_2_jaw_1_object_contact",
+                "robot_2_jaw_2_object_contact",
+            ),
+            "hard_limit": 5.0,
+        },
+    )
+
+    protected_surface_force = DoneTerm(
+        func=mdp.excessive_non_object_contact_force,
+        params={
+            "sensor_names": (
+                "robot_1_jaw_1_object_contact",
+                "robot_1_jaw_2_object_contact",
+                "robot_2_jaw_1_object_contact",
+                "robot_2_jaw_2_object_contact",
+            ),
+            "hard_limit": 2.0,
+        },
     )
 
 
@@ -216,7 +373,7 @@ class HandoverEnvCfg(ManagerBasedRLEnvCfg):
         # general settings
         self.decimation = 2
         self.sim.render_interval = self.decimation
-        self.episode_length_s = 15.0
+        self.episode_length_s = 20.0
         # simulation settings
         self.sim.dt = 0.01  # 100Hz
         self.viewer.eye = (0.0, 0.5, 0.2)

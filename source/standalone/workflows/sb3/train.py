@@ -53,7 +53,7 @@ from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
 
 from isaaclab.utils.dict import print_dict
-from isaaclab.utils.io import dump_pickle, dump_yaml
+from isaaclab.utils.io import dump_yaml
 
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import load_cfg_from_registry, parse_env_cfg
@@ -83,8 +83,6 @@ def main():
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
-    dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
-    dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
 
     # post-process agent configuration
     agent_cfg = process_sb3_cfg(agent_cfg)

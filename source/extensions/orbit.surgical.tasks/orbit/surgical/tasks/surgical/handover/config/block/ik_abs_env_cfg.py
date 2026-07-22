@@ -24,14 +24,20 @@ class BlockHandoverEnvCfg(joint_pos_env_cfg.BlockHandoverEnvCfg):
         # Set PSM as robot
         # We switch here to a stiffer PD controller for IK tracking to be better.
         self.scene.robot_1 = PSM_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_1")
+        self.scene.robot_1.spawn.activate_contact_sensors = True
+        self.scene.robot_1.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
+        self.scene.robot_1.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
         self.scene.robot_1.init_state.pos = (0.2, 0.0, 0.15)
         self.scene.robot_1.init_state.rot = (1.0, 0.0, 0.0, 0.0)
         self.scene.robot_2 = PSM_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_2")
+        self.scene.robot_2.spawn.activate_contact_sensors = True
+        self.scene.robot_2.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
+        self.scene.robot_2.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
         self.scene.robot_2.init_state.pos = (-0.2, 0.0, 0.15)
         self.scene.robot_2.init_state.rot = (1.0, 0.0, 0.0, 0.0)
 
         # Set actions for the specific robot type (PSM)
-        self.actions.body_1_joint_pos = DifferentialInverseKinematicsActionCfg(
+        self.actions.robot_1_body_action = DifferentialInverseKinematicsActionCfg(
             asset_name="robot_1",
             joint_names=[
                 "psm_yaw_joint",
@@ -44,7 +50,7 @@ class BlockHandoverEnvCfg(joint_pos_env_cfg.BlockHandoverEnvCfg):
             body_name="psm_tool_tip_link",
             controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=False, ik_method="dls"),
         )
-        self.actions.body_2_joint_pos = DifferentialInverseKinematicsActionCfg(
+        self.actions.robot_2_body_action = DifferentialInverseKinematicsActionCfg(
             asset_name="robot_2",
             joint_names=[
                 "psm_yaw_joint",

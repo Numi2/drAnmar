@@ -7,7 +7,6 @@ from orbit.surgical.assets import ORBITSURGICAL_ASSETS_DATA_DIR
 
 from isaaclab.assets import RigidObjectCfg
 from isaaclab.sensors import FrameTransformerCfg
-from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
 from isaaclab.utils import configclass
@@ -30,9 +29,12 @@ class NeedleLiftEnvCfg(LiftEnvCfg):
 
         # Set PSM as robot
         self.scene.robot = PSM_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot.spawn.activate_contact_sensors = True
+        self.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
+        self.scene.robot.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
 
         # Set actions for the specific robot type (PSM)
-        self.actions.body_joint_pos = mdp.JointPositionActionCfg(
+        self.actions.body_action = mdp.JointPositionActionCfg(
             asset_name="robot",
             joint_names=[
                 "psm_yaw_joint",
@@ -45,7 +47,7 @@ class NeedleLiftEnvCfg(LiftEnvCfg):
             scale=0.5,
             use_default_offset=True,
         )
-        self.actions.finger_joint_pos = mdp.BinaryJointPositionActionCfg(
+        self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["psm_tool_gripper.*_joint"],
             open_command_expr={"psm_tool_gripper1_joint": -0.5, "psm_tool_gripper2_joint": 0.5},

@@ -190,6 +190,8 @@ observations, rewards, environments, iterations, logs, and checkpoints mean befo
 
 ![Dr.Anmar Policy Lab comparing robot-learning approaches and preparing a bounded training run](docs/screenshots/doctor-studio-policy-lab.png)
 
+The current RL truth boundary, canonical Cartesian action contract, native lift/handover MDPs, Gilgamesh bootstrap evidence, and remaining qualification work are documented in [`docs/RL_FOUNDATION.md`](docs/RL_FOUNDATION.md).
+
 ### Every practice attempt becomes structured training data
 
 The Demonstrations workspace teaches what makes an example useful, records the complete behavior from
@@ -380,7 +382,7 @@ release terms before redistributing any downloaded assets; this repository does 
 ./dr_anmar.sh smoke Isaac-Lift-Needle-PSM-IK-Rel-v0 120
 
 # Start a training workflow (example)
-./dr_anmar_train.sh rsl_rl Isaac-Lift-Needle-PSM-v0 --num_envs 256 --max_iterations 1000
+./dr_anmar_train.sh rsl_rl Isaac-Lift-Needle-PSM-IK-Rel-v0 --num_envs 256 --max_iterations 1000
 ```
 
 The upstream teleoperation, state-machine, Robomimic, training, and policy-playback programs remain

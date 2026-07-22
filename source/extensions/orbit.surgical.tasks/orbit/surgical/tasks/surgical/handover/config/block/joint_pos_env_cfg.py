@@ -7,7 +7,6 @@ from orbit.surgical.assets import ORBITSURGICAL_ASSETS_DATA_DIR
 
 from isaaclab.assets import RigidObjectCfg
 from isaaclab.sensors import FrameTransformerCfg
-from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
 from isaaclab.utils import configclass
@@ -30,14 +29,20 @@ class BlockHandoverEnvCfg(HandoverEnvCfg):
 
         # Set PSM as robot
         self.scene.robot_1 = PSM_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_1")
+        self.scene.robot_1.spawn.activate_contact_sensors = True
+        self.scene.robot_1.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
+        self.scene.robot_1.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
         self.scene.robot_1.init_state.pos = (0.2, 0.0, 0.15)
         self.scene.robot_1.init_state.rot = (1.0, 0.0, 0.0, 0.0)
         self.scene.robot_2 = PSM_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_2")
+        self.scene.robot_2.spawn.activate_contact_sensors = True
+        self.scene.robot_2.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
+        self.scene.robot_2.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
         self.scene.robot_2.init_state.pos = (-0.2, 0.0, 0.15)
         self.scene.robot_2.init_state.rot = (1.0, 0.0, 0.0, 0.0)
 
         # Set actions for the specific robot type (PSM)
-        self.actions.body_1_joint_pos = mdp.JointPositionActionCfg(
+        self.actions.robot_1_body_action = mdp.JointPositionActionCfg(
             asset_name="robot_1",
             joint_names=[
                 "psm_yaw_joint",
@@ -50,7 +55,7 @@ class BlockHandoverEnvCfg(HandoverEnvCfg):
             scale=0.5,
             use_default_offset=True,
         )
-        self.actions.body_2_joint_pos = mdp.JointPositionActionCfg(
+        self.actions.robot_2_body_action = mdp.JointPositionActionCfg(
             asset_name="robot_2",
             joint_names=[
                 "psm_yaw_joint",
@@ -63,13 +68,13 @@ class BlockHandoverEnvCfg(HandoverEnvCfg):
             scale=0.5,
             use_default_offset=True,
         )
-        self.actions.finger_1_joint_pos = mdp.BinaryJointPositionActionCfg(
+        self.actions.robot_1_gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot_1",
             joint_names=["psm_tool_gripper.*_joint"],
             open_command_expr={"psm_tool_gripper1_joint": -0.5, "psm_tool_gripper2_joint": 0.5},
             close_command_expr={"psm_tool_gripper1_joint": -0.07, "psm_tool_gripper2_joint": 0.07},
         )
-        self.actions.finger_2_joint_pos = mdp.BinaryJointPositionActionCfg(
+        self.actions.robot_2_gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot_2",
             joint_names=["psm_tool_gripper.*_joint"],
             open_command_expr={"psm_tool_gripper1_joint": -0.5, "psm_tool_gripper2_joint": 0.5},
@@ -77,7 +82,6 @@ class BlockHandoverEnvCfg(HandoverEnvCfg):
         )
         # Set the body name for the end effector
         self.commands.ee_1_pose.body_name = "psm_tool_tip_link"
-        self.commands.ee_2_pose.body_name = "psm_tool_tip_link"
 
         # Set Peg Block as object
         self.scene.object = RigidObjectCfg(

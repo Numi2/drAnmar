@@ -35,14 +35,16 @@ class STARReachEnvCfg(joint_pos_env_cfg.STARReachEnvCfg):
             joint_names=["star_joint_.*"],
             body_name="endo360_needle",
             controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
-            scale=0.5,
+            scale=(0.01, 0.01, 0.01, 0.05, 0.05, 0.05),
+            clip={".*": (-1.0, 1.0)},
         )
         self.actions.arm_2_action = DifferentialInverseKinematicsActionCfg(
             asset_name="robot_2",
             joint_names=["star_joint_.*"],
             body_name="endo360_needle",
             controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
-            scale=0.5,
+            scale=(0.01, 0.01, 0.01, 0.05, 0.05, 0.05),
+            clip={".*": (-1.0, 1.0)},
         )
 
 

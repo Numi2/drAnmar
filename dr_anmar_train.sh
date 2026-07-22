@@ -21,6 +21,12 @@ if [[ -z "${backend}" || -z "${task}" ]]; then
 fi
 shift 2
 
+if [[ "${task}" != *-IK-Rel-v0 ]]; then
+    echo "Dr.Anmar training uses the same Cartesian IK-relative action space as doctor demonstrations." >&2
+    echo "Choose a registered non-play task ending in -IK-Rel-v0." >&2
+    exit 2
+fi
+
 mkdir -p "${ROOT}/logs" "${ROOT}/tmp" "${PORTABLE_ROOT}"
 export TMPDIR="${ROOT}/tmp"
 export PYTHONPATH="${ORBIT_ROOT}/source/extensions/orbit.surgical.ext:${ORBIT_ROOT}/source/extensions/orbit.surgical.assets:${ORBIT_ROOT}/source/extensions/orbit.surgical.tasks:${PYTHONPATH:-}"
