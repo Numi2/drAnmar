@@ -2939,6 +2939,11 @@ def main() -> None:
         for setting, value in one_room_physx.items():
             if hasattr(env_cfg.sim.physx, setting):
                 setattr(env_cfg.sim.physx, setting, value)
+        # Rope.usd has a 0.01-unit local radius. Keep its 0.2 longitudinal
+        # scale and use a 0.04 cross-section scale for a 0.4 mm radius / 0.8 mm
+        # diameter. This is the native deformable mesh, so rendering and PhysX
+        # collision/deformation use the same physical dimensions.
+        env_cfg.scene.object.spawn.scale = (0.2, 0.04, 0.04)
         # Dr.Anmar supplies one doctor-adjustable operative camera.  Remove the
         # two policy cameras from this interactive process only; NVIDIA's
         # recorded dataset and task assets remain unchanged on disk.
@@ -3707,6 +3712,21 @@ def main() -> None:
             env.unwrapped.device,
         )
         upstream_expert_initial_state = upstream_episode.get_initial_state()
+        recorded_deformable_state = upstream_expert_initial_state.get("deformable_object", {}).get("object", {})
+        recorded_nodal_positions = recorded_deformable_state.get("nodal_position")
+        live_nodal_positions = interactive_deformable.data.nodal_pos_w if interactive_deformable is not None else None
+        if (
+            recorded_nodal_positions is not None
+            and live_nodal_positions is not None
+            and recorded_nodal_positions.shape[-2] != live_nodal_positions.shape[-2]
+        ):
+            # Scaling Rope.usd radially changes PhysX's cooked FEM topology.
+            # Restore the recorded robot and ring poses, while retaining the
+            # new strand's own native reset state rather than forcing an
+            # incompatible 549-node tensor into the 244-node physical body.
+            native_scaled_state = scene.get_state(is_relative=True)
+            upstream_expert_initial_state = dict(upstream_expert_initial_state)
+            upstream_expert_initial_state["deformable_object"] = native_scaled_state["deformable_object"]
         upstream_actions_value = upstream_episode.data["actions"]
         upstream_expert_actions = (
             upstream_actions_value.detach().cpu().numpy().astype(np.float32)
