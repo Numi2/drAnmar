@@ -61,10 +61,14 @@ def main() -> int:
         print(f"  combo keys missing from comboMap: {', '.join(missing_combo_codes)}")
 
     required_safety = {
-        "if(code==='Escape'){if(!event.repeat)emergencyStop()": "Escape emergency stop",
+        "if(code==='Backspace'||code==='Escape'){if(!event.repeat)emergencyStop()": "Escape and Backspace emergency stop",
         "window.addEventListener('blur',()=>stopDrive(false))": "focus-loss stop",
         "visibilitychange": "hidden-page stop",
         "source:'keyboard_smart_action'": "smart-action provenance",
+        "window.addEventListener('pagehide',releasePageResources": "page-exit resource release",
+        "activeFetchControllers.forEach(controller=>controller.abort())": "in-flight request cancellation",
+        "if(refreshInFlight||pageDisposed||document.hidden)return": "bounded status polling",
+        "heldKeys.forEach(code=>{if(comboMap[code])": "held combined-move control",
     }
     missing_safety = [label for source, label in required_safety.items() if source not in script]
     for label in missing_safety:
@@ -82,7 +86,25 @@ def main() -> int:
     for label in missing_backend:
         print(f"  missing backend behavior: {label}")
 
-    return 1 if missing or missing_key_codes or missing_combo_codes or missing_safety or missing_backend else 0
+    control_contract = {
+        "KeyW:[2,1,'Up']": "left W maps to up",
+        "KeyS:[2,-1,'Down']": "left S maps to down",
+        "KeyA:[1,1,'Left']": "left A maps to left",
+        "KeyD:[1,-1,'Right']": "left D maps to right",
+        "KeyQ:[0,-1,'Toward']": "left Q maps toward patient",
+        "KeyE:[0,1,'Away']": "left E maps away from patient",
+        "KeyI:[2,1,'Up']": "right I maps to up",
+        "KeyK:[2,-1,'Down']": "right K maps to down",
+        "KeyJ:[1,1,'Left']": "right J maps to left",
+        "KeyL:[1,-1,'Right']": "right L maps to right",
+        "KeyU:[0,-1,'Toward']": "right U maps toward patient",
+        "KeyO:[0,1,'Away']": "right O maps away from patient",
+    }
+    missing_contract = [label for source, label in control_contract.items() if source not in script]
+    for label in missing_contract:
+        print(f"  incorrect control contract: {label}")
+
+    return 1 if missing or missing_key_codes or missing_combo_codes or missing_safety or missing_backend or missing_contract else 0
 
 
 if __name__ == "__main__":

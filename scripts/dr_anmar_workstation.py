@@ -19,7 +19,7 @@ import threading
 import time
 import traceback
 import zipfile
-from collections import deque
+from collections import OrderedDict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -340,10 +340,12 @@ const rotationKeyMaps=[{KeyW:[4,-1,'Pitch up'],KeyS:[4,1,'Pitch down'],KeyA:[5,-
 const dualMovementCodes=new Set([...Object.keys(handKeyMaps[0]),...Object.keys(handKeyMaps[1])]);
 const comboMap={KeyZ:{label:'Orbit left',values:[0,.72,0,0,0,-.72]},KeyX:{label:'Orbit right',values:[0,-.72,0,0,0,.72]},KeyV:{label:'Drive needle',values:[-.68,0,0,.68,0,0]},KeyB:{label:'Reverse needle',values:[.68,0,0,-.68,0,0]},KeyN:{label:'Lift + retract',values:[.68,0,.68,0,0,0]},KeyF:{label:'Lower + approach',values:[-.68,0,-.68,0,0,0]}};
 function comboValues(code){return comboMap[code]?.values||Array(6).fill(0)}
-let activeArm=0,driveSpeed=1,keyboardSpeeds=[1,1],driveInFlight=false,queuedDrive=null,driveWasActive=false,bimanualInFlight=false,queuedBimanual=null,bimanualWasActive=false,inputSource='keyboard_pointer',lastGazeSend=0,currentCamera='endoscope_left',currentViewMode='operative',lastGamepadGrip=false,lastGamepadCamera=false,latestStatus=null,workerInstanceId=null,macroPulseTimer=null,keyFlashTimer=null,cameraAdjustMode=false,cameraDrag=null,cameraAdjustPending={},cameraAdjustTimer=null,cameraAdjustInFlight=false;
-const heldKeys=new Set(),heldModifiers=new Set(),pointerMoves=new Map(),keyDownAt=new Map();
-async function post(url,body={}){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.detail||'Request failed');return data}
-function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1600)}
+let activeArm=0,driveSpeed=1,keyboardSpeeds=[1,1],driveInFlight=false,queuedDrive=null,driveWasActive=false,bimanualInFlight=false,queuedBimanual=null,bimanualWasActive=false,inputSource='keyboard_pointer',lastGazeSend=0,currentCamera='endoscope_left',currentViewMode='operative',lastGamepadGrip=false,lastGamepadCamera=false,latestStatus=null,workerInstanceId=null,macroPulseTimer=null,keyFlashTimer=null,toastTimer=null,cameraAdjustMode=false,cameraDrag=null,cameraAdjustPending={},cameraAdjustTimer=null,cameraAdjustInFlight=false,refreshInFlight=false,heartbeatInFlight=false,pageDisposed=false;
+const heldKeys=new Set(),heldModifiers=new Set(),pointerMoves=new Map();
+const activeFetchControllers=new Set();
+async function requestJson(url,options={},timeoutMs=5000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);activeFetchControllers.add(controller);try{const r=await fetch(url,{...options,signal:controller.signal});let data={};try{data=await r.json()}catch(_error){}if(!r.ok)throw Error(data.detail||'Request failed');return data}catch(error){if(error.name==='AbortError')throw Error('Simulator request timed out');throw error}finally{clearTimeout(timer);activeFetchControllers.delete(controller)}}
+async function post(url,body={},timeoutMs=5000){return requestJson(url,{method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify(body)},timeoutMs)}
+function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toastTimer=null;e.classList.remove('show')},1600)}
 function showKeyAction(key,label,active=true){const display=document.getElementById('keyActionDisplay');display.classList.toggle('active',active);display.querySelector('kbd').textContent=key;display.querySelector('span').textContent=label}
 function flashShortcut(shortcut,label,duration=850){if(keyFlashTimer)clearTimeout(keyFlashTimer);document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));document.querySelectorAll('button[data-shortcut]').forEach(button=>{if(button.dataset.shortcut===shortcut)button.classList.add('key-active')});showKeyAction(shortcut,label,true);keyFlashTimer=setTimeout(()=>{document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));showKeyAction('READY','Keyboard control ready',false)},duration)}
 function runShortcut(shortcut,label,action){flashShortcut(shortcut,label);action()}
@@ -354,18 +356,18 @@ function setHandSpeed(arm,speed,label){keyboardSpeeds[arm]=speed;document.queryS
 function deadzone(value){return Math.abs(value)<0.18?0:Math.sign(value)*(Math.abs(value)-0.18)/0.82}
 function gamepadDrive(){const values=Array(6).fill(0);const pads=navigator.getGamepads?navigator.getGamepads():[];const pad=[...pads].find(Boolean);if(!pad){lastGamepadGrip=false;lastGamepadCamera=false;return values}inputSource='gamepad';values[1]-=deadzone(pad.axes[0]||0);values[0]+=deadzone(pad.axes[1]||0);values[5]+=deadzone(pad.axes[2]||0);values[4]+=deadzone(pad.axes[3]||0);values[3]+=(pad.buttons[5]?.value||0)-(pad.buttons[4]?.value||0);values[2]+=(pad.buttons[7]?.value||0)-(pad.buttons[6]?.value||0);const gripPressed=!!pad.buttons[0]?.pressed,cameraPressed=!!pad.buttons[3]?.pressed;if(gripPressed&&!lastGamepadGrip)toggleGrip();if(cameraPressed&&!lastGamepadCamera)cycleCameraView();lastGamepadGrip=gripPressed;lastGamepadCamera=cameraPressed;return values}
 function normalizeDrive(values){for(const [start,end] of [[0,3],[3,6]]){const norm=Math.hypot(...values.slice(start,end));if(norm>1)for(let i=start;i<end;i++)values[i]/=norm}return values.map(value=>Math.max(-1,Math.min(1,value)))}
-function buildDrive(){const values=gamepadDrive();pointerMoves.forEach(move=>{if(move.comboCode)comboValues(move.comboCode).forEach((value,index)=>values[index]+=value);else if(move.values)move.values.forEach((value,index)=>values[index]+=value);else values[move.axis]+=move.direction});return normalizeDrive(values)}
+function buildDrive(){const values=gamepadDrive();heldKeys.forEach(code=>{if(comboMap[code])comboValues(code).forEach((value,index)=>values[index]+=value)});pointerMoves.forEach(move=>{if(move.comboCode)comboValues(move.comboCode).forEach((value,index)=>values[index]+=value);else if(move.values)move.values.forEach((value,index)=>values[index]+=value);else values[move.axis]+=move.direction});return normalizeDrive(values)}
 function keyboardArmDrive(arm){const rotate=heldModifiers.has(arm===0?'rotate-left':'rotate-right'),map=rotate?rotationKeyMaps[arm]:handKeyMaps[arm],values=Array(6).fill(0),labels=[];heldKeys.forEach(code=>{const move=map[code];if(move){values[move[0]]+=move[1];labels.push(move[2])}});return {values:normalizeDrive(values),labels,rotate}}
 function buildBimanualCommands(){const arms=Math.min(latestStatus?.arms||1,2),commands=[];for(let arm=0;arm<arms;arm++){const hand=keyboardArmDrive(arm);commands.push({arm,values:hand.values,speed:keyboardSpeeds[arm],labels:hand.labels,rotate:hand.rotate})}return commands}
 function effectiveSpeed(){if(heldModifiers.has('precision'))return Math.min(driveSpeed,.35);return driveSpeed}
-function activeDriveLabel(){const labels=buildBimanualCommands().filter(x=>x.values.some(v=>Math.abs(v)>.01)).map(x=>`R${x.arm+1} ${x.rotate?'wrist':'tool'}: ${x.labels.join(' + ')}`);return labels.join(' · ')||'Moving'}
+function activeDriveLabel(){const labels=buildBimanualCommands().filter(x=>x.values.some(v=>Math.abs(v)>.01)).map(x=>`R${x.arm+1} ${x.rotate?'wrist':'tool'}: ${x.labels.join(' + ')}`),combos=[...heldKeys].filter(code=>comboMap[code]).map(code=>comboMap[code].label);return [...labels,...combos].join(' · ')||'Moving'}
 function updateControlReadout(moving,label){const readout=document.getElementById('controlReadout');readout.classList.toggle('moving',moving);readout.querySelector('span').textContent=moving?(label||'Moving · release to stop'):'Ready · hold a control to move'}
-async function flushDrive(){if(driveInFlight||!queuedDrive)return;const next=queuedDrive;queuedDrive=null;driveInFlight=true;try{await post('/api/drive',{values:next.values,arm:activeArm,speed:next.speed,source:next.source})}catch(e){toast(e.message)}finally{driveInFlight=false;if(queuedDrive)flushDrive()}}
-function sendDrive(values,speed=effectiveSpeed(),source=inputSource){queuedDrive={values,speed,source};flushDrive()}
-async function flushBimanual(){if(bimanualInFlight||!queuedBimanual)return;const next=queuedBimanual;queuedBimanual=null;bimanualInFlight=true;try{await post('/api/drive/bimanual',{commands:next,source:'keyboard_pointer'})}catch(e){toast(e.message)}finally{bimanualInFlight=false;if(queuedBimanual)flushBimanual()}}
-function sendBimanual(commands){queuedBimanual=commands.map(({arm,values,speed})=>({arm,values,speed}));flushBimanual()}
+async function flushDrive(){if(pageDisposed){queuedDrive=null;return}if(driveInFlight||!queuedDrive)return;const next=queuedDrive;queuedDrive=null;driveInFlight=true;try{await post('/api/drive',{values:next.values,arm:activeArm,speed:next.speed,source:next.source})}catch(e){if(!pageDisposed)toast(e.message)}finally{driveInFlight=false;if(!pageDisposed&&queuedDrive)flushDrive()}}
+function sendDrive(values,speed=effectiveSpeed(),source=inputSource){if(pageDisposed)return;queuedDrive={values,speed,source};flushDrive()}
+async function flushBimanual(){if(pageDisposed){queuedBimanual=null;return}if(bimanualInFlight||!queuedBimanual)return;const next=queuedBimanual;queuedBimanual=null;bimanualInFlight=true;try{await post('/api/drive/bimanual',{commands:next,source:'keyboard_pointer'})}catch(e){if(!pageDisposed)toast(e.message)}finally{bimanualInFlight=false;if(!pageDisposed&&queuedBimanual)flushBimanual()}}
+function sendBimanual(commands){if(pageDisposed)return;queuedBimanual=commands.map(({arm,values,speed})=>({arm,values,speed}));flushBimanual()}
 function syncKeyVisuals(){document.querySelectorAll('[data-key]').forEach(button=>button.classList.toggle('held',heldKeys.has(button.dataset.key)||[...pointerMoves.values()].some(move=>move.button===button)));document.querySelectorAll('[data-combo-key]').forEach(button=>button.classList.toggle('held',heldKeys.has(button.dataset.comboKey)||[...pointerMoves.values()].some(move=>move.button===button)));document.getElementById('leftRotateModifier').classList.toggle('active',heldModifiers.has('rotate-left'));document.getElementById('rightRotateModifier').classList.toggle('active',heldModifiers.has('rotate-right'))}
-function updateDrive(){const commands=buildBimanualCommands(),keyboardActive=commands.some(command=>command.values.some(value=>Math.abs(value)>.01)),pointerValues=buildDrive(),pointerActive=pointerValues.some(value=>Math.abs(value)>.01);if((keyboardActive||pointerActive)&&macroPulseTimer){clearTimeout(macroPulseTimer);macroPulseTimer=null}if(keyboardActive||bimanualWasActive)sendBimanual(commands);bimanualWasActive=keyboardActive;if(!keyboardActive&&(pointerActive||driveWasActive))sendDrive(pointerValues);driveWasActive=pointerActive;syncKeyVisuals();updateControlReadout(keyboardActive||pointerActive,keyboardActive?activeDriveLabel():pointerActive?'Pointer / gamepad motion':null)}
+function updateDrive(){if(pageDisposed||document.hidden)return;const commands=buildBimanualCommands(),keyboardActive=commands.some(command=>command.values.some(value=>Math.abs(value)>.01)),pointerValues=buildDrive(),pointerActive=pointerValues.some(value=>Math.abs(value)>.01);if((keyboardActive||pointerActive)&&macroPulseTimer){clearTimeout(macroPulseTimer);macroPulseTimer=null}if(keyboardActive||bimanualWasActive)sendBimanual(commands);bimanualWasActive=keyboardActive;if(!keyboardActive&&(pointerActive||driveWasActive))sendDrive(pointerValues);driveWasActive=pointerActive;syncKeyVisuals();updateControlReadout(keyboardActive||pointerActive,activeDriveLabel())}
 function clearHeldControls(){heldKeys.clear();heldModifiers.clear();pointerMoves.clear();syncKeyVisuals()}
 function stopDrive(showToast=true){if(macroPulseTimer){clearTimeout(macroPulseTimer);macroPulseTimer=null}clearHeldControls();driveWasActive=false;bimanualWasActive=false;sendDrive(Array(6).fill(0));sendBimanual(buildBimanualCommands());updateControlReadout(false);if(showToast)toast('Both instruments stopped')}
 async function stopTool(){stopDrive();try{await post('/api/stop')}catch(e){toast(e.message)}}
@@ -375,7 +377,7 @@ async function toggleGrip(arm=activeArm){if(arm>=(latestStatus?.arms||1)){toast(
 async function recording(start){try{await post(start?'/api/record/start':'/api/record/stop');toast(start?'Recording started':'Saving demonstration…')}catch(e){toast(e.message)}}
 async function replay(){try{const x=await post('/api/replay-last');toast(x.message)}catch(e){toast(e.message)}}
 async function referenceGhost(enabled){try{const x=await post('/api/reference-ghost',{enabled});toast(x.message)}catch(e){toast(e.message)}}
-function setCamera(name,button){currentCamera=name;document.getElementById('cameraImage').src=`/video/${name}?t=${Date.now()}`;document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===button))}
+function setCamera(name,button){const image=document.getElementById('cameraImage'),path=new URL(image.src,location.href).pathname;if(currentCamera!==name||path!==`/video/${name}`)image.src=`/video/${name}?t=${Date.now()}`;currentCamera=name;document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===button))}
 function setCameraShortcut(name){const button=document.querySelector(`[data-camera="${name}"]`);if(!button||button.classList.contains('hidden')){toast(`${name.replace('_',' ')} is not available in this room`);return}setCamera(name,button);toast(`${button.textContent.trim()} camera`)}
 async function setCameraView(mode,button){try{const result=await post('/api/camera-view',{mode});currentViewMode=result.mode;renderFreeCamera({enabled:false});document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',x.dataset.viewMode===result.mode));toast(`${button?.textContent||result.mode} camera ready`)}catch(e){toast(e.message)}}
 function renderFreeCamera(adjustable={}){cameraAdjustMode=!!adjustable.enabled;const view=document.getElementById('cameraView');view.classList.toggle('free-camera',cameraAdjustMode);if(!cameraAdjustMode)view.classList.remove('dragging');document.getElementById('freeCameraHud').classList.toggle('hidden',!cameraAdjustMode);document.getElementById('freeCameraButton').classList.toggle('active',cameraAdjustMode);document.getElementById('resetCameraButton').classList.toggle('state-active',cameraAdjustMode)}
@@ -414,8 +416,8 @@ function handleDiscreteShortcut(event){const {code}=event;if(code==='Slash'&&eve
   KeyM:['M','Manual control',()=>setAutonomy('manual')],KeyG:['G','Guided control',()=>setAutonomy('guided')],KeyH:['H','Toggle clinician path',()=>toggleReferenceGhost()],F9:['F9','Run live expert',()=>startExpert()],F10:['F10','Pause or resume expert',()=>toggleExpertPause()],F12:['F12','Smart context action',()=>smartAction()],
   KeyY:['Y','Start recording',()=>recording(true)],KeyT:['T','Stop and save',()=>recording(false)],KeyR:['R','Replay last',()=>replay()],Delete:['Delete','Reset scene',()=>resetScene()]
 };if(code==='Backspace'||code==='Escape'){if(!event.repeat)emergencyStop();return true}const command=commands[code];if(!command)return false;if(!event.repeat)runShortcut(...command);return true}
-document.addEventListener('keydown',event=>{if(isTypingTarget(event.target)||event.metaKey||event.ctrlKey)return;const helpOpen=!document.getElementById('keyboardHelp').classList.contains('hidden');if(helpOpen&&event.code!=='Slash'&&event.code!=='Escape'&&event.code!=='Backspace'){event.preventDefault();return}if(event.code==='ShiftLeft'||event.code==='ShiftRight'){event.preventDefault();heldModifiers.add(event.code==='ShiftLeft'?'rotate-left':'rotate-right');showKeyAction(event.code==='ShiftLeft'?'L⇧':'R⇧',`${event.code==='ShiftLeft'?'Left':'Right'} wrist rotation mode`,true);syncKeyVisuals();updateDrive();return}if(event.code==='AltLeft'||event.code==='AltRight'){event.preventDefault();heldModifiers.add('precision');syncKeyVisuals();return}if(handleDiscreteShortcut(event)){event.preventDefault();if((event.code==='Escape'||event.code==='Backspace')&&helpOpen)toggleKeyboardHelp(false);return}if(!dualMovementCodes.has(event.code)&&!comboMap[event.code])return;event.preventDefault();if(!event.repeat&&!heldKeys.has(event.code))keyDownAt.set(event.code,performance.now());inputSource='keyboard_pointer';heldKeys.add(event.code);updateDrive();showKeyAction(event.key.length===1?event.key.toUpperCase():event.key,activeDriveLabel(),true)});
-document.addEventListener('keyup',event=>{if(event.code==='ShiftLeft'||event.code==='ShiftRight'){event.preventDefault();heldModifiers.delete(event.code==='ShiftLeft'?'rotate-left':'rotate-right');syncKeyVisuals();updateDrive();if(!bimanualWasActive)showKeyAction('READY','Wrist rotation mode released',false);return}if(event.code==='AltLeft'||event.code==='AltRight'){event.preventDefault();heldModifiers.delete('precision');syncKeyVisuals();return}if(!dualMovementCodes.has(event.code)&&!comboMap[event.code])return;event.preventDefault();const pressedAt=keyDownAt.get(event.code);keyDownAt.delete(event.code);heldKeys.delete(event.code);updateDrive();if(comboMap[event.code]&&pressedAt!==undefined&&performance.now()-pressedAt<220){const label=comboMap[event.code].label,shortcut=event.key.length===1?event.key.toUpperCase():event.key;flashShortcut(shortcut,`${label} · precision tap`,1050);pulseDrive(comboValues(event.code),`${label} · precision tap`,simulatorReadablePulse(700),Math.max(.35,effectiveSpeed()*.55));return}showKeyAction(heldKeys.size?'HOLD':'READY',heldKeys.size?activeDriveLabel():'Released · motion stopped',heldKeys.size>0)});
+document.addEventListener('keydown',event=>{if(isTypingTarget(event.target)||event.metaKey||event.ctrlKey)return;const helpOpen=!document.getElementById('keyboardHelp').classList.contains('hidden');if(helpOpen&&event.code!=='Slash'&&event.code!=='Escape'&&event.code!=='Backspace'){event.preventDefault();return}if(event.code==='ShiftLeft'||event.code==='ShiftRight'){event.preventDefault();heldModifiers.add(event.code==='ShiftLeft'?'rotate-left':'rotate-right');showKeyAction(event.code==='ShiftLeft'?'L⇧':'R⇧',`${event.code==='ShiftLeft'?'Left':'Right'} wrist rotation mode`,true);syncKeyVisuals();updateDrive();return}if(event.code==='AltLeft'||event.code==='AltRight'){event.preventDefault();heldModifiers.add('precision');syncKeyVisuals();return}if(handleDiscreteShortcut(event)){event.preventDefault();if((event.code==='Escape'||event.code==='Backspace')&&helpOpen)toggleKeyboardHelp(false);return}if(!dualMovementCodes.has(event.code)&&!comboMap[event.code])return;event.preventDefault();inputSource='keyboard_pointer';heldKeys.add(event.code);updateDrive();showKeyAction(event.key.length===1?event.key.toUpperCase():event.key,activeDriveLabel(),true)});
+document.addEventListener('keyup',event=>{if(event.code==='ShiftLeft'||event.code==='ShiftRight'){event.preventDefault();heldModifiers.delete(event.code==='ShiftLeft'?'rotate-left':'rotate-right');syncKeyVisuals();updateDrive();if(!bimanualWasActive)showKeyAction('READY','Wrist rotation mode released',false);return}if(event.code==='AltLeft'||event.code==='AltRight'){event.preventDefault();heldModifiers.delete('precision');syncKeyVisuals();return}if(!dualMovementCodes.has(event.code)&&!comboMap[event.code])return;event.preventDefault();heldKeys.delete(event.code);updateDrive();showKeyAction(heldKeys.size?'HOLD':'READY',heldKeys.size?activeDriveLabel():'Released · motion stopped',heldKeys.size>0)});
 window.addEventListener('blur',()=>stopDrive(false));document.addEventListener('visibilitychange',()=>{if(document.hidden)stopDrive(false)});
 const cameraView=document.getElementById('cameraView');
 cameraView.addEventListener('pointerdown',event=>{if(!cameraAdjustMode||event.button!==0)return;event.preventDefault();cameraView.setPointerCapture(event.pointerId);cameraDrag={pointerId:event.pointerId,x:event.clientX,y:event.clientY,pan:event.shiftKey};cameraView.classList.add('dragging');cameraView.classList.remove('gaze-on')});
@@ -423,8 +425,8 @@ cameraView.addEventListener('pointermove',event=>{if(cameraDrag&&cameraDrag.poin
 function finishCameraDrag(event){if(!cameraDrag||cameraDrag.pointerId!==event.pointerId)return;cameraDrag=null;cameraView.classList.remove('dragging')}
 cameraView.addEventListener('pointerup',finishCameraDrag);cameraView.addEventListener('pointercancel',finishCameraDrag);cameraView.addEventListener('lostpointercapture',finishCameraDrag);cameraView.addEventListener('pointerleave',()=>{if(!cameraDrag)cameraView.classList.remove('gaze-on')});cameraView.addEventListener('wheel',event=>{if(!cameraAdjustMode)return;event.preventDefault();queueCameraAdjustment({zoom_delta:Math.sign(event.deltaY)*.08})},{passive:false});
 function targetDirections(offset){if(!offset)return'';const choices=[];if(Math.abs(offset[2])>.004)choices.push([Math.abs(offset[2]),offset[2]>0?'Up':'Down']);if(Math.abs(offset[1])>.004)choices.push([Math.abs(offset[1]),offset[1]>0?'Left':'Right']);if(Math.abs(offset[0])>.004)choices.push([Math.abs(offset[0]),offset[0]<0?'Toward':'Away']);return choices.sort((a,b)=>b[0]-a[0]).slice(0,2).map(x=>x[1]).join(' + ')}
-async function refresh(){try{
-  const s=await(await fetch('/api/status/live',{cache:'no-store'})).json();if(workerInstanceId&&s.instance_id!==workerInstanceId){location.reload();return}workerInstanceId=s.instance_id;latestStatus=s;if(activeArm>=s.arms){activeArm=0;document.getElementById('arm0').classList.add('active');document.getElementById('arm1').classList.remove('active')}document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';
+async function refresh(){if(refreshInFlight||pageDisposed||document.hidden)return;refreshInFlight=true;try{
+  const s=await requestJson('/api/status/live',{cache:'no-store'},2500);if(workerInstanceId&&s.instance_id!==workerInstanceId){location.reload();return}workerInstanceId=s.instance_id;latestStatus=s;if(activeArm>=s.arms){activeArm=0;document.getElementById('arm0').classList.add('active');document.getElementById('arm1').classList.remove('active')}document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';
   const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;const procedureMarkup=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join(''),procedureSteps=document.getElementById('procedureSteps');if(procedureSteps.dataset.markup!==procedureMarkup){procedureSteps.innerHTML=procedureMarkup;procedureSteps.dataset.markup=procedureMarkup}
   const truth=document.getElementById('procedureTruth');truth.textContent=p.truth_note||'';truth.classList.toggle('hidden',!p.truth_note);document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('rightInstrumentControls').classList.toggle('hidden',s.arms<2);document.getElementById('instrumentGrid').classList.toggle('single',s.arms<2);document.querySelectorAll('.gripper-control').forEach(button=>button.classList.toggle('hidden',!s.has_grippers));
   currentViewMode=s.camera_view_mode||currentViewMode;renderFreeCamera(s.camera_adjustable||{});document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',!cameraAdjustMode&&x.dataset.viewMode===currentViewMode));
@@ -432,8 +434,10 @@ async function refresh(){try{
 	  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m;proximity.className='proximity';let guidance='Move toward the target';if(s.native_grasp_contact_active?.[activeArm]){guidance='Native jaw contact detected · lift smoothly';proximity.classList.add('held')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){guidance=`Target ${Math.round(distance*1000)} mm · ${targetDirections(offset)||'hold course'}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Next</b><span>${guidance}</span>`;const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],contact=s.native_grasp_contact_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':contact?'Lift the physically held object':'Open jaws and retry';
   const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderExpert(s.expert_demonstration);
 	  if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
-}catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}}
-auditKeyboardCoverage();setInterval(updateDrive,90);setInterval(refresh,500);setInterval(()=>post('/api/operator/heartbeat').catch(()=>{}),10000);refresh();
+}catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}finally{refreshInFlight=false}}
+async function heartbeat(){if(heartbeatInFlight||pageDisposed||document.hidden)return;heartbeatInFlight=true;try{await post('/api/operator/heartbeat',{},3000)}catch(_error){}finally{heartbeatInFlight=false}}
+function releasePageResources(){if(pageDisposed)return;pageDisposed=true;queuedDrive=null;queuedBimanual=null;clearInterval(driveInterval);clearInterval(refreshInterval);clearInterval(heartbeatInterval);if(macroPulseTimer)clearTimeout(macroPulseTimer);if(keyFlashTimer)clearTimeout(keyFlashTimer);if(toastTimer)clearTimeout(toastTimer);if(cameraAdjustTimer)clearTimeout(cameraAdjustTimer);activeFetchControllers.forEach(controller=>controller.abort());activeFetchControllers.clear();clearHeldControls();const image=document.getElementById('cameraImage');image.removeAttribute('src');const options={method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:'{}',keepalive:true};fetch('/api/stop',options).catch(()=>{});fetch('/api/operator/release',options).catch(()=>{})}
+auditKeyboardCoverage();const driveInterval=setInterval(updateDrive,90),refreshInterval=setInterval(refresh,500),heartbeatInterval=setInterval(heartbeat,10000);window.addEventListener('pagehide',releasePageResources,{once:true});window.addEventListener('pageshow',event=>{if(event.persisted&&pageDisposed)location.reload()});document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh();heartbeat()}});refresh();
 </script></body></html>"""
 
 
@@ -553,6 +557,13 @@ class SharedState:
     pulse_steps: int = 0
     drive: np.ndarray = field(init=False)
     drive_until: float = 0.0
+    control_sequence: int = 0
+    control_last_kind: str = "idle"
+    control_last_source: str = "none"
+    control_last_action: list[float] = field(default_factory=list)
+    control_last_at: float = 0.0
+    control_last_nonzero_sequence: int = 0
+    control_last_nonzero_action: list[float] = field(default_factory=list)
     grippers_open: list[bool] = field(init=False)
     native_grasp_contact_active: list[bool] = field(init=False)
     tool_to_object_distance_m: list[float | None] = field(init=False)
@@ -651,6 +662,18 @@ class SharedState:
         if not self.has_grippers:
             raise ValueError("This task has no gripper action")
         return arm * 7 + 6
+
+    def note_control(self, kind: str, source: str, action: np.ndarray) -> None:
+        """Record one fixed-size control observation while the caller owns ``lock``."""
+        self.control_sequence += 1
+        self.control_last_kind = kind
+        self.control_last_source = source
+        action_array = np.asarray(action, dtype=np.float32)
+        self.control_last_action = action_array.tolist()
+        self.control_last_at = time.monotonic()
+        if bool(np.any(action_array)):
+            self.control_last_nonzero_sequence = self.control_sequence
+            self.control_last_nonzero_action = action_array.tolist()
 
     def camera_adjustment(self) -> dict[str, float | str]:
         """Return the native camera adjustment while the caller owns ``lock``."""
@@ -780,6 +803,17 @@ class SharedState:
                 "drive_active": (
                     self.drive_until > time.monotonic() and bool(np.any(self.drive))
                 ) or self.expert_demonstration.get("status") == "running",
+                "control_contract": {
+                    "sequence": self.control_sequence,
+                    "kind": self.control_last_kind,
+                    "source": self.control_last_source,
+                    "action": list(self.control_last_action),
+                    "last_nonzero_sequence": self.control_last_nonzero_sequence,
+                    "last_nonzero_action": list(self.control_last_nonzero_action),
+                    "age_ms": round(max(0.0, time.monotonic() - self.control_last_at) * 1000)
+                    if self.control_last_at
+                    else None,
+                },
             }
 
     def live_status(self) -> dict[str, Any]:
@@ -957,6 +991,10 @@ def build_web_app(state: SharedState) -> FastAPI:
                 "jpeg_frames_dropped": state.jpeg_frames_dropped,
                 "sim_fps": state.sim_fps,
                 "render_fps": state.render_fps,
+                "control_sequence": state.control_sequence,
+                "control_last_kind": state.control_last_kind,
+                "control_last_source": state.control_last_source,
+                "control_last_nonzero_sequence": state.control_last_nonzero_sequence,
             }
         return JSONResponse(payload)
 
@@ -980,6 +1018,7 @@ def build_web_app(state: SharedState) -> FastAPI:
         with state.lock:
             state.pulse = command
             state.pulse_steps = 1
+            state.note_control("jog", "keyboard_pointer", command)
         state.wake_event.set()
         return {"ok": True, "action": command.tolist()}
 
@@ -1042,6 +1081,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.drive = command
             state.operator_input_source = request.source
             state.drive_until = time.monotonic() + hold_seconds if active else 0.0
+            state.note_control("drive", request.source, command)
             if active:
                 if state.expert_demonstration.get("status") in {"running", "paused"}:
                     state.expert_request = "take_over"
@@ -1111,6 +1151,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.drive = command
             state.drive_until = time.monotonic() + hold_seconds if active else 0.0
             state.operator_input_source = request.source
+            state.note_control("bimanual", request.source, command)
             if active:
                 if state.expert_demonstration.get("status") in {"running", "paused"}:
                     state.expert_request = "take_over"
@@ -1139,6 +1180,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.drive.fill(0.0)
             state.drive_until = 0.0
             state.replay_request = "stop"
+            state.note_control("stop", "keyboard_pointer", state.drive)
             if state.expert_demonstration.get("status") in {"running", "paused"}:
                 state.expert_request = "take_over"
                 state.expert_clean_run = False
@@ -1231,6 +1273,9 @@ def build_web_app(state: SharedState) -> FastAPI:
                 state.expert_request = "take_over"
                 state.expert_clean_run = False
             state.grippers_open[request.arm] = request.open
+            gripper_action = np.zeros(state.action_dim, dtype=np.float32)
+            gripper_action[state.gripper_action_index(request.arm)] = 1.0 if request.open else -1.0
+            state.note_control("gripper", "keyboard_pointer", gripper_action)
         state.wake_event.set()
         return {"ok": True, "open": request.open, "arm": request.arm}
 
@@ -1246,6 +1291,9 @@ def build_web_app(state: SharedState) -> FastAPI:
                 state.expert_clean_run = False
             state.grippers_open[request.arm] = not state.grippers_open[request.arm]
             is_open = state.grippers_open[request.arm]
+            gripper_action = np.zeros(state.action_dim, dtype=np.float32)
+            gripper_action[state.gripper_action_index(request.arm)] = 1.0 if is_open else -1.0
+            state.note_control("gripper", "keyboard_pointer", gripper_action)
         state.wake_event.set()
         return {"ok": True, "open": is_open, "arm": request.arm}
 
@@ -1255,6 +1303,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.reset_requested = True
             state.drive.fill(0.0)
             state.drive_until = 0.0
+            state.note_control("reset", "keyboard_pointer", state.drive)
             state.replay_request = "stop"
             state.expert_request = "cancel"
             state.expert_clean_run = False
@@ -1888,7 +1937,8 @@ def read_demo_manifest(path: Path) -> dict[str, Any]:
         return {}
 
 
-_DEMO_INSPECTION_CACHE: dict[tuple[str, int, int], dict[str, Any]] = {}
+_DEMO_INSPECTION_CACHE: OrderedDict[tuple[str, int, int], dict[str, Any]] = OrderedDict()
+MAX_DEMO_INSPECTION_CACHE = 256
 
 
 def inspect_demo_file(path: Path) -> dict[str, Any]:
@@ -1900,6 +1950,7 @@ def inspect_demo_file(path: Path) -> dict[str, Any]:
     cache_key = (str(path), stat.st_mtime_ns, stat.st_size)
     cached = _DEMO_INSPECTION_CACHE.get(cache_key)
     if cached is not None:
+        _DEMO_INSPECTION_CACHE.move_to_end(cache_key)
         return dict(cached)
     result: dict[str, Any]
     try:
@@ -1936,8 +1987,10 @@ def inspect_demo_file(path: Path) -> dict[str, Any]:
             "warnings": [],
             "error": f"Unreadable demonstration: {exc}",
         }
-    if len(_DEMO_INSPECTION_CACHE) >= 512:
-        _DEMO_INSPECTION_CACHE.clear()
+    for stale_key in [key for key in _DEMO_INSPECTION_CACHE if key[0] == str(path) and key != cache_key]:
+        _DEMO_INSPECTION_CACHE.pop(stale_key, None)
+    while len(_DEMO_INSPECTION_CACHE) >= MAX_DEMO_INSPECTION_CACHE:
+        _DEMO_INSPECTION_CACHE.popitem(last=False)
     _DEMO_INSPECTION_CACHE[cache_key] = result
     return dict(result)
 

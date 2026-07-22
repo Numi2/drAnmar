@@ -110,3 +110,25 @@ does not prove task success: all three manifests set `clean_reference_eligible=f
 `behavior_cloning_reference_candidate=false`. The captures and exact semantics are in
 [`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md). Fifteen rooms still lack a complete live expert
 capture, and all rooms require clinician review before reference use.
+
+## 2026-07-22 resource-ownership and control addendum
+
+- Camera JPEG work is limited to one queued job and recording writes to six queued frames. Demo metadata uses a
+  256-entry LRU instead of an unbounded process-lifetime dictionary. Completed training and healthcare child
+  processes now release their process and resume-context references.
+- Doctor Studio and the embedded workstation now bound and cancel fetches, prevent overlapping status and
+  heartbeat polls, stop intervals while hidden, close the MJPEG source, release the operator lease on page exit,
+  and prevent an aborted unload-time drive from spawning a replacement request.
+- `54/54` visible controls passed the static keyboard contract. Live dual-arm action inspection confirmed left
+  `W` up, right `I` up, right `K` down, and simultaneous `W + K` in the correct 14-action slots. Both grippers,
+  all seven fixed camera angles, free-camera orbit/pan/zoom, fixed-camera restoration, and stop-to-zero passed.
+- Two consecutive soak rounds each issued 250 hub status reads, 250 worker status reads, and 80 MJPEG
+  connect/read/disconnect cycles. From the warmed first round to the second, hub RSS stayed at 63.1 MiB, CUDA
+  reserved memory stayed at 22 MiB, hub and worker thread counts were unchanged, open descriptors decreased by
+  one in both processes, and the worker RSS delta was 6.1 MiB. Camera subscribers returned to the pre-soak count
+  of one (the deliberately open Doctor Studio), with JPEG and recording queues both at zero.
+- A fresh headless Doctor Studio load rendered the complete dual-hand control dock without scrolling; after that
+  browser closed, the active camera-stream count again returned to one.
+
+This is a bounded engineering soak, not proof that no defect can exist over an unlimited run. A multi-hour
+instrumented Isaac/driver soak remains appropriate before a formal release or clinical study.

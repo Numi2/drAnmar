@@ -362,6 +362,16 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def process_rss_bytes() -> int | None:
+    try:
+        for line in Path("/proc/self/status").read_text(encoding="utf-8").splitlines():
+            if line.startswith("VmRSS:"):
+                return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
+
 def read_json(path: Path, default: Any) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -941,6 +951,8 @@ def monitor_training(process: subprocess.Popen, log_file, resume_context: dict[s
     code = process.wait()
     log_file.close()
     with state.lock:
+        if state.training_process is process:
+            state.training_process = None
         state.training_exit_code = code
         state.training_status = "complete" if code == 0 else "failed"
         manifest_path = Path(state.training_manifest) if state.training_manifest else None
@@ -975,8 +987,11 @@ def monitor_healthcare_workflow(
             state.healthcare_skip_resume_job_id = None
         resume_target = state.healthcare_resume_context if state.healthcare_job_id == job_id else resume_context
         if state.healthcare_job_id == job_id:
+            if state.healthcare_process is process:
+                state.healthcare_process = None
             state.healthcare_exit_code = code
             state.healthcare_status = final_status
+            state.healthcare_resume_context = None
     manifest = read_json(manifest_path, {})
     manifest.update({"status": final_status, "exit_code": code, "finished_at": utc_now()})
     write_json(manifest_path, manifest)
@@ -2161,6 +2176,38 @@ def status() -> JSONResponse:
         }
     )
     return JSONResponse(hub)
+
+
+@app.get("/api/health/runtime")
+def runtime_health() -> JSONResponse:
+    try:
+        open_descriptors = len(list(Path("/proc/self/fd").iterdir()))
+    except OSError:
+        open_descriptors = None
+    try:
+        worker = worker_json("/api/health/runtime")
+    except (HTTPException, OSError, ValueError):
+        worker = None
+    with access_attempts_lock:
+        access_clients = len(access_attempts)
+        access_entries = sum(len(attempts) for attempts in access_attempts.values())
+    with state.lock:
+        payload = {
+            "schema": "dr.anmar.hub-runtime-health.v1",
+            "rss_bytes": process_rss_bytes(),
+            "thread_count": threading.active_count(),
+            "open_descriptors": open_descriptors,
+            "switching": state.switching,
+            "training_process_active": state.training_process is not None,
+            "healthcare_process_active": state.healthcare_process is not None,
+            "matrix_results_retained": len(state.matrix_results),
+            "access_attempt_clients": access_clients,
+            "access_attempt_entries": access_entries,
+            "sha256_cache": cached_sha256_file.cache_info()._asdict(),
+            "anatomy_cache": installed_usd_inventory.cache_info()._asdict(),
+            "worker": worker,
+        }
+    return JSONResponse(payload)
 
 
 @app.post("/api/launch")
