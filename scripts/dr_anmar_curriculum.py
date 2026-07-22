@@ -498,6 +498,259 @@ COURSES.extend(
 )
 
 
+# A lesson must teach a decision process, not only name a task.  These briefs
+# are deliberately clinician-facing and simulator-specific: they explain what
+# to observe, what to try, how to judge the attempt, and what to think about
+# before moving on.  Detailed physics/procedure truth remains owned by the
+# corresponding native room definition.
+LESSON_GUIDES = {
+    "psm-precision-reach": {
+        "notice": "Watch how a small hand command changes both tool-tip position and orientation in the camera view.",
+        "practice": "Move in one axis at a time, slow near the target, then settle without a corrective wobble.",
+        "steps": ["Identify the tool tip and target before moving.", "Use coarse motion only in open space.", "Approach on one clear axis, then align the remaining axes.", "Hold the final pose and inspect the error."],
+        "success_checks": ["The target is reached without contact or overshoot.", "The final pose is stable rather than oscillating.", "The path uses deliberate, economical corrections."],
+        "reflection": "Which view or axis made depth hardest to judge?",
+    },
+    "ecm-camera-control": {
+        "notice": "Notice how camera translation and rotation change scale, horizon, occlusion, and apparent tool motion.",
+        "practice": "Frame the target with useful surrounding anatomy, then hold the view while the tool remains untouched.",
+        "steps": ["Locate the target and both workspace boundaries.", "Translate until the target is near image centre.", "Adjust angle and distance for a clear working corridor.", "Stop and confirm the view stays stable."],
+        "success_checks": ["The target is centred and remains visible.", "Useful context is preserved around the target.", "The camera does not collide with or displace the instruments."],
+        "reflection": "Did a closer view improve precision or remove useful context?",
+    },
+    "dual-arm-coordination": {
+        "notice": "Track both tips, their crossing risk, and which instrument currently has the clearest route.",
+        "practice": "Use both keyboard hands together to place the instruments while preserving separation and visibility.",
+        "steps": ["Survey both targets and choose an approach side for each arm.", "Move the first instrument into a safe staging pose.", "Advance the second while monitoring separation.", "Settle both tools without crossing shafts."],
+        "success_checks": ["Both targets are reached.", "No tool-tool or protected-scene contact occurs.", "Neither instrument blocks the operative view."],
+        "reflection": "When was simultaneous motion better than moving one arm at a time?",
+    },
+    "needle-lift": {
+        "notice": "Look for jaw alignment on the needle body, physical custody after closure, and orientation during the lift.",
+        "practice": "Approach the middle third, close once aligned, lift clear, orient, and recover without a drop.",
+        "steps": ["Inspect the needle pose and choose a grasp on its curved body.", "Approach with open jaws and minimal lateral motion.", "Close only when the body lies between both jaws.", "Lift, orient for the next action, and hold a stable recovery pose."],
+        "success_checks": ["The needle moves only after a confirmed physical grasp.", "It clears the tray without scraping or dropping.", "The final orientation is usable for a handoff or tissue bite."],
+        "reflection": "Was failure caused by approach alignment, closure timing, or lift direction?",
+    },
+    "needle-handover": {
+        "notice": "The critical moment is dual custody: the receiver must hold the needle before the sender releases.",
+        "practice": "Present a safe section of the curved body, establish the receiving grasp, then release and separate.",
+        "steps": ["Acquire and present the needle in the shared workspace.", "Bring the receiver to an exposed section of the body.", "Close the receiving jaws and confirm the needle is retained.", "Open the sender, separate both tools, and present the next driving angle."],
+        "success_checks": ["A measurable dual-grasp overlap occurs before release.", "The needle never becomes free or contacts the table.", "The receiver finishes with a useful orientation."],
+        "reflection": "Could the receiver approach without forcing the sender to compensate?",
+    },
+    "block-transfer": {
+        "notice": "Use the rigid block to isolate timing, shared-workspace positioning, and release order from needle curvature.",
+        "practice": "Lift, present, receive, release, and place the block using a clear two-arm rhythm.",
+        "steps": ["Acquire the block with Instrument 1.", "Present it centrally with room for the second jaw.", "Secure Instrument 2 before releasing Instrument 1.", "Move to the destination and place with a controlled release."],
+        "success_checks": ["The block remains physically held throughout transfer.", "The instruments do not collide.", "Placement finishes inside the target region."],
+        "reflection": "Which part of the transfer should stay identical when the object changes?",
+    },
+    "rl-reach": {
+        "notice": "Connect each policy input and action to the reward curve, episode outcome, and final reach error.",
+        "practice": "Review the starter recipe, run a small Cartesian IK-relative training job, then compare early and later checkpoints.",
+        "steps": ["Inspect the observation, action, termination, and reward definitions.", "Keep the first run small and reproducible.", "Watch reward trend, success rate, and action smoothness together.", "Load a checkpoint and evaluate it from unseen resets."],
+        "success_checks": ["The run produces a checkpoint and reproducible manifest.", "Reach success improves without unstable action growth.", "You can explain what behaviour each reward term encourages."],
+        "reflection": "Could the policy increase reward while behaving in a way you would reject?",
+    },
+    "rl-needle-lift": {
+        "notice": "A lift score is incomplete unless grasp quality, orientation, contacts, force limits, and safe completion are represented.",
+        "practice": "Compare the needle-lift reward with an expert trajectory before approving a bounded training recipe.",
+        "steps": ["Inspect the Cartesian action and observation spaces.", "Map every reward term to visible behaviour.", "Identify missing safety and grasp-quality signals.", "Run only the reviewed recipe, then compare checkpoint behaviour with demonstrations."],
+        "success_checks": ["Training and human demonstrations use the same Cartesian action meaning.", "Reported success includes stable physical needle custody.", "Evaluation exposes unsafe contacts and reward loopholes."],
+        "reflection": "Which desired behaviour is easier to demonstrate than to express as a reward?",
+    },
+    "camera-view-generalization": {
+        "notice": "Compare which needle, jaw, target, and depth cues stay reliable when the camera viewpoint changes.",
+        "practice": "Play the three views from the beginning and record what changes versus what remains task-relevant.",
+        "steps": ["Study the training view and name the visible decision cues.", "Switch to each new view at the same action phase.", "Identify cues that move, disappear, or become ambiguous.", "Choose observations or augmentation that could preserve the behaviour."],
+        "success_checks": ["Stable task cues are separated from camera-specific appearance.", "At least one likely failure under viewpoint shift is identified.", "A concrete robustness experiment is proposed."],
+        "reflection": "Which cue did the training camera make deceptively easy?",
+    },
+    "point-cloud-policy": {
+        "notice": "Depth changes a colored pixel into a 3D surface point, but occlusion and missing depth still remain.",
+        "practice": "Relate visible tissue and tool structures to the geometry a point-cloud policy can actually observe.",
+        "steps": ["Identify ambiguous relationships in the RGB view.", "Ask which ambiguities depth resolves.", "Mark regions hidden from the endoscope.", "Compare single-view 3D input with multi-view image input."],
+        "success_checks": ["You can state what RGB-D adds and what it cannot recover.", "Occluded anatomy is not treated as observed geometry.", "The chosen representation matches the task question."],
+        "reflection": "Would another camera or a better 3D representation reduce the main uncertainty?",
+    },
+    "needle-generalization": {
+        "notice": "Across needles, separate incidental appearance from pose, curvature, exposed body, and graspable geometry.",
+        "practice": "Compare the same phase across all five examples and predict which instance is hardest before watching the result.",
+        "steps": ["Choose one common action phase.", "Compare curvature, scale, pose, and visibility across instances.", "Predict the required grasp adjustment.", "Check whether the observed action supports the prediction."],
+        "success_checks": ["The comparison uses task geometry rather than color alone.", "A plausible out-of-distribution failure is identified.", "A useful training variation is proposed."],
+        "reflection": "What must the policy estimate explicitly instead of memorizing?",
+    },
+    "shunt-insertion": {
+        "notice": "Watch tip-to-lumen alignment, flexible-body buckling, insertion depth, and solver-derived wall load together.",
+        "practice": "Acquire the reinforced section, align coaxially, advance gradually, seat, then stop for patency verification.",
+        "steps": ["Grasp the reinforced middle without deforming the free tip.", "Align the tip with the lumen axis before advancing.", "Insert in small increments while monitoring wall load and buckling.", "Seat at the planned depth and hold still for verification."],
+        "success_checks": ["The planned depth is reached without a buckling event.", "Radial error and wall load remain inside the room's advisory range.", "Placement remains stable during solver patency measurement."],
+        "reflection": "Which signal warned of poor alignment before insertion visibly failed?",
+    },
+    "tissue-retraction": {
+        "notice": "Judge the trade-off between improved exposure, grasp location, tissue load, occlusion, and elastic recovery.",
+        "practice": "Choose an atraumatic region, establish contact, retract gradually, hold exposure, and release deliberately.",
+        "steps": ["Inspect the anatomy and select a safe grasp region.", "Approach with the jaws aligned to the surface.", "Retract only far enough to reveal the target corridor.", "Hold, inspect load and visibility, then release under control."],
+        "success_checks": ["The intended field becomes visible.", "Peak solver-derived load stays within the room's range.", "The organ recovers without a drop or abrupt release."],
+        "reflection": "Did additional retraction still improve the view, or only increase load?",
+    },
+    "suture-pad": {
+        "notice": "Separate the reference into approach, alignment, contact, curved passage, exit, and recovery phases.",
+        "practice": "Pause at every phase boundary and describe the next required state rather than copying the visible motion.",
+        "steps": ["Find the intended entry and exit relationship.", "Observe needle orientation immediately before contact.", "Follow how rotation carries the curve through the pad.", "Inspect the exit grasp and recovery."],
+        "success_checks": ["All phase boundaries can be named from visible state.", "Needle rotation is distinguished from straight pushing.", "A recordable observation for each phase is proposed."],
+        "reflection": "Which phase depends most on contact information unavailable in RGB alone?",
+    },
+    "interrupted-stitch-live": {
+        "notice": "Track entry and exit geometry, curved-needle rotation, physical strand continuity, tension, and tissue response.",
+        "practice": "Place one complete bite, pull the strand through, approximate the edges, and finish in a stable recovery pose.",
+        "steps": ["Choose symmetric entry and exit points.", "Drive the needle by following its curvature through tissue.", "Regrasp and pull until usable strand length remains.", "Approximate without over-tension, then secure and recover."],
+        "success_checks": ["A physical puncture and exit are registered.", "The strand remains continuous and does not float or teleport.", "The closure is stable without excessive solver tension."],
+        "reflection": "Was the bite limited by geometry, regrasping, or tension control?",
+    },
+    "running-suture-live": {
+        "notice": "Compare bite width, depth, spacing, accumulated strand tension, and closure gap across the whole row.",
+        "practice": "Place three connected bites with a repeated rhythm, balance tension, then secure the terminal loop.",
+        "steps": ["Place the first bite and establish a clean strand path.", "Repeat the same bite geometry at the second location.", "Complete the third bite without crossing the strand.", "Distribute tension across the row and secure the end."],
+        "success_checks": ["Three physical bites remain connected.", "Spacing and edge approximation are reasonably consistent.", "No over-tension, strand discontinuity, or tissue tear event occurs."],
+        "reflection": "Did correcting one bite redistribute tension into the earlier bites?",
+    },
+    "intracorporeal-knot-live": {
+        "notice": "Follow strand crossing direction, retained throws, symmetry, solver tension, and slippage—not just hand trajectories.",
+        "practice": "Form a loop, seat the first throw, reverse direction, seat the opposing throw, and inspect security.",
+        "steps": ["Cross the working strand around the opposing instrument.", "Pull the first throw down evenly.", "Reverse the crossing direction while retaining the first throw.", "Seat the next throws and inspect tension and slippage."],
+        "success_checks": ["The native strand reports the intended alternating topology.", "Earlier throws remain seated while later ones form.", "The knot holds without excessive tissue load."],
+        "reflection": "Which instrument movement preserved the first throw during reversal?",
+    },
+    "needle-hoop-threading-live": {
+        "notice": "The hoop is a rigid obstacle: success requires the sharp tip and curved body to clear it with continuous needle custody.",
+        "practice": "Pick up the threaded needle, centre the tip, rotate the curve through the opening, then complete a physical handoff.",
+        "steps": ["Grasp the middle third and confirm needle and strand custody.", "Align the tip with the hoop plane and centre opening.", "Rotate along the needle curve until the body clears the rigid ring.", "Regrasp with Instrument 2, release Instrument 1, and inspect continuity."],
+        "success_checks": ["The needle crosses the hoop plane inside the opening.", "No rigid-ring collision or needle teleport occurs.", "The receiving instrument owns the needle and the strand remains continuous."],
+        "reflection": "Did you drive the curve through the hoop or try to push it straight?",
+    },
+    "needle-passing-regrasp-live": {
+        "notice": "A successful handoff is not enough; the receiver must finish with a usable needle-driving angle.",
+        "practice": "Orient, pass the target, establish receiver custody, release, and deliberately rebuild presentation.",
+        "steps": ["Orient the needle into a readable presentation.", "Move its body through the ordered spatial target.", "Close the receiver on an exposed safe section.", "Release the sender and present the needle for the next bite."],
+        "success_checks": ["The ordered target passage is completed.", "There is physical dual-grasp overlap with no drop.", "Final needle orientation is stable and repeatable."],
+        "reflection": "Was the final grasp chosen for easy transfer or for the next surgical action?",
+    },
+    "anastomosis-live": {
+        "notice": "Track circumference-wide stitch distribution, closure gap, lumen narrowing, tension, and solver leak response.",
+        "practice": "Align the lumen ends, close posterior then anterior walls, balance tension, secure, and pressure-test.",
+        "steps": ["Align both lumen ends without twist.", "Place distributed posterior-wall bites.", "Complete the anterior wall while preserving diameter.", "Secure the closure and hold still during the pressure test."],
+        "success_checks": ["The closure is continuous around the lumen.", "Narrowing and peak tension remain controlled.", "The native solver reports a reduced, stable leak rate."],
+        "reflection": "Which stitch contributed most to narrowing or leakage?",
+    },
+    "clip-divide-live": {
+        "notice": "Confirm exposure, clip seating, spacing, division location, protected contacts, and native residual flow.",
+        "practice": "Expose the vessel, place proximal and distal clips, divide only between them, then inspect flow arrest.",
+        "steps": ["Use the second instrument to maintain a clear vessel view.", "Seat the first clip squarely across the target.", "Place the second clip with a safe interval.", "Divide inside the confirmed interval and inspect both retained clips."],
+        "success_checks": ["Both clips remain physically seated.", "Division occurs only inside the protected interval.", "The native flow state confirms arrest without protected-anatomy contact."],
+        "reflection": "What evidence should be required before division becomes available?",
+    },
+    "hemostasis-live": {
+        "notice": "Monitor source visibility and solver flow separately; a clean image alone does not prove hemostasis.",
+        "practice": "Expose, localize, clear the field, compress or clip the source, then wait and observe for rebleeding.",
+        "steps": ["Maintain exposure while bringing suction into view.", "Localize the source rather than chasing visual contamination.", "Apply targeted temporary control, then definitive control.", "Release gradually and observe the native flow state."],
+        "success_checks": ["The source remains identifiable during control.", "Solver-derived flow decreases to the room's target.", "No rebleed or protected-contact event occurs during observation."],
+        "reflection": "Did improved visibility change where you believed the source was?",
+    },
+    "dissection-live": {
+        "notice": "Safe progress depends on counter-traction, visible tissue-plane separation, protected clearance, and short reversible actions.",
+        "practice": "Expose the plane with one instrument and separate it incrementally with the other.",
+        "steps": ["Identify the intended plane and protected corridors.", "Create gentle counter-traction to reveal the next segment.", "Separate a short visible section.", "Pause, reassess the plane, and repeat only while anatomy remains clear."],
+        "success_checks": ["The intended plane advances continuously.", "Protected duct and vessel corridors remain untouched.", "Each action can stop safely when the plane becomes uncertain."],
+        "reflection": "Which exposure direction made the correct plane easiest to see?",
+    },
+    "ultrasound-access-live": {
+        "notice": "Treat target confidence, needle visibility, trajectory, contact, and protected-structure clearance as simultaneous signals.",
+        "practice": "Acquire and stabilize the ultrasound target, align an in-plane path, advance under continuous visibility, then verify.",
+        "steps": ["Position the probe until the target and protected structures are clear.", "Plan a trajectory that keeps the needle in plane.", "Advance only while the tip remains visible.", "Stop at the target zone and verify clearance."],
+        "success_checks": ["The target remains visible through the approach.", "The tip reaches the planned zone without unsafe-state entry.", "Protected-structure margin stays positive."],
+        "reflection": "When visibility was lost, did you stop and reacquire or continue from assumption?",
+    },
+    "biopsy-live": {
+        "notice": "Track target stabilization, planned margin, tool path, protected clearance, and physical specimen release.",
+        "practice": "Stabilize the lesion, trace the margin in short segments, complete the cut, and transfer the specimen.",
+        "steps": ["Inspect the lesion and protected region.", "Use the second instrument to stabilize without hiding the margin.", "Follow the planned boundary in short controlled segments.", "Release and move the specimen to the target area."],
+        "success_checks": ["The resulting margin is continuous and consistent.", "Protected geometry remains intact.", "The specimen separates and is physically retained for transfer."],
+        "reflection": "Where did retraction improve the margin view, and where did it distort it?",
+    },
+    "recovery-live": {
+        "notice": "Recovery begins with recognizing uncertainty and stopping; speed is secondary to restoring a known safe state.",
+        "practice": "Identify the injected failure, stop both tools, restore visibility, reacquire only if safe, then hand control back.",
+        "steps": ["Name the failure from available evidence.", "Stop motion and move to a safe clearance pose.", "Restore camera view and reassess object/anatomy state.", "Recover the object conservatively or request human hand-back."],
+        "success_checks": ["Unsafe movement stops promptly.", "Visibility and tool state are re-established before manipulation resumes.", "Recovery completes without compounding the original event."],
+        "reflection": "What was the earliest trustworthy signal that normal execution should stop?",
+    },
+    "liver-incision-live": {
+        "notice": "Follow planned path error, contact state, topology change, protected clearance, and tissue response—not the cursor alone.",
+        "practice": "Align at the start point, establish native contact, advance continuously along the planned line, then exit cleanly.",
+        "steps": ["Inspect the line and protected region before contact.", "Approach and establish the required cutting contact.", "Follow the line with economical, continuous motion.", "Exit at the endpoint and inspect the native topology result."],
+        "success_checks": ["The intended line is completed with low path error.", "A native topology change is present rather than a drawn trace.", "No protected-zone entry occurs."],
+        "reflection": "Did slowing down improve path accuracy without creating unnecessary tissue dwell?",
+    },
+    "gallbladder-reposition-live": {
+        "notice": "Evaluate grasp region, distributed surface load, useful exposure, organ displacement, and elastic settling.",
+        "practice": "Acquire an atraumatic region, lift and reposition gradually, then release into a stable exposure pose.",
+        "steps": ["Choose a broad safe grasp region.", "Close gently and confirm physical organ response.", "Lift and translate only as far as exposure requires.", "Lower, release, and wait for the organ to settle."],
+        "success_checks": ["Useful exposure improves.", "Peak surface load and displacement remain controlled.", "The organ settles stably without penetration or teleportation."],
+        "reflection": "Could a different grasp location create the same exposure with less displacement?",
+    },
+    "bladder-relocation-live": {
+        "notice": "The second tool should add support before the first reduces it; watch deformation, visibility, and custody continuously.",
+        "practice": "Lift, present, share support, transfer load, relocate, and settle the anatomy with both tools coordinated.",
+        "steps": ["Establish the first atraumatic support point.", "Present the anatomy within the shared workspace.", "Add the second support before releasing the first.", "Relocate and settle with gradual load transfer."],
+        "success_checks": ["The anatomy stays supported through the exchange.", "No instrument penetrates the deformable body.", "The final pose is stable and preserves visibility."],
+        "reflection": "At what moment did the receiver truly carry the load?",
+    },
+    "anatomy-variation-live": {
+        "notice": "Patient-shape variation changes corridors, occlusions, target depth, and useful camera pose even when the task goal is identical.",
+        "practice": "Survey each anatomy preset, plan a fresh route, visit targets in order, and compare trajectories.",
+        "steps": ["Use the adjustable camera to survey the scene.", "Identify the target path and protected obstacles.", "Visit each ordered target with controlled tool clearance.", "Save the trajectory and repeat on another anatomy preset."],
+        "success_checks": ["All ordered targets are reached.", "The path adapts to geometry rather than replaying fixed coordinates.", "Comparable trajectories are recorded for review."],
+        "reflection": "Which geometric change most altered the approach plan?",
+    },
+    "sonogym-l4-navigation-live": {
+        "notice": "Relate probe motion and contact to image change; the goal is a stable target plane, not merely a bright ultrasound frame.",
+        "practice": "Scan systematically, localize L4, refine orientation, and hold the transverse target plane.",
+        "steps": ["Begin with a broad, ordered scan rather than random motion.", "Use anatomical image changes to bracket the L4 region.", "Refine translation and angle in small increments.", "Hold the best plane and inspect target error."],
+        "success_checks": ["The native SonoGym target plane is reached.", "Probe motion remains short and stable near the target.", "The target view persists during the hold."],
+        "reflection": "Which image feature was most useful for deciding the next probe movement?",
+    },
+    "sonogym-l4-reconstruction-live": {
+        "notice": "New information comes from complementary views; repeated passes over the same surface add little coverage.",
+        "practice": "Plan distinct sweeps, monitor reconstructed coverage, and redirect the probe toward missing regions.",
+        "steps": ["Inspect the initial uncovered surface state.", "Acquire one stable sweep across the target.", "Use the coverage feedback to choose a complementary path.", "Stop when additional motion adds little new surface."],
+        "success_checks": ["Coverage rises across successive sweeps.", "Redundant sampling is limited.", "The reconstructed L4 surface is produced by the native SonoGym workflow."],
+        "reflection": "Which sweep contributed the most new geometry, and why?",
+    },
+    "sonogym-l4-guided-surgery-live": {
+        "notice": "Balance localization confidence, planned endpoint error, trajectory smoothness, and the environment's unsafe-state signal.",
+        "practice": "Localize with ultrasound, plan the instrument corridor, advance in controlled increments, and stop on uncertainty.",
+        "steps": ["Acquire and stabilize the L4 target view.", "Choose a trajectory using the native task state.", "Advance while maintaining localization confidence.", "Reach the planned endpoint or stop immediately on unsafe-state entry."],
+        "success_checks": ["Endpoint error reaches the task threshold.", "No native unsafe-state condition is entered.", "Probe and instrument motion remain coordinated and reproducible."],
+        "reflection": "Which uncertainty should trigger a pause before endpoint error starts increasing?",
+    },
+}
+
+
+def _courses_with_guides() -> list[dict]:
+    guided_courses = []
+    for course in COURSES:
+        guided_lessons = []
+        for lesson in course["lessons"]:
+            guide = LESSON_GUIDES.get(lesson["id"])
+            if guide is None:
+                raise RuntimeError(f"Guided lesson content is missing for {lesson['id']}")
+            guided_lessons.append({**lesson, **guide})
+        guided_courses.append({**course, "lessons": guided_lessons})
+    return guided_courses
+
+
 POLICY_GUIDE = [
     {
         "id": "behavior-cloning",
@@ -543,9 +796,10 @@ GLOSSARY = [
 
 
 def curriculum_payload() -> dict:
-    lessons = [lesson for course in COURSES for lesson in course["lessons"]]
+    courses = _courses_with_guides()
+    lessons = [lesson for course in courses for lesson in course["lessons"]]
     return {
-        "courses": COURSES,
+        "courses": courses,
         "policies": POLICY_GUIDE,
         "glossary": [{"term": term, "definition": definition} for term, definition in GLOSSARY],
         "lesson_count": len(lessons),
