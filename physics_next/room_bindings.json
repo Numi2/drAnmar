@@ -2,6 +2,25 @@
   "schema": "dr.anmar.native-room-bindings.v1",
   "clinical_validation": false,
   "rooms": {
+    "nvidia-strand-ring-threading": {
+      "backend": "physx_fem",
+      "runtime_provider": "nvidia_softmimicgen",
+      "task": "Isaac-Thread-PSM-IK-Rel-v0",
+      "source_revision": "c9d146ba57358a544167de8ebe946caaac8f6220",
+      "isaaclab_revision": "25c69e088fa8122ad189b3a566d38ef24fa74d6f",
+      "required_files": [
+        "source/softmimicgen_assets/data/Props/Rope/Rope.usd",
+        "source/softmimicgen_assets/data/Props/Ring/Ring.usd",
+        "source/softmimicgen_assets/data/Props/Table/Table.usd",
+        "source/softmimicgen_assets/data/Robots/dVRK/PSM/psm_forceps.usd",
+        "datasets/annotated_dataset/annotated_dataset_surgical_threading.hdf5",
+        "third_party/IsaacLab/source/isaaclab/isaaclab/__init__.py"
+      ],
+      "representation": "upstream_softmimicgen_task",
+      "authority": "nvidia_softmimicgen_isaac_lab_physx",
+      "validation_report": "physics_next/benchmarks/softmimicgen-threading-replay.json",
+      "calibration_status": "upstream_research_task_unvalidated_clinically"
+    },
     "liver-retraction": {
       "backend": "physx_fem",
       "asset": "physics-next/assets/ct-liver-prostate-bladder/liver/stable-physx/liver-surface.usd",

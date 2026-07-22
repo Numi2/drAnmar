@@ -1,0 +1,141 @@
+{
+  "action_count": 123,
+  "action_shape": [
+    123,
+    7
+  ],
+  "clinical_validation": false,
+  "dataset": "/home/numi/dr_anmar/native-suture-runtime/SoftMimicGen/datasets/annotated_dataset/annotated_dataset_surgical_threading.hdf5",
+  "dataset_sha256": "d5b65af699c6c16aa241d1c41a0217e469bcfa1d7235d22de709549c42c1e36a",
+  "episode": "demo_0",
+  "first_live_success_step": 113,
+  "live_success_steps": [
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122
+  ],
+  "live_terminal_success": true,
+  "metrics": {
+    "articulation/robot/joint_position": {
+      "final_max_abs": 0.00013834238052368164,
+      "final_rmse": 8.242758991715335e-05,
+      "shape": [
+        8
+      ],
+      "worst_max_abs": 0.00013834238052368164,
+      "worst_rmse": 8.242758991715335e-05,
+      "worst_step": 117
+    },
+    "articulation/robot/joint_velocity": {
+      "final_max_abs": 0.0001719682477414608,
+      "final_rmse": 7.147850864515821e-05,
+      "shape": [
+        8
+      ],
+      "worst_max_abs": 0.00838470458984375,
+      "worst_rmse": 0.0034518219867609003,
+      "worst_step": 62
+    },
+    "articulation/robot/root_pose": {
+      "final_max_abs": 0.0,
+      "final_rmse": 0.0,
+      "shape": [
+        7
+      ],
+      "worst_max_abs": 0.0,
+      "worst_rmse": 0.0,
+      "worst_step": 0
+    },
+    "articulation/robot/root_velocity": {
+      "final_max_abs": 0.0,
+      "final_rmse": 0.0,
+      "shape": [
+        6
+      ],
+      "worst_max_abs": 0.0,
+      "worst_rmse": 0.0,
+      "worst_step": 0
+    },
+    "deformable_object/object/nodal_kinematic_target": {
+      "final_max_abs": 0.0,
+      "final_rmse": 0.0,
+      "shape": [
+        549,
+        4
+      ],
+      "worst_max_abs": 0.0,
+      "worst_rmse": 0.0,
+      "worst_step": 0
+    },
+    "deformable_object/object/nodal_position": {
+      "final_max_abs": 0.0002198740839958191,
+      "final_rmse": 5.419525932773464e-05,
+      "shape": [
+        549,
+        3
+      ],
+      "worst_max_abs": 0.000679726479575038,
+      "worst_rmse": 8.124644448324863e-05,
+      "worst_step": 78
+    },
+    "deformable_object/object/nodal_velocity": {
+      "final_max_abs": 0.01705224672332406,
+      "final_rmse": 0.0023883160231356546,
+      "shape": [
+        549,
+        3
+      ],
+      "worst_max_abs": 0.04087827820330858,
+      "worst_rmse": 0.005404782954186056,
+      "worst_step": 103
+    },
+    "rigid_object/ring/root_pose": {
+      "final_max_abs": 0.0,
+      "final_rmse": 0.0,
+      "shape": [
+        7
+      ],
+      "worst_max_abs": 0.0,
+      "worst_rmse": 0.0,
+      "worst_step": 0
+    },
+    "rigid_object/ring/root_velocity": {
+      "final_max_abs": 0.0,
+      "final_rmse": 0.0,
+      "shape": [
+        6
+      ],
+      "worst_max_abs": 0.0,
+      "worst_rmse": 0.0,
+      "worst_step": 0
+    }
+  },
+  "non_finite_values": 0,
+  "note": "Physical replay validation of NVIDIA's released research task; not clinical validation.",
+  "pass": true,
+  "position_replay_within_tolerance": true,
+  "reference_terminal_success": true,
+  "schema": "dr.anmar.softmimicgen-replay-validation.v1",
+  "shape_errors": [],
+  "summary": {
+    "ring_root_pose_final_max_abs": 0.0,
+    "robot_joint_position_final_max_abs": 0.00013834238052368164,
+    "strand_nodal_position_final_max_abs_m": 0.0002198740839958191,
+    "strand_nodal_position_final_rmse_m": 5.419525932773464e-05,
+    "strand_nodal_position_worst_max_abs_m": 0.000679726479575038,
+    "strand_nodal_position_worst_rmse_m": 8.124644448324863e-05
+  },
+  "task": "Isaac-Thread-PSM-IK-Rel-v0",
+  "tolerances": {
+    "ring_root_pose_final_max_abs": 0.01,
+    "robot_joint_position_final_max_abs": 0.01,
+    "strand_nodal_position_worst_max_abs_m": 0.005
+  }
+}

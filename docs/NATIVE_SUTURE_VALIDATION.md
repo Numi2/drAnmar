@@ -31,9 +31,48 @@ phase, trajectory waypoint, or completion score is never evidence of physics.
 
 ## Current result
 
-`scripts/dr_anmar_native_suture_probe.py` is intentionally a failing gate.
-Gilgamesh confirms a native tetrahedral PhysX strand responds to gravity, but
-the deformable-to-kinematic-needle attachment does not yet follow the moving
-needle correctly. The threaded-ring room therefore remains disabled. The
-former projected knot route and gesture-scored completion path are not used.
+The original hand-authored probe in `scripts/dr_anmar_native_suture_probe.py`
+remains a useful recorded failure: its deformable-to-kinematic-cube boundary
+did not follow the moving anchor. It is not the promoted implementation.
 
+The next qualification route uses NVIDIA's unmodified SoftMimicGen
+`Rope.usd` and `Ring.usd`, pinned and checksum-verified by
+`physics_next/softmimicgen.json`. The official release provides a native PhysX
+FEM strand and rigid ring, but its PSM task grasps the strand directly: it does
+not contain a needle attachment, knot mechanics, or enabled strand
+self-collision.
+
+That exact upstream task is available as the separate **PSM strand ring
+threading** room. `dr_anmar_suture_native.sh validate-upstream demo_0` resets
+the released initial state, replays the released 123 relative-IK actions
+unchanged, evaluates NVIDIA's own ring-crossing predicate, and compares the
+live robot, ring and every one of the 549 FEM nodes with the recorded states.
+NVIDIA's bundled `replay_demos.py --validate_states` is not used as evidence:
+at this pinned revision it crashes on the saved singleton environment dimension
+and does not compare deformable objects.
+
+The 2026-07-22 Gilgamesh strict replay passed. The live task first satisfied
+the native predicate at action 113 and remained successful at action 123. The
+terminal strand error was 0.000054 m RMS and 0.000220 m worst-node absolute;
+the worst node deviation across the full replay was 0.000680 m. The robot
+joint-position maximum error was 0.000138 and the ring pose matched exactly.
+There were no shape errors or non-finite values. The complete report
+is `physics_next/benchmarks/softmimicgen-threading-replay.json`.
+
+`dr_anmar_suture_native.sh qualify core` separately tests the
+missing native rigid-needle attachment. On 2026-07-22 Gilgamesh's
+RTX 4090 passed this core boundary twice with the real ORBIT-Surgical rigid
+needle. In the installed qualification run, the needle moved 0.082540 m, the
+terminal FEM nodes followed with 0.002083 m transform error, the free end fell
+0.259716 m, and the probe authored no deformable points. The evidence is stored in
+`physics_next/benchmarks/softmimicgen-needle-attachment.json`.
+
+These are two deliberately separate pieces of engineering evidence: NVIDIA's
+direct-strand ring task, and Dr.Anmar's needle-to-strand attachment boundary.
+They do not combine into a qualified needle-through-ring or knot simulation.
+Those rooms remain unavailable because release/reset, needle-ring contact and
+strand self-contact have not all passed together. The former projected knot
+route and gesture-scored completion path are not used.
+
+`dr_anmar_suture_native.sh qualify promotion` remains the authoritative full
+gate and must fail until all eight requirements above have measured evidence.

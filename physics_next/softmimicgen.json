@@ -1,0 +1,53 @@
+{
+  "schema": "dr.anmar.softmimicgen-source.v1",
+  "purpose": "Pinned NVIDIA SoftMimicGen source and native PhysX FEM strand assets used for isolated Dr.Anmar qualification.",
+  "repository": {
+    "url": "https://github.com/NVlabs/SoftMimicGen.git",
+    "revision": "c9d146ba57358a544167de8ebe946caaac8f6220",
+    "license": "Apache-2.0"
+  },
+  "dataset": {
+    "repository": "masoudmoghani/SoftMimicGen",
+    "repository_type": "dataset",
+    "revision": "e18fd4c257d57b8be78047bbbb8f3b59eb5ea982"
+  },
+  "compatibility": {
+    "isaac_sim": "5.1.0",
+    "torch": "2.7.0",
+    "cuda": "12.8",
+    "official_isaaclab_fork": {
+      "url": "https://github.com/masoudmoghani/IsaacLab.git",
+      "ref": "softmimicgen",
+      "revision": "25c69e088fa8122ad189b3a566d38ef24fa74d6f"
+    }
+  },
+  "assets": {
+    "Rope.usd": {
+      "url": "https://huggingface.co/datasets/masoudmoghani/SoftMimicGen/resolve/e18fd4c257d57b8be78047bbbb8f3b59eb5ea982/data/Props/Rope/Rope.usd",
+      "sha256": "a4af501095060bbe4b73781a54f5f28c51af9e5cce2b8c35e8379881eee7ee5e"
+    },
+    "Ring.usd": {
+      "url": "https://huggingface.co/datasets/masoudmoghani/SoftMimicGen/resolve/e18fd4c257d57b8be78047bbbb8f3b59eb5ea982/data/Props/Ring/Ring.usd",
+      "sha256": "4326018069784689639ec95558e3598bc71c7e55d000243058e86e576cd522f9"
+    },
+    "Table.usd": {
+      "url": "https://huggingface.co/datasets/masoudmoghani/SoftMimicGen/resolve/e18fd4c257d57b8be78047bbbb8f3b59eb5ea982/data/Props/Table/Table.usd",
+      "sha256": "e34346a72feaa7f1cfcc9ffd26f894a00caf26fc5a1dae5080a7b9926b70d73c"
+    },
+    "psm_forceps.usd": {
+      "url": "https://huggingface.co/datasets/masoudmoghani/SoftMimicGen/resolve/e18fd4c257d57b8be78047bbbb8f3b59eb5ea982/data/Robots/dVRK/PSM/psm_forceps.usd",
+      "sha256": "f237666a9d1f30a116b5d8f7e7ee065e22d9edc63cdc9e806ffb62440182c5cd"
+    },
+    "annotated_dataset_surgical_threading.hdf5": {
+      "url": "https://huggingface.co/datasets/masoudmoghani/SoftMimicGen/resolve/e18fd4c257d57b8be78047bbbb8f3b59eb5ea982/annotated_dataset/annotated_dataset_surgical_threading.hdf5",
+      "sha256": "d5b65af699c6c16aa241d1c41a0217e469bcfa1d7235d22de709549c42c1e36a"
+    }
+  },
+  "upstream_truth": {
+    "task": "Isaac-Thread-PSM-IK-Rel-v0",
+    "released_interaction": "The PSM grasps and threads the deformable strand directly through a rigid ring.",
+    "needle_attachment_in_release": false,
+    "strand_self_collision_in_asset": false,
+    "knot_mechanics_in_release": false
+  }
+}

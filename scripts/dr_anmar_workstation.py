@@ -81,6 +81,13 @@ parser.add_argument(
 )
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
+_softmimicgen_task = args_cli.task.startswith("Isaac-Thread-PSM-")
+_softmimicgen_root = Path(
+    os.environ.get(
+        "DR_ANMAR_SOFTMIMICGEN_ROOT",
+        DATA_ROOT / "native-suture-runtime/SoftMimicGen",
+    )
+).expanduser().resolve()
 
 # Refuse unsupported physics before Isaac Sim claims the GPU.  This is the
 # same single capability decision used by the hub, so direct CLI launches
@@ -125,7 +132,10 @@ from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
 from isaaclab.sensors import CameraCfg, ContactSensorCfg
 from isaaclab_tasks.utils import parse_env_cfg
 
-import orbit.surgical.tasks  # noqa: F401
+if _softmimicgen_task:
+    import softmimicgen_tasks  # noqa: F401
+else:
+    import orbit.surgical.tasks  # noqa: F401
 
 from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
@@ -669,6 +679,7 @@ class SharedState:
     camera_mean_luminance: float | None = None
     camera_nonblank_seen: bool = False
     needle_visual_ready: bool = False
+    deformable_strand_ready: bool = False
     reference_ghost_enabled: bool = False
     reference_ghost_demo: str | None = None
     reference_ghost_update: str | None = None
@@ -694,6 +705,7 @@ class SharedState:
     procedure_started_at: float = 0.0
     procedure_last_motion_at: float = 0.0
     native_telemetry: dict[str, Any] = field(default_factory=dict)
+    upstream_task_success: bool | None = None
 
     def __post_init__(self) -> None:
         self.pulse = np.zeros(self.action_dim, dtype=np.float32)
@@ -740,9 +752,9 @@ class SharedState:
         with self.lock:
             procedure_status = self._procedure_status()
             guide_kind = str(self.procedure.get("guide_kind", ""))
-            thread_required = False
+            thread_required = guide_kind == "softmimicgen_threading"
             needle_required = guide_kind in NATIVE_NEEDLE_GUIDE_KINDS
-            thread_geometry_ready = True
+            thread_geometry_ready = not thread_required or self.deformable_strand_ready
             needle_geometry_ready = not needle_required or self.needle_visual_ready
             camera_frame_ready = bool(self.frame_id > 0 and self.frame_jpeg and self.camera_nonblank_seen)
             render_contract = {
@@ -781,6 +793,7 @@ class SharedState:
                 "openusd_scene_loaded": self.openusd_scene_loaded,
                 "anatomy_collision_meshes": self.anatomy_collision_meshes,
                 "procedure": procedure_status,
+                "upstream_task_success": self.upstream_task_success,
                 "grippers_open": self.grippers_open,
                 "native_grasp_contact_active": self.native_grasp_contact_active,
                 "tool_to_object_distance_m": self.tool_to_object_distance_m,
@@ -922,7 +935,15 @@ class SharedState:
         now = time.monotonic()
         kind = self.procedure.get("guide_kind")
         step_count = len(self.procedure.get("steps", []))
-        if kind == "needle_pass":
+        if kind == "softmimicgen_threading":
+            # Only NVIDIA's published ring-crossing predicate may complete the
+            # upstream room.  Finishing an action replay is not task success.
+            completed = step_count if self.upstream_task_success is True else 0
+            if not completed:
+                completed += int(self.procedure_motion_seen)
+                completed += int(self.procedure_grasp_seen)
+                completed = min(completed, max(0, step_count - 1))
+        elif kind == "needle_pass":
             completed = int(self.procedure_motion_seen)
             completed += int(self.procedure_waypoints_completed >= 2)
             completed += int(self.procedure_grasp_seen)
@@ -960,6 +981,7 @@ class SharedState:
             "waypoints_total": self.procedure_waypoints_total,
             "object_lift_m": round(self.procedure_object_lift_m, 4),
             "object_motion_m": round(self.procedure_object_motion_m, 4),
+            "upstream_task_success": self.upstream_task_success,
             "native_telemetry": self.native_telemetry,
         }
 
@@ -2209,19 +2231,23 @@ def apply_native_object_scenario(objects: dict[str, Any], scenario_id: str, seed
         rigid_object.write_root_velocity_to_sim(torch.zeros((pose.shape[0], 6), device=pose.device))
 
 
-def sample_deformable_safety(deformables: dict[str, Any]) -> dict[str, float]:
+def sample_deformable_safety(
+    deformables: dict[str, Any], *, include_material_metrics: bool = True
+) -> dict[str, float]:
     telemetry: dict[str, float] = {}
     for name, deformable in deformables.items():
         try:
             nodal_position = deformable.data.nodal_pos_w[0]
             default_position = deformable.data.default_nodal_state_w[0, :, :3]
             displacement = torch.linalg.vector_norm(nodal_position - default_position, dim=-1).max()
+            telemetry[f"{name}_max_tissue_displacement_m"] = float(displacement.detach().cpu().item())
+            if not include_material_metrics:
+                continue
             deformation = deformable.data.sim_element_deform_gradient_w[0]
             identity = torch.eye(3, device=deformation.device).reshape(1, 3, 3)
             deformation_proxy = torch.linalg.matrix_norm(deformation - identity, dim=(-2, -1)).max()
             stress = deformable.data.sim_element_stress_w[0]
             max_stress = torch.linalg.matrix_norm(stress, dim=(-2, -1)).max()
-            telemetry[f"{name}_max_tissue_displacement_m"] = float(displacement.detach().cpu().item())
             telemetry[f"{name}_max_deformation_gradient_proxy"] = float(deformation_proxy.detach().cpu().item())
             telemetry[f"{name}_max_tissue_stress_pa"] = float(max_stress.detach().cpu().item())
         except (AttributeError, RuntimeError, IndexError, ValueError):
@@ -2882,12 +2908,45 @@ def main() -> None:
     if "-IK-Rel" not in args_cli.task:
         raise ValueError("The browser workstation accepts relative-IK tasks. Other variants remain available via the CLI.")
     guide_kind = str(procedure.get("guide_kind", ""))
+    softmimicgen_goal = None
+    if _softmimicgen_task:
+        from softmimicgen_tasks.surgical_threading.mdp import object_reached_goal
+
+        softmimicgen_goal = object_reached_goal
     env_cfg = parse_env_cfg(
         args_cli.task,
         device=args_cli.device,
         num_envs=1,
         use_fabric=not args_cli.disable_fabric,
     )
+    if _softmimicgen_task:
+        # The upstream task defaults to training-scale PhysX reservations even
+        # when num_envs=1.  Size the native buffers for one interactive room so
+        # it can coexist with other Gilgamesh workloads without changing any
+        # rope, ring, robot, action, reset, or contact behavior.
+        one_room_physx = {
+            "gpu_max_rigid_contact_count": 2**16,
+            "gpu_max_rigid_patch_count": 2**14,
+            "gpu_found_lost_pairs_capacity": 2**16,
+            "gpu_found_lost_aggregate_pairs_capacity": 2**16,
+            "gpu_total_aggregate_pairs_capacity": 2**16,
+            "gpu_collision_stack_size": 2**24,
+            "gpu_heap_capacity": 2**24,
+            "gpu_temp_buffer_capacity": 2**22,
+            "gpu_max_soft_body_contacts": 2**16,
+            "gpu_max_particle_contacts": 2**14,
+        }
+        for setting, value in one_room_physx.items():
+            if hasattr(env_cfg.sim.physx, setting):
+                setattr(env_cfg.sim.physx, setting, value)
+        # Dr.Anmar supplies one doctor-adjustable operative camera.  Remove the
+        # two policy cameras from this interactive process only; NVIDIA's
+        # recorded dataset and task assets remain unchanged on disk.
+        for camera_name in ("agentview_image", "robot0_eye_in_hand_image"):
+            if hasattr(env_cfg.scene, camera_name):
+                setattr(env_cfg.scene, camera_name, None)
+            if hasattr(env_cfg.observations.policy, camera_name):
+                setattr(env_cfg.observations.policy, camera_name, None)
     # RL environments end and auto-reset episodes on success, dropped
     # objects, force thresholds, and time limits.  That is correct during
     # policy training but disastrous during clinician teleoperation: a
@@ -2909,11 +2968,15 @@ def main() -> None:
     env_cfg.scene.num_envs = 1
     native_room = _native_room if _native_room and _native_room.get("available") else None
     native_deformable_enabled = bool(native_room and native_room.get("backend") == "physx_fem")
+    native_tissue_enabled = bool(
+        native_deformable_enabled
+        and native_room.get("representation") != "upstream_softmimicgen_task"
+    )
     for robot_attribute in ("robot", "robot_1", "robot_2"):
         robot_cfg = getattr(env_cfg.scene, robot_attribute, None)
         if robot_cfg is not None and getattr(robot_cfg, "spawn", None) is not None:
             robot_cfg.spawn.activate_contact_sensors = True
-    if native_deformable_enabled:
+    if native_tissue_enabled:
         env_cfg.actions.gripper_action = BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["psm_tool_gripper.*_joint"],
@@ -2923,7 +2986,10 @@ def main() -> None:
     camera_target = np.asarray(env_cfg.viewer.lookat, dtype=np.float32)
     # Start from the room-facing side used by the official OR scene so the
     # doctor sees the instrument, liver, table, and surrounding environment.
-    camera_eye = np.asarray((0.45, 0.25, 0.28), dtype=np.float32)
+    camera_eye = np.asarray(
+        (0.20, 0.20, 0.11) if _softmimicgen_task else (0.45, 0.25, 0.28),
+        dtype=np.float32,
+    )
     endoscope_data_types = ["rgb"] if args_cli.sensor_profile == "efficient" else ["rgb", "distance_to_image_plane", "semantic_segmentation"]
     env_cfg.scene.endoscope = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Endoscope",
@@ -3022,12 +3088,12 @@ def main() -> None:
         not openusd_environment.is_file() or allowed_environment_root not in openusd_environment.parents
     ):
         raise ValueError("The OpenUSD environment must be a prepared Dr.Anmar scene inside the composed library")
-    if openusd_environment:
+    if openusd_environment and not _softmimicgen_task:
         env_cfg.scene.openusd_operating_room = AssetBaseCfg(
             prim_path="{ENV_REGEX_NS}/OpenUSDOperatingRoom",
             spawn=sim_utils.UsdFileCfg(usd_path=str(openusd_environment)),
         )
-    else:
+    elif not _softmimicgen_task:
         # Offline fallback for development installations that do not yet have
         # the repaired OpenUSD compositions generated.
         wall_material = sim_utils.PreviewSurfaceCfg(diffuse_color=(0.20, 0.27, 0.30), roughness=0.72)
@@ -3058,7 +3124,7 @@ def main() -> None:
         anatomy_position = (-0.117, -0.2445, -0.144)
     else:
         anatomy_position = (-0.117, -0.1945, -0.164)
-    if native_deformable_enabled:
+    if native_tissue_enabled:
         spawn = native_room["spawn"]
         material_contract = json.loads(Path(native_room["material_path"]).read_text(encoding="utf-8"))
         tissue_material = material_contract["intact_tissue"]
@@ -3115,7 +3181,7 @@ def main() -> None:
             init_state=DeformableObjectCfg.InitialStateCfg(pos=tuple(spawn["translation_m"])),
             spawn=native_spawn,
         )
-    elif organ_usd.is_file():
+    elif organ_usd.is_file() and not procedure.get("hide_anatomy") and not _softmimicgen_task:
         env_cfg.scene.liver_showcase = AssetBaseCfg(
             prim_path="{ENV_REGEX_NS}/LiverShowcase",
             init_state=AssetBaseCfg.InitialStateCfg(pos=anatomy_position),
@@ -3141,6 +3207,7 @@ def main() -> None:
     deformable_names = sorted(getattr(scene, "deformable_objects", {}).keys())
     deformables = {name: scene[name] for name in deformable_names}
     native_tissue = deformables.get(str(native_room.get("stage_key", ""))) if native_room else None
+    interactive_deformable = deformables.get("object") if _softmimicgen_task else native_tissue
     native_attachment_targets: torch.Tensor | None = None
 
     def initialize_native_attachment() -> None:
@@ -3195,7 +3262,7 @@ def main() -> None:
     anatomy_collision_prims: list[Any] = []
     stage = None
     showcase_prim = None
-    if organ_usd.is_file() and not native_deformable_enabled:
+    if organ_usd.is_file() and not native_tissue_enabled and not _softmimicgen_task:
         import omni.usd
         from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt
 
@@ -3593,7 +3660,7 @@ def main() -> None:
         robot_body_names=robot_body_names,
         anatomy_showcase=str(procedure.get("anatomy_focus") or "Operative field"),
         anatomy_scene_id=args_cli.anatomy_scene_id,
-        anatomy_asset=str(organ_usd) if organ_usd.is_file() else "",
+        anatomy_asset=str(organ_usd) if organ_usd.is_file() and not _softmimicgen_task else "",
         openusd_environment=str(openusd_environment) if openusd_environment else "",
         procedure=procedure,
         openusd_scene_loaded=bool(
@@ -3603,6 +3670,7 @@ def main() -> None:
         anatomy_collision_meshes=collision_mesh_count,
         sensor_profile=args_cli.sensor_profile,
         needle_visual_ready=bool(objects) if guide_kind in NATIVE_NEEDLE_GUIDE_KINDS else True,
+        deformable_strand_ready=bool("object" in deformables),
     )
     state.camera_names = list(camera_sources)
     update_procedure_waypoint_marker(0, force=True)
@@ -3619,6 +3687,34 @@ def main() -> None:
         has_grippers=has_grippers,
         waypoints=room_waypoints,
     )
+    upstream_expert_handler = None
+    upstream_expert_initial_state = None
+    upstream_expert_actions: np.ndarray | None = None
+    if _softmimicgen_task:
+        from isaaclab.utils.datasets import HDF5DatasetFileHandler
+
+        upstream_dataset = (
+            _softmimicgen_root
+            / "datasets/annotated_dataset/annotated_dataset_surgical_threading.hdf5"
+        )
+        if not upstream_dataset.is_file():
+            raise RuntimeError(f"Pinned SoftMimicGen expert dataset is missing: {upstream_dataset}")
+        upstream_expert_handler = HDF5DatasetFileHandler()
+        upstream_expert_handler.open(str(upstream_dataset))
+        upstream_episode_name = next(iter(upstream_expert_handler.get_episode_names()))
+        upstream_episode = upstream_expert_handler.load_episode(
+            upstream_episode_name,
+            env.unwrapped.device,
+        )
+        upstream_expert_initial_state = upstream_episode.get_initial_state()
+        upstream_actions_value = upstream_episode.data["actions"]
+        upstream_expert_actions = (
+            upstream_actions_value.detach().cpu().numpy().astype(np.float32)
+            if isinstance(upstream_actions_value, torch.Tensor)
+            else np.asarray(upstream_actions_value, dtype=np.float32)
+        )
+        if upstream_expert_actions.ndim != 2 or upstream_expert_actions.shape[1] != action_dim:
+            raise RuntimeError("Pinned SoftMimicGen expert action shape does not match the live task")
     state.expert_demonstration = expert_controller.snapshot()
     state.runtime_provenance = runtime_provenance(state)
     state.camera_frame_ids = {name: 0 for name in camera_sources}
@@ -3703,6 +3799,7 @@ def main() -> None:
             state.needle_entry_direction = None
             state.adaptive_precision_active = False
             state.native_telemetry = {}
+            state.upstream_task_success = False if _softmimicgen_task else None
         with state.lock:
             selected_view_mode = state.camera_view_mode
             selected_camera_adjustment = state.camera_adjustment()
@@ -3735,6 +3832,8 @@ def main() -> None:
     latest_contact_forces: dict[str, float] = {}
     latest_deformable_safety: dict[str, float] = {}
     replay_actions: np.ndarray | None = None
+    upstream_expert_active = False
+    upstream_expert_index = 0
     replay_index = 0
     # Observational state only. Membership is derived from native jaw contact;
     # it never authors a joint, teleports an object, or changes collisions.
@@ -3752,6 +3851,7 @@ def main() -> None:
 
     while simulation_app.is_running() and not stop_event.is_set():
         loop_started = time.monotonic()
+        action_uses_upstream_softmimicgen_units = False
         with state.lock:
             reset_requested = state.reset_requested
             state.reset_requested = False
@@ -3804,7 +3904,17 @@ def main() -> None:
 
         if expert_request == "start":
             expert_controller.start()
+            if upstream_expert_actions is not None and upstream_expert_initial_state is not None:
+                with torch.inference_mode():
+                    env.unwrapped.reset_to(
+                        upstream_expert_initial_state,
+                        torch.tensor([0], device=env.unwrapped.device),
+                        is_relative=True,
+                    )
+                upstream_expert_index = 0
+                upstream_expert_active = True
             with state.lock:
+                state.upstream_task_success = False if _softmimicgen_task else None
                 state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
                 state.procedure_phase = "rest"
                 state.operator_input_source = "automation_policy"
@@ -3825,6 +3935,7 @@ def main() -> None:
                 )
         elif expert_request == "take_over":
             expert_controller.take_over()
+            upstream_expert_active = False
             with state.lock:
                 state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
                 state.autonomy_mode = "manual"
@@ -3835,6 +3946,7 @@ def main() -> None:
                 )
         elif expert_request == "cancel":
             expert_controller.cancel()
+            upstream_expert_active = False
             with state.lock:
                 state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
                 state.expert_clean_run = False
@@ -3954,7 +4066,48 @@ def main() -> None:
                         state.record_request = "stop"
                     state.coaching_cue = "Replay could not start. Manual control remains active."
 
-        if expert_controller.active:
+        if upstream_expert_active and expert_controller.active:
+            action_np = np.zeros(state.action_dim, dtype=np.float32)
+            action_uses_upstream_softmimicgen_units = True
+            if expert_controller.status == "running" and upstream_expert_actions is not None:
+                if upstream_expert_index < len(upstream_expert_actions):
+                    action_np = upstream_expert_actions[upstream_expert_index].copy()
+                    upstream_expert_index += 1
+                    progress = upstream_expert_index / max(1, len(upstream_expert_actions))
+                    phase_index = min(len(EXPERT_PHASES) - 1, int(progress * len(EXPERT_PHASES)))
+                    expert_controller.phase_index = phase_index
+                    expert_controller.phase_ticks = upstream_expert_index
+                    expert_controller.completed_phases = [
+                        item["id"] for item in EXPERT_PHASES[:phase_index]
+                    ]
+                    with state.lock:
+                        state.grippers_open = [bool(action_np[state.gripper_action_index(0)] > 0.0)]
+                        state.operator_input_source = "nvidia_softmimicgen_expert"
+                        state.procedure_phase = expert_controller.phase or "manipulate"
+                        state.expert_demonstration = expert_controller.snapshot(
+                            state.expert_reference_demo
+                        )
+                        state.coaching_cue = (
+                            f"NVIDIA SoftMimicGen expert · frame {upstream_expert_index}/"
+                            f"{len(upstream_expert_actions)}. Pause or take control at any time."
+                        )
+                if upstream_expert_index >= len(upstream_expert_actions):
+                    upstream_expert_active = False
+                    expert_controller.status = "completed"
+                    expert_controller.phase_index = len(EXPERT_PHASES) - 1
+                    expert_controller.completed_phases = [item["id"] for item in EXPERT_PHASES]
+                    with state.lock:
+                        state.expert_demonstration = expert_controller.snapshot(
+                            state.expert_reference_demo
+                        )
+                        state.procedure_phase = "recover"
+                        state.procedure_event_code = PROCEDURE_EVENTS["task_complete"]
+                        state.procedure_event_sequence += 1
+                        state.record_request = "stop"
+                        state.coaching_cue = (
+                            "NVIDIA's final expert action is being evaluated by the live task predicate."
+                        )
+        elif expert_controller.active:
             expert_tools = {
                 arm: position
                 for arm in range(state.arms)
@@ -4040,6 +4193,7 @@ def main() -> None:
         elif replay_actions is not None and replay_index < len(replay_actions):
             action_np = replay_actions[replay_index].copy()
             replay_index += 1
+            action_uses_upstream_softmimicgen_units = _softmimicgen_task
             with state.lock:
                 state.operator_input_source = "supervised_replay"
         else:
@@ -4059,16 +4213,27 @@ def main() -> None:
                 for arm, is_open in enumerate(grippers_open):
                     action_np[state.gripper_action_index(arm)] = 1.0 if is_open else -1.0
 
+        if _softmimicgen_task and not action_uses_upstream_softmimicgen_units:
+            # NVIDIA's released task accepts small metric deltas directly and
+            # then applies its scalar 0.5 controller scale.  Dr.Anmar's doctor
+            # controls use normalized game-style axes.  Convert only operator
+            # and Dr.Anmar controller input; recorded upstream actions are
+            # replayed byte-for-byte in their original seven-dimensional space.
+            for arm in range(state.arms):
+                body = state.body_action_slice(arm)
+                action_np[body.start : body.start + 3] *= 0.02
+                action_np[body.start + 3 : body.start + 6] *= 0.10
+
         grasp_distances: list[float | None] = [None] * state.arms
         grasp_offsets: list[list[float] | None] = [None] * state.arms
         grasp_target_position = None
-        if objects:
-            grasp_object = next(iter(objects.values()))
-            grasp_target_position = grasp_object.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
-        elif native_tissue is not None:
-            nodal_position_value = native_tissue.data.nodal_pos_w
+        if interactive_deformable is not None:
+            nodal_position_value = interactive_deformable.data.nodal_pos_w
             nodal_positions = getattr(nodal_position_value, "torch", nodal_position_value)
             grasp_target_position = nodal_positions[0].mean(dim=0).detach().cpu().numpy().astype(np.float32)
+        elif objects:
+            grasp_object = next(iter(objects.values()))
+            grasp_target_position = grasp_object.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
         if state.has_grippers and grasp_target_position is not None:
             previous_native_grasps = set(native_grasp_arms)
             observed_native_grasps: set[int] = set()
@@ -4082,7 +4247,7 @@ def main() -> None:
                     not is_open
                     and native_gripper_contact_force(arm) > 0.005
                     and (
-                        native_tissue is not None
+                        interactive_deformable is not None
                         or (
                             grasp_distances[arm] is not None
                             and grasp_distances[arm] <= state.grasp_capture_radius_m
@@ -4114,6 +4279,25 @@ def main() -> None:
         environment_terminated = bool(scalar_value(terminated))
         environment_truncated = bool(scalar_value(truncated))
         environment_success = native_success_from_info(info)
+        if softmimicgen_goal is not None:
+            environment_success = 1.0 if bool(
+                softmimicgen_goal(env.unwrapped)[0].detach().cpu().item()
+            ) else 0.0
+            with state.lock:
+                state.upstream_task_success = environment_success > 0.5
+                if expert_controller.status == "completed":
+                    state.expert_clean_run = state.upstream_task_success
+                    state.expert_reference_pending = state.upstream_task_success
+                    if state.upstream_task_success:
+                        state.coaching_cue = (
+                            "NVIDIA's released expert episode satisfied the native ring-crossing predicate. "
+                            "The trajectory is ready for clinician review."
+                        )
+                    else:
+                        state.coaching_cue = (
+                            "The released trajectory finished, but the native ring-crossing predicate is not satisfied. "
+                            "It will not be promoted as a reference."
+                        )
 
 
         current_tool_positions = {
@@ -4192,7 +4376,14 @@ def main() -> None:
                 forces = sensor.data.net_forces_w[0]
                 max_force = torch.linalg.vector_norm(forces, dim=-1).max()
                 latest_contact_forces[f"{name}_max_contact_force_n"] = float(max_force.detach().cpu().item())
-            latest_deformable_safety = sample_deformable_safety(deformables)
+            # SoftMimicGen publishes strand kinematics and a task predicate,
+            # not a calibrated surgical material/stress contract.  Keep the
+            # visible displacement but do not mislabel raw FEM tensors as
+            # clinically meaningful tissue stress in this dry-lab room.
+            latest_deformable_safety = sample_deformable_safety(
+                deformables,
+                include_material_metrics=not _softmimicgen_task,
+            )
             max_force_value = max(latest_contact_forces.values(), default=None)
             max_displacement = max(
                 (value for key, value in latest_deformable_safety.items() if key.endswith("_max_tissue_displacement_m")),
@@ -4427,6 +4618,8 @@ def main() -> None:
     server.should_exit = True
     server_thread.join(timeout=5.0)
     jpeg_encoder.close()
+    if upstream_expert_handler is not None:
+        upstream_expert_handler.close()
     env.close()
 
 

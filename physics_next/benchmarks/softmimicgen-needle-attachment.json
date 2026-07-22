@@ -1,0 +1,45 @@
+{
+  "schema": "dr.anmar.softmimicgen-suture-probe.v1",
+  "recorded_at": "2026-07-22T19:58:17Z",
+  "host": "gilgamesh-System-Product-Name",
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "clinical_validation": false,
+  "source_revision": "c9d146ba57358a544167de8ebe946caaac8f6220",
+  "physics_authority": "NVIDIA PhysX",
+  "physics_dt_s": 0.005,
+  "steps": 160,
+  "scenario": "needle_attachment",
+  "assets": {
+    "Ring.usd": "4326018069784689639ec95558e3598bc71c7e55d000243058e86e576cd522f9",
+    "Rope.usd": "a4af501095060bbe4b73781a54f5f28c51af9e5cce2b8c35e8379881eee7ee5e"
+  },
+  "official_strand_native_fem": true,
+  "official_strand_self_collision": false,
+  "native_attachment_api": true,
+  "ring_native_collision": true,
+  "qualification_runs_passed": 2,
+  "needle_displacement_m": 0.08254,
+  "free_end_drop_m": 0.259716,
+  "attached_relative_initial_m": 0.017231,
+  "attached_relative_final_m": 0.018839,
+  "attachment_follow_error_m": 0.002083,
+  "attachment_follows": true,
+  "authored_deformable_point_writes_after_reset": 0,
+  "authored_nodal_velocity_reset_writes": 1,
+  "core_passed": true,
+  "promotion_checks": {
+    "free_strand_gravity": true,
+    "needle_attachment_follows": true,
+    "ring_tube_and_center_contact": false,
+    "needle_ring_collision": false,
+    "strand_self_contact": false,
+    "ungrasped_native_dynamics": false,
+    "deterministic_reset": false,
+    "ui_cannot_write_physics": true
+  },
+  "promotion_passed": false,
+  "upstream_limitations": [
+    "The released SoftMimicGen task grasps the strand directly and has no needle attachment.",
+    "The released Rope.usd has self-collision disabled and does not qualify knot mechanics."
+  ]
+}

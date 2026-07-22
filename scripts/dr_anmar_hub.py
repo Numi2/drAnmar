@@ -1401,12 +1401,15 @@ def procedure_rooms() -> dict[str, Any]:
         room["physics"] = physics
         room["simulation_ready"] = physics["ready"]
         room["readiness_reason"] = physics["reason"]
-        room["ready"] = bool(
-            anatomy
-            and anatomy.get("openusd_ready")
-            and physics["ready"]
+        anatomy_ready = bool(room.get("hide_anatomy")) or bool(
+            anatomy and anatomy.get("openusd_ready")
         )
-        room["anatomy_title"] = anatomy["title"] if anatomy else room["anatomy_scene"]
+        room["ready"] = bool(anatomy_ready and physics["ready"])
+        room["anatomy_title"] = (
+            str(room.get("anatomy_focus") or "Dry-lab field")
+            if room.get("hide_anatomy")
+            else anatomy["title"] if anatomy else room["anatomy_scene"]
+        )
     payload["physics_authority"] = runtime
     return payload
 

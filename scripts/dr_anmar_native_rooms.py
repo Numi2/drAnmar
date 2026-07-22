@@ -34,6 +34,18 @@ def resolve_native_room(procedure_id: str) -> dict[str, Any] | None:
         os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")
     ).expanduser().resolve()
     resolved = dict(binding)
+    if binding.get("runtime_provider") == "nvidia_softmimicgen":
+        runtime_root = Path(
+            os.environ.get(
+                "DR_ANMAR_SOFTMIMICGEN_ROOT",
+                data_root / "native-suture-runtime/SoftMimicGen",
+            )
+        ).expanduser().resolve()
+        required = [runtime_root / item for item in binding.get("required_files", [])]
+        resolved["runtime_root"] = str(runtime_root)
+        resolved["required_paths"] = [str(path) for path in required]
+        resolved["available"] = bool(required) and all(path.is_file() for path in required)
+        return resolved
     resolved["asset_path"] = str((data_root / binding["asset"]).resolve())
     resolved["asset_contract_path"] = str((data_root / binding["asset_contract"]).resolve())
     resolved["material_path"] = str((REPOSITORY_ROOT / binding["material"]).resolve())

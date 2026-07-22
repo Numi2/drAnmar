@@ -6,8 +6,11 @@
     "assets/canonical_asset.schema.json",
     "materials/liver-research-default.json",
     "room_bindings.json",
+    "softmimicgen.json",
     "benchmarks/liver-retraction.json",
-    "benchmarks/needle-puncture.json"
+    "benchmarks/needle-puncture.json",
+    "benchmarks/softmimicgen-needle-attachment.json",
+    "benchmarks/softmimicgen-threading-replay.json"
   ],
   "backends": {
     "physx_rigid": {
@@ -24,8 +27,8 @@
       "id": "physx_fem",
       "runtime": "Isaac Lab native PhysX volume deformables",
       "maturity": "doctor-facing-native-first-room",
-      "authority_scope": ["intact tissue deformation", "grasping", "palpation", "retraction", "native stress telemetry"],
-      "capabilities": ["rigid_body", "articulation", "contact", "volume_deformable", "two_way_robot_tissue", "stress_telemetry"],
+      "authority_scope": ["intact tissue deformation", "grasping", "palpation", "retraction", "native stress telemetry", "deformable strand", "rigid-deformable attachment"],
+      "capabilities": ["rigid_body", "articulation", "contact", "volume_deformable", "two_way_robot_tissue", "stress_telemetry", "deformable_strand", "native_attachment"],
       "topology_change": false,
       "two_way_robot_tissue": true,
       "clinical_validation": false
@@ -52,6 +55,11 @@
     }
   },
   "source_pins": {
+    "softmimicgen": {
+      "ref": "initial-release",
+      "revision": "c9d146ba57358a544167de8ebe946caaac8f6220",
+      "contract": "softmimicgen.json"
+    },
     "isaac_lab": {
       "ref": "release/3.0.0-beta2",
       "revision": "51b4fb54184fa7c0a406643129953a8b26136230"
@@ -66,6 +74,7 @@
     "rigid_manipulation": ["physx_rigid"],
     "palpation": ["physx_fem", "newton_vbd"],
     "organ_retraction": ["physx_fem", "newton_vbd"],
+    "threaded_needle_core": ["physx_fem"],
     "needle_puncture": ["cressim_mpm"],
     "suturing": ["cressim_mpm"],
     "cutting": ["cressim_mpm"],

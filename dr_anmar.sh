@@ -17,6 +17,23 @@ mkdir -p "${ROOT}/logs" "${ROOT}/tmp" "${PORTABLE_ROOT}"
 export TMPDIR="${ROOT}/tmp"
 export PYTHONPATH="${ORBIT_ROOT}/source/extensions/orbit.surgical.ext:${ORBIT_ROOT}/source/extensions/orbit.surgical.assets:${ORBIT_ROOT}/source/extensions/orbit.surgical.tasks:${PYTHONPATH:-}"
 
+activate_softmimicgen() {
+    local root isaaclab
+    root="${DR_ANMAR_SOFTMIMICGEN_ROOT:-${ROOT}/native-suture-runtime/SoftMimicGen}"
+    isaaclab="${root}/third_party/IsaacLab"
+    [[ -f "${root}/source/softmimicgen_tasks/softmimicgen_tasks/__init__.py" ]] || {
+        echo "Pinned SoftMimicGen runtime is not installed: ${root}" >&2
+        echo "Run ./dr_anmar_suture_native.sh install-upstream first." >&2
+        exit 1
+    }
+    [[ -f "${isaaclab}/source/isaaclab/isaaclab/__init__.py" ]] || {
+        echo "Pinned SoftMimicGen Isaac Lab fork is not installed: ${isaaclab}" >&2
+        exit 1
+    }
+    export DR_ANMAR_SOFTMIMICGEN_ROOT="${root}"
+    export PYTHONPATH="${isaaclab}/source/isaaclab:${isaaclab}/source/isaaclab_assets:${isaaclab}/source/isaaclab_mimic:${isaaclab}/source/isaaclab_rl:${isaaclab}/source/isaaclab_tasks:${root}/source/softmimicgen:${root}/source/softmimicgen_assets:${root}/source/softmimicgen_tasks:${PYTHONPATH}"
+}
+
 cd "${ORBIT_ROOT}"
 
 command="${1:-smoke}"
@@ -46,6 +63,9 @@ case "${command}" in
         anatomy_scene_id="${6:-}"
         anatomy_title="${7:-}"
         openusd_environment="${8:-}"
+        if [[ "${task}" == Isaac-Thread-PSM-* ]]; then
+            activate_softmimicgen
+        fi
         workstation_args=(
             --headless
             --enable_cameras
