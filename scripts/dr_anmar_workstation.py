@@ -12,11 +12,13 @@ import io
 import json
 import os
 import platform
+import queue
 import signal
 import subprocess
 import threading
 import time
 import traceback
+import zipfile
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -43,6 +45,9 @@ def positive_environment_number(name: str, default: float, minimum: float) -> fl
 MAX_DEMO_FRAMES = int(positive_environment_number("DR_ANMAR_MAX_DEMO_FRAMES", 60_000, 1_000))
 MAX_DEMO_SECONDS = positive_environment_number("DR_ANMAR_MAX_DEMO_SECONDS", 300.0, 30.0)
 MAX_DEMO_BYTES = int(positive_environment_number("DR_ANMAR_MAX_DEMO_BYTES", 1_500_000_000, 50_000_000))
+MEMORY_WARNING_BYTES = int(
+    positive_environment_number("DR_ANMAR_MEMORY_WARNING_BYTES", 16_000_000_000, 1_000_000_000)
+)
 SENSOR_PROFILES = {"efficient", "stereo", "research"}
 EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"
 STUDY_ID = os.environ.get("DR_ANMAR_STUDY_ID", "").strip()
@@ -96,6 +101,7 @@ app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import gymnasium as gym
+import h5py
 import numpy as np
 import torch
 import uvicorn
@@ -538,6 +544,8 @@ class SharedState:
     camera_frame_ids: dict[str, int] = field(default_factory=dict)
     camera_names: list[str] = field(default_factory=list)
     camera_subscribers: dict[str, int] = field(default_factory=dict)
+    jpeg_queue_depth: int = 0
+    jpeg_frames_dropped: int = 0
     render_fps: float = 0.0
     sim_fps: float = 0.0
     sim_step: int = 0
@@ -572,6 +580,8 @@ class SharedState:
     recording: bool = False
     recorded_frames: int = 0
     recorded_bytes_estimate: int = 0
+    recording_queue_depth: int = 0
+    recording_buffered_frames: int = 0
     sensor_profile: str = "research"
     last_demo: str | None = None
     replay_request: str | None = None
@@ -679,6 +689,8 @@ class SharedState:
                 "camera_height": self.camera_height,
                 "camera_names": self.camera_names,
                 "active_camera_streams": sum(1 for count in self.camera_subscribers.values() if count > 0),
+                "jpeg_queue_depth": self.jpeg_queue_depth,
+                "jpeg_frames_dropped": self.jpeg_frames_dropped,
                 "frame_id": self.frame_id,
                 "render_fps": self.render_fps,
                 "sim_fps": self.sim_fps,
@@ -722,6 +734,9 @@ class SharedState:
                 "recorded_frames": self.recorded_frames,
                 "recorded_bytes_estimate": self.recorded_bytes_estimate,
                 "recording_limit_bytes": MAX_DEMO_BYTES,
+                "recording_queue_depth": self.recording_queue_depth,
+                "recording_buffered_frames": self.recording_buffered_frames,
+                "recording_storage": "bounded-hdf5-spool-plus-npz",
                 "sensor_profile": self.sensor_profile,
                 "runtime_provenance": self.runtime_provenance,
                 "physics_authority": self.physics_authority,
@@ -861,6 +876,16 @@ class SharedState:
         }
 
 
+def process_rss_bytes() -> int | None:
+    try:
+        for line in Path("/proc/self/status").read_text(encoding="utf-8").splitlines():
+            if line.startswith("VmRSS:"):
+                return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
+
 def build_web_app(state: SharedState) -> FastAPI:
     app = FastAPI(title="Dr.Anmar Surgical Workstation", docs_url=None, redoc_url=None)
     operator_lease = OperatorLease()
@@ -899,6 +924,41 @@ def build_web_app(state: SharedState) -> FastAPI:
     @app.get("/api/status/live")
     def live_status() -> JSONResponse:
         return JSONResponse(state.live_status())
+
+    @app.get("/api/health/runtime")
+    def runtime_health() -> JSONResponse:
+        rss_bytes = process_rss_bytes()
+        cuda_allocated = int(torch.cuda.memory_allocated()) if torch.cuda.is_available() else 0
+        cuda_reserved = int(torch.cuda.memory_reserved()) if torch.cuda.is_available() else 0
+        try:
+            open_descriptors = len(list(Path("/proc/self/fd").iterdir()))
+        except OSError:
+            open_descriptors = None
+        with state.lock:
+            payload = {
+                "schema": "dr.anmar.runtime-health.v1",
+                "instance_id": state.instance_id,
+                "rss_bytes": rss_bytes,
+                "rss_warning_bytes": MEMORY_WARNING_BYTES,
+                "rss_warning": rss_bytes is not None and rss_bytes >= MEMORY_WARNING_BYTES,
+                "cuda_allocated_bytes": cuda_allocated,
+                "cuda_reserved_bytes": cuda_reserved,
+                "thread_count": threading.active_count(),
+                "open_descriptors": open_descriptors,
+                "active_camera_streams": sum(1 for count in state.camera_subscribers.values() if count > 0),
+                "recording": state.recording,
+                "recording_frames": state.recorded_frames,
+                "recording_payload_bytes": state.recorded_bytes_estimate,
+                "recording_queue_depth": state.recording_queue_depth,
+                "recording_buffered_frames": state.recording_buffered_frames,
+                "recording_queue_capacity": BoundedCaptureSpool.MAX_QUEUED_BATCHES,
+                "jpeg_queue_depth": state.jpeg_queue_depth,
+                "jpeg_queue_capacity": BoundedJpegEncoder.MAX_QUEUED_JOBS,
+                "jpeg_frames_dropped": state.jpeg_frames_dropped,
+                "sim_fps": state.sim_fps,
+                "render_fps": state.render_fps,
+            }
+        return JSONResponse(payload)
 
     @app.post("/api/operator/heartbeat")
     def operator_heartbeat() -> dict[str, Any]:
@@ -1663,23 +1723,126 @@ def apply_visual_scenario(image: Image.Image, scenario_id: str) -> Image.Image:
     return image
 
 
-def rgb_tensor_to_image(rgb: torch.Tensor, scenario_id: str = "baseline", dropout: bool = False) -> Image.Image:
+def rgb_tensor_to_array(rgb: torch.Tensor) -> np.ndarray:
     array = rgb[..., :3].detach().cpu().numpy()
     if np.issubdtype(array.dtype, np.floating):
-        array = np.clip(array * 255.0, 0, 255).astype(np.uint8)
-    else:
-        array = array.astype(np.uint8, copy=False)
+        return np.clip(array * 255.0, 0, 255).astype(np.uint8)
+    return array.astype(np.uint8, copy=False)
+
+
+def rgb_array_to_image(array: np.ndarray, scenario_id: str = "baseline", dropout: bool = False) -> Image.Image:
     image = Image.fromarray(array)
     return Image.new("RGB", image.size, (0, 0, 0)) if dropout else apply_visual_scenario(image, scenario_id)
 
 
-def encode_jpeg(rgb: torch.Tensor, scenario_id: str = "baseline", dropout: bool = False) -> tuple[bytes, float]:
-    image = rgb_tensor_to_image(rgb, scenario_id, dropout)
+def rgb_tensor_to_image(rgb: torch.Tensor, scenario_id: str = "baseline", dropout: bool = False) -> Image.Image:
+    return rgb_array_to_image(rgb_tensor_to_array(rgb), scenario_id, dropout)
+
+
+def encode_jpeg_array(array: np.ndarray, scenario_id: str = "baseline", dropout: bool = False) -> tuple[bytes, float]:
+    image = rgb_array_to_image(array, scenario_id, dropout)
     sample = np.asarray(image.resize((32, 24), Image.Resampling.BILINEAR), dtype=np.float32)
     mean_luminance = float(sample.mean() / 255.0)
     buffer = io.BytesIO()
     image.save(buffer, "JPEG", quality=86, optimize=False)
     return buffer.getvalue(), mean_luminance
+
+
+def encode_jpeg(rgb: torch.Tensor, scenario_id: str = "baseline", dropout: bool = False) -> tuple[bytes, float]:
+    return encode_jpeg_array(rgb_tensor_to_array(rgb), scenario_id, dropout)
+
+
+class BoundedJpegEncoder:
+    """Encode only the newest available camera job without blocking simulation."""
+
+    MAX_QUEUED_JOBS = 1
+
+    def __init__(self, state: SharedState) -> None:
+        self.state = state
+        self._queue: queue.Queue[tuple[dict[str, np.ndarray], str, bool, float] | None] = queue.Queue(
+            maxsize=self.MAX_QUEUED_JOBS
+        )
+        self._closed = False
+        self._last_completed = 0.0
+        self._thread = threading.Thread(target=self._run, name="dr-anmar-jpeg", daemon=True)
+        self._thread.start()
+
+    def submit(
+        self,
+        frames: dict[str, np.ndarray],
+        scenario_id: str,
+        dropout: bool,
+        submitted_at: float,
+    ) -> None:
+        if self._closed or not frames:
+            return
+        job = (frames, scenario_id, dropout, submitted_at)
+        try:
+            self._queue.put_nowait(job)
+        except queue.Full:
+            try:
+                self._queue.get_nowait()
+                self._queue.task_done()
+            except queue.Empty:
+                pass
+            self._queue.put_nowait(job)
+            with self.state.lock:
+                self.state.jpeg_frames_dropped += 1
+        with self.state.lock:
+            self.state.jpeg_queue_depth = self._queue.qsize()
+
+    def _run(self) -> None:
+        while True:
+            job = self._queue.get()
+            try:
+                if job is None:
+                    return
+                try:
+                    frames, scenario_id, dropout, _submitted_at = job
+                    rendered: dict[str, bytes] = {}
+                    left_luminance: float | None = None
+                    for camera_name, array in frames.items():
+                        jpeg, luminance = encode_jpeg_array(array, scenario_id, dropout)
+                        rendered[camera_name] = jpeg
+                        if camera_name == "endoscope_left":
+                            left_luminance = luminance
+                    completed_at = time.monotonic()
+                    with self.state.lock:
+                        self.state.camera_frames_jpeg.update(rendered)
+                        for camera_name in rendered:
+                            self.state.camera_frame_ids[camera_name] = self.state.camera_frame_ids.get(camera_name, 0) + 1
+                        self.state.frame_jpeg = rendered.get("endoscope_left", self.state.frame_jpeg)
+                        self.state.frame_id += 1
+                        elapsed = completed_at - self._last_completed
+                        self.state.render_fps = 1.0 / elapsed if self._last_completed and elapsed > 0 else 0.0
+                        self.state.jpeg_queue_depth = self._queue.qsize()
+                        if left_luminance is not None:
+                            self.state.camera_mean_luminance = left_luminance
+                            if left_luminance > 0.01:
+                                self.state.camera_nonblank_seen = True
+                    self._last_completed = completed_at
+                    del frames
+                except Exception:
+                    traceback.print_exc()
+                    with self.state.lock:
+                        self.state.jpeg_frames_dropped += 1
+                        self.state.jpeg_queue_depth = self._queue.qsize()
+            finally:
+                self._queue.task_done()
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        while True:
+            try:
+                self._queue.put(None, timeout=0.25)
+                break
+            except queue.Full:
+                continue
+        self._thread.join(timeout=5.0)
+        with self.state.lock:
+            self.state.jpeg_queue_depth = 0
 
 
 def depth_to_point_cloud(depth_m: np.ndarray, intrinsics: np.ndarray, stride: int = 16) -> np.ndarray:
@@ -2088,66 +2251,249 @@ def array_payload_bytes(frame: dict[str, np.ndarray]) -> int:
     return sum(int(np.asarray(value).nbytes) for value in frame.values())
 
 
-def stack_frame_field(frames: list[dict[str, np.ndarray]], key: str) -> np.ndarray:
-    """Stack one field while releasing the per-frame source arrays immediately."""
-    values = [frame.pop(key) for frame in frames]
+def write_npz_from_hdf5(
+    destination: Path,
+    arrays: dict[str, h5py.Dataset],
+    chunk_budget_bytes: int = 16 * 1024 * 1024,
+) -> None:
+    """Write a NumPy-compatible compressed archive without loading full datasets."""
+    temporary = destination.with_suffix(f"{destination.suffix}.tmp")
     try:
-        return np.stack(values)
-    finally:
-        values.clear()
+        with zipfile.ZipFile(
+            temporary,
+            mode="w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=3,
+            allowZip64=True,
+        ) as archive:
+            for key, dataset in arrays.items():
+                header = {
+                    "descr": np.lib.format.dtype_to_descr(dataset.dtype),
+                    "fortran_order": False,
+                    "shape": tuple(dataset.shape),
+                }
+                with archive.open(f"{key}.npy", mode="w", force_zip64=True) as member:
+                    np.lib.format.write_array_header_2_0(member, header)
+                    if not dataset.shape:
+                        member.write(memoryview(np.ascontiguousarray(dataset[()])).cast("B"))
+                        continue
+                    if dataset.shape[0] == 0:
+                        continue
+                    row_bytes = max(1, int(dataset.dtype.itemsize * np.prod(dataset.shape[1:], dtype=np.int64)))
+                    rows_per_chunk = max(1, chunk_budget_bytes // row_bytes)
+                    for start in range(0, dataset.shape[0], rows_per_chunk):
+                        stop = min(dataset.shape[0], start + rows_per_chunk)
+                        chunk = np.ascontiguousarray(dataset[start:stop])
+                        member.write(memoryview(chunk).cast("B"))
+        temporary.replace(destination)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
+class BoundedCaptureSpool:
+    """Append recording chunks to HDF5 on one bounded background writer."""
+
+    CONTROL_BATCH = 128
+    VISION_BATCH = 8
+    MAX_QUEUED_BATCHES = 6
+    VISION_KEYS = {
+        "time_s": "endoscope_time_s",
+        "rgb": "endoscope_rgb",
+        "sensor_dropout_active": "endoscope_sensor_dropout_active",
+        "depth_m": "endoscope_depth_m",
+        "semantic_id": "endoscope_semantic_id",
+        "point_cloud_camera_m": "endoscope_point_cloud_camera_m",
+    }
+
+    def __init__(self, demo_dir: Path) -> None:
+        demo_dir.mkdir(parents=True, exist_ok=True)
+        token = f"{os.getpid()}-{time.time_ns()}"
+        self.path = demo_dir / f".dr-anmar-capture-{token}.hdf5"
+        self.control_count = 0
+        self.vision_count = 0
+        self.payload_bytes = 0
+        self._buffers: dict[str, list[dict[str, np.ndarray]]] = {"control": [], "vision": []}
+        self._queue: queue.Queue[tuple[str, list[dict[str, np.ndarray]]]] = queue.Queue(
+            maxsize=self.MAX_QUEUED_BATCHES
+        )
+        self._error: BaseException | None = None
+        self._closed = False
+        self._thread = threading.Thread(target=self._write_loop, name="dr-anmar-recorder", daemon=True)
+        self._thread.start()
+
+    @property
+    def queue_depth(self) -> int:
+        return self._queue.qsize()
+
+    @property
+    def buffered_frames(self) -> int:
+        return sum(len(batch) for batch in self._buffers.values())
+
+    def _raise_if_failed(self) -> None:
+        if self._error is not None:
+            raise RuntimeError(f"Recording spool failed: {self._error}") from self._error
+
+    def _enqueue(self, item: tuple[str, list[dict[str, np.ndarray]]]) -> None:
+        while True:
+            self._raise_if_failed()
+            try:
+                self._queue.put(item, timeout=0.25)
+                return
+            except queue.Full:
+                continue
+
+    def _flush_buffer(self, kind: str) -> None:
+        batch = self._buffers[kind]
+        if not batch:
+            return
+        self._buffers[kind] = []
+        self._enqueue((kind, batch))
+
+    def _append(self, kind: str, frame: dict[str, np.ndarray]) -> None:
+        if self._closed:
+            raise RuntimeError("Recording spool is already closed")
+        self._raise_if_failed()
+        self.payload_bytes += array_payload_bytes(frame)
+        if kind == "control":
+            self.control_count += 1
+            limit = self.CONTROL_BATCH
+        else:
+            self.vision_count += 1
+            limit = self.VISION_BATCH
+        self._buffers[kind].append(frame)
+        if len(self._buffers[kind]) >= limit:
+            self._flush_buffer(kind)
+
+    def append_control(self, frame: dict[str, np.ndarray]) -> None:
+        self._append("control", frame)
+
+    def append_vision(self, frame: dict[str, np.ndarray]) -> None:
+        self._append("vision", frame)
+
+    @classmethod
+    def _dataset_name(cls, kind: str, key: str) -> str:
+        return cls.VISION_KEYS.get(key, key) if kind == "vision" else key
+
+    @classmethod
+    def _write_batch(cls, destination: h5py.File, kind: str, batch: list[dict[str, np.ndarray]]) -> None:
+        start = int(destination.attrs.get(f"{kind}_frames", 0))
+        end = start + len(batch)
+        source_keys = sorted(set().union(*(frame.keys() for frame in batch)))
+        written_names: set[str] = set()
+        for source_key in source_keys:
+            target_key = cls._dataset_name(kind, source_key)
+            template = next(np.asarray(frame[source_key]) for frame in batch if source_key in frame)
+            fill = np.nan if np.issubdtype(template.dtype, np.floating) else 0
+            values = np.stack(
+                [
+                    np.asarray(frame[source_key])
+                    if source_key in frame
+                    else np.full(template.shape, fill, dtype=template.dtype)
+                    for frame in batch
+                ]
+            )
+            if target_key not in destination:
+                chunk_rows = max(1, min(len(batch), cls.VISION_BATCH if kind == "vision" else cls.CONTROL_BATCH))
+                dataset = destination.create_dataset(
+                    target_key,
+                    shape=(start, *values.shape[1:]),
+                    maxshape=(None, *values.shape[1:]),
+                    chunks=(chunk_rows, *values.shape[1:]),
+                    dtype=values.dtype,
+                    compression="lzf",
+                    shuffle=values.dtype.itemsize > 1,
+                )
+                dataset.attrs["capture_kind"] = kind
+            dataset = destination[target_key]
+            if dataset.shape[1:] != values.shape[1:] or dataset.dtype != values.dtype:
+                raise ValueError(f"Recording field changed shape or dtype: {target_key}")
+            dataset.resize((end, *dataset.shape[1:]))
+            dataset[start:end] = values
+            written_names.add(target_key)
+        for target_key, dataset in destination.items():
+            if dataset.attrs.get("capture_kind") == kind and target_key not in written_names:
+                dataset.resize((end, *dataset.shape[1:]))
+        destination.attrs[f"{kind}_frames"] = end
+        destination.flush()
+        batch.clear()
+
+    def _write_loop(self) -> None:
+        try:
+            with h5py.File(self.path, "w", libver="latest") as destination:
+                destination.attrs["schema"] = "dr.anmar.capture-spool.v1"
+                while True:
+                    kind, batch = self._queue.get()
+                    try:
+                        if kind == "stop":
+                            return
+                        self._write_batch(destination, kind, batch)
+                    finally:
+                        self._queue.task_done()
+        except BaseException as exc:
+            self._error = exc
+
+    def finish(self) -> Path:
+        if self._closed:
+            self._raise_if_failed()
+            return self.path
+        self._flush_buffer("control")
+        self._flush_buffer("vision")
+        self._enqueue(("stop", []))
+        self._thread.join()
+        self._closed = True
+        self._raise_if_failed()
+        return self.path
+
+    def abort(self) -> None:
+        for batch in self._buffers.values():
+            batch.clear()
+        while True:
+            try:
+                _kind, batch = self._queue.get_nowait()
+                batch.clear()
+                self._queue.task_done()
+            except queue.Empty:
+                break
+        if self._thread.is_alive():
+            self._queue.put(("stop", []))
+            self._thread.join(timeout=5.0)
+        self._closed = True
+        self.path.unlink(missing_ok=True)
 
 
 def save_demo(
     state: SharedState,
-    frames: list[dict[str, np.ndarray]],
-    vision_frames: list[dict[str, np.ndarray]],
+    capture: BoundedCaptureSpool,
     started_at: str,
 ) -> str | None:
-    if not frames:
+    if not capture.control_count:
+        capture.abort()
         return None
+    spool_path = capture.finish()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")[:-3]
     task_slug = state.task.lower().replace("isaac-", "").replace("-v0", "").replace("-", "_")
     name = f"dr_anmar_{task_slug}_{stamp}.npz"
     path = state.demo_dir / name
-    control_frame_count = len(frames)
-    vision_frame_count = len(vision_frames)
-    keys = tuple(sorted(set.intersection(*(set(frame.keys()) for frame in frames))))
-    arrays = {key: stack_frame_field(frames, key) for key in keys}
-    if vision_frames:
-        arrays["endoscope_time_s"] = stack_frame_field(vision_frames, "time_s")
-        arrays["endoscope_rgb"] = stack_frame_field(vision_frames, "rgb")
-        arrays["endoscope_sensor_dropout_active"] = np.stack(
-            [frame.pop("sensor_dropout_active", np.array(False, dtype=np.bool_)) for frame in vision_frames]
-        )
-        if all("depth_m" in frame for frame in vision_frames):
-            arrays["endoscope_depth_m"] = stack_frame_field(vision_frames, "depth_m")
-        if all("semantic_id" in frame for frame in vision_frames):
-            arrays["endoscope_semantic_id"] = stack_frame_field(vision_frames, "semantic_id")
-        if all("point_cloud_camera_m" in frame for frame in vision_frames):
-            point_counts = {len(frame["point_cloud_camera_m"]) for frame in vision_frames}
-            if len(point_counts) == 1:
-                arrays["endoscope_point_cloud_camera_m"] = stack_frame_field(
-                    vision_frames, "point_cloud_camera_m"
-                )
-        for camera_name in ("endoscope_right", "wrist_1", "wrist_2"):
-            key = f"{camera_name}_rgb"
-            if all(key in frame for frame in vision_frames):
-                arrays[key] = stack_frame_field(vision_frames, key)
-    frames.clear()
-    vision_frames.clear()
-    uncompressed_payload_bytes = sum(int(value.nbytes) for value in arrays.values())
-    analysis = analyze_demo(
-        arrays,
-        state.task,
-        state.arms,
-        state.robot_body_names,
-        str(state.procedure.get("id", "")),
-    )
-    temporary_data = path.with_suffix(".npz.tmp")
-    with temporary_data.open("wb") as stream:
-        np.savez_compressed(stream, **arrays)
-    temporary_data.replace(path)
-    times = np.asarray(arrays.get("time_s", []), dtype=np.float64).reshape(-1)
+    control_frame_count = capture.control_count
+    vision_frame_count = capture.vision_count
+    uncompressed_payload_bytes = capture.payload_bytes
+    try:
+        with h5py.File(spool_path, "r") as spool:
+            arrays = {key: spool[key] for key in spool.keys()}
+            analysis = analyze_demo(
+                arrays,
+                state.task,
+                state.arms,
+                state.robot_body_names,
+                str(state.procedure.get("id", "")),
+            )
+            write_npz_from_hdf5(path, arrays)
+            times = np.asarray(arrays.get("time_s", []), dtype=np.float64).reshape(-1)
+            array_shapes = {key: list(value.shape) for key, value in arrays.items()}
+            array_keys = set(arrays)
+    finally:
+        spool_path.unlink(missing_ok=True)
     observed_control_hz = 0.0
     if len(times) > 1 and times[-1] > times[0]:
         observed_control_hz = float((len(times) - 1) / (times[-1] - times[0]))
@@ -2190,7 +2536,7 @@ def save_demo(
         "uncompressed_payload_bytes": uncompressed_payload_bytes,
         "control_hz": round(observed_control_hz, 2),
         "control_hz_nominal": 50,
-        "arrays": {key: list(value.shape) for key, value in arrays.items()},
+        "arrays": array_shapes,
         "data_file": name,
         "data_bytes": path.stat().st_size,
         "modalities": {
@@ -2198,15 +2544,15 @@ def save_demo(
             "robot_state_hz_nominal": 50,
             "endoscope_rgb_hz": 5 if vision_frame_count else 0,
             "endoscope_rgb_resolution": [360, 240] if vision_frame_count else None,
-            "endoscope_depth_hz": 5 if "endoscope_depth_m" in arrays else 0,
-            "endoscope_depth_units": "metres" if "endoscope_depth_m" in arrays else None,
-            "endoscope_semantic_hz": 5 if "endoscope_semantic_id" in arrays else 0,
-            "endoscope_semantic_encoding": "uint32 semantic id" if "endoscope_semantic_id" in arrays else None,
-            "endoscope_point_cloud_hz": 5 if "endoscope_point_cloud_camera_m" in arrays else 0,
+            "endoscope_depth_hz": 5 if "endoscope_depth_m" in array_keys else 0,
+            "endoscope_depth_units": "metres" if "endoscope_depth_m" in array_keys else None,
+            "endoscope_semantic_hz": 5 if "endoscope_semantic_id" in array_keys else 0,
+            "endoscope_semantic_encoding": "uint32 semantic id" if "endoscope_semantic_id" in array_keys else None,
+            "endoscope_point_cloud_hz": 5 if "endoscope_point_cloud_camera_m" in array_keys else 0,
             "endoscope_point_cloud_frame": "left endoscope camera optical frame",
-            "stereo_right_rgb_hz": 5 if "endoscope_right_rgb" in arrays else 0,
-            "instrument_wrist_rgb_hz": 5 if "wrist_1_rgb" in arrays else 0,
-            "instrument_wrist_camera_count": sum(1 for key in ("wrist_1_rgb", "wrist_2_rgb") if key in arrays),
+            "stereo_right_rgb_hz": 5 if "endoscope_right_rgb" in array_keys else 0,
+            "instrument_wrist_rgb_hz": 5 if "wrist_1_rgb" in array_keys else 0,
+            "instrument_wrist_camera_count": sum(1 for key in ("wrist_1_rgb", "wrist_2_rgb") if key in array_keys),
             "camera_intrinsics": camera_intrinsics,
             "semantic_labels": semantic_labels,
             "simulator_outcome": "environment_reward, termination, truncation, and success when exposed by the task",
@@ -2246,7 +2592,6 @@ def save_demo(
     temporary_manifest = manifest_path.with_suffix(".json.tmp")
     temporary_manifest.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     temporary_manifest.replace(manifest_path)
-    arrays.clear()
     return name
 
 
@@ -3127,6 +3472,7 @@ def main() -> None:
     state.runtime_provenance = runtime_provenance(state)
     state.camera_frame_ids = {name: 0 for name in camera_sources}
     state.camera_subscribers = {name: 0 for name in camera_sources}
+    jpeg_encoder = BoundedJpegEncoder(state)
     state.procedure_waypoints_total = len(room_waypoints)
     state.procedure_started_at = time.monotonic()
     state.procedure_last_motion_at = state.procedure_started_at
@@ -3230,11 +3576,9 @@ def main() -> None:
     signal.signal(signal.SIGTERM, request_shutdown)
     signal.signal(signal.SIGINT, request_shutdown)
 
-    demo_frames: list[dict[str, np.ndarray]] = []
-    vision_frames: list[dict[str, np.ndarray]] = []
+    capture_spool: BoundedCaptureSpool | None = None
     demo_started_at = ""
     demo_started_monotonic = 0.0
-    recorded_bytes_estimate = 0
     last_vision_sample_time = 0.0
     last_safety_sample_time = 0.0
     latest_contact_forces: dict[str, float] = {}
@@ -3351,16 +3695,18 @@ def main() -> None:
                 apply_endoscope_camera_view(scenario_id, camera_view_request, camera_adjustment)
 
         if record_request == "start":
-            demo_frames.clear()
-            vision_frames.clear()
+            if capture_spool is not None:
+                capture_spool.abort()
+            capture_spool = BoundedCaptureSpool(state.demo_dir)
             demo_started_at = datetime.now(timezone.utc).isoformat()
             demo_started_monotonic = time.monotonic()
             last_vision_sample_time = 0.0
-            recorded_bytes_estimate = 0
             with state.lock:
                 state.recording = True
                 state.recorded_frames = 0
                 state.recorded_bytes_estimate = 0
+                state.recording_queue_depth = 0
+                state.recording_buffered_frames = 0
                 state.intervention_count = 0
                 state.procedure_phase = expert_controller.phase if expert_controller.active else "setup"
                 state.procedure_event_code = 0
@@ -3381,18 +3727,19 @@ def main() -> None:
                     )
         elif record_request == "stop":
             try:
-                name = save_demo(state, demo_frames, vision_frames, demo_started_at)
+                name = save_demo(state, capture_spool, demo_started_at) if capture_spool is not None else None
                 save_error = None
             except Exception as exc:
                 name = None
                 save_error = f"Demonstration could not be saved: {exc}"
                 traceback.print_exc()
             finally:
-                # A completed or failed save must never pin captured arrays in
-                # the long-lived Isaac process.
-                demo_frames.clear()
-                vision_frames.clear()
-                recorded_bytes_estimate = 0
+                if capture_spool is not None:
+                    capture_spool.abort()
+                capture_spool = None
+                with state.lock:
+                    state.recording_queue_depth = 0
+                    state.recording_buffered_frames = 0
             with state.lock:
                 expert_reference_pending = state.expert_reference_pending
             expert_reference_saved = False
@@ -3791,15 +4138,21 @@ def main() -> None:
                 frame[key] = np.array(value, dtype=np.float32)
             for key, value in latest_deformable_safety.items():
                 frame[key] = np.array(value, dtype=np.float32)
-            demo_frames.append(frame)
-            recorded_bytes_estimate += array_payload_bytes(frame)
+            if capture_spool is None:
+                with state.lock:
+                    state.record_request = "stop"
+                    state.coaching_cue = "Recording storage was unavailable; saving stopped safely."
+                continue
+            capture_spool.append_control(frame)
             with state.lock:
-                state.recorded_frames = len(demo_frames)
-                state.recorded_bytes_estimate = recorded_bytes_estimate
+                state.recorded_frames = capture_spool.control_count
+                state.recorded_bytes_estimate = capture_spool.payload_bytes
+                state.recording_queue_depth = capture_spool.queue_depth
+                state.recording_buffered_frames = capture_spool.buffered_frames
                 if (
-                    len(demo_frames) >= MAX_DEMO_FRAMES
+                    capture_spool.control_count >= MAX_DEMO_FRAMES
                     or now - demo_started_monotonic >= MAX_DEMO_SECONDS
-                    or recorded_bytes_estimate >= MAX_DEMO_BYTES
+                    or capture_spool.payload_bytes >= MAX_DEMO_BYTES
                 ):
                     state.record_request = "stop"
                     state.coaching_cue = (
@@ -3810,8 +4163,7 @@ def main() -> None:
         fps_steps += 1
         frame_interval = 0.04 if interactive_active else 0.20
         if camera.data.output.get("rgb") is not None and now - last_frame_time >= frame_interval:
-            rendered_jpegs = {}
-            rendered_luminance: float | None = None
+            camera_arrays: dict[str, np.ndarray] = {}
             dropout_profile = SCENARIO_NATIVE_PROFILES.get(scenario_id, {})
             dropout_period = int(dropout_profile.get("dropout_period_frames", 0))
             dropout_frames = int(dropout_profile.get("dropout_frames", 0))
@@ -3829,10 +4181,8 @@ def main() -> None:
                     continue
                 camera_output = sensor_camera.data.output.get("rgb")
                 if camera_output is not None:
-                    jpeg, mean_luminance = encode_jpeg(camera_output[0], scenario_id, dropout_active)
-                    rendered_jpegs[camera_name] = jpeg
-                    if camera_name == "endoscope_left":
-                        rendered_luminance = mean_luminance
+                    camera_arrays[camera_name] = rgb_tensor_to_array(camera_output[0])
+            jpeg_encoder.submit(camera_arrays, scenario_id, dropout_active, now)
             camera_rgb = camera.data.output["rgb"][0]
             if is_recording and now - last_vision_sample_time >= 0.20:
                 observation = rgb_tensor_to_image(camera_rgb, scenario_id, dropout_active).resize((360, 240), Image.Resampling.BILINEAR)
@@ -3882,33 +4232,23 @@ def main() -> None:
                             (360, 240), Image.Resampling.BILINEAR
                         )
                         vision_frame[f"{camera_name}_rgb"] = np.asarray(sensor_image, dtype=np.uint8)
-                vision_frames.append(vision_frame)
+                if capture_spool is not None:
+                    capture_spool.append_vision(vision_frame)
                 with state.lock:
                     state.camera_mean_luminance = float(vision_frame["mean_luminance"])
                     if "valid_depth_fraction" in vision_frame:
                         state.camera_valid_depth_fraction = float(vision_frame["valid_depth_fraction"])
                     if "semantic_foreground_fraction" in vision_frame:
                         state.camera_foreground_fraction = float(vision_frame["semantic_foreground_fraction"])
-                recorded_bytes_estimate += array_payload_bytes(vision_frame)
                 with state.lock:
-                    state.recorded_bytes_estimate = recorded_bytes_estimate
-                    if recorded_bytes_estimate >= MAX_DEMO_BYTES:
+                    state.recorded_bytes_estimate = capture_spool.payload_bytes if capture_spool is not None else 0
+                    state.recording_queue_depth = capture_spool.queue_depth if capture_spool is not None else 0
+                    state.recording_buffered_frames = capture_spool.buffered_frames if capture_spool is not None else 0
+                    if capture_spool is not None and capture_spool.payload_bytes >= MAX_DEMO_BYTES:
                         state.record_request = "stop"
                         state.coaching_cue = "The recording reached its memory budget and is being saved automatically."
                 last_vision_sample_time = now
             frame_count += 1
-            elapsed = max(now - last_frame_time, 1e-6)
-            with state.lock:
-                state.camera_frames_jpeg.update(rendered_jpegs)
-                for camera_name in rendered_jpegs:
-                    state.camera_frame_ids[camera_name] = state.camera_frame_ids.get(camera_name, 0) + 1
-                state.frame_jpeg = rendered_jpegs.get("endoscope_left", state.frame_jpeg)
-                state.frame_id += 1
-                state.render_fps = 1.0 / elapsed if last_frame_time else 0.0
-                if rendered_luminance is not None:
-                    state.camera_mean_luminance = rendered_luminance
-                    if rendered_luminance > 0.01:
-                        state.camera_nonblank_seen = True
             last_frame_time = now
         if now - last_fps_time >= 1.0:
             with state.lock:
@@ -3925,13 +4265,17 @@ def main() -> None:
 
     if state.recording:
         try:
-            name = save_demo(state, demo_frames, vision_frames, demo_started_at)
+            name = save_demo(state, capture_spool, demo_started_at) if capture_spool is not None else None
             if name:
                 state.last_demo = name
         except Exception:
             traceback.print_exc()
+        finally:
+            if capture_spool is not None:
+                capture_spool.abort()
     server.should_exit = True
     server_thread.join(timeout=5.0)
+    jpeg_encoder.close()
     env.close()
 
 

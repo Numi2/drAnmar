@@ -15,6 +15,26 @@ simulation, not clinical validation.
 - Clinical validation status: not started.
 - Intended use remains simulation, education, synthetic data, and preclinical research only.
 
+## Bounded camera and recording pipeline — 2026-07-22
+
+- The live Isaac loop no longer performs JPEG compression. It copies only requested rendered camera frames into
+  a one-job, newest-frame-wins encoder queue; stale browser frames are discarded instead of accumulating latency
+  or memory.
+- Demonstration state and multimodal observations are written in bounded batches to a temporary chunked HDF5
+  spool. Final `.npz` compatibility export is streamed in 16 MiB chunks rather than materializing each complete
+  dataset in RAM. Existing archive and manifest readers remain compatible.
+- `/api/health/runtime` now reports process RSS, CUDA allocation/reservation, threads, descriptors, active streams,
+  simulation/render FPS, and recording/JPEG queue pressure.
+- A live Gilgamesh pass sustained a 960 x 640 camera stream for 22 seconds with flat 7,324.5 MB RSS, an encoder
+  queue depth of at most one, eight stable worker threads, 43.81 median simulation FPS and 22.26 median browser
+  render FPS. A subsequent five-second multimodal capture saved 221 control frames and 23 vision frames across
+  33 arrays, passed manifest-shape and SHA-256 checks, and left no HDF5 spool behind.
+
+Still required: run an isolated five-minute `research`-profile capture with every camera and modality subscribed;
+force a writer failure to validate cleanup and user-facing recovery; benchmark multiple concurrent viewers; and
+evaluate a hardware H.264/H.265/WebRTC transport backed by NVIDIA's video path. The current MJPEG transport is
+bounded and responsive, but it is not the final low-bandwidth telesurgery transport.
+
 ## Physics-next implementation — 2026-07-21
 
 - Added a fail-closed multi-solver authority manifest covering reduced-order v3, PhysX FEM, Newton VBD and
