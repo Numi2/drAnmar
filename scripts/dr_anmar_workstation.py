@@ -48,6 +48,9 @@ MAX_DEMO_BYTES = int(positive_environment_number("DR_ANMAR_MAX_DEMO_BYTES", 1_50
 MEMORY_WARNING_BYTES = int(
     positive_environment_number("DR_ANMAR_MEMORY_WARNING_BYTES", 16_000_000_000, 1_000_000_000)
 )
+SOFTMIMICGEN_SUTURE_VISUAL_WIDTH_M = positive_environment_number(
+    "DR_ANMAR_SUTURE_VISUAL_WIDTH_M", 0.0008, 0.0001
+)
 SENSOR_PROFILES = {"efficient", "stereo", "research"}
 EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"
 STUDY_ID = os.environ.get("DR_ANMAR_STUDY_ID", "").strip()
@@ -680,6 +683,8 @@ class SharedState:
     camera_nonblank_seen: bool = False
     needle_visual_ready: bool = False
     deformable_strand_ready: bool = False
+    deformable_strand_visual_width_m: float | None = None
+    deformable_strand_visual_source: str | None = None
     reference_ghost_enabled: bool = False
     reference_ghost_demo: str | None = None
     reference_ghost_update: str | None = None
@@ -765,6 +770,8 @@ class SharedState:
                 "needle_geometry_ready": needle_geometry_ready,
                 "thread_required": thread_required,
                 "thread_geometry_ready": thread_geometry_ready,
+                "thread_visual_width_m": self.deformable_strand_visual_width_m if thread_required else None,
+                "thread_visual_source": self.deformable_strand_visual_source if thread_required else None,
                 "target_anchor_markers": max(2, int(self.procedure.get("target_anchors", 2))) if thread_required else 0,
             }
             return {
@@ -3262,6 +3269,92 @@ def main() -> None:
     anatomy_collision_prims: list[Any] = []
     stage = None
     showcase_prim = None
+    softmimicgen_suture_curve = None
+    softmimicgen_suture_node_groups: tuple[np.ndarray, ...] = ()
+
+    def update_softmimicgen_suture_visual() -> None:
+        """Render a thin centerline from the live NVIDIA FEM nodes without changing physics."""
+
+        if softmimicgen_suture_curve is None or interactive_deformable is None:
+            return
+        nodal_position_value = interactive_deformable.data.nodal_pos_w
+        nodal_positions = getattr(nodal_position_value, "torch", nodal_position_value)
+        live_nodes = nodal_positions[0].detach().cpu().numpy().astype(np.float32, copy=False)
+        if live_nodes.ndim != 2 or live_nodes.shape[1] != 3:
+            return
+        centerline = np.stack(
+            [live_nodes[group].mean(axis=0) for group in softmimicgen_suture_node_groups],
+            axis=0,
+        )
+        softmimicgen_suture_curve.GetPointsAttr().Set(
+            Vt.Vec3fArray([Gf.Vec3f(float(point[0]), float(point[1]), float(point[2])) for point in centerline])
+        )
+
+    if _softmimicgen_task and interactive_deformable is not None:
+        import omni.usd
+        from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, Vt
+
+        stage = omni.usd.get_context().get_stage()
+        object_root = stage.GetPrimAtPath("/World/envs/env_0/Object")
+        if not object_root.IsValid():
+            raise RuntimeError("NVIDIA SoftMimicGen strand prim is missing from the live OpenUSD stage")
+
+        # NVIDIA publishes one Rope.usd whose rendered cylinder is also its
+        # deformable collision body.  Keep that prim and every PhysX API live,
+        # but hide its 4 mm render mesh.  The thinner curve below is a one-way
+        # visualization of the same live nodes and never writes to simulation.
+        hidden_native_meshes = 0
+        for prim in Usd.PrimRange(object_root):
+            if prim.IsA(UsdGeom.Mesh):
+                UsdGeom.Imageable(prim).MakeInvisible()
+                hidden_native_meshes += 1
+        if hidden_native_meshes < 1:
+            raise RuntimeError("NVIDIA SoftMimicGen strand exposes no render mesh to replace")
+
+        initial_position_value = interactive_deformable.data.nodal_pos_w
+        initial_positions = getattr(initial_position_value, "torch", initial_position_value)
+        initial_nodes = initial_positions[0].detach().cpu().numpy().astype(np.float32)
+        centered_nodes = initial_nodes - initial_nodes.mean(axis=0, keepdims=True)
+        _, _, principal_axes = np.linalg.svd(centered_nodes, full_matrices=False)
+        longitudinal_projection = centered_nodes @ principal_axes[0]
+        ordered_node_indices = np.argsort(longitudinal_projection, kind="stable")
+        # Rope.usd has 549 FEM nodes arranged as 61 longitudinal sections of
+        # nine nodes.  Derive that grouping from topology so the render skin
+        # stays attached to material nodes through every physical deformation.
+        cross_section_node_count = (
+            9
+            if len(ordered_node_indices) % 9 == 0
+            else max(1, round(len(ordered_node_indices) / 61))
+        )
+        section_count = max(2, round(len(ordered_node_indices) / cross_section_node_count))
+        softmimicgen_suture_node_groups = tuple(
+            np.asarray(group, dtype=np.int64)
+            for group in np.array_split(ordered_node_indices, section_count)
+            if len(group)
+        )
+
+        suture_path = "/World/DrAnmarSurgicalSuture"
+        softmimicgen_suture_curve = UsdGeom.BasisCurves.Define(stage, suture_path)
+        softmimicgen_suture_curve.CreateTypeAttr("linear")
+        softmimicgen_suture_curve.CreateWrapAttr("nonperiodic")
+        softmimicgen_suture_curve.CreateCurveVertexCountsAttr(
+            Vt.IntArray([len(softmimicgen_suture_node_groups)])
+        )
+        softmimicgen_suture_curve.CreateWidthsAttr(
+            Vt.FloatArray([float(SOFTMIMICGEN_SUTURE_VISUAL_WIDTH_M)])
+        )
+        softmimicgen_suture_curve.SetWidthsInterpolation("constant")
+
+        suture_material = UsdShade.Material.Define(stage, f"{suture_path}/Material")
+        suture_shader = UsdShade.Shader.Define(stage, f"{suture_path}/Material/Shader")
+        suture_shader.CreateIdAttr("UsdPreviewSurface")
+        suture_shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.08, 0.12, 0.15))
+        suture_shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.58)
+        suture_shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+        suture_material.CreateSurfaceOutput().ConnectToSource(suture_shader.ConnectableAPI(), "surface")
+        UsdShade.MaterialBindingAPI.Apply(softmimicgen_suture_curve.GetPrim()).Bind(suture_material)
+        update_softmimicgen_suture_visual()
+
     if organ_usd.is_file() and not native_tissue_enabled and not _softmimicgen_task:
         import omni.usd
         from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt
@@ -3670,7 +3763,15 @@ def main() -> None:
         anatomy_collision_meshes=collision_mesh_count,
         sensor_profile=args_cli.sensor_profile,
         needle_visual_ready=bool(objects) if guide_kind in NATIVE_NEEDLE_GUIDE_KINDS else True,
-        deformable_strand_ready=bool("object" in deformables),
+        deformable_strand_ready=bool(
+            "object" in deformables and (not _softmimicgen_task or softmimicgen_suture_curve is not None)
+        ),
+        deformable_strand_visual_width_m=(
+            float(SOFTMIMICGEN_SUTURE_VISUAL_WIDTH_M) if softmimicgen_suture_curve is not None else None
+        ),
+        deformable_strand_visual_source=(
+            "live_nvidia_fem_centerline" if softmimicgen_suture_curve is not None else None
+        ),
     )
     state.camera_names = list(camera_sources)
     update_procedure_waypoint_marker(0, force=True)
@@ -4274,6 +4375,7 @@ def main() -> None:
         with torch.inference_mode():
             write_native_attachment()
             _observations, reward, terminated, truncated, info = env.step(actions)
+            update_softmimicgen_suture_visual()
             update_wrist_camera_poses()
         environment_reward = scalar_value(reward)
         environment_terminated = bool(scalar_value(terminated))
