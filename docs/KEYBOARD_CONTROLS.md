@@ -1,83 +1,107 @@
-# Dr.Anmar keyboard surgical control
+# Dr.Anmar surgical control
 
-Dr.Anmar's operating room is designed so a doctor can control the complete simulated workstation without
-moving a hand to the mouse. Movement keys are **hold-to-move**: releasing the key stops that command.
-`Esc` always stops motion and returns supervision to manual control.
+Dr.Anmar lets a doctor control one or two simulated surgical robots with the keyboard, an Xbox-style controller,
+or explicit voice commands. These inputs all reach the same Isaac Lab action boundary; they do not replace native
+contacts, constraints, tissue mechanics, or simulation stepping.
 
-This interface is for simulation, education, and preclinical robotics research. The smart actions below are
-bounded input conveniences, not autonomous clinical actions.
+This interface is for simulation, education, and preclinical robotics research. Movement is hold-to-move unless a
+command is explicitly described as a bounded pulse. `Esc` or `Backspace` always stops both robots and returns control
+to the doctor.
 
-## Learn these first
+## Two-hand keyboard control
 
-| Key | Action |
-| --- | --- |
-| `W` / `S` | Move toward / away from the patient |
-| `A` / `D` | Move left / right |
-| `R` / `F` | Move up / down |
-| `Q` / `E` | Roll left / right |
-| Arrow keys | Pitch and yaw |
-| `Space` | Toggle the gripper |
-| `Enter` | Context action: approach, grasp, then lift |
-| `L` | Start or rerun the live simulation expert |
-| `I` | Pause or resume the active expert for inspection |
-| `Esc` | Stop immediately and take manual control |
-| `?` | Open or close the complete keyboard map |
+Each hand permanently owns one robot, so both instruments can move at the same time.
 
-Hold `Option` for a temporary precision clutch. Hold `Shift` for a temporary fast clutch. The selected base
-speed remains unchanged when the clutch is released.
+| Left hand · Instrument 1 | Action | Right hand · Instrument 2 | Action |
+| --- | --- | --- | --- |
+| `W` / `S` | Up / down | `I` / `K` | Up / down |
+| `A` / `D` | Left / right | `J` / `L` | Left / right |
+| `Q` / `E` | Toward / away from patient | `U` / `O` | Toward / away from patient |
+| Left `Shift` + movement | Pitch, yaw, or roll wrist | Right `Shift` + movement | Pitch, yaw, or roll wrist |
+| `Space` | Toggle left gripper | `Enter` | Toggle right gripper |
+| `1` / `2` / `3` | Fine / normal / fast | `8` / `9` / `0` | Fine / normal / fast |
+
+Releasing a movement key removes that axis immediately. Losing browser focus, hiding the page, or disconnecting an
+active controller sends a stop. A stopped gamepad cannot resume until its sticks and triggers return to neutral.
 
 ## One-key surgical combinations
 
-Each combination supports both interaction styles: tap for a short bounded precision nudge, or hold for
-continuous motion that stops on release. Translational and rotational vectors are normalized so a combined
-command does not gain accidental diagonal speed.
+These are control conveniences only. They send normalized multi-axis commands and never create a grasp, puncture,
+attachment, contact, or successful task state outside the simulator.
 
 | Key | Combined movement | Intended use |
 | --- | --- | --- |
-| `Z` | Left translation + left yaw | Orbit around a target while keeping it framed |
-| `X` | Right translation + right yaw | Orbit around a target in the opposite direction |
-| `V` | Surface-guided advance, then clockwise roll | Approach the nearest sampled tissue point, lock the entry vector at puncture, and rotate after measured entry |
-| `B` | Reverse the locked entry vector + counter-roll | Withdraw through the same entry axis and continue to a visible clear gap |
-| `N` | Lift + retract | Clear a grasped object away from the working surface |
-| `K` | Lower + approach | Return toward the working surface on a diagonal |
+| `Z` / `X` | Translate and yaw left / right | Orbit a target while keeping it framed |
+| `V` / `B` | Advance + roll / reverse + counter-roll | Drive or withdraw a curved needle |
+| `N` | Lift + retract | Clear a grasped object from the work surface |
+| `F` | Lower + approach | Return toward the work surface |
+| `F12` | Context-aware bounded action | Align, grasp, lift, or recover from current simulator state |
 
-## Repeated-Enter workflow
+The smart action states its next operation before activation. It uses short simulator-rate-aware pulses and returns to
+normal precision close to the target. Isaac Lab remains authoritative for whether contact or grasp actually occurs.
 
-`Enter` changes its bounded action from current simulator state:
+## Xbox-style controller
 
-1. **Approach:** when the target is not aligned, a short precision pulse follows the two largest target-offset axes.
-2. **Grasp:** inside the capture radius, the jaws close on the target.
-3. **Lift:** after a simulator-confirmed grasp, a short lift-and-retract pulse clears the object.
-4. **Recover:** if the jaws are closed without a confirmed grasp, the jaws reopen so the doctor can retry.
+Connect a standard-mapping controller while the operating room has focus. With one controller, the D-pad selects the
+robot. With two controllers, controller 1 owns Instrument 1 and controller 2 owns Instrument 2, enabling simultaneous
+bimanual control.
 
-The button beside the live view states what the next `Enter` press will do before the user presses it.
+| Control | Action |
+| --- | --- |
+| Left stick | Toward / away and left / right |
+| Right stick | Wrist pitch and yaw |
+| `LB` / `RB` | Wrist roll left / right |
+| `LT` / `RT` | Down / up |
+| `A` | Toggle the assigned gripper |
+| `B` | Emergency stop both robots |
+| `X` | Smart context action |
+| `Y` | Next camera angle |
+| D-pad left / right | Select Instrument 1 / 2 when using one controller |
+| D-pad down / up | Fine / fast speed |
+| View / Menu | Next sensor / toggle adjustable camera |
 
-Far from the target or tissue, semantic keyboard actions receive a simulator-rate-aware travel boost. That
-boost switches off before fine alignment: target approach returns to normal scale inside 50 mm, and needle
-driving returns to precision scale inside 20 mm. The tissue-entry direction is fixed at puncture so changes in
-the sampled curved surface cannot make the tip wander during insertion or withdrawal.
+The UI polls the standard browser Gamepad API at 20 Hz, applies an analog deadzone, normalizes translation and
+rotation separately, and coalesces simulator requests so a slow rendered frame cannot create an unbounded queue.
 
-## Complete map
+## Voice and typed commands
+
+Voice is push-to-talk, never always listening. Hold the microphone button or the backtick key, speak one command,
+then release. Browsers that do not expose speech recognition can run the same command through the adjacent text box.
+Microphone use requires the browser's permission.
+
+Examples:
+
+| Say or type | Result |
+| --- | --- |
+| `left robot up` | Short upward pulse on Instrument 1 |
+| `right robot toward` | Short approach pulse on Instrument 2 |
+| `left robot up and toward` | Normalized two-axis pulse on Instrument 1 |
+| `close left gripper` | Explicitly close Instrument 1 jaws |
+| `open right gripper` | Explicitly open Instrument 2 jaws |
+| `left robot precision speed` | Set Instrument 1 to fine speed |
+| `camera overhead` | Select overhead view |
+| `camera wrist one` | Select Instrument 1 wrist camera |
+| `smart assist` | Run the context action for the selected instrument |
+| `stop` | Stop both robots and return to manual control |
+
+Unrecognized speech causes no robot action. Spoken movement is always a bounded pulse followed by an explicit stop;
+continuous teleoperation belongs on the keyboard or controller.
+
+## Cameras and session controls
 
 | Area | Keys |
 | --- | --- |
-| Instrument | `1`, `2` |
-| Camera sensors | `3` stereo left, `4` stereo right, `5` wrist 1, `6` wrist 2, `C` cycle |
-| Camera views | `7` operative, `8` close, `9` overview, `Shift+C` cycle |
-| Base speed | `,` precision, `.` normal, `/` fast |
-| Gripper | `O` open, `P` close, `Space` toggle |
-| Supervision | `M` manual, `G` guided, `L` start expert, `I` pause/resume expert, `Esc` stop and take control |
+| Camera sensors | `4` stereo left, `5` stereo right, `6` wrist 1, `7` wrist 2, `C` cycle |
+| Camera views | `F1` operative, `F2` close, `F3` wide, `F4` overhead, `F5` left angle, `F6` right angle, `F7` opposite |
+| Adjustable camera | `F8` toggle, `Home` reset, drag orbit, `Shift`-drag pan, wheel zoom |
+| Robot selection for pointer/voice | `[` Instrument 1, `]` Instrument 2 |
+| Supervision | `M` manual, `G` guided, `F9` start expert, `F10` pause/resume, `Esc` stop and take control |
 | Expert path | `H` show/hide |
-| Recording | `Y` start, `U` stop and save, `J` replay, `Delete` reset scene |
-| Annotations | `Shift+1` approach, `Shift+2` grasp, `Shift+3` manipulate, `Shift+4` recovery |
-| Events | `Shift+5` task event, `Shift+6` safety event |
+| Recording | `Y` start, `T` stop and save, `R` replay, `Delete` reset scene |
+| Annotations | `Option+1` approach, `Option+2` grasp, `Option+3` manipulation, `Option+4` recovery |
+| Events | `Option+5` task complete, `Option+6` safety review |
+| Help | `?` complete in-app map |
 
-Keyboard commands are ignored while the user is typing into a text field. Losing browser focus or hiding the
-page clears held commands and sends a stop command. The live interface audits its own buttons and displays
-`all controls mapped` only when every visible button declares a keyboard equivalent.
-
-Starting the expert with `L` opens a synchronized demonstration automatically. `I` pauses only the expert
-phase clock so the current camera, state and telemetry can be inspected. `Esc` preserves the current simulator
-state, records a takeover intervention, stops expert authority and returns movement to the doctor. A completed
-run is not automatically an approved reference; see
-[`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md).
+Keyboard robot commands are ignored while the doctor is typing. The live interface audits every visible button and
+reports full coverage only when each has a keyboard equivalent. A completed expert run is not automatically an
+approved research reference; see [Executable expert guidance](EXECUTABLE_EXPERT_GUIDANCE.md).

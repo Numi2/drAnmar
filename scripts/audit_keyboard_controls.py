@@ -64,11 +64,17 @@ def main() -> int:
         "if(code==='Backspace'||code==='Escape'){if(!event.repeat)emergencyStop()": "Escape and Backspace emergency stop",
         "window.addEventListener('blur',()=>stopDrive(false))": "focus-loss stop",
         "visibilitychange": "hidden-page stop",
-        "source:'keyboard_smart_action'": "smart-action provenance",
+        "source='keyboard_smart_action'": "smart-action provenance",
         "window.addEventListener('pagehide',releasePageResources": "page-exit resource release",
         "activeFetchControllers.forEach(controller=>controller.abort())": "in-flight request cancellation",
         "if(refreshInFlight||pageDisposed||document.hidden)return": "bounded status polling",
         "heldKeys.forEach(code=>{if(comboMap[code])": "held combined-move control",
+        "navigator.getGamepads": "browser gamepad polling",
+        "gamepaddisconnected": "controller-disconnect emergency stop",
+        "gamepadSafetyLatched": "controller neutral-before-resume safety latch",
+        "window.SpeechRecognition||window.webkitSpeechRecognition": "push-to-talk speech recognition",
+        "voicePulseTimer=setTimeout": "bounded voice movement pulse",
+        "type commands instead": "typed voice-command fallback",
     }
     missing_safety = [label for source, label in required_safety.items() if source not in script]
     for label in missing_safety:
@@ -76,6 +82,9 @@ def main() -> int:
 
     required_backend = {
         '"keyboard_smart_action": 6': "smart-action input-source registration",
+        '"voice": 9': "voice input-source registration",
+        '"gamepad_smart_action": 10': "gamepad smart-action registration",
+        '"voice_smart_action": 11': "voice smart-action registration",
         "hold_seconds = max(0.30": "simulator-rate-aware command lifetime",
         "semantic_target_far": "far-target semantic travel scaling",
         "needle_entry_direction": "stable tissue entry vector",

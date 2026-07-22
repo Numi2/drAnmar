@@ -143,7 +143,10 @@ learn immediately:
 - Hold to move; release to stop.
 - Precision, Normal, and Fast speed modes make fine grasping and open-space travel equally accessible.
 - Position and angle controls use spatial language—*toward patient*, *away*, *roll*, *pitch*, and *yaw*.
-- Every visible action has an audited keyboard equivalent, with standard gamepad support for continuous input.
+- Every visible action has an audited keyboard equivalent. One Xbox-style controller can select either robot, while
+  two controllers directly own left and right robots for simultaneous bimanual control.
+- Push-to-talk voice and the matching typed-command fallback provide bounded robot nudges, explicit gripper actions,
+  camera selection, speed changes, smart assist and emergency stop without creating an always-listening control path.
 - `Enter` becomes a contextual approach → grasp → lift control, while six hold-to-move surgical combinations
   provide orbiting, curved needle driving, reversal, lift/retract, and lower/approach with one key each.
 - A quick tap performs a bounded precision nudge; holding the same combination key gives continuous motion.
