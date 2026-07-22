@@ -23,6 +23,14 @@ parser.add_argument("--steps", type=int, default=160)
 parser.add_argument("--output", type=Path)
 parser.add_argument("--gate", choices=("core", "promotion"), default="core")
 parser.add_argument(
+    "--strand-radial-scale",
+    type=float,
+    default=0.2,
+    help="Radial scale for Rope.usd; 0.04 gives the 0.8 mm surgical strand.",
+)
+parser.add_argument("--attachment-overlap-m", type=float, default=0.0012)
+parser.add_argument("--collision-filtering-offset-m", type=float, default=0.0012)
+parser.add_argument(
     "--free-strand-only",
     action="store_true",
     help="Run the unmodified SoftMimicGen strand without the needle boundary.",
@@ -46,6 +54,10 @@ from pxr import Gf, PhysxSchema, Sdf, UsdGeom, UsdPhysics
 
 ROPE_SHA256 = "a4af501095060bbe4b73781a54f5f28c51af9e5cce2b8c35e8379881eee7ee5e"
 RING_SHA256 = "4326018069784689639ec95558e3598bc71c7e55d000243058e86e576cd522f9"
+NEEDLE_SHA256 = "2b317a61f93631a7192e7ed2839ef20f7a75c05aa5f84a3905696134a64f36d7"
+# Mesh-derived center of the released ORBIT needle's blunt swaged endpoint,
+# expressed in the needle default prim before the 0.4 scene scale is applied.
+ORBIT_NEEDLE_SWAGE_ANCHOR_M = (0.0478657183, 0.0491908647, 0.0009574010)
 THREAD_PATH = Sdf.Path("/World/Thread/Xform")
 NEEDLE_PATH = Sdf.Path("/World/Needle")
 RING_PATH = Sdf.Path("/World/Ring")
@@ -65,17 +77,27 @@ def set_transform(
     *,
     translation: tuple[float, float, float],
     scale: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    orientation: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0),
 ) -> None:
     xform = UsdGeom.Xformable(prim)
     xform.ClearXformOpOrder()
     xform.AddTranslateOp().Set(Gf.Vec3d(*translation))
+    xform.AddOrientOp().Set(Gf.Quatf(orientation[0], Gf.Vec3f(*orientation[1:])))
     xform.AddScaleOp().Set(Gf.Vec3d(*scale))
 
 
-def add_reference(stage, path: Sdf.Path, asset: Path, *, translation, scale=(1.0, 1.0, 1.0)):
+def add_reference(
+    stage,
+    path: Sdf.Path,
+    asset: Path,
+    *,
+    translation,
+    scale=(1.0, 1.0, 1.0),
+    orientation=(1.0, 0.0, 0.0, 0.0),
+):
     prim = stage.DefinePrim(path, "Xform")
     prim.GetReferences().AddReference(str(asset.resolve()))
-    set_transform(prim, translation=translation, scale=scale)
+    set_transform(prim, translation=translation, scale=scale, orientation=orientation)
     return prim
 
 
@@ -97,18 +119,22 @@ def author_scene(stage, rope: Path, ring: Path, needle: Path, *, attach_needle: 
         Sdf.Path("/World/Thread"),
         rope,
         translation=(0.0, 0.0, 0.085),
-        scale=(0.2, 0.2, 0.2),
+        scale=(0.2, args.strand_radial_scale, args.strand_radial_scale),
     )
-    # The released needle is a 10 cm curved rigid asset. At its 0.4 training
-    # scale, this pose overlaps one physical end with the strand endpoint so
-    # PhysX can discover the attachment tetrahedra against real collision.
+    # Place the released ORBIT needle's named swage anchor on the physical
+    # terminal surface of the 0.8 mm SoftMimicGen strand. The 180-degree yaw
+    # makes the strand trail away from the swage while the needle arc continues
+    # in the opposite direction, as a factory-swaged surgical needle does.
     needle_prim = add_reference(
         stage,
         NEEDLE_PATH,
         needle,
-        translation=(0.076, -0.017, 0.085),
+        translation=(0.0989962873, 0.0197143459, 0.0839550396),
         scale=(0.4, 0.4, 0.4),
+        orientation=(0.0, 0.0, 0.0, 1.0),
     )
+    swage_anchor = UsdGeom.Xform.Define(stage, NEEDLE_PATH.AppendChild("SutureAnchor"))
+    swage_anchor.AddTranslateOp().Set(Gf.Vec3d(*ORBIT_NEEDLE_SWAGE_ANCHOR_M))
     rigid = UsdPhysics.RigidBodyAPI.Apply(needle_prim)
     rigid.CreateRigidBodyEnabledAttr(True)
     mass = UsdPhysics.MassAPI.Apply(needle_prim)
@@ -133,11 +159,10 @@ def author_scene(stage, rope: Path, ring: Path, needle: Path, *, attach_needle: 
         attachment.GetActor0Rel().SetTargets([THREAD_PATH])
         attachment.GetActor1Rel().SetTargets([NEEDLE_PATH])
         auto_attachment = PhysxSchema.PhysxAutoAttachmentAPI.Apply(attachment.GetPrim())
-        # The surgical needle is much thinner than the strand's FEM cell size.
-        # PhysX therefore needs a surgical-scale proximity tolerance to select
-        # the terminal vertices against the actual needle collision volume.
-        auto_attachment.CreateDeformableVertexOverlapOffsetAttr(0.003)
-        auto_attachment.CreateCollisionFilteringOffsetAttr(0.004)
+        # Exact swage placement lets this remain a surgical-scale tolerance;
+        # it cannot reach the needle's middle or the opposite sharp endpoint.
+        auto_attachment.CreateDeformableVertexOverlapOffsetAttr(args.attachment_overlap_m)
+        auto_attachment.CreateCollisionFilteringOffsetAttr(args.collision_filtering_offset_m)
 
 
 def main() -> int:
@@ -149,6 +174,8 @@ def main() -> int:
             raise RuntimeError(f"Pinned SoftMimicGen asset is absent or changed: {path}")
     if not args.needle_usd.is_file():
         raise RuntimeError(f"Needle USD not found: {args.needle_usd}")
+    if file_sha256(args.needle_usd) != NEEDLE_SHA256:
+        raise RuntimeError(f"Pinned ORBIT needle changed: {args.needle_usd}")
 
     carb.settings.get_settings().set_bool("/persistent/physics/enableDeformableBeta", False)
     sim = SimulationContext(
@@ -199,10 +226,20 @@ def main() -> int:
         torch.zeros((1, 6), dtype=torch.float32, device=args.device), indices=all_indices
     )
     initial_nodes = soft_view.get_sim_nodal_positions().cpu().numpy()[0].astype(np.float64)
+    terminal_surface = initial_nodes[:, 0] >= initial_nodes[:, 0].max() - 0.0002
+    initial_terminal_surface_center = initial_nodes[terminal_surface].mean(axis=0)
     initial_needle = rigid_view.get_transforms().clone()
     initial_needle_position = initial_needle[0, :3].detach().cpu().numpy().astype(np.float64)
     initial_needle_quaternion = initial_needle[0, 3:7].detach().cpu().numpy().astype(np.float64)
-    attached_indices = np.flatnonzero(initial_nodes[:, 0] >= initial_nodes[:, 0].max() - 0.004)
+    swage_anchor_local = np.asarray(ORBIT_NEEDLE_SWAGE_ANCHOR_M, dtype=np.float64) * 0.4
+    initial_swage_position = (
+        initial_needle_position
+        + rotation_matrix_xyzw(initial_needle_quaternion) @ swage_anchor_local
+    )
+    initial_swage_to_terminal = float(
+        np.linalg.norm(initial_terminal_surface_center - initial_swage_position)
+    )
+    attached_indices = np.flatnonzero(terminal_surface)
     initial_attached_mean = initial_nodes[attached_indices].mean(axis=0)
     force_start = max(20, args.steps // 5)
     force_end = max(force_start + 1, (args.steps * 3) // 5)
@@ -226,6 +263,11 @@ def main() -> int:
     final_needle_position = final_needle[0, :3].detach().cpu().numpy().astype(np.float64)
     final_needle_quaternion = final_needle[0, 3:7].detach().cpu().numpy().astype(np.float64)
     final_attached_mean = final_nodes[attached_indices].mean(axis=0)
+    final_swage_position = (
+        final_needle_position
+        + rotation_matrix_xyzw(final_needle_quaternion) @ swage_anchor_local
+    )
+    final_swage_to_terminal = float(np.linalg.norm(final_attached_mean - final_swage_position))
 
     thread_prim = stage.GetPrimAtPath(THREAD_PATH)
     attachment_prim = stage.GetPrimAtPath(ATTACHMENT_PATH)
@@ -281,6 +323,9 @@ def main() -> int:
         "source_revision": "c9d146ba57358a544167de8ebe946caaac8f6220",
         "physics_authority": "NVIDIA PhysX",
         "physics_dt_s": 0.005,
+        "strand_scale": [0.2, args.strand_radial_scale, args.strand_radial_scale],
+        "attachment_overlap_m": args.attachment_overlap_m,
+        "collision_filtering_offset_m": args.collision_filtering_offset_m,
         "steps": int(args.steps),
         "gate": args.gate,
         "assets": {path.name: file_sha256(path) for path in required},
@@ -292,6 +337,14 @@ def main() -> int:
             "min": [round(float(value), 6) for value in initial_nodes.min(axis=0)],
             "max": [round(float(value), 6) for value in initial_nodes.max(axis=0)],
         },
+        "initial_terminal_surface_center_m": [
+            round(float(value), 6) for value in initial_terminal_surface_center
+        ],
+        "initial_terminal_surface_nodes": int(terminal_surface.sum()),
+        "initial_swage_position_m": [
+            round(float(value), 6) for value in initial_swage_position
+        ],
+        "initial_swage_to_terminal_m": round(initial_swage_to_terminal, 6),
         "final_node_bounds_m": {
             "min": [round(float(value), 6) for value in final_nodes.min(axis=0)],
             "max": [round(float(value), 6) for value in final_nodes.max(axis=0)],
@@ -305,6 +358,7 @@ def main() -> int:
         "attached_relative_initial_m": round(attached_relative_initial, 6),
         "attached_relative_final_m": round(attached_relative_final, 6),
         "attachment_follow_error_m": round(attachment_follow_error, 6),
+        "final_swage_to_terminal_m": round(final_swage_to_terminal, 6),
         "attachment_follows": attachment_follows,
         "authored_deformable_point_writes_after_reset": 0,
         "imported_nodal_velocity_max_mps": round(

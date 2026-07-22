@@ -126,7 +126,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 import isaaclab.sim as sim_utils
 import isaaclab_tasks  # noqa: F401
-from isaaclab.assets import AssetBaseCfg, DeformableObjectCfg
+from isaaclab.assets import AssetBaseCfg, DeformableObjectCfg, RigidObjectCfg
 from isaaclab.envs.mdp.actions.actions_cfg import BinaryJointPositionActionCfg
 from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
 from isaaclab.sensors import CameraCfg, ContactSensorCfg
@@ -397,7 +397,7 @@ function readGamepadCommands(){const pads=standardGamepads(),commands=new Map(),
   else if(cameraLayer){mode='CAMERA';if(edges[8]){enableGamepadCamera();gamepadHaptic(pad,{duration:65,weak:.28,strong:.12})}if(edges[4])cycleSensorCamera();if(edges[5])cycleCameraView();if(edges[3]||edges[11])resetFreeCamera();const zoom=(pad.buttons[7]?.value||0)-(pad.buttons[6]?.value||0);if(Math.abs(left[0])>.01||Math.abs(left[1])>.01||Math.abs(right[0])>.01||Math.abs(right[1])>.01||Math.abs(zoom)>.04)queueCameraAdjustment({pan_x_delta_m:-left[0]*.0011,pan_y_delta_m:left[1]*.0011,orbit_yaw_delta_deg:right[0]*1.25,orbit_pitch_delta_deg:right[1]*1.1,zoom_delta:-zoom*.035})}
   else {if(depthLayer&&edges[2])gamepadHaptic(pad,{duration:48,weak:.12,strong:.2});if(wristLayer&&edges[3])gamepadHaptic(pad,{duration:48,weak:.2,strong:.12});if(edges[0]){activeArm=Math.min(gamepadFocusArm,arms-1);smartAction('gamepad_smart_action');gamepadHaptic(pad,{duration:75,weak:.25,strong:.12})}if(edges[4]){grip(false,0,'gamepad');gamepadHaptic(pad,{duration:60,weak:.34,strong:.08})}if(edges[6]){grip(true,0,'gamepad');gamepadHaptic(pad,{duration:45,weak:.16,strong:.06})}if(arms>1&&edges[5]){grip(false,1,'gamepad');gamepadHaptic(pad,{duration:60,weak:.08,strong:.34})}if(arms>1&&edges[7]){grip(true,1,'gamepad');gamepadHaptic(pad,{duration:45,weak:.06,strong:.16})}if(edges[12])setGamepadSpeed(1,pad);if(edges[13])setGamepadSpeed(-1,pad);if(edges[14])cycleSensorCamera();if(edges[15])cycleCameraView();mode=wristLayer?'WRIST PITCH + YAW':depthLayer?'DEPTH + ROLL':'BIMANUAL';const sticks=[left,right];for(let arm=0;arm<arms;arm++){const [x,y]=sticks[arm],values=Array(6).fill(0);if(wristLayer){values[5]+=x;values[4]+=y}else if(depthLayer){values[3]+=x;values[0]+=y}else{values[1]-=x;values[2]-=y}const normalized=normalizeDrive(values),precision=!!pad.buttons[10+arm]?.pressed,speed=precision?.35:gamepadSpeed;if(Math.hypot(x,y)>.16)gamepadFocusArm=arm;anyMotion=anyMotion||normalized.some(value=>Math.abs(value)>.01);commands.set(arm,{values:normalized,labels:[wristLayer?'Xbox wrist':depthLayer?'Xbox depth + roll':'Xbox camera-plane'],speed});if(precision)mode+=arm===0?' · LEFT PRECISION':' · RIGHT PRECISION'}}
   if(gamepadSafetyLatched){if(!anyMotion&&!pad.buttons[1]?.pressed)gamepadSafetyLatched=false;else{commands.clear();mode='SAFETY STOP · CENTER STICKS'}}gamepadVisualState={mode:`${mode} · ${gamepadSpeed===.35?'FINE':gamepadSpeed===1?'NORMAL':'FAST'}`,left,right};updateGamepadStatus(pads,gamepadVisualState);return commands}
-function pollGamepads(){if(pageDisposed)return;if(!document.hidden&&document.hasFocus())latestGamepadCommands=readGamepadCommands();else latestGamepadCommands=new Map();gamepadAnimationFrame=requestAnimationFrame(pollGamepads)}
+function pollGamepads(){if(pageDisposed)return;if(!document.hidden)latestGamepadCommands=readGamepadCommands();else latestGamepadCommands=new Map();gamepadAnimationFrame=requestAnimationFrame(pollGamepads)}
 function normalizeDrive(values){for(const [start,end] of [[0,3],[3,6]]){const norm=Math.hypot(...values.slice(start,end));if(norm>1)for(let i=start;i<end;i++)values[i]/=norm}return values.map(value=>Math.max(-1,Math.min(1,value)))}
 function buildDrive(){const values=Array(6).fill(0);heldKeys.forEach(code=>{if(comboMap[code])comboValues(code).forEach((value,index)=>values[index]+=value)});pointerMoves.forEach(move=>{if(move.comboCode)comboValues(move.comboCode).forEach((value,index)=>values[index]+=value);else if(move.values)move.values.forEach((value,index)=>values[index]+=value);else values[move.axis]+=move.direction});return normalizeDrive(values)}
 function keyboardArmDrive(arm){const rotate=heldModifiers.has(arm===0?'rotate-left':'rotate-right'),map=rotate?rotationKeyMaps[arm]:handKeyMaps[arm],values=Array(6).fill(0),labels=[];heldKeys.forEach(code=>{const move=map[code];if(move){values[move[0]]+=move[1];labels.push(move[2])}});return {values:normalizeDrive(values),labels,rotate}}
@@ -410,7 +410,7 @@ function sendDrive(values,speed=effectiveSpeed(),source=inputSource){if(pageDisp
 async function flushBimanual(){if(pageDisposed){queuedBimanual=null;return}if(bimanualInFlight||!queuedBimanual)return;const next=queuedBimanual;queuedBimanual=null;bimanualInFlight=true;try{await post('/api/drive/bimanual',{commands:next.commands,source:next.source})}catch(e){if(!pageDisposed)toast(e.message)}finally{bimanualInFlight=false;if(!pageDisposed&&queuedBimanual)flushBimanual()}}
 function sendBimanual(commands,source='keyboard_pointer'){if(pageDisposed)return;queuedBimanual={commands:commands.map(({arm,values,speed})=>({arm,values,speed})),source};flushBimanual()}
 function syncKeyVisuals(){document.querySelectorAll('[data-key]').forEach(button=>button.classList.toggle('held',heldKeys.has(button.dataset.key)||[...pointerMoves.values()].some(move=>move.button===button)));document.querySelectorAll('[data-combo-key]').forEach(button=>button.classList.toggle('held',heldKeys.has(button.dataset.comboKey)||[...pointerMoves.values()].some(move=>move.button===button)));document.getElementById('leftRotateModifier').classList.toggle('active',heldModifiers.has('rotate-left'));document.getElementById('rightRotateModifier').classList.toggle('active',heldModifiers.has('rotate-right'))}
-function updateDrive(){if(pageDisposed||document.hidden||(!document.hasFocus()&&!parentKeyboardActive))return;const gamepadCommands=latestGamepadCommands,commands=buildBimanualCommands(gamepadCommands),bimanualActive=commands.some(command=>command.values.some(value=>Math.abs(value)>.01)),gamepadActive=[...gamepadCommands.values()].some(command=>command.values.some(value=>Math.abs(value)>.01)),pointerValues=buildDrive(),pointerActive=pointerValues.some(value=>Math.abs(value)>.01);if((bimanualActive||pointerActive)&&macroPulseTimer){clearTimeout(macroPulseTimer);macroPulseTimer=null}if(bimanualActive||bimanualWasActive)sendBimanual(commands,gamepadActive?'gamepad':'keyboard_pointer');bimanualWasActive=bimanualActive;if(!bimanualActive&&(pointerActive||driveWasActive))sendDrive(pointerValues);driveWasActive=pointerActive;syncKeyVisuals();updateControlReadout(bimanualActive||pointerActive,activeDriveLabel(commands))}
+function updateDrive(){if(pageDisposed||document.hidden)return;const gamepadCommands=latestGamepadCommands,commands=buildBimanualCommands(gamepadCommands),bimanualActive=commands.some(command=>command.values.some(value=>Math.abs(value)>.01)),gamepadActive=[...gamepadCommands.values()].some(command=>command.values.some(value=>Math.abs(value)>.01)),pointerValues=buildDrive(),pointerActive=pointerValues.some(value=>Math.abs(value)>.01);if((bimanualActive||pointerActive)&&macroPulseTimer){clearTimeout(macroPulseTimer);macroPulseTimer=null}if(bimanualActive||bimanualWasActive)sendBimanual(commands,gamepadActive?'gamepad':'keyboard_pointer');bimanualWasActive=bimanualActive;if(!bimanualActive&&(pointerActive||driveWasActive))sendDrive(pointerValues);driveWasActive=pointerActive;syncKeyVisuals();updateControlReadout(bimanualActive||pointerActive,activeDriveLabel(commands))}
 function clearHeldControls(){heldKeys.clear();heldModifiers.clear();pointerMoves.clear();syncKeyVisuals()}
 function stopDrive(showToast=true,source='keyboard_pointer'){if(macroPulseTimer){clearTimeout(macroPulseTimer);macroPulseTimer=null}if(voicePulseTimer){clearTimeout(voicePulseTimer);voicePulseTimer=null}clearHeldControls();driveWasActive=false;bimanualWasActive=false;sendDrive(Array(6).fill(0),effectiveSpeed(),source);sendBimanual(buildBimanualCommands(),source);updateControlReadout(false);if(showToast)toast('Both instruments stopped')}
 async function stopTool(){stopDrive();try{await post('/api/stop')}catch(e){toast(e.message)}}
@@ -457,7 +457,7 @@ function startVoiceInput(){if(voiceListening||pageDisposed)return;const recognit
 function finishVoiceInput(){if(!voiceListening)return;voiceListening=false;document.getElementById('voiceMic').classList.remove('listening');setVoiceStatus('Processing voice command…');try{voiceRecognition?.stop()}catch(_error){}}
 const voiceMic=document.getElementById('voiceMic');voiceMic.addEventListener('pointerdown',event=>{event.preventDefault();voiceMic.setPointerCapture(event.pointerId);startVoiceInput()});const releaseVoice=event=>{if(voiceMic.hasPointerCapture?.(event.pointerId))voiceMic.releasePointerCapture(event.pointerId);finishVoiceInput()};voiceMic.addEventListener('pointerup',releaseVoice);voiceMic.addEventListener('pointercancel',releaseVoice);voiceMic.addEventListener('lostpointercapture',finishVoiceInput);
 window.addEventListener('gamepadconnected',event=>{gamepadSafetyLatched=true;updateGamepadStatus();gamepadHaptic(event.gamepad,{duration:110,weak:.32,strong:.18});toast(`${event.gamepad.id||'Controller'} connected · center sticks to begin`)});window.addEventListener('gamepaddisconnected',event=>{gamepadKnownIndices.delete(event.gamepad.index);gamepadButtonStates.clear();latestGamepadCommands=new Map();updateGamepadStatus();if(!pageDisposed)emergencyStop('gamepad')});
-function bindPointerHold(button,movement){button.addEventListener('pointerdown',event=>{event.preventDefault();if(Number.isInteger(movement.arm)&&movement.arm<(latestStatus?.arms||1)){activeArm=movement.arm;document.getElementById('arm0').classList.toggle('active',activeArm===0);document.getElementById('arm1').classList.toggle('active',activeArm===1)}inputSource='keyboard_pointer';button.setPointerCapture(event.pointerId);pointerMoves.set(event.pointerId,{...movement,button});showKeyAction(button.dataset.shortcut,movement.label||button.textContent.trim(),true);syncKeyVisuals();updateDrive()});const release=event=>{pointerMoves.delete(event.pointerId);syncKeyVisuals();updateDrive();if(!pointerMoves.size)showKeyAction('READY','Released · motion stopped',false)};button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release);button.addEventListener('contextmenu',event=>event.preventDefault())}
+function bindPointerHold(button,movement){button.addEventListener('pointerdown',event=>{event.preventDefault();if(isTypingTarget(document.activeElement))document.activeElement.blur();if(Number.isInteger(movement.arm)&&movement.arm<(latestStatus?.arms||1)){activeArm=movement.arm;document.getElementById('arm0').classList.toggle('active',activeArm===0);document.getElementById('arm1').classList.toggle('active',activeArm===1)}inputSource='keyboard_pointer';button.setPointerCapture(event.pointerId);pointerMoves.set(event.pointerId,{...movement,button});showKeyAction(button.dataset.shortcut,movement.label||button.textContent.trim(),true);syncKeyVisuals();updateDrive()});const release=event=>{pointerMoves.delete(event.pointerId);syncKeyVisuals();updateDrive();if(!pointerMoves.size)showKeyAction('READY','Released · motion stopped',false)};button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release);button.addEventListener('contextmenu',event=>event.preventDefault())}
 document.querySelectorAll('.move-button').forEach(button=>bindPointerHold(button,{axis:Number(button.dataset.axis),direction:Number(button.dataset.direction),arm:button.dataset.arm===undefined?undefined:Number(button.dataset.arm)}));
 document.querySelectorAll('.combo-button').forEach(button=>bindPointerHold(button,{comboCode:button.dataset.comboKey,label:comboMap[button.dataset.comboKey].label}));
 function isTypingTarget(target){return ['INPUT','SELECT','TEXTAREA'].includes(target.tagName)||target.isContentEditable}
@@ -2917,9 +2917,24 @@ def main() -> None:
         args_cli.task,
         device=args_cli.device,
         num_envs=1,
-        use_fabric=not args_cli.disable_fabric,
+        # Native deformable-to-rigid attachments must stay on the authored USD
+        # stage.  Fabric mirrors do not preserve this attachment lifecycle.
+        use_fabric=False if _softmimicgen_task else not args_cli.disable_fabric,
     )
     if _softmimicgen_task:
+        # There is one interactive room, so physics replication provides no
+        # benefit and can drop cross-asset attachment relationships while the
+        # source environment is cloned.
+        env_cfg.scene.replicate_physics = False
+        # SoftMimicGen randomizes the standalone strand and ring pose on every
+        # RL reset. A factory-swaged needle must share that transform, so the
+        # clinician workstation uses the authored deterministic composition.
+        # Training keeps the upstream randomization unchanged outside here.
+        interactive_events = getattr(env_cfg, "events", None)
+        if interactive_events is not None:
+            for event_name in ("reset_object_position", "reset_ring_position"):
+                if hasattr(interactive_events, event_name):
+                    setattr(interactive_events, event_name, None)
         # The upstream task defaults to training-scale PhysX reservations even
         # when num_envs=1.  Size the native buffers for one interactive room so
         # it can coexist with other Gilgamesh workloads without changing any
@@ -2944,6 +2959,85 @@ def main() -> None:
         # diameter. This is the native deformable mesh, so rendering and PhysX
         # collision/deformation use the same physical dimensions.
         env_cfg.scene.object.spawn.scale = (0.2, 0.04, 0.04)
+        needle_usd = (
+            Path(__file__).resolve().parents[1]
+            / "source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd"
+        )
+        if not needle_usd.is_file():
+            raise RuntimeError(f"ORBIT-Surgical needle asset is missing: {needle_usd}")
+        needle_digest = hashlib.sha256(needle_usd.read_bytes()).hexdigest()
+        if needle_digest != "2b317a61f93631a7192e7ed2839ef20f7a75c05aa5f84a3905696134a64f36d7":
+            raise RuntimeError("The pinned ORBIT needle mesh changed; re-derive its swage anchor before use")
+        # Center of the blunt factory-swaged endpoint in the pinned ORBIT
+        # needle default prim. This is derived from the mesh end cap, not from
+        # whichever needle surface happens to be closest to the strand.
+        orbit_needle_swage_anchor_m = (0.0478657183, 0.0491908647, 0.0009574010)
+        needle_spawn = sim_utils.UsdFileCfg(
+            usd_path=str(needle_usd),
+            scale=(0.4, 0.4, 0.4),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                solver_position_iteration_count=16,
+                solver_velocity_iteration_count=8,
+                max_angular_velocity=200.0,
+                max_linear_velocity=200.0,
+                max_depenetration_velocity=1.0,
+                disable_gravity=False,
+            ),
+        )
+        source_needle_spawn = needle_spawn.func
+
+        def spawn_suture_needle_with_attachment(
+            prim_path: str,
+            cfg: sim_utils.UsdFileCfg,
+            translation: tuple[float, float, float] | None = None,
+            orientation: tuple[float, float, float, float] | None = None,
+            **kwargs: Any,
+        ) -> Any:
+            """Spawn the rigid needle and author its native endpoint attachment."""
+
+            needle_prim = source_needle_spawn(
+                prim_path,
+                cfg,
+                translation=translation,
+                orientation=orientation,
+                **kwargs,
+            )
+            import omni.usd
+            from pxr import Gf, PhysxSchema, Sdf, UsdGeom
+
+            stage = omni.usd.get_context().get_stage()
+            resolved_needle_path = str(needle_prim.GetPath())
+            environment_path = resolved_needle_path.rsplit("/", 1)[0]
+            swage_anchor = UsdGeom.Xform.Define(
+                stage,
+                Sdf.Path(resolved_needle_path).AppendChild("SutureAnchor"),
+            )
+            swage_anchor.AddTranslateOp().Set(Gf.Vec3d(*orbit_needle_swage_anchor_m))
+            thread_path = Sdf.Path(f"{environment_path}/Object/Xform")
+            needle_path = Sdf.Path(resolved_needle_path)
+            attachment_path = Sdf.Path(f"{environment_path}/SutureNeedleAttachment")
+            attachment = PhysxSchema.PhysxPhysicsAttachment.Define(stage, attachment_path)
+            attachment.GetActor0Rel().SetTargets([thread_path])
+            attachment.GetActor1Rel().SetTargets([needle_path])
+            auto_attachment = PhysxSchema.PhysxAutoAttachmentAPI.Apply(attachment.GetPrim())
+            # Exact swage placement permits a local surgical-scale selection
+            # radius. It cannot reach the needle's middle or sharp endpoint.
+            auto_attachment.CreateDeformableVertexOverlapOffsetAttr(0.0012)
+            auto_attachment.CreateCollisionFilteringOffsetAttr(0.0012)
+            return needle_prim
+
+        needle_spawn.func = spawn_suture_needle_with_attachment
+        env_cfg.scene.suture_needle = RigidObjectCfg(
+            prim_path="{ENV_REGEX_NS}/SutureNeedle",
+            init_state=RigidObjectCfg.InitialStateCfg(
+                # Align the named swage anchor with the four terminal FEM
+                # surface nodes. A 180-degree yaw makes the free strand trail
+                # away from the needle arc rather than overlap it.
+                pos=(-0.001003713, 0.019714346, 0.008955040),
+                rot=(0.0, 0.0, 0.0, 1.0),
+            ),
+            spawn=needle_spawn,
+        )
         # Dr.Anmar supplies one doctor-adjustable operative camera.  Remove the
         # two policy cameras from this interactive process only; NVIDIA's
         # recorded dataset and task assets remain unchanged on disk.
@@ -3213,6 +3307,64 @@ def main() -> None:
     deformables = {name: scene[name] for name in deformable_names}
     native_tissue = deformables.get(str(native_room.get("stage_key", ""))) if native_room else None
     interactive_deformable = deformables.get("object") if _softmimicgen_task else native_tissue
+    if _softmimicgen_task and interactive_deformable is not None and "suture_needle" in objects:
+        # Report the named swage-to-terminal-surface separation once. This is
+        # read-only: OpenUSD defines the anchor and PhysX owns all motion.
+        import omni.usd
+
+        diagnostic_stage = omni.usd.get_context().get_stage()
+        swage_anchor = diagnostic_stage.GetPrimAtPath(
+            "/World/envs/env_0/SutureNeedle/SutureAnchor"
+        )
+        if not swage_anchor.IsValid():
+            raise RuntimeError("The native suture needle is missing its OpenUSD swage anchor")
+        nodal_value = interactive_deformable.data.nodal_pos_w
+        nodal_positions = getattr(nodal_value, "torch", nodal_value)[0].detach().cpu().numpy()
+        default_value = interactive_deformable.data.default_nodal_state_w
+        default_positions = getattr(default_value, "torch", default_value)[0, :, :3].detach().cpu().numpy()
+        endpoint_mask = default_positions[:, 0] >= float(default_positions[:, 0].max()) - 0.0002
+        default_endpoint_position = default_positions[endpoint_mask].mean(axis=0)
+        endpoint_position = nodal_positions[endpoint_mask].mean(axis=0)
+        needle_state = objects["suture_needle"].data
+        needle_position = needle_state.root_pos_w[0].detach().cpu().numpy().astype(np.float64)
+        needle_quaternion = needle_state.root_quat_w[0].detach().cpu().numpy().astype(np.float64)
+        needle_default_state = needle_state.default_root_state[0].detach().cpu().numpy().astype(np.float64)
+
+        def rotate_wxyz(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
+            quaternion = quaternion / np.linalg.norm(quaternion)
+            vector_part = quaternion[1:]
+            doubled_cross = 2.0 * np.cross(vector_part, vector)
+            return vector + quaternion[0] * doubled_cross + np.cross(vector_part, doubled_cross)
+
+        local_swage = np.asarray(orbit_needle_swage_anchor_m, dtype=np.float64) * 0.4
+        swage_position = needle_position + rotate_wxyz(needle_quaternion, local_swage)
+        default_swage_position = needle_default_state[:3] + rotate_wxyz(
+            needle_default_state[3:7], local_swage
+        )
+        swage_distance = float(np.linalg.norm(endpoint_position - swage_position))
+        default_swage_distance = float(
+            np.linalg.norm(default_endpoint_position - default_swage_position)
+        )
+        print(
+            "[DR_ANMAR_NATIVE_SUTURE_GEOMETRY] "
+            + json.dumps(
+                {
+                    "anchor_semantics": "ORBIT needle blunt swaged endpoint",
+                    "terminal_surface_nodes": int(endpoint_mask.sum()),
+                    "strand_endpoint_m": endpoint_position.round(6).tolist(),
+                    "strand_default_endpoint_m": default_endpoint_position.round(6).tolist(),
+                    "swage_anchor_m": swage_position.round(6).tolist(),
+                    "swage_default_anchor_m": default_swage_position.round(6).tolist(),
+                    "swage_to_strand_delta_m": (
+                        endpoint_position - swage_position
+                    ).round(6).tolist(),
+                    "swage_to_strand_distance_m": round(swage_distance, 6),
+                    "swage_default_to_strand_distance_m": round(default_swage_distance, 6),
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
     native_attachment_targets: torch.Tensor | None = None
 
     def initialize_native_attachment() -> None:
@@ -3727,6 +3879,12 @@ def main() -> None:
             native_scaled_state = scene.get_state(is_relative=True)
             upstream_expert_initial_state = dict(upstream_expert_initial_state)
             upstream_expert_initial_state["deformable_object"] = native_scaled_state["deformable_object"]
+        native_scaled_state = scene.get_state(is_relative=True)
+        recorded_rigid_objects = dict(upstream_expert_initial_state.get("rigid_object", {}))
+        for object_name, object_state in native_scaled_state.get("rigid_object", {}).items():
+            recorded_rigid_objects.setdefault(object_name, object_state)
+        upstream_expert_initial_state = dict(upstream_expert_initial_state)
+        upstream_expert_initial_state["rigid_object"] = recorded_rigid_objects
         upstream_actions_value = upstream_episode.data["actions"]
         upstream_expert_actions = (
             upstream_actions_value.detach().cpu().numpy().astype(np.float32)
