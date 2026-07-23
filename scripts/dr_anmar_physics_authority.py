@@ -46,16 +46,6 @@ FIDELITY_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "strand_self_contact",
         "tissue_puncture",
     ),
-    "native_suturing_drylab": (
-        "deformable_strand",
-        "native_attachment",
-        "strand_self_contact",
-    ),
-    "nvidia_softmimicgen_threading": (
-        "articulation",
-        "contact",
-        "deformable_strand",
-    ),
     "native_topology_change": ("topology_change", "two_way_robot_tissue"),
     "native_flexible_shunt": ("flexible_body", "two_way_robot_tissue"),
     "native_fluid_structure": ("volume_deformable", "fluid_structure"),

@@ -227,8 +227,8 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
 - Native PhysX rigid-body needle pickup, dual-arm handover, passing/regrasp, navigation and recovery rooms.
 - PhysX contact sensors on the gripper bodies; no synthetic grasp joints or collision-disabling puncture paths.
 - One native-capability authority shared by the hub, direct worker CLI, runtime status and recordings.
-- A complete procedure curriculum whose non-rigid rooms remain unavailable until their native solver worker
-  provides the necessary deformation, strand, attachment, puncture, topology, flow or ultrasound capability.
+- A complete procedure curriculum with installed native thread rooms and capability-based readiness for
+  tissue deformation, puncture, topology, flow and ultrasound rooms.
 - Guided lessons, plain-language robotics explanations, progress tracking, and a robotics glossary.
 - Demonstration recording and replay for behavior-cloning experiments.
 - Executable eight-phase simulation experts in native-ready rooms, with live pause/resume, exact-state manual

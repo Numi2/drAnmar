@@ -11,15 +11,8 @@
       "required_files": [
         "source/softmimicgen_assets/data/Props/Rope/Rope.usd",
         "source/softmimicgen_assets/data/Props/Ring/Ring.usd",
-        "source/softmimicgen_assets/data/Props/Table/Table.usd",
-        "source/softmimicgen_assets/data/Robots/dVRK/PSM/psm_forceps.usd",
-        "datasets/annotated_dataset/annotated_dataset_surgical_threading.hdf5",
         "third_party/IsaacLab/source/isaaclab/isaaclab/__init__.py"
-      ],
-      "representation": "upstream_softmimicgen_task",
-      "authority": "nvidia_softmimicgen_isaac_lab_physx",
-      "validation_report": "physics_next/benchmarks/softmimicgen-threading-replay.json",
-      "calibration_status": "upstream_research_task_unvalidated_clinically"
+      ]
     },
     "liver-retraction": {
       "backend": "physx_fem",

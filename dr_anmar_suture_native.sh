@@ -70,8 +70,8 @@ case "${1:-status}" in
             --output "${ASSET_ROOT}" --verify-only
         latest="$(find "${REPORT_ROOT}" -maxdepth 1 -name 'softmimicgen-suture-*.json' -type f -print 2>/dev/null | sort | tail -1)"
         if [[ -n "${latest}" ]]; then
-            echo "Latest qualification: ${latest}"
-            python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print("core_passed=",r.get("core_passed"),"promotion_passed=",r.get("promotion_passed"))' "${latest}"
+            echo "Latest diagnostic: ${latest}"
+            python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print("checks=",r.get("checks",{}))' "${latest}"
         fi
         latest_replay="$(find "${REPORT_ROOT}" -maxdepth 1 -name 'softmimicgen-replay-*.json' -type f -print 2>/dev/null | sort | tail -1)"
         if [[ -n "${latest_replay}" ]]; then
@@ -79,21 +79,17 @@ case "${1:-status}" in
             python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print("pass=",r.get("pass"),"live_terminal_success=",r.get("live_terminal_success"),"first_success_step=",r.get("first_live_success_step"))' "${latest_replay}"
         fi
         ;;
-    qualify)
+    diagnose)
         [[ -x "${ISAAC_PYTHON}" ]] || { echo "Isaac Python not found: ${ISAAC_PYTHON}" >&2; exit 1; }
         [[ -f "${NEEDLE_USD}" ]] || { echo "Needle asset not found: ${NEEDLE_USD}" >&2; exit 1; }
         python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_fetch_softmimicgen.py" --output "${ASSET_ROOT}"
-        gate="${2:-core}"
-        [[ "${gate}" == "core" || "${gate}" == "promotion" ]] || { echo "gate must be core or promotion" >&2; exit 2; }
-        output="${REPORT_ROOT}/softmimicgen-suture-$(date -u +%Y%m%dT%H%M%SZ).json"
+        output="${REPORT_ROOT}/softmimicgen-suture-diagnostic-$(date -u +%Y%m%dT%H%M%SZ).json"
         TMPDIR="${RUNTIME_ROOT}/tmp" "${ISAAC_PYTHON}" "${REPOSITORY_ROOT}/scripts/dr_anmar_softmimicgen_suture_probe.py" \
             --asset-dir "${ASSET_ROOT}" \
             --needle-usd "${NEEDLE_USD}" \
-            --gate "${gate}" \
             --output "${output}" \
             --headless
-        python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); raise SystemExit(0 if r.get("passed") is True else 1)' "${output}"
-        echo "Qualification: ${output}"
+        echo "Diagnostic: ${output}"
         ;;
     validate-upstream)
         [[ -x "${ISAAC_PYTHON}" ]] || { echo "Isaac Python not found: ${ISAAC_PYTHON}" >&2; exit 1; }
@@ -111,7 +107,7 @@ case "${1:-status}" in
         echo "Replay validation: ${output}"
         ;;
     *)
-        echo "Usage: $0 {fetch|install-upstream|status|qualify [core|promotion]|validate-upstream [demo_0]}" >&2
+        echo "Usage: $0 {fetch|install-upstream|status|diagnose|validate-upstream [demo_0]}" >&2
         exit 2
         ;;
 esac

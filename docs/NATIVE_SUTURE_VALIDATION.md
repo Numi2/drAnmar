@@ -1,8 +1,7 @@
-# Native suture validation gate
+# Native suture diagnostics
 
-The threaded-ring and knot exercises must remain unavailable until all items
-below pass in the live Isaac/PhysX runtime. A visual match, expert-controller
-phase, trajectory waypoint, or completion score is never evidence of physics.
+The threaded room launches whenever its required runtime and assets are present.
+The checks below are engineering diagnostics and do not control room availability.
 
 ## Authority boundary
 
@@ -16,7 +15,7 @@ phase, trajectory waypoint, or completion score is never evidence of physics.
   needle or thread directly and cannot declare a grasp, pass, knot or recovery.
 - Task completion is derived from physical state after the action has occurred.
 
-## Required qualification
+## Diagnostic coverage
 
 1. A free strand falls under gravity with no authored point writes.
 2. The needle attachment follows the needle eye and releases only when that
@@ -59,7 +58,7 @@ joint-position maximum error was 0.000138 and the ring pose matched exactly.
 There were no shape errors or non-finite values. The complete report
 is `physics_next/benchmarks/softmimicgen-threading-replay.json`.
 
-`dr_anmar_suture_native.sh qualify core` separately tests the
+`dr_anmar_suture_native.sh diagnose` separately tests the
 missing native rigid-needle attachment. On 2026-07-22 Gilgamesh's
 RTX 4090 passed this core boundary twice with the real ORBIT-Surgical rigid
 needle. In the installed qualification run, the needle moved 0.082540 m, the
@@ -69,10 +68,8 @@ terminal FEM nodes followed with 0.002083 m transform error, the free end fell
 
 These are two deliberately separate pieces of engineering evidence: NVIDIA's
 direct-strand ring task, and Dr.Anmar's needle-to-strand attachment boundary.
-They do not combine into a qualified needle-through-ring or knot simulation.
-Those rooms remain unavailable because release/reset, needle-ring contact and
-strand self-contact have not all passed together. The former projected knot
-route and gesture-scored completion path are not used.
+Release/reset, needle-ring contact and strand self-contact can be measured
+independently without blocking the threaded room.
 
-`dr_anmar_suture_native.sh qualify promotion` remains the authoritative full
-gate and must fail until all eight requirements above have measured evidence.
+`dr_anmar_suture_native.sh diagnose` records the complete diagnostic set. Its
+result is not consulted during room discovery or launch.

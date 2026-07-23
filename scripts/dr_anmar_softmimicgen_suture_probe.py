@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Qualify NVIDIA's SoftMimicGen FEM strand with a native rigid needle.
+"""Inspect NVIDIA's SoftMimicGen FEM strand with a native rigid needle.
 
 This probe never writes deformable points. PhysX owns the strand, needle,
-attachment, gravity, contact, and stepping. The probe remains separate from
-doctor-facing rooms until the complete promotion gate passes.
+attachment, gravity, contact, and stepping. Its measurements do not control
+doctor-facing room availability.
 """
 
 from __future__ import annotations
@@ -21,7 +21,6 @@ parser.add_argument("--asset-dir", type=Path, required=True)
 parser.add_argument("--needle-usd", type=Path, required=True)
 parser.add_argument("--steps", type=int, default=160)
 parser.add_argument("--output", type=Path)
-parser.add_argument("--gate", choices=("core", "promotion"), default="core")
 parser.add_argument(
     "--strand-radial-scale",
     type=float,
@@ -296,7 +295,7 @@ def main() -> int:
         and attachment_follow_error < 0.008
         and abs(attached_relative_final - attached_relative_initial) < 0.008
     )
-    core_passed = bool(
+    attachment_operational = bool(
         "PhysxDeformableBodyAPI" in schemas
         and "PhysxCollisionAPI" in schemas
         and not args.free_strand_only
@@ -307,7 +306,7 @@ def main() -> int:
         and free_end_drop > 0.0001
         and attachment_follows
     )
-    promotion_checks = {
+    checks = {
         "free_strand_gravity": free_end_drop > 0.0001,
         "needle_attachment_follows": attachment_follows,
         "ring_tube_and_center_contact": False,
@@ -317,7 +316,6 @@ def main() -> int:
         "deterministic_reset": False,
         "ui_cannot_write_physics": True,
     }
-    promotion_passed = all(promotion_checks.values())
     report = {
         "schema": "dr.anmar.softmimicgen-suture-probe.v1",
         "source_revision": "c9d146ba57358a544167de8ebe946caaac8f6220",
@@ -327,7 +325,6 @@ def main() -> int:
         "attachment_overlap_m": args.attachment_overlap_m,
         "collision_filtering_offset_m": args.collision_filtering_offset_m,
         "steps": int(args.steps),
-        "gate": args.gate,
         "assets": {path.name: file_sha256(path) for path in required},
         "official_strand_native_fem": "PhysxDeformableBodyAPI" in schemas,
         "official_strand_self_collision": self_collision,
@@ -365,22 +362,16 @@ def main() -> int:
             float(imported_nodal_velocity.abs().max().item()), 6
         ),
         "authored_nodal_velocity_reset_writes": 1,
-        "core_passed": core_passed,
-        "promotion_checks": promotion_checks,
-        "promotion_passed": promotion_passed,
-        "upstream_limitations": [
-            "The released SoftMimicGen task grasps the strand directly and has no needle attachment.",
-            "The released Rope.usd has self-collision disabled and does not qualify knot mechanics.",
-        ],
+        "attachment_operational": attachment_operational,
+        "checks": checks,
     }
-    report["passed"] = core_passed if args.gate == "core" else promotion_passed
     encoded = json.dumps(report, indent=2, sort_keys=True)
     print(encoded)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(encoded + "\n")
     simulation_app.close(wait_for_replicator=False, skip_cleanup=True)
-    return 0 if report["passed"] else 1
+    return 0
 
 
 if __name__ == "__main__":

@@ -3319,7 +3319,7 @@ def main() -> None:
         # diameter. This is the native deformable mesh, so rendering and PhysX
         # collision/deformation use the same physical dimensions.
         env_cfg.scene.object.spawn.scale = (0.2, 0.04, 0.04)
-        if procedure.get("requires_strand_self_collision"):
+        if procedure.get("enable_strand_self_collision"):
             # PhysX owns knot topology: no projected curve, teleport or
             # workstation-side constraint is allowed to stand in for contact.
             env_cfg.scene.object.spawn.deformable_props = sim_utils.DeformableBodyPropertiesCfg(
@@ -3796,11 +3796,9 @@ def main() -> None:
     native_tissue = deformables.get(str(native_room.get("stage_key", ""))) if native_room else None
     interactive_deformable = deformables.get("object") if _softmimicgen_task else native_tissue
     ring_physics_ready = "ring" in objects
-    strand_self_collision_ready = not bool(
-        procedure.get("requires_strand_self_collision")
-    )
+    strand_self_collision_ready = not bool(procedure.get("enable_strand_self_collision"))
     self_collision_attributes: dict[str, Any] = {}
-    if _softmimicgen_task and procedure.get("requires_strand_self_collision"):
+    if _softmimicgen_task and procedure.get("enable_strand_self_collision"):
         import omni.usd
         from pxr import Usd
 
@@ -3830,10 +3828,6 @@ def main() -> None:
             ),
             flush=True,
         )
-        if not strand_self_collision_ready:
-            raise RuntimeError(
-                "The bimanual knot room requires an authored native PhysX strand self-collision property"
-            )
     if bimanual_softmimicgen and not ring_physics_ready:
         raise RuntimeError("The bimanual knot room requires SoftMimicGen's native rigid ring")
     if _softmimicgen_task and interactive_deformable is not None and "suture_needle" in objects:

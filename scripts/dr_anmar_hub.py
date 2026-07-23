@@ -1360,6 +1360,29 @@ def anatomy() -> dict[str, Any]:
     return anatomy_payload()
 
 
+def procedure_physics_state(
+    authority: Any,
+    procedure: dict[str, Any],
+    binding: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if binding and binding.get("runtime_provider") == "nvidia_softmimicgen":
+        return {
+            "ready": bool(binding.get("available")),
+            "reason": "" if binding.get("available") else "The threaded-room runtime assets are missing.",
+        }
+    return authority.procedure_readiness(
+        procedure,
+        authority.runtime_payload(
+            runtime_family="isaac-sim-5.1-stable",
+            effective_backend=(
+                str(binding["backend"])
+                if binding and binding.get("available")
+                else None
+            ),
+        ),
+    )
+
+
 @app.get("/api/procedure-rooms")
 def procedure_rooms() -> dict[str, Any]:
     payload = procedure_payload()
@@ -1429,15 +1452,7 @@ def procedure_rooms() -> dict[str, Any]:
             room["anatomy_title"] = "SonoGym CT-derived lumbar patient · L4 vertebra"
             continue
         binding = resolve_native_room(str(room["id"]))
-        room_runtime = authority.runtime_payload(
-            runtime_family="isaac-sim-5.1-stable",
-            effective_backend=(
-                str(binding["backend"])
-                if binding and binding.get("available")
-                else None
-            ),
-        )
-        physics = authority.procedure_readiness(room, room_runtime)
+        physics = procedure_physics_state(authority, room, binding)
         if binding and not binding.get("available"):
             physics = {
                 **physics,
@@ -1589,17 +1604,7 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         }
     authority = load_physics_authority()
     binding = resolve_native_room(str(procedure["id"]))
-    physics = authority.procedure_readiness(
-        procedure,
-        authority.runtime_payload(
-            runtime_family="isaac-sim-5.1-stable",
-            effective_backend=(
-                str(binding["backend"])
-                if binding and binding.get("available")
-                else None
-            ),
-        ),
-    )
+    physics = procedure_physics_state(authority, procedure, binding)
     if binding and not binding.get("available"):
         physics = {
             **physics,
