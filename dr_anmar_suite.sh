@@ -11,7 +11,12 @@ fi
 
 ROOT="${DR_ANMAR_ROOT:-${HOME}/.local/share/dr-anmar}"
 export DR_ANMAR_ROOT="${ROOT}"
-export DR_ANMAR_I4H_ROOT="${DR_ANMAR_I4H_ROOT:-${ROOT}/vendor/i4h-workflows}"
+export DR_ANMAR_I4H_ROOT="${DR_ANMAR_I4H_ROOT:-${ROOT}/vendor/i4h-workflows-current}"
+if [[ -d "${HOME}/.local/bin" ]]; then
+  export PATH="${HOME}/.local/bin:${PATH}"
+fi
+export UV_CACHE_DIR="${UV_CACHE_DIR:-${ROOT}/cache/uv}"
+export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-${ROOT}/runtime/uv-python}"
 PYTHON="${ISAAC_PYTHON:-python3}"
 HUB_PORT="${DR_ANMAR_HUB_PORT:-2360}"
 WORKER_PORT="${DR_ANMAR_WORKER_PORT:-2361}"

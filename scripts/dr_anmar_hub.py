@@ -32,6 +32,7 @@ from dr_anmar_catalog import CATALOG, PRIMARY_TASKS, TASKS_BY_ID
 from dr_anmar_curriculum import curriculum_payload
 from dr_anmar_i4h_adapter import (
     I4H_ROOT,
+    I4H_RELEASE,
     HOLOHUB_CLI_COMMIT,
     MODALITY_CATALOG,
     POLICY_STARTING_POINTS,
@@ -1069,6 +1070,7 @@ def healthcare_job_log() -> dict[str, Any]:
 @app.post("/api/healthcare-job/start")
 def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
     is_sonogym = request.workflow == "sonogym_orthopedics"
+    is_agentic = request.workflow == "agentic"
     if is_sonogym:
         definition = sonogym_platform_workflow()
         mode_catalog = sonogym_workflow_modes()
@@ -1101,6 +1103,31 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
         process_env.setdefault("PRIVACY_CONSENT", "Y")
         process_env.setdefault("WANDB_MODE", "disabled")
         process_env.setdefault("WANDB_SILENT", "true")
+    elif is_agentic:
+        workflow_root = I4H_ROOT / definition["directory"]
+        arena_runner = workflow_root / "arena/run.sh"
+        if not workflow_root.is_dir() or not arena_runner.is_file():
+            raise HTTPException(409, "Install the pinned NVIDIA Agentic workflow before launching this environment")
+        command = [
+            str(arena_runner),
+            "--env",
+            request.mode,
+            "--state-machine",
+            "--episodes",
+            "1",
+            "--num_envs",
+            "1",
+            "--headless",
+            "--disable-cameras",
+        ]
+        process_cwd = I4H_ROOT
+        process_env = os.environ.copy()
+        process_env["I4H_WORKFLOWS"] = str(I4H_ROOT)
+        uv_path = mode_catalog["agentic_runtime_prerequisites"]["uv"]["path"]
+        if uv_path:
+            process_env["PATH"] = f"{Path(uv_path).parent}:{process_env.get('PATH', '')}"
+        process_env.setdefault("UV_CACHE_DIR", str(args.root / "cache/uv"))
+        process_env.setdefault("UV_PYTHON_INSTALL_DIR", str(args.root / "runtime/uv-python"))
     else:
         workflow_root = I4H_ROOT / definition["directory"]
         i4h_cli = I4H_ROOT / "i4h"
@@ -1139,7 +1166,13 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
     manifest = {
         "schema": "dr.anmar.healthcare-workflow-job.v1",
         "experiment_id": job_id,
-        "kind": "sonogym_orthopedic_workflow" if is_sonogym else "isaac_for_healthcare_workflow",
+        "kind": (
+            "sonogym_orthopedic_workflow"
+            if is_sonogym
+            else "isaac_for_healthcare_agentic_workflow"
+            if is_agentic
+            else "isaac_for_healthcare_workflow"
+        ),
         "simulation_only": True,
         "clinical_use": False,
         "created_at": utc_now(),
@@ -1161,7 +1194,7 @@ def start_healthcare_job(request: HealthcareWorkflowRequest) -> dict[str, Any]:
             },
             "hardware_access": False,
             "custom_arguments": False,
-            "holohub_cli_commit": None if is_sonogym else HOLOHUB_CLI_COMMIT,
+            "holohub_cli_commit": None if is_sonogym or is_agentic else HOLOHUB_CLI_COMMIT,
             "sonogym_source_commit": SONOGYM_COMMIT if is_sonogym else None,
         },
         "command": command,
@@ -1341,7 +1374,7 @@ def procedure_rooms() -> dict[str, Any]:
                 "schema": "dr.anmar.native-physics-readiness.v1",
                 "ready": ready,
                 "fidelity": room["fidelity"],
-                "backend": "nvidia_i4h_robotic_ultrasound_v0.6.0",
+                "backend": f"nvidia_i4h_robotic_ultrasound_{I4H_RELEASE}",
                 "required_capabilities": ["medical_ultrasound"],
                 "available_capabilities": ["medical_ultrasound"] if ready else [],
                 "missing_capabilities": [] if ready else ["medical_ultrasound"],
@@ -1521,7 +1554,7 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
             **result,
             "procedure_id": request.procedure_id,
             "title": procedure["title"],
-            "native_provider": "NVIDIA Isaac for Healthcare v0.6.0",
+            "native_provider": f"NVIDIA Isaac for Healthcare {I4H_RELEASE}",
         }
     if procedure.get("external_provider") == "sonogym_orthopedics":
         result = launch_sonogym_procedure(procedure)

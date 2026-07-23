@@ -19,9 +19,14 @@ from typing import Any
 
 
 APP_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
-I4H_ROOT = Path(os.environ.get("DR_ANMAR_I4H_ROOT", APP_ROOT / "vendor/i4h-workflows")).expanduser()
-I4H_RELEASE = os.environ.get("DR_ANMAR_I4H_RELEASE", "v0.6.0")
-I4H_RELEASE_COMMIT = "8b03d55ecb647a43af54470b27bd09a239870aaf"
+I4H_ROOT = Path(
+    os.environ.get("DR_ANMAR_I4H_ROOT", APP_ROOT / "vendor/i4h-workflows-current")
+).expanduser()
+I4H_RELEASE = os.environ.get("DR_ANMAR_I4H_RELEASE", "v0.7.0")
+I4H_RELEASE_COMMIT = os.environ.get(
+    "DR_ANMAR_I4H_RELEASE_COMMIT",
+    "9b526c6d107254727d3b113c612fb860fc65a5b2",
+)
 HOLOHUB_CLI_COMMIT = os.environ.get(
     "DR_ANMAR_HOLOHUB_CLI_COMMIT",
     "f7e791dac061e01c560d3a2c5b7da82350915b69",
@@ -93,20 +98,157 @@ WORKFLOW_BINDINGS = {
     "rheo": {
         "title": "Rheo precision manipulation",
         "directory": "workflows/rheo",
-        "provides": ["trocar_assembly", "bimanual_manipulation", "groot_n1_6", "online_rl", "cosmos_transfer_2_5"],
-        "doctor_summary": "Use NVIDIA's trocar-assembly and precision-manipulation references as expert research starting points.",
+        "provides": [
+            "trocar_assembly",
+            "bimanual_manipulation",
+            "surface_deformable_cloth",
+            "newton_physx_backends",
+            "xr_teleoperation",
+            "groot",
+            "online_rl",
+        ],
+        "doctor_summary": "Use NVIDIA's rigid and surface-deformable precision-manipulation references as expert research starting points.",
         "doctor_default_mode": None,
         "expert_source_only": True,
     },
     "agentic": {
-        "title": "Agentic data and policy pipeline",
+        "title": "NVIDIA surgical Arena",
         "directory": "workflows/agentic",
-        "provides": ["teleoperation", "mimic", "vlm_annotation", "lerobot", "groot_n1_7", "openpi", "rollout_validation"],
-        "doctor_summary": "Move a reviewed study from demonstrations through curation, policy adaptation, and closed-loop evaluation.",
-        "doctor_default_mode": None,
-        "expert_source_only": True,
+        "provides": [
+            "native_surgical_environments",
+            "scripted_state_machines",
+            "teleoperation",
+            "mimic",
+            "lerobot",
+            "groot",
+            "openpi",
+        ],
+        "doctor_summary": "Run NVIDIA's native surgical environments and use the same contracts for demonstrations, datasets, policies, and evaluation.",
+        "doctor_default_mode": "surgical_reach_psm",
+        "agentic_yaml_contract": True,
+    },
+    "catheter_navigation": {
+        "title": "Endoluminal navigation",
+        "directory": "workflows/catheter_navigation",
+        "provides": ["fluoroscopy", "dsa", "xpbd_catheter", "vasculature_digital_twin", "ct_ingestion"],
+        "doctor_summary": "Study patient-specific endovascular navigation with NVIDIA's fluoroscopy and catheter-physics workflow.",
+        "doctor_default_mode": "interactive_viewport",
     },
 }
+
+
+def _yaml_section_scalar(text: str, section: str, key: str) -> str | None:
+    """Read one scalar from NVIDIA's shallow environment YAML without copying it."""
+
+    in_section = False
+    for raw_line in text.splitlines():
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(raw_line) - len(raw_line.lstrip())
+        if indent == 0:
+            in_section = stripped == f"{section}:"
+            continue
+        if in_section and indent == 2 and stripped.startswith(f"{key}:"):
+            value = stripped.split(":", 1)[1].strip()
+            if not value or value in {"null", "~"}:
+                return None
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+                value = value[1:-1]
+            return value
+    return None
+
+
+def agentic_runtime_prerequisites() -> dict[str, Any]:
+    """Report only prerequisites needed by NVIDIA's v0.7 Agentic workflow."""
+
+    workflow_root = I4H_ROOT / "workflows/agentic"
+    uv_path = shutil.which("uv")
+    if uv_path is None:
+        user_uv = Path.home() / ".local/bin/uv"
+        uv_path = str(user_uv) if user_uv.is_file() else None
+    python_candidates = (
+        workflow_root / "arena/.venv/bin/python",
+        workflow_root / ".venv/bin/python",
+    )
+    workflow_python = next((path for path in python_candidates if path.is_file()), None)
+    return {
+        "uv": {"ready": uv_path is not None, "path": uv_path},
+        "git": {"ready": bool(shutil.which("git")), "path": shutil.which("git")},
+        "nvidia_gpu_device": {"ready": Path("/dev/nvidia0").exists(), "path": "/dev/nvidia0"},
+        "agentic_python": {
+            "ready": workflow_python is not None,
+            "path": str(workflow_python) if workflow_python else None,
+        },
+    }
+
+
+def agentic_workflow_modes() -> dict[str, Any]:
+    """Discover NVIDIA v0.7 surgical environments from their source-of-truth YAMLs."""
+
+    config_root = I4H_ROOT / "workflows/agentic/config/environments"
+    prerequisites = agentic_runtime_prerequisites()
+    missing = [
+        label
+        for key, label in (
+            ("uv", "uv"),
+            ("git", "git"),
+            ("nvidia_gpu_device", "NVIDIA GPU"),
+            ("agentic_python", "NVIDIA Agentic workflow setup"),
+        )
+        if not prerequisites[key]["ready"]
+    ]
+    modes = []
+    digest = hashlib.sha256()
+    for path in sorted(config_root.glob("surgical_*.yaml")) if config_root.is_dir() else []:
+        try:
+            source = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        digest.update(path.name.encode("utf-8"))
+        digest.update(source.encode("utf-8"))
+        env_id = path.stem
+        description = (
+            _yaml_section_scalar(source, "arena", "description")
+            or _yaml_section_scalar(source, "policy", "task_description")
+            or env_id.replace("_", " ").title()
+        )
+        bridge_port = _yaml_section_scalar(source, "arena", "bridge_port")
+        modes.append(
+            {
+                "id": env_id,
+                "title": env_id.replace("_", " ").title(),
+                "description": description,
+                "category": "simulation",
+                "launchable": True,
+                "requires_hardware": False,
+                "requires_arguments": False,
+                "requires_rti": False,
+                "blocked_reason": None,
+                "recommended": env_id == "surgical_reach_psm",
+                "launch_ready": not missing,
+                "missing_prerequisites": list(missing),
+                "runtime_validated": False,
+                "provider_kind": "nvidia_agentic_state_machine",
+                "upstream_environment": env_id,
+                "robot": _yaml_section_scalar(source, "robot", "type"),
+                "bridge_port": int(bridge_port) if bridge_port and bridge_port.isdigit() else None,
+                "environment_contract": str(path),
+                "environment_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+            }
+        )
+    return {
+        "default_mode": "surgical_reach_psm",
+        "official_default_mode": None,
+        "metadata_ready": bool(modes),
+        "metadata_path": str(config_root),
+        "metadata_sha256": digest.hexdigest() if modes else None,
+        "rejected_modes": [],
+        "discovery_error": None if modes else "No NVIDIA surgical environment YAMLs were found.",
+        "modes": modes,
+        "agentic_runtime_prerequisites": prerequisites,
+        "upstream_contract": "workflows/agentic/config/environments/<env>.yaml",
+    }
 
 
 def _mode_category(mode_id: str, description: str) -> str:
@@ -137,6 +279,8 @@ def workflow_modes(workflow_id: str) -> dict[str, Any]:
     definition = WORKFLOW_BINDINGS.get(workflow_id)
     if definition is None:
         raise KeyError(workflow_id)
+    if definition.get("agentic_yaml_contract"):
+        return agentic_workflow_modes()
     workflow_root = I4H_ROOT / definition["directory"]
     metadata_path = workflow_root / "metadata.json"
     if not metadata_path.is_file():
@@ -147,7 +291,7 @@ def workflow_modes(workflow_id: str) -> dict[str, Any]:
             "modes": [],
             "expert_source_only": bool(definition.get("expert_source_only")),
             "blocked_reason": (
-                "This v0.6 workflow has no HoloHub metadata contract; use its reviewed scripts outside the clinician launcher."
+                "This upstream workflow has no guarded launch contract; use its reviewed scripts outside the clinician launcher."
                 if definition.get("expert_source_only")
                 else None
             ),
@@ -242,6 +386,15 @@ def workflow_modes(workflow_id: str) -> dict[str, Any]:
         "discovery_error": f"{len(rejected_modes)} malformed modes were disabled" if rejected_modes else None,
         "modes": modes,
     }
+
+
+def workflow_inspection_command(workflow_id: str) -> str:
+    definition = WORKFLOW_BINDINGS[workflow_id]
+    if definition.get("agentic_yaml_contract"):
+        return "workflows/agentic/arena/run.sh --list-envs"
+    if definition.get("expert_source_only"):
+        return f"Read {definition['directory']}/README.md"
+    return f"./i4h modes {workflow_id}"
 
 
 MODALITY_CATALOG = (
@@ -358,7 +511,7 @@ POLICY_STARTING_POINTS = (
         "title": "GR00T N1.7",
         "analogy": "Use a pretrained robot foundation model as a starting point instead of learning everything from zero.",
         "inputs": ["language goal", "multi-camera video", "embodiment state/action mapping"],
-        "provider": "NVIDIA Isaac GR00T through Isaac for Healthcare v0.6 agentic/SO-ARM workflows",
+        "provider": "NVIDIA Isaac GR00T through Isaac for Healthcare v0.7 Agentic and SO-ARM workflows",
     },
     {
         "id": "reinforcement_learning",
@@ -383,35 +536,40 @@ def platform_payload(anatomy_root: Path) -> dict[str, Any]:
                 "source_ready": path.is_dir(),
                 "runtime_validated": False,
                 "path": str(path),
-                "inspect_command": (
-                    f"Read {definition['directory']}/README.md"
-                    if definition.get("expert_source_only")
-                    else f"./i4h modes {workflow_id}"
-                ),
+                "inspect_command": workflow_inspection_command(workflow_id),
                 **launch,
             }
         )
     i4h_cli = I4H_ROOT / "i4h"
     return {
-        "schema": "dr.anmar.isaac-healthcare-capabilities.v2",
+        "schema": "dr.anmar.isaac-healthcare-capabilities.v3",
         "strategy": "wrap_not_duplicate",
         "i4h_release": I4H_RELEASE,
         "i4h_release_commit": I4H_RELEASE_COMMIT,
         "i4h_root": str(I4H_ROOT),
         "i4h_cli_ready": i4h_cli.is_file(),
         "runtime_prerequisites": runtime_prerequisites(),
+        "agentic_runtime_prerequisites": agentic_runtime_prerequisites(),
+        "upstream_surgical_environments": agentic_workflow_modes()["modes"],
         "workflows": workflows,
         "modalities": [dict(item) for item in MODALITY_CATALOG],
         "policies": [dict(item) for item in POLICY_STARTING_POINTS],
         "maisi_anatomy_ready": anatomy_root.is_dir() and any(anatomy_root.iterdir()),
         "runtime_boundary": {
-            "dr_anmar_owns": ["pedagogy", "study design", "annotations", "provenance", "evidence review"],
+            "dr_anmar_owns": [
+                "clinician pedagogy",
+                "procedure composition",
+                "recording and annotation",
+                "evaluation and evidence review",
+            ],
             "isaac_for_healthcare_owns": [
-                "sensor physics",
-                "medical workflow runtimes",
+                "OpenUSD physical assets",
+                "Isaac Lab actions, contacts, constraints, sensors and stepping",
+                "native physics backends",
+                "surgical environments and scripted state machines",
                 "synthetic data",
-                "policy integrations",
-                "DDS and hardware-in-the-loop",
+                "policy, imitation and reinforcement learning infrastructure",
+                "runtime and hardware-in-the-loop integration",
             ],
         },
     }
@@ -447,7 +605,7 @@ def study_manifest(
         "policy_starting_point": policy_map[policy],
         "teleoperation": teleoperation,
         "underlying_workflows": workflows,
-        "workflow_inspection": [f"./i4h modes {workflow}" for workflow in workflows],
+        "workflow_inspection": [workflow_inspection_command(workflow) for workflow in workflows],
         "procedure_vocabulary": {
             "phases": ["setup", "approach", "grasp", "manipulation", "recovery"],
             "events": ["target_visible", "contact", "grasp", "task_complete", "handoff", "safety_review"],

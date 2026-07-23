@@ -70,28 +70,33 @@ extensions should be versioned rather than silently changing these base labels.
 - `robotic_ultrasound`: B-mode sensor simulation, probe pose, acoustic configuration, π₀/GR00T, and Holoscan.
 - `so_arm_starter`: room/wrist views, accessible teleoperation, LeRobot conversion, and GR00T onboarding.
 - `telesurgery`: XR, haptics, low-latency video, RTI DDS, handover, and hardware-in-the-loop.
-- `rheo`: expert-source trocar assembly, bimanual precision manipulation, GR00T adaptation, online RL,
-  and Cosmos Transfer 2.5 references.
-- `agentic`: expert-source teleoperation recording, mimic expansion, VLM annotation, LeRobot conversion,
-  GR00T N1.7/openpi adaptation, and closed-loop rollout review.
+- `rheo`: expert-source trocar assembly, bimanual precision manipulation, surface-deformable cloth with
+  Newton/PhysX backends, XR demonstration capture, GR00T adaptation, and online RL.
+- `agentic`: NVIDIA's six native surgical Arena environments, scripted expert state machines,
+  teleoperation recording, Mimic expansion, LeRobot conversion, GR00T/openpi adaptation, and rollout review.
+- `catheter_navigation`: patient-specific endoluminal navigation, fluoroscopy/DSA, CT ingestion, and
+  NVIDIA's X-PBD catheter simulation.
 
 The adapter root is configured with `DR_ANMAR_I4H_ROOT`. If unset, Dr.Anmar looks in
-`~/.local/share/dr-anmar/vendor/i4h-workflows`. Missing workflows remain visible as defined connectors;
+`~/.local/share/dr-anmar/vendor/i4h-workflows-current`. The active path is a symlink to a versioned checkout,
+so a previous qualified provider can be restored without modifying its files. Missing workflows remain
+visible as defined connectors;
 the UI must never fabricate sensor output when an official runtime is absent.
 
-Dr.Anmar discovers launch modes from each pinned workflow's `metadata.json`. The web launcher exposes only
-argument-free, non-privileged modes and checks the container runtime and RTI DDS license before pausing the
-interactive operating room. Device access, interactive account login, and custom `--run-args` stay outside
-the clinician-facing surface. Each launch produces a log and `dr.anmar.healthcare-workflow-job.v1` manifest,
-and the prior lesson is restored when the job exits.
+Dr.Anmar discovers legacy workflow launch modes from each pinned workflow's `metadata.json`. For Agentic
+surgical environments, `workflows/agentic/config/environments/<env>.yaml` is the upstream source of truth.
+The adapter reads those files without copying their robot, action, bridge-port, or task definitions. The
+web launcher exposes only registered, non-hardware modes and checks the appropriate runtime before pausing
+the interactive operating room. Each launch produces a log and `dr.anmar.healthcare-workflow-job.v1`
+manifest, and the prior lesson is restored when the job exits.
 
-Dr.Anmar pins Isaac for Healthcare workflows **v0.6.0** at
-`8b03d55ecb647a43af54470b27bd09a239870aaf` and its compatible HoloHub CLI at
+Dr.Anmar pins Isaac for Healthcare workflows **v0.7.0** at
+`9b526c6d107254727d3b113c612fb860fc65a5b2` and its compatible HoloHub CLI at
 `f7e791dac061e01c560d3a2c5b7da82350915b69`. The adapter verifies both installed revisions instead of
-silently consuming a moving upstream layout. The four metadata-backed workflows retain the guarded web
-launcher. Rheo and Agentic are intentionally source-only in the doctor interface because v0.6.0 does not
-publish the same `metadata.json` launch contract for them; their reviewed scripts remain available to
-research engineers without exposing arbitrary or hardware-affecting commands to clinicians.
+silently consuming a moving upstream layout. Agentic's six surgical environments are launched through
+NVIDIA's own Arena state-machine entrypoint; Dr.Anmar does not substitute a custom simulator, action space,
+grasp controller, reward, or physics loop. Rheo remains expert-source-only until it has an equally narrow
+upstream launch contract.
 
 ## Native physics boundary
 

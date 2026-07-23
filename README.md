@@ -90,8 +90,8 @@ Pickup → presentation → receiving grasp → release → separation, performe
 </p>
 
 <p align="center"><strong>Archived ultrasound interface study</strong><br>
-The former drawn B-mode implementation is retired. The room now delegates to NVIDIA Isaac for Healthcare
-v0.6.0 robotic ultrasound and remains unavailable until its Docker and RTI DDS prerequisites are installed.</p>
+The former drawn B-mode implementation is retired. The room delegates to the pinned NVIDIA Isaac for
+Healthcare provider and remains unavailable until that workflow's Docker and RTI DDS prerequisites are installed.</p>
 
 ### Orthopedic robotic ultrasound with SonoGym
 
@@ -298,8 +298,10 @@ The July 20 Gilgamesh pass exercised the earlier prototype surface across its Op
 Those captures remain development history and are not evidence of native ultrasound, suturing, cutting or
 tissue mechanics. Exact evidence is in
 [`docs/GILGAMESH_VALIDATION_2026-07-20.md`](docs/GILGAMESH_VALIDATION_2026-07-20.md).
-The later coupled-physics and Isaac for Healthcare v0.6.0 pass is recorded in
+The historical coupled-physics and Isaac for Healthcare v0.6.0 pass is recorded in
 [`docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md`](docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md).
+The upstream-first v0.7.0 migration and its current qualification boundary are recorded in
+[`docs/GILGAMESH_I4H_V070_MIGRATION_2026-07-23.md`](docs/GILGAMESH_I4H_V070_MIGRATION_2026-07-23.md).
 
 Install Isaac Sim and Isaac Lab using their official instructions before continuing. NVIDIA components
 are dependencies and are not redistributed by this repository.
@@ -333,10 +335,20 @@ Start Doctor Studio:
 ./dr_anmar_suite.sh start
 ```
 
-Optionally install the pinned Isaac for Healthcare v0.6.0 workflow source and compatible HoloHub CLI:
+Optionally install the pinned Isaac for Healthcare v0.7.0 workflow source and compatible HoloHub CLI:
 
 ```bash
 ./scripts/install_i4h_workflows.sh
+```
+
+The installer creates a versioned checkout and points
+`~/.local/share/dr-anmar/vendor/i4h-workflows-current` at it. Older checkouts remain available for rollback.
+For NVIDIA's native surgical Arena environments, install the upstream runtime without the optional Cosmos
+component:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+./scripts/setup_i4h_agentic.sh
 ```
 
 Official workflow containers also require Docker Engine with NVIDIA GPU container support. DDS-based modes

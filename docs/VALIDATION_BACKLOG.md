@@ -127,6 +127,26 @@ only the gates explicitly demonstrated in the new runtime report should be treat
 - CI now checks all keyboard controls plus curriculum/task/procedure consistency and Doctor Studio JavaScript.
 - Full findings and remaining external gates are recorded in `COMPLETE_AUDIT_2026-07-20.md`.
 
+## Isaac for Healthcare v0.7 upstream-first migration — 2026-07-23
+
+- [x] Pin v0.7.0 to immutable commit `9b526c6d107254727d3b113c612fb860fc65a5b2`.
+- [x] Keep v0.6.0 as a versioned rollback checkout while activating v0.7.0 through
+  `vendor/i4h-workflows-current`.
+- [x] Discover the six NVIDIA surgical Arena environments from their upstream YAML contracts.
+- [x] Route guarded surgical expert runs through NVIDIA's `arena/run.sh --state-machine`, not a Dr.Anmar
+  surrogate controller.
+- [x] Install the Agentic Arena runtime and pass upstream list/dry-run checks for all six surgical contracts.
+- [x] Complete a native `surgical_reach_psm` scene smoke and 1/1 successful upstream state-machine episode.
+- [ ] Qualify `surgical_lift_needle`; the upstream 250-step expert run failed with `rise_m=-0.014`.
+- [x] Complete the non-Cosmos Agentic policy/Mimic/dataset/annotator dependency setup and upstream E2E
+  planning dry-run.
+- [ ] Qualify the v0.7 scene-edit bridge before binding it to the clinician operating-room viewport.
+- [ ] Validate recorded HDF5 demonstrations and Cartesian action/observation consistency before treating
+  any upstream trajectory as a Behavior Cloning reference.
+- [ ] Keep Docker/RTI-dependent robotic ultrasound unavailable until its official prerequisites exist.
+
+Current evidence and commands are recorded in `GILGAMESH_I4H_V070_MIGRATION_2026-07-23.md`.
+
 ## Gilgamesh runtime evidence — 2026-07-19
 
 Validated on the RTX 4090 host:
