@@ -32,7 +32,7 @@
       "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
       "report": "assets/dr_anmar/suture/DrAnmarSuture4_0.report.json",
       "live_integration": "all_repository_local_rooms",
-      "live_behavior": "native_pose_and_filtered_contact_driven_strain_knot_crush_abrasion_relaxation_and_failure",
+      "live_behavior": "native_pose_and_filtered_contact_driven_strain_geometry_aware_edge_contact_knot_crush_abrasion_relaxation_and_failure",
       "native_gpu_qualification": "blocked_pending_convergence_and_procedural_probe",
       "physical_qualification": "blocked_pending_straight_knotted_damage_and_swage_bench_data",
       "clinical_validation": false

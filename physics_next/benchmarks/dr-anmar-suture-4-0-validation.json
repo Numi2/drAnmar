@@ -99,6 +99,18 @@
       },
       "passed": true
     },
+    "geometry_aware_self_contact_broadphase": {
+      "expected": "edge-distance contact with deterministic spatial pruning",
+      "measured": {
+        "algorithm": "uniform_spatial_hash_over_expanded_centerline_edge_aabbs",
+        "broadphase_candidates": 0,
+        "broadphase_overflow_edges": 0,
+        "naive_pairs": 60378,
+        "narrowphase": "exact_3d_segment_to_segment_closest_distance",
+        "straight_contact_count": 0
+      },
+      "passed": true
+    },
     "independent_dr_anmar_needle_geometry": {
       "expected": "no external needle geometry or naming",
       "measured": {

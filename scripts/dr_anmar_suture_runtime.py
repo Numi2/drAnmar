@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Sequence
@@ -112,6 +113,200 @@ class SutureRuntime:
         )
 
     @staticmethod
+    def _dot(left: Sequence[float], right: Sequence[float]) -> float:
+        return sum(float(left[axis]) * float(right[axis]) for axis in range(3))
+
+    @staticmethod
+    def _subtract(
+        left: Sequence[float],
+        right: Sequence[float],
+    ) -> tuple[float, float, float]:
+        return tuple(
+            float(left[axis]) - float(right[axis]) for axis in range(3)
+        )
+
+    @staticmethod
+    def _point_segment_distance(
+        point: Sequence[float],
+        start: Sequence[float],
+        end: Sequence[float],
+    ) -> float:
+        """Return the shortest distance from a point to a centerline edge."""
+
+        edge = SutureRuntime._subtract(end, start)
+        relative = SutureRuntime._subtract(point, start)
+        edge_squared = SutureRuntime._dot(edge, edge)
+        if edge_squared <= 1.0e-24:
+            return SutureRuntime._distance(point, start)
+        amount = max(
+            0.0,
+            min(1.0, SutureRuntime._dot(relative, edge) / edge_squared),
+        )
+        closest = tuple(
+            float(start[axis]) + amount * edge[axis] for axis in range(3)
+        )
+        return SutureRuntime._distance(point, closest)
+
+    @staticmethod
+    def _segment_segment_distance(
+        first_start: Sequence[float],
+        first_end: Sequence[float],
+        second_start: Sequence[float],
+        second_end: Sequence[float],
+    ) -> float:
+        """Return the exact closest distance between two centerline edges."""
+
+        first = SutureRuntime._subtract(first_end, first_start)
+        second = SutureRuntime._subtract(second_end, second_start)
+        offset = SutureRuntime._subtract(first_start, second_start)
+        first_squared = SutureRuntime._dot(first, first)
+        second_squared = SutureRuntime._dot(second, second)
+        second_offset = SutureRuntime._dot(second, offset)
+        epsilon = 1.0e-24
+
+        if first_squared <= epsilon and second_squared <= epsilon:
+            return SutureRuntime._distance(first_start, second_start)
+        if first_squared <= epsilon:
+            first_amount = 0.0
+            second_amount = max(
+                0.0,
+                min(1.0, second_offset / second_squared),
+            )
+        else:
+            first_offset = SutureRuntime._dot(first, offset)
+            if second_squared <= epsilon:
+                second_amount = 0.0
+                first_amount = max(
+                    0.0,
+                    min(1.0, -first_offset / first_squared),
+                )
+            else:
+                cross = SutureRuntime._dot(first, second)
+                denominator = first_squared * second_squared - cross * cross
+                if denominator > epsilon:
+                    first_amount = max(
+                        0.0,
+                        min(
+                            1.0,
+                            (
+                                cross * second_offset
+                                - first_offset * second_squared
+                            )
+                            / denominator,
+                        ),
+                    )
+                else:
+                    first_amount = 0.0
+                second_amount = (
+                    cross * first_amount + second_offset
+                ) / second_squared
+                if second_amount < 0.0:
+                    second_amount = 0.0
+                    first_amount = max(
+                        0.0,
+                        min(1.0, -first_offset / first_squared),
+                    )
+                elif second_amount > 1.0:
+                    second_amount = 1.0
+                    first_amount = max(
+                        0.0,
+                        min(
+                            1.0,
+                            (cross - first_offset) / first_squared,
+                        ),
+                    )
+
+        first_closest = tuple(
+            float(first_start[axis]) + first_amount * first[axis]
+            for axis in range(3)
+        )
+        second_closest = tuple(
+            float(second_start[axis]) + second_amount * second[axis]
+            for axis in range(3)
+        )
+        return SutureRuntime._distance(first_closest, second_closest)
+
+    @staticmethod
+    def _nonadjacent_edge_contacts(
+        positions: Sequence[Sequence[float]],
+        *,
+        contact_distance_m: float,
+        minimum_index_separation: int,
+        cell_size_multiplier: float,
+        maximum_cells_per_edge: int = 64,
+    ) -> tuple[list[tuple[int, int]], int, int]:
+        """Find centerline-edge contacts with a uniform-grid broadphase."""
+
+        if len(positions) < 2:
+            return [], 0, 0
+        distance = max(float(contact_distance_m), 1.0e-9)
+        cell_size = max(
+            distance * max(1.0, float(cell_size_multiplier)),
+            1.0e-9,
+        )
+        cells: dict[tuple[int, int, int], list[int]] = {}
+        overflow_edges: list[int] = []
+        for edge_index in range(len(positions) - 1):
+            start = positions[edge_index]
+            end = positions[edge_index + 1]
+            minimum = [
+                math.floor(
+                    (min(float(start[axis]), float(end[axis])) - distance)
+                    / cell_size
+                )
+                for axis in range(3)
+            ]
+            maximum = [
+                math.floor(
+                    (max(float(start[axis]), float(end[axis])) + distance)
+                    / cell_size
+                )
+                for axis in range(3)
+            ]
+            occupied_cell_count = math.prod(
+                maximum[axis] - minimum[axis] + 1
+                for axis in range(3)
+            )
+            if occupied_cell_count > max(1, int(maximum_cells_per_edge)):
+                overflow_edges.append(edge_index)
+                continue
+            for x_cell in range(minimum[0], maximum[0] + 1):
+                for y_cell in range(minimum[1], maximum[1] + 1):
+                    for z_cell in range(minimum[2], maximum[2] + 1):
+                        cells.setdefault(
+                            (x_cell, y_cell, z_cell),
+                            [],
+                        ).append(edge_index)
+
+        separation = max(2, int(minimum_index_separation))
+        candidate_pairs: set[tuple[int, int]] = set()
+        for edge_indices in cells.values():
+            unique_edges = sorted(set(edge_indices))
+            for offset, left in enumerate(unique_edges):
+                for right in unique_edges[offset + 1 :]:
+                    if right - left >= separation:
+                        candidate_pairs.add((left, right))
+        for left in overflow_edges:
+            for right in range(len(positions) - 1):
+                if abs(right - left) >= separation:
+                    candidate_pairs.add(
+                        (min(left, right), max(left, right))
+                    )
+
+        contacts = [
+            (left, right)
+            for left, right in sorted(candidate_pairs)
+            if SutureRuntime._segment_segment_distance(
+                positions[left],
+                positions[left + 1],
+                positions[right],
+                positions[right + 1],
+            )
+            <= distance
+        ]
+        return contacts, len(candidate_pairs), len(overflow_edges)
+
+    @staticmethod
     def _bend_radius(
         before: Sequence[float],
         center: Sequence[float],
@@ -157,18 +352,36 @@ class SutureRuntime:
             )
         )
         area = float(runtime.get("driver_contact_area_m2_seed", 5.0e-8))
-        candidates = [
-            (self._distance(position, tool_position), index)
-            for index, position in enumerate(segment_positions)
+        edge_candidates = [
+            (
+                self._point_segment_distance(
+                    tool_position,
+                    segment_positions[index],
+                    segment_positions[index + 1],
+                ),
+                index,
+            )
+            for index in range(len(segment_positions) - 1)
         ]
-        localized = [
-            index
-            for distance, index in sorted(candidates)[:8]
+        nearest_edges = [
+            (distance, edge_index)
+            for distance, edge_index in sorted(edge_candidates)[:4]
             if distance <= contact_radius
         ]
+        localized = sorted(
+            {
+                joint_index
+                for _, edge_index in nearest_edges
+                for joint_index in (edge_index, edge_index + 1)
+                if 0 <= joint_index < len(self.joints)
+            }
+        )
         if not localized or contact_force_n <= 0.0:
             return {
                 "localized_joint_indices": [],
+                "nearest_centerline_distance_m": (
+                    min(edge_candidates)[0] if edge_candidates else None
+                ),
                 "pressure_pa": 0.0,
                 "full_crush": False,
             }
@@ -180,6 +393,7 @@ class SutureRuntime:
         )
         return {
             "localized_joint_indices": localized,
+            "nearest_centerline_distance_m": nearest_edges[0][0],
             "pressure_pa": pressure,
             "full_crush": full_crush,
         }
@@ -226,6 +440,13 @@ class SutureRuntime:
             )
         )
         minimum_separation = int(runtime.get("knot_minimum_index_separation", 12))
+        broadphase = runtime.get("self_contact_broadphase", {})
+        broadphase_multiplier = float(
+            broadphase.get("cell_size_to_contact_distance", 2.0)
+        )
+        maximum_cells_per_edge = int(
+            broadphase.get("maximum_cells_per_edge", 64)
+        )
         knot_dwell_s = float(runtime.get("knot_compaction_dwell_s", 0.25))
         tight_radius = (
             float(self.profile["knot"]["tight_bend_radius_diameters"])
@@ -241,21 +462,32 @@ class SutureRuntime:
             )
             <= tight_radius
         }
-        nonadjacent_contacts: list[tuple[int, int]] = []
+        (
+            nonadjacent_contacts,
+            broadphase_candidate_count,
+            broadphase_overflow_edge_count,
+        ) = (
+            self._nonadjacent_edge_contacts(
+                positions,
+                contact_distance_m=contact_distance,
+                minimum_index_separation=minimum_separation,
+                cell_size_multiplier=broadphase_multiplier,
+                maximum_cells_per_edge=maximum_cells_per_edge,
+            )
+        )
         knot_candidates: set[int] = set()
-        for left in range(len(positions)):
-            for right in range(left + minimum_separation, len(positions)):
-                if self._distance(positions[left], positions[right]) > contact_distance:
-                    continue
-                nonadjacent_contacts.append((left, right))
-                left_tight = any(abs(left - index) <= 3 for index in tight_bends)
-                right_tight = any(abs(right - index) <= 3 for index in tight_bends)
-                if left_tight or right_tight:
-                    knot_candidates.update(
-                        index
-                        for center in (left, right)
-                        for index in range(max(0, center - 2), min(len(positions), center + 3))
+        for left, right in nonadjacent_contacts:
+            left_tight = any(abs(left - index) <= 3 for index in tight_bends)
+            right_tight = any(abs(right - index) <= 3 for index in tight_bends)
+            if left_tight or right_tight:
+                knot_candidates.update(
+                    index
+                    for center in (left, left + 1, right, right + 1)
+                    for index in range(
+                        max(0, center - 2),
+                        min(len(positions), center + 3),
                     )
+                )
 
         for index, history in enumerate(self.joints):
             if index in knot_candidates:
@@ -269,11 +501,23 @@ class SutureRuntime:
         if self._last_segment_positions is not None and representative_self_contact_load_n > 0.0:
             for left, right in nonadjacent_contacts:
                 left_motion = tuple(
-                    positions[left][axis] - self._last_segment_positions[left][axis]
+                    0.5
+                    * (
+                        positions[left][axis]
+                        + positions[left + 1][axis]
+                        - self._last_segment_positions[left][axis]
+                        - self._last_segment_positions[left + 1][axis]
+                    )
                     for axis in range(3)
                 )
                 right_motion = tuple(
-                    positions[right][axis] - self._last_segment_positions[right][axis]
+                    0.5
+                    * (
+                        positions[right][axis]
+                        + positions[right + 1][axis]
+                        - self._last_segment_positions[right][axis]
+                        - self._last_segment_positions[right + 1][axis]
+                    )
                     for axis in range(3)
                 )
                 relative_slip = math.sqrt(
@@ -285,12 +529,40 @@ class SutureRuntime:
                 work = max(0.0, representative_self_contact_load_n) * relative_slip
                 abrasion_work_j += work
                 if work > 0.0:
-                    self.record_abrasion((left, right), work_j=work / 2.0)
+                    contact_joints = {
+                        index
+                        for index in (
+                            left,
+                            left + 1,
+                            right,
+                            right + 1,
+                        )
+                        if 0 <= index < len(self.joints)
+                    }
+                    self.record_abrasion(
+                        contact_joints,
+                        work_j=work / max(1, len(contact_joints)),
+                    )
         self._last_segment_positions = positions
+        naive_pair_count = max(
+            0,
+            (
+                (len(positions) - 1 - minimum_separation)
+                * (len(positions) - minimum_separation)
+            )
+            // 2,
+        )
         return {
             "maximum_strain": max(strains, default=0.0),
             "tight_bend_joint_count": len(tight_bends),
             "nonadjacent_self_contact_count": len(nonadjacent_contacts),
+            "self_contact_broadphase_candidate_count": (
+                broadphase_candidate_count
+            ),
+            "self_contact_broadphase_overflow_edge_count": (
+                broadphase_overflow_edge_count
+            ),
+            "self_contact_naive_pair_count": naive_pair_count,
             "knot_candidate_joint_count": len(knot_candidates),
             "compacted_knot_joint_count": sum(
                 history.compacted_knot for history in self.joints
@@ -501,6 +773,128 @@ def self_test(profile: dict[str, Any]) -> dict[str, Any]:
     nonlinear_stiffness = runtime.joint_stiffness_n_m(20)
     runtime.record_abrasion((20,), work_j=0.018)
     after_abrasion = runtime.joint_break_force_n(20)
+    spacing = runtime.derived.segment_spacing_m
+    straight_positions = [
+        (index * spacing, 0.0, 0.0)
+        for index in range(runtime.derived.segment_count)
+    ]
+    contact_distance = float(
+        profile["runtime_detection"]["self_contact_centerline_distance_m"]
+    )
+    minimum_separation = int(
+        profile["runtime_detection"]["knot_minimum_index_separation"]
+    )
+    cell_multiplier = float(
+        profile["runtime_detection"]["self_contact_broadphase"][
+            "cell_size_to_contact_distance"
+        ]
+    )
+    straight_contacts, straight_candidates, straight_overflow_edges = (
+        runtime._nonadjacent_edge_contacts(
+            straight_positions,
+            contact_distance_m=contact_distance,
+            minimum_index_separation=minimum_separation,
+            cell_size_multiplier=cell_multiplier,
+            maximum_cells_per_edge=int(
+                profile["runtime_detection"]["self_contact_broadphase"][
+                    "maximum_cells_per_edge"
+                ]
+            ),
+        )
+    )
+    crossing_positions = [
+        (-spacing, 0.0, 0.0),
+        (spacing, 0.0, 0.0),
+        (spacing, spacing, 0.0),
+        (0.0, -spacing, 0.0),
+        (0.0, spacing, 0.0),
+    ]
+    crossing_contacts, crossing_candidates, crossing_overflow_edges = (
+        runtime._nonadjacent_edge_contacts(
+            crossing_positions,
+            contact_distance_m=contact_distance,
+            minimum_index_separation=3,
+            cell_size_multiplier=cell_multiplier,
+            maximum_cells_per_edge=int(
+                profile["runtime_detection"]["self_contact_broadphase"][
+                    "maximum_cells_per_edge"
+                ]
+            ),
+        )
+    )
+    overflow_contacts, _, forced_overflow_edges = (
+        runtime._nonadjacent_edge_contacts(
+            crossing_positions,
+            contact_distance_m=contact_distance,
+            minimum_index_separation=3,
+            cell_size_multiplier=cell_multiplier,
+            maximum_cells_per_edge=1,
+        )
+    )
+    random_generator = random.Random(1701)
+    random_walk_positions = [(0.0, 0.0, 0.0)]
+    for _ in range(63):
+        direction = [
+            random_generator.uniform(-1.0, 1.0) for _ in range(3)
+        ]
+        magnitude = math.sqrt(sum(value * value for value in direction))
+        previous = random_walk_positions[-1]
+        random_walk_positions.append(
+            tuple(
+                previous[axis]
+                + spacing * direction[axis] / max(magnitude, 1.0e-12)
+                for axis in range(3)
+            )
+        )
+    random_walk_separation = 6
+    (
+        random_walk_contacts,
+        random_walk_candidates,
+        random_walk_overflow_edges,
+    ) = runtime._nonadjacent_edge_contacts(
+        random_walk_positions,
+        contact_distance_m=contact_distance,
+        minimum_index_separation=random_walk_separation,
+        cell_size_multiplier=cell_multiplier,
+        maximum_cells_per_edge=int(
+            profile["runtime_detection"]["self_contact_broadphase"][
+                "maximum_cells_per_edge"
+            ]
+        ),
+    )
+    random_walk_brute_contacts = [
+        (left, right)
+        for left in range(len(random_walk_positions) - 1)
+        for right in range(
+            left + random_walk_separation,
+            len(random_walk_positions) - 1,
+        )
+        if runtime._segment_segment_distance(
+            random_walk_positions[left],
+            random_walk_positions[left + 1],
+            random_walk_positions[right],
+            random_walk_positions[right + 1],
+        )
+        <= contact_distance
+    ]
+    midpoint_contact = runtime.record_instrument_contact(
+        straight_positions,
+        tool_position=(100.5 * spacing, 0.0, 0.0),
+        contact_force_n=0.01,
+        duration_s=0.0,
+    )
+    naive_edge_pair_count = (
+        (
+            runtime.derived.segment_count
+            - 1
+            - minimum_separation
+        )
+        * (
+            runtime.derived.segment_count
+            - minimum_separation
+        )
+        // 2
+    )
     checks = {
         "crush_event_recorded": crushed,
         "crush_reduces_strength": after_crush < baseline,
@@ -512,6 +906,30 @@ def self_test(profile: dict[str, Any]) -> dict[str, Any]:
         "abrasion_reduces_strength": after_abrasion < after_knot,
         "undamaged_neighbor_preserved": math.isclose(
             runtime.joint_break_force_n(40), baseline
+        ),
+        "straight_strand_has_no_false_self_contact": not straight_contacts,
+        "spatial_hash_prunes_straight_strand_pairs": (
+            straight_candidates < naive_edge_pair_count * 0.05
+            and straight_overflow_edges == 0
+        ),
+        "edge_crossing_detected_between_distant_centers": (
+            (0, 3) in crossing_contacts
+        ),
+        "broadphase_overflow_preserves_contact_detection": (
+            forced_overflow_edges > 0 and (0, 3) in overflow_contacts
+        ),
+        "spatial_hash_matches_bruteforce_random_walk": (
+            random_walk_contacts == random_walk_brute_contacts
+        ),
+        "instrument_localization_uses_centerline_edges": (
+            math.isclose(
+                float(midpoint_contact["nearest_centerline_distance_m"]),
+                0.0,
+                abs_tol=1.0e-12,
+            )
+            and {100, 101}.issubset(
+                midpoint_contact["localized_joint_indices"]
+            )
         ),
     }
     return {
@@ -525,6 +943,17 @@ def self_test(profile: dict[str, Any]) -> dict[str, Any]:
             "after_abrasion_n": after_abrasion,
             "relaxed_stiffness_n_m": relaxed_stiffness,
             "nonlinear_stiffness_n_m": nonlinear_stiffness,
+            "straight_broadphase_candidates": straight_candidates,
+            "straight_broadphase_overflow_edges": straight_overflow_edges,
+            "straight_naive_edge_pairs": naive_edge_pair_count,
+            "crossing_broadphase_candidates": crossing_candidates,
+            "crossing_broadphase_overflow_edges": crossing_overflow_edges,
+            "crossing_contacts": crossing_contacts,
+            "forced_overflow_edges": forced_overflow_edges,
+            "random_walk_broadphase_candidates": random_walk_candidates,
+            "random_walk_contact_count": len(random_walk_contacts),
+            "random_walk_overflow_edges": random_walk_overflow_edges,
+            "instrument_localization": midpoint_contact,
         },
         "clinical_validation": False,
     }

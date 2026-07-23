@@ -634,6 +634,73 @@ def validate(
         },
         "native tensor poses and filtered per-jaw contact drive cumulative live material history",
     )
+    runtime_detection = profile["runtime_detection"]
+    broadphase = runtime_detection["self_contact_broadphase"]
+    spacing = derived.segment_spacing_m
+    straight_positions = [
+        (index * spacing, 0.0, 0.0)
+        for index in range(derived.segment_count)
+    ]
+    (
+        straight_contacts,
+        broadphase_candidates,
+        broadphase_overflow_edges,
+    ) = (
+        runtime_probe._nonadjacent_edge_contacts(
+            straight_positions,
+            contact_distance_m=float(
+                runtime_detection[
+                    "self_contact_centerline_distance_m"
+                ]
+            ),
+            minimum_index_separation=int(
+                runtime_detection["knot_minimum_index_separation"]
+            ),
+            cell_size_multiplier=float(
+                broadphase["cell_size_to_contact_distance"]
+            ),
+            maximum_cells_per_edge=int(
+                broadphase["maximum_cells_per_edge"]
+            ),
+        )
+    )
+    naive_pairs = (
+        (
+            derived.segment_count
+            - 1
+            - int(runtime_detection["knot_minimum_index_separation"])
+        )
+        * (
+            derived.segment_count
+            - int(runtime_detection["knot_minimum_index_separation"])
+        )
+        // 2
+    )
+    check(
+        checks,
+        "geometry_aware_self_contact_broadphase",
+        broadphase["algorithm"]
+        == "uniform_spatial_hash_over_expanded_centerline_edge_aabbs"
+        and broadphase["narrowphase"]
+        == "exact_3d_segment_to_segment_closest_distance"
+        and broadphase["deterministic_pair_order"] is True
+        and broadphase["overflow_policy"]
+        == "exact_test_overflow_edge_against_all_nonadjacent_edges"
+        and not straight_contacts
+        and broadphase_candidates < naive_pairs * 0.05
+        and broadphase_overflow_edges == 0
+        and callable(runtime_probe._segment_segment_distance)
+        and callable(runtime_probe._point_segment_distance),
+        {
+            "algorithm": broadphase["algorithm"],
+            "narrowphase": broadphase["narrowphase"],
+            "straight_contact_count": len(straight_contacts),
+            "broadphase_candidates": broadphase_candidates,
+            "broadphase_overflow_edges": broadphase_overflow_edges,
+            "naive_pairs": naive_pairs,
+        },
+        "edge-distance contact with deterministic spatial pruning",
+    )
     evidence = profile.get("evidence", [])
     check(
         checks,

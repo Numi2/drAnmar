@@ -663,6 +663,9 @@ def main() -> int:
         "runtime_observation_source": profile["runtime_detection"][
             "observation_source"
         ],
+        "runtime_self_contact_broadphase": profile["runtime_detection"][
+            "self_contact_broadphase"
+        ],
         "clinical_validation": False,
         "independent_from_current_thread": True,
     }

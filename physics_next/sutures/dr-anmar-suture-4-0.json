@@ -127,6 +127,15 @@
     "driver_contact_area_m2_seed": 5e-08,
     "instrument_localization_radius_m": 0.0015,
     "self_contact_centerline_distance_m": 0.0003375,
+    "self_contact_broadphase": {
+      "algorithm": "uniform_spatial_hash_over_expanded_centerline_edge_aabbs",
+      "cell_size_to_contact_distance": 2.0,
+      "maximum_cells_per_edge": 64,
+      "overflow_policy": "exact_test_overflow_edge_against_all_nonadjacent_edges",
+      "narrowphase": "exact_3d_segment_to_segment_closest_distance",
+      "contact_representation": "polyline_edge_capsule_distance",
+      "deterministic_pair_order": true
+    },
     "knot_minimum_index_separation": 12,
     "knot_compaction_dwell_s": 0.25,
     "failure_policy": "observed_strain_or_physx_joint_break",
