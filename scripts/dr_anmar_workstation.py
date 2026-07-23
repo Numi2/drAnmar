@@ -3210,6 +3210,13 @@ def main() -> None:
                 prim_path="{ENV_REGEX_NS}/Robot"
             )
             env_cfg.scene.robot.spawn.activate_contact_sensors = True
+            # Preserve the matched ORBIT needle-jaw geometry, but use
+            # SoftMimicGen's native 10 Nm jaw effort for a deformable strand
+            # load. ORBIT's 0.1 Nm lift-room limit is insufficient once the
+            # attached FEM strand applies tension to the curved needle.
+            env_cfg.scene.robot.actuators["psm_tool"].effort_limit_sim = 10.0
+            env_cfg.scene.robot.actuators["psm_tool"].velocity_limit_sim = 1.0
+            env_cfg.scene.robot.actuators["psm_tool"].damping = 1.0
             env_cfg.scene.robot.init_state.pos = (0.1, 0.0, 0.15)
             env_cfg.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
             env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
