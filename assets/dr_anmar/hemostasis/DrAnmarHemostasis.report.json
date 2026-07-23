@@ -1,0 +1,62 @@
+{
+  "schema": "dr.anmar.hemostasis-asset-report.v1",
+  "name": "DrAnmar Hemostasis Vessel and Clip",
+  "asset_id": "dr-anmar-hemostasis",
+  "asset_version": "1.0.0",
+  "profile": "/Users/home/gilgamesh/DrAnmar/physics_next/vessels/dr-anmar-hemostasis-v1.json",
+  "profile_id": "dr-anmar-hemostasis-v1",
+  "vessel_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
+  "vessel_asset_sha256": "68a9e73f41532fb62155e93443edb50edf204baf2091ecc4c42c97a4ed02ebb3",
+  "vessel_tetmesh_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/hemostasis/DrAnmarVessel.tet.usda",
+  "vessel_tetmesh_asset_sha256": "aecc39546499856d38fd878d808d60668382c4688a5c7c434dac1cef2c292fe7",
+  "clip_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
+  "clip_asset_sha256": "25f997a10f04e13855cd8aa52d7a5adf5f6228f80989adffd9939dc1122be192",
+  "vessel_point_count": 7104,
+  "vessel_tetrahedron_count": 31104,
+  "vessel_surface_triangle_count": 7488,
+  "vessel_connected_components": 1,
+  "vessel_wall_volume_m3": 5.056588863442829e-07,
+  "vessel_wall_mass_kg": 0.0005309418306614971,
+  "vessel_lumen_volume_ml": 0.9022739082354722,
+  "vessel_minimum_tetra_volume_m3": 1.3728164781295071e-11,
+  "vessel_inlet_inner_diameter_m": 0.005040000000000001,
+  "vessel_outlet_inner_diameter_m": 0.00456,
+  "vessel_attachment_node_count": 768,
+  "vessel_surface_groups": {
+    "outer": 3456,
+    "inner": 3456,
+    "inlet": 288,
+    "outlet": 288
+  },
+  "vessel_tetrahedron_groups": {
+    "intima": 10368,
+    "media": 10368,
+    "adventitia": 10368
+  },
+  "clip_point_count": 1070,
+  "clip_triangle_count": 2136,
+  "clip_centerline_segment_count": 88,
+  "clip_centerline_length_m": 0.02659263542639842,
+  "clip_material_volume_m3": 7.832177633921715e-09,
+  "clip_mass_kg": 3.46965469182732e-05,
+  "stable_capabilities": [
+    "vessel_geometry",
+    "open_lumen_geometry",
+    "wall_layer_identity",
+    "rigid_clip_manipulation",
+    "contact_geometry",
+    "pressure_diameter_reduced_order_model",
+    "occlusion_and_retention_reduced_order_model"
+  ],
+  "gated_capabilities": [
+    "plastic_clip_forming",
+    "two_way_clip_vessel_closure",
+    "pulsatile_flow",
+    "pressure_tight_seal",
+    "bleeding",
+    "rupture",
+    "clinical_use"
+  ],
+  "sim_to_real_gap_count": 10,
+  "clinical_validation": false
+}

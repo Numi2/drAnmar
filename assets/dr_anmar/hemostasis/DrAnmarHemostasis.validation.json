@@ -1,0 +1,444 @@
+{
+  "asset_id": "dr-anmar-hemostasis",
+  "blocked_capability_boundary": [
+    "plastic_clip_forming",
+    "two_way_clip_vessel_closure",
+    "pulsatile_flow",
+    "pressure_tight_seal",
+    "bleeding",
+    "rupture",
+    "clinical_use"
+  ],
+  "checks": {
+    "asset_report_matches_generated_package": {
+      "expected": "report identity, counts, hashes and boundary match generated assets",
+      "measured": {
+        "asset_id": "dr-anmar-hemostasis",
+        "clinical_validation": false,
+        "clip_points": 1070,
+        "clip_triangles": 2136,
+        "hashes_match": true,
+        "vessel_points": 7104,
+        "vessel_tetrahedra": 31104
+      },
+      "passed": true
+    },
+    "clip_openusd_and_collision_contract": {
+      "expected": {
+        "collision_capsules": 88,
+        "tokens": [
+          "defaultPrim = \"DrAnmarVascularClip\"",
+          "drAnmarAssetId = \"dr-anmar-vascular-clip\"",
+          "drAnmarAssetName = \"DrAnmar Vascular Clip\"",
+          "drAnmarConstruction = \"one_piece_u_clip_with_swept_elliptical_section_and_inner_serrations\"",
+          "drAnmarRepresentation = \"high_resolution_serrated_mesh_with_centerline_capsule_collision\"",
+          "PhysicsRigidBodyAPI",
+          "PhysicsMassAPI",
+          "def Mesh \"Visual\"",
+          "def Xform \"Collision\""
+        ]
+      },
+      "measured": {
+        "collision_capsules": 88,
+        "missing": []
+      },
+      "passed": true
+    },
+    "closure_friction_and_angle_dependent_retention": {
+      "expected": "retention rises with closure, friction and oblique pull contribution",
+      "measured": {
+        "strong_retention_n": 4.622253967444162,
+        "weak_retention_n": 0.7578582832551991
+      },
+      "passed": true
+    },
+    "complete_three_layer_wall_partition": {
+      "expected": "every tetrahedron belongs to exactly one non-empty vessel-wall layer",
+      "measured": {
+        "adventitia": 10368,
+        "intima": 10368,
+        "media": 10368
+      },
+      "passed": true
+    },
+    "complete_vessel_surface_partition": {
+      "expected": "every surface triangle belongs to outer, inner, inlet, or outlet",
+      "measured": {
+        "inlet": 288,
+        "inner": 3456,
+        "outer": 3456,
+        "outlet": 288
+      },
+      "passed": true
+    },
+    "curved_elliptical_vessel_geometry": {
+      "expected": "curved centerline and intentionally non-circular cross-section",
+      "measured": {
+        "y_span_m": 0.007989637037037037,
+        "z_span_m": 0.00606137774788672
+      },
+      "passed": true
+    },
+    "deterministic_clip_resolution": {
+      "expected": {
+        "centerline_segments": 88,
+        "points": 1070,
+        "triangles": 2136
+      },
+      "measured": {
+        "centerline_segments": 88,
+        "points": 1070,
+        "triangles": 2136
+      },
+      "passed": true
+    },
+    "deterministic_sim_to_real_sampling": {
+      "expected": "same seed exactly replays and a different seed changes the domain",
+      "measured": {
+        "seed_7241": {
+          "axial_prestretch": 1.1046350454142984,
+          "clip_closing_force_n": 2.780880094399693,
+          "clip_yield_strength_pa": 363519237.8326651,
+          "compliance_fraction_per_100_mmhg": 0.1109030194952424,
+          "fluid_viscosity_pa_s": 0.003142919772684142,
+          "outer_diameter_m": 0.006563161570854678,
+          "proof_pressure_mmhg": 358.2011148100386,
+          "retention_force_n": 4.154035691485266,
+          "seed": 7241,
+          "static_friction": 0.5810495362330224,
+          "wall_thickness_m": 0.0006283585212161114,
+          "wetness": 0.4232126195252117,
+          "youngs_modulus_pa": 618493.1501689295
+        },
+        "seed_7241_replay": {
+          "axial_prestretch": 1.1046350454142984,
+          "clip_closing_force_n": 2.780880094399693,
+          "clip_yield_strength_pa": 363519237.8326651,
+          "compliance_fraction_per_100_mmhg": 0.1109030194952424,
+          "fluid_viscosity_pa_s": 0.003142919772684142,
+          "outer_diameter_m": 0.006563161570854678,
+          "proof_pressure_mmhg": 358.2011148100386,
+          "retention_force_n": 4.154035691485266,
+          "seed": 7241,
+          "static_friction": 0.5810495362330224,
+          "wall_thickness_m": 0.0006283585212161114,
+          "wetness": 0.4232126195252117,
+          "youngs_modulus_pa": 618493.1501689295
+        },
+        "seed_7242": {
+          "axial_prestretch": 1.1163578968919,
+          "clip_closing_force_n": 5.570163138094747,
+          "clip_yield_strength_pa": 402026619.831645,
+          "compliance_fraction_per_100_mmhg": 0.03922563995132884,
+          "fluid_viscosity_pa_s": 0.004340804502715959,
+          "outer_diameter_m": 0.005989162692948809,
+          "proof_pressure_mmhg": 679.2086407742091,
+          "retention_force_n": 2.7714669981452422,
+          "seed": 7242,
+          "static_friction": 0.6633049300720254,
+          "wall_thickness_m": 0.0009230358881605364,
+          "wetness": 0.526431092333014,
+          "youngs_modulus_pa": 298981.7661818415
+        }
+      },
+      "passed": true
+    },
+    "deterministic_vessel_resolution": {
+      "expected": {
+        "points": 7104,
+        "surface_triangles": 7488,
+        "tetrahedra": 31104
+      },
+      "measured": {
+        "points": 7104,
+        "surface_triangles": 7488,
+        "tetrahedra": 31104
+      },
+      "passed": true
+    },
+    "explicit_vessel_tetmesh_contract": {
+      "expected": [
+        "defaultPrim = \"DrAnmarVesselTet\"",
+        "drAnmarRepresentation = \"explicit_openusd_tetmesh_with_layer_ids_and_lumen_surface\"",
+        "def TetMesh \"Simulation\"",
+        "int4[] tetVertexIndices",
+        "int3[] surfaceFaceVertexIndices",
+        "custom uniform token[] drAnmar:tetLayerNames = [\"intima\", \"media\", \"adventitia\"]",
+        "custom int[] drAnmar:tetLayerIds",
+        "def Mesh \"Visual\""
+      ],
+      "measured": {
+        "missing": []
+      },
+      "passed": true
+    },
+    "fail_closed_qualification": {
+      "expected": "plastic closure, pressure seal, retention, failure and clinical use remain blocked",
+      "measured": {
+        "blocked_ids": [
+          "clinical_use",
+          "clip_plastic_closure",
+          "damage_and_failure",
+          "occlusion_and_leakage",
+          "retention_and_slip"
+        ],
+        "policy": "fail_closed",
+        "requirement_count": 7
+      },
+      "passed": true
+    },
+    "force_gap_and_plastic_set_response": {
+      "expected": "closing force reduces loaded gap and creates a permanent set only after yield",
+      "measured": {
+        "0.0": {
+          "applied_force_n": 0.0,
+          "loaded_gap_m": 0.0042,
+          "plastic_fraction": 0.0,
+          "residual_gap_m": 0.0042,
+          "springback_m": 0.0
+        },
+        "1.0": {
+          "applied_force_n": 1.0,
+          "loaded_gap_m": 0.002903741406535559,
+          "plastic_fraction": 0.0,
+          "residual_gap_m": 0.0042,
+          "springback_m": 0.0012962585934644406
+        },
+        "2.5": {
+          "applied_force_n": 2.5,
+          "loaded_gap_m": 0.001692687563724228,
+          "plastic_fraction": 0.2647058823529412,
+          "residual_gap_m": 0.003141176470588235,
+          "springback_m": 0.001448488906864007
+        },
+        "5.0": {
+          "applied_force_n": 5.0,
+          "loaded_gap_m": 6.999999999999975e-05,
+          "plastic_fraction": 1.0,
+          "residual_gap_m": 0.00019999999999999966,
+          "springback_m": 0.0001299999999999999
+        }
+      },
+      "passed": true
+    },
+    "independent_dr_anmar_asset_package": {
+      "expected": "no external geometry reference or inherited product identity",
+      "measured": {
+        "forbidden": []
+      },
+      "passed": true
+    },
+    "manifold_hollow_vessel_wall": {
+      "expected": "one manifold hollow-wall component with exact boundary extraction",
+      "measured": {
+        "boundary_faces": 7488,
+        "components": 1,
+        "surface_triangles": 7488
+      },
+      "passed": true
+    },
+    "nonlinear_pressure_diameter_response": {
+      "expected": "diameter rises with pressure while collagen recruitment reduces slope",
+      "measured": {
+        "diameters_m": [
+          0.005623821608723131,
+          0.005944843138185128,
+          0.006127381555517964,
+          0.00632540874755764
+        ],
+        "high_slope_m_per_mmhg": 3.3004532006612626e-06,
+        "low_slope_m_per_mmhg": 4.563460433320904e-06,
+        "pressures_mmhg": [
+          20.0,
+          80.0,
+          120.0,
+          180.0
+        ]
+      },
+      "passed": true
+    },
+    "occlusion_leak_and_overload_states": {
+      "expected": "closed geometry seals the reduced-order lumen while overload raises damage",
+      "measured": {
+        "closed": {
+          "crush_damage": 0.7760770975056691,
+          "leak_rate_ml_min": 2.0995048383885015e-12,
+          "occlusion_fraction": 0.9993329025165132,
+          "qualified_geometry": true,
+          "remaining_lumen_area_fraction": 0.0006670974834868504
+        },
+        "open": {
+          "crush_damage": 0.0,
+          "leak_rate_ml_min": 239191.5217846393,
+          "occlusion_fraction": 0.5355266655943179,
+          "qualified_geometry": false,
+          "remaining_lumen_area_fraction": 0.46447333440568206
+        },
+        "overload": {
+          "crush_damage": 1.0,
+          "leak_rate_ml_min": 2.0995048383885015e-12,
+          "occlusion_fraction": 0.9993329025165132,
+          "qualified_geometry": true,
+          "remaining_lumen_area_fraction": 0.0006670974834868504
+        }
+      },
+      "passed": true
+    },
+    "opposed_end_attachment_capacity": {
+      "expected": "dense node bands at both axial ends",
+      "measured": 768,
+      "passed": true
+    },
+    "physical_clip_scale_and_mass": {
+      "expected": "millimetre-scale one-piece clip with positive sub-gram mass",
+      "measured": {
+        "centerline_length_m": 0.02659263542639842,
+        "extent_max": [
+          0.005,
+          0.0024749999999999998,
+          0.00025
+        ],
+        "extent_min": [
+          -0.007475000000000001,
+          -0.0024749999999999998,
+          -0.00025
+        ],
+        "mass_kg": 3.46965469182732e-05
+      },
+      "passed": true
+    },
+    "physical_vessel_scale_and_mass": {
+      "expected": "representative medium-vessel scale with positive wall mass and lumen",
+      "measured": {
+        "lumen_volume_ml": 0.9022739082354722,
+        "outer_diameter_m": 0.006,
+        "wall_mass_kg": 0.0005309418306614971
+      },
+      "passed": true
+    },
+    "positive_right_handed_vessel_tetrahedra": {
+      "expected": "all tetrahedra positive and total volume exact",
+      "measured": {
+        "minimum_m3": 1.3728164781295071e-11,
+        "total_m3": 5.056588863442949e-07
+      },
+      "passed": true
+    },
+    "profile_identity_and_boundary": {
+      "expected": "canonical independent research-only asset identity",
+      "measured": {
+        "clinical_validation": false,
+        "id": "dr-anmar-hemostasis-v1",
+        "name": "DrAnmar Hemostasis Vessel and Clip",
+        "status": "research_informed_engineering_asset_pending_solver_bench_and_clinical_validation",
+        "version": "1.0.0"
+      },
+      "passed": true
+    },
+    "real_open_lumen_and_taper": {
+      "expected": "non-zero lumen with distinct inner wall and tapered open ends",
+      "measured": {
+        "inlet_inner_diameter_m": 0.005040000000000001,
+        "inner_faces": 3456,
+        "lumen_volume_ml": 0.9022739082354722,
+        "outlet_inner_diameter_m": 0.00456
+      },
+      "passed": true
+    },
+    "reduced_order_lumen_flow_scaling": {
+      "expected": "laminar-flow proxy preserves fourth-power radius sensitivity",
+      "measured": {
+        "one_mm_radius_ml_min": 1436.038536654071,
+        "ratio": 16.0,
+        "two_mm_radius_ml_min": 22976.616586465138
+      },
+      "passed": true
+    },
+    "sim_to_real_gap_register": {
+      "expected": "at least ten complete gaps and twelve sampled parameters",
+      "measured": {
+        "complete": true,
+        "gap_count": 10,
+        "sampled_parameters": 12
+      },
+      "passed": true
+    },
+    "stable_vessel_openusd_contract": {
+      "expected": [
+        "defaultPrim = \"DrAnmarVessel\"",
+        "drAnmarAssetId = \"dr-anmar-vessel\"",
+        "drAnmarAssetName = \"DrAnmar Vessel\"",
+        "drAnmarWallTopology = \"single_watertight_three_layer_hollow_tube\"",
+        "bool drAnmarHasOpenLumen = true",
+        "def Mesh \"Wall\"",
+        "def GeomSubset \"OuterFaces\"",
+        "def GeomSubset \"InnerFaces\"",
+        "def GeomSubset \"InletFaces\"",
+        "def GeomSubset \"OutletFaces\"",
+        "PhysicsCollisionAPI"
+      ],
+      "measured": {
+        "missing": []
+      },
+      "passed": true
+    },
+    "traceable_research_provenance": {
+      "expected": "at least six traceable platform or primary research sources",
+      "measured": 6,
+      "passed": true
+    },
+    "watertight_one_piece_clip": {
+      "expected": "closed one-piece clip render mesh with every edge shared twice",
+      "measured": {
+        "edge_count": 3204,
+        "nonmanifold_edges": 0
+      },
+      "passed": true
+    },
+    "yield_strength_dependent_plastic_set": {
+      "expected": "higher clip yield strength reduces permanent closure at equal force",
+      "measured": {
+        "high_yield": {
+          "applied_force_n": 3.0,
+          "loaded_gap_m": 0.0013409684235393634,
+          "plastic_fraction": 0.09390444810543648,
+          "residual_gap_m": 0.003824382207578254,
+          "springback_m": 0.0024834137840388905
+        },
+        "low_yield": {
+          "applied_force_n": 3.0,
+          "loaded_gap_m": 0.0013409684235393634,
+          "plastic_fraction": 0.49402023919043236,
+          "residual_gap_m": 0.00222391904323827,
+          "springback_m": 0.0008829506196989067
+        }
+      },
+      "passed": true
+    }
+  },
+  "clinical_validation": false,
+  "derived": {
+    "clip_collision_segments": 88,
+    "clip_mass_kg": 3.46965469182732e-05,
+    "clip_points": 1070,
+    "clip_triangles": 2136,
+    "sim_to_real_gap_count": 10,
+    "vessel_lumen_volume_ml": 0.9022739082354722,
+    "vessel_points": 7104,
+    "vessel_surface_triangles": 7488,
+    "vessel_tetrahedra": 31104,
+    "vessel_wall_mass_kg": 0.0005309418306614971
+  },
+  "passed": true,
+  "profile_id": "dr-anmar-hemostasis-v1",
+  "schema": "dr.anmar.hemostasis-validation.v1",
+  "stable_capability_boundary": [
+    "vessel_geometry",
+    "open_lumen_geometry",
+    "wall_layer_identity",
+    "rigid_clip_manipulation",
+    "contact_geometry",
+    "pressure_diameter_reduced_order_model",
+    "occlusion_and_retention_reduced_order_model"
+  ]
+}

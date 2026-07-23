@@ -1,0 +1,294 @@
+{
+  "schema": "dr.anmar.hemostasis-profile.v1",
+  "id": "dr-anmar-hemostasis-v1",
+  "name": "DrAnmar Hemostasis Vessel and Clip",
+  "version": "1.0.0",
+  "status": "research_informed_engineering_asset_pending_solver_bench_and_clinical_validation",
+  "purpose": "An independent hollow vessel and one-piece vascular clip asset for pressure-diameter response, manipulation, clip placement, occlusion, retention, leakage and failure research.",
+  "geometry": {
+    "vessel_length_m": 0.05,
+    "outer_diameter_m": 0.006,
+    "outer_diameter_range_m": [0.003, 0.009],
+    "wall_thickness_m": 0.0006,
+    "wall_thickness_range_m": [0.0003, 0.0012],
+    "taper_fraction": 0.08,
+    "ellipticity_fraction": 0.06,
+    "centerline_curvature_amplitude_m": 0.0015,
+    "circumferential_cells": 48,
+    "axial_cells": 36,
+    "radial_cells": 3,
+    "tetrahedra_per_cell": 6,
+    "units": "metres"
+  },
+  "wall_layers": [
+    {
+      "id": "intima",
+      "radial_cell": 0,
+      "role": "inner blood-contacting layer and lumen surface",
+      "constitutive_target": "anisotropic_nearly_incompressible_visco_hyperelastic"
+    },
+    {
+      "id": "media",
+      "radial_cell": 1,
+      "role": "smooth-muscle and elastin-dominant compliant middle layer",
+      "constitutive_target": "active_passive_anisotropic_visco_hyperelastic"
+    },
+    {
+      "id": "adventitia",
+      "radial_cell": 2,
+      "role": "collagen-dominant outer load-bearing layer",
+      "constitutive_target": "fiber_recruitment_anisotropic_hyperelastic_with_damage"
+    }
+  ],
+  "vessel_material": {
+    "constitutive_family": "nonlinear_anisotropic_visco_hyperelastic_target_with_linear_physx_tangent_proxy",
+    "density_kg_m3_seed": 1050.0,
+    "density_range_kg_m3": [1000.0, 1120.0],
+    "youngs_modulus_pa_seed": 420000.0,
+    "youngs_modulus_range_pa": [80000.0, 2000000.0],
+    "poisson_ratio_seed": 0.48,
+    "poisson_ratio_range": [0.45, 0.495],
+    "damping_ratio_seed": 0.18,
+    "damping_ratio_range": [0.06, 0.35],
+    "axial_prestretch_seed": 1.08,
+    "axial_prestretch_range": [1.0, 1.25],
+    "low_pressure_compliance_fraction_per_100_mmhg_seed": 0.09,
+    "low_pressure_compliance_range": [0.025, 0.19],
+    "collagen_recruitment_pressure_mmhg_seed": 110.0,
+    "collagen_stiffening_exponent_seed": 2.4,
+    "burst_pressure_mmhg_seed": 2200.0,
+    "burst_pressure_range_mmhg": [600.0, 4500.0],
+    "linear_physx_proxy": true
+  },
+  "lumen": {
+    "fluid_density_kg_m3_seed": 1060.0,
+    "dynamic_viscosity_pa_s_seed": 0.0035,
+    "dynamic_viscosity_range_pa_s": [0.0025, 0.006],
+    "reference_pressure_mmhg": 80.0,
+    "pressure_range_mmhg": [20.0, 180.0],
+    "pulsation_hz_seed": 1.2,
+    "pulsation_hz_range": [0.7, 2.0],
+    "flow_backend_required": "coupled_cfd_or_validated_reduced_order_flow"
+  },
+  "clip": {
+    "name": "DrAnmar Vascular Clip",
+    "construction": "one_piece_u_clip_with_swept_elliptical_section_and_inner_serrations",
+    "material_proxy": "titanium_alloy_research_proxy",
+    "arm_length_m": 0.01,
+    "inside_gap_m": 0.0042,
+    "crown_radius_m": 0.0021,
+    "section_width_m": 0.00075,
+    "section_thickness_m": 0.0005,
+    "inner_serration_pitch_m": 0.0007,
+    "inner_serration_depth_m": 0.00008,
+    "arm_segments": 32,
+    "crown_segments": 24,
+    "section_segments": 12,
+    "density_kg_m3": 4430.0,
+    "youngs_modulus_pa": 110000000000.0,
+    "yield_strength_pa_seed": 275000000.0,
+    "yield_strength_range_pa": [180000000.0, 480000000.0],
+    "closing_force_n_seed": 5.0,
+    "closing_force_range_n": [2.0, 12.0],
+    "qualified_residual_gap_m_seed": 0.0002,
+    "surface_friction_seed": 0.28,
+    "surface_friction_range": [0.15, 0.55],
+    "plastic_forming_backend_required": "rod_fem_or_mpm_with_contact_and_plasticity"
+  },
+  "occlusion": {
+    "target_lumen_area_reduction_fraction": 0.995,
+    "maximum_qualified_leak_rate_ml_min": 0.1,
+    "proof_pressure_mmhg_seed": 600.0,
+    "proof_pressure_range_mmhg": [300.0, 750.0],
+    "retention_force_n_seed": 2.8,
+    "retention_force_range_n": [1.5, 5.0],
+    "damage_onset_compression_fraction": 0.72,
+    "critical_crush_damage": 1.0,
+    "failure_modes": [
+      "incomplete_occlusion",
+      "pressure_leak",
+      "clip_slip_axial",
+      "clip_slip_oblique",
+      "clip_springback",
+      "wall_crush",
+      "wall_cut_through",
+      "vessel_rupture"
+    ]
+  },
+  "contact": {
+    "static_friction_seed": 0.38,
+    "static_friction_range": [0.18, 0.7],
+    "dynamic_friction_seed": 0.28,
+    "dynamic_friction_range": [0.12, 0.55],
+    "wetness_seed": 0.55,
+    "wetness_range": [0.1, 0.95]
+  },
+  "appearance": {
+    "outer_color_seed": [0.42, 0.055, 0.045],
+    "media_color_seed": [0.68, 0.16, 0.12],
+    "intima_color_seed": [0.74, 0.28, 0.22],
+    "lumen_color_seed": [0.22, 0.008, 0.006],
+    "clip_color_seed": [0.56, 0.58, 0.6],
+    "roughness_seed": 0.44,
+    "metallic_clip": 0.82,
+    "subsurface_scattering_target": true
+  },
+  "attachments": {
+    "kind": "opposed_axial_end_bands",
+    "axis": "x",
+    "sides": ["minimum", "maximum"],
+    "width_m": 0.0015
+  },
+  "sim_to_real": {
+    "episode_seed": 20260724,
+    "implemented_parameter_sampling": [
+      "outer_diameter",
+      "wall_thickness",
+      "tangent_modulus",
+      "axial_prestretch",
+      "compliance",
+      "fluid_viscosity",
+      "vessel_clip_friction",
+      "wetness",
+      "clip_yield_strength",
+      "clip_closing_force",
+      "retention_force",
+      "proof_pressure"
+    ],
+    "gaps": [
+      {
+        "id": "patient_vessel_variation",
+        "risk": "diameter, wall thickness, branch geometry, disease, age and preparation vary strongly by vessel and patient",
+        "mitigation": "fit hierarchical geometry and material distributions by vessel class, pathology and preparation state",
+        "status": "parameterized_pending_dataset"
+      },
+      {
+        "id": "wall_constitutive_response",
+        "risk": "the stable lane cannot reproduce full layer-specific anisotropy, viscoelasticity, active tone and collagen recruitment",
+        "mitigation": "retain layer IDs and qualify nonlinear solvers against pressure-diameter, axial and cyclic tests",
+        "status": "explicit_model_gap"
+      },
+      {
+        "id": "residual_stress_and_prestretch",
+        "risk": "opening angle, axial prestretch and surrounding-tissue support change vessel response",
+        "mitigation": "measure unloaded geometry, opening angle and in-situ axial stretch before parameter fitting",
+        "status": "prestretch_parameterized_residual_stress_pending"
+      },
+      {
+        "id": "clip_plasticity",
+        "risk": "a rigid proxy cannot reproduce one-piece clip bending, yield, work hardening and springback",
+        "mitigation": "promote closure only after a rod or MPM plasticity model matches force-gap and residual-shape curves",
+        "status": "fail_closed_until_plastic_forming_probe_passes"
+      },
+      {
+        "id": "clip_vessel_contact",
+        "risk": "wet friction, jaw alignment, vessel angle and local wall folding govern slip and sealing",
+        "mitigation": "calibrate synchronized clip pose, jaw force, wall deformation, slip and leakage across conditions",
+        "status": "contact_contract_defined_pending_bench_data"
+      },
+      {
+        "id": "occlusion_and_leakage",
+        "risk": "lumen appearance alone does not prove a pressure-tight seal",
+        "mitigation": "require pressure-ramp leakage tests and retained occlusion after unloading",
+        "status": "fail_closed_until_flow_and_pressure_probe_passes"
+      },
+      {
+        "id": "blood_flow_and_pulsation",
+        "risk": "static geometry omits pulsatile fluid-structure interaction, viscosity variation and pressure transients",
+        "mitigation": "couple a qualified CFD or reduced-order lumen model and conserve fluid mass",
+        "status": "explicit_model_gap"
+      },
+      {
+        "id": "tissue_damage_and_rupture",
+        "risk": "excess closing force can crush, cut through or rupture a vessel without a visible early cue",
+        "mitigation": "fit element-level damage and failure from histology-linked compression, pull and burst tests",
+        "status": "damage_contract_defined_pending_bench_data"
+      },
+      {
+        "id": "perception_transfer",
+        "risk": "specularity, blood, smoke, compression and camera exposure obscure vessel and clip state",
+        "mitigation": "validate vessel, clip, lumen and leak perception on held-out synchronized endoscopic data",
+        "status": "appearance_randomization_contract_defined"
+      },
+      {
+        "id": "numerical_convergence",
+        "risk": "mesh density, contact margins, time step and solver iterations affect closure, slip and pressure results",
+        "mitigation": "require mesh and time-step convergence below five percent for every promoted metric",
+        "status": "automated_probe_required"
+      }
+    ]
+  },
+  "qualification": {
+    "policy": "fail_closed",
+    "requirements": [
+      {
+        "id": "geometry_and_topology",
+        "evidence": "positive tetrahedral volume, one watertight hollow wall, open lumen, complete layer partition and deterministic hashes",
+        "status": "automated_in_repository"
+      },
+      {
+        "id": "intact_vessel_deformation",
+        "evidence": "native finite-state, inversion, pressure-diameter, volume and replay sweeps",
+        "status": "pending_native_gpu_probe"
+      },
+      {
+        "id": "clip_plastic_closure",
+        "evidence": "force-gap, yield, unloading springback and residual shape agreement",
+        "status": "blocked_pending_plasticity_backend_and_bench_data"
+      },
+      {
+        "id": "occlusion_and_leakage",
+        "evidence": "retained lumen-area reduction and leak rate through the proof-pressure ramp",
+        "status": "blocked_pending_flow_backend_and_bench_data"
+      },
+      {
+        "id": "retention_and_slip",
+        "evidence": "axial and oblique dislodgement force distributions across vessel diameter, wetness and closure state",
+        "status": "blocked_pending_bench_data"
+      },
+      {
+        "id": "damage_and_failure",
+        "evidence": "wall crush, cut-through, rupture and burst envelopes under held-out conditions",
+        "status": "blocked_pending_bench_data"
+      },
+      {
+        "id": "clinical_use",
+        "evidence": "independent clinical validation for the intended use",
+        "status": "blocked"
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "title": "Isaac for Healthcare asset catalog v0.7.0",
+      "url": "https://github.com/isaac-for-healthcare/i4h-asset-catalog/blob/v0.7.0/catalog.md",
+      "used_for": "confirmed static anatomy vessel geometry and absence of an interactive vessel, clip, occlusion or leakage asset"
+    },
+    {
+      "title": "Mechanical characterization of blood vessels and substitutes",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8050780/",
+      "used_for": "nonlinear anisotropic viscoelastic compliance, wall dimensions, pressure-diameter behavior and burst testing"
+    },
+    {
+      "title": "Mechanical properties and compositions of native arteries",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2605789/",
+      "used_for": "pressure-diameter compliance, failure stress and burst-pressure measurement"
+    },
+    {
+      "title": "Safety evaluation of laparoscopically applied clips",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/8735047/",
+      "used_for": "clip dislodgement direction, vessel diameter dependence and leakage qualification"
+    },
+    {
+      "title": "Resistance of vessel occlusion methods to hydrostatic pressure",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/37609616/",
+      "used_for": "pressure-ramp leak testing and clip occlusion proof-pressure evidence"
+    },
+    {
+      "title": "Vascular mechanobiology functional requirements",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5617965/",
+      "used_for": "compliance, burst pressure, wall thickness and diameter as coupled validation targets"
+    }
+  ],
+  "clinical_validation": false
+}
