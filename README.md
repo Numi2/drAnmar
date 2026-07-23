@@ -1,22 +1,22 @@
 # Dr.Anmar
 
-Dr.Anmar is a clinician-facing surgical robotics learning and research studio built on
-[ORBIT-Surgical](https://github.com/orbit-surgical/orbit-surgical), [SonoGym](https://sonogym.github.io/), NVIDIA Isaac Sim, Isaac Lab, and
-optional Isaac for Healthcare workflows. It turns a robotics simulator into one coherent place where a
-doctor can learn robot control, practise complete simulated procedures, record demonstrations, inspect
-performance, and understand how data becomes a behavior-cloning or reinforcement-learning policy.
+Dr.Anmar is a clinician-facing surgical robotics learning and research studio. It owns the doctor workflow,
+procedure rooms, native interaction contracts, safety boundaries, expert guidance, evidence pipeline, and
+research loop. The studio executes through Isaac Sim and PhysX, with ORBIT-Surgical-derived task foundations
+and optional NVIDIA and SonoGym provider integrations behind explicit contracts. See
+[`docs/OWNERSHIP.md`](docs/OWNERSHIP.md) for the full provenance boundary.
 
 Researchers use the same workstation to compose OpenUSD anatomy, instruments and tasks; collect synchronized
 multimodal trajectories; reproduce controlled failures; compare policies; and preserve dataset, experiment and
-runtime provenance. Dr.Anmar is the pedagogical and workflow layer—the NVIDIA and ORBIT runtimes remain the
-simulation engines underneath it.
+runtime provenance. External runtimes execute bounded simulation responsibilities; Dr.Anmar owns the connected
+study and operating-room experience.
 
 <p align="center">
   <img src="docs/screenshots/dr-anmar-live-controls-2026.gif" width="960" alt="Live Dr.Anmar OpenUSD operating room showing the simulated surgical instrument, anatomy, keyboard controls, camera views, gripper feedback, and guided supervision">
 </p>
 
 <p align="center"><strong>A surgical robotics lab that begins with the doctor—not the simulator manual</strong><br>
-Live native NVIDIA simulation control, training data, coaching, failure studies, and robot learning in one browser.</p>
+Live native simulation control, training data, coaching, failure studies, and robot learning in one browser.</p>
 
 Every visual below was captured from Dr.Anmar itself. No figures were copied from research papers.
 
@@ -45,10 +45,10 @@ Learn → operate → record → receive coaching → stress-test → build a st
 
 ### Live surgical digital twin
 
-The operating room composes a procedure, an official anatomy preset, the correct dVRK or STAR task, its
-instrument controls, safety boundary, camera views, teaching steps and measurable completion signals. The
-doctor changes rooms from a plain-language procedure menu; Dr.Anmar handles the Isaac worker lifecycle and
-restores the room after bounded training or an external workflow.
+The operating room composes a procedure, an anatomy preset, the correct robot task or provider, instrument
+controls, safety boundary, camera views, teaching steps, and measurable completion signals. The doctor changes
+rooms from a plain-language procedure menu; Dr.Anmar handles the worker lifecycle and restores the room after
+bounded training or an external workflow.
 
 <p align="center">
   <img src="docs/screenshots/dr-anmar-live-operating-room-2026.png" width="960" alt="Live Dr.Anmar liver-retraction operating room with OpenUSD anatomy, dVRK instrument, complete keyboard control dock, guidance, and camera HUD">
@@ -84,11 +84,9 @@ The Orthopedics course delegates three L4 research tasks to the pinned upstream 
 - ultrasound-based L4 surface reconstruction with coverage observations; and
 - dual-robot ultrasound-guided orthopedic trajectory research with SonoGym's safety cost.
 
-Dr.Anmar runs these tasks headlessly on the GPU and transports the native ultrasound observation and action
-vector into the existing browser. It does not recreate SonoGym's patient assets, ultrasound generator,
-kinematics, rewards, task stepping, or safety constraints. The provider remains isolated on Isaac Lab 2.1.0
-because that is the version required by the pinned upstream source. Its CT-derived patient is presently rigid;
-soft-tissue deformation and clinical validation are explicitly outside the current upstream capability.
+Dr.Anmar owns the room and study flow, runs the provider headlessly on the GPU, and transports its native
+ultrasound observation and action vector into the existing browser. SonoGym remains the provider for its
+patient assets, ultrasound generation, task stepping, rewards, and safety constraints.
 
 Install the public source, patient assets, ultrasound models and isolated runtime with:
 
@@ -206,8 +204,8 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
 ## What is included
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
-- OpenUSD operating rooms and seven official ORBIT-Surgical anatomy choices.
-- Native PhysX rigid-body needle pickup, dual-arm handover, passing/regrasp, navigation and recovery rooms.
+- OpenUSD operating rooms and seven pinned anatomy sources.
+- Native rigid-body needle pickup, dual-arm handover, passing/regrasp, navigation and recovery rooms.
 - PhysX contact sensors on the gripper bodies; no synthetic grasp joints or collision-disabling puncture paths.
 - A compact 12-room procedure catalog backed by local tasks, installed thread assets, NVIDIA ultrasound,
   and SonoGym.
@@ -240,10 +238,10 @@ The multimodal architecture and study schema are described in
 [`docs/MULTIMODAL_STUDIES.md`](docs/MULTIMODAL_STUDIES.md).
 - Automated challenge matrices that replay one demonstration across selected scenarios and seeds while preserving every rollout.
 - Versioned demonstration and experiment manifests recording task, scenario, seed, source revision, and training recipe.
-- Nine ORBIT-Surgical task families and 54 registered control/play variants.
-- RSL-RL, RL-Games, Stable-Baselines3, SKRL, and Robomimic workflows inherited from ORBIT-Surgical.
-- A resumable installer for seven official ORBIT-Surgical v0.1.0 anatomy scene archives.
-- An Isaac Sim 5.1 / Isaac Lab 2.3.2 compatibility port of the upstream environments.
+- Nine registered task families and 54 control/play variants backed by the local simulator substrate.
+- RSL-RL, RL-Games, Stable-Baselines3, SKRL, and Robomimic learning workflows.
+- A resumable installer for seven pinned anatomy scene archives.
+- An Isaac Sim 5.1 / Isaac Lab 2.3.2 compatibility layer for the local task environments.
 - An isolated `physics-next` environment for PhysX FEM, coupled Newton VBD and CRESSim-MPM development.
 
 Downloaded anatomy, demonstrations, checkpoints, logs, and runtime state are deliberately kept outside

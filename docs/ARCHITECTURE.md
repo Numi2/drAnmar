@@ -2,9 +2,11 @@
 
 ## Purpose and safety boundary
 
-Dr.Anmar is a simulation-only interface around ORBIT-Surgical. The browser submits bounded actions to a
-single Isaac Lab worker, receives simulated endoscopic frames, and stores demonstrations locally. No
-component contains a physical-robot driver or a clinical workflow integration.
+Dr.Anmar is a simulation-only surgical training and research studio. It owns the browser workflow, room
+contracts, controls, safety boundaries, expert guidance, and local evidence pipeline. The browser submits
+bounded actions to a single Isaac Lab worker, receives simulated endoscopic frames, and stores demonstrations
+locally. ORBIT-Surgical-derived tasks and external providers are implementation dependencies, not the product
+boundary. No component contains a physical-robot driver or a clinical workflow integration.
 
 ## Runtime components
 
@@ -77,9 +79,10 @@ authorization and network controls.
 
 ## Compatibility baseline
 
-This derivative ports the upstream Isaac Sim 4.1-era environment code to the installed Isaac Sim 5.1 /
-Isaac Lab 2.3.2 APIs. The upstream environment namespace and asset layout remain intact to preserve
-workflow and checkpoint compatibility where the underlying API permits it.
+The local task substrate ports the ORBIT-Surgical Isaac Sim 4.1-era environment code to the installed Isaac
+Sim 5.1 / Isaac Lab 2.3.2 APIs. Its upstream namespace and asset layout remain where compatibility is useful,
+while Dr.Anmar-owned contact, grasp, reset, procedure, and evidence behavior is layered around it. The full
+ownership and provenance boundary is documented in [`OWNERSHIP.md`](OWNERSHIP.md).
 
 ## Multi-solver surgical physics
 
