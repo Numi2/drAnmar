@@ -94,7 +94,7 @@ PSM_GRIPPER_CLOSE_RAD = min(
     0.49,
     positive_environment_number(
         "DR_ANMAR_PSM_GRIPPER_CLOSE_RAD",
-        0.06 if _softmimicgen_task else 0.02,
+        0.02,
         0.0,
     ),
 )
@@ -151,6 +151,9 @@ from isaaclab_tasks.utils import parse_env_cfg
 if _softmimicgen_task:
     import softmimicgen_tasks  # noqa: F401
     from orbit.surgical.assets.psm import PSM_HIGH_PD_CFG as ORBIT_PSM_HIGH_PD_CFG
+    from orbit.surgical.tasks.surgical.handover.config.needle.ik_rel_env_cfg import (
+        NeedleHandoverEnvCfg as ORBIT_NEEDLE_HANDOVER_CFG,
+    )
 else:
     import orbit.surgical.tasks  # noqa: F401
 
@@ -3246,12 +3249,15 @@ def main() -> None:
             env_cfg.scene.robot_2.init_state.rot = (1.0, 0.0, 0.0, 0.0)
             env_cfg.scene.robot_2.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
             env_cfg.scene.robot_2.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
-            env_cfg.actions.body_joint_pos_2 = env_cfg.actions.body_joint_pos.replace(
-                asset_name="robot_2"
-            )
-            env_cfg.actions.finger_joint_pos_2 = env_cfg.actions.finger_joint_pos.replace(
-                asset_name="robot_2"
-            )
+            # Use ORBIT's complete bimanual needle-handover action stack and
+            # ordering. SoftMimicGen remains responsible only for the native
+            # deformable strand, ring, and their PhysX behavior.
+            orbit_actions = ORBIT_NEEDLE_HANDOVER_CFG().actions
+            orbit_actions.robot_1_body_action.asset_name = "robot"
+            orbit_actions.robot_1_gripper_action.asset_name = "robot"
+            orbit_actions.robot_2_body_action.asset_name = "robot_2"
+            orbit_actions.robot_2_gripper_action.asset_name = "robot_2"
+            env_cfg.actions = orbit_actions
         needle_usd = (
             Path(__file__).resolve().parents[1]
             / "source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd"
@@ -3409,8 +3415,7 @@ def main() -> None:
                 "psm_tool_gripper2_joint": PSM_GRIPPER_CLOSE_RAD,
             },
         )
-    # Stop at SoftMimicGen's ±0.06-radian threaded-object target, leaving
-    # roughly 1–2 mm more total jaw clearance than ORBIT's ±0.02 needle grasp.
+    # Use ORBIT's proven ±0.02-radian needle-handover closed target.
     active_gripper_close_rad = PSM_GRIPPER_CLOSE_RAD
     for gripper_term_name in (
         "gripper_action",
