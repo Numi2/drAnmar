@@ -617,6 +617,8 @@ class SharedState:
     pulse_steps: int = 0
     drive: np.ndarray = field(init=False)
     drive_until: float = 0.0
+    drive_min_steps_remaining: int = 0
+    drive_stop_pending: bool = False
     control_sequence: int = 0
     control_last_kind: str = "idle"
     control_last_source: str = "none"
@@ -680,6 +682,10 @@ class SharedState:
     camera_nonblank_seen: bool = False
     needle_visual_ready: bool = False
     deformable_strand_ready: bool = False
+    native_rigid_object_names: list[str] = field(default_factory=list)
+    native_deformable_object_names: list[str] = field(default_factory=list)
+    ring_physics_ready: bool = False
+    strand_self_collision_ready: bool = False
     reference_ghost_enabled: bool = False
     reference_ghost_demo: str | None = None
     reference_ghost_update: str | None = None
@@ -753,7 +759,9 @@ class SharedState:
             procedure_status = self._procedure_status()
             guide_kind = str(self.procedure.get("guide_kind", ""))
             thread_required = guide_kind == "softmimicgen_threading"
-            needle_required = guide_kind in NATIVE_NEEDLE_GUIDE_KINDS
+            needle_required = guide_kind in NATIVE_NEEDLE_GUIDE_KINDS or bool(
+                guide_kind == "softmimicgen_threading" and self.procedure.get("bimanual")
+            )
             thread_geometry_ready = not thread_required or self.deformable_strand_ready
             needle_geometry_ready = not needle_required or self.needle_visual_ready
             camera_frame_ready = bool(self.frame_id > 0 and self.frame_jpeg and self.camera_nonblank_seen)
@@ -857,6 +865,13 @@ class SharedState:
                     "mean_luminance": self.camera_mean_luminance,
                 },
                 "render_contract": render_contract,
+                "native_scene_contract": {
+                    "rigid_objects": self.native_rigid_object_names,
+                    "deformable_objects": self.native_deformable_object_names,
+                    "ring_physics_ready": self.ring_physics_ready,
+                    "strand_self_collision_ready": self.strand_self_collision_ready,
+                    "bimanual_ready": self.arms == 2 and self.action_dim == 14,
+                },
                 "operator_study": {
                     "gaze_valid": self.gaze_valid,
                     "gaze_source": self.gaze_source,
@@ -874,6 +889,8 @@ class SharedState:
                     "action": list(self.control_last_action),
                     "last_nonzero_sequence": self.control_last_nonzero_sequence,
                     "last_nonzero_action": list(self.control_last_nonzero_action),
+                    "minimum_steps_remaining": self.drive_min_steps_remaining,
+                    "stop_pending": self.drive_stop_pending,
                     "age_ms": round(max(0.0, time.monotonic() - self.control_last_at) * 1000)
                     if self.control_last_at
                     else None,
@@ -937,8 +954,13 @@ class SharedState:
         step_count = len(self.procedure.get("steps", []))
         if kind == "softmimicgen_threading":
             # Only NVIDIA's published ring-crossing predicate may complete the
-            # upstream room.  Finishing an action replay is not task success.
-            completed = step_count if self.upstream_task_success is True else 0
+            # upstream task.  In the extended bimanual room it proves a ring
+            # pass, not a handoff or knot, so it must never complete those
+            # later clinical teaching steps by itself.
+            if self.procedure.get("bimanual"):
+                completed = 4 if self.upstream_task_success is True else 0
+            else:
+                completed = step_count if self.upstream_task_success is True else 0
             if not completed:
                 completed += int(self.procedure_motion_seen)
                 completed += int(self.procedure_grasp_seen)
@@ -1153,7 +1175,15 @@ def build_web_app(state: SharedState) -> FastAPI:
             # by an explicit stop. A fixed 300 ms expiry could disappear
             # between frames when a photorealistic scene renders near 2 Hz.
             hold_seconds = max(0.30, min(1.25, 1.4 / max(state.sim_fps, 1.0)))
-            state.drive = command
+            if active:
+                state.drive = command
+                state.drive_min_steps_remaining = max(state.drive_min_steps_remaining, 1)
+                state.drive_stop_pending = False
+            elif state.drive_min_steps_remaining > 0 and bool(np.any(state.drive)):
+                state.drive_stop_pending = True
+            else:
+                state.drive = command
+                state.drive_stop_pending = False
             state.operator_input_source = request.source
             state.drive_until = time.monotonic() + hold_seconds if active else 0.0
             state.note_control("drive", request.source, command)
@@ -1224,7 +1254,15 @@ def build_web_app(state: SharedState) -> FastAPI:
 
         with state.lock:
             hold_seconds = max(0.30, min(1.25, 1.4 / max(state.sim_fps, 1.0)))
-            state.drive = command
+            if active:
+                state.drive = command
+                state.drive_min_steps_remaining = max(state.drive_min_steps_remaining, 1)
+                state.drive_stop_pending = False
+            elif state.drive_min_steps_remaining > 0 and bool(np.any(state.drive)):
+                state.drive_stop_pending = True
+            else:
+                state.drive = command
+                state.drive_stop_pending = False
             state.drive_until = time.monotonic() + hold_seconds if active else 0.0
             state.operator_input_source = request.source
             state.note_control("bimanual", request.source, command)
@@ -1255,10 +1293,15 @@ def build_web_app(state: SharedState) -> FastAPI:
         with state.lock:
             state.pulse.fill(0.0)
             state.pulse_steps = 0
-            state.drive.fill(0.0)
-            state.drive_until = 0.0
+            if state.drive_min_steps_remaining > 0 and bool(np.any(state.drive)):
+                state.drive_stop_pending = True
+                state.drive_until = 0.0
+            else:
+                state.drive.fill(0.0)
+                state.drive_until = 0.0
+                state.drive_stop_pending = False
             state.replay_request = "stop"
-            state.note_control("stop", request.source, state.drive)
+            state.note_control("stop", request.source, np.zeros(state.action_dim, dtype=np.float32))
             if state.expert_demonstration.get("status") in {"running", "paused"}:
                 state.expert_request = "take_over"
                 state.expert_clean_run = False
@@ -1385,6 +1428,8 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.reset_requested = True
             state.drive.fill(0.0)
             state.drive_until = 0.0
+            state.drive_min_steps_remaining = 0
+            state.drive_stop_pending = False
             state.note_control("reset", "keyboard_pointer", state.drive)
             state.replay_request = "stop"
             state.expert_request = "cancel"
@@ -1487,6 +1532,8 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.operator_input_source = "keyboard_pointer"
             state.drive.fill(0.0)
             state.drive_until = 0.0
+            state.drive_min_steps_remaining = 0
+            state.drive_stop_pending = False
             if state.evaluation_status in {"running", "saving"}:
                 state.evaluation_status = "interrupted"
                 state.record_request = "stop"
@@ -2908,6 +2955,7 @@ def main() -> None:
     if "-IK-Rel" not in args_cli.task:
         raise ValueError("The browser workstation accepts relative-IK tasks. Other variants remain available via the CLI.")
     guide_kind = str(procedure.get("guide_kind", ""))
+    bimanual_softmimicgen = bool(_softmimicgen_task and procedure.get("bimanual"))
     softmimicgen_goal = None
     if _softmimicgen_task:
         from softmimicgen_tasks.surgical_threading.mdp import object_reached_goal
@@ -2917,9 +2965,11 @@ def main() -> None:
         args_cli.task,
         device=args_cli.device,
         num_envs=1,
-        # Native deformable-to-rigid attachments must stay on the authored USD
-        # stage.  Fabric mirrors do not preserve this attachment lifecycle.
-        use_fabric=False if _softmimicgen_task else not args_cli.disable_fabric,
+        # Use Isaac Lab's normal Fabric transform mirror so RTX cameras see
+        # every PhysX articulation update. The needle-to-strand attachment is
+        # authored before simulation starts and remains owned by PhysX; it does
+        # not require freezing the renderer on stale OpenUSD transforms.
+        use_fabric=not args_cli.disable_fabric,
     )
     if _softmimicgen_task:
         # There is one interactive room, so physics replication provides no
@@ -2932,7 +2982,10 @@ def main() -> None:
         # Training keeps the upstream randomization unchanged outside here.
         interactive_events = getattr(env_cfg, "events", None)
         if interactive_events is not None:
-            for event_name in ("reset_object_position", "reset_ring_position"):
+            deterministic_events = ["reset_object_position", "reset_ring_position"]
+            if bimanual_softmimicgen:
+                deterministic_events.append("randomize_psm_joint_state")
+            for event_name in deterministic_events:
                 if hasattr(interactive_events, event_name):
                     setattr(interactive_events, event_name, None)
         # The upstream task defaults to training-scale PhysX reservations even
@@ -2959,6 +3012,34 @@ def main() -> None:
         # diameter. This is the native deformable mesh, so rendering and PhysX
         # collision/deformation use the same physical dimensions.
         env_cfg.scene.object.spawn.scale = (0.2, 0.04, 0.04)
+        if procedure.get("requires_strand_self_collision"):
+            # PhysX owns knot topology: no projected curve, teleport or
+            # workstation-side constraint is allowed to stand in for contact.
+            env_cfg.scene.object.spawn.deformable_props = sim_utils.DeformableBodyPropertiesCfg(
+                self_collision=True,
+                self_collision_filter_distance=0.0012,
+                solver_position_iteration_count=32,
+            )
+        if bimanual_softmimicgen:
+            # Reuse ORBIT-Surgical's established dual-PSM base placement while
+            # retaining SoftMimicGen's native strand and rigid ring scene.
+            env_cfg.scene.robot.init_state.pos = (0.2, 0.0, 0.15)
+            env_cfg.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+            env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
+            env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
+            env_cfg.scene.robot_2 = env_cfg.scene.robot.replace(
+                prim_path="{ENV_REGEX_NS}/Robot_2"
+            )
+            env_cfg.scene.robot_2.init_state.pos = (-0.2, 0.0, 0.15)
+            env_cfg.scene.robot_2.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+            env_cfg.scene.robot_2.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
+            env_cfg.scene.robot_2.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
+            env_cfg.actions.body_joint_pos_2 = env_cfg.actions.body_joint_pos.replace(
+                asset_name="robot_2"
+            )
+            env_cfg.actions.finger_joint_pos_2 = env_cfg.actions.finger_joint_pos.replace(
+                asset_name="robot_2"
+            )
         needle_usd = (
             Path(__file__).resolve().parents[1]
             / "source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd"
@@ -2972,9 +3053,24 @@ def main() -> None:
         # needle default prim. This is derived from the mesh end cap, not from
         # whichever needle surface happens to be closest to the strand.
         orbit_needle_swage_anchor_m = (0.0478657183, 0.0491908647, 0.0009574010)
+        # ORBIT's canonical 0.4 scale is difficult to acquire reliably with
+        # browser teleoperation beside a 0.8 mm strand. Increase the complete
+        # rigid asset uniformly so the rendered mesh and SDF collision remain
+        # identical and the PSM jaws have a substantial physical target.
+        native_needle_reference_scale = 0.4
+        native_needle_scale = 0.55
+        native_needle_reference_position = np.asarray(
+            (-0.001003713, 0.019714346, 0.008955040), dtype=np.float64
+        )
+        swage_rotation_sign = np.asarray((-1.0, -1.0, 1.0), dtype=np.float64)
+        native_needle_position = native_needle_reference_position + (
+            swage_rotation_sign
+            * np.asarray(orbit_needle_swage_anchor_m, dtype=np.float64)
+            * (native_needle_reference_scale - native_needle_scale)
+        )
         needle_spawn = sim_utils.UsdFileCfg(
             usd_path=str(needle_usd),
-            scale=(0.4, 0.4, 0.4),
+            scale=(native_needle_scale,) * 3,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 solver_position_iteration_count=16,
                 solver_velocity_iteration_count=8,
@@ -3033,7 +3129,7 @@ def main() -> None:
                 # Align the named swage anchor with the four terminal FEM
                 # surface nodes. A 180-degree yaw makes the free strand trail
                 # away from the needle arc rather than overlap it.
-                pos=(-0.001003713, 0.019714346, 0.008955040),
+                pos=tuple(native_needle_position.tolist()),
                 rot=(0.0, 0.0, 0.0, 1.0),
             ),
             spawn=needle_spawn,
@@ -3086,7 +3182,11 @@ def main() -> None:
     # Start from the room-facing side used by the official OR scene so the
     # doctor sees the instrument, liver, table, and surrounding environment.
     camera_eye = np.asarray(
-        (0.20, 0.20, 0.11) if _softmimicgen_task else (0.45, 0.25, 0.28),
+        (0.36, 0.36, 0.21)
+        if bimanual_softmimicgen
+        else (0.20, 0.20, 0.11)
+        if _softmimicgen_task
+        else (0.45, 0.25, 0.28),
         dtype=np.float32,
     )
     endoscope_data_types = ["rgb"] if args_cli.sensor_profile == "efficient" else ["rgb", "distance_to_image_plane", "semantic_segmentation"]
@@ -3121,7 +3221,13 @@ def main() -> None:
             offset=CameraCfg.OffsetCfg(pos=tuple(camera_eye.tolist()), rot=(1.0, 0.0, 0.0, 0.0), convention="world"),
         )
     wrist_tip_name = "endo360_needle" if "STAR" in args_cli.task else "ecm_end_link" if "ECM" in args_cli.task else "psm_tool_tip_link"
-    wrist_robot_names = ("Robot_1", "Robot_2") if "Dual" in args_cli.task else ("Robot",)
+    wrist_robot_names = (
+        ("Robot", "Robot_2")
+        if bimanual_softmimicgen
+        else ("Robot_1", "Robot_2")
+        if "Dual" in args_cli.task
+        else ("Robot",)
+    )
     for contact_index, contact_robot_name in enumerate(wrist_robot_names, start=1):
         if native_deformable_enabled:
             for jaw_index in (1, 2):
@@ -3307,6 +3413,47 @@ def main() -> None:
     deformables = {name: scene[name] for name in deformable_names}
     native_tissue = deformables.get(str(native_room.get("stage_key", ""))) if native_room else None
     interactive_deformable = deformables.get("object") if _softmimicgen_task else native_tissue
+    ring_physics_ready = "ring" in objects
+    strand_self_collision_ready = not bool(
+        procedure.get("requires_strand_self_collision")
+    )
+    self_collision_attributes: dict[str, Any] = {}
+    if _softmimicgen_task and procedure.get("requires_strand_self_collision"):
+        import omni.usd
+        from pxr import Usd
+
+        diagnostic_stage = omni.usd.get_context().get_stage()
+        deformable_root = diagnostic_stage.GetPrimAtPath("/World/envs/env_0/Object")
+        if not deformable_root.IsValid():
+            raise RuntimeError("The native deformable strand is missing from the OpenUSD stage")
+        for prim in Usd.PrimRange(deformable_root):
+            for attribute in prim.GetAttributes():
+                attribute_name = attribute.GetName()
+                normalized_name = "".join(character for character in attribute_name.lower() if character.isalnum())
+                if "selfcollision" not in normalized_name:
+                    continue
+                value = attribute.Get()
+                self_collision_attributes[f"{prim.GetPath()}:{attribute_name}"] = value
+                if isinstance(value, bool) and value:
+                    strand_self_collision_ready = True
+        print(
+            "[DR_ANMAR_NATIVE_STRAND_SELF_COLLISION] "
+            + json.dumps(
+                {
+                    "ready": strand_self_collision_ready,
+                    "attributes": self_collision_attributes,
+                },
+                sort_keys=True,
+                default=str,
+            ),
+            flush=True,
+        )
+        if not strand_self_collision_ready:
+            raise RuntimeError(
+                "The bimanual knot room requires an authored native PhysX strand self-collision property"
+            )
+    if bimanual_softmimicgen and not ring_physics_ready:
+        raise RuntimeError("The bimanual knot room requires SoftMimicGen's native rigid ring")
     if _softmimicgen_task and interactive_deformable is not None and "suture_needle" in objects:
         # Report the named swage-to-terminal-surface separation once. This is
         # read-only: OpenUSD defines the anchor and PhysX owns all motion.
@@ -3336,7 +3483,10 @@ def main() -> None:
             doubled_cross = 2.0 * np.cross(vector_part, vector)
             return vector + quaternion[0] * doubled_cross + np.cross(vector_part, doubled_cross)
 
-        local_swage = np.asarray(orbit_needle_swage_anchor_m, dtype=np.float64) * 0.4
+        local_swage = (
+            np.asarray(orbit_needle_swage_anchor_m, dtype=np.float64)
+            * native_needle_scale
+        )
         swage_position = needle_position + rotate_wxyz(needle_quaternion, local_swage)
         default_swage_position = needle_default_state[:3] + rotate_wxyz(
             needle_default_state[3:7], local_swage
@@ -3350,6 +3500,8 @@ def main() -> None:
             + json.dumps(
                 {
                     "anchor_semantics": "ORBIT needle blunt swaged endpoint",
+                    "needle_uniform_scale": native_needle_scale,
+                    "strand_diameter_m": 0.0008,
                     "terminal_surface_nodes": int(endpoint_mask.sum()),
                     "strand_endpoint_m": endpoint_position.round(6).tolist(),
                     "strand_default_endpoint_m": default_endpoint_position.round(6).tolist(),
@@ -3789,7 +3941,7 @@ def main() -> None:
             pass
 
     action_dim = int(env.action_space.shape[-1])
-    arms = 2 if "Dual" in args_cli.task else 1
+    arms = min(2, len(robot_names))
     has_grippers = action_dim >= arms * 7
     apply_endoscope_camera_view(
         "baseline",
@@ -3826,8 +3978,14 @@ def main() -> None:
         ),
         anatomy_collision_meshes=collision_mesh_count,
         sensor_profile=args_cli.sensor_profile,
-        needle_visual_ready=bool(objects) if guide_kind in NATIVE_NEEDLE_GUIDE_KINDS else True,
+        needle_visual_ready=bool("suture_needle" in objects)
+        if guide_kind in NATIVE_NEEDLE_GUIDE_KINDS or bimanual_softmimicgen
+        else True,
         deformable_strand_ready=bool("object" in deformables),
+        native_rigid_object_names=object_names,
+        native_deformable_object_names=deformable_names,
+        ring_physics_ready=ring_physics_ready,
+        strand_self_collision_ready=strand_self_collision_ready,
     )
     state.camera_names = list(camera_sources)
     update_procedure_waypoint_marker(0, force=True)
@@ -3880,10 +4038,14 @@ def main() -> None:
             upstream_expert_initial_state = dict(upstream_expert_initial_state)
             upstream_expert_initial_state["deformable_object"] = native_scaled_state["deformable_object"]
         native_scaled_state = scene.get_state(is_relative=True)
+        recorded_articulations = dict(upstream_expert_initial_state.get("articulation", {}))
+        for articulation_name, articulation_state in native_scaled_state.get("articulation", {}).items():
+            recorded_articulations.setdefault(articulation_name, articulation_state)
         recorded_rigid_objects = dict(upstream_expert_initial_state.get("rigid_object", {}))
         for object_name, object_state in native_scaled_state.get("rigid_object", {}).items():
             recorded_rigid_objects.setdefault(object_name, object_state)
         upstream_expert_initial_state = dict(upstream_expert_initial_state)
+        upstream_expert_initial_state["articulation"] = recorded_articulations
         upstream_expert_initial_state["rigid_object"] = recorded_rigid_objects
         upstream_actions_value = upstream_episode.data["actions"]
         upstream_expert_actions = (
@@ -3891,6 +4053,22 @@ def main() -> None:
             if isinstance(upstream_actions_value, torch.Tensor)
             else np.asarray(upstream_actions_value, dtype=np.float32)
         )
+        if (
+            bimanual_softmimicgen
+            and upstream_expert_actions.ndim == 2
+            and upstream_expert_actions.shape[1] == 7
+            and action_dim == 14
+        ):
+            # Preserve NVIDIA's seven primary-arm values exactly. The added
+            # receiving PSM remains stationary with its jaws open during the
+            # upstream reference replay; clinician bimanual demonstrations
+            # record the full fourteen-dimensional room action instead.
+            bimanual_actions = np.zeros(
+                (upstream_expert_actions.shape[0], action_dim), dtype=np.float32
+            )
+            bimanual_actions[:, :7] = upstream_expert_actions
+            bimanual_actions[:, 13] = 1.0
+            upstream_expert_actions = bimanual_actions
         if upstream_expert_actions.ndim != 2 or upstream_expert_actions.shape[1] != action_dim:
             raise RuntimeError("Pinned SoftMimicGen expert action shape does not match the live task")
     state.expert_demonstration = expert_controller.snapshot()
@@ -4047,7 +4225,14 @@ def main() -> None:
             ghost_update = state.reference_ghost_update
             state.reference_ghost_update = None
             ghost_enabled = state.reference_ghost_enabled
-            if state.drive_until > loop_started:
+            if state.drive_min_steps_remaining > 0 and bool(np.any(state.drive)):
+                manual_action = state.drive.copy()
+                state.drive_min_steps_remaining -= 1
+                if state.drive_min_steps_remaining == 0 and state.drive_stop_pending:
+                    state.drive.fill(0.0)
+                    state.drive_until = 0.0
+                    state.drive_stop_pending = False
+            elif state.drive_until > loop_started:
                 manual_action = state.drive.copy()
             elif state.pulse_steps > 0:
                 manual_action = state.pulse.copy()
@@ -4259,7 +4444,10 @@ def main() -> None:
                         item["id"] for item in EXPERT_PHASES[:phase_index]
                     ]
                     with state.lock:
-                        state.grippers_open = [bool(action_np[state.gripper_action_index(0)] > 0.0)]
+                        state.grippers_open = [
+                            bool(action_np[state.gripper_action_index(arm)] > 0.0)
+                            for arm in range(state.arms)
+                        ]
                         state.operator_input_source = "nvidia_softmimicgen_expert"
                         state.procedure_phase = expert_controller.phase or "manipulate"
                         state.expert_demonstration = expert_controller.snapshot(
