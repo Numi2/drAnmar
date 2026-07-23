@@ -56,6 +56,24 @@
     "prony_time_constant_s_seed": 1.8,
     "linear_physx_proxy": true
   },
+  "stable_physx_proxy": {
+    "method": "volume_fraction_homogenized_layer_tangent_proxy",
+    "backend_limitation": "current PhysX volume deformable uses one material per body",
+    "layer_volume_fractions": {
+      "surface": 0.18,
+      "bulk": 0.64,
+      "fascia": 0.18
+    },
+    "layer_modulus_multipliers": {
+      "surface": 1.6,
+      "bulk": 0.75,
+      "fascia": 2.0
+    },
+    "wetness_friction_reduction": 0.35,
+    "minimum_wet_friction_scale": 0.55,
+    "vertex_velocity_damping_scale": 0.05,
+    "promotion_boundary": "explicit per-layer constitutive mechanics require a qualified backend that supports per-element materials"
+  },
   "contact": {
     "static_friction_seed": 0.42,
     "static_friction_range": [0.2, 0.75],
@@ -132,10 +150,12 @@
       "damping",
       "surface_friction",
       "wetness",
+      "surface_roughness"
+    ],
+    "model_only_parameter_sampling": [
       "puncture_force",
       "shaft_drag",
-      "suture_pullout_strength",
-      "surface_roughness"
+      "suture_pullout_strength"
     ],
     "gaps": [
       {

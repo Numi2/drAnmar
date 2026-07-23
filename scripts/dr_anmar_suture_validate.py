@@ -35,9 +35,11 @@ from dr_anmar_suture_model import (
     effective_failure_load,
     load_profile,
     monotonic_tension_force,
+    sample_suture_runtime_profile,
     self_friction_coefficient,
     stress_retention,
 )
+from dr_anmar_suture_runtime import SutureRuntime
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -385,6 +387,65 @@ def validate(
         },
         "same seed exactly replays; different seed changes the domain",
     )
+    sampled_suture_a, sampled_suture_domain_a = sample_suture_runtime_profile(
+        profile,
+        2701,
+    )
+    sampled_suture_replay, sampled_suture_domain_replay = (
+        sample_suture_runtime_profile(profile, 2701)
+    )
+    sampled_suture_b, sampled_suture_domain_b = sample_suture_runtime_profile(
+        profile,
+        2702,
+    )
+    suture_gaps = profile["sim_to_real"]["gaps"]
+    suture_requirements = profile["qualification"]["requirements"]
+    suture_clinical = [
+        item for item in suture_requirements if item["id"] == "clinical_use"
+    ]
+    sampled_self_friction_a = sampled_suture_a["contact"][
+        "load_dependent_self_friction"
+    ]
+    sampled_self_friction_b = sampled_suture_b["contact"][
+        "load_dependent_self_friction"
+    ]
+    check(
+        checks,
+        "suture_runtime_domain_and_qualification",
+        sampled_suture_domain_a == sampled_suture_domain_replay
+        and sampled_suture_a == sampled_suture_replay
+        and sampled_suture_domain_a != sampled_suture_domain_b
+        and sampled_suture_a != sampled_suture_b
+        and sampled_self_friction_a != sampled_self_friction_b
+        and sampled_suture_a["contact"]["sampled_static_to_dynamic_ratio"]
+        == (
+            sampled_suture_domain_a["static_friction"]
+            / sampled_suture_domain_a["dynamic_friction"]
+        )
+        and len(suture_gaps) >= 8
+        and all(
+            {"id", "risk", "mitigation", "status"}.issubset(gap)
+            for gap in suture_gaps
+        )
+        and len(
+            profile["sim_to_real"]["runtime_applied_parameter_sampling"]
+        )
+        >= 7
+        and profile["qualification"]["policy"] == "fail_closed"
+        and len(suture_requirements) >= 7
+        and len(suture_clinical) == 1
+        and suture_clinical[0]["status"] == "blocked"
+        and profile["clinical_validation"] is False,
+        {
+            "seed_2701": sampled_suture_domain_a,
+            "seed_2701_replay": sampled_suture_domain_replay,
+            "seed_2702": sampled_suture_domain_b,
+            "gap_count": len(suture_gaps),
+            "requirement_count": len(suture_requirements),
+            "clinical": suture_clinical,
+        },
+        "replayable live suture material domain with fail-closed evidence gates",
+    )
     qualification = needle_profile["qualification"]
     qualification_gates = qualification["gates"]
     clinical_gates = [
@@ -531,6 +592,47 @@ def validate(
         sorted(domain_call_owners) == ["main", "reset_environment"],
         sorted(domain_call_owners),
         ["main", "reset_environment"],
+    )
+    runtime_probe = SutureRuntime(profile)
+    half_dose_first = runtime_probe.record_instrument_grasp(
+        (20,),
+        pressure_pa=float(
+            profile["instrument_damage"]["reference_crush_pressure_pa"]
+        ),
+        duration_s=0.5,
+    )
+    half_dose_second = runtime_probe.record_instrument_grasp(
+        (20,),
+        pressure_pa=float(
+            profile["instrument_damage"]["reference_crush_pressure_pa"]
+        ),
+        duration_s=0.5,
+    )
+    live_runtime_tokens = [
+        "SutureRuntime(",
+        "create_rigid_body_view(",
+        "observe_segment_positions(",
+        "record_instrument_contact(",
+        "apply_to_stage(",
+        "force_matrix_w",
+        "{ENV_REGEX_NS}/DrAnmarNeedle/Suture/Segments/S.*",
+    ]
+    missing_live_runtime_tokens = [
+        token for token in live_runtime_tokens if token not in workstation_text
+    ]
+    check(
+        checks,
+        "live_suture_material_history_wiring",
+        not missing_live_runtime_tokens
+        and not half_dose_first
+        and half_dose_second
+        and runtime_probe.joints[20].grasp_count == 1,
+        {
+            "missing_workstation_tokens": missing_live_runtime_tokens,
+            "cumulative_pressure_dose": runtime_probe.joints[20].crush_dose,
+            "grasp_count": runtime_probe.joints[20].grasp_count,
+        },
+        "native tensor poses and filtered per-jaw contact drive cumulative live material history",
     )
     evidence = profile.get("evidence", [])
     check(

@@ -40,6 +40,19 @@ from dr_anmar_suture_integration import (
     apply_dr_anmar_needle_episode_domain,
     configure_dr_anmar_needle,
 )
+from dr_anmar_suture_model import (
+    load_profile as load_suture_profile,
+    sample_suture_runtime_profile,
+)
+from dr_anmar_suture_runtime import SutureRuntime
+from dr_anmar_tissue_model import (
+    sample_tissue_episode_parameters,
+    stable_physx_proxy_parameters,
+)
+from dr_anmar_hemostasis_model import (
+    sample_hemostasis_episode_parameters,
+    stable_physx_vessel_proxy_parameters,
+)
 
 
 DATA_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
@@ -3546,7 +3559,14 @@ def main() -> None:
     env_cfg.episode_length_s = 3600.0
     env_cfg.scene.num_envs = 1
     native_room = _native_room if _native_room and _native_room.get("available") else None
-    native_deformable_enabled = bool(native_room and native_room.get("backend") == "physx_fem")
+    native_deformable_enabled = bool(
+        native_room
+        and native_room.get("backend")
+        in {"physx_fem", "physx_fem_hemostasis"}
+    )
+    native_hemostasis_enabled = bool(
+        native_room and native_room.get("backend") == "physx_fem_hemostasis"
+    )
     native_tissue_enabled = bool(
         native_deformable_enabled
         and native_room.get("representation") != "upstream_softmimicgen_task"
@@ -3632,31 +3652,25 @@ def main() -> None:
         if "Dual" in args_cli.task
         else ("Robot",)
     )
+    # Follow Isaac Lab's filterable-contact pattern: one sensor per rigid jaw.
+    # A regex spanning both jaws can report net force, but it cannot provide a
+    # reliable per-partner force matrix for localizing suture damage.
     for contact_index, contact_robot_name in enumerate(wrist_robot_names, start=1):
-        if native_deformable_enabled:
-            for jaw_index in (1, 2):
-                setattr(
-                    env_cfg.scene,
-                    f"gripper_contact_{contact_index}_jaw_{jaw_index}",
-                    ContactSensorCfg(
-                        prim_path=(
-                            f"{{ENV_REGEX_NS}}/{contact_robot_name}/"
-                            f"psm_tool_gripper{jaw_index}_link"
-                        ),
-                        update_period=0.0,
-                        history_length=3,
-                        track_air_time=False,
-                    ),
-                )
-        else:
+        for jaw_index in (1, 2):
             setattr(
                 env_cfg.scene,
-                f"gripper_contact_{contact_index}",
+                f"gripper_contact_{contact_index}_jaw_{jaw_index}",
                 ContactSensorCfg(
-                    prim_path=f"{{ENV_REGEX_NS}}/{contact_robot_name}/psm_tool_gripper.*_link",
+                    prim_path=(
+                        f"{{ENV_REGEX_NS}}/{contact_robot_name}/"
+                        f"psm_tool_gripper{jaw_index}_link"
+                    ),
                     update_period=0.0,
                     history_length=3,
                     track_air_time=False,
+                    filter_prim_paths_expr=[
+                        "{ENV_REGEX_NS}/DrAnmarNeedle/Suture/Segments/S.*"
+                    ],
                 ),
             )
     for wrist_index, wrist_robot_name in enumerate(wrist_robot_names, start=1):
@@ -3733,19 +3747,153 @@ def main() -> None:
         anatomy_position = (-0.117, -0.2445, -0.144)
     else:
         anatomy_position = (-0.117, -0.1945, -0.164)
+    native_episode_domain: dict[str, Any] = {}
     if native_tissue_enabled:
         spawn = native_room["spawn"]
+        native_deformable_prim_name = str(
+            native_room.get(
+                "stage_prim_name",
+                str(native_room["stage_key"])
+                .replace("_", " ")
+                .title()
+                .replace(" ", ""),
+            )
+        )
         material_contract = json.loads(Path(native_room["material_path"]).read_text(encoding="utf-8"))
-        tissue_material = material_contract["intact_tissue"]
-        contact_material = material_contract["contact"]
+        if material_contract.get("schema") == "dr.anmar.hemostasis-profile.v1":
+            hemostasis_episode = sample_hemostasis_episode_parameters(
+                material_contract,
+                DEFAULT_SCENARIO_SEED,
+            )
+            stable_vessel_proxy = stable_physx_vessel_proxy_parameters(
+                material_contract,
+                hemostasis_episode,
+            )
+            native_material_runtime = {
+                "density_kg_m3": float(stable_vessel_proxy["density_kg_m3"]),
+                "dynamic_friction": float(
+                    stable_vessel_proxy["dynamic_friction"]
+                ),
+                "static_friction": float(stable_vessel_proxy["static_friction"]),
+                "youngs_modulus_pa": float(
+                    stable_vessel_proxy["youngs_modulus_pa"]
+                ),
+                "poisson_ratio": float(stable_vessel_proxy["poisson_ratio"]),
+                "vertex_velocity_damping": min(
+                    1.0,
+                    float(stable_vessel_proxy["damping_ratio"])
+                    * float(
+                        material_contract["stable_physx_proxy"][
+                            "vertex_velocity_damping_scale"
+                        ]
+                    ),
+                ),
+                "solver_position_iterations": int(
+                    material_contract["solver"]["position_iterations"]
+                ),
+            }
+            native_episode_domain = {
+                "schema": "dr.anmar.native-deformable-domain.v1",
+                "profile_id": material_contract["id"],
+                "setup_seed": DEFAULT_SCENARIO_SEED,
+                "parameters": hemostasis_episode.payload(),
+                "stable_backend_proxy": stable_vessel_proxy,
+                "parameter_application": "setup_before_first_physics_step",
+                "per_layer_mechanics": "homogenized_proxy",
+                "explicit_layer_ids_preserved": True,
+                "backend_applied_parameters": [
+                    "density_kg_m3",
+                    "dynamic_friction",
+                    "youngs_modulus_pa",
+                    "poisson_ratio",
+                    "vertex_velocity_damping",
+                    "solver_position_iterations",
+                ],
+                "static_friction": (
+                    "recorded_target_not_exposed_by_isaac_lab_2_3_"
+                    "deformable_material_cfg"
+                ),
+                "flow_model": "not_present_in_native_physx_room",
+                "plastic_clip_forming": False,
+                "clinical_validation": False,
+            }
+        elif material_contract.get("schema") == "dr.anmar.suturable-tissue-profile.v1":
+            tissue_episode = sample_tissue_episode_parameters(
+                material_contract,
+                DEFAULT_SCENARIO_SEED,
+            )
+            stable_tissue_proxy = stable_physx_proxy_parameters(
+                material_contract,
+                tissue_episode,
+            )
+            native_material_runtime = {
+                "density_kg_m3": float(stable_tissue_proxy["density_kg_m3"]),
+                "dynamic_friction": float(stable_tissue_proxy["dynamic_friction"]),
+                "static_friction": float(stable_tissue_proxy["static_friction"]),
+                "youngs_modulus_pa": float(stable_tissue_proxy["youngs_modulus_pa"]),
+                "poisson_ratio": float(stable_tissue_proxy["poisson_ratio"]),
+                "vertex_velocity_damping": min(
+                    1.0,
+                    float(stable_tissue_proxy["damping_ratio"])
+                    * float(
+                        material_contract["stable_physx_proxy"][
+                            "vertex_velocity_damping_scale"
+                        ]
+                    ),
+                ),
+                "solver_position_iterations": int(
+                    material_contract["solver"]["position_iterations"]
+                ),
+            }
+            native_episode_domain = {
+                "schema": "dr.anmar.native-deformable-domain.v1",
+                "profile_id": material_contract["id"],
+                "setup_seed": DEFAULT_SCENARIO_SEED,
+                "parameters": tissue_episode.payload(),
+                "stable_backend_proxy": stable_tissue_proxy,
+                "parameter_application": "setup_before_first_physics_step",
+                "per_layer_mechanics": "homogenized_proxy",
+                "explicit_layer_ids_preserved": True,
+                "backend_applied_parameters": [
+                    "density_kg_m3",
+                    "dynamic_friction",
+                    "youngs_modulus_pa",
+                    "poisson_ratio",
+                    "vertex_velocity_damping",
+                    "solver_position_iterations",
+                ],
+                "static_friction": (
+                    "recorded_target_not_exposed_by_isaac_lab_2_3_"
+                    "deformable_material_cfg"
+                ),
+                "clinical_validation": False,
+            }
+        else:
+            tissue_material = material_contract["intact_tissue"]
+            contact_material = material_contract["contact"]
+            native_material_runtime = {
+                "density_kg_m3": float(tissue_material["density_kg_m3_seed"]),
+                "dynamic_friction": float(contact_material["dynamic_friction_seed"]),
+                "static_friction": float(contact_material["static_friction_seed"]),
+                "youngs_modulus_pa": float(
+                    tissue_material["youngs_modulus_pa_seed"]
+                ),
+                "poisson_ratio": float(tissue_material["poisson_ratio_seed"]),
+                "vertex_velocity_damping": 0.005,
+                "solver_position_iterations": 16,
+            }
         native_spawn = sim_utils.UsdFileCfg(
             usd_path=str(native_room["asset_path"]),
             scale=tuple(spawn["scale"]),
             deformable_props=sim_utils.DeformableBodyPropertiesCfg(
                 deformable_enabled=True,
                 self_collision=True,
-                solver_position_iteration_count=16,
-                vertex_velocity_damping=0.005,
+                solver_position_iteration_count=int(
+                    native_material_runtime["solver_position_iterations"]
+                ),
+                vertex_velocity_damping=float(
+                    native_material_runtime["vertex_velocity_damping"]
+                ),
                 sleep_damping=0.0,
                 sleep_threshold=0.0,
                 settling_threshold=0.0,
@@ -3775,21 +3923,44 @@ def main() -> None:
             sim_utils.define_deformable_body_properties(root_path, deformable_props)
             material_path = f"{root_path}/DrAnmarNativeTissueMaterial"
             material_cfg = sim_utils.DeformableBodyMaterialCfg(
-                density=float(tissue_material["density_kg_m3_seed"]),
-                dynamic_friction=float(contact_material["dynamic_friction_seed"]),
-                youngs_modulus=float(tissue_material["youngs_modulus_pa_seed"]),
-                poissons_ratio=float(tissue_material["poisson_ratio_seed"]),
+                density=float(native_material_runtime["density_kg_m3"]),
+                dynamic_friction=float(native_material_runtime["dynamic_friction"]),
+                youngs_modulus=float(native_material_runtime["youngs_modulus_pa"]),
+                poissons_ratio=float(native_material_runtime["poisson_ratio"]),
             )
             material_cfg.func(material_path, material_cfg)
             sim_utils.bind_physics_material(root_path, material_path)
             return root_prim
 
         native_spawn.func = spawn_native_deformable_with_material
-        env_cfg.scene.native_tissue = DeformableObjectCfg(
-            prim_path="{ENV_REGEX_NS}/NativeTissue",
-            init_state=DeformableObjectCfg.InitialStateCfg(pos=tuple(spawn["translation_m"])),
-            spawn=native_spawn,
+        setattr(
+            env_cfg.scene,
+            str(native_room["stage_key"]),
+            DeformableObjectCfg(
+                prim_path=f"{{ENV_REGEX_NS}}/{native_deformable_prim_name}",
+                init_state=DeformableObjectCfg.InitialStateCfg(
+                    pos=tuple(spawn["translation_m"])
+                ),
+                spawn=native_spawn,
+            ),
         )
+        for auxiliary in native_room.get("auxiliary_assets", []):
+            setattr(
+                env_cfg.scene,
+                str(auxiliary["stage_key"]),
+                AssetBaseCfg(
+                    prim_path=(
+                        f"{{ENV_REGEX_NS}}/{auxiliary['prim_name']}"
+                    ),
+                    init_state=AssetBaseCfg.InitialStateCfg(
+                        pos=tuple(auxiliary["translation_m"]),
+                        rot=tuple(auxiliary["rotation_wxyz"]),
+                    ),
+                    spawn=sim_utils.UsdFileCfg(
+                        usd_path=str(auxiliary["asset_path"])
+                    ),
+                ),
+            )
     elif organ_usd.is_file() and not procedure.get("hide_anatomy") and not _softmimicgen_task:
         env_cfg.scene.liver_showcase = AssetBaseCfg(
             prim_path="{ENV_REGEX_NS}/LiverShowcase",
@@ -3801,6 +3972,7 @@ def main() -> None:
     env = gym.make(args_cli.task, cfg=env_cfg)
     env.reset()
     import omni.usd
+    from isaacsim.core.simulation_manager import SimulationManager
     from pxr import Usd, UsdPhysics
 
     suture_stage = omni.usd.get_context().get_stage()
@@ -3845,6 +4017,69 @@ def main() -> None:
         seed=DEFAULT_SCENARIO_SEED,
         root_path=suture_root_path,
     )
+    suture_profile = load_suture_profile()
+    initial_suture_runtime_profile, initial_suture_domain = (
+        sample_suture_runtime_profile(
+            suture_profile,
+            DEFAULT_SCENARIO_SEED,
+        )
+    )
+    suture_runtime_profile_state = [initial_suture_runtime_profile]
+    suture_runtime_domain_state = [initial_suture_domain]
+    suture_runtime_state = [
+        SutureRuntime(
+            suture_runtime_profile_state[0],
+            root_path=f"{suture_root_path}/Suture",
+        )
+    ]
+    suture_physics_view = SimulationManager.get_physics_sim_view()
+    suture_segment_view = suture_physics_view.create_rigid_body_view(
+        f"{suture_root_path}/Suture/Segments/S*"
+    )
+    if suture_segment_view._backend is None or suture_segment_view.count != 360:
+        raise RuntimeError(
+            "The Dr.Anmar live suture tensor view is incomplete: "
+            f"segments={suture_segment_view.count if suture_segment_view._backend else 0}"
+        )
+    hemostasis_clip_view = None
+    if native_hemostasis_enabled:
+        hemostasis_clip_view = suture_physics_view.create_rigid_body_view(
+            "/World/envs/env_0/DrAnmarVascularClip"
+        )
+        if (
+            hemostasis_clip_view._backend is None
+            or hemostasis_clip_view.count != 1
+        ):
+            raise RuntimeError(
+                "The DrAnmar Vascular Clip did not create one native rigid body"
+            )
+    initial_suture_stage_update = suture_runtime_state[0].apply_to_stage(
+        suture_stage,
+        representative_self_contact_load_n=0.0,
+    )
+    if initial_suture_stage_update["missing_joints"]:
+        raise RuntimeError(
+            "The Dr.Anmar live suture controller could not bind all authored joints"
+        )
+    if native_episode_domain:
+        native_root = suture_stage.GetPrimAtPath(
+            f"/World/envs/env_0/{native_deformable_prim_name}"
+        )
+        roughness = (
+            native_episode_domain.get("stable_backend_proxy", {}).get(
+                "surface_roughness"
+            )
+        )
+        if native_root.IsValid() and roughness is not None:
+            for prim in Usd.PrimRange(native_root):
+                roughness_attribute = prim.GetAttribute("inputs:roughness")
+                if roughness_attribute.IsValid():
+                    roughness_attribute.Set(float(roughness))
+        print(
+            "[DR_ANMAR_NATIVE_DEFORMABLE_DOMAIN] "
+            + json.dumps(native_episode_domain, sort_keys=True),
+            flush=True,
+        )
     print(
         "[DR_ANMAR_NEEDLE] "
         + json.dumps(
@@ -3854,6 +4089,9 @@ def main() -> None:
                 "factory_swage": True,
                 "breakable_pullout_joint": True,
                 "episode_domain": initial_dr_anmar_needle_domain,
+                "live_material_history_controller": True,
+                "live_segment_tensor_count": suture_segment_view.count,
+                "live_suture_domain": suture_runtime_domain_state[0],
                 "clinical_validation": False,
             },
             sort_keys=True,
@@ -4391,11 +4629,10 @@ def main() -> None:
         return robots[robot_name].data.body_pos_w[0, tip_index, :3].detach().cpu().numpy().astype(np.float32)
 
     def native_gripper_contact_force(arm: int) -> float:
-        names = (
-            [f"gripper_contact_{arm + 1}_jaw_1", f"gripper_contact_{arm + 1}_jaw_2"]
-            if native_deformable_enabled
-            else [f"gripper_contact_{arm + 1}"]
-        )
+        names = [
+            f"gripper_contact_{arm + 1}_jaw_1",
+            f"gripper_contact_{arm + 1}_jaw_2",
+        ]
         observed = []
         for name in names:
             sensor = contact_sensors.get(name)
@@ -4407,6 +4644,50 @@ def main() -> None:
             except (AttributeError, IndexError, RuntimeError):
                 continue
         return max(observed, default=0.0)
+
+    def filtered_suture_contact_force(arm: int) -> float:
+        """Return only native jaw force whose partner is the DrAnmar suture."""
+
+        observed: list[float] = []
+        for jaw_index in (1, 2):
+            sensor = contact_sensors.get(
+                f"gripper_contact_{arm + 1}_jaw_{jaw_index}"
+            )
+            if sensor is None:
+                continue
+            try:
+                forces = sensor.data.force_matrix_w
+                if forces is None:
+                    continue
+                observed.append(
+                    float(
+                        torch.linalg.vector_norm(
+                            forces[0].reshape(-1, 3),
+                            dim=-1,
+                        )
+                        .max()
+                        .detach()
+                        .cpu()
+                        .item()
+                    )
+                )
+            except (AttributeError, IndexError, RuntimeError):
+                continue
+        return max(observed, default=0.0)
+
+    def suture_segment_positions() -> np.ndarray:
+        transforms = (
+            suture_segment_view.get_transforms()
+            .detach()
+            .cpu()
+            .numpy()
+            .astype(np.float64)
+        )
+        if transforms.shape != (360, 7) or not np.isfinite(transforms).all():
+            raise RuntimeError(
+                "The Dr.Anmar live suture tensor state is non-finite or incomplete"
+            )
+        return transforms[:, :3]
 
 
     def apply_endoscope_camera_view(
@@ -4650,6 +4931,31 @@ def main() -> None:
             seed=selected_seed,
             root_path=suture_root_path,
         )
+        (
+            suture_runtime_profile_state[0],
+            suture_runtime_domain_state[0],
+        ) = sample_suture_runtime_profile(
+            suture_profile,
+            selected_seed,
+        )
+        suture_runtime_state[0] = SutureRuntime(
+            suture_runtime_profile_state[0],
+            root_path=f"{suture_root_path}/Suture",
+        )
+        reset_suture_stage_update = suture_runtime_state[0].apply_to_stage(
+            suture_stage,
+            representative_self_contact_load_n=0.0,
+        )
+        if reset_suture_stage_update["missing_joints"]:
+            raise RuntimeError(
+                "The Dr.Anmar suture material history failed to reset cleanly"
+            )
+        suture_last_sample_time[0] = time.monotonic()
+        if native_episode_domain:
+            native_episode_domain["requested_reset_seed"] = selected_seed
+            native_episode_domain["requires_scene_rebuild_for_new_material_domain"] = (
+                selected_seed != native_episode_domain["setup_seed"]
+            )
         initialize_native_attachment()
         write_native_attachment()
         apply_native_object_scenario(objects, selected_scenario, selected_seed)
@@ -4737,8 +5043,10 @@ def main() -> None:
     demo_started_monotonic = 0.0
     last_vision_sample_time = 0.0
     last_safety_sample_time = 0.0
+    suture_last_sample_time = [time.monotonic()]
     latest_contact_forces: dict[str, float] = {}
     latest_deformable_safety: dict[str, float] = {}
+    latest_suture_telemetry: dict[str, Any] = {}
     replay_actions: np.ndarray | None = None
     upstream_expert_active = False
     upstream_expert_index = 0
@@ -5257,6 +5565,19 @@ def main() -> None:
             .astype(np.float32)
             for name, rigid_object in objects.items()
         }
+        hemostasis_clip_pose_w = None
+        if hemostasis_clip_view is not None:
+            clip_transforms = (
+                hemostasis_clip_view.get_transforms()
+                .detach()
+                .cpu()
+                .numpy()
+                .astype(np.float64)
+            )
+            if clip_transforms.shape == (1, 7) and np.isfinite(
+                clip_transforms
+            ).all():
+                hemostasis_clip_pose_w = clip_transforms[0]
         native_clearances = [
             clearance
             for position in current_tool_positions.values()
@@ -5271,6 +5592,20 @@ def main() -> None:
             state.native_telemetry = {
                 "contact_forces_n": dict(latest_contact_forces),
                 "deformable": dict(latest_deformable_safety),
+                "dr_anmar_suture": dict(latest_suture_telemetry),
+                "native_deformable_domain": dict(native_episode_domain),
+                "dr_anmar_hemostasis": {
+                    "clip_pose_w": (
+                        hemostasis_clip_pose_w.round(7).tolist()
+                        if hemostasis_clip_pose_w is not None
+                        else None
+                    ),
+                    "plastic_forming": False,
+                    "flow_model": "not_present_in_native_physx_room",
+                    "clinical_validation": False,
+                }
+                if native_hemostasis_enabled
+                else {},
             }
             state.native_rigid_object_positions_m = {
                 name: position.astype(float).round(5).tolist()
@@ -5385,6 +5720,56 @@ def main() -> None:
                 deformables,
                 include_material_metrics=not _softmimicgen_task,
             )
+            suture_sample_time = time.monotonic()
+            suture_dt_s = max(
+                0.0,
+                suture_sample_time - suture_last_sample_time[0],
+            )
+            suture_sample_period_s = float(
+                suture_profile["runtime_detection"]["sample_period_s"]
+            )
+            if suture_dt_s >= suture_sample_period_s:
+                live_suture_positions = suture_segment_positions()
+                filtered_suture_forces = {
+                    arm: filtered_suture_contact_force(arm)
+                    for arm in current_tool_positions
+                }
+                representative_suture_load_n = max(
+                    filtered_suture_forces.values(),
+                    default=0.0,
+                )
+                suture_observation = suture_runtime_state[
+                    0
+                ].observe_segment_positions(
+                    live_suture_positions,
+                    dt_s=suture_dt_s,
+                    representative_self_contact_load_n=representative_suture_load_n,
+                )
+                instrument_observations = {
+                    str(arm): suture_runtime_state[0].record_instrument_contact(
+                        live_suture_positions,
+                        tool_position=position,
+                        contact_force_n=filtered_suture_forces.get(arm, 0.0),
+                        duration_s=suture_dt_s,
+                    )
+                    for arm, position in current_tool_positions.items()
+                }
+                suture_stage_update = suture_runtime_state[0].apply_to_stage(
+                    suture_stage,
+                    representative_self_contact_load_n=representative_suture_load_n,
+                )
+                latest_suture_telemetry = {
+                    **suture_runtime_state[0].telemetry(),
+                    "episode_domain": dict(suture_runtime_domain_state[0]),
+                    "observation": suture_observation,
+                    "instrument_contacts": instrument_observations,
+                    "stage_update": suture_stage_update,
+                    "sample_period_s": suture_dt_s,
+                    "evidence_source": (
+                        "native_physx_tensor_poses_and_filtered_jaw_contacts"
+                    ),
+                }
+                suture_last_sample_time[0] = suture_sample_time
             max_force_value = max(latest_contact_forces.values(), default=None)
             max_displacement = max(
                 (value for key, value in latest_deformable_safety.items() if key.endswith("_max_tissue_displacement_m")),
@@ -5403,6 +5788,9 @@ def main() -> None:
                 state.max_tissue_displacement_m = max_displacement
                 state.max_tissue_deformation_proxy = max_deformation
                 state.max_tissue_stress_pa = max_stress
+                state.native_telemetry["dr_anmar_suture"] = dict(
+                    latest_suture_telemetry
+                )
             last_safety_sample_time = loop_started
         if is_recording:
             with state.lock:
@@ -5491,10 +5879,30 @@ def main() -> None:
                 frame[f"{name}_quaternion_w"] = rigid_object.data.root_quat_w[0].detach().cpu().numpy().copy()
             if current_native_centroid is not None:
                 frame["native_tissue_centroid_w"] = current_native_centroid.copy()
+            if hemostasis_clip_pose_w is not None:
+                frame["dr_anmar_vascular_clip_pose_w"] = (
+                    hemostasis_clip_pose_w.copy()
+                )
             for key, value in latest_contact_forces.items():
                 frame[key] = np.array(value, dtype=np.float32)
             for key, value in latest_deformable_safety.items():
                 frame[key] = np.array(value, dtype=np.float32)
+            frame["dr_anmar_suture_minimum_break_force_n"] = np.array(
+                latest_suture_telemetry.get("minimum_break_force_n", np.nan),
+                dtype=np.float32,
+            )
+            frame["dr_anmar_suture_maximum_observed_strain"] = np.array(
+                latest_suture_telemetry.get("maximum_observed_strain", np.nan),
+                dtype=np.float32,
+            )
+            frame["dr_anmar_suture_failed_joint_count"] = np.array(
+                latest_suture_telemetry.get("failed_joint_count", 0),
+                dtype=np.int32,
+            )
+            frame["dr_anmar_suture_compacted_knot_joint_count"] = np.array(
+                latest_suture_telemetry.get("compacted_knot_joint_count", 0),
+                dtype=np.int32,
+            )
             if capture_spool is None:
                 with state.lock:
                     state.record_request = "stop"

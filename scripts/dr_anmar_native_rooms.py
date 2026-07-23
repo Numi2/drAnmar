@@ -53,8 +53,22 @@ def resolve_native_room(procedure_id: str) -> dict[str, Any] | None:
         resolved["alternate_tetmesh_asset_path"] = str(
             (asset_root / binding["alternate_tetmesh_asset"]).resolve()
         )
+    auxiliary_assets: list[dict[str, Any]] = []
+    for auxiliary in binding.get("auxiliary_assets", []):
+        resolved_auxiliary = dict(auxiliary)
+        resolved_auxiliary["asset_path"] = str(
+            (asset_root / auxiliary["asset"]).resolve()
+        )
+        auxiliary_assets.append(resolved_auxiliary)
+    resolved["auxiliary_assets"] = auxiliary_assets
     resolved["material_path"] = str((REPOSITORY_ROOT / binding["material"]).resolve())
-    resolved["available"] = Path(resolved["asset_path"]).is_file() and Path(
-        resolved["asset_contract_path"]
-    ).is_file() and Path(resolved["material_path"]).is_file()
+    resolved["available"] = (
+        Path(resolved["asset_path"]).is_file()
+        and Path(resolved["asset_contract_path"]).is_file()
+        and Path(resolved["material_path"]).is_file()
+        and all(
+            Path(auxiliary["asset_path"]).is_file()
+            for auxiliary in auxiliary_assets
+        )
+    )
     return resolved

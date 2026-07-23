@@ -20,7 +20,7 @@ def Xform "DrAnmarVascularClip" (
         string drAnmarMaterialProxy = "titanium_alloy_research_proxy"
         string drAnmarPlasticFormingBackend = "rod_fem_or_mpm_with_contact_and_plasticity"
         string drAnmarProfileId = "dr-anmar-hemostasis-v1"
-        string drAnmarRepresentation = "high_resolution_serrated_mesh_with_centerline_capsule_collision"
+        string drAnmarRepresentation = "high_resolution_serrated_mesh_with_full_section_box_and_explicit_serration_collision"
         int drAnmarSimToRealGapCount = 10
         int drAnmarTriangleCount = 2136
         int drAnmarVertexCount = 1070
@@ -1133,1060 +1133,1484 @@ uniform token orientation = "rightHanded"
 
     def Xform "Collision"
     {
-        def Capsule "Segment000" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment000" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00484375, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment001" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment001" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00453125, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment002" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment002" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00421875, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment003" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment003" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00390625, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment004" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment004" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00359375, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment005" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment005" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00328125, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment006" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment006" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00296875, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment007" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment007" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00265625, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment008" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment008" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00234375, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment009" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment009" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00203125, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment010" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment010" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00171875, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment011" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment011" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00140625, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment012" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment012" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00109375, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment013" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment013" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00078125, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment014" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment014" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00046875, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment015" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment015" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00015625, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment016" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment016" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00015625, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment017" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment017" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00046875, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment018" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment018" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00078125, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment019" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment019" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00109375, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment020" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment020" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00140625, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment021" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment021" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00171875, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment022" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment022" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00203125, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment023" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment023" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00234375, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment024" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment024" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00265625, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment025" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment025" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00296875, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment026" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment026" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00328125, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment027" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment027" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00359375, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment028" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment028" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00390625, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment029" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment029" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00421875, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment030" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment030" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00453125, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment031" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment031" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00484375, 0.0021, 0)
             float xformOp:rotateZ = 180
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment032" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment032" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00513705250183, 0.00209101710444, 0)
             float xformOp:rotateZ = -176.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment033" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment033" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00540881249919, 0.00205523922205, 0)
             float xformOp:rotateZ = -168.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment034" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment034" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00567357760134, 0.00198429562674, 0)
             float xformOp:rotateZ = -161.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment035" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment035" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00592681760398, 0.00187940018311, 0)
             float xformOp:rotateZ = -153.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment036" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment036" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00616419950046, 0.00174234768128, 0)
             float xformOp:rotateZ = -146.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment037" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment037" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00638166162071, 0.00157548312755, 0)
             float xformOp:rotateZ = -138.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment038" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment038" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00657548312755, 0.00138166162071, 0)
             float xformOp:rotateZ = -131.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment039" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment039" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00674234768128, 0.00116419950046, 0)
             float xformOp:rotateZ = -123.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment040" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment040" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00687940018311, 0.000926817603983, 0)
             float xformOp:rotateZ = -116.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment041" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment041" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00698429562674, 0.000673577601341, 0)
             float xformOp:rotateZ = -108.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment042" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment042" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00705523922205, 0.000408812499189, 0)
             float xformOp:rotateZ = -101.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment043" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment043" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00709101710444, 0.000137052501831, 0)
             float xformOp:rotateZ = -93.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment044" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment044" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00709101710444, -0.000137052501831, 0)
             float xformOp:rotateZ = -86.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment045" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment045" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00705523922205, -0.000408812499189, 0)
             float xformOp:rotateZ = -78.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment046" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment046" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00698429562674, -0.000673577601341, 0)
             float xformOp:rotateZ = -71.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment047" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment047" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00687940018311, -0.000926817603983, 0)
             float xformOp:rotateZ = -63.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment048" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment048" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00674234768128, -0.00116419950046, 0)
             float xformOp:rotateZ = -56.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment049" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment049" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00657548312755, -0.00138166162071, 0)
             float xformOp:rotateZ = -48.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment050" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment050" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00638166162071, -0.00157548312755, 0)
             float xformOp:rotateZ = -41.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment051" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment051" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00616419950046, -0.00174234768128, 0)
             float xformOp:rotateZ = -33.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment052" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment052" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00592681760398, -0.00187940018311, 0)
             float xformOp:rotateZ = -26.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment053" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment053" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00567357760134, -0.00198429562674, 0)
             float xformOp:rotateZ = -18.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment054" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment054" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00540881249919, -0.00205523922205, 0)
             float xformOp:rotateZ = -11.25
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment055" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment055" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.000274693142767
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00513705250183, -0.00209101710444, 0)
             float xformOp:rotateZ = -3.75
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.000274693142767, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment056" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment056" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00484375, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment057" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment057" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00453125, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment058" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment058" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00421875, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment059" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment059" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00390625, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment060" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment060" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00359375, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment061" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment061" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00328125, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment062" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment062" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00296875, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment063" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment063" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00265625, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment064" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment064" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00234375, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment065" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment065" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00203125, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment066" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment066" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00171875, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment067" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment067" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00140625, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment068" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment068" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00109375, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment069" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment069" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00078125, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment070" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment070" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00046875, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment071" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment071" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (-0.00015625, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment072" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment072" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00015625, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment073" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment073" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00046875, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment074" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment074" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00078125, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment075" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment075" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00109375, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment076" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment076" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00140625, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment077" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment077" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00171875, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment078" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment078" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00203125, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment079" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment079" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00234375, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment080" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment080" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00265625, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment081" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment081" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00296875, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment082" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment082" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00328125, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment083" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment083" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00359375, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment084" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment084" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00390625, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment085" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment085" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00421875, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment086" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment086" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00453125, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
         }
 
-        def Capsule "Segment087" (
-            prepend apiSchemas = ["PhysicsCollisionAPI"]
+        def Cube "Segment087" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
         )
         {
-            uniform token axis = "X"
-            double height = 0.0003125
-            double radius = 0.00025
+            double size = 1
+            float physxCollision:contactOffset = 0.00004
+            float physxCollision:restOffset = 0
             double3 xformOp:translate = (0.00484375, -0.0021, 0)
             float xformOp:rotateZ = 0
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+            double3 xformOp:scale = (0.0003125, 0.00075, 0.0005)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper00" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00464285714286, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper01" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00392857142857, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper02" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00321428571429, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper03" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.0025, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper04" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00178571428571, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper05" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00107142857143, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper06" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.000357142857143, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper07" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.000357142857143, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper08" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00107142857143, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper09" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00178571428571, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper10" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.0025, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper11" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00321428571429, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper12" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00392857142857, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationUpper13" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00464285714286, 0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower00" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00464285714286, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower01" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00392857142857, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower02" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00321428571429, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower03" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.0025, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower04" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00178571428571, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower05" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.00107142857143, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower06" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (-0.000357142857143, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower07" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.000357142857143, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower08" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00107142857143, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower09" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00178571428571, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower10" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.0025, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower11" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00321428571429, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower12" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00392857142857, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SerrationLower13" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+        )
+        {
+            double size = 1
+            float physxCollision:contactOffset = 0.00002
+            float physxCollision:restOffset = 0
+            double3 xformOp:translate = (0.00464285714286, -0.001685, 0)
+            double3 xformOp:scale = (0.000315, 8e-05, 0.00045)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
         }
     }
 }

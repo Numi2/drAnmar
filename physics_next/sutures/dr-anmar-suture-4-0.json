@@ -63,7 +63,9 @@
   },
   "contact": {
     "static_friction": 0.42,
+    "static_friction_range": [0.25, 0.62],
     "dynamic_friction": 0.32,
+    "dynamic_friction_range": [0.18, 0.5],
     "restitution": 0.0,
     "load_dependent_self_friction": {
       "low_load_coefficient": 0.46,
@@ -77,6 +79,7 @@
   "viscoelasticity": {
     "wet_state": true,
     "retained_stress_asymptote": 0.59,
+    "retained_stress_asymptote_range": [0.48, 0.72],
     "fast_relaxation_weight": 0.7,
     "fast_time_constant_s": 600.0,
     "slow_time_constant_s": 7200.0,
@@ -94,6 +97,7 @@
   },
   "instrument_damage": {
     "reference_crush_pressure_pa": 45000000.0,
+    "reference_crush_pressure_range_pa": [30000000.0, 65000000.0],
     "reference_crush_duration_s": 1.0,
     "crush_strength_remaining": [
       {
@@ -114,7 +118,23 @@
       }
     ],
     "abrasion_damage_enabled": true,
-    "abrasion_work_to_failure_j_seed": 0.18
+    "abrasion_work_to_failure_j_seed": 0.18,
+    "abrasion_work_to_failure_range_j": [0.08, 0.32]
+  },
+  "runtime_detection": {
+    "observation_source": "native_filtered_jaw_contacts_and_openusd_rigid_body_poses",
+    "sample_period_s": 0.2,
+    "driver_contact_area_m2_seed": 5e-08,
+    "instrument_localization_radius_m": 0.0015,
+    "self_contact_centerline_distance_m": 0.0003375,
+    "knot_minimum_index_separation": 12,
+    "knot_compaction_dwell_s": 0.25,
+    "failure_policy": "observed_strain_or_physx_joint_break",
+    "limitations": [
+      "contact area is a research seed pending instrument-jaw pressure-film calibration",
+      "knot recognition is a persistent tight-bend plus nonadjacent-contact detector pending labeled knot trajectories",
+      "OpenUSD pose sampling is a single-environment workstation path, not the high-throughput training path"
+    ]
   },
   "swage": {
     "transition_length_m": 0.003,
@@ -131,6 +151,108 @@
     "position_iterations": 16,
     "velocity_iterations": 4,
     "minimum_solver_velocity_iterations": 2
+  },
+  "sim_to_real": {
+    "setup_seed": 20260724,
+    "runtime_applied_parameter_sampling": [
+      "straight_failure_load",
+      "knot_strength_efficiency",
+      "static_friction",
+      "dynamic_friction",
+      "wet_stress_retention",
+      "driver_crush_threshold",
+      "abrasion_work_to_failure"
+    ],
+    "gaps": [
+      {
+        "id": "manufacturing_lot_variation",
+        "risk": "diameter, braid pitch, coating and defects vary between lots and along a strand",
+        "mitigation": "fit hierarchical distributions from multiple lots and retain spatially varying strand measurements",
+        "status": "runtime_material_distribution_defined_pending_metrology"
+      },
+      {
+        "id": "wet_conditioning_and_temperature",
+        "risk": "hydration, soak time and temperature alter friction, stiffness and relaxation",
+        "mitigation": "calibrate wet and dry time-temperature histories and randomize only measured distributions",
+        "status": "runtime_distribution_defined_pending_bench_data"
+      },
+      {
+        "id": "instrument_damage_localization",
+        "risk": "jaw geometry, contact patch and closure history control local crushing and abrasion",
+        "mitigation": "use filtered per-jaw contact, measured tool pose and pressure-film jaw-area calibration",
+        "status": "live_localization_implemented_contact_area_pending_calibration"
+      },
+      {
+        "id": "knot_topology_and_compaction",
+        "risk": "different throws, crossings, compaction histories and wet friction produce distinct slip and strength",
+        "mitigation": "detect persistent nonadjacent contact plus tight bending and validate against labeled knot trajectories",
+        "status": "live_detector_implemented_pending_labeled_validation"
+      },
+      {
+        "id": "self_contact_friction",
+        "risk": "Coulomb proxies do not reproduce full load, speed, wetness and braid-direction dependence",
+        "mitigation": "fit load-speed-conditioned friction surfaces from capstan and knot tests",
+        "status": "load_dependent_live_proxy_pending_bench_data"
+      },
+      {
+        "id": "long_duration_degradation",
+        "risk": "hydrolysis and long-duration strength loss exceed the current operative-time relaxation model",
+        "mitigation": "separate short operative relaxation from versioned multi-day degradation laws",
+        "status": "blocked_pending_long_duration_data"
+      },
+      {
+        "id": "numerical_convergence",
+        "risk": "segment length, time step, contact offsets and solver iterations affect knotting and breakage",
+        "mitigation": "require segment, time-step and solver convergence below five percent on promoted metrics",
+        "status": "native_gpu_probe_required"
+      },
+      {
+        "id": "visual_perception",
+        "risk": "sub-millimetre braided material aliases under endoscopic optics, fluid, blood and motion blur",
+        "mitigation": "validate tracking and segmentation on synchronized real and simulated capture",
+        "status": "blocked_pending_real_capture"
+      }
+    ]
+  },
+  "qualification": {
+    "policy": "fail_closed",
+    "requirements": [
+      {
+        "id": "deterministic_asset_contract",
+        "evidence": "geometry, joints, swage, replay, live-controller and report checks",
+        "status": "automated_in_repository"
+      },
+      {
+        "id": "native_physics_stability",
+        "evidence": "finite state, convergence, knot, transfer, breakage and deterministic replay sweeps",
+        "status": "blocked_pending_native_gpu_probe"
+      },
+      {
+        "id": "straight_and_knotted_mechanics",
+        "evidence": "held-out tensile, bending, relaxation, friction, knot slip and knot strength distributions",
+        "status": "blocked_pending_physical_data"
+      },
+      {
+        "id": "instrument_damage",
+        "evidence": "pressure-film-calibrated jaw contact and repeated crush and abrasion failure distributions",
+        "status": "blocked_pending_physical_data"
+      },
+      {
+        "id": "needle_swage",
+        "evidence": "pullout force, transition stiffness and failure-location distributions",
+        "status": "blocked_pending_physical_data"
+      },
+      {
+        "id": "perception_transfer",
+        "evidence": "held-out real-video pose, segmentation and occlusion errors by condition",
+        "status": "blocked_pending_real_capture"
+      },
+      {
+        "id": "clinical_use",
+        "evidence": "independent clinical validation for the intended use",
+        "status": "blocked"
+      }
+    ]
   },
   "evidence": [
     {

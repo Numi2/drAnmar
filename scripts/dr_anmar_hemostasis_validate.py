@@ -11,6 +11,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from dr_anmar_native_rooms import resolve_native_room
+from dr_anmar_procedures import PROCEDURE_ROOMS
 from dr_anmar_hemostasis_author import (
     CLIP_ID,
     CLIP_NAME,
@@ -39,6 +41,7 @@ from dr_anmar_hemostasis_model import (
     pressure_diameter_m,
     sample_hemostasis_episode_parameters,
     signed_tetra_volume,
+    stable_physx_vessel_proxy_parameters,
     vessel_occlusion_state,
 )
 
@@ -47,6 +50,21 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_VALIDATION_REPORT = (
     REPOSITORY_ROOT / "assets/dr_anmar/hemostasis/DrAnmarHemostasis.validation.json"
 )
+
+
+def portable_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: portable_payload(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [portable_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return [portable_payload(item) for item in value]
+    if isinstance(value, str):
+        try:
+            return Path(value).resolve().relative_to(REPOSITORY_ROOT).as_posix()
+        except (OSError, ValueError):
+            return value
+    return value
 
 
 def sha256(path: Path) -> str:
@@ -82,6 +100,9 @@ def validate(
     clip_path: Path,
 ) -> dict[str, Any]:
     checks: dict[str, dict[str, Any]] = {}
+    workstation_text = (
+        REPOSITORY_ROOT / "scripts/dr_anmar_workstation.py"
+    ).read_text(encoding="utf-8")
     vessel = build_vessel_mesh(profile)
     clip = build_clip_mesh(profile)
     derived = derive_hemostasis(profile, vessel, clip)
@@ -351,26 +372,40 @@ def validate(
         f'drAnmarAssetId = "{CLIP_ID}"',
         f'drAnmarAssetName = "{CLIP_NAME}"',
         'drAnmarConstruction = "one_piece_u_clip_with_swept_elliptical_section_and_inner_serrations"',
-        'drAnmarRepresentation = "high_resolution_serrated_mesh_with_centerline_capsule_collision"',
+        'drAnmarRepresentation = "high_resolution_serrated_mesh_with_full_section_box_and_explicit_serration_collision"',
         "PhysicsRigidBodyAPI",
         "PhysicsMassAPI",
         'def Mesh "Visual"',
         'def Xform "Collision"',
     ]
     missing_clip_tokens = [token for token in clip_tokens if token not in clip_text]
-    capsule_count = clip_text.count('def Capsule "Segment')
+    box_count = clip_text.count('def Cube "Segment')
+    serration_count = clip_text.count('def Cube "Serration')
+    expected_serration_count = 2 * max(
+        1,
+        int(
+            math.floor(
+                float(profile["clip"]["arm_length_m"])
+                / float(profile["clip"]["inner_serration_pitch_m"])
+            )
+        ),
+    )
     check(
         checks,
         "clip_openusd_and_collision_contract",
         not missing_clip_tokens
-        and capsule_count == derived.clip_centerline_segment_count,
+        and box_count == derived.clip_centerline_segment_count
+        and serration_count == expected_serration_count
+        and "physxCollision:contactOffset" in clip_text,
         {
             "missing": missing_clip_tokens,
-            "collision_capsules": capsule_count,
+            "full_section_collision_boxes": box_count,
+            "serration_collision_boxes": serration_count,
         },
         {
             "tokens": clip_tokens,
-            "collision_capsules": derived.clip_centerline_segment_count,
+            "full_section_collision_boxes": derived.clip_centerline_segment_count,
+            "serration_collision_boxes": expected_serration_count,
         },
     )
     forbidden_tokens = [
@@ -422,14 +457,22 @@ def validate(
     sample_a = sample_hemostasis_episode_parameters(profile, 7241)
     replay_a = sample_hemostasis_episode_parameters(profile, 7241)
     sample_b = sample_hemostasis_episode_parameters(profile, 7242)
+    stable_proxy_a = stable_physx_vessel_proxy_parameters(profile, sample_a)
+    stable_proxy_replay = stable_physx_vessel_proxy_parameters(profile, replay_a)
     check(
         checks,
         "deterministic_sim_to_real_sampling",
-        sample_a == replay_a and sample_a != sample_b,
+        sample_a == replay_a
+        and sample_a != sample_b
+        and stable_proxy_a == stable_proxy_replay
+        and float(stable_proxy_a["youngs_modulus_pa"]) > 0.0
+        and float(stable_proxy_a["dynamic_friction"])
+        <= float(stable_proxy_a["static_friction"]),
         {
             "seed_7241": sample_a.payload(),
             "seed_7241_replay": replay_a.payload(),
             "seed_7242": sample_b.payload(),
+            "stable_physx_proxy": stable_proxy_a,
         },
         "same seed exactly replays and a different seed changes the domain",
     )
@@ -540,19 +583,22 @@ def validate(
     check(
         checks,
         "occlusion_leak_and_overload_states",
-        not open_state.qualified_geometry
-        and closed_state.qualified_geometry
+        not open_state.surrogate_state_admissible
+        and closed_state.surrogate_state_admissible
         and closed_state.occlusion_fraction
         >= float(profile["occlusion"]["target_lumen_area_reduction_fraction"])
         and closed_state.leak_rate_ml_min
         <= float(profile["occlusion"]["maximum_qualified_leak_rate_ml_min"])
-        and overload_state.crush_damage > closed_state.crush_damage,
+        and overload_state.crush_damage > closed_state.crush_damage
+        and overload_state.surrogate_occlusion_threshold_passed
+        and not overload_state.damage_limit_satisfied
+        and not overload_state.surrogate_state_admissible,
         {
             "open": open_state.__dict__,
             "closed": closed_state.__dict__,
             "overload": overload_state.__dict__,
         },
-        "closed geometry seals the reduced-order lumen while overload raises damage",
+        "the surrogate threshold passes only when the damage limit also remains satisfied",
     )
     weak_retention = clip_retention_force_n(
         profile,
@@ -636,6 +682,42 @@ def validate(
         len(evidence),
         "at least six traceable platform or primary research sources",
     )
+    native_room = resolve_native_room(PACKAGE_ID)
+    room = next(
+        (candidate for candidate in PROCEDURE_ROOMS if candidate["id"] == PACKAGE_ID),
+        None,
+    )
+    check(
+        checks,
+        "repository_native_hemostasis_room",
+        bool(native_room)
+        and native_room["available"]
+        and native_room["backend"] == "physx_fem_hemostasis"
+        and native_room["repository_asset"] is True
+        and Path(native_room["asset_path"]) == DEFAULT_VESSEL_OUTPUT
+        and Path(native_room["alternate_tetmesh_asset_path"]) == DEFAULT_TET_OUTPUT
+        and len(native_room["auxiliary_assets"]) == 1
+        and Path(native_room["auxiliary_assets"][0]["asset_path"])
+        == DEFAULT_CLIP_OUTPUT
+        and bool(room)
+        and room["bimanual"] is True
+        and "remain fail-closed" in room["interaction"]
+        and "stable_physx_vessel_proxy_parameters(" in workstation_text
+        and "hemostasis_clip_view" in workstation_text
+        and '"plastic_forming": False' in workstation_text,
+        {
+            "binding": portable_payload(native_room),
+            "room": portable_payload(room),
+            "setup_time_vessel_domain": (
+                "stable_physx_vessel_proxy_parameters(" in workstation_text
+            ),
+            "native_clip_tensor_view": "hemostasis_clip_view"
+            in workstation_text,
+            "plasticity_boundary": '"plastic_forming": False'
+            in workstation_text,
+        },
+        "repository-owned deformable vessel and rigid clip room with explicit blocked behavior",
+    )
 
     passed = all(item["passed"] for item in checks.values())
     return {
@@ -653,10 +735,16 @@ def validate(
             "clip_points": derived.clip_point_count,
             "clip_triangles": derived.clip_triangle_count,
             "clip_collision_segments": (derived.clip_centerline_segment_count),
+            "clip_serration_collision_count": asset_report[
+                "clip_serration_collision_count"
+            ],
             "clip_mass_kg": derived.clip_mass_kg,
             "sim_to_real_gap_count": len(sim_gaps),
         },
         "stable_capability_boundary": asset_report["stable_capabilities"],
+        "non_promotable_surrogate_capability_boundary": asset_report[
+            "non_promotable_surrogate_capabilities"
+        ],
         "blocked_capability_boundary": asset_report["gated_capabilities"],
         "clinical_validation": False,
     }

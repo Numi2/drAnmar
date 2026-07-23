@@ -13,6 +13,7 @@
         "liver-retraction",
         "synthetic-anatomy-navigation",
         "dr-anmar-suturable-tissue",
+        "dr-anmar-hemostasis",
         "nvidia-strand-ring-threading",
         "needle-passing-regrasp",
         "complication-recovery"
@@ -24,6 +25,7 @@
         "liver-retraction",
         "synthetic-anatomy-navigation",
         "dr-anmar-suturable-tissue",
+        "dr-anmar-hemostasis",
         "nvidia-strand-ring-threading",
         "needle-passing-regrasp",
         "complication-recovery"
@@ -141,6 +143,15 @@
         "main",
         "reset_environment"
       ],
+      "passed": true
+    },
+    "live_suture_material_history_wiring": {
+      "expected": "native tensor poses and filtered per-jaw contact drive cumulative live material history",
+      "measured": {
+        "cumulative_pressure_dose": 1.0,
+        "grasp_count": 1,
+        "missing_workstation_tokens": []
+      },
       "passed": true
     },
     "load_dependent_self_friction": {
@@ -285,6 +296,51 @@
         25.0
       ],
       "measured": 22.5,
+      "passed": true
+    },
+    "suture_runtime_domain_and_qualification": {
+      "expected": "replayable live suture material domain with fail-closed evidence gates",
+      "measured": {
+        "clinical": [
+          {
+            "evidence": "independent clinical validation for the intended use",
+            "id": "clinical_use",
+            "status": "blocked"
+          }
+        ],
+        "gap_count": 8,
+        "requirement_count": 7,
+        "seed_2701": {
+          "abrasion_work_to_failure_j": 0.31326612259463266,
+          "dynamic_friction": 0.49045539294657664,
+          "knot_strength_efficiency": 0.6345449924351517,
+          "reference_crush_pressure_pa": 62996835.13915166,
+          "retained_stress_asymptote": 0.6376079488633886,
+          "seed": 2701,
+          "static_friction": 0.5992178064589024,
+          "straight_failure_load_n": 21.090568004281987
+        },
+        "seed_2701_replay": {
+          "abrasion_work_to_failure_j": 0.31326612259463266,
+          "dynamic_friction": 0.49045539294657664,
+          "knot_strength_efficiency": 0.6345449924351517,
+          "reference_crush_pressure_pa": 62996835.13915166,
+          "retained_stress_asymptote": 0.6376079488633886,
+          "seed": 2701,
+          "static_friction": 0.5992178064589024,
+          "straight_failure_load_n": 21.090568004281987
+        },
+        "seed_2702": {
+          "abrasion_work_to_failure_j": 0.29780380989269956,
+          "dynamic_friction": 0.3130827527193234,
+          "knot_strength_efficiency": 0.788853139220999,
+          "reference_crush_pressure_pa": 32807331.08579514,
+          "retained_stress_asymptote": 0.504476104039736,
+          "seed": 2702,
+          "static_friction": 0.3130827527193234,
+          "straight_failure_load_n": 22.461946786401153
+        }
+      },
       "passed": true
     },
     "true_4_0_diameter": {

@@ -1,16 +1,16 @@
 {
-  "schema": "dr.anmar.hemostasis-asset-report.v1",
+  "schema": "dr.anmar.hemostasis-asset-report.v2",
   "name": "DrAnmar Hemostasis Vessel and Clip",
   "asset_id": "dr-anmar-hemostasis",
   "asset_version": "1.0.0",
-  "profile": "/Users/home/gilgamesh/DrAnmar/physics_next/vessels/dr-anmar-hemostasis-v1.json",
+  "profile": "physics_next/vessels/dr-anmar-hemostasis-v1.json",
   "profile_id": "dr-anmar-hemostasis-v1",
-  "vessel_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
+  "vessel_asset": "assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
   "vessel_asset_sha256": "68a9e73f41532fb62155e93443edb50edf204baf2091ecc4c42c97a4ed02ebb3",
-  "vessel_tetmesh_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/hemostasis/DrAnmarVessel.tet.usda",
+  "vessel_tetmesh_asset": "assets/dr_anmar/hemostasis/DrAnmarVessel.tet.usda",
   "vessel_tetmesh_asset_sha256": "aecc39546499856d38fd878d808d60668382c4688a5c7c434dac1cef2c292fe7",
-  "clip_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
-  "clip_asset_sha256": "25f997a10f04e13855cd8aa52d7a5adf5f6228f80989adffd9939dc1122be192",
+  "clip_asset": "assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
+  "clip_asset_sha256": "6dc1b0ff46b0442a3f34ba1fae61e57ad4be607445b69ac4664c0bfff219d3e5",
   "vessel_point_count": 7104,
   "vessel_tetrahedron_count": 31104,
   "vessel_surface_triangle_count": 7488,
@@ -36,6 +36,7 @@
   "clip_point_count": 1070,
   "clip_triangle_count": 2136,
   "clip_centerline_segment_count": 88,
+  "clip_serration_collision_count": 28,
   "clip_centerline_length_m": 0.02659263542639842,
   "clip_material_volume_m3": 7.832177633921715e-09,
   "clip_mass_kg": 3.46965469182732e-05,
@@ -44,9 +45,11 @@
     "open_lumen_geometry",
     "wall_layer_identity",
     "rigid_clip_manipulation",
-    "contact_geometry",
-    "pressure_diameter_reduced_order_model",
-    "occlusion_and_retention_reduced_order_model"
+    "contact_geometry"
+  ],
+  "non_promotable_surrogate_capabilities": [
+    "pressure_diameter_reduced_order_surrogate",
+    "occlusion_and_retention_reduced_order_surrogate"
   ],
   "gated_capabilities": [
     "plastic_clip_forming",

@@ -47,6 +47,14 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def portable_path(path: Path) -> str:
+    resolved = path.expanduser().resolve()
+    try:
+        return resolved.relative_to(REPOSITORY_ROOT).as_posix()
+    except ValueError:
+        return resolved.as_posix()
+
+
 def usd_float(value: float) -> str:
     return f"{value:.12g}"
 
@@ -315,7 +323,7 @@ def clip_custom_data(
         string drAnmarMaterialProxy = "{profile["clip"]["material_proxy"]}"
         string drAnmarPlasticFormingBackend = "{profile["clip"]["plastic_forming_backend_required"]}"
         string drAnmarProfileId = "{profile["id"]}"
-        string drAnmarRepresentation = "high_resolution_serrated_mesh_with_centerline_capsule_collision"
+        string drAnmarRepresentation = "high_resolution_serrated_mesh_with_full_section_box_and_explicit_serration_collision"
         int drAnmarSimToRealGapCount = {len(profile["sim_to_real"]["gaps"])}
         int drAnmarTriangleCount = {len(clip.triangles)}
         int drAnmarVertexCount = {len(clip.points)}
@@ -327,7 +335,10 @@ def clip_collision_blocks(
     profile: dict[str, Any],
     clip: ClipMesh,
 ) -> str:
-    radius = float(profile["clip"]["section_thickness_m"]) / 2.0
+    section_width = float(profile["clip"]["section_width_m"])
+    section_thickness = float(profile["clip"]["section_thickness_m"])
+    serration_pitch = float(profile["clip"]["inner_serration_pitch_m"])
+    serration_depth = float(profile["clip"]["inner_serration_depth_m"])
     blocks: list[str] = []
     for index, (start, end) in enumerate(zip(clip.centerline, clip.centerline[1:])):
         midpoint = tuple((start[axis] + end[axis]) / 2.0 for axis in range(3))
@@ -335,18 +346,45 @@ def clip_collision_blocks(
         length = math.sqrt(sum(value * value for value in delta))
         angle_degrees = math.degrees(math.atan2(delta[1], delta[0]))
         blocks.append(
-            f"""def Capsule "Segment{index:03d}" (
-    prepend apiSchemas = ["PhysicsCollisionAPI"]
+            f"""def Cube "Segment{index:03d}" (
+    prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
 )
 {{
-    uniform token axis = "X"
-    double height = {usd_float(length)}
-    double radius = {usd_float(radius)}
+    double size = 1
+    float physxCollision:contactOffset = 0.00004
+    float physxCollision:restOffset = 0
     double3 xformOp:translate = {usd_vec(midpoint)}
     float xformOp:rotateZ = {usd_float(angle_degrees)}
-    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+    double3 xformOp:scale = {usd_vec((length, section_width, section_thickness))}
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]
 }}"""
         )
+    arm_length = float(profile["clip"]["arm_length_m"])
+    crown_radius = float(profile["clip"]["crown_radius_m"])
+    tooth_count_per_arm = max(1, int(math.floor(arm_length / serration_pitch)))
+    x_crown = -arm_length / 2.0
+    tooth_length = serration_pitch * 0.45
+    tooth_width = serration_depth
+    tooth_thickness = section_thickness * 0.9
+    for arm_name, direction in (("Upper", 1.0), ("Lower", -1.0)):
+        y = direction * (
+            crown_radius - section_width / 2.0 - serration_depth / 2.0
+        )
+        for tooth_index in range(tooth_count_per_arm):
+            x = x_crown + (tooth_index + 0.5) * arm_length / tooth_count_per_arm
+            blocks.append(
+                f"""def Cube "Serration{arm_name}{tooth_index:02d}" (
+    prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI"]
+)
+{{
+    double size = 1
+    float physxCollision:contactOffset = 0.00002
+    float physxCollision:restOffset = 0
+    double3 xformOp:translate = {usd_vec((x, y, 0.0))}
+    double3 xformOp:scale = {usd_vec((tooth_length, tooth_width, tooth_thickness))}
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+}}"""
+            )
     return "\n\n".join(
         "        " + block.replace("\n", "\n        ") for block in blocks
     )
@@ -403,17 +441,17 @@ def build_report(
 ) -> dict[str, Any]:
     derived = derive_hemostasis(profile, vessel, clip)
     return {
-        "schema": "dr.anmar.hemostasis-asset-report.v1",
+        "schema": "dr.anmar.hemostasis-asset-report.v2",
         "name": PACKAGE_NAME,
         "asset_id": PACKAGE_ID,
         "asset_version": PACKAGE_VERSION,
-        "profile": str(profile_path.resolve()),
+        "profile": portable_path(profile_path),
         "profile_id": profile["id"],
-        "vessel_asset": str(vessel_path.resolve()),
+        "vessel_asset": portable_path(vessel_path),
         "vessel_asset_sha256": sha256(vessel_path),
-        "vessel_tetmesh_asset": str(tet_path.resolve()),
+        "vessel_tetmesh_asset": portable_path(tet_path),
         "vessel_tetmesh_asset_sha256": sha256(tet_path),
-        "clip_asset": str(clip_path.resolve()),
+        "clip_asset": portable_path(clip_path),
         "clip_asset_sha256": sha256(clip_path),
         "vessel_point_count": derived.vessel_point_count,
         "vessel_tetrahedron_count": derived.vessel_tetrahedron_count,
@@ -435,6 +473,18 @@ def build_report(
         "clip_point_count": derived.clip_point_count,
         "clip_triangle_count": derived.clip_triangle_count,
         "clip_centerline_segment_count": (derived.clip_centerline_segment_count),
+        "clip_serration_collision_count": (
+            2
+            * max(
+                1,
+                int(
+                    math.floor(
+                        float(profile["clip"]["arm_length_m"])
+                        / float(profile["clip"]["inner_serration_pitch_m"])
+                    )
+                ),
+            )
+        ),
         "clip_centerline_length_m": clip.centerline_length_m,
         "clip_material_volume_m3": clip.material_volume_m3,
         "clip_mass_kg": derived.clip_mass_kg,
@@ -444,8 +494,10 @@ def build_report(
             "wall_layer_identity",
             "rigid_clip_manipulation",
             "contact_geometry",
-            "pressure_diameter_reduced_order_model",
-            "occlusion_and_retention_reduced_order_model",
+        ],
+        "non_promotable_surrogate_capabilities": [
+            "pressure_diameter_reduced_order_surrogate",
+            "occlusion_and_retention_reduced_order_surrogate",
         ],
         "gated_capabilities": [
             "plastic_clip_forming",

@@ -9,6 +9,7 @@
       "alternate_tetmesh_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
       "representation": "two_watertight_open_incision_flaps_with_native_physx_tetrahedralization",
       "stage_key": "native_tissue",
+      "stage_prim_name": "NativeTissue",
       "spawn": {
         "translation_m": [0.0, -0.08, 0.004],
         "scale": [1.0, 1.0, 1.0]
@@ -20,6 +21,58 @@
         "width_m": 0.004
       },
       "material": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json"
+    },
+    "dr-anmar-hemostasis": {
+      "backend": "physx_fem_hemostasis",
+      "repository_asset": true,
+      "asset": "assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
+      "asset_contract": "physics_next/vessels/dr-anmar-hemostasis-v1.json",
+      "alternate_tetmesh_asset": "assets/dr_anmar/hemostasis/DrAnmarVessel.tet.usda",
+      "representation": "hollow_three_layer_vessel_with_native_physx_tetrahedralization_and_rigid_clip",
+      "stage_key": "native_vessel",
+      "stage_prim_name": "NativeVessel",
+      "spawn": {
+        "translation_m": [
+          0.0,
+          -0.08,
+          0.004
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "attachment": {
+        "kind": "opposed_axial_end_bands",
+        "axis": "x",
+        "sides": [
+          "minimum",
+          "maximum"
+        ],
+        "width_m": 0.0015
+      },
+      "auxiliary_assets": [
+        {
+          "stage_key": "dr_anmar_vascular_clip",
+          "prim_name": "DrAnmarVascularClip",
+          "asset": "assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
+          "translation_m": [
+            0.0,
+            -0.08,
+            0.016
+          ],
+          "rotation_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "role": "rigid_manipulation_and_contact_only",
+          "plastic_forming": false
+        }
+      ],
+      "material": "physics_next/vessels/dr-anmar-hemostasis-v1.json"
     },
     "nvidia-strand-ring-threading": {
       "backend": "physx_fem",

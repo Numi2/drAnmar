@@ -25,13 +25,14 @@
     },
     "clip_openusd_and_collision_contract": {
       "expected": {
-        "collision_capsules": 88,
+        "full_section_collision_boxes": 88,
+        "serration_collision_boxes": 28,
         "tokens": [
           "defaultPrim = \"DrAnmarVascularClip\"",
           "drAnmarAssetId = \"dr-anmar-vascular-clip\"",
           "drAnmarAssetName = \"DrAnmar Vascular Clip\"",
           "drAnmarConstruction = \"one_piece_u_clip_with_swept_elliptical_section_and_inner_serrations\"",
-          "drAnmarRepresentation = \"high_resolution_serrated_mesh_with_centerline_capsule_collision\"",
+          "drAnmarRepresentation = \"high_resolution_serrated_mesh_with_full_section_box_and_explicit_serration_collision\"",
           "PhysicsRigidBodyAPI",
           "PhysicsMassAPI",
           "def Mesh \"Visual\"",
@@ -39,8 +40,9 @@
         ]
       },
       "measured": {
-        "collision_capsules": 88,
-        "missing": []
+        "full_section_collision_boxes": 88,
+        "missing": [],
+        "serration_collision_boxes": 28
       },
       "passed": true
     },
@@ -139,6 +141,17 @@
           "wall_thickness_m": 0.0009230358881605364,
           "wetness": 0.526431092333014,
           "youngs_modulus_pa": 298981.7661818415
+        },
+        "stable_physx_proxy": {
+          "composite_modulus_multiplier": 1.1666666666666667,
+          "damping_ratio": 0.18,
+          "density_kg_m3": 1050.0,
+          "dynamic_friction": 0.23852516328652928,
+          "method": "volume_fraction_homogenized_wall_tangent_proxy",
+          "poisson_ratio": 0.48,
+          "static_friction": 0.494981912526942,
+          "wetness": 0.4232126195252117,
+          "youngs_modulus_pa": 721575.3418637511
         }
       },
       "passed": true
@@ -258,28 +271,34 @@
       "passed": true
     },
     "occlusion_leak_and_overload_states": {
-      "expected": "closed geometry seals the reduced-order lumen while overload raises damage",
+      "expected": "the surrogate threshold passes only when the damage limit also remains satisfied",
       "measured": {
         "closed": {
           "crush_damage": 0.7760770975056691,
+          "damage_limit_satisfied": true,
           "leak_rate_ml_min": 2.0995048383885015e-12,
           "occlusion_fraction": 0.9993329025165132,
-          "qualified_geometry": true,
-          "remaining_lumen_area_fraction": 0.0006670974834868504
+          "remaining_lumen_area_fraction": 0.0006670974834868504,
+          "surrogate_occlusion_threshold_passed": true,
+          "surrogate_state_admissible": true
         },
         "open": {
           "crush_damage": 0.0,
+          "damage_limit_satisfied": true,
           "leak_rate_ml_min": 239191.5217846393,
           "occlusion_fraction": 0.5355266655943179,
-          "qualified_geometry": false,
-          "remaining_lumen_area_fraction": 0.46447333440568206
+          "remaining_lumen_area_fraction": 0.46447333440568206,
+          "surrogate_occlusion_threshold_passed": false,
+          "surrogate_state_admissible": false
         },
         "overload": {
           "crush_damage": 1.0,
+          "damage_limit_satisfied": false,
           "leak_rate_ml_min": 2.0995048383885015e-12,
           "occlusion_fraction": 0.9993329025165132,
-          "qualified_geometry": true,
-          "remaining_lumen_area_fraction": 0.0006670974834868504
+          "remaining_lumen_area_fraction": 0.0006670974834868504,
+          "surrogate_occlusion_threshold_passed": true,
+          "surrogate_state_admissible": false
         }
       },
       "passed": true
@@ -354,6 +373,132 @@
       },
       "passed": true
     },
+    "repository_native_hemostasis_room": {
+      "expected": "repository-owned deformable vessel and rigid clip room with explicit blocked behavior",
+      "measured": {
+        "binding": {
+          "alternate_tetmesh_asset": "assets/dr_anmar/hemostasis/DrAnmarVessel.tet.usda",
+          "alternate_tetmesh_asset_path": "assets/dr_anmar/hemostasis/DrAnmarVessel.tet.usda",
+          "asset": "assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
+          "asset_contract": "physics_next/vessels/dr-anmar-hemostasis-v1.json",
+          "asset_contract_path": "physics_next/vessels/dr-anmar-hemostasis-v1.json",
+          "asset_path": "assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
+          "attachment": {
+            "axis": "x",
+            "kind": "opposed_axial_end_bands",
+            "sides": [
+              "minimum",
+              "maximum"
+            ],
+            "width_m": 0.0015
+          },
+          "auxiliary_assets": [
+            {
+              "asset": "assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
+              "asset_path": "assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
+              "plastic_forming": false,
+              "prim_name": "DrAnmarVascularClip",
+              "role": "rigid_manipulation_and_contact_only",
+              "rotation_wxyz": [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "stage_key": "dr_anmar_vascular_clip",
+              "translation_m": [
+                0.0,
+                -0.08,
+                0.016
+              ]
+            }
+          ],
+          "available": true,
+          "backend": "physx_fem_hemostasis",
+          "material": "physics_next/vessels/dr-anmar-hemostasis-v1.json",
+          "material_path": "physics_next/vessels/dr-anmar-hemostasis-v1.json",
+          "repository_asset": true,
+          "representation": "hollow_three_layer_vessel_with_native_physx_tetrahedralization_and_rigid_clip",
+          "spawn": {
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "translation_m": [
+              0.0,
+              -0.08,
+              0.004
+            ]
+          },
+          "stage_key": "native_vessel",
+          "stage_prim_name": "NativeVessel"
+        },
+        "native_clip_tensor_view": true,
+        "plasticity_boundary": true,
+        "room": {
+          "anatomy_focus": "DrAnmar hollow layered vessel",
+          "anatomy_scene": ".",
+          "bimanual": true,
+          "category": "Vascular control and hemostasis",
+          "difficulty": "Research foundation",
+          "guide_kind": "dr_anmar_hemostasis",
+          "hide_anatomy": true,
+          "id": "dr-anmar-hemostasis",
+          "instrument": "DrAnmar Vascular Clip and two needle drivers",
+          "interaction": "Native PhysX owns intact vessel deformation, rigid clip motion, and two-way contact. Plastic clip forming, pressure-tight sealing, pulsatile flow, bleeding, rupture, and clinical hemostasis remain fail-closed.",
+          "objective": "Manipulate the rigid clip, align it across the deformable vessel, study contact and placement, and collect force and deformation evidence.",
+          "robot": "Dual dVRK PSM",
+          "show_waypoint_markers": false,
+          "steps": [
+            {
+              "id": "inspect",
+              "instruction": "Survey the lumen, wall, vessel axis, clip gap and clip orientation.",
+              "signal": "geometry and pose",
+              "title": "Inspect vessel"
+            },
+            {
+              "id": "pickup",
+              "instruction": "Secure the rigid clip without crossing or crushing the vessel.",
+              "signal": "filtered jaw contact",
+              "title": "Pick up clip"
+            },
+            {
+              "id": "align",
+              "instruction": "Center the clip across the vessel with both arms clear of the wall.",
+              "signal": "clip-to-vessel pose",
+              "title": "Align clip"
+            },
+            {
+              "id": "contact",
+              "instruction": "Apply controlled contact and observe vessel deformation without claiming plastic closure.",
+              "signal": "two-way contact",
+              "title": "Establish contact"
+            },
+            {
+              "id": "qualify",
+              "instruction": "Capture force, displacement, contact, damage-surrogate and replay evidence under the fail-closed boundary.",
+              "signal": "research telemetry",
+              "title": "Record evidence"
+            }
+          ],
+          "success_metrics": [
+            "clip pickup",
+            "clip-to-vessel alignment",
+            "bilateral tool contact",
+            "vessel displacement",
+            "contact force",
+            "volume preservation",
+            "stable recovery"
+          ],
+          "task": "Isaac-Reach-Dual-PSM-IK-Rel-v0",
+          "title": "DrAnmar vascular control laboratory",
+          "waypoints": []
+        },
+        "setup_time_vessel_domain": true
+      },
+      "passed": true
+    },
     "sim_to_real_gap_register": {
       "expected": "at least ten complete gaps and twelve sampled parameters",
       "measured": {
@@ -421,6 +566,7 @@
     "clip_collision_segments": 88,
     "clip_mass_kg": 3.46965469182732e-05,
     "clip_points": 1070,
+    "clip_serration_collision_count": 28,
     "clip_triangles": 2136,
     "sim_to_real_gap_count": 10,
     "vessel_lumen_volume_ml": 0.9022739082354722,
@@ -429,6 +575,10 @@
     "vessel_tetrahedra": 31104,
     "vessel_wall_mass_kg": 0.0005309418306614971
   },
+  "non_promotable_surrogate_capability_boundary": [
+    "pressure_diameter_reduced_order_surrogate",
+    "occlusion_and_retention_reduced_order_surrogate"
+  ],
   "passed": true,
   "profile_id": "dr-anmar-hemostasis-v1",
   "schema": "dr.anmar.hemostasis-validation.v1",
@@ -437,8 +587,6 @@
     "open_lumen_geometry",
     "wall_layer_identity",
     "rigid_clip_manipulation",
-    "contact_geometry",
-    "pressure_diameter_reduced_order_model",
-    "occlusion_and_retention_reduced_order_model"
+    "contact_geometry"
   ]
 }

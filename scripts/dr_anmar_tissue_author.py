@@ -37,6 +37,14 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def portable_path(path: Path) -> str:
+    resolved = path.expanduser().resolve()
+    try:
+        return resolved.relative_to(REPOSITORY_ROOT).as_posix()
+    except ValueError:
+        return resolved.as_posix()
+
+
 def usd_float(value: float) -> str:
     return f"{value:.12g}"
 
@@ -243,15 +251,15 @@ def build_report(
 ) -> dict[str, Any]:
     derived = derive_tissue(profile, mesh)
     return {
-        "schema": "dr.anmar.suturable-tissue-asset-report.v1",
+        "schema": "dr.anmar.suturable-tissue-asset-report.v2",
         "name": ASSET_NAME,
         "asset_id": ASSET_ID,
         "asset_version": ASSET_VERSION,
-        "profile": str(profile_path.resolve()),
+        "profile": portable_path(profile_path),
         "profile_id": profile["id"],
-        "surface_asset": str(surface_path.resolve()),
+        "surface_asset": portable_path(surface_path),
         "surface_asset_sha256": sha256(surface_path),
-        "tetmesh_asset": str(tet_path.resolve()),
+        "tetmesh_asset": portable_path(tet_path),
         "tetmesh_asset_sha256": sha256(tet_path),
         "point_count": derived.point_count,
         "tetrahedron_count": derived.tetrahedron_count,
@@ -269,6 +277,7 @@ def build_report(
         "tetrahedron_groups": {
             name: len(indices) for name, indices in mesh.tetrahedron_groups.items()
         },
+        "stable_physx_layer_proxy": profile["stable_physx_proxy"],
         "stable_capabilities": [
             "intact_deformation",
             "two_way_contact",

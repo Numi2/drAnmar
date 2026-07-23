@@ -30,6 +30,7 @@ from dr_anmar_tissue_model import (
     needle_tissue_force,
     sample_tissue_episode_parameters,
     signed_tetra_volume,
+    stable_physx_proxy_parameters,
     suture_holding_capacity_n,
     wound_gap_under_tension_m,
 )
@@ -44,6 +45,19 @@ DEFAULT_VALIDATION_REPORT = (
     / "physics_next/benchmarks/dr-anmar-suturable-tissue-validation.json"
 )
 ROOM_ID = "dr-anmar-suturable-tissue"
+
+
+def portable_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: portable_payload(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [portable_payload(item) for item in value]
+    if isinstance(value, str):
+        try:
+            return Path(value).resolve().relative_to(REPOSITORY_ROOT).as_posix()
+        except (OSError, ValueError):
+            return value
+    return value
 
 
 def check(
@@ -286,14 +300,22 @@ def validate(
     sample_a = sample_tissue_episode_parameters(profile, 4107)
     replay_a = sample_tissue_episode_parameters(profile, 4107)
     sample_b = sample_tissue_episode_parameters(profile, 4108)
+    stable_proxy_a = stable_physx_proxy_parameters(profile, sample_a)
+    stable_proxy_replay = stable_physx_proxy_parameters(profile, replay_a)
     check(
         checks,
         "deterministic_sim_to_real_sampling",
-        sample_a == replay_a and sample_a != sample_b,
+        sample_a == replay_a
+        and sample_a != sample_b
+        and stable_proxy_a == stable_proxy_replay
+        and float(stable_proxy_a["youngs_modulus_pa"]) > 0.0
+        and float(stable_proxy_a["dynamic_friction"])
+        <= float(stable_proxy_a["static_friction"]),
         {
             "seed_4107": sample_a.payload(),
             "seed_4107_replay": replay_a.payload(),
             "seed_4108": sample_b.payload(),
+            "stable_physx_proxy": stable_proxy_a,
         },
         "same seed exactly replays and a different seed changes the domain",
     )
@@ -397,6 +419,12 @@ def validate(
         "gap decreases with tension without becoming negative",
     )
     sim_gaps = profile["sim_to_real"]["gaps"]
+    runtime_parameters = set(
+        profile["sim_to_real"]["implemented_parameter_sampling"]
+    )
+    model_only_parameters = set(
+        profile["sim_to_real"]["model_only_parameter_sampling"]
+    )
     complete_gaps = all(
         {"id", "risk", "mitigation", "status"}.issubset(item) for item in sim_gaps
     )
@@ -405,15 +433,42 @@ def validate(
         "sim_to_real_gap_register",
         len(sim_gaps) >= 10
         and complete_gaps
-        and len(profile["sim_to_real"]["implemented_parameter_sampling"]) >= 10,
+        and len(runtime_parameters) >= 7
+        and len(model_only_parameters) >= 3
+        and runtime_parameters.isdisjoint(model_only_parameters),
         {
             "gap_count": len(sim_gaps),
             "complete": complete_gaps,
-            "sampled_parameters": len(
-                profile["sim_to_real"]["implemented_parameter_sampling"]
+            "runtime_applied_parameters": sorted(runtime_parameters),
+            "model_only_parameters": sorted(model_only_parameters),
+        },
+        "at least ten complete gaps with runtime and model-only parameters separated",
+    )
+    check(
+        checks,
+        "live_setup_time_tissue_domain",
+        "sample_tissue_episode_parameters(" in workstation_text
+        and "stable_physx_proxy_parameters(" in workstation_text
+        and '"parameter_application": "setup_before_first_physics_step"'
+        in workstation_text
+        and "dynamic_friction=float(native_material_runtime" in workstation_text
+        and (
+            "recorded_target_not_exposed_by_isaac_lab_2_3_"
+            in workstation_text
+        ),
+        {
+            "sampled": "sample_tissue_episode_parameters(" in workstation_text,
+            "layer_proxy": "stable_physx_proxy_parameters(" in workstation_text,
+            "setup_time": '"parameter_application": "setup_before_first_physics_step"'
+            in workstation_text,
+            "dynamic_friction": "dynamic_friction=float(native_material_runtime"
+            in workstation_text,
+            "static_friction_boundary": (
+                "recorded_target_not_exposed_by_isaac_lab_2_3_"
+                in workstation_text
             ),
         },
-        "at least ten complete gaps and ten sampled parameters",
+        "deterministic setup-time tissue material sampling drives the live material",
     )
     requirements = profile["qualification"]["requirements"]
     clinical = [item for item in requirements if item["id"] == "clinical_use"]
@@ -461,7 +516,7 @@ def validate(
         and Path(native_room["asset_path"]) == DEFAULT_OUTPUT
         and Path(native_room["alternate_tetmesh_asset_path"]) == DEFAULT_TET_OUTPUT
         and native_room["attachment"]["sides"] == ["minimum", "maximum"],
-        native_room,
+        portable_payload(native_room),
         "available repository-owned PhysX binding plus explicit TetMesh",
     )
     room = next(

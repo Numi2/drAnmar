@@ -1,13 +1,13 @@
 {
-  "schema": "dr.anmar.suturable-tissue-asset-report.v1",
+  "schema": "dr.anmar.suturable-tissue-asset-report.v2",
   "name": "DrAnmar Suturable Tissue",
   "asset_id": "dr-anmar-suturable-tissue",
   "asset_version": "1.0.0",
-  "profile": "/Users/home/gilgamesh/DrAnmar/physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+  "profile": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
   "profile_id": "dr-anmar-suturable-tissue-v1",
-  "surface_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+  "surface_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
   "surface_asset_sha256": "5b98708da42aeca871c36e6160238a5116289e82513c6c47629ed0447faa3098",
-  "tetmesh_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
+  "tetmesh_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
   "tetmesh_asset_sha256": "81ee5ebc5ad85772b624baa8e8ec95e9ec88407dd943e344034107623274420f",
   "point_count": 2470,
   "tetrahedron_count": 10368,
@@ -29,6 +29,24 @@
     "surface": 1728,
     "bulk": 6912,
     "fascia": 1728
+  },
+  "stable_physx_layer_proxy": {
+    "method": "volume_fraction_homogenized_layer_tangent_proxy",
+    "backend_limitation": "current PhysX volume deformable uses one material per body",
+    "layer_volume_fractions": {
+      "surface": 0.18,
+      "bulk": 0.64,
+      "fascia": 0.18
+    },
+    "layer_modulus_multipliers": {
+      "surface": 1.6,
+      "bulk": 0.75,
+      "fascia": 2.0
+    },
+    "wetness_friction_reduction": 0.35,
+    "minimum_wet_friction_scale": 0.55,
+    "vertex_velocity_damping_scale": 0.05,
+    "promotion_boundary": "explicit per-layer constitutive mechanics require a qualified backend that supports per-element materials"
   },
   "stable_capabilities": [
     "intact_deformation",

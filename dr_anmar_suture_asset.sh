@@ -7,7 +7,7 @@ NEEDLE_PROFILE="${REPOSITORY_ROOT}/physics_next/needles/dr-anmar-needle-v1.json"
 ASSET="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 DR_ANMAR_NEEDLE="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle.usda"
 REPORT="${REPOSITORY_ROOT}/physics_next/benchmarks/dr-anmar-suture-4-0-validation.json"
-ISAAC_PYTHON="${DR_ANMAR_STABLE_ISAAC_PYTHON:-/home/gilgamesh/isaaclab_pip/env_isaaclab/bin/python}"
+ISAAC_PYTHON="${DR_ANMAR_STABLE_ISAAC_PYTHON:-}"
 
 case "${1:-validate}" in
     author)

@@ -76,6 +76,53 @@ class NeedleTissueForce:
     total_n: float
 
 
+def stable_physx_proxy_parameters(
+    profile: dict[str, Any],
+    episode: TissueEpisodeParameters,
+) -> dict[str, float | str]:
+    """Map layered targets to one honest stable-PhysX tangent material.
+
+    Current PhysX volume deformables expose one material per deformable body.
+    The explicit tetrahedral layer IDs remain available to future backends,
+    while the stable workstation uses a documented volume-fraction composite
+    instead of silently treating the seed modulus as all three layers.
+    """
+
+    proxy = profile["stable_physx_proxy"]
+    multipliers = proxy["layer_modulus_multipliers"]
+    fractions = proxy["layer_volume_fractions"]
+    if set(multipliers) != set(fractions):
+        raise ValueError("Stable PhysX layer multipliers and fractions disagree")
+    fraction_total = sum(float(value) for value in fractions.values())
+    if not math.isclose(fraction_total, 1.0, rel_tol=0.0, abs_tol=1.0e-9):
+        raise ValueError("Stable PhysX layer volume fractions must sum to one")
+    composite_multiplier = sum(
+        float(fractions[layer]) * float(multipliers[layer])
+        for layer in fractions
+    )
+    wetness_friction_scale = max(
+        float(proxy["minimum_wet_friction_scale"]),
+        1.0 - float(proxy["wetness_friction_reduction"]) * episode.wetness,
+    )
+    dynamic_friction = episode.dynamic_friction * wetness_friction_scale
+    static_friction = max(
+        dynamic_friction,
+        episode.static_friction * wetness_friction_scale,
+    )
+    return {
+        "method": "volume_fraction_homogenized_layer_tangent_proxy",
+        "density_kg_m3": episode.density_kg_m3,
+        "youngs_modulus_pa": episode.youngs_modulus_pa * composite_multiplier,
+        "poisson_ratio": episode.poisson_ratio,
+        "damping_ratio": episode.damping_ratio,
+        "static_friction": static_friction,
+        "dynamic_friction": dynamic_friction,
+        "surface_roughness": episode.surface_roughness,
+        "wetness": episode.wetness,
+        "composite_modulus_multiplier": composite_multiplier,
+    }
+
+
 def load_tissue_profile(
     path: Path = DEFAULT_TISSUE_PROFILE_PATH,
 ) -> dict[str, Any]:

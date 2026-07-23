@@ -1,0 +1,93 @@
+{
+  "schema": "dr.anmar.asset-portfolio.v1",
+  "name": "DrAnmar Surgical Asset Portfolio",
+  "status": "research_assets_pending_native_physical_and_clinical_qualification",
+  "units": "metres-kilograms-seconds",
+  "ownership": {
+    "geometry": "independently_authored_dr_anmar",
+    "physics_contracts": "independently_authored_dr_anmar",
+    "external_geometry_dependencies": [],
+    "runtime_platforms": [
+      "OpenUSD",
+      "NVIDIA PhysX",
+      "NVIDIA Isaac Lab"
+    ],
+    "host_task_adapters_are_not_asset_dependencies": true
+  },
+  "assets": [
+    {
+      "id": "dr-anmar-needle",
+      "asset": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
+      "profile": "physics_next/needles/dr-anmar-needle-v1.json",
+      "report": "assets/dr_anmar/suture/DrAnmarSuture4_0.report.json",
+      "live_integration": "all_repository_local_rooms",
+      "live_behavior": "rigid_needle_collision_swage_and_setup_domain",
+      "native_gpu_qualification": "blocked_pending_native_probe",
+      "physical_qualification": "blocked_pending_metrology_and_bench_data",
+      "clinical_validation": false
+    },
+    {
+      "id": "dr-anmar-suture-4-0-braided-v1",
+      "asset": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
+      "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
+      "report": "assets/dr_anmar/suture/DrAnmarSuture4_0.report.json",
+      "live_integration": "all_repository_local_rooms",
+      "live_behavior": "native_pose_and_filtered_contact_driven_strain_knot_crush_abrasion_relaxation_and_failure",
+      "native_gpu_qualification": "blocked_pending_convergence_and_procedural_probe",
+      "physical_qualification": "blocked_pending_straight_knotted_damage_and_swage_bench_data",
+      "clinical_validation": false
+    },
+    {
+      "id": "dr-anmar-suturable-tissue-v1",
+      "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+      "explicit_tetmesh": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
+      "profile": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+      "report": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.report.json",
+      "live_integration": "dr-anmar-suturable-tissue",
+      "live_behavior": "intact_physx_deformation_contact_attachment_and_setup_domain_with_homogenized_layer_proxy",
+      "blocked_behavior": [
+        "arbitrary_puncture",
+        "persistent_tract",
+        "thread_passage",
+        "cutting"
+      ],
+      "native_gpu_qualification": "blocked_pending_native_probe",
+      "physical_qualification": "blocked_pending_deformation_puncture_pullout_and_closure_data",
+      "clinical_validation": false
+    },
+    {
+      "id": "dr-anmar-hemostasis-v1",
+      "asset": "assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
+      "explicit_tetmesh": "assets/dr_anmar/hemostasis/DrAnmarVessel.tet.usda",
+      "auxiliary_asset": "assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
+      "profile": "physics_next/vessels/dr-anmar-hemostasis-v1.json",
+      "report": "assets/dr_anmar/hemostasis/DrAnmarHemostasis.report.json",
+      "live_integration": "dr-anmar-hemostasis",
+      "live_behavior": "intact_physx_vessel_deformation_rigid_clip_motion_full_section_serrated_contact_and_setup_domain",
+      "non_promotable_surrogates": [
+        "pressure_diameter",
+        "occlusion",
+        "leakage",
+        "retention",
+        "damage"
+      ],
+      "blocked_behavior": [
+        "plastic_clip_forming",
+        "pressure_tight_seal",
+        "pulsatile_flow",
+        "bleeding",
+        "rupture"
+      ],
+      "native_gpu_qualification": "blocked_pending_native_probe",
+      "physical_qualification": "blocked_pending_closure_leak_retention_and_damage_data",
+      "clinical_validation": false
+    }
+  ],
+  "validation": {
+    "deterministic_contracts": "automated_in_ci",
+    "openusd_parse": "required_before_release",
+    "native_gpu_results": "required_for_native_capability_promotion",
+    "physical_bench_results": "required_for_biomechanical_promotion",
+    "clinical_use": "blocked"
+  }
+}

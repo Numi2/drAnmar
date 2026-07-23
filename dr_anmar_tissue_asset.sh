@@ -7,7 +7,7 @@ SURFACE="${REPOSITORY_ROOT}/assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda"
 TETMESH="${REPOSITORY_ROOT}/assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda"
 ASSET_REPORT="${REPOSITORY_ROOT}/assets/dr_anmar/tissue/DrAnmarSuturableTissue.report.json"
 VALIDATION_REPORT="${REPOSITORY_ROOT}/physics_next/benchmarks/dr-anmar-suturable-tissue-validation.json"
-USD_PYTHON="${DR_ANMAR_USD_PYTHON:-${DR_ANMAR_STABLE_ISAAC_PYTHON:-/home/gilgamesh/isaaclab_pip/env_isaaclab/bin/python}}"
+USD_PYTHON="${DR_ANMAR_USD_PYTHON:-${DR_ANMAR_STABLE_ISAAC_PYTHON:-}}"
 
 case "${1:-validate}" in
     author)

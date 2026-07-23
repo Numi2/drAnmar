@@ -101,7 +101,9 @@ class OcclusionState:
     occlusion_fraction: float
     leak_rate_ml_min: float
     crush_damage: float
-    qualified_geometry: bool
+    surrogate_occlusion_threshold_passed: bool
+    damage_limit_satisfied: bool
+    surrogate_state_admissible: bool
 
 
 def load_hemostasis_profile(
@@ -590,6 +592,48 @@ def sample_hemostasis_episode_parameters(
     )
 
 
+def stable_physx_vessel_proxy_parameters(
+    profile: dict[str, Any],
+    episode: HemostasisEpisodeParameters,
+) -> dict[str, float | str]:
+    """Return the documented one-body PhysX proxy for the layered vessel wall."""
+
+    proxy = profile["stable_physx_proxy"]
+    fractions = proxy["layer_volume_fractions"]
+    multipliers = proxy["layer_modulus_multipliers"]
+    if set(fractions) != set(multipliers):
+        raise ValueError("Vessel layer fractions and modulus multipliers disagree")
+    if not math.isclose(
+        sum(float(value) for value in fractions.values()),
+        1.0,
+        rel_tol=0.0,
+        abs_tol=1.0e-9,
+    ):
+        raise ValueError("Vessel layer fractions must sum to one")
+    composite_multiplier = sum(
+        float(fractions[layer]) * float(multipliers[layer])
+        for layer in fractions
+    )
+    wet_scale = max(
+        float(proxy["minimum_wet_friction_scale"]),
+        1.0 - float(proxy["wetness_friction_reduction"]) * episode.wetness,
+    )
+    static_friction = episode.static_friction * wet_scale
+    dynamic_seed = float(profile["contact"]["dynamic_friction_seed"])
+    dynamic_friction = min(static_friction, dynamic_seed * wet_scale)
+    return {
+        "method": "volume_fraction_homogenized_wall_tangent_proxy",
+        "density_kg_m3": float(profile["vessel_material"]["density_kg_m3_seed"]),
+        "youngs_modulus_pa": episode.youngs_modulus_pa * composite_multiplier,
+        "poisson_ratio": float(profile["vessel_material"]["poisson_ratio_seed"]),
+        "damping_ratio": float(profile["vessel_material"]["damping_ratio_seed"]),
+        "static_friction": static_friction,
+        "dynamic_friction": dynamic_friction,
+        "wetness": episode.wetness,
+        "composite_modulus_multiplier": composite_multiplier,
+    }
+
+
 def pressure_diameter_m(
     profile: dict[str, Any],
     *,
@@ -709,12 +753,17 @@ def vessel_occlusion_state(
     geometry = profile["geometry"]
     occlusion = profile["occlusion"]
     lumen = profile["lumen"]
+    surrogate = profile["surrogate_model"]
     outer_diameter = float(geometry["outer_diameter_m"])
     inner_diameter = outer_diameter - 2.0 * float(geometry["wall_thickness_m"])
     normalized_gap = max(0.0, min(1.0, clip_gap_m / outer_diameter))
-    remaining_area_fraction = normalized_gap**2.15
+    remaining_area_fraction = normalized_gap ** float(
+        surrogate["gap_to_remaining_area_exponent"]
+    )
     occlusion_fraction = 1.0 - remaining_area_fraction
-    effective_lumen_radius = inner_diameter / 2.0 * remaining_area_fraction**1.5
+    effective_lumen_radius = inner_diameter / 2.0 * remaining_area_fraction ** float(
+        surrogate["remaining_area_to_effective_radius_exponent"]
+    )
     leak_rate = poiseuille_flow_ml_min(
         pressure_drop_mmhg=max(0.0, pressure_mmhg),
         lumen_radius_m=effective_lumen_radius,
@@ -726,22 +775,31 @@ def vessel_occlusion_state(
     damage = 0.0
     if compression_fraction > onset:
         utilization = (compression_fraction - onset) / (1.0 - onset)
-        damage = utilization**2 * max(1, int(cycles)) ** 0.35
+        damage = utilization ** float(
+            surrogate["compression_damage_exponent"]
+        ) * max(1, int(cycles)) ** float(surrogate["cycle_damage_exponent"])
     if applied_force_n is not None:
         closing_force = float(profile["clip"]["closing_force_n_seed"])
         overload = max(0.0, float(applied_force_n) / closing_force - 1.0)
-        damage += 0.4 * overload**1.5
+        damage += float(surrogate["overload_damage_scale"]) * overload ** float(
+            surrogate["overload_damage_exponent"]
+        )
     damage = min(float(occlusion["critical_crush_damage"]), damage)
     target = float(occlusion["target_lumen_area_reduction_fraction"])
-    qualified_geometry = occlusion_fraction >= target and leak_rate <= float(
+    surrogate_threshold_passed = occlusion_fraction >= target and leak_rate <= float(
         occlusion["maximum_qualified_leak_rate_ml_min"]
     )
+    damage_limit_satisfied = damage < float(occlusion["critical_crush_damage"])
     return OcclusionState(
         remaining_lumen_area_fraction=remaining_area_fraction,
         occlusion_fraction=occlusion_fraction,
         leak_rate_ml_min=leak_rate,
         crush_damage=damage,
-        qualified_geometry=qualified_geometry,
+        surrogate_occlusion_threshold_passed=surrogate_threshold_passed,
+        damage_limit_satisfied=damage_limit_satisfied,
+        surrogate_state_admissible=(
+            surrogate_threshold_passed and damage_limit_satisfied
+        ),
     )
 
 

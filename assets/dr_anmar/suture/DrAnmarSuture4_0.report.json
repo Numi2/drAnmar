@@ -1,14 +1,14 @@
 {
-  "schema": "dr.anmar.suture-asset-report.v2",
-  "profile": "/Users/home/gilgamesh/DrAnmar/physics_next/sutures/dr-anmar-suture-4-0.json",
-  "asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
+  "schema": "dr.anmar.suture-asset-report.v3",
+  "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
+  "asset": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
   "asset_sha256": "7b33b49b6b2c7934af9569d789b45bf2bdf0df16e98cc7d9806f56440e831c90",
   "dr_anmar_needle_name": "DrAnmar Needle",
   "dr_anmar_needle_asset_id": "dr-anmar-needle",
   "dr_anmar_needle_asset_version": "1.0.0",
-  "dr_anmar_needle": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/needle/DrAnmarNeedle.usda",
+  "dr_anmar_needle": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
   "dr_anmar_needle_sha256": "f6e383d2081ae6c4fe3ff2eec24e1aa7cab88ac3a2c653971c6dd898a1a7e163",
-  "needle_profile": "/Users/home/gilgamesh/DrAnmar/physics_next/needles/dr-anmar-needle-v1.json",
+  "needle_profile": "physics_next/needles/dr-anmar-needle-v1.json",
   "needle_profile_id": "dr-anmar-needle-v1",
   "needle_geometry_source": "independently_generated_parametric_geometry",
   "needle_arc_length_m": 0.022,
@@ -22,7 +22,8 @@
     0.0070028174960433945,
     0.0
   ],
-  "sim_to_real_gap_count": 7,
+  "needle_sim_to_real_gap_count": 7,
+  "suture_sim_to_real_gap_count": 8,
   "swage_connection": "fixed_needle_to_interface_then_breakable_pullout_joint",
   "representation": "visible_collision_capsules_with_breakable_d6_cosserat_joints",
   "segment_count": 360,
@@ -32,6 +33,8 @@
   "mass_kg": 1.1486448139687682e-05,
   "straight_failure_load_n": 22.5,
   "knot_failure_load_n": 14.625,
+  "runtime_material_history_controller": "scripts/dr_anmar_suture_runtime.py",
+  "runtime_observation_source": "native_filtered_jaw_contacts_and_openusd_rigid_body_poses",
   "clinical_validation": false,
   "independent_from_current_thread": true
 }

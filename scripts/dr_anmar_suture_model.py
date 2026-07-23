@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import math
+import random
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,84 @@ DEFAULT_PROFILE_PATH = REPOSITORY_ROOT / "physics_next/sutures/dr-anmar-suture-4
 
 def load_profile(path: Path = DEFAULT_PROFILE_PATH) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def sample_suture_runtime_profile(
+    profile: dict[str, Any],
+    seed: int,
+) -> tuple[dict[str, Any], dict[str, float | int]]:
+    """Sample only properties the live material-history controller can enact."""
+
+    sampled = deepcopy(profile)
+    generator = random.Random(int(seed))
+    tension = sampled["tension"]
+    knot = sampled["knot"]
+    contact = sampled["contact"]
+    visco = sampled["viscoelasticity"]
+    damage = sampled["instrument_damage"]
+    nominal_static_friction = float(contact["static_friction"])
+    nominal_dynamic_friction = float(contact["dynamic_friction"])
+    static_friction = generator.uniform(
+        *map(float, contact["static_friction_range"])
+    )
+    dynamic_friction = min(
+        static_friction,
+        generator.uniform(*map(float, contact["dynamic_friction_range"])),
+    )
+    payload: dict[str, float | int] = {
+        "seed": int(seed),
+        "straight_failure_load_n": generator.uniform(
+            *map(float, tension["straight_failure_range_n"])
+        ),
+        "knot_strength_efficiency": generator.uniform(
+            *map(float, knot["strength_efficiency_range"])
+        ),
+        "static_friction": static_friction,
+        "dynamic_friction": dynamic_friction,
+        "retained_stress_asymptote": generator.uniform(
+            *map(float, visco["retained_stress_asymptote_range"])
+        ),
+        "reference_crush_pressure_pa": generator.uniform(
+            *map(float, damage["reference_crush_pressure_range_pa"])
+        ),
+        "abrasion_work_to_failure_j": generator.uniform(
+            *map(float, damage["abrasion_work_to_failure_range_j"])
+        ),
+    }
+    tension["straight_failure_load_n"] = payload["straight_failure_load_n"]
+    knot["nominal_strength_efficiency"] = payload["knot_strength_efficiency"]
+    contact["static_friction"] = payload["static_friction"]
+    contact["dynamic_friction"] = payload["dynamic_friction"]
+    self_friction = contact["load_dependent_self_friction"]
+    dynamic_scale = float(payload["dynamic_friction"]) / max(
+        nominal_dynamic_friction,
+        1.0e-9,
+    )
+    self_friction["low_load_coefficient"] = min(
+        1.0,
+        float(self_friction["low_load_coefficient"]) * dynamic_scale,
+    )
+    self_friction["high_load_coefficient"] = min(
+        self_friction["low_load_coefficient"],
+        float(self_friction["high_load_coefficient"]) * dynamic_scale,
+    )
+    contact["sampled_static_to_dynamic_ratio"] = (
+        float(payload["static_friction"])
+        / max(float(payload["dynamic_friction"]), 1.0e-9)
+    )
+    contact["nominal_static_to_dynamic_ratio"] = (
+        nominal_static_friction / max(nominal_dynamic_friction, 1.0e-9)
+    )
+    visco["retained_stress_asymptote"] = payload[
+        "retained_stress_asymptote"
+    ]
+    damage["reference_crush_pressure_pa"] = payload[
+        "reference_crush_pressure_pa"
+    ]
+    damage["abrasion_work_to_failure_j_seed"] = payload[
+        "abrasion_work_to_failure_j"
+    ]
+    return sampled, payload
 
 
 def lerp(left: float, right: float, amount: float) -> float:

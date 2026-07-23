@@ -60,6 +60,24 @@
     "burst_pressure_range_mmhg": [600.0, 4500.0],
     "linear_physx_proxy": true
   },
+  "stable_physx_proxy": {
+    "method": "volume_fraction_homogenized_wall_tangent_proxy",
+    "backend_limitation": "current PhysX volume deformable uses one material per body",
+    "layer_volume_fractions": {
+      "intima": 0.3333333333333333,
+      "media": 0.3333333333333333,
+      "adventitia": 0.3333333333333334
+    },
+    "layer_modulus_multipliers": {
+      "intima": 0.7,
+      "media": 1.0,
+      "adventitia": 1.8
+    },
+    "wetness_friction_reduction": 0.35,
+    "minimum_wet_friction_scale": 0.5,
+    "vertex_velocity_damping_scale": 0.05,
+    "promotion_boundary": "explicit anisotropic per-wall-layer mechanics require a qualified per-element material backend"
+  },
   "lumen": {
     "fluid_density_kg_m3_seed": 1060.0,
     "dynamic_viscosity_pa_s_seed": 0.0035,
@@ -115,6 +133,22 @@
       "vessel_rupture"
     ]
   },
+  "surrogate_model": {
+    "status": "non_promotable_reduced_order_research_surrogate_pending_flow_contact_and_bench_validation",
+    "gap_to_remaining_area_exponent": 2.15,
+    "remaining_area_to_effective_radius_exponent": 1.5,
+    "compression_damage_exponent": 2.0,
+    "cycle_damage_exponent": 0.35,
+    "overload_damage_scale": 0.4,
+    "overload_damage_exponent": 1.5,
+    "admissibility_rule": "occlusion_and_leak_thresholds_pass_and_crush_damage_remains_below_critical",
+    "must_not_be_reported_as": [
+      "pressure_tight_seal",
+      "qualified_occlusion",
+      "validated_retention",
+      "clinical_hemostasis"
+    ]
+  },
   "contact": {
     "static_friction_seed": 0.38,
     "static_friction_range": [0.18, 0.7],
@@ -138,6 +172,14 @@
     "axis": "x",
     "sides": ["minimum", "maximum"],
     "width_m": 0.0015
+  },
+  "solver": {
+    "stable_backend": "physx_fem_plus_rigid_clip",
+    "position_iterations": 24,
+    "self_collision": true,
+    "vertex_velocity_damping": 0.01,
+    "recommended_dt_s": 0.001,
+    "maximum_contact_penetration_m": 0.00025
   },
   "sim_to_real": {
     "episode_seed": 20260724,

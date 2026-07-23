@@ -577,6 +577,14 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def portable_path(path: Path) -> str:
+    resolved = path.expanduser().resolve()
+    try:
+        return resolved.relative_to(REPOSITORY_ROOT).as_posix()
+    except ValueError:
+        return resolved.as_posix()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE_PATH)
@@ -619,16 +627,16 @@ def main() -> int:
     derived = derive(profile)
     derived_needle = derive_needle(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v2",
-        "profile": str(args.profile.resolve()),
-        "asset": str(output),
+        "schema": "dr.anmar.suture-asset-report.v3",
+        "profile": portable_path(args.profile),
+        "asset": portable_path(output),
         "asset_sha256": sha256(output),
         "dr_anmar_needle_name": DR_ANMAR_NEEDLE_NAME,
         "dr_anmar_needle_asset_id": DR_ANMAR_NEEDLE_ASSET_ID,
         "dr_anmar_needle_asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION,
-        "dr_anmar_needle": str(needle_output),
+        "dr_anmar_needle": portable_path(needle_output),
         "dr_anmar_needle_sha256": sha256(needle_output),
-        "needle_profile": str(args.needle_profile.resolve()),
+        "needle_profile": portable_path(args.needle_profile),
         "needle_profile_id": needle_profile["id"],
         "needle_geometry_source": needle_profile["construction"]["geometry_source"],
         "needle_arc_length_m": derived_needle.arc_length_m,
@@ -638,7 +646,10 @@ def main() -> int:
         "needle_visual_vertex_count": derived_needle.visual_vertex_count,
         "needle_collision_capsule_count": derived_needle.collision_capsule_count,
         "needle_swage_anchor_m": list(derived_needle.swage_anchor_m),
-        "sim_to_real_gap_count": len(needle_profile["sim_to_real"]["gaps"]),
+        "needle_sim_to_real_gap_count": len(
+            needle_profile["sim_to_real"]["gaps"]
+        ),
+        "suture_sim_to_real_gap_count": len(profile["sim_to_real"]["gaps"]),
         "swage_connection": "fixed_needle_to_interface_then_breakable_pullout_joint",
         "representation": "visible_collision_capsules_with_breakable_d6_cosserat_joints",
         "segment_count": derived.segment_count,
@@ -648,6 +659,10 @@ def main() -> int:
         "mass_kg": derived.mass_kg,
         "straight_failure_load_n": derived.straight_failure_load_n,
         "knot_failure_load_n": derived.knot_failure_load_n,
+        "runtime_material_history_controller": "scripts/dr_anmar_suture_runtime.py",
+        "runtime_observation_source": profile["runtime_detection"][
+            "observation_source"
+        ],
         "clinical_validation": False,
         "independent_from_current_thread": True,
     }

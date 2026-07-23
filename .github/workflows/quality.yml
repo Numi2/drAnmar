@@ -25,7 +25,30 @@ jobs:
           python scripts/dr_anmar_physics_next.py validate
           python scripts/audit_operator_lease.py
           python scripts/check_web_syntax.py
+      - name: Validate DrAnmar surgical assets
+        run: |
+          python scripts/dr_anmar_suture_validate.py --output /tmp/dr-anmar-suture-validation.json
+          python scripts/dr_anmar_suture_runtime.py --self-test
+          python scripts/dr_anmar_tissue_validate.py --output /tmp/dr-anmar-tissue-validation.json
+          python scripts/dr_anmar_hemostasis_validate.py --output /tmp/dr-anmar-hemostasis-validation.json
+          python scripts/dr_anmar_asset_portfolio_validate.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          reports = sorted(Path("assets/dr_anmar").rglob("*.report.json"))
+          absolute = []
+          for report in reports:
+              payload = json.loads(report.read_text(encoding="utf-8"))
+              for key, value in payload.items():
+                  if isinstance(value, str) and value.startswith("/"):
+                      absolute.append(f"{report}:{key}={value}")
+          if absolute:
+              raise SystemExit("Machine-specific paths in asset reports:\n" + "\n".join(absolute))
+          PY
       - name: Compile Python source
         run: python -m compileall -q scripts source
       - name: Check shell syntax
-        run: bash -n dr_anmar.sh dr_anmar_suite.sh dr_anmar_train.sh dr_anmar_workstation.sh orbitsurgical.sh
+        run: |
+          bash -n dr_anmar.sh dr_anmar_suite.sh dr_anmar_train.sh dr_anmar_workstation.sh orbitsurgical.sh
+          bash -n dr_anmar_suture_asset.sh dr_anmar_suture_native.sh dr_anmar_tissue_asset.sh

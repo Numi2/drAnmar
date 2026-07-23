@@ -207,6 +207,18 @@
           "surface_roughness": 0.5551810575656164,
           "wetness": 0.608816513897559,
           "youngs_modulus_pa": 635487.8433335873
+        },
+        "stable_physx_proxy": {
+          "composite_modulus_multiplier": 1.128,
+          "damping_ratio": 0.08153029776763655,
+          "density_kg_m3": 1076.92872149299,
+          "dynamic_friction": 0.12763697006467575,
+          "method": "volume_fraction_homogenized_layer_tangent_proxy",
+          "poisson_ratio": 0.45768749819732085,
+          "static_friction": 0.3218831096624256,
+          "surface_roughness": 0.5383590760910874,
+          "wetness": 0.5210420470904013,
+          "youngs_modulus_pa": 705313.8835235087
         }
       },
       "passed": true
@@ -237,6 +249,17 @@
       "expected": "no external geometry reference or inherited product identity",
       "measured": {
         "forbidden": []
+      },
+      "passed": true
+    },
+    "live_setup_time_tissue_domain": {
+      "expected": "deterministic setup-time tissue material sampling drives the live material",
+      "measured": {
+        "dynamic_friction": true,
+        "layer_proxy": true,
+        "sampled": true,
+        "setup_time": true,
+        "static_friction_boundary": true
       },
       "passed": true
     },
@@ -336,11 +359,11 @@
       "expected": "available repository-owned PhysX binding plus explicit TetMesh",
       "measured": {
         "alternate_tetmesh_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
-        "alternate_tetmesh_asset_path": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
+        "alternate_tetmesh_asset_path": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
         "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
         "asset_contract": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
-        "asset_contract_path": "/Users/home/gilgamesh/DrAnmar/physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
-        "asset_path": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+        "asset_contract_path": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+        "asset_path": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
         "attachment": {
           "axis": "x",
           "kind": "opposed_outer_axis_bands",
@@ -350,10 +373,11 @@
           ],
           "width_m": 0.004
         },
+        "auxiliary_assets": [],
         "available": true,
         "backend": "physx_fem",
         "material": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
-        "material_path": "/Users/home/gilgamesh/DrAnmar/physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+        "material_path": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
         "repository_asset": true,
         "representation": "two_watertight_open_incision_flaps_with_native_physx_tetrahedralization",
         "spawn": {
@@ -368,7 +392,8 @@
             0.004
           ]
         },
-        "stage_key": "native_tissue"
+        "stage_key": "native_tissue",
+        "stage_prim_name": "NativeTissue"
       },
       "passed": true
     },
@@ -378,11 +403,24 @@
       "passed": true
     },
     "sim_to_real_gap_register": {
-      "expected": "at least ten complete gaps and ten sampled parameters",
+      "expected": "at least ten complete gaps with runtime and model-only parameters separated",
       "measured": {
         "complete": true,
         "gap_count": 10,
-        "sampled_parameters": 10
+        "model_only_parameters": [
+          "puncture_force",
+          "shaft_drag",
+          "suture_pullout_strength"
+        ],
+        "runtime_applied_parameters": [
+          "damping",
+          "density",
+          "poisson_ratio",
+          "surface_friction",
+          "surface_roughness",
+          "tangent_modulus",
+          "wetness"
+        ]
       },
       "passed": true
     },

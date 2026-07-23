@@ -7,7 +7,7 @@ RUNTIME_ROOT="${DR_ANMAR_SUTURE_NATIVE_ROOT:-${DATA_ROOT}/native-suture}"
 ASSET_ROOT="${RUNTIME_ROOT}/softmimicgen-assets"
 REPORT_ROOT="${RUNTIME_ROOT}/reports"
 UPSTREAM_ROOT="${DR_ANMAR_SOFTMIMICGEN_ROOT:-${DATA_ROOT}/native-suture-runtime/SoftMimicGen}"
-ISAAC_PYTHON="${DR_ANMAR_STABLE_ISAAC_PYTHON:-/home/gilgamesh/isaaclab_pip/env_isaaclab/bin/python}"
+ISAAC_PYTHON="${DR_ANMAR_STABLE_ISAAC_PYTHON:-}"
 NEEDLE_USD="${DR_ANMAR_NEEDLE_USD:-${REPOSITORY_ROOT}/source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd}"
 
 mkdir -p "${ASSET_ROOT}" "${REPORT_ROOT}" "${RUNTIME_ROOT}/tmp"
