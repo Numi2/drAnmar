@@ -18,7 +18,11 @@ from orbit.surgical.tasks.surgical.lift.lift_env_cfg import LiftEnvCfg
 # Pre-defined configs
 ##
 from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
-from orbit.surgical.assets.psm import PSM_CFG  # isort: skip
+from orbit.surgical.assets.psm import (  # isort: skip
+    PSM_CFG,
+    psm_gripper_close_command_expr,
+    psm_gripper_open_command_expr,
+)
 
 
 @configclass
@@ -30,8 +34,6 @@ class NeedleLiftEnvCfg(LiftEnvCfg):
         # Set PSM as robot
         self.scene.robot = PSM_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.robot.spawn.activate_contact_sensors = True
-        self.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
-        self.scene.robot.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
 
         # Set actions for the specific robot type (PSM)
         self.actions.body_action = mdp.JointPositionActionCfg(
@@ -50,8 +52,8 @@ class NeedleLiftEnvCfg(LiftEnvCfg):
         self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["psm_tool_gripper.*_joint"],
-            open_command_expr={"psm_tool_gripper1_joint": -0.5, "psm_tool_gripper2_joint": 0.5},
-            close_command_expr={"psm_tool_gripper1_joint": -0.02, "psm_tool_gripper2_joint": 0.02},
+            open_command_expr=psm_gripper_open_command_expr(),
+            close_command_expr=psm_gripper_close_command_expr(),
         )
         # Set the body name for the end effector
         self.commands.object_pose.body_name = "psm_tool_tip_link"

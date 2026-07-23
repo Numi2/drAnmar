@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Configuration for the da Vinci Research Kit (dVRK) Patient Side Manipulator (PSM) robots.
+"""Configuration for the da Vinci Research Kit (dVRK) Patient Side Manipulator.
 
 The following configurations are available:
 
@@ -12,7 +12,13 @@ The following configurations are available:
 
 Reference: https://github.com/med-air/SurRoL
            https://github.com/WPI-AIM/dvrk_env
+
+Jaw posture and actuator values come only from ``config/psm_foundation.json``.
+Task files must not carry object- or room-specific jaw tuning.
 """
+
+import json
+from pathlib import Path
 
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
@@ -23,6 +29,31 @@ from orbit.surgical.assets import ORBITSURGICAL_ASSETS_DATA_DIR
 ##
 # Configuration
 ##
+
+with (
+    Path(__file__).resolve().parents[3] / "config/psm_foundation.json"
+).open(encoding="utf-8") as profile_file:
+    PSM_FOUNDATION_PROFILE = json.load(profile_file)
+PSM_GRIPPER_PROFILE = PSM_FOUNDATION_PROFILE["gripper"]
+
+
+def psm_gripper_command_expr(aperture_rad: float) -> dict[str, float]:
+    """Return symmetric physical jaw targets for NVIDIA binary actions."""
+
+    aperture = float(aperture_rad)
+    return {
+        "psm_tool_gripper1_joint": -aperture,
+        "psm_tool_gripper2_joint": aperture,
+    }
+
+
+def psm_gripper_open_command_expr() -> dict[str, float]:
+    return psm_gripper_command_expr(PSM_GRIPPER_PROFILE["open_rad"])
+
+
+def psm_gripper_close_command_expr() -> dict[str, float]:
+    return psm_gripper_command_expr(PSM_GRIPPER_PROFILE["close_rad"])
+
 
 PSM_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
@@ -44,8 +75,7 @@ PSM_CFG = ArticulationCfg(
             "psm_tool_roll_joint": 0.01,
             "psm_tool_pitch_joint": 0.01,
             "psm_tool_yaw_joint": 0.01,
-            "psm_tool_gripper1_joint": -0.09,
-            "psm_tool_gripper2_joint": 0.09,
+            **psm_gripper_open_command_expr(),
         },
         pos=(0.0, 0.0, 0.15),
     ),
@@ -66,10 +96,10 @@ PSM_CFG = ArticulationCfg(
         ),
         "psm_tool": ImplicitActuatorCfg(
             joint_names_expr=["psm_tool_gripper.*"],
-            effort_limit_sim=0.1,
-            velocity_limit_sim=0.2,
-            stiffness=500,
-            damping=0.1,
+            effort_limit_sim=PSM_GRIPPER_PROFILE["effort_limit_nm"],
+            velocity_limit_sim=PSM_GRIPPER_PROFILE["velocity_limit_rad_s"],
+            stiffness=PSM_GRIPPER_PROFILE["stiffness"],
+            damping=PSM_GRIPPER_PROFILE["damping"],
         ),
     },
     soft_joint_pos_limit_factor=1.0,

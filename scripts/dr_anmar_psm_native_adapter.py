@@ -33,13 +33,11 @@ from typing import Any, Sequence
 from dr_anmar_psm_gripper import (
     CANONICAL_PSM_GRIPPER_PROFILE,
     apply_psm_gripper_action_profile,
-    psm_gripper_close_rad_from_environment,
 )
 
 PSM_POLICY_ACTION_DIM = 7
 PSM_CARTESIAN_ACTION_DIM = 8
 PSM_ARM_DIM = 6
-DEFAULT_PSM_GRIPPER_CLOSE_RAD = CANONICAL_PSM_GRIPPER_PROFILE.close_rad
 CONTRACT_NAME = "dr_anmar.nvidia_psm_policy_action.v1"
 PSM_ARM_NAMES = (
     "psm_yaw_joint",
@@ -361,7 +359,7 @@ def _recorder_term_cfgs():
     return NativePsmRecorderManagerCfg
 
 
-def install_native_recorder(*, env_id: str, bootstrap_root: Path, gripper_close_rad: float) -> None:
+def install_native_recorder(*, env_id: str, bootstrap_root: Path) -> None:
     """Install deferred PSM recording and jaw-target hooks after Kit starts."""
 
     global _PATCHED
@@ -375,24 +373,22 @@ def install_native_recorder(*, env_id: str, bootstrap_root: Path, gripper_close_
     original_build = env_cls.build
 
     def build_with_native_psm_recorder(self, args):
-        _patch_psm_recorder_config(bootstrap_root, gripper_close_rad)
+        _patch_psm_recorder_config(bootstrap_root)
         return original_build(self, args)
 
     env_cls.build = build_with_native_psm_recorder
     _PATCHED = True
 
 
-def _patch_psm_recorder_config(bootstrap_root: Path, gripper_close_rad: float) -> None:
+def _patch_psm_recorder_config(bootstrap_root: Path) -> None:
     """Patch the embodiment only after AppLauncher has initialized Omniverse."""
 
     from arena.embodiments.psm import DualPsmEmbodiment, PsmEmbodiment
 
-    if not 0.0 <= gripper_close_rad < 0.5:
-        raise ValueError(f"PSM closed-jaw target must be in [0.0, 0.5), got {gripper_close_rad}")
     recorder_manager_cfg = _recorder_term_cfgs()
 
     def set_native_gripper_close(action_cfg):
-        apply_psm_gripper_action_profile(action_cfg, gripper_close_rad)
+        apply_psm_gripper_action_profile(action_cfg)
         return action_cfg
 
     def get_recorder_term_cfg(self):
@@ -652,11 +648,6 @@ def _record_to_arg(argv: Sequence[str]) -> Path | None:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--inspect-hdf5", type=Path)
-    parser.add_argument(
-        "--gripper-close-rad",
-        type=float,
-        default=psm_gripper_close_rad_from_environment(),
-    )
     return parser
 
 
@@ -692,7 +683,6 @@ def main() -> None:
     install_native_recorder(
         env_id=env_id,
         bootstrap_root=bootstrap,
-        gripper_close_rad=args.gripper_close_rad,
     )
 
     from arena import run as arena_run

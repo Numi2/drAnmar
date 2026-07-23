@@ -33,7 +33,6 @@ from dr_anmar_psm_gripper import (
     CANONICAL_PSM_GRIPPER_PROFILE,
     apply_psm_gripper_action_profile,
     apply_psm_gripper_articulation_profile,
-    psm_gripper_close_rad_from_environment,
     psm_gripper_command_expr,
     psm_gripper_profile_manifest,
 )
@@ -104,7 +103,6 @@ parser.add_argument(
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 _softmimicgen_task = args_cli.task.startswith("Isaac-Thread-PSM-")
-PSM_GRIPPER_CLOSE_RAD = psm_gripper_close_rad_from_environment()
 _softmimicgen_root = Path(
     os.environ.get(
         "DR_ANMAR_SOFTMIMICGEN_ROOT",
@@ -3298,15 +3296,11 @@ def main() -> None:
             # The native thread does not introduce a room-specific override.
             env_cfg.scene.robot.init_state.pos = (0.1, 0.0, 0.15)
             env_cfg.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
-            env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
-            env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
             env_cfg.scene.robot_2 = env_cfg.scene.robot.replace(
                 prim_path="{ENV_REGEX_NS}/Robot_2"
             )
             env_cfg.scene.robot_2.init_state.pos = (-0.1, 0.0, 0.15)
             env_cfg.scene.robot_2.init_state.rot = (1.0, 0.0, 0.0, 0.0)
-            env_cfg.scene.robot_2.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
-            env_cfg.scene.robot_2.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
             # Use ORBIT's complete bimanual needle-handover action stack and
             # ordering. SoftMimicGen remains responsible only for the native
             # deformable strand, ring, and their PhysX behavior.
@@ -3478,15 +3472,13 @@ def main() -> None:
             open_command_expr=psm_gripper_command_expr(
                 CANONICAL_PSM_GRIPPER_PROFILE.open_rad
             ),
-            close_command_expr=psm_gripper_command_expr(PSM_GRIPPER_CLOSE_RAD),
+            close_command_expr=psm_gripper_command_expr(
+                CANONICAL_PSM_GRIPPER_PROFILE.close_rad
+            ),
         )
-    # Every interactive PSM room uses the same proven ORBIT needle profile.
-    configured_psm_action_terms = apply_psm_gripper_action_profile(
-        env_cfg.actions,
-        PSM_GRIPPER_CLOSE_RAD,
-    )
+    # Every interactive PSM room consumes the same foundation profile.
+    configured_psm_action_terms = apply_psm_gripper_action_profile(env_cfg.actions)
     configured_psm_gripper_profile = psm_gripper_profile_manifest(
-        PSM_GRIPPER_CLOSE_RAD,
         action_terms=configured_psm_action_terms,
         articulations=configured_psm_articulations,
     )

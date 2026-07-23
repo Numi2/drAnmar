@@ -18,7 +18,11 @@ from orbit.surgical.tasks.surgical.handover.handover_env_cfg import HandoverEnvC
 # Pre-defined configs
 ##
 from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
-from orbit.surgical.assets.psm import PSM_CFG  # isort: skip
+from orbit.surgical.assets.psm import (  # isort: skip
+    PSM_CFG,
+    psm_gripper_close_command_expr,
+    psm_gripper_open_command_expr,
+)
 
 
 @configclass
@@ -30,14 +34,10 @@ class NeedleHandoverEnvCfg(HandoverEnvCfg):
         # Set PSM as robot
         self.scene.robot_1 = PSM_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_1")
         self.scene.robot_1.spawn.activate_contact_sensors = True
-        self.scene.robot_1.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
-        self.scene.robot_1.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
         self.scene.robot_1.init_state.pos = (0.2, 0.0, 0.15)
         self.scene.robot_1.init_state.rot = (1.0, 0.0, 0.0, 0.0)
         self.scene.robot_2 = PSM_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_2")
         self.scene.robot_2.spawn.activate_contact_sensors = True
-        self.scene.robot_2.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
-        self.scene.robot_2.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
         self.scene.robot_2.init_state.pos = (-0.2, 0.0, 0.15)
         self.scene.robot_2.init_state.rot = (1.0, 0.0, 0.0, 0.0)
 
@@ -71,14 +71,14 @@ class NeedleHandoverEnvCfg(HandoverEnvCfg):
         self.actions.robot_1_gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot_1",
             joint_names=["psm_tool_gripper.*_joint"],
-            open_command_expr={"psm_tool_gripper1_joint": -0.5, "psm_tool_gripper2_joint": 0.5},
-            close_command_expr={"psm_tool_gripper1_joint": -0.02, "psm_tool_gripper2_joint": 0.02},
+            open_command_expr=psm_gripper_open_command_expr(),
+            close_command_expr=psm_gripper_close_command_expr(),
         )
         self.actions.robot_2_gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot_2",
             joint_names=["psm_tool_gripper.*_joint"],
-            open_command_expr={"psm_tool_gripper1_joint": -0.5, "psm_tool_gripper2_joint": 0.5},
-            close_command_expr={"psm_tool_gripper1_joint": -0.02, "psm_tool_gripper2_joint": 0.02},
+            open_command_expr=psm_gripper_open_command_expr(),
+            close_command_expr=psm_gripper_close_command_expr(),
         )
         # Set the body name for the end effector
         self.commands.ee_1_pose.body_name = "psm_tool_tip_link"

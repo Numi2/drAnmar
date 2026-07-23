@@ -35,16 +35,15 @@ was not relabeled or promoted.
 ## Not yet qualified
 
 - NVIDIA's current scripted needle-lift grasp was physically successful in only 3/5 attempts in one run and 1/5
-  in another. Reducing the native residual jaw aperture from `0.09` to `0.06` radians also produced 1/5 with
-  that expert, showing that its trajectory remains a confounding variable. Direct interactive inspection found
-  the `0.06` target still left 2–3 mm of tip clearance, so the physical target was refined to `0.02` radians for
-  doctor validation. A table-clearance variant failed 0/5 and was discarded.
+  in another. The discarded jaw experiments are not configurable Dr.Anmar profiles. All PSM rooms now consume
+  the single foundation profile in `source/extensions/orbit.surgical.assets/config/psm_foundation.json`; expert
+  trajectory quality remains the confounding variable.
 - The handover MDP is implemented, but no native rollout has yet physically completed
   approach → giver grasp → present → dual grasp → stable receiver ownership.
 - No GR00T checkpoint has been trained from the reach diagnostic dataset. Training must begin with accepted,
   successful task demonstrations and end with held-out physical rollouts.
 
-## Next acceptance gates
+## Remaining acceptance work
 
 1. Make the native thin-needle grasp repeatable without attachment, teleport, or success relabeling.
 2. Record a set of accepted needle-lift demonstrations through the workstation and convert them unchanged.
