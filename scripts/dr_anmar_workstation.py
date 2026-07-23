@@ -163,7 +163,6 @@ if _softmimicgen_task:
 else:
     import orbit.surgical.tasks  # noqa: F401
 
-from orbit.surgical.assets.ecm import ECM_HIGH_PD_CFG as ORBIT_ECM_HIGH_PD_CFG
 from orbit.surgical.assets.psm import PSM_HIGH_PD_CFG as ORBIT_PSM_HIGH_PD_CFG
 
 from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
@@ -3181,14 +3180,11 @@ def main() -> None:
     if nvidia_native_bench:
         nvidia_bench_assets = {
             "psm": I4H_ASSET_CONTENT_ROOT / "Robots/dVRK/PSM/psm.usd",
-            "ecm": I4H_ASSET_CONTENT_ROOT / "Robots/dVRK/ECM/ecm.usd",
             "needle": I4H_ASSET_CONTENT_ROOT / "Props/SutureNeedle/needle_sdf.usd",
             "suture_pad": I4H_ASSET_CONTENT_ROOT / "Props/SuturePad/suture_pad.usd",
             "table": I4H_ASSET_CONTENT_ROOT / "Props/Table/table.usd",
             "scissors": I4H_ASSET_CONTENT_ROOT
             / "Props/SurgicalInstruments/SurgicalScissors.usd",
-            "tray": I4H_ASSET_CONTENT_ROOT
-            / "Props/SurgicalInstruments/SurgicalTray.usd",
         }
         missing_nvidia_assets = [
             f"{name}: {path}"
@@ -3232,8 +3228,8 @@ def main() -> None:
         # relative IK actions, jaw contacts, needle state, resets and stepping.
         # Coordinates retain NVIDIA/ORBIT's proven opposed PSM roots and use
         # the table top (z=0) as the single setup datum. The remaining assets
-        # form a non-overlapping dry-lab field: tray toward the operator,
-        # suturing pad beyond it, and ECM on the camera side.
+        # form a non-overlapping dry-lab field: separate needle and scissors
+        # landings around a central suturing pad.
         psm_root_positions = {
             "robot_1": (0.20, 0.0, 0.15),
             "robot_2": (-0.20, 0.0, 0.15),
@@ -3251,7 +3247,7 @@ def main() -> None:
         env_cfg.scene.object.init_state.rot = (1.0, 0.0, 0.0, 0.0)
         if getattr(env_cfg, "events", None) is not None:
             # The upstream handover randomizer targets a broad bare table.
-            # This bench uses a fixed, visible sterile landing beside the tray.
+            # This bench uses a fixed, visible sterile landing on the table.
             env_cfg.events.reset_object_position = None
 
         # The pad is NVIDIA-authored static collision geometry. It intentionally
@@ -3267,25 +3263,13 @@ def main() -> None:
             ),
         )
 
-        # NVIDIA authors the tray and scissors as rigid OpenUSD assets. Their
-        # authored bodies, colliders, mass and PhysX response are preserved.
-        env_cfg.scene.surgical_tray = RigidObjectCfg(
-            prim_path="{ENV_REGEX_NS}/SurgicalTray",
-            init_state=RigidObjectCfg.InitialStateCfg(
-                # The authored tray bottom is 73.18 mm below its root.
-                pos=(-0.180, -0.170, 0.0742),
-                rot=(1.0, 0.0, 0.0, 0.0),
-            ),
-            spawn=sim_utils.UsdFileCfg(
-                usd_path=str(nvidia_bench_assets["tray"]),
-            ),
-        )
+        # NVIDIA authors the scissors in centimetres. Preserve its native
+        # collider and PhysX response while normalizing it into the metre stage.
         env_cfg.scene.surgical_scissors = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/SurgicalScissors",
             init_state=RigidObjectCfg.InitialStateCfg(
-                # Long axis follows the tray. The source asset is authored in
-                # centimetres, so a 0.01 scale produces a 190 mm instrument.
-                pos=(-0.135, -0.170, 0.0145),
+                # The 190 mm instrument rests on a separate table landing.
+                pos=(-0.135, -0.130, 0.0114),
                 rot=(1.0, 0.0, 0.0, 0.0),
             ),
             spawn=sim_utils.UsdFileCfg(
@@ -3294,34 +3278,6 @@ def main() -> None:
             ),
         )
 
-        # A third NVIDIA articulation supplies the endoscopic embodiment. It
-        # holds its authored joint pose while the two PSM action terms retain
-        # the exact upstream fourteen-dimensional control contract.
-        env_cfg.scene.ecm = ORBIT_ECM_HIGH_PD_CFG.replace(
-            prim_path="{ENV_REGEX_NS}/ECM"
-        )
-        env_cfg.scene.ecm.spawn.usd_path = str(nvidia_bench_assets["ecm"])
-        env_cfg.scene.ecm.init_state.pos = (0.0, 0.230, 0.15)
-        env_cfg.scene.ecm.init_state.rot = (1.0, 0.0, 0.0, 0.0)
-        env_cfg.scene.ecm.init_state.joint_pos["ecm_main_insertion_joint"] = 0.16
-        env_cfg.scene.nvidia_ecm_camera = CameraCfg(
-            prim_path="{ENV_REGEX_NS}/ECM/ecm_end_link/camera",
-            update_period=0.04,
-            height=args_cli.camera_height,
-            width=args_cli.camera_width,
-            data_types=["rgb"],
-            spawn=sim_utils.PinholeCameraCfg(
-                focal_length=24.0,
-                focus_distance=0.25,
-                horizontal_aperture=20.955,
-                clipping_range=(0.005, 1.0),
-            ),
-            offset=CameraCfg.OffsetCfg(
-                pos=(0.0, 0.0, 0.0),
-                rot=(1.0, 0.0, 0.0, 0.0),
-                convention="ros",
-            ),
-        )
     if _softmimicgen_task:
         # There is one interactive room, so physics replication provides no
         # benefit and can drop cross-asset attachment relationships while the
@@ -3815,13 +3771,10 @@ def main() -> None:
     scene = env.unwrapped.scene
     camera = scene["endoscope"]
     stereo_right_camera = scene["endoscope_right"] if args_cli.sensor_profile in {"stereo", "research"} else None
-    nvidia_ecm_camera = scene["nvidia_ecm_camera"] if nvidia_native_bench else None
     wrist_cameras = [scene[f"wrist_{index}"] for index in range(1, len(wrist_robot_names) + 1)] if args_cli.sensor_profile == "research" else []
     camera_sources = {"endoscope_left": camera}
     if stereo_right_camera is not None:
         camera_sources["endoscope_right"] = stereo_right_camera
-    if nvidia_ecm_camera is not None:
-        camera_sources["nvidia_ecm"] = nvidia_ecm_camera
     camera_sources.update({f"wrist_{index}": wrist_camera for index, wrist_camera in enumerate(wrist_cameras, start=1)})
     all_robot_names = sorted(scene.articulations.keys())
     robot_names = [
