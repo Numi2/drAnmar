@@ -51,7 +51,7 @@ class NeedleLiftEnvCfg(LiftEnvCfg):
             asset_name="robot",
             joint_names=["psm_tool_gripper.*_joint"],
             open_command_expr={"psm_tool_gripper1_joint": -0.5, "psm_tool_gripper2_joint": 0.5},
-            close_command_expr={"psm_tool_gripper1_joint": -0.06, "psm_tool_gripper2_joint": 0.06},
+            close_command_expr={"psm_tool_gripper1_joint": -0.02, "psm_tool_gripper2_joint": 0.02},
         )
         # Set the body name for the end effector
         self.commands.object_pose.body_name = "psm_tool_tip_link"

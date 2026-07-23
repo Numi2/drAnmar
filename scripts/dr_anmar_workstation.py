@@ -50,7 +50,7 @@ MEMORY_WARNING_BYTES = int(
 )
 PSM_GRIPPER_CLOSE_RAD = min(
     0.49,
-    positive_environment_number("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", 0.06, 0.0),
+    positive_environment_number("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", 0.02, 0.0),
 )
 SENSOR_PROFILES = {"efficient", "stereo", "research"}
 EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"

@@ -36,8 +36,9 @@ was not relabeled or promoted.
 
 - NVIDIA's current scripted needle-lift grasp was physically successful in only 3/5 attempts in one run and 1/5
   in another. Reducing the native residual jaw aperture from `0.09` to `0.06` radians also produced 1/5 with
-  that expert, showing that its trajectory remains a confounding variable; the closer physical target is exposed
-  to the interactive room for direct doctor validation. A table-clearance variant failed 0/5 and was discarded.
+  that expert, showing that its trajectory remains a confounding variable. Direct interactive inspection found
+  the `0.06` target still left 2–3 mm of tip clearance, so the physical target was refined to `0.02` radians for
+  doctor validation. A table-clearance variant failed 0/5 and was discarded.
 - The handover MDP is implemented, but no native rollout has yet physically completed
   approach → giver grasp → present → dual grasp → stable receiver ownership.
 - No GR00T checkpoint has been trained from the reach diagnostic dataset. Training must begin with accepted,

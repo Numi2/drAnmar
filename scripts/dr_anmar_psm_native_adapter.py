@@ -33,7 +33,7 @@ from typing import Any, Sequence
 PSM_POLICY_ACTION_DIM = 7
 PSM_CARTESIAN_ACTION_DIM = 8
 PSM_ARM_DIM = 6
-DEFAULT_PSM_GRIPPER_CLOSE_RAD = 0.06
+DEFAULT_PSM_GRIPPER_CLOSE_RAD = 0.02
 CONTRACT_NAME = "dr_anmar.nvidia_psm_policy_action.v1"
 PSM_ARM_NAMES = (
     "psm_yaw_joint",
