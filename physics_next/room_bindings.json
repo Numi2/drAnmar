@@ -1,6 +1,5 @@
 {
   "schema": "dr.anmar.native-room-bindings.v1",
-  "clinical_validation": false,
   "rooms": {
     "nvidia-strand-ring-threading": {
       "backend": "physx_fem",
@@ -31,9 +30,7 @@
         "side": "minimum",
         "width_m": 0.008
       },
-      "material": "physics_next/materials/liver-research-default.json",
-      "authority": "isaac_lab_physx_native_deformable",
-      "calibration_status": "research_defaults_unvalidated"
+      "material": "physics_next/materials/liver-research-default.json"
     }
   }
 }

@@ -199,7 +199,6 @@ def Xform "DrAnmarDigitalTwin" (
 )
 {{
     custom string drAnmar:sceneId = "{scene_id}"
-    custom string drAnmar:fidelity = "visual anatomy plus ORBIT-Surgical rigid-body task physics"
 
     def Xform "Environment" (
         prepend references = @{environment}@</DrAnmarEnvironment>

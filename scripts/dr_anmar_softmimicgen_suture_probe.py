@@ -319,7 +319,7 @@ def main() -> int:
     report = {
         "schema": "dr.anmar.softmimicgen-suture-probe.v1",
         "source_revision": "c9d146ba57358a544167de8ebe946caaac8f6220",
-        "physics_authority": "NVIDIA PhysX",
+        "engine": "NVIDIA PhysX",
         "physics_dt_s": 0.005,
         "strand_scale": [0.2, args.strand_radial_scale, args.strand_radial_scale],
         "attachment_overlap_m": args.attachment_overlap_m,

@@ -114,5 +114,4 @@ def psm_gripper_profile_manifest(
     manifest["close_rad"] = float(close_rad)
     manifest["action_terms"] = list(action_terms or [])
     manifest["articulations"] = list(articulations or [])
-    manifest["physics_authority"] = "Isaac Lab actions + PhysX contact"
     return manifest

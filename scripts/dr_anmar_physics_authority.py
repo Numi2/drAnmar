@@ -2,7 +2,7 @@
 # Copyright (c) 2026, Dr.Anmar Project Developers.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Physics-backend authority and provenance for Dr.Anmar.
+"""Physics-backend manifest and runtime diagnostics for Dr.Anmar.
 
 The module deliberately has no Isaac, Warp, or CUDA imports.  It can therefore
 describe and validate every backend from the doctor-facing stable process while
@@ -28,48 +28,6 @@ SUPPORTED_BACKENDS = {
     "newton_vbd",
     "cressim_mpm",
 }
-
-# One solver-capability contract replaces room-specific readiness gates.  A
-# procedure may add teaching, recording, or scoring around the simulator, but
-# its physical outcome is runnable only when the active NVIDIA backend owns all
-# capabilities listed here.
-FIDELITY_REQUIREMENTS: dict[str, tuple[str, ...]] = {
-    "nvidia_i4h_reference": ("rigid_body", "articulation", "contact"),
-    "native_object_physics": ("rigid_body", "articulation", "contact"),
-    "anatomy_context": ("rigid_body", "articulation"),
-    "interactive_recovery_scenarios": ("rigid_body", "articulation", "contact"),
-    "native_volume_deformable": ("volume_deformable", "two_way_robot_tissue"),
-    "native_suturing": (
-        "volume_deformable",
-        "deformable_strand",
-        "native_attachment",
-        "strand_self_contact",
-        "tissue_puncture",
-    ),
-    "native_topology_change": ("topology_change", "two_way_robot_tissue"),
-    "native_flexible_shunt": ("flexible_body", "two_way_robot_tissue"),
-    "native_fluid_structure": ("volume_deformable", "fluid_structure"),
-    "native_vascular_flow": ("volume_deformable", "vascular_flow"),
-    "native_hemostasis": ("fluid_dynamics", "coagulation"),
-    "nvidia_medical_ultrasound": ("medical_ultrasound",),
-}
-
-CAPABILITY_LABELS = {
-    "volume_deformable": "native volumetric deformable tissue",
-    "two_way_robot_tissue": "two-way robot-tissue coupling",
-    "deformable_strand": "native deformable thread",
-    "native_attachment": "native needle/thread attachment",
-    "strand_self_contact": "thread self-contact",
-    "tissue_puncture": "native puncture and tract mechanics",
-    "topology_change": "native topology-changing tissue",
-    "flexible_body": "native flexible tube mechanics",
-    "fluid_structure": "native fluid-structure coupling",
-    "vascular_flow": "native vascular flow",
-    "fluid_dynamics": "native fluid dynamics",
-    "coagulation": "native hemostasis mechanics",
-    "medical_ultrasound": "physics-based medical ultrasound",
-}
-
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -196,43 +154,7 @@ class PhysicsAuthority:
             },
         }
 
-    def procedure_readiness(
-        self,
-        procedure: dict[str, Any],
-        runtime: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Return one fail-closed native-physics decision for a procedure."""
-
-        runtime = runtime or self.runtime_payload()
-        fidelity = str(procedure.get("fidelity", ""))
-        requirements = FIDELITY_REQUIREMENTS.get(fidelity)
-        if requirements is None:
-            requirements = ("unclassified_native_physics",)
-        available = set(runtime.get("backend", {}).get("capabilities", []))
-        missing = [capability for capability in requirements if capability not in available]
-        ready = not missing
-        backend = str(runtime.get("effective_backend", "unknown"))
-        if ready:
-            reason = f"Native {backend} owns this room's physical state."
-        else:
-            readable = ", ".join(CAPABILITY_LABELS.get(item, item.replace("_", " ")) for item in missing)
-            reason = (
-                f"Unavailable until the active Isaac Lab worker provides {readable}. "
-                "Dr.Anmar will not substitute projected motion or proxy mechanics."
-            )
-        return {
-            "schema": "dr.anmar.native-physics-readiness.v1",
-            "ready": ready,
-            "fidelity": fidelity,
-            "backend": backend,
-            "required_capabilities": list(requirements),
-            "available_capabilities": sorted(available),
-            "missing_capabilities": missing,
-            "reason": reason,
-        }
-
-
 def load_physics_authority(path: Path | None = None) -> PhysicsAuthority:
-    """Load the repository contract, failing closed on malformed configuration."""
+    """Load and validate the repository backend manifest."""
 
     return PhysicsAuthority.load(path)

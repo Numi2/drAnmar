@@ -1,6 +1,6 @@
 # Executable expert guidance
 
-Dr.Anmar provides one live simulation expert controller across all 19 procedure rooms. It is an executable
+Dr.Anmar provides one live simulation expert controller across supported local procedure rooms. It is an executable
 teaching aid: the controller sends actions to the active Isaac environment while the OpenUSD room, operative
 camera, grippers, procedure mechanics, phase annotations and safety telemetry continue updating. It is not a
 prerecorded video and it is not a validated clinician policy.
@@ -49,16 +49,6 @@ The user interface therefore distinguishes a completed teaching run from an appr
 
 ## Live examples
 
-### Interrupted suturing
-
-<p align="center">
-  <img src="screenshots/expert-guidance-suturing.gif" width="960" alt="Live interrupted-suture simulation expert moving through the eight Dr.Anmar teaching phases">
-</p>
-
-The capture shows the active phase, dual-PSM operative view, suture/tissue panel, manual takeover, and keyboard
-controls. The run completed 8/8 phases and saved 606 robot-state frames plus 62 camera frames. It remained
-unqualified because align, contact and manipulation reached their bounded convergence timeouts.
-
 ### Dual-instrument needle handover
 
 <p align="center">
@@ -69,29 +59,6 @@ The capture shows both instruments entering the shared workspace and the live ph
 manipulation and recovery. The run saved 687 robot-state frames plus 64 camera frames. Large approach, align and
 contact residuals correctly prevented it from becoming a Behavior Cloning reference.
 
-### Archived ultrasound-guided interface study
-
-<p align="center">
-  <img src="screenshots/expert-guidance-ultrasound.gif" width="960" alt="Archived Dr.Anmar ultrasound interface study; not native ultrasound evidence">
-</p>
-
-The capture shows separate probe and access-needle roles with confidence, needle visibility, target error and
-protected-vessel clearance. The run saved 574 robot-state frames plus 53 camera frames. Align and contact
-timeouts correctly kept it out of the reference set.
-
-## Captured runtime evidence — 2026-07-21
-
-| Procedure | State frames | Observed control rate | Phase result | Reference result |
-| --- | ---: | ---: | --- | --- |
-| Single interrupted stitch | 606 | 43.38 Hz | Completed 8/8 | Not eligible; 3 degraded reasons |
-| Needle handover | 687 | 48.98 Hz | Completed 8/8 | Not eligible; 3 degraded reasons |
-| Ultrasound-guided access | 574 | 49.54 Hz | Completed 8/8 | Not eligible; 2 degraded reasons |
-
-These historical captures used the retired reduced-order prototype and are not evidence of native tissue,
-thread, ultrasound or cutting physics. The current workstation will not launch those procedure families until
-an Isaac Lab worker supplies their required native capabilities. Exact runtime provenance remains in each
-generated demonstration manifest outside the public repository.
-
 ## Research data contract
 
 Each run synchronizes the available members of this contract:
@@ -101,7 +68,6 @@ Each run synchronizes the available members of this contract:
 - active procedure phase and event sequence;
 - gripper, task object, native outcome and intervention state;
 - needle, thread, tissue, cutting, vascular, ultrasound or recovery mechanics when active;
-- physics-authority, calibration and clinical-validation boundaries;
 - controller status, completed phases, warnings and reference-qualification state.
 
 The GIFs are documentation captures only. Training and evaluation consume the checksummed NPZ/JSON
@@ -110,7 +76,7 @@ demonstration pair, never pixels extracted from the GIF.
 ## Remaining work
 
 - Replace generic convergence targets with room-specific expert acquisition and manipulation plans.
-- Achieve clean reference qualification for suturing, handover and ultrasound before clinician review.
-- Exercise the other 15 rooms end to end, then repeat across the seven anatomy presets and challenge scenarios.
+- Achieve clean reference qualification for each supported local room before clinician review.
+- Exercise the active room catalog end to end, then repeat across the anatomy presets and challenge scenarios.
 - Validate phase semantics, pause/takeover usability, task success, forces and teaching value with clinicians.
 - Keep all generated references simulation-only until independent review and the relevant validation gates pass.

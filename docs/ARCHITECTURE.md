@@ -16,8 +16,8 @@ component contains a physical-robot driver or a clinical workflow integration.
 4. `scripts/dr_anmar_anatomy_viewer.py` provides a low-overhead static preview for an installed official
    anatomy scene without keeping an Isaac worker active.
 5. `web/doctor_studio.html` presents the doctor-facing learning and operating-room interface.
-6. `scripts/dr_anmar_physics_authority.py` is the single executable capability contract. It decides whether
-   the active native solver can own a procedure's complete physical state.
+6. `scripts/dr_anmar_physics_authority.py` validates the optional multi-solver manifest and reports runtime
+   diagnostics for physics development.
 7. `dr_anmar_physics_next.sh` manages a separate Isaac Sim 6 / Isaac Lab 3 environment under mutable runtime
    storage. It never replaces or stops the stable worker.
 8. `scripts/dr_anmar_expert.py` runs the shared eight-phase expert state machine. The workstation maps each
@@ -52,9 +52,9 @@ These paths are ignored if a developer deliberately points `DR_ANMAR_ROOT` insid
 ```mermaid
 flowchart LR
     A["Doctor Studio: Watch / Pause / Take control"] --> B["Hub lifecycle"]
-    B --> C["Native-capability decision"]
-    C -->|available| D["Isaac workstation"]
-    C -->|missing| J["Room remains unavailable"]
+    B --> C["Required files and runtime check"]
+    C -->|present| D["Isaac workstation"]
+    C -->|missing| J["Launch returns the missing dependency"]
     D --> E["Eight-phase expert controller"]
     E --> K["PhysX / VBD / MPM physical state"]
     E --> F["Synchronized NPZ + JSON trajectory"]
@@ -92,7 +92,6 @@ an optional vascular graph. The procedure determines the preferred solver:
 - CRESSim-MPM for topology-changing cutting, puncture tracts and thread passage;
 - PhysX rigid-body dynamics for the current doctor-facing manipulation rooms.
 
-There is no reduced-order runtime fallback. The hub and direct worker CLI use the same capability decision;
-missing native tissue, strand, topology, fluid or ultrasound capabilities make the room unavailable. The
-stable process reports `requested_backend`, `effective_backend`, capabilities, manifest hash, calibration
-state and clinical-validation boundary through `/api/status` and every new demonstration sidecar.
+The doctor-facing catalog contains only implemented rooms. Launch checks are limited to concrete dependencies
+such as the selected OpenUSD anatomy, native room assets, or an external provider runtime. The optional
+multi-solver manifest remains available to physics-development tools without controlling the room catalog.

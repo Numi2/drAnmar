@@ -45,7 +45,6 @@ from dr_anmar_i4h_adapter import (
     workflow_modes,
 )
 from dr_anmar_procedures import PROCEDURES_BY_ID, PROCEDURE_ROOMS, procedure_payload
-from dr_anmar_physics_authority import load_physics_authority
 from dr_anmar_native_rooms import resolve_native_room
 from dr_anmar_sonogym_adapter import (
     SONOGYM_COMMIT,
@@ -1360,66 +1359,24 @@ def anatomy() -> dict[str, Any]:
     return anatomy_payload()
 
 
-def procedure_physics_state(
-    authority: Any,
-    procedure: dict[str, Any],
-    binding: dict[str, Any] | None,
-) -> dict[str, Any]:
-    if binding and binding.get("runtime_provider") == "nvidia_softmimicgen":
-        return {
-            "ready": bool(binding.get("available")),
-            "reason": "" if binding.get("available") else "The threaded-room runtime assets are missing.",
-        }
-    return authority.procedure_readiness(
-        procedure,
-        authority.runtime_payload(
-            runtime_family="isaac-sim-5.1-stable",
-            effective_backend=(
-                str(binding["backend"])
-                if binding and binding.get("available")
-                else None
-            ),
-        ),
-    )
-
-
 @app.get("/api/procedure-rooms")
 def procedure_rooms() -> dict[str, Any]:
     payload = procedure_payload()
     available_anatomy = {scene["id"]: scene for scene in anatomy_payload()["scenes"]}
-    authority = load_physics_authority()
-    runtime = authority.runtime_payload(runtime_family="isaac-sim-5.1-stable")
     for room in payload["rooms"]:
         anatomy = available_anatomy.get(room["anatomy_scene"])
-        if room.get("fidelity") == "nvidia_medical_ultrasound":
+        if room.get("external_provider") == "nvidia_robotic_ultrasound":
             catalog = workflow_modes("robotic_ultrasound")
             mode = next(
-                (item for item in catalog.get("modes", []) if item.get("id") == "teleop_with_ultrasound"),
+                (item for item in catalog.get("modes", []) if item.get("id") == room.get("provider_mode")),
                 None,
             )
             ready = bool(mode and mode.get("launch_ready"))
             missing = list(mode.get("missing_prerequisites", [])) if mode else ["NVIDIA workflow metadata"]
-            reason = (
-                "NVIDIA Isaac for Healthcare owns ultrasound ray tracing, probe state, B-mode output and stepping."
-                if ready
-                else "Official NVIDIA robotic ultrasound is installed but cannot launch until "
-                + ", ".join(missing)
-                + "."
-            )
-            physics = {
-                "schema": "dr.anmar.native-physics-readiness.v1",
-                "ready": ready,
-                "fidelity": room["fidelity"],
-                "backend": f"nvidia_i4h_robotic_ultrasound_{I4H_RELEASE}",
-                "required_capabilities": ["medical_ultrasound"],
-                "available_capabilities": ["medical_ultrasound"] if ready else [],
-                "missing_capabilities": [] if ready else ["medical_ultrasound"],
-                "reason": reason,
-            }
-            room["physics"] = physics
-            room["simulation_ready"] = ready
-            room["readiness_reason"] = reason
             room["ready"] = ready
+            room["readiness_reason"] = (
+                "" if ready else "The robotic ultrasound room needs " + ", ".join(missing) + "."
+            )
             room["anatomy_title"] = "NVIDIA robotic ultrasound patient model"
             continue
         if room.get("external_provider") == "sonogym_orthopedics":
@@ -1430,58 +1387,31 @@ def procedure_rooms() -> dict[str, Any]:
             )
             ready = bool(mode and mode.get("launch_ready"))
             missing = list(mode.get("missing_prerequisites", [])) if mode else ["SonoGym task metadata"]
-            reason = (
-                "SonoGym owns the CT-derived orthopedic assets, ultrasound simulation, robot task, observations, rewards and safety constraints."
-                if ready
-                else "The native SonoGym orthopedic room needs " + ", ".join(missing) + "."
-            )
-            physics = {
-                "schema": "dr.anmar.native-physics-readiness.v1",
-                "ready": ready,
-                "fidelity": room["fidelity"],
-                "backend": "sonogym_isaaclab_2.1.0",
-                "required_capabilities": ["orthopedic_ultrasound"],
-                "available_capabilities": ["orthopedic_ultrasound"] if ready else [],
-                "missing_capabilities": [] if ready else ["orthopedic_ultrasound"],
-                "reason": reason,
-            }
-            room["physics"] = physics
-            room["simulation_ready"] = ready
-            room["readiness_reason"] = reason
             room["ready"] = ready
+            room["readiness_reason"] = (
+                "" if ready else "The orthopedic ultrasound room needs " + ", ".join(missing) + "."
+            )
             room["anatomy_title"] = "SonoGym CT-derived lumbar patient · L4 vertebra"
             continue
         binding = resolve_native_room(str(room["id"]))
-        physics = procedure_physics_state(authority, room, binding)
-        if binding and not binding.get("available"):
-            physics = {
-                **physics,
-                "ready": False,
-                "reason": "The native OpenUSD physical asset is not installed on this worker.",
-            }
+        ready = not binding or bool(binding.get("available"))
+        reason = "" if ready else "Required room assets are not installed on this worker."
         missing_nvidia_assets = missing_required_nvidia_assets(room)
         if missing_nvidia_assets:
-            physics = {
-                **physics,
-                "ready": False,
-                "reason": (
-                    "Install the pinned NVIDIA surgical-core assets before opening "
-                    "this room. Missing: " + ", ".join(missing_nvidia_assets)
-                ),
-            }
-        room["physics"] = physics
-        room["simulation_ready"] = physics["ready"]
-        room["readiness_reason"] = physics["reason"]
+            ready = False
+            reason = "Missing required room assets: " + ", ".join(missing_nvidia_assets) + "."
+        room["readiness_reason"] = reason
         anatomy_ready = bool(room.get("hide_anatomy")) or bool(
             anatomy and anatomy.get("openusd_ready")
         )
-        room["ready"] = bool(anatomy_ready and physics["ready"])
+        room["ready"] = bool(anatomy_ready and ready)
+        if ready and not anatomy_ready:
+            room["readiness_reason"] = "Required anatomy assets are not installed on this worker."
         room["anatomy_title"] = (
             str(room.get("anatomy_focus") or "Dry-lab field")
             if room.get("hide_anatomy")
             else anatomy["title"] if anatomy else room["anatomy_scene"]
         )
-    payload["physics_authority"] = runtime
     return payload
 
 
@@ -1580,7 +1510,7 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
     procedure = PROCEDURES_BY_ID.get(request.procedure_id)
     if procedure is None:
         raise HTTPException(404, "Unknown procedure room")
-    if procedure.get("fidelity") == "nvidia_medical_ultrasound":
+    if procedure.get("external_provider") == "nvidia_robotic_ultrasound":
         result = start_healthcare_job(
             HealthcareWorkflowRequest(
                 workflow="robotic_ultrasound",
@@ -1602,27 +1532,15 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
             "title": procedure["title"],
             "native_provider": "SonoGym on Isaac Lab 2.1.0",
         }
-    authority = load_physics_authority()
     binding = resolve_native_room(str(procedure["id"]))
-    physics = procedure_physics_state(authority, procedure, binding)
     if binding and not binding.get("available"):
-        physics = {
-            **physics,
-            "ready": False,
-            "reason": "The native OpenUSD physical asset is not installed on this worker.",
-        }
+        raise HTTPException(409, "Required room assets are not installed on this worker.")
     missing_nvidia_assets = missing_required_nvidia_assets(procedure)
     if missing_nvidia_assets:
-        physics = {
-            **physics,
-            "ready": False,
-            "reason": (
-                "Install the pinned NVIDIA surgical-core assets before opening this "
-                "room. Missing: " + ", ".join(missing_nvidia_assets)
-            ),
-        }
-    if not physics["ready"]:
-        raise HTTPException(409, physics["reason"])
+        raise HTTPException(
+            409,
+            "Missing required room assets: " + ", ".join(missing_nvidia_assets) + ".",
+        )
     if procedure.get("hide_anatomy"):
         selected_anatomy = ""
         room_title = str(procedure.get("anatomy_focus") or "NVIDIA dry-lab field")

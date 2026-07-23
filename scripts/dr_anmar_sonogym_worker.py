@@ -174,7 +174,6 @@ def status_payload() -> dict[str, Any]:
                     {"id": step_id, "title": title, "instruction": title, "status": "pending"}
                     for step_id, title in meta["steps"]
                 ],
-                "truth_note": "SonoGym owns this native environment, patient data, ultrasound simulation, robot state, rewards and safety constraints. Simulation and research only.",
             },
         }
 

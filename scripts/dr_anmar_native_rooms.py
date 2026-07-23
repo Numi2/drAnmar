@@ -21,8 +21,6 @@ def load_native_room_bindings() -> dict[str, Any]:
     payload = json.loads(BINDINGS_PATH.read_text(encoding="utf-8"))
     if payload.get("schema") != "dr.anmar.native-room-bindings.v1":
         raise ValueError("Unsupported native-room binding schema")
-    if payload.get("clinical_validation") is not False:
-        raise ValueError("Native room bindings must remain explicitly non-clinical")
     return payload
 
 

@@ -982,11 +982,12 @@ class SharedState:
         step_count = len(self.procedure.get("steps", []))
         if kind == "softmimicgen_threading":
             # Only NVIDIA's published ring-crossing predicate may complete the
-            # upstream task.  In the extended bimanual room it proves a ring
-            # pass, not a handoff or knot, so it must never complete those
-            # later clinical teaching steps by itself.
+            # upstream task. In the extended bimanual room the expert's native
+            # custody state separately confirms the handoff.
             if self.procedure.get("bimanual"):
-                completed = 4 if self.upstream_task_success is True else 0
+                completed = 3 if self.upstream_task_success is True else 0
+                if completed and self.expert_demonstration.get("ring_handoff_complete"):
+                    completed = 4
             else:
                 completed = step_count if self.upstream_task_success is True else 0
             if not completed:
@@ -3109,16 +3110,6 @@ def procedure_waypoints(procedure: dict[str, Any]) -> np.ndarray:
         if len(points):
             return points
     kind = procedure.get("guide_kind")
-    if kind == "threading":
-        return np.asarray(
-            ((-0.038, -0.018, 0.025), (-0.018, -0.002, 0.038), (0.006, 0.012, 0.044), (0.032, 0.022, 0.032)),
-            dtype=np.float32,
-        )
-    if kind == "cutting_path":
-        return np.asarray(
-            ((-0.055, -0.018, 0.052), (-0.030, -0.010, 0.046), (-0.004, 0.000, 0.043), (0.024, 0.011, 0.040), (0.050, 0.020, 0.036)),
-            dtype=np.float32,
-        )
     if kind == "navigation":
         return np.asarray(
             ((-0.045, -0.030, 0.070), (-0.015, -0.005, 0.052), (0.018, 0.020, 0.046), (0.050, 0.036, 0.060)),
@@ -3284,8 +3275,8 @@ def main() -> None:
         # collision/deformation use the same physical dimensions.
         env_cfg.scene.object.spawn.scale = (0.2, 0.04, 0.04)
         if procedure.get("enable_strand_self_collision"):
-            # PhysX owns knot topology: no projected curve, teleport or
-            # workstation-side constraint is allowed to stand in for contact.
+            # PhysX owns strand self-contact; no projected curve, teleport or
+            # workstation-side constraint stands in for contact.
             env_cfg.scene.object.spawn.deformable_props = sim_utils.DeformableBodyPropertiesCfg(
                 self_collision=True,
                 self_collision_filter_distance=0.0012,
@@ -3788,7 +3779,7 @@ def main() -> None:
             flush=True,
         )
     if bimanual_softmimicgen and not ring_physics_ready:
-        raise RuntimeError("The bimanual knot room requires SoftMimicGen's native rigid ring")
+        raise RuntimeError("The bimanual thread room requires SoftMimicGen's native rigid ring")
     if _softmimicgen_task and interactive_deformable is not None and "suture_needle" in objects:
         # Report the named swage-to-terminal-surface separation once. This is
         # read-only: OpenUSD defines the anchor and PhysX owns all motion.
@@ -4849,7 +4840,12 @@ def main() -> None:
                 if (position := tool_position_for_arm(arm)) is not None
             }
             expert_object = None
-            if objects:
+            if bimanual_softmimicgen and "suture_needle" in objects:
+                expert_object = (
+                    objects["suture_needle"].data.root_pos_w[0, :3]
+                    .detach().cpu().numpy().astype(np.float32)
+                )
+            elif objects:
                 expert_object = next(iter(objects.values())).data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
             elif native_tissue is not None:
                 nodal_position_value = native_tissue.data.nodal_pos_w
@@ -4860,10 +4856,7 @@ def main() -> None:
                 expert_object,
                 grippers_open,
                 safety_envelope_active=False,
-                thread_tail_position=None,
-                needle_points=np.empty((0, 3), dtype=np.float32),
-                hoop_passed=False,
-                knot_secure=False,
+                hoop_passed=state.upstream_task_success is True,
                 native_grasp_contact_active=[arm in native_grasp_arms for arm in range(state.arms)],
             )
             action_np = expert_command.action

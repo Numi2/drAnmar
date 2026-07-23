@@ -29,9 +29,9 @@ Every visual below was captured from Dr.Anmar itself. No figures were copied fro
 
 | Offering | What the doctor sees | What the researcher gets |
 | --- | --- | --- |
-| **Guided robotics curriculum** | 33 lessons that explain control, demonstration, vision, policies, procedures, safety, recovery and orthopedic ultrasound in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
-| **Interactive surgical digital twin** | Native-ready rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | ORBIT-Surgical tasks, versioned OpenUSD composition, PhysX contact sensing and simulator telemetry |
-| **Native-physics procedure roadmap** | The complete suturing, cutting, tissue, shunt, vascular and ultrasound curriculum remains visible without pretending unfinished physics works | One capability contract routes each family to PhysX FEM, coupled Newton VBD, CRESSim-MPM or an official NVIDIA healthcare workflow; missing capabilities fail closed |
+| **Guided robotics curriculum** | 21 lessons that explain control, demonstration, vision, policies, procedures, safety, recovery and orthopedic ultrasound in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
+| **Interactive surgical digital twin** | Dr.Anmar rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | Native task bindings, versioned OpenUSD composition, contact instrumentation and simulator telemetry |
+| **Procedure rooms** | Needle handling, retraction, anatomy navigation, recovery, thread work and ultrasound tasks that connect to real simulator environments | A compact catalog with direct task, asset and external-provider bindings |
 | **Demonstrations and Skills Twin** | Record a complete attempt, replay it, see phase-aware coaching, and compare against a clinician-selected reference | Checksummed trajectory/manifest pairs, task-native tool paths, multimodal observations, analysis and content-addressed dataset cards |
 | **Failure Lab and policy evaluation** | Practise shifted viewpoints, low light, occlusion, target variation, calibration drift, tissue variation and safe hand-back | Seeded challenge matrices, interventions, native outcomes, safety events and immutable policy-evaluation cards |
 | **Multimodal study builder** | Start from a clinical question and choose what the policy should perceive | Stereo RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact, deformation, operator input and procedure annotations, with guarded NVIDIA workflow bindings |
@@ -54,15 +54,14 @@ restores the room after bounded training or an external workflow.
   <img src="docs/screenshots/dr-anmar-live-operating-room-2026.png" width="960" alt="Live Dr.Anmar liver-retraction operating room with OpenUSD anatomy, dVRK instrument, complete keyboard control dock, guidance, and camera HUD">
 </p>
 
-The current native-ready library includes needle pickup, needle handoff, needle passing/regrasp, anatomy
-navigation and complication recovery. Suturing, knots, organ deformation, cutting, shunts, vascular flow,
-hemostasis and ultrasound remain in the curriculum but cannot launch until an active NVIDIA-stack worker owns
-their required physics. Dr.Anmar never replaces those missing capabilities with projected trajectories,
-unbreakable attachments or browser-side mechanics.
+The current library contains 12 rooms: the NVIDIA surgical bench, needle pickup and handoff, liver
+retraction, anatomy navigation, bimanual strand/ring work, needle regrasping, ultrasound-guided access,
+complication recovery, and three SonoGym L4 ultrasound tasks. Each entry maps directly to a local task or an
+external provider; unfinished procedure placeholders are not shown.
 
 ### Executable expert guidance
 
-Every native-ready procedure room can run a live expert controller through **Rest → Approach → Align → Contact → Grasp →
+Supported local procedure rooms can run a live expert controller through **Rest → Approach → Align → Contact → Grasp →
 Manipulate → Verify → Recover**. This is not a prerecorded video: the robot acts inside the current OpenUSD
 room while camera, task, force, tissue and phase telemetry update. A doctor can pause for inspection or take
 manual control from the current phase. Complete runs are saved and qualified; only clean uninterrupted runs
@@ -71,27 +70,11 @@ full workflow and honest qualification boundary are documented in
 [`docs/EXECUTABLE_EXPERT_GUIDANCE.md`](docs/EXECUTABLE_EXPERT_GUIDANCE.md).
 
 <p align="center">
-  <img src="docs/screenshots/expert-guidance-suturing.gif" width="960" alt="Live Dr.Anmar expert guidance performing the interrupted-suturing room while the eight teaching phases, operative camera, controls, and suture telemetry update">
-</p>
-
-<p align="center"><strong>Archived interface study</strong><br>
-This capture documents the teaching and takeover interface only. Its retired reduced-order tissue motion is
-not accepted as simulation evidence and the room is unavailable in the native-only runtime.</p>
-
-<p align="center">
   <img src="docs/screenshots/expert-guidance-needle-handover.gif" width="960" alt="Live Dr.Anmar expert guidance performing a dual-instrument needle handover through approach, grasp, manipulation, verification, and recovery">
 </p>
 
 <p align="center"><strong>Dual-instrument needle handover</strong><br>
 Pickup → presentation → receiving grasp → release → separation, performed in the live dual-PSM room.</p>
-
-<p align="center">
-  <img src="docs/screenshots/expert-guidance-ultrasound.gif" width="960" alt="Live Dr.Anmar expert guidance performing ultrasound-guided needle access with bimanual probe and needle telemetry">
-</p>
-
-<p align="center"><strong>Archived ultrasound interface study</strong><br>
-The former drawn B-mode implementation is retired. The room delegates to the pinned NVIDIA Isaac for
-Healthcare provider and remains unavailable until that workflow's Docker and RTI DDS prerequisites are installed.</p>
 
 ### Orthopedic robotic ultrasound with SonoGym
 
@@ -226,9 +209,8 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
 - OpenUSD operating rooms and seven official ORBIT-Surgical anatomy choices.
 - Native PhysX rigid-body needle pickup, dual-arm handover, passing/regrasp, navigation and recovery rooms.
 - PhysX contact sensors on the gripper bodies; no synthetic grasp joints or collision-disabling puncture paths.
-- One native-capability authority shared by the hub, direct worker CLI, runtime status and recordings.
-- A complete procedure curriculum with installed native thread rooms and capability-based readiness for
-  tissue deformation, puncture, topology, flow and ultrasound rooms.
+- A compact 12-room procedure catalog backed by local tasks, installed thread assets, NVIDIA ultrasound,
+  and SonoGym.
 - Guided lessons, plain-language robotics explanations, progress tracking, and a robotics glossary.
 - Demonstration recording and replay for behavior-cloning experiments.
 - Executable eight-phase simulation experts in native-ready rooms, with live pause/resume, exact-state manual
