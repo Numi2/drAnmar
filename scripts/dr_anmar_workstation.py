@@ -146,6 +146,7 @@ from isaaclab_tasks.utils import parse_env_cfg
 
 if _softmimicgen_task:
     import softmimicgen_tasks  # noqa: F401
+    from orbit.surgical.assets.psm import PSM_HIGH_PD_CFG as ORBIT_PSM_HIGH_PD_CFG
 else:
     import orbit.surgical.tasks  # noqa: F401
 
@@ -3199,8 +3200,16 @@ def main() -> None:
                 solver_position_iteration_count=32,
             )
         if bimanual_softmimicgen:
-            # Reuse ORBIT-Surgical's established dual-PSM base placement while
-            # retaining SoftMimicGen's native strand and rigid ring scene.
+            # Use the complete ORBIT-Surgical PSM configuration from the
+            # needle rooms that already have matched rendered and collision
+            # jaws. SoftMimicGen's psm_forceps asset has a different jaw
+            # visual/collider relationship, which can report contact while a
+            # visible gap remains. The strand, ring, attachment and solver
+            # remain the native NVIDIA SoftMimicGen implementation.
+            env_cfg.scene.robot = ORBIT_PSM_HIGH_PD_CFG.replace(
+                prim_path="{ENV_REGEX_NS}/Robot"
+            )
+            env_cfg.scene.robot.spawn.activate_contact_sensors = True
             env_cfg.scene.robot.init_state.pos = (0.1, 0.0, 0.15)
             env_cfg.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
             env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
@@ -3377,10 +3386,13 @@ def main() -> None:
                 "psm_tool_gripper2_joint": PSM_GRIPPER_CLOSE_RAD,
             },
         )
-    # The upstream PSM rooms use a 0.09-radian residual jaw aperture, which is
-    # too wide for the scaled thin needle in interactive grasping. Preserve
-    # the native BinaryJointPositionAction and PhysX contact path while using
-    # a closer physical target for every available PSM gripper term.
+    # The bimanual strand room now uses the same smaller PSM instrument and
+    # 0.09-radian needle-grasp target as ORBIT-Surgical's working needle lift
+    # and handover rooms. The tighter workstation override is only for the
+    # other PSM assets; applying it across different jaw geometries is wrong.
+    active_gripper_close_rad = (
+        0.09 if bimanual_softmimicgen else PSM_GRIPPER_CLOSE_RAD
+    )
     for gripper_term_name in (
         "gripper_action",
         "gripper_1_action",
@@ -3393,8 +3405,8 @@ def main() -> None:
         gripper_term = getattr(env_cfg.actions, gripper_term_name, None)
         if gripper_term is not None and hasattr(gripper_term, "close_command_expr"):
             gripper_term.close_command_expr = {
-                "psm_tool_gripper1_joint": -PSM_GRIPPER_CLOSE_RAD,
-                "psm_tool_gripper2_joint": PSM_GRIPPER_CLOSE_RAD,
+                "psm_tool_gripper1_joint": -active_gripper_close_rad,
+                "psm_tool_gripper2_joint": active_gripper_close_rad,
             }
     camera_target = np.asarray(env_cfg.viewer.lookat, dtype=np.float32)
     # Start from the room-facing side used by the official OR scene so the
