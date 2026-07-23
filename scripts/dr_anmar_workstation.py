@@ -99,7 +99,7 @@ parser.add_argument(
     "--sensor_profile",
     choices=sorted(SENSOR_PROFILES),
     default=os.environ.get("DR_ANMAR_SENSOR_PROFILE", "research"),
-    help="efficient=left RGB, stereo=left RGB-D+right RGB, research=stereo plus wrist cameras",
+    help="all profiles include one down-axis RGB camera per PSM; efficient=left RGB, stereo=left RGB-D+right RGB, research=full research sensors",
 )
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
@@ -438,6 +438,7 @@ async function recording(start){try{await post(start?'/api/record/start':'/api/r
 async function replay(){try{const x=await post('/api/replay-last');toast(x.message)}catch(e){toast(e.message)}}
 async function referenceGhost(enabled){try{const x=await post('/api/reference-ghost',{enabled});toast(x.message)}catch(e){toast(e.message)}}
 const cameraDelay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+for(const [name,label] of [['wrist_1','Gripper 1'],['wrist_2','Gripper 2']]){const button=document.querySelector(`[data-camera="${name}"]`);if(button?.firstChild)button.firstChild.textContent=`${label} `}
 function startCameraFeed(name){currentCamera=name;cameraFeedGeneration+=1;const generation=cameraFeedGeneration,image=document.getElementById('cameraImage');cameraFeedController?.abort();cameraFeedController=new AbortController();const controller=cameraFeedController;activeFetchControllers.add(controller);(async()=>{try{while(!pageDisposed&&generation===cameraFeedGeneration){if(document.hidden){await cameraDelay(250);continue}try{const response=await fetch(`/frame/${encodeURIComponent(name)}.jpg?t=${Date.now()}`,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error(`Camera frame ${response.status}`);const nextUrl=URL.createObjectURL(await response.blob()),previousUrl=cameraObjectUrl;cameraObjectUrl=nextUrl;image.src=nextUrl;if(previousUrl)URL.revokeObjectURL(previousUrl);await cameraDelay(55)}catch(error){if(controller.signal.aborted)return;await cameraDelay(250)}}}finally{activeFetchControllers.delete(controller)}})()}
 function setCamera(name,button){if(currentCamera!==name||!cameraFeedController||cameraFeedController.signal.aborted)startCameraFeed(name);document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===button))}
 function setCameraShortcut(name){const button=document.querySelector(`[data-camera="${name}"]`);if(!button||button.classList.contains('hidden')){toast(`${name.replace('_',' ')} is not available in this room`);return}setCamera(name,button);toast(`${button.textContent.trim()} camera`)}
@@ -3293,12 +3294,8 @@ def main() -> None:
                 prim_path="{ENV_REGEX_NS}/Robot"
             )
             env_cfg.scene.robot.spawn.activate_contact_sensors = True
-            # Match the proven ORBIT needle-room jaw actuator exactly. The
-            # native thread remains physically attached but does not change
-            # the robot/needle grasp configuration.
-            env_cfg.scene.robot.actuators["psm_tool"].effort_limit_sim = 0.1
-            env_cfg.scene.robot.actuators["psm_tool"].velocity_limit_sim = 0.2
-            env_cfg.scene.robot.actuators["psm_tool"].damping = 0.1
+            # The shared PSM profile below owns jaw actuation for every room.
+            # The native thread does not introduce a room-specific override.
             env_cfg.scene.robot.init_state.pos = (0.1, 0.0, 0.15)
             env_cfg.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
             env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
@@ -3577,18 +3574,18 @@ def main() -> None:
                     track_air_time=False,
                 ),
             )
-    for wrist_index, wrist_robot_name in enumerate(wrist_robot_names, start=1) if args_cli.sensor_profile == "research" else ():
+    for wrist_index, wrist_robot_name in enumerate(wrist_robot_names, start=1):
         setattr(
             env_cfg.scene,
             f"wrist_{wrist_index}",
             CameraCfg(
                 prim_path=f"{{ENV_REGEX_NS}}/DrAnmarWristCamera{wrist_index}",
-                update_period=0.04,
-                height=360,
-                width=480,
+                update_period=CANONICAL_PSM_GRIPPER_PROFILE.camera_update_period_s,
+                height=CANONICAL_PSM_GRIPPER_PROFILE.camera_height_px,
+                width=CANONICAL_PSM_GRIPPER_PROFILE.camera_width_px,
                 data_types=["rgb"],
                 spawn=sim_utils.PinholeCameraCfg(
-                    focal_length=18.0,
+                    focal_length=CANONICAL_PSM_GRIPPER_PROFILE.camera_focal_length_mm,
                     focus_distance=0.10,
                     horizontal_aperture=20.955,
                     clipping_range=(0.005, 0.50),
@@ -3721,7 +3718,10 @@ def main() -> None:
     scene = env.unwrapped.scene
     camera = scene["endoscope"]
     stereo_right_camera = scene["endoscope_right"] if args_cli.sensor_profile in {"stereo", "research"} else None
-    wrist_cameras = [scene[f"wrist_{index}"] for index in range(1, len(wrist_robot_names) + 1)] if args_cli.sensor_profile == "research" else []
+    wrist_cameras = [
+        scene[f"wrist_{index}"]
+        for index in range(1, len(wrist_robot_names) + 1)
+    ]
     camera_sources = {"endoscope_left": camera}
     if stereo_right_camera is not None:
         camera_sources["endoscope_right"] = stereo_right_camera
@@ -4149,7 +4149,7 @@ def main() -> None:
         procedure_markers.set_visibility(True)
 
     def update_wrist_camera_poses() -> None:
-        """Keep a close oblique camera behind each instrument and aimed at its jaws."""
+        """Mount beside each gripper and look straight down its working axis."""
         world_up = np.asarray((0.0, 0.0, 1.0), dtype=np.float32)
         fallback_axis = np.asarray((1.0, 0.0, 0.0), dtype=np.float32)
         for arm, wrist_camera in enumerate(wrist_cameras):
@@ -4185,8 +4185,14 @@ def main() -> None:
                 lateral = np.cross(shaft, fallback_axis)
                 lateral_norm = float(np.linalg.norm(lateral))
             lateral /= max(lateral_norm, 1e-6)
-            eye = tip - shaft * 0.055 + lateral * 0.022 + world_up * 0.014
-            target = tip + shaft * 0.028
+            eye = (
+                tip
+                - shaft * CANONICAL_PSM_GRIPPER_PROFILE.camera_backoff_m
+                + lateral * CANONICAL_PSM_GRIPPER_PROFILE.camera_lateral_offset_m
+            )
+            # The mount is beside the gripper, but its optical axis remains
+            # exactly parallel to the gripper shaft rather than converging.
+            target = eye + shaft * CANONICAL_PSM_GRIPPER_PROFILE.camera_lookahead_m
             wrist_camera.set_world_poses_from_view(
                 torch.tensor([eye.tolist()], device=wrist_camera.device),
                 torch.tensor([target.tolist()], device=wrist_camera.device),

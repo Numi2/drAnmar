@@ -21,9 +21,16 @@ class PsmGripperProfile:
     open_rad: float = 0.5
     close_rad: float = 0.02
     effort_limit_nm: float = 0.1
-    velocity_limit_rad_s: float = 0.2
+    velocity_limit_rad_s: float = 1.0
     stiffness: float = 500.0
     damping: float = 0.1
+    camera_update_period_s: float = 0.04
+    camera_width_px: int = 480
+    camera_height_px: int = 360
+    camera_focal_length_mm: float = 18.0
+    camera_backoff_m: float = 0.025
+    camera_lateral_offset_m: float = 0.012
+    camera_lookahead_m: float = 0.080
 
 
 CANONICAL_PSM_GRIPPER_PROFILE = PsmGripperProfile()
