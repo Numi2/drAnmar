@@ -28,8 +28,15 @@ from typing import Any
 from isaaclab.app import AppLauncher
 
 from dr_anmar_procedures import PROCEDURES_BY_ID
-from dr_anmar_physics_authority import load_physics_authority
 from dr_anmar_native_rooms import resolve_native_room
+from dr_anmar_psm_gripper import (
+    CANONICAL_PSM_GRIPPER_PROFILE,
+    apply_psm_gripper_action_profile,
+    apply_psm_gripper_articulation_profile,
+    psm_gripper_close_rad_from_environment,
+    psm_gripper_command_expr,
+    psm_gripper_profile_manifest,
+)
 
 
 DATA_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
@@ -97,14 +104,7 @@ parser.add_argument(
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 _softmimicgen_task = args_cli.task.startswith("Isaac-Thread-PSM-")
-PSM_GRIPPER_CLOSE_RAD = min(
-    0.49,
-    positive_environment_number(
-        "DR_ANMAR_PSM_GRIPPER_CLOSE_RAD",
-        0.02,
-        0.0,
-    ),
-)
+PSM_GRIPPER_CLOSE_RAD = psm_gripper_close_rad_from_environment()
 _softmimicgen_root = Path(
     os.environ.get(
         "DR_ANMAR_SOFTMIMICGEN_ROOT",
@@ -112,27 +112,11 @@ _softmimicgen_root = Path(
     )
 ).expanduser().resolve()
 
-# Refuse unsupported physics before Isaac Sim claims the GPU.  This is the
-# same single capability decision used by the hub, so direct CLI launches
-# cannot bypass the native-solver boundary.
-_physics_authority = load_physics_authority()
 _requested_procedure = PROCEDURES_BY_ID.get(args_cli.procedure) if args_cli.procedure else None
 _native_room = resolve_native_room(args_cli.procedure) if args_cli.procedure else None
-_effective_backend = (
-    str(_native_room["backend"])
-    if _native_room and _native_room.get("available")
-    else None
-)
-_physics_runtime = _physics_authority.runtime_payload(
-    runtime_family="isaac-sim-5.1-stable",
-    effective_backend=_effective_backend,
-)
 if args_cli.procedure:
     if _requested_procedure is None:
         parser.error(f"Unknown Dr.Anmar procedure room: {args_cli.procedure}")
-    _physics_readiness = _physics_authority.procedure_readiness(_requested_procedure, _physics_runtime)
-    if not _physics_readiness["ready"]:
-        parser.error(_physics_readiness["reason"])
 
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
@@ -336,7 +320,7 @@ APP_HTML = r"""<!doctype html>
     button.primary{background:var(--cyan);border-color:var(--cyan);color:#041014}button.danger{background:#31171c;border-color:#74414a;color:#ffabb2}button.stop{grid-column:1/-1;background:#27323a;border-color:#5f727c}
     .speedbar{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:11px}.speedbar button{min-height:35px;font-size:11px}.speedbar button.active{background:var(--cyan);border-color:var(--cyan);color:#041014}.dpad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:"blank up blank2" "left stop right" "blank3 down blank4";gap:6px}.dpad .up{grid-area:up}.dpad .left{grid-area:left}.dpad .stop-center{grid-area:stop;min-height:54px;background:#26343b;border-color:#617681}.stop-center small{display:block;color:#9bb0b8;font-size:10px;margin-top:2px}.dpad .right{grid-area:right}.dpad .down{grid-area:down}.depthgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.anglegrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.move-button{min-height:54px;touch-action:none;position:relative}.move-button small{display:block;color:#86a5af;font-size:10px;margin-top:2px}.move-button.held{background:var(--cyan);border-color:var(--cyan);color:#041014;box-shadow:0 0 16px #2cd2e855}.move-button.held small{color:#0a5260}.control-readout{display:flex;align-items:center;gap:7px;margin-top:10px;color:var(--muted);font-size:11px}.control-readout i{width:7px;height:7px;border-radius:50%;background:#536a73}.control-readout.moving{color:var(--green)}.control-readout.moving i{background:var(--green);box-shadow:0 0 10px #42e49b99}
     .hint{color:var(--muted);font-size:12px;margin-top:9px}.hidden{display:none}.arm.active,.autonomy.active{background:var(--cyan);color:#041014;border-color:var(--cyan)}
-    .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}.fidelity-note{margin-top:8px;padding:7px;border-left:2px solid #f0b94e;background:#201a0d;color:#d8c18c;font-size:9px}
+    .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}
     .supervision{border-color:#356475;background:linear-gradient(135deg,#0d2731,#09171e)}.supervision-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.supervision-state b{color:var(--cyan)}.cue{min-height:32px;margin-top:9px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#9fc0c9;font-size:11px}
     .safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.safety-metric{padding:8px;background:#061219;border:1px solid #1c3742}.safety-metric b{display:block;color:var(--green);font:15px ui-monospace,monospace}.safety-metric span{color:var(--muted);font-size:9px}
     .control-dock{position:relative;margin:0 0 10px;padding:34px 10px 8px;border:1px solid #294651;border-radius:9px;background:#0a171e;box-shadow:none}.control-dock:before{content:"Robot controls";position:absolute;left:12px;top:10px;color:#dffbff;font:800 12px/1 ui-sans-serif,system-ui}.control-dock:after{display:none}.control-dock .move-button{min-height:43px;padding:4px 2px;border:1px solid #31515d;background:#0d2028;font-size:10px;line-height:1.05}.control-dock .move-button small{font-size:8px;margin-top:2px}.control-dock .stop-center{width:100%;min-height:34px;padding:3px 8px;border:1px solid #68444b;background:#25181c;color:#ffc2c7;font-size:9px}.control-dock .hint{display:none}.instrument-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.instrument-grid.single{grid-template-columns:1fr}.instrument-card{min-width:0;padding:7px;border:1px solid #1d3540;border-radius:8px;background:#08131a}.instrument-head{display:flex;align-items:center;gap:7px;margin-bottom:5px}.instrument-head button{flex:1;min-height:30px;padding:3px 7px;text-align:left;font-size:10px}.instrument-head .arm.active{border-color:#426775;background:#132a33;color:#dffbff}.instrument-head span{color:#708b95;font:750 8px/1 ui-monospace,monospace;letter-spacing:.08em;white-space:nowrap}.hand-key-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.hand-key{display:flex;flex-direction:column;align-items:center;justify-content:center}.hand-key kbd{height:18px;min-width:22px;padding:0 4px;font-size:9px}.instrument-actions{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px}.instrument-actions .modifier-chip,.instrument-actions button{min-height:32px;display:flex;align-items:center;justify-content:center;gap:4px;padding:3px;font-size:9px}.instrument-actions button,.instrument-actions .primary{border-color:#31515d;background:#0d2028;color:#dffbff}.hand-speeds{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px}.hand-speeds button{min-height:29px;padding:2px;font-size:8px}.hand-speeds button.active{border-color:#527480;background:#132a33}.hand-speeds kbd{height:16px;min-width:17px;padding:0 3px;font-size:8px}.control-stop-row{margin-top:7px;padding-top:6px;border-top:1px solid #1d3540}.control-dock .control-readout{min-height:15px;margin-top:3px;font-size:8px}.control-dock .control-readout i{width:5px;height:5px}
@@ -372,7 +356,7 @@ APP_HTML = r"""<!doctype html>
       </div><div class="control-stop-row"><button class="stop-center" data-shortcut="Esc" onclick="emergencyStop()">Stop both robots <kbd>Esc / ⌫</kbd></button></div><div id="controlReadout" class="control-readout" aria-live="polite"><i></i><span>Ready · hold a key to move either instrument</span></div>
     </section>
     <section id="expertDemo" class="expert-demo"><div class="expert-head"><div><div class="eyebrow">EXECUTABLE TEACHING</div><b>Watch the robot perform this room</b></div><span id="expertStatus" class="expert-status">READY</span></div><div id="expertRail" class="expert-rail"></div><div id="expertInstruction" class="expert-instruction">The expert executes the full procedure in the live simulation. Pause at any phase, inspect the views and forces, or take control from the current pose.</div><div class="expert-actions"><button id="expertStart" class="primary" data-shortcut="F9" onclick="startExpert()">Watch expert <kbd>F9</kbd></button><button id="expertPause" data-shortcut="F10" onclick="toggleExpertPause()" disabled>Pause <kbd>F10</kbd></button><button id="expertTakeover" data-shortcut="Esc" onclick="takeControl()" disabled>Take control <kbd>Esc</kbd></button></div></section>
-    <h2>Current procedure</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div><div id="procedureTruth" class="fidelity-note hidden"></div></div>
+    <h2>Current procedure</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div></div>
     <h2>Supervision</h2><div class="card supervision"><div class="supervision-state"><span>Autonomy level</span><b id="autonomyState">L0 · Manual</b></div><div class="grid two"><button id="manualMode" class="autonomy active" data-shortcut="M" onclick="setAutonomy('manual')">Manual <kbd>M</kbd></button><button id="guidedMode" class="autonomy" data-shortcut="G" onclick="setAutonomy('guided')">Guided <kbd>G</kbd></button></div><div id="coachingCue" class="cue">You command every movement. Dr.Anmar records telemetry for coaching.</div></div>
     <h2>Live safety</h2><div class="card"><div class="safety-grid"><div class="safety-metric"><b id="forceMetric">—</b><span>CONTACT N</span></div><div class="safety-metric"><b id="deformMetric">—</b><span>TISSUE MM</span></div><div class="safety-metric"><b id="stressMetric">—</b><span>STRESS PA</span></div></div></div>
     <h2>Demonstration</h2><div class="card"><div class="grid two"><button id="record" class="primary" data-shortcut="Y" onclick="recording(true)">Start recording <kbd>Y</kbd></button><button data-shortcut="T" onclick="recording(false)">Stop & save <kbd>T</kbd></button><button data-shortcut="R" onclick="replay()">Replay last <kbd>R</kbd></button><button data-shortcut="Delete" onclick="resetScene()">Reset scene <kbd>Delete</kbd></button></div><div class="hint" id="lastDemo">Actions, joints, RGB-D, segmentation, object state, and safety telemetry are saved together.</div></div>
@@ -517,7 +501,7 @@ function targetDirections(offset){if(!offset)return'';const choices=[];if(Math.a
 async function refresh(){if(refreshInFlight||pageDisposed||document.hidden)return;refreshInFlight=true;try{
   const s=await requestJson('/api/status/live',{cache:'no-store'},2500);if(workerInstanceId&&s.instance_id!==workerInstanceId){location.reload();return}workerInstanceId=s.instance_id;latestStatus=s;if(activeArm>=s.arms){activeArm=0;document.getElementById('arm0').classList.add('active');document.getElementById('arm1').classList.remove('active')}document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';const contactPad=standardGamepads()[0];for(let arm=0;arm<2;arm++){const contact=!!s.native_grasp_contact_active?.[arm];if(contact&&!previousGamepadContacts[arm])gamepadHaptic(contactPad,{duration:95,weak:arm===0 ? .48 : .12,strong:arm===1 ? .48 : .12});previousGamepadContacts[arm]=contact}
   const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;const procedureMarkup=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join(''),procedureSteps=document.getElementById('procedureSteps');if(procedureSteps.dataset.markup!==procedureMarkup){procedureSteps.innerHTML=procedureMarkup;procedureSteps.dataset.markup=procedureMarkup}
-  const truth=document.getElementById('procedureTruth');truth.textContent=p.truth_note||'';truth.classList.toggle('hidden',!p.truth_note);document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('rightInstrumentControls').classList.toggle('hidden',s.arms<2);document.getElementById('instrumentGrid').classList.toggle('single',s.arms<2);document.querySelectorAll('.gripper-control').forEach(button=>button.classList.toggle('hidden',!s.has_grippers));
+  document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('rightInstrumentControls').classList.toggle('hidden',s.arms<2);document.getElementById('instrumentGrid').classList.toggle('single',s.arms<2);document.querySelectorAll('.gripper-control').forEach(button=>button.classList.toggle('hidden',!s.has_grippers));
   currentViewMode=s.camera_view_mode||currentViewMode;renderFreeCamera(s.camera_adjustable||{});document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',!cameraAdjustMode&&x.dataset.viewMode===currentViewMode));
   document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record').classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[0]===false);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[(s.arms||1)>1?1:0]===false);
 	  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m;proximity.className='proximity';let guidance='Move toward the target';if(s.native_grasp_contact_active?.[activeArm]){guidance='Native jaw contact detected · lift smoothly';proximity.classList.add('held')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){guidance=`Target ${Math.round(distance*1000)} mm · ${targetDirections(offset)||'hold course'}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Next</b><span>${guidance}</span>`;const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],contact=s.native_grasp_contact_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':contact?'Lift the physically held object':'Open jaws and retry';
@@ -712,7 +696,6 @@ class SharedState:
     camera_intrinsics: list[list[float]] | None = None
     semantic_labels: dict[str, Any] = field(default_factory=dict)
     runtime_provenance: dict[str, Any] = field(default_factory=dict)
-    physics_authority: dict[str, Any] = field(default_factory=dict)
     camera_valid_depth_fraction: float | None = None
     camera_foreground_fraction: float | None = None
     camera_mean_luminance: float | None = None
@@ -726,6 +709,7 @@ class SharedState:
     native_psm_policy_contract: bool = False
     native_psm_policy_dim: int = 0
     native_psm_robot_names: list[str] = field(default_factory=list)
+    gripper_profile: dict[str, Any] = field(default_factory=dict)
     ring_physics_ready: bool = False
     strand_self_collision_ready: bool = False
     reference_ghost_enabled: bool = False
@@ -833,6 +817,7 @@ class SharedState:
                 "action_dim": self.action_dim,
                 "action_contract": ACTION_CONTRACT if self.native_psm_policy_contract else NON_PSM_ACTION_CONTRACT,
                 "native_psm_policy_dim": self.native_psm_policy_dim,
+                "gripper_profile": self.gripper_profile,
                 "arms": self.arms,
                 "has_grippers": self.has_grippers,
                 "robot_names": self.robot_names,
@@ -877,7 +862,6 @@ class SharedState:
                 "recording_storage": "bounded-hdf5-spool-plus-npz",
                 "sensor_profile": self.sensor_profile,
                 "runtime_provenance": self.runtime_provenance,
-                "physics_authority": self.physics_authority,
                 "last_demo": self.last_demo,
                 "replaying": self.replaying,
                 "expert_demonstration": self.expert_demonstration,
@@ -966,7 +950,6 @@ class SharedState:
                     "objective": procedure.get("objective", "Use the robot controls to explore the digital twin."),
                     "progress_percent": procedure.get("progress_percent", 0),
                     "steps": steps,
-                    "truth_note": procedure.get("truth_note", ""),
                 },
                 "grippers_open": list(self.grippers_open),
                 "native_grasp_contact_active": list(self.native_grasp_contact_active),
@@ -1603,14 +1586,6 @@ def build_web_app(state: SharedState) -> FastAPI:
         with state.lock:
             if not state.procedure:
                 raise HTTPException(409, "Load a procedure room before starting its expert demonstration")
-            if not state.procedure.get("simulation_ready", True):
-                raise HTTPException(
-                    409,
-                    state.procedure.get(
-                        "readiness_reason",
-                        "This room is unavailable until its native physics is ready.",
-                    ),
-                )
             if state.recording or state.record_request == "start":
                 raise HTTPException(409, "Stop the current recording before starting the expert")
             if state.replaying or state.evaluation_status in {"running", "saving"}:
@@ -2500,7 +2475,6 @@ def runtime_provenance(state: SharedState) -> dict[str, Any]:
         "procedure": state.procedure,
         "anatomy_scene_id": state.anatomy_scene_id,
         "sensor_profile": state.sensor_profile,
-        "physics_authority": state.physics_authority,
     }
     return {
         "source_revision": revision,
@@ -2514,7 +2488,6 @@ def runtime_provenance(state: SharedState) -> dict[str, Any]:
             json.dumps(configuration, sort_keys=True, default=str, separators=(",", ":")).encode()
         ).hexdigest(),
         "policy_checkpoint_sha256": None,
-        "physics_authority": state.physics_authority,
     }
 
 
@@ -2931,7 +2904,6 @@ def save_demo(
             "evaluation_source": state.evaluation_source,
             "procedure_id": state.procedure.get("id"),
             "procedure_title": state.procedure.get("title"),
-            "procedure_fidelity": state.procedure.get("fidelity"),
             "anatomy_scene_id": state.anatomy_scene_id,
             "anatomy_asset": state.anatomy_asset,
             "final_native_telemetry": json.loads(json.dumps(state.native_telemetry)),
@@ -2995,7 +2967,6 @@ def save_demo(
         },
         "context": context,
         "runtime_provenance": state.runtime_provenance or runtime_provenance(state),
-        "physics_authority": state.physics_authority,
         "data_governance": {
             "study_id": STUDY_ID or None,
             "consent_protocol": CONSENT_PROTOCOL or None,
@@ -3196,13 +3167,6 @@ def main() -> None:
                 "The NVIDIA native surgical bench requires the pinned surgical-core "
                 "asset bundle. Missing " + "; ".join(missing_nvidia_assets)
             )
-    procedure_physics = _physics_authority.procedure_readiness(
-        procedure or {"fidelity": "anatomy_context"},
-        _physics_runtime,
-    )
-    procedure["physics"] = procedure_physics
-    procedure["simulation_ready"] = procedure_physics["ready"]
-    procedure["readiness_reason"] = procedure_physics["reason"]
     if "-IK-Rel" not in args_cli.task:
         raise ValueError("The browser workstation accepts relative-IK tasks. Other variants remain available via the CLI.")
     guide_kind = str(procedure.get("guide_kind", ""))
@@ -3512,37 +3476,32 @@ def main() -> None:
         native_deformable_enabled
         and native_room.get("representation") != "upstream_softmimicgen_task"
     )
+    configured_psm_articulations: list[str] = []
     for robot_attribute in ("robot", "robot_1", "robot_2"):
         robot_cfg = getattr(env_cfg.scene, robot_attribute, None)
         if robot_cfg is not None and getattr(robot_cfg, "spawn", None) is not None:
             robot_cfg.spawn.activate_contact_sensors = True
+            if apply_psm_gripper_articulation_profile(robot_cfg):
+                configured_psm_articulations.append(robot_attribute)
     if native_tissue_enabled:
         env_cfg.actions.gripper_action = BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["psm_tool_gripper.*_joint"],
-            open_command_expr={"psm_tool_gripper1_joint": -0.5, "psm_tool_gripper2_joint": 0.5},
-            close_command_expr={
-                "psm_tool_gripper1_joint": -PSM_GRIPPER_CLOSE_RAD,
-                "psm_tool_gripper2_joint": PSM_GRIPPER_CLOSE_RAD,
-            },
+            open_command_expr=psm_gripper_command_expr(
+                CANONICAL_PSM_GRIPPER_PROFILE.open_rad
+            ),
+            close_command_expr=psm_gripper_command_expr(PSM_GRIPPER_CLOSE_RAD),
         )
-    # Use ORBIT's proven ±0.02-radian needle-handover closed target.
-    active_gripper_close_rad = PSM_GRIPPER_CLOSE_RAD
-    for gripper_term_name in (
-        "gripper_action",
-        "gripper_1_action",
-        "gripper_2_action",
-        "robot_1_gripper_action",
-        "robot_2_gripper_action",
-        "finger_joint_pos",
-        "finger_joint_pos_2",
-    ):
-        gripper_term = getattr(env_cfg.actions, gripper_term_name, None)
-        if gripper_term is not None and hasattr(gripper_term, "close_command_expr"):
-            gripper_term.close_command_expr = {
-                "psm_tool_gripper1_joint": -active_gripper_close_rad,
-                "psm_tool_gripper2_joint": active_gripper_close_rad,
-            }
+    # Every interactive PSM room uses the same proven ORBIT needle profile.
+    configured_psm_action_terms = apply_psm_gripper_action_profile(
+        env_cfg.actions,
+        PSM_GRIPPER_CLOSE_RAD,
+    )
+    configured_psm_gripper_profile = psm_gripper_profile_manifest(
+        PSM_GRIPPER_CLOSE_RAD,
+        action_terms=configured_psm_action_terms,
+        articulations=configured_psm_articulations,
+    )
     camera_target = np.asarray(
         (-0.070, -0.020, 0.055)
         if nvidia_native_bench
@@ -4392,16 +4351,12 @@ def main() -> None:
         native_psm_policy_contract=bool(psm_scene_names),
         native_psm_policy_dim=native_psm_policy_dim,
         native_psm_robot_names=psm_scene_names,
+        gripper_profile=configured_psm_gripper_profile,
         ring_physics_ready=ring_physics_ready,
         strand_self_collision_ready=strand_self_collision_ready,
     )
     state.camera_names = list(camera_sources)
     update_procedure_waypoint_marker(0, force=True)
-    state.physics_authority = load_physics_authority().runtime_payload(
-        native_deformable_count=len(deformables),
-        runtime_family="isaac-sim-5.1-stable",
-        effective_backend=(str(native_room["backend"]) if native_room else None),
-    )
     expert_controller = ExpertDemonstrationController(
         procedure_id=str(procedure.get("id", "")),
         guide_kind=guide_kind,
@@ -5137,6 +5092,11 @@ def main() -> None:
                 )
                 for arm in range(state.arms)
             ]
+            if native_joint_targets_np is not None:
+                state.gripper_profile["resolved_aperture_rad"] = [
+                    round(float(native_joint_targets_np[arm * 7 + 6]), 5)
+                    for arm in range(state.arms)
+                ]
 
         motion_active = any(bool(np.any(action_np[state.body_action_slice(arm)])) for arm in range(state.arms))
         current_time = time.monotonic()

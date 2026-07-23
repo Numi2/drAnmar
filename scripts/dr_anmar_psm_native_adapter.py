@@ -30,10 +30,16 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+from dr_anmar_psm_gripper import (
+    CANONICAL_PSM_GRIPPER_PROFILE,
+    apply_psm_gripper_action_profile,
+    psm_gripper_close_rad_from_environment,
+)
+
 PSM_POLICY_ACTION_DIM = 7
 PSM_CARTESIAN_ACTION_DIM = 8
 PSM_ARM_DIM = 6
-DEFAULT_PSM_GRIPPER_CLOSE_RAD = 0.02
+DEFAULT_PSM_GRIPPER_CLOSE_RAD = CANONICAL_PSM_GRIPPER_PROFILE.close_rad
 CONTRACT_NAME = "dr_anmar.nvidia_psm_policy_action.v1"
 PSM_ARM_NAMES = (
     "psm_yaw_joint",
@@ -159,7 +165,10 @@ def _native_gripper_apertures() -> tuple[float, float]:
 
         cfg = PsmEmbodiment(enable_cameras=False, action_device="joint_position").get_action_cfg().gripper_action
     except (ImportError, ModuleNotFoundError):
-        return 0.5, 0.09
+        return (
+            CANONICAL_PSM_GRIPPER_PROFILE.open_rad,
+            CANONICAL_PSM_GRIPPER_PROFILE.close_rad,
+        )
     names = ("psm_tool_gripper1_joint", "psm_tool_gripper2_joint")
 
     def aperture(command: dict[str, float]) -> float:
@@ -383,13 +392,7 @@ def _patch_psm_recorder_config(bootstrap_root: Path, gripper_close_rad: float) -
     recorder_manager_cfg = _recorder_term_cfgs()
 
     def set_native_gripper_close(action_cfg):
-        for term_name in ("gripper_action", "gripper_1_action", "gripper_2_action"):
-            term = getattr(action_cfg, term_name, None)
-            if term is not None:
-                term.close_command_expr = {
-                    "psm_tool_gripper1_joint": -gripper_close_rad,
-                    "psm_tool_gripper2_joint": gripper_close_rad,
-                }
+        apply_psm_gripper_action_profile(action_cfg, gripper_close_rad)
         return action_cfg
 
     def get_recorder_term_cfg(self):
@@ -652,7 +655,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--gripper-close-rad",
         type=float,
-        default=float(os.environ.get("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", DEFAULT_PSM_GRIPPER_CLOSE_RAD)),
+        default=psm_gripper_close_rad_from_environment(),
     )
     return parser
 
