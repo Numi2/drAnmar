@@ -722,6 +722,8 @@ class SharedState:
     deformable_strand_ready: bool = False
     native_rigid_object_names: list[str] = field(default_factory=list)
     native_deformable_object_names: list[str] = field(default_factory=list)
+    native_rigid_object_positions_m: dict[str, list[float]] = field(default_factory=dict)
+    native_tool_positions_m: list[list[float] | None] = field(default_factory=list)
     native_psm_policy_contract: bool = False
     native_psm_policy_dim: int = 0
     native_psm_robot_names: list[str] = field(default_factory=list)
@@ -910,6 +912,8 @@ class SharedState:
                 "native_scene_contract": {
                     "rigid_objects": self.native_rigid_object_names,
                     "deformable_objects": self.native_deformable_object_names,
+                    "rigid_object_positions_m": self.native_rigid_object_positions_m,
+                    "tool_positions_m": self.native_tool_positions_m,
                     "ring_physics_ready": self.ring_physics_ready,
                     "strand_self_collision_ready": self.strand_self_collision_ready,
                     "bimanual_ready": self.arms == 2 and self.action_dim == 14,
@@ -3226,17 +3230,38 @@ def main() -> None:
         # Compose the room exclusively from the pinned Isaac for Healthcare
         # catalog. The existing handover task continues to own both PSMs,
         # relative IK actions, jaw contacts, needle state, resets and stepping.
-        for robot_name in ("robot_1", "robot_2"):
+        # Coordinates retain NVIDIA/ORBIT's proven opposed PSM roots and use
+        # the table top (z=0) as the single setup datum. The remaining assets
+        # form a non-overlapping dry-lab field: tray toward the operator,
+        # suturing pad beyond it, and ECM on the camera side.
+        psm_root_positions = {
+            "robot_1": (0.20, 0.0, 0.15),
+            "robot_2": (-0.20, 0.0, 0.15),
+        }
+        for robot_name, root_position in psm_root_positions.items():
             robot_cfg = getattr(env_cfg.scene, robot_name)
             robot_cfg.spawn.usd_path = str(nvidia_bench_assets["psm"])
+            robot_cfg.init_state.pos = root_position
+            robot_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
         env_cfg.scene.table.spawn.usd_path = str(nvidia_bench_assets["table"])
+        env_cfg.scene.table.init_state.pos = (0.0, 0.0, -0.457)
         env_cfg.scene.object.spawn.usd_path = str(nvidia_bench_assets["needle"])
+        env_cfg.scene.object.spawn.scale = (0.4, 0.4, 0.4)
+        env_cfg.scene.object.init_state.pos = (-0.195, 0.015, 0.0008)
+        env_cfg.scene.object.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        if getattr(env_cfg, "events", None) is not None:
+            # The upstream handover randomizer targets a broad bare table.
+            # This bench uses a fixed, visible sterile landing beside the tray.
+            env_cfg.events.reset_object_position = None
 
         # The pad is NVIDIA-authored static collision geometry. It intentionally
         # remains rigid: this room must never turn contact into a fake puncture.
         env_cfg.scene.suture_pad = AssetBaseCfg(
             prim_path="{ENV_REGEX_NS}/SuturePad",
-            init_state=AssetBaseCfg.InitialStateCfg(pos=(0.035, 0.045, 0.001)),
+            init_state=AssetBaseCfg.InitialStateCfg(
+                pos=(0.030, 0.055, 0.0005),
+                rot=(1.0, 0.0, 0.0, 0.0),
+            ),
             spawn=sim_utils.UsdFileCfg(
                 usd_path=str(nvidia_bench_assets["suture_pad"]),
             ),
@@ -3247,7 +3272,8 @@ def main() -> None:
         env_cfg.scene.surgical_tray = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/SurgicalTray",
             init_state=RigidObjectCfg.InitialStateCfg(
-                pos=(-0.20, 0.0, 0.012),
+                # The authored tray bottom is 73.18 mm below its root.
+                pos=(-0.180, -0.170, 0.0742),
                 rot=(1.0, 0.0, 0.0, 0.0),
             ),
             spawn=sim_utils.UsdFileCfg(
@@ -3257,11 +3283,14 @@ def main() -> None:
         env_cfg.scene.surgical_scissors = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/SurgicalScissors",
             init_state=RigidObjectCfg.InitialStateCfg(
-                pos=(-0.20, -0.025, 0.075),
-                rot=(0.7071068, 0.0, 0.0, 0.7071068),
+                # Long axis follows the tray. The source asset is authored in
+                # centimetres, so a 0.01 scale produces a 190 mm instrument.
+                pos=(-0.135, -0.170, 0.0145),
+                rot=(1.0, 0.0, 0.0, 0.0),
             ),
             spawn=sim_utils.UsdFileCfg(
                 usd_path=str(nvidia_bench_assets["scissors"]),
+                scale=(0.01, 0.01, 0.01),
             ),
         )
 
@@ -3272,8 +3301,9 @@ def main() -> None:
             prim_path="{ENV_REGEX_NS}/ECM"
         )
         env_cfg.scene.ecm.spawn.usd_path = str(nvidia_bench_assets["ecm"])
-        env_cfg.scene.ecm.init_state.pos = (0.0, 0.24, 0.15)
-        env_cfg.scene.ecm.init_state.joint_pos["ecm_main_insertion_joint"] = 0.12
+        env_cfg.scene.ecm.init_state.pos = (0.0, 0.230, 0.15)
+        env_cfg.scene.ecm.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        env_cfg.scene.ecm.init_state.joint_pos["ecm_main_insertion_joint"] = 0.16
         env_cfg.scene.nvidia_ecm_camera = CameraCfg(
             prim_path="{ENV_REGEX_NS}/ECM/ecm_end_link/camera",
             update_period=0.04,
@@ -3557,11 +3587,18 @@ def main() -> None:
                 "psm_tool_gripper1_joint": -active_gripper_close_rad,
                 "psm_tool_gripper2_joint": active_gripper_close_rad,
             }
-    camera_target = np.asarray(env_cfg.viewer.lookat, dtype=np.float32)
+    camera_target = np.asarray(
+        (-0.070, -0.020, 0.055)
+        if nvidia_native_bench
+        else env_cfg.viewer.lookat,
+        dtype=np.float32,
+    )
     # Start from the room-facing side used by the official OR scene so the
     # doctor sees the instrument, liver, table, and surrounding environment.
     camera_eye = np.asarray(
-        (0.36, 0.36, 0.21)
+        (0.38, -0.44, 0.32)
+        if nvidia_native_bench
+        else (0.36, 0.36, 0.21)
         if bimanual_softmimicgen
         else (0.20, 0.20, 0.11)
         if _softmimicgen_task
@@ -5115,6 +5152,14 @@ def main() -> None:
             for arm in range(state.arms)
             if (position := tool_position_for_arm(arm)) is not None
         }
+        current_object_positions = {
+            name: rigid_object.data.root_pos_w[0, :3]
+            .detach()
+            .cpu()
+            .numpy()
+            .astype(np.float32)
+            for name, rigid_object in objects.items()
+        }
         native_clearances = [
             clearance
             for position in current_tool_positions.values()
@@ -5130,6 +5175,21 @@ def main() -> None:
                 "contact_forces_n": dict(latest_contact_forces),
                 "deformable": dict(latest_deformable_safety),
             }
+            state.native_rigid_object_positions_m = {
+                name: position.astype(float).round(5).tolist()
+                for name, position in current_object_positions.items()
+            }
+            state.native_tool_positions_m = [
+                (
+                    current_tool_positions[arm]
+                    .astype(float)
+                    .round(5)
+                    .tolist()
+                    if arm in current_tool_positions
+                    else None
+                )
+                for arm in range(state.arms)
+            ]
 
         motion_active = any(bool(np.any(action_np[state.body_action_slice(arm)])) for arm in range(state.arms))
         current_time = time.monotonic()
