@@ -50,7 +50,7 @@ MEMORY_WARNING_BYTES = int(
 )
 PSM_GRIPPER_CLOSE_RAD = min(
     0.49,
-    positive_environment_number("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", 0.02, 0.0),
+    positive_environment_number("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", 0.08, 0.0),
 )
 SENSOR_PROFILES = {"efficient", "stereo", "research"}
 EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"
@@ -3396,7 +3396,7 @@ def main() -> None:
     # Use the configured tighter target with the matched ORBIT needle jaws.
     # The unthreaded handover room can retain a 0.09-radian residual aperture,
     # but the swaged FEM strand applies real load and torque to this needle.
-    # A 0.02-radian target supplies jaw preload through the native actuator;
+    # A 0.08-radian target supplies jaw preload through the native actuator;
     # it does not attach, lock, or otherwise constrain the needle.
     active_gripper_close_rad = PSM_GRIPPER_CLOSE_RAD
     for gripper_term_name in (
