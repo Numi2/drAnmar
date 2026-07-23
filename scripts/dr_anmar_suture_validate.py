@@ -12,10 +12,20 @@ from pathlib import Path
 from typing import Any
 
 from dr_anmar_procedures import PROCEDURE_ROOMS
+from dr_anmar_needle_model import (
+    DEFAULT_NEEDLE_PROFILE_PATH,
+    build_needle_mesh,
+    derive_needle,
+    load_needle_profile,
+    sample_episode_parameters,
+)
 from dr_anmar_suture_integration import (
-    NEEDLE_ASSET_SHA256,
-    SUTURE_ASSEMBLY_PATH,
-    configure_suture_instrument,
+    DR_ANMAR_NEEDLE_ASSET_ID,
+    DR_ANMAR_NEEDLE_ASSET_PATH,
+    DR_ANMAR_NEEDLE_ASSET_VERSION,
+    DR_ANMAR_NEEDLE_NAME,
+    DR_ANMAR_NEEDLE_ROOT_PRIM,
+    configure_dr_anmar_needle,
     local_room_ids,
 )
 from dr_anmar_suture_model import (
@@ -32,10 +42,9 @@ from dr_anmar_suture_model import (
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ASSET = (
-    REPOSITORY_ROOT
-    / "source/extensions/orbit.surgical.assets/data/Props/DrAnmarSuture/DrAnmarSuture4_0.usda"
+    REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 )
-DEFAULT_ASSEMBLY = SUTURE_ASSEMBLY_PATH
+DEFAULT_NEEDLE = DR_ANMAR_NEEDLE_ASSET_PATH
 DEFAULT_WORKSTATION = REPOSITORY_ROOT / "scripts/dr_anmar_workstation.py"
 
 
@@ -55,12 +64,15 @@ def check(
 
 def validate(
     profile: dict[str, Any],
+    needle_profile: dict[str, Any],
     asset_text: str,
-    assembly_text: str,
+    needle_text: str,
     workstation_text: str,
 ) -> dict[str, Any]:
     checks: dict[str, dict[str, Any]] = {}
     derived = derive(profile)
+    derived_needle = derive_needle(needle_profile)
+    needle_mesh = build_needle_mesh(needle_profile)
     geometry = profile["geometry"]
     material = profile["material"]
     tension = profile["tension"]
@@ -230,25 +242,182 @@ def validate(
         derived.diameter_m,
         0.00025,
     )
-    assembly_tokens = [
-        'defaultPrim = "DrAnmarNeedleSuture4_0"',
-        "prepend references = @../Surgical_needle/needle_sdf.usd@",
-        "prepend references = @DrAnmarSuture4_0.usda@",
+    needle_identity_tokens = [
+        f'defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"',
+        f'drAnmarAssetId = "{DR_ANMAR_NEEDLE_ASSET_ID}"',
+        f'drAnmarAssetName = "{DR_ANMAR_NEEDLE_NAME}"',
+        f'drAnmarAssetVersion = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"',
+        "prepend references = @../suture/DrAnmarSuture4_0.usda@",
+        'drAnmarGeometrySource = "independently_generated_parametric_geometry"',
+        'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
+        "drAnmarResetRandomizationCount = 4",
+        "drAnmarSimToRealGapCount = 7",
         'def PhysicsFixedJoint "FactorySwage"',
-        "physics:body0 = </DrAnmarNeedleSuture4_0/Needle>",
-        "physics:body1 = </DrAnmarNeedleSuture4_0/Suture/NeedleInterface>",
+        'def Mesh "Visual"',
+        'def Xform "Needle"',
+        f"physics:body0 = </{DR_ANMAR_NEEDLE_ROOT_PRIM}/Needle>",
+        f"physics:body1 = </{DR_ANMAR_NEEDLE_ROOT_PRIM}/Suture/NeedleInterface>",
         "physics:kinematicEnabled = false",
-        f'drAnmarNeedleAssetSha256 = "{NEEDLE_ASSET_SHA256}"',
+        'drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"',
     ]
-    missing_assembly_tokens = [
-        token for token in assembly_tokens if token not in assembly_text
+    missing_identity_tokens = [
+        token for token in needle_identity_tokens if token not in needle_text
     ]
     check(
         checks,
-        "factory_swaged_needle_composition",
-        not missing_assembly_tokens,
-        {"missing": missing_assembly_tokens},
-        assembly_tokens,
+        "dr_anmar_needle_identity_and_provenance",
+        not missing_identity_tokens,
+        {"missing": missing_identity_tokens},
+        needle_identity_tokens,
+    )
+    forbidden_needle_tokens = [
+        "../Surgical_needle",
+        "needle_sdf.usd",
+        "ORBIT",
+    ]
+    present_forbidden_needle_tokens = [
+        token for token in forbidden_needle_tokens if token in needle_text
+    ]
+    check(
+        checks,
+        "independent_dr_anmar_needle_geometry",
+        not present_forbidden_needle_tokens,
+        {"forbidden_references": present_forbidden_needle_tokens},
+        "no external needle geometry or naming",
+    )
+    authored_collision_capsules = len(
+        re.findall(r'def Capsule "C\d{3}"', needle_text)
+    )
+    check(
+        checks,
+        "needle_visual_and_collision_resolution",
+        len(needle_mesh.points) == derived_needle.visual_vertex_count
+        and authored_collision_capsules
+        == derived_needle.collision_capsule_count,
+        {
+            "visual_vertices": len(needle_mesh.points),
+            "collision_capsules": authored_collision_capsules,
+        },
+        {
+            "visual_vertices": derived_needle.visual_vertex_count,
+            "collision_capsules": derived_needle.collision_capsule_count,
+        },
+    )
+    construction = needle_profile["construction"]
+    arc_range = [
+        float(value)
+        for value in construction["centerline_arc_length_range_m"]
+    ]
+    diameter_range = [
+        float(value)
+        for value in construction["body_diameter_range_m"]
+    ]
+    check(
+        checks,
+        "needle_scale_and_mass",
+        arc_range[0] <= derived_needle.arc_length_m <= arc_range[1]
+        and diameter_range[0]
+        <= 2.0 * derived_needle.body_radius_m
+        <= diameter_range[1]
+        and 0.0 < derived_needle.mass_kg < 0.001,
+        {
+            "arc_length_m": derived_needle.arc_length_m,
+            "body_diameter_m": 2.0 * derived_needle.body_radius_m,
+            "mass_kg": derived_needle.mass_kg,
+        },
+        {
+            "arc_length_m": arc_range,
+            "body_diameter_m": diameter_range,
+            "mass_kg": "positive and below 1 gram",
+        },
+    )
+    sim_to_real = needle_profile["sim_to_real"]
+    gaps = sim_to_real["gaps"]
+    implemented_randomization = sim_to_real[
+        "implemented_randomization_on_episode_reset"
+    ]
+    planned_randomization = sim_to_real[
+        "planned_randomization_after_calibration"
+    ]
+    complete_gaps = all(
+        {
+            "id",
+            "risk",
+            "mitigation",
+            "calibration_target",
+            "status",
+        }.issubset(gap)
+        for gap in gaps
+    )
+    check(
+        checks,
+        "sim_to_real_gap_register",
+        len(gaps) >= 7
+        and complete_gaps
+        and len(implemented_randomization) >= 4
+        and len(planned_randomization) >= 4,
+        {
+            "gap_count": len(gaps),
+            "implemented_randomized_parameters": len(
+                implemented_randomization
+            ),
+            "planned_randomized_parameters": len(planned_randomization),
+            "complete_gap_records": complete_gaps,
+        },
+        {
+            "gap_count": "at least 7",
+            "implemented_randomized_parameters": "at least 4",
+            "planned_randomized_parameters": "at least 4",
+            "complete_gap_records": True,
+        },
+    )
+    sample_a = sample_episode_parameters(needle_profile, 1701)
+    sample_a_replay = sample_episode_parameters(needle_profile, 1701)
+    sample_b = sample_episode_parameters(needle_profile, 1702)
+    check(
+        checks,
+        "sim_to_real_randomization_replay",
+        sample_a == sample_a_replay and sample_a != sample_b,
+        {
+            "seed_1701": sample_a.payload(),
+            "seed_1701_replay": sample_a_replay.payload(),
+            "seed_1702": sample_b.payload(),
+        },
+        "same seed exactly replays; different seed changes the domain",
+    )
+    qualification = needle_profile["qualification"]
+    qualification_gates = qualification["gates"]
+    clinical_gates = [
+        gate for gate in qualification_gates if gate["id"] == "clinical_use"
+    ]
+    check(
+        checks,
+        "fail_closed_sim_to_real_qualification",
+        qualification["policy"]
+        == "fail_closed_until_each_evidence_gate_is_satisfied"
+        and len(qualification_gates) >= 6
+        and len(clinical_gates) == 1
+        and clinical_gates[0]["status"] == "blocked"
+        and needle_profile["clinical_validation"] is False,
+        {
+            "policy": qualification["policy"],
+            "gate_count": len(qualification_gates),
+            "clinical_gate": clinical_gates,
+            "clinical_validation": needle_profile["clinical_validation"],
+        },
+        "machine-readable qualification gates with clinical use blocked",
+    )
+    needle_evidence = needle_profile.get("evidence", [])
+    check(
+        checks,
+        "needle_research_provenance",
+        len(needle_evidence) >= 4
+        and all(
+            item.get("url") and item.get("used_for")
+            for item in needle_evidence
+        ),
+        len(needle_evidence),
+        "at least four traceable primary product or regulatory sources",
     )
     first_joint = re.search(
         r'def PhysicsJoint "J0000".*?physics:breakForce = ([0-9.eE+-]+)',
@@ -286,12 +455,12 @@ def validate(
     covered_local_rooms: list[str] = []
     for room_id in local_room_ids(PROCEDURE_ROOMS):
         fake_scene = FakeScene()
-        configure_suture_instrument(
+        configure_dr_anmar_needle(
             fake_scene,
             asset_base_cfg_type=FakeAssetBaseCfg,
             usd_file_cfg_type=FakeUsdFileCfg,
         )
-        if getattr(fake_scene, "dr_anmar_suture", None) is not None:
+        if getattr(fake_scene, "dr_anmar_needle", None) is not None:
             covered_local_rooms.append(room_id)
     expected_local_rooms = list(local_room_ids(PROCEDURE_ROOMS))
     check(
@@ -312,7 +481,7 @@ def validate(
         for node in ast.walk(syntax_tree)
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Name)
-        and node.func.id == "configure_suture_instrument"
+        and node.func.id == "configure_dr_anmar_needle"
     ]
     direct_main_calls = []
     for call in integration_calls:
@@ -340,6 +509,29 @@ def validate(
         len(direct_main_calls),
         1,
     )
+    domain_calls = [
+        node
+        for node in ast.walk(syntax_tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "apply_dr_anmar_needle_episode_domain"
+    ]
+    domain_call_owners: list[str] = []
+    for call in domain_calls:
+        ancestor = parents.get(call)
+        while ancestor is not None and not isinstance(
+            ancestor, (ast.FunctionDef, ast.AsyncFunctionDef)
+        ):
+            ancestor = parents.get(ancestor)
+        if isinstance(ancestor, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            domain_call_owners.append(ancestor.name)
+    check(
+        checks,
+        "live_reset_domain_randomization",
+        sorted(domain_call_owners) == ["main", "reset_environment"],
+        sorted(domain_call_owners),
+        ["main", "reset_environment"],
+    )
     evidence = profile.get("evidence", [])
     check(
         checks,
@@ -362,6 +554,13 @@ def validate(
             "axial_joint_stiffness_n_m": derived.axial_joint_stiffness_n_m,
             "bend_joint_stiffness_n_m_rad": derived.bend_joint_stiffness_n_m_rad,
             "twist_joint_stiffness_n_m_rad": derived.twist_joint_stiffness_n_m_rad,
+            "needle_arc_length_m": derived_needle.arc_length_m,
+            "needle_curvature_radius_m": derived_needle.curvature_radius_m,
+            "needle_body_diameter_m": 2.0 * derived_needle.body_radius_m,
+            "needle_mass_kg": derived_needle.mass_kg,
+            "needle_visual_vertex_count": derived_needle.visual_vertex_count,
+            "needle_collision_capsule_count": derived_needle.collision_capsule_count,
+            "sim_to_real_gap_count": len(gaps),
         },
         "clinical_validation": False,
         "note": "Deterministic engineering validation only; physical bench and clinician validation remain required.",
@@ -371,16 +570,34 @@ def validate(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE_PATH)
+    parser.add_argument(
+        "--needle-profile",
+        type=Path,
+        default=DEFAULT_NEEDLE_PROFILE_PATH,
+    )
     parser.add_argument("--asset", type=Path, default=DEFAULT_ASSET)
-    parser.add_argument("--assembly", type=Path, default=DEFAULT_ASSEMBLY)
+    parser.add_argument(
+        "--needle",
+        "--assembly",
+        dest="needle",
+        type=Path,
+        default=DEFAULT_NEEDLE,
+    )
     parser.add_argument("--workstation", type=Path, default=DEFAULT_WORKSTATION)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     profile = load_profile(args.profile)
+    needle_profile = load_needle_profile(args.needle_profile)
     asset_text = args.asset.read_text(encoding="utf-8")
-    assembly_text = args.assembly.read_text(encoding="utf-8")
+    needle_text = args.needle.read_text(encoding="utf-8")
     workstation_text = args.workstation.read_text(encoding="utf-8")
-    report = validate(profile, asset_text, assembly_text, workstation_text)
+    report = validate(
+        profile,
+        needle_profile,
+        asset_text,
+        needle_text,
+        workstation_text,
+    )
     encoded = json.dumps(report, indent=2, sort_keys=True)
     print(encoded)
     if args.output:

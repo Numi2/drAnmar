@@ -9,7 +9,12 @@ from pathlib import Path
 
 from isaaclab.app import AppLauncher
 
-from dr_anmar_suture_integration import NEEDLE_SWAGE_ANCHOR_M, NEEDLE_UNIFORM_SCALE
+from dr_anmar_needle_model import derive_needle, load_needle_profile
+from dr_anmar_suture_integration import (
+    DR_ANMAR_NEEDLE_ASSET_ID,
+    DR_ANMAR_NEEDLE_ASSET_VERSION,
+    DR_ANMAR_NEEDLE_NAME,
+)
 
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -44,6 +49,8 @@ def rotate_xyzw(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
 def main() -> int:
     if not args.asset.is_file():
         raise FileNotFoundError(args.asset)
+    needle_profile = load_needle_profile()
+    derived_needle = derive_needle(needle_profile)
     sim = SimulationContext(
         SimulationCfg(
             dt=0.0005,
@@ -74,7 +81,8 @@ def main() -> int:
     scene = UsdPhysics.Scene.Get(stage, "/physicsScene")
     scene.GetGravityMagnitudeAttr().Set(9.81)
 
-    root = stage.DefinePrim("/World/IndependentDrAnmarSuture", "Xform")
+    root_path = "/World/DrAnmarNeedle"
+    root = stage.DefinePrim(root_path, "Xform")
     root.GetReferences().AddReference(str(args.asset.resolve()))
     xform = UsdGeom.Xformable(root)
     xform.AddTranslateOp().Set(Gf.Vec3d(-0.09, 0.0, 0.06))
@@ -88,17 +96,17 @@ def main() -> int:
     sim.reset()
     physics_view = SimulationManager.get_physics_sim_view()
     assembly = stage.GetPrimAtPath(
-        "/World/IndependentDrAnmarSuture/Suture/Segments/S0000"
+        f"{root_path}/Suture/Segments/S0000"
     ).IsValid()
     segment_pattern = (
-        "/World/IndependentDrAnmarSuture/Suture/Segments/S*"
+        f"{root_path}/Suture/Segments/S*"
         if assembly
-        else "/World/IndependentDrAnmarSuture/Segments/S*"
+        else f"{root_path}/Segments/S*"
     )
     joint_prefix = (
-        "/World/IndependentDrAnmarSuture/Suture/Joints/"
+        f"{root_path}/Suture/Joints/"
         if assembly
-        else "/World/IndependentDrAnmarSuture/Joints/"
+        else f"{root_path}/Joints/"
     )
     segments = physics_view.create_rigid_body_view(
         segment_pattern
@@ -112,10 +120,10 @@ def main() -> int:
     initial_swage_distance_m = None
     if assembly:
         needle = physics_view.create_rigid_body_view(
-            "/World/IndependentDrAnmarSuture/Needle"
+            f"{root_path}/Needle"
         )
         interface = physics_view.create_rigid_body_view(
-            "/World/IndependentDrAnmarSuture/Suture/NeedleInterface"
+            f"{root_path}/Suture/NeedleInterface"
         )
         if (
             needle._backend is None
@@ -130,8 +138,7 @@ def main() -> int:
         )
         initial_anchor = initial_needle[:3] + rotate_xyzw(
             initial_needle[3:7],
-            np.asarray(NEEDLE_SWAGE_ANCHOR_M, dtype=np.float64)
-            * NEEDLE_UNIFORM_SCALE,
+            np.asarray(derived_needle.swage_anchor_m, dtype=np.float64),
         )
         initial_swage_distance_m = float(
             np.linalg.norm(initial_anchor - initial_interface[:3])
@@ -151,8 +158,7 @@ def main() -> int:
         )
         final_anchor = final_needle[:3] + rotate_xyzw(
             final_needle[3:7],
-            np.asarray(NEEDLE_SWAGE_ANCHOR_M, dtype=np.float64)
-            * NEEDLE_UNIFORM_SCALE,
+            np.asarray(derived_needle.swage_anchor_m, dtype=np.float64),
         )
         final_swage_distance_m = float(
             np.linalg.norm(final_anchor - final_interface[:3])
@@ -163,10 +169,13 @@ def main() -> int:
         if str(prim.GetPath()).startswith(joint_prefix)
     )
     factory_swage = stage.GetPrimAtPath(
-        "/World/IndependentDrAnmarSuture/FactorySwage"
+        f"{root_path}/FactorySwage"
     )
     report = {
-        "schema": "dr.anmar.suture-native-physx-probe.v1",
+        "schema": "dr.anmar.needle-native-physx-probe.v1",
+        "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
+        "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
+        "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
         "asset": str(args.asset.resolve()),
         "physics_dt_s": 0.0005,
         "steps": int(args.steps),

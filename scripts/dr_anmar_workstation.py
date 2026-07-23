@@ -36,7 +36,10 @@ from dr_anmar_psm_gripper import (
     psm_gripper_command_expr,
     psm_gripper_profile_manifest,
 )
-from dr_anmar_suture_integration import configure_suture_instrument
+from dr_anmar_suture_integration import (
+    apply_dr_anmar_needle_episode_domain,
+    configure_dr_anmar_needle,
+)
 
 
 DATA_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
@@ -63,6 +66,7 @@ MEMORY_WARNING_BYTES = int(
     positive_environment_number("DR_ANMAR_MEMORY_WARNING_BYTES", 16_000_000_000, 1_000_000_000)
 )
 SENSOR_PROFILES = {"efficient", "stereo", "research"}
+DEFAULT_SCENARIO_SEED = 7777
 EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"
 STUDY_ID = os.environ.get("DR_ANMAR_STUDY_ID", "").strip()
 CONSENT_PROTOCOL = os.environ.get("DR_ANMAR_CONSENT_PROTOCOL", "").strip()
@@ -688,7 +692,7 @@ class SharedState:
     expert_reference_demo: str | None = None
     expert_clean_run: bool = False
     scenario_id: str = "baseline"
-    scenario_seed: int = 7777
+    scenario_seed: int = DEFAULT_SCENARIO_SEED
     autonomy_mode: str = "manual"
     intervention_count: int = 0
     coaching_cue: str = "You command every movement. Dr.Anmar records telemetry for coaching."
@@ -739,6 +743,9 @@ class SharedState:
     procedure_started_at: float = 0.0
     procedure_last_motion_at: float = 0.0
     native_telemetry: dict[str, Any] = field(default_factory=dict)
+    dr_anmar_needle_domain: dict[str, float | int] = field(
+        default_factory=dict
+    )
     upstream_task_success: bool | None = None
 
     def __post_init__(self) -> None:
@@ -908,6 +915,7 @@ class SharedState:
                     "max_tissue_stress_pa": self.max_tissue_stress_pa,
                 },
                 "native_telemetry": self.native_telemetry,
+                "dr_anmar_needle_domain": self.dr_anmar_needle_domain,
                 "sensor_quality": {
                     "valid_depth_fraction": self.camera_valid_depth_fraction,
                     "semantic_foreground_fraction": self.camera_foreground_fraction,
@@ -3513,7 +3521,7 @@ def main() -> None:
     # Every locally constructed procedure room receives the same additional
     # graspable needle-suture assembly on a sterile table landing. Existing
     # task objects—including SoftMimicGen's current strand—remain untouched.
-    suture_instrument_manifest = configure_suture_instrument(
+    dr_anmar_needle_manifest = configure_dr_anmar_needle(
         env_cfg.scene,
         asset_base_cfg_type=AssetBaseCfg,
         usd_file_cfg_type=sim_utils.UsdFileCfg,
@@ -3796,7 +3804,7 @@ def main() -> None:
     from pxr import Usd, UsdPhysics
 
     suture_stage = omni.usd.get_context().get_stage()
-    suture_root_path = str(suture_instrument_manifest["prim_path"])
+    suture_root_path = str(dr_anmar_needle_manifest["prim_path"])
     suture_root = suture_stage.GetPrimAtPath(suture_root_path)
     if not suture_root.IsValid():
         raise RuntimeError("The Dr.Anmar needle-suture instrument did not enter the room")
@@ -3832,14 +3840,20 @@ def main() -> None:
             f"pullout_joint={pullout_joint.GetPrim().IsValid()}, "
             f"interface_kinematic={interface_kinematic}"
         )
+    initial_dr_anmar_needle_domain = apply_dr_anmar_needle_episode_domain(
+        suture_stage,
+        seed=DEFAULT_SCENARIO_SEED,
+        root_path=suture_root_path,
+    )
     print(
-        "[DR_ANMAR_SUTURE_INSTRUMENT] "
+        "[DR_ANMAR_NEEDLE] "
         + json.dumps(
             {
-                **suture_instrument_manifest,
+                **dr_anmar_needle_manifest,
                 "rigid_body_count": len(suture_rigid_bodies),
                 "factory_swage": True,
                 "breakable_pullout_joint": True,
+                "episode_domain": initial_dr_anmar_needle_domain,
                 "clinical_validation": False,
             },
             sort_keys=True,
@@ -4503,6 +4517,7 @@ def main() -> None:
         deformable_strand_ready=bool("object" in deformables),
         native_rigid_object_names=object_names,
         native_deformable_object_names=deformable_names,
+        dr_anmar_needle_domain=initial_dr_anmar_needle_domain,
         native_psm_policy_contract=bool(psm_scene_names),
         native_psm_policy_dim=native_psm_policy_dim,
         native_psm_robot_names=psm_scene_names,
@@ -4623,6 +4638,11 @@ def main() -> None:
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
+        dr_anmar_needle_domain = apply_dr_anmar_needle_episode_domain(
+            suture_stage,
+            seed=selected_seed,
+            root_path=suture_root_path,
+        )
         initialize_native_attachment()
         write_native_attachment()
         apply_native_object_scenario(objects, selected_scenario, selected_seed)
@@ -4674,6 +4694,7 @@ def main() -> None:
             state.needle_entry_direction = None
             state.adaptive_precision_active = False
             state.native_telemetry = {}
+            state.dr_anmar_needle_domain = dr_anmar_needle_domain
             state.upstream_task_success = False if _softmimicgen_task else None
         with state.lock:
             selected_view_mode = state.camera_view_mode

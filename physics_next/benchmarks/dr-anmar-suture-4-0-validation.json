@@ -46,6 +46,30 @@
       "measured": 9.667125,
       "passed": true
     },
+    "dr_anmar_needle_identity_and_provenance": {
+      "expected": [
+        "defaultPrim = \"DrAnmarNeedle\"",
+        "drAnmarAssetId = \"dr-anmar-needle\"",
+        "drAnmarAssetName = \"DrAnmar Needle\"",
+        "drAnmarAssetVersion = \"1.0.0\"",
+        "prepend references = @../suture/DrAnmarSuture4_0.usda@",
+        "drAnmarGeometrySource = \"independently_generated_parametric_geometry\"",
+        "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
+        "drAnmarResetRandomizationCount = 4",
+        "drAnmarSimToRealGapCount = 7",
+        "def PhysicsFixedJoint \"FactorySwage\"",
+        "def Mesh \"Visual\"",
+        "def Xform \"Needle\"",
+        "physics:body0 = </DrAnmarNeedle/Needle>",
+        "physics:body1 = </DrAnmarNeedle/Suture/NeedleInterface>",
+        "physics:kinematicEnabled = false",
+        "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
+      ],
+      "measured": {
+        "missing": []
+      },
+      "passed": true
+    },
     "elongation_at_break": {
       "expected": [
         0.1,
@@ -54,19 +78,27 @@
       "measured": 0.22,
       "passed": true
     },
-    "factory_swaged_needle_composition": {
-      "expected": [
-        "defaultPrim = \"DrAnmarNeedleSuture4_0\"",
-        "prepend references = @../Surgical_needle/needle_sdf.usd@",
-        "prepend references = @DrAnmarSuture4_0.usda@",
-        "def PhysicsFixedJoint \"FactorySwage\"",
-        "physics:body0 = </DrAnmarNeedleSuture4_0/Needle>",
-        "physics:body1 = </DrAnmarNeedleSuture4_0/Suture/NeedleInterface>",
-        "physics:kinematicEnabled = false",
-        "drAnmarNeedleAssetSha256 = \"2b317a61f93631a7192e7ed2839ef20f7a75c05aa5f84a3905696134a64f36d7\""
-      ],
+    "fail_closed_sim_to_real_qualification": {
+      "expected": "machine-readable qualification gates with clinical use blocked",
       "measured": {
-        "missing": []
+        "clinical_gate": [
+          {
+            "acceptance": "explicit clinical acceptance for the intended use",
+            "id": "clinical_use",
+            "required_evidence": "independent clinical validation under an approved protocol",
+            "status": "blocked"
+          }
+        ],
+        "clinical_validation": false,
+        "gate_count": 6,
+        "policy": "fail_closed_until_each_evidence_gate_is_satisfied"
+      },
+      "passed": true
+    },
+    "independent_dr_anmar_needle_geometry": {
+      "expected": "no external needle geometry or naming",
+      "measured": {
+        "forbidden_references": []
       },
       "passed": true
     },
@@ -98,11 +130,57 @@
       "measured": 0.65,
       "passed": true
     },
+    "live_reset_domain_randomization": {
+      "expected": [
+        "main",
+        "reset_environment"
+      ],
+      "measured": [
+        "main",
+        "reset_environment"
+      ],
+      "passed": true
+    },
     "load_dependent_self_friction": {
       "expected": "positive coefficient decreasing with load while friction force rises",
       "measured": {
         "mu_at_0_01_n": 0.45142857142857146,
         "mu_at_2_n": 0.2963636363636364
+      },
+      "passed": true
+    },
+    "needle_research_provenance": {
+      "expected": "at least four traceable primary product or regulatory sources",
+      "measured": 4,
+      "passed": true
+    },
+    "needle_scale_and_mass": {
+      "expected": {
+        "arc_length_m": [
+          0.02,
+          0.024
+        ],
+        "body_diameter_m": [
+          0.00045,
+          0.00062
+        ],
+        "mass_kg": "positive and below 1 gram"
+      },
+      "measured": {
+        "arc_length_m": 0.022,
+        "body_diameter_m": 0.00052,
+        "mass_kg": 3.1895423334977654e-05
+      },
+      "passed": true
+    },
+    "needle_visual_and_collision_resolution": {
+      "expected": {
+        "collision_capsules": 40,
+        "visual_vertices": 2049
+      },
+      "measured": {
+        "collision_capsules": 40,
+        "visual_vertices": 2049
       },
       "passed": true
     },
@@ -154,6 +232,51 @@
       "measured": 1,
       "passed": true
     },
+    "sim_to_real_gap_register": {
+      "expected": {
+        "complete_gap_records": true,
+        "gap_count": "at least 7",
+        "implemented_randomized_parameters": "at least 4",
+        "planned_randomized_parameters": "at least 4"
+      },
+      "measured": {
+        "complete_gap_records": true,
+        "gap_count": 7,
+        "implemented_randomized_parameters": 4,
+        "planned_randomized_parameters": 5
+      },
+      "passed": true
+    },
+    "sim_to_real_randomization_replay": {
+      "expected": "same seed exactly replays; different seed changes the domain",
+      "measured": {
+        "seed_1701": {
+          "dynamic_friction": 0.29777502113335985,
+          "mass_kg": 3.148387260342663e-05,
+          "restitution": 0.014797771346713118,
+          "seed": 1701,
+          "static_friction": 0.3522315736593612,
+          "surface_roughness": 0.13510369139588246
+        },
+        "seed_1701_replay": {
+          "dynamic_friction": 0.29777502113335985,
+          "mass_kg": 3.148387260342663e-05,
+          "restitution": 0.014797771346713118,
+          "seed": 1701,
+          "static_friction": 0.3522315736593612,
+          "surface_roughness": 0.13510369139588246
+        },
+        "seed_1702": {
+          "dynamic_friction": 0.2848994280717924,
+          "mass_kg": 3.1368347772606715e-05,
+          "restitution": 0.0036879343092894755,
+          "seed": 1702,
+          "static_friction": 0.2848994280717924,
+          "surface_roughness": 0.21249337333720286
+        }
+      },
+      "passed": true
+    },
     "straight_failure_load": {
       "expected": [
         20.0,
@@ -185,7 +308,14 @@
     "axial_rigidity_n": 376.2008115288565,
     "bend_joint_stiffness_n_m_rad": 8e-05,
     "mass_kg": 1.1486448139687682e-05,
+    "needle_arc_length_m": 0.022,
+    "needle_body_diameter_m": 0.00052,
+    "needle_collision_capsule_count": 40,
+    "needle_curvature_radius_m": 0.0070028174960433945,
+    "needle_mass_kg": 3.1895423334977654e-05,
+    "needle_visual_vertex_count": 2049,
     "segment_mass_kg": 3.190680038802134e-08,
+    "sim_to_real_gap_count": 7,
     "twist_joint_stiffness_n_m_rad": 2.9999999999999997e-05
   },
   "note": "Deterministic engineering validation only; physical bench and clinician validation remain required.",

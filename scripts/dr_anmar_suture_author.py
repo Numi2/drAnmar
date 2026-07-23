@@ -17,23 +17,30 @@ import os
 from pathlib import Path
 from typing import Any
 
-from dr_anmar_suture_model import DEFAULT_PROFILE_PATH, derive, load_profile
+from dr_anmar_needle_model import (
+    DEFAULT_NEEDLE_PROFILE_PATH,
+    build_needle_mesh,
+    centerline_at,
+    derive_needle,
+    load_needle_profile,
+    radius_at_distance,
+)
 from dr_anmar_suture_integration import (
-    NEEDLE_ASSET_PATH,
-    NEEDLE_ASSET_SHA256,
-    NEEDLE_SWAGE_ANCHOR_M,
-    NEEDLE_UNIFORM_SCALE,
-    SUTURE_ASSEMBLY_PATH,
+    DR_ANMAR_NEEDLE_ASSET_ID,
+    DR_ANMAR_NEEDLE_ASSET_PATH,
+    DR_ANMAR_NEEDLE_ASSET_VERSION,
+    DR_ANMAR_NEEDLE_NAME,
+    DR_ANMAR_NEEDLE_ROOT_PRIM,
     SUTURE_NEEDLE_INTERFACE_CENTER_M,
 )
+from dr_anmar_suture_model import DEFAULT_PROFILE_PATH, derive, load_profile
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = (
-    REPOSITORY_ROOT
-    / "source/extensions/orbit.surgical.assets/data/Props/DrAnmarSuture/DrAnmarSuture4_0.usda"
+    REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 )
-DEFAULT_ASSEMBLY_OUTPUT = SUTURE_ASSEMBLY_PATH
+DEFAULT_NEEDLE_OUTPUT = DR_ANMAR_NEEDLE_ASSET_PATH
 
 
 def usd_float(value: float) -> str:
@@ -42,6 +49,16 @@ def usd_float(value: float) -> str:
 
 def usd_vec(values: tuple[float, float, float]) -> str:
     return "(" + ", ".join(usd_float(value) for value in values) + ")"
+
+
+def usd_quat(values: tuple[float, float, float, float]) -> str:
+    return (
+        "("
+        + usd_float(values[0])
+        + ", "
+        + ", ".join(usd_float(value) for value in values[1:])
+        + ")"
+    )
 
 
 def indent(text: str, spaces: int = 4) -> str:
@@ -317,6 +334,7 @@ def author(profile: dict[str, Any]) -> str:
     blocks.append('def Scope "Joints"\n{\n' + indent("\n\n".join(joint_blocks)) + "\n}")
     custom_data = {
         "drAnmarClinicalValidation": False,
+        "drAnmarCanonicalAssetPackage": "assets/dr_anmar",
         "drAnmarIndependentAsset": True,
         "drAnmarProfileId": profile["id"],
         "drAnmarRepresentation": "discrete_cosserat_rod",
@@ -352,47 +370,167 @@ def Xform "DrAnmarSuture4_0" (
 """
 
 
-def author_needle_assembly(
-    profile: dict[str, Any],
+def author_dr_anmar_needle(
+    suture_profile: dict[str, Any],
+    needle_profile: dict[str, Any],
     *,
     suture_reference: str,
-    needle_reference: str,
 ) -> str:
-    """Compose the standalone thread with the pinned atraumatic needle."""
+    """Author independent needle geometry and attach the Dr.Anmar suture."""
 
-    scaled_anchor = tuple(
-        coordinate * NEEDLE_UNIFORM_SCALE
-        for coordinate in NEEDLE_SWAGE_ANCHOR_M
+    derived_needle = derive_needle(needle_profile)
+    mesh = build_needle_mesh(needle_profile)
+    contact = needle_profile["contact"]
+    solver = needle_profile["solver"]
+    swage_anchor = derived_needle.swage_anchor_m
+    swage_tangent = derived_needle.swage_tangent
+    swage_yaw = math.atan2(swage_tangent[1], swage_tangent[0])
+    swage_orientation = (
+        math.cos(swage_yaw / 2.0),
+        0.0,
+        0.0,
+        math.sin(swage_yaw / 2.0),
+    )
+    rotated_interface_center = (
+        swage_tangent[0] * SUTURE_NEEDLE_INTERFACE_CENTER_M[0],
+        swage_tangent[1] * SUTURE_NEEDLE_INTERFACE_CENTER_M[0],
+        0.0,
     )
     suture_translation = tuple(
-        scaled_anchor[index] - SUTURE_NEEDLE_INTERFACE_CENTER_M[index]
+        swage_anchor[index] - rotated_interface_center[index]
         for index in range(3)
+    )
+    root = f"/{DR_ANMAR_NEEDLE_ROOT_PRIM}"
+    steel_material_path = f"{root}/Materials/NeedleSteel"
+    mesh_points = ",\n            ".join(usd_vec(point) for point in mesh.points)
+    face_counts = ", ".join(str(value) for value in mesh.face_vertex_counts)
+    face_indices = ", ".join(str(value) for value in mesh.face_vertex_indices)
+    collision_blocks: list[str] = []
+    collision_count = derived_needle.collision_capsule_count
+    for index in range(collision_count):
+        left_fraction = index / collision_count
+        right_fraction = (index + 1) / collision_count
+        middle_fraction = (index + 0.5) / collision_count
+        left, _left_tangent = centerline_at(needle_profile, left_fraction)
+        right, _right_tangent = centerline_at(needle_profile, right_fraction)
+        middle, tangent = centerline_at(needle_profile, middle_fraction)
+        chord_length = math.dist(left, right)
+        radius = radius_at_distance(
+            needle_profile,
+            middle_fraction * derived_needle.arc_length_m,
+        )
+        yaw = math.atan2(tangent[1], tangent[0])
+        orientation = (math.cos(yaw / 2.0), 0.0, 0.0, math.sin(yaw / 2.0))
+        collision_blocks.append(
+            f'''def Capsule "C{index:03d}" (
+    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+)
+{{
+    uniform token axis = "X"
+    float height = {usd_float(chord_length)}
+    float radius = {usd_float(radius)}
+    rel material:binding = <{steel_material_path}>
+    bool physics:collisionEnabled = true
+    quatf xformOp:orient = {usd_quat(orientation)}
+    double3 xformOp:translate = {usd_vec(middle)}
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+}}'''
+        )
+    collisions = indent("\n\n".join(collision_blocks), 8)
+    sim_to_real_gap_count = len(needle_profile["sim_to_real"]["gaps"])
+    implemented_randomization_count = len(
+        needle_profile["sim_to_real"][
+            "implemented_randomization_on_episode_reset"
+        ]
     )
     return f"""#usda 1.0
 (
-    defaultPrim = "DrAnmarNeedleSuture4_0"
-    doc = "Research-grade 4-0 braided suture factory-swaged to the pinned ORBIT atraumatic needle; not clinically validated."
+    defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
+    doc = "{DR_ANMAR_NEEDLE_NAME}: independently generated research-grade curved taper-point needle with factory-swaged Dr.Anmar 4-0 suture; not clinically validated."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
 )
 
-def Xform "DrAnmarNeedleSuture4_0" (
+def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
     customData = {{
+        string drAnmarAssetId = "{DR_ANMAR_NEEDLE_ASSET_ID}"
+        string drAnmarAssetName = "{DR_ANMAR_NEEDLE_NAME}"
+        string drAnmarAssetVersion = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"
+        string drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"
         bool drAnmarClinicalValidation = false
-        string drAnmarNeedleAssetSha256 = "{NEEDLE_ASSET_SHA256}"
-        string drAnmarProfileId = "{profile["id"]}"
+        string drAnmarGeometrySource = "independently_generated_parametric_geometry"
+        string drAnmarNeedleProfileId = "{needle_profile["id"]}"
+        string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
+        int drAnmarResetRandomizationCount = {implemented_randomization_count}
+        int drAnmarSimToRealGapCount = {sim_to_real_gap_count}
+        string drAnmarSutureProfileId = "{suture_profile["id"]}"
+        string drAnmarSuturePhysicsProvenance = "Independent Dr.Anmar 4-0 discrete Cosserat rod"
         string drAnmarSwageConnection = "fixed_needle_to_interface_then_breakable_pullout_joint"
-        string drAnmarStatus = "{profile["status"]}"
+        string drAnmarStatus = "{needle_profile["status"]}"
     }}
 )
 {{
+    def Scope "Materials"
+    {{
+        def Material "NeedleSteel" (
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
+        )
+        {{
+            float physics:staticFriction = {usd_float(float(contact["static_friction_seed"]))}
+            float physics:dynamicFriction = {usd_float(float(contact["dynamic_friction_seed"]))}
+            float physics:restitution = {usd_float(float(contact["restitution_seed"]))}
+
+            def Shader "PreviewSurface"
+            {{
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.53, 0.58, 0.64)
+                float inputs:metallic = {usd_float(float(needle_profile["appearance"]["metallic_seed"]))}
+                float inputs:roughness = {usd_float(float(needle_profile["appearance"]["roughness_seed"]))}
+                token outputs:surface
+            }}
+            token outputs:surface.connect = </{DR_ANMAR_NEEDLE_ROOT_PRIM}/Materials/NeedleSteel/PreviewSurface.outputs:surface>
+        }}
+    }}
+
     def Xform "Needle" (
-        prepend references = @{needle_reference}@
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
     )
     {{
-        double3 xformOp:scale = {usd_vec((NEEDLE_UNIFORM_SCALE,) * 3)}
-        uniform token[] xformOpOrder = ["xformOp:scale"]
+        bool physics:rigidBodyEnabled = true
+        bool physics:kinematicEnabled = false
+        float physics:mass = {usd_float(derived_needle.mass_kg)}
+        bool physxRigidBody:enableCCD = {"true" if solver["ccd"] else "false"}
+        int physxRigidBody:solverPositionIterationCount = {int(solver["position_iterations"])}
+        int physxRigidBody:solverVelocityIterationCount = {int(solver["velocity_iterations"])}
+        float physxRigidBody:maxDepenetrationVelocity = {usd_float(float(solver["max_depenetration_velocity_m_s"]))}
+
+        def Mesh "Visual" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {{
+            uniform bool doubleSided = false
+            float3[] extent = [{usd_vec(mesh.extent_min)}, {usd_vec(mesh.extent_max)}]
+            int[] faceVertexCounts = [{face_counts}]
+            int[] faceVertexIndices = [{face_indices}]
+            point3f[] points = [
+            {mesh_points}
+            ]
+            uniform token subdivisionScheme = "none"
+            rel material:binding = <{steel_material_path}>
+        }}
+
+        def Scope "Collision"
+        {{
+{collisions}
+        }}
+
+        def Xform "SutureAnchor"
+        {{
+            quatf xformOp:orient = {usd_quat(swage_orientation)}
+            double3 xformOp:translate = {usd_vec(swage_anchor)}
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+        }}
     }}
 
     def Xform "Suture" (
@@ -400,7 +538,8 @@ def Xform "DrAnmarNeedleSuture4_0" (
     )
     {{
         double3 xformOp:translate = {usd_vec(suture_translation)}
-        uniform token[] xformOpOrder = ["xformOp:translate"]
+        quatf xformOp:orient = {usd_quat(swage_orientation)}
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
 
         over "NeedleInterface"
         {{
@@ -410,11 +549,11 @@ def Xform "DrAnmarNeedleSuture4_0" (
 
     def PhysicsFixedJoint "FactorySwage"
     {{
-        rel physics:body0 = </DrAnmarNeedleSuture4_0/Needle>
-        rel physics:body1 = </DrAnmarNeedleSuture4_0/Suture/NeedleInterface>
-        point3f physics:localPos0 = {usd_vec(NEEDLE_SWAGE_ANCHOR_M)}
+        rel physics:body0 = <{root}/Needle>
+        rel physics:body1 = <{root}/Suture/NeedleInterface>
+        point3f physics:localPos0 = {usd_vec(swage_anchor)}
         point3f physics:localPos1 = (0, 0, 0)
-        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot0 = {usd_quat(swage_orientation)}
         quatf physics:localRot1 = (1, 0, 0, 0)
         bool physics:collisionEnabled = false
     }}
@@ -441,56 +580,65 @@ def sha256(path: Path) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE_PATH)
+    parser.add_argument(
+        "--needle-profile",
+        type=Path,
+        default=DEFAULT_NEEDLE_PROFILE_PATH,
+    )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument(
+        "--needle-output",
         "--assembly-output",
+        dest="needle_output",
         type=Path,
-        default=DEFAULT_ASSEMBLY_OUTPUT,
+        default=DEFAULT_NEEDLE_OUTPUT,
     )
     args = parser.parse_args()
     profile = load_profile(args.profile)
+    needle_profile = load_needle_profile(args.needle_profile)
     output = args.output.expanduser().resolve()
-    assembly_output = args.assembly_output.expanduser().resolve()
+    needle_output = args.needle_output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
     temporary.write_text(author(profile), encoding="utf-8")
     temporary.replace(output)
-    if not NEEDLE_ASSET_PATH.is_file():
-        raise RuntimeError(f"ORBIT-Surgical needle asset is missing: {NEEDLE_ASSET_PATH}")
-    needle_digest = sha256(NEEDLE_ASSET_PATH)
-    if needle_digest != NEEDLE_ASSET_SHA256:
-        raise RuntimeError(
-            "The pinned ORBIT needle mesh changed; re-derive its swage anchor before use"
-        )
-    assembly_output.parent.mkdir(parents=True, exist_ok=True)
-    assembly_temporary = assembly_output.with_suffix(assembly_output.suffix + ".tmp")
+    needle_output.parent.mkdir(parents=True, exist_ok=True)
+    needle_temporary = needle_output.with_suffix(needle_output.suffix + ".tmp")
     suture_reference = Path(
-        os.path.relpath(output, start=assembly_output.parent)
+        os.path.relpath(output, start=needle_output.parent)
     ).as_posix()
-    needle_reference = Path(
-        os.path.relpath(NEEDLE_ASSET_PATH, start=assembly_output.parent)
-    ).as_posix()
-    assembly_temporary.write_text(
-        author_needle_assembly(
+    needle_temporary.write_text(
+        author_dr_anmar_needle(
             profile,
+            needle_profile,
             suture_reference=suture_reference,
-            needle_reference=needle_reference,
         ),
         encoding="utf-8",
     )
-    assembly_temporary.replace(assembly_output)
+    needle_temporary.replace(needle_output)
     derived = derive(profile)
+    derived_needle = derive_needle(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v1",
+        "schema": "dr.anmar.suture-asset-report.v2",
         "profile": str(args.profile.resolve()),
         "asset": str(output),
         "asset_sha256": sha256(output),
-        "needle_assembly": str(assembly_output),
-        "needle_assembly_sha256": sha256(assembly_output),
-        "needle_asset": str(NEEDLE_ASSET_PATH),
-        "needle_asset_sha256": needle_digest,
-        "needle_uniform_scale": NEEDLE_UNIFORM_SCALE,
-        "needle_swage_anchor_m": list(NEEDLE_SWAGE_ANCHOR_M),
+        "dr_anmar_needle_name": DR_ANMAR_NEEDLE_NAME,
+        "dr_anmar_needle_asset_id": DR_ANMAR_NEEDLE_ASSET_ID,
+        "dr_anmar_needle_asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION,
+        "dr_anmar_needle": str(needle_output),
+        "dr_anmar_needle_sha256": sha256(needle_output),
+        "needle_profile": str(args.needle_profile.resolve()),
+        "needle_profile_id": needle_profile["id"],
+        "needle_geometry_source": needle_profile["construction"]["geometry_source"],
+        "needle_arc_length_m": derived_needle.arc_length_m,
+        "needle_curvature_radius_m": derived_needle.curvature_radius_m,
+        "needle_body_diameter_m": derived_needle.body_radius_m * 2.0,
+        "needle_mass_kg": derived_needle.mass_kg,
+        "needle_visual_vertex_count": derived_needle.visual_vertex_count,
+        "needle_collision_capsule_count": derived_needle.collision_capsule_count,
+        "needle_swage_anchor_m": list(derived_needle.swage_anchor_m),
+        "sim_to_real_gap_count": len(needle_profile["sim_to_real"]["gaps"]),
         "swage_connection": "fixed_needle_to_interface_then_breakable_pullout_joint",
         "representation": "visible_collision_capsules_with_breakable_d6_cosserat_joints",
         "segment_count": derived.segment_count,

@@ -1,0 +1,210 @@
+{
+  "schema": "dr.anmar.needle-profile.v1",
+  "id": "dr-anmar-needle-v1",
+  "name": "DrAnmar Needle",
+  "version": "1.0.0",
+  "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
+  "construction": {
+    "geometry_source": "independently_generated_parametric_geometry",
+    "shape": "one_half_circle",
+    "point": "round_body_taper_point",
+    "suture_attachment": "atraumatic_factory_swage",
+    "centerline_arc_length_m": 0.022,
+    "centerline_arc_length_range_m": [
+      0.020,
+      0.024
+    ],
+    "body_diameter_m": 0.00052,
+    "body_diameter_range_m": [
+      0.00045,
+      0.00062
+    ],
+    "swage_end_diameter_m": 0.00034,
+    "tip_end_diameter_m": 0.00002,
+    "tip_taper_length_m": 0.004,
+    "swage_transition_length_m": 0.0025,
+    "visual_centerline_samples": 129,
+    "visual_radial_samples": 16,
+    "collision_capsule_count": 40
+  },
+  "material": {
+    "class": "surgical_stainless_steel_engineering_proxy",
+    "density_kg_m3": 8000.0,
+    "density_range_kg_m3": [
+      7700.0,
+      8100.0
+    ],
+    "youngs_modulus_pa_seed": 193000000000.0,
+    "youngs_modulus_range_pa": [
+      180000000000.0,
+      205000000000.0
+    ],
+    "poisson_ratio_seed": 0.29,
+    "yield_strength_pa_seed": 965000000.0,
+    "rigid_body_approximation": true
+  },
+  "contact": {
+    "static_friction_seed": 0.32,
+    "static_friction_range": [
+      0.18,
+      0.55
+    ],
+    "dynamic_friction_seed": 0.24,
+    "dynamic_friction_range": [
+      0.12,
+      0.42
+    ],
+    "restitution_seed": 0.02,
+    "restitution_range": [
+      0.0,
+      0.06
+    ],
+    "combine_mode": "max"
+  },
+  "appearance": {
+    "metallic_seed": 0.88,
+    "roughness_seed": 0.22,
+    "roughness_range": [
+      0.12,
+      0.38
+    ]
+  },
+  "solver": {
+    "ccd": true,
+    "position_iterations": 24,
+    "velocity_iterations": 8,
+    "max_depenetration_velocity_m_s": 0.5
+  },
+  "sim_to_real": {
+    "parameterization_seed": 20260723,
+    "implemented_randomization_on_episode_reset": [
+      "needle_mass",
+      "needle_contact_friction",
+      "needle_restitution",
+      "needle_surface_roughness"
+    ],
+    "planned_randomization_after_calibration": [
+      "driver_contact_compliance",
+      "camera_exposure_and_motion_blur",
+      "specular_response",
+      "swage_axis_offset",
+      "suture_material_state"
+    ],
+    "gaps": [
+      {
+        "id": "manufacturing_geometry",
+        "risk": "needle curvature, diameter, point taper and swage concentricity vary by lot",
+        "mitigation": "fit the versioned geometry distribution from calibrated microscopy and silhouette measurements",
+        "calibration_target": "at_least_30_needles_across_3_lots",
+        "status": "planned_physical_measurement"
+      },
+      {
+        "id": "elastic_bend_and_yield",
+        "risk": "the current rigid-body needle omits recoverable bending, permanent set and breakage",
+        "mitigation": "fit a beam or segmented Cosserat model from three-point bend and cyclic driver-load tests",
+        "calibration_target": "force_displacement_hysteresis_and_failure_envelope",
+        "status": "explicit_model_gap"
+      },
+      {
+        "id": "driver_contact",
+        "risk": "jaw serration, alignment, compliance, contamination and wear change grasp and slip",
+        "mitigation": "identify friction and compliance distributions from instrumented grasp-slip trials",
+        "calibration_target": "slip_force_distribution_by_grasp_location_and_normal_load",
+        "status": "domain_randomization_seeded_pending_bench_data"
+      },
+      {
+        "id": "tissue_puncture",
+        "risk": "penetration force depends on point geometry, tissue anisotropy, rate, hydration and prior damage",
+        "mitigation": "couple a rate-dependent puncture and cutting law only after tissue-specific benchtop identification",
+        "calibration_target": "force_depth_curve_and_exit_force_by_tissue_class",
+        "status": "explicit_model_gap"
+      },
+      {
+        "id": "swage_connection",
+        "risk": "crimp geometry, pull-out strength, angular offset and local suture damage vary",
+        "mitigation": "randomize alignment and pull-out parameters, then fit them from wet and dry attachment tests",
+        "calibration_target": "pullout_force_angle_and_failure_location_distribution",
+        "status": "parameterized_seed_pending_bench_data"
+      },
+      {
+        "id": "visual_perception",
+        "risk": "small reflective steel geometry aliases under real optics, exposure, motion blur and blood or fluid",
+        "mitigation": "randomize physically plausible lighting and optics and validate pose estimates against synchronized real video",
+        "calibration_target": "pose_error_by_view_angle_occlusion_and_motion",
+        "status": "domain_randomization_contract_defined"
+      },
+      {
+        "id": "numerical_contact",
+        "risk": "time step, collision discretization and solver tolerances alter bounce, tunneling and stick-slip",
+        "mitigation": "run time-step and collider-resolution convergence sweeps before accepting benchmark results",
+        "calibration_target": "less_than_5_percent_change_across_qualified_solver_settings",
+        "status": "automated_probe_required"
+      }
+    ]
+  },
+  "qualification": {
+    "policy": "fail_closed_until_each_evidence_gate_is_satisfied",
+    "thresholds_are": "provisional_research_acceptance_criteria_not_clinical_standards",
+    "gates": [
+      {
+        "id": "deterministic_asset_contract",
+        "required_evidence": "authorship_validation_report",
+        "acceptance": "all deterministic geometry, physics, identity and replay checks pass",
+        "status": "automated_in_repository"
+      },
+      {
+        "id": "native_physics_stability",
+        "required_evidence": "linux_physx_time_step_and_collider_convergence_sweep",
+        "acceptance": "finite stable dynamics and less than 5 percent metric drift across qualified settings",
+        "status": "blocked_pending_native_probe"
+      },
+      {
+        "id": "manufacturing_metrology",
+        "required_evidence": "calibrated measurements from at least 30 needles across at least 3 lots",
+        "acceptance": "versioned distributions for curvature, diameter, taper and swage offset",
+        "status": "blocked_pending_physical_data"
+      },
+      {
+        "id": "mechanical_bench",
+        "required_evidence": "bend, driver slip, puncture, swage pullout and suture failure datasets with wet and dry conditions",
+        "acceptance": "held-out force and displacement envelopes defined before parameter fitting",
+        "status": "blocked_pending_physical_data"
+      },
+      {
+        "id": "perception_transfer",
+        "required_evidence": "synchronized real and simulated endoscopic sequences across lighting, occlusion, fluid and motion conditions",
+        "acceptance": "pose and tracking error reported by condition on a held-out capture set",
+        "status": "blocked_pending_real_capture"
+      },
+      {
+        "id": "clinical_use",
+        "required_evidence": "independent clinical validation under an approved protocol",
+        "acceptance": "explicit clinical acceptance for the intended use",
+        "status": "blocked"
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "title": "Ethicon product catalog 4-0 needle examples",
+      "url": "https://www.ethicon.com/na/epc/search/platform/wound%20closure?filters%5Bfield_brand%5D%5B0%5D=PDS+II&filters%5Bfield_brand%5D%5B1%5D=PDS+PLUS&lang=en-default&page=2",
+      "used_for": "4-0 needle curvature and length context"
+    },
+    {
+      "title": "Medtronic wound closure catalogue",
+      "url": "https://www.medtronic.com/content/dam/medtronic-wide/public/western-europe/products/wound-closure/sutures-catalogue.pdf",
+      "used_for": "22 mm one-half-circle taper-point configuration context"
+    },
+    {
+      "title": "FDA K252225 device summary",
+      "url": "https://www.accessdata.fda.gov/cdrh_docs/pdf25/K252225.pdf",
+      "used_for": "stainless steel, curved taper-point and crimp attachment design context"
+    },
+    {
+      "title": "FDA K230311 device summary",
+      "url": "https://www.accessdata.fda.gov/cdrh_docs/pdf23/K230311.pdf",
+      "used_for": "AISI 302 stainless steel and curved needle material context"
+    }
+  ],
+  "clinical_validation": false
+}

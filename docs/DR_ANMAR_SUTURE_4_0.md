@@ -66,7 +66,35 @@ incorrectly weaken or relax the whole strand.
 
 The profile and derived mechanics live in
 `physics_next/sutures/dr-anmar-suture-4-0.json`. The committed OpenUSD asset is
-`source/extensions/orbit.surgical.assets/data/Props/DrAnmarSuture/DrAnmarSuture4_0.usda`.
+`assets/dr_anmar/suture/DrAnmarSuture4_0.usda`.
+
+## DrAnmar Needle
+
+`assets/dr_anmar/needle/DrAnmarNeedle.usda` is the independently authored
+DrAnmar Needle, not a renamed or inherited needle mesh. Its 22 mm half-circle
+centerline, taper point, swage transition, 2,049-vertex visual mesh, 40-part
+compound collision shape, mass, material, and solver settings are generated
+from `physics_next/needles/dr-anmar-needle-v1.json`. A fixed factory-swage joint
+connects the needle to the replaceable suture interface; the first suture joint
+retains the separate pullout failure limit.
+
+Every locally constructed procedure room receives this additional instrument
+without replacing the room's existing task object or current thread.
+
+## Sim-to-real boundary
+
+The live workstation deterministically randomizes needle mass, contact
+friction, restitution, and surface roughness from bounded ranges on every
+scenario reset. The scenario seed exactly replays the sampled domain, and the
+sampled values are exposed in workstation state and recordings.
+
+The needle profile also carries a machine-readable gap register and fail-closed
+qualification gates for manufacturing metrology, bend and yield, driver slip,
+tissue puncture, swage pullout, endoscopic perception, and numerical contact.
+The current needle is intentionally rigid: recoverable bending, permanent set,
+and needle breakage remain explicit model gaps until physical bend tests can
+identify them. Clinical use remains blocked until independent validation under
+an approved protocol.
 
 ## Build and validate
 
