@@ -48,10 +48,6 @@ MAX_DEMO_BYTES = int(positive_environment_number("DR_ANMAR_MAX_DEMO_BYTES", 1_50
 MEMORY_WARNING_BYTES = int(
     positive_environment_number("DR_ANMAR_MEMORY_WARNING_BYTES", 16_000_000_000, 1_000_000_000)
 )
-PSM_GRIPPER_CLOSE_RAD = min(
-    0.49,
-    positive_environment_number("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", 0.02, 0.0),
-)
 SENSOR_PROFILES = {"efficient", "stereo", "research"}
 EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"
 STUDY_ID = os.environ.get("DR_ANMAR_STUDY_ID", "").strip()
@@ -94,6 +90,14 @@ parser.add_argument(
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 _softmimicgen_task = args_cli.task.startswith("Isaac-Thread-PSM-")
+PSM_GRIPPER_CLOSE_RAD = min(
+    0.49,
+    positive_environment_number(
+        "DR_ANMAR_PSM_GRIPPER_CLOSE_RAD",
+        0.06 if _softmimicgen_task else 0.02,
+        0.0,
+    ),
+)
 _softmimicgen_root = Path(
     os.environ.get(
         "DR_ANMAR_SOFTMIMICGEN_ROOT",
@@ -3405,8 +3409,8 @@ def main() -> None:
                 "psm_tool_gripper2_joint": PSM_GRIPPER_CLOSE_RAD,
             },
         )
-    # Match ORBIT's proven ±0.02-radian needle-room closed target. In this
-    # articulation, values closer to zero close the jaws more tightly.
+    # Stop at SoftMimicGen's ±0.06-radian threaded-object target, leaving
+    # roughly 1–2 mm more total jaw clearance than ORBIT's ±0.02 needle grasp.
     active_gripper_close_rad = PSM_GRIPPER_CLOSE_RAD
     for gripper_term_name in (
         "gripper_action",
