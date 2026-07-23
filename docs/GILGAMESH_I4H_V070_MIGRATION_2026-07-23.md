@@ -93,6 +93,30 @@ The remote evidence logs are content-addressed:
 | `logs/i4h-v0.7.0-surgical-reach-psm-state-machine.log` | `79b75a50f47f41bf6873d1dadd39146e3ce31cddcea303d1c0c806ab97a145b2` |
 | `logs/i4h-v0.7.0-surgical-lift-needle-state-machine.log` | `8dcba1a660d90b80b2f6b360f186001af6a917a805c0afd3efbd69b3f5949eb2` |
 
+## Native PSM control and dataset contract
+
+The follow-up foundation qualification used
+[`scripts/run_i4h_psm_foundation.sh`](../scripts/run_i4h_psm_foundation.sh) without modifying the pinned provider:
+
+- NVIDIA's `DifferentialIKController` completed a 150-step `surgical_reach_psm` expert with
+  `success=True`.
+- The adapter recorded 150 seven-value PSM policy actions and 150 seven-value absolute target audits.
+- Re-encoding the native joint targets through NVIDIA's joint-position scale/offset had a maximum error of
+  `1.49e-08`, below the `2e-6` acceptance limit.
+- NVIDIA's unmodified joint-position replay consumed all 150 frames.
+- A camera-enabled repeat recorded 150 synchronized `480 × 640` room frames.
+- NVIDIA's v0.7 dataset component converted it to one 150-frame LeRobot episode with seven action values,
+  eight state values and H.264 room video.
+- A separate two-step `surgical_lift_needle` smoke confirmed the full eight-value pose-and-gripper input
+  becomes a seven-value PSM policy command with zero joint-target round-trip error. It was deliberately
+  saved as an unsuccessful diagnostic and is not a qualified needle-lift demonstration.
+- The pre-existing Dr.Anmar room on port 2396 remained reachable.
+
+Evidence remains on Gilgamesh under `/home/numi/dr_anmar/validation/psm-foundation/`. The surgical YAML's
+`psm_singlecam` GR00T data configuration is not registered by the installed GR00T package, its inference module
+is a zero-action smoke daemon, and `train_module` is `null`. HDF5 and LeRobot compatibility are qualified;
+GR00T surgical training is still a separate unfinished foundation piece.
+
 ## Qualification boundary
 
 Source discovery and immutable installation do not prove that an environment is runtime-qualified.

@@ -153,8 +153,11 @@ only the gates explicitly demonstrated in the new runtime report should be treat
 - [x] Complete the non-Cosmos Agentic policy/Mimic/dataset/annotator dependency setup and upstream E2E
   planning dry-run.
 - [ ] Qualify the v0.7 scene-edit bridge before binding it to the clinician operating-room viewport.
-- [ ] Validate recorded HDF5 demonstrations and Cartesian action/observation consistency before treating
-  any upstream trajectory as a Behavior Cloning reference.
+- [x] Validate the NVIDIA PSM control/data boundary: preserve Cartesian intent separately, record the canonical
+  seven-value policy action, reproduce native IK joint targets within `1.49e-08`, replay 150 frames in the
+  unmodified joint-position environment, and convert one synchronized 150-frame camera episode to LeRobot.
+- [ ] Register and qualify a real `psm_singlecam` GR00T data configuration and training module. NVIDIA v0.7's
+  surgical route is currently a zero-action inference smoke with `train_module: null`.
 - [ ] Keep Docker/RTI-dependent robotic ultrasound unavailable until its official prerequisites exist.
 
 Current evidence and commands are recorded in `GILGAMESH_I4H_V070_MIGRATION_2026-07-23.md`.
