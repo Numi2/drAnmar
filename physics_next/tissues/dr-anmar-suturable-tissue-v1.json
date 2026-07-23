@@ -1,0 +1,276 @@
+{
+  "schema": "dr.anmar.suturable-tissue-profile.v1",
+  "id": "dr-anmar-suturable-tissue-v1",
+  "name": "DrAnmar Suturable Tissue",
+  "version": "1.0.0",
+  "status": "research_informed_engineering_model_pending_bench_and_clinical_validation",
+  "purpose": "A solver-neutral, deformable, open-incision tissue coupon for needle driving, suture capture, wound approximation, pullout and tissue-trauma research.",
+  "geometry": {
+    "overall_width_m": 0.07,
+    "depth_m": 0.045,
+    "thickness_m": 0.006,
+    "rest_wound_gap_m": 0.004,
+    "wound_bevel_m": 0.001,
+    "wound_irregularity_amplitude_m": 0.00045,
+    "wound_irregularity_wavelength_m": 0.018,
+    "cells_per_flap_x": 12,
+    "cells_y": 18,
+    "cells_z": 4,
+    "tetrahedra_per_cell": 6,
+    "components": 2,
+    "units": "metres"
+  },
+  "layers": [
+    {
+      "id": "surface",
+      "depth_fraction": [0.82, 1.0],
+      "role": "tough outer surface and visual top layer",
+      "constitutive_target": "anisotropic_visco_hyperelastic_with_fracture"
+    },
+    {
+      "id": "bulk",
+      "depth_fraction": [0.18, 0.82],
+      "role": "compliant hydrated bulk tissue",
+      "constitutive_target": "nearly_incompressible_visco_hyperelastic"
+    },
+    {
+      "id": "fascia",
+      "depth_fraction": [0.0, 0.18],
+      "role": "stronger deep load-bearing layer",
+      "constitutive_target": "anisotropic_visco_hyperelastic_with_suture_holding"
+    }
+  ],
+  "intact_tissue": {
+    "constitutive_family": "nearly_incompressible_visco_hyperelastic_target_with_linear_physx_tangent_proxy",
+    "density_kg_m3_seed": 1050.0,
+    "density_range_kg_m3": [980.0, 1120.0],
+    "youngs_modulus_pa_seed": 180000.0,
+    "youngs_modulus_range_pa": [60000.0, 650000.0],
+    "poisson_ratio_seed": 0.47,
+    "poisson_ratio_range": [0.44, 0.49],
+    "damping_ratio_seed": 0.2,
+    "damping_ratio_range": [0.08, 0.35],
+    "ogden_mu_pa_seed": 62000.0,
+    "ogden_alpha_seed": 8.0,
+    "prony_relaxation_fraction_seed": 0.28,
+    "prony_time_constant_s_seed": 1.8,
+    "linear_physx_proxy": true
+  },
+  "contact": {
+    "static_friction_seed": 0.42,
+    "static_friction_range": [0.2, 0.75],
+    "dynamic_friction_seed": 0.3,
+    "dynamic_friction_range": [0.14, 0.58],
+    "wetness_seed": 0.45,
+    "wetness_range": [0.1, 0.9]
+  },
+  "puncture": {
+    "model": "prepuncture_compression_then_cutting_sweep_and_shaft_friction",
+    "puncture_force_n_seed": 2.0,
+    "puncture_force_range_n": [0.35, 3.2],
+    "prepuncture_depth_m_seed": 0.0015,
+    "cutting_force_fraction_seed": 0.55,
+    "shaft_drag_n_per_m_seed": 25.0,
+    "shaft_drag_n_per_m_range": [8.0, 55.0],
+    "sweep_stiffness_n_m2_seed": 40000.0,
+    "entry_exit_asymmetry_fraction_seed": 0.18,
+    "persistent_tract_required": true,
+    "topology_backend_required": "cressim_mpm"
+  },
+  "suture_holding": {
+    "reference_bite_margin_m": 0.005,
+    "reference_thickness_m": 0.006,
+    "reference_pullout_force_n_seed": 8.0,
+    "reference_pullout_force_range_n": [2.0, 18.0],
+    "anisotropy_ratio_seed": 1.35,
+    "cyclic_damage_onset_fraction": 0.6,
+    "critical_damage": 1.0,
+    "failure_modes": [
+      "local_hole_enlargement",
+      "cheese_wiring",
+      "edge_tear",
+      "full_pullout"
+    ]
+  },
+  "wound_closure": {
+    "closure_force_scale_n_seed": 1.6,
+    "minimum_residual_gap_m": 0.00025,
+    "edge_eversion_target_m": 0.0008,
+    "overcompression_pressure_pa_seed": 18000.0
+  },
+  "appearance": {
+    "surface_color_seed": [0.58, 0.18, 0.16],
+    "bulk_color_seed": [0.72, 0.31, 0.26],
+    "fascia_color_seed": [0.82, 0.66, 0.45],
+    "wound_color_seed": [0.36, 0.035, 0.025],
+    "roughness_seed": 0.58,
+    "roughness_range": [0.38, 0.78],
+    "subsurface_scattering_target": true
+  },
+  "solver": {
+    "stable_backend": "physx_fem",
+    "topology_backend": "cressim_mpm",
+    "future_backend": "newton_vbd_or_mpm",
+    "position_iterations": 24,
+    "self_collision": true,
+    "vertex_velocity_damping": 0.01,
+    "recommended_dt_s": 0.001,
+    "maximum_contact_penetration_m": 0.0005
+  },
+  "attachments": {
+    "kind": "opposed_outer_axis_bands",
+    "axis": "x",
+    "sides": ["minimum", "maximum"],
+    "width_m": 0.004
+  },
+  "sim_to_real": {
+    "episode_seed": 20260723,
+    "implemented_parameter_sampling": [
+      "density",
+      "tangent_modulus",
+      "poisson_ratio",
+      "damping",
+      "surface_friction",
+      "wetness",
+      "puncture_force",
+      "shaft_drag",
+      "suture_pullout_strength",
+      "surface_roughness"
+    ],
+    "gaps": [
+      {
+        "id": "patient_and_site_variation",
+        "risk": "age, anatomy, pathology, hydration, temperature and preparation produce large mechanical variation",
+        "mitigation": "fit hierarchical distributions by tissue, site, patient cohort and preparation state",
+        "status": "parameterized_pending_dataset"
+      },
+      {
+        "id": "constitutive_response",
+        "risk": "the stable PhysX lane uses a linear tangent proxy and cannot reproduce full anisotropic visco-hyperelastic hysteresis",
+        "mitigation": "retain the Ogden and Prony target contract and qualify PhysX, Newton and MPM against identical cyclic tests",
+        "status": "explicit_model_gap"
+      },
+      {
+        "id": "puncture_and_topology",
+        "risk": "ordinary FEM contact does not create a persistent needle tract or allow arbitrary thread passage",
+        "mitigation": "route puncture, cutting and stitch passage only to a topology-capable MPM backend",
+        "status": "fail_closed_until_topology_probe_passes"
+      },
+      {
+        "id": "needle_tissue_force",
+        "risk": "compression, cutting, sweep and shaft-friction forces depend on needle geometry, drive path, speed and tissue tension",
+        "mitigation": "calibrate force components from synchronized six-axis force and trajectory measurements",
+        "status": "research_model_seeded_pending_bench_data"
+      },
+      {
+        "id": "suture_tissue_coupling",
+        "risk": "holding strength depends on bite depth, spacing, layer engagement, thread friction and local damage",
+        "mitigation": "fit local tract constraints and cohesive damage from pullout and cyclic loading by bite geometry",
+        "status": "research_model_seeded_pending_bench_data"
+      },
+      {
+        "id": "wound_geometry",
+        "risk": "real wound edges are irregular, pre-tensioned, perfused and may contain missing or crushed tissue",
+        "mitigation": "version geometry and prestrain distributions from stereo reconstruction and specimen measurements",
+        "status": "procedural_seed_available_pending_real_distribution"
+      },
+      {
+        "id": "fluid_and_bleeding",
+        "risk": "blood and irrigation alter friction, visibility, tissue appearance and procedural decisions",
+        "mitigation": "couple measured wet contact and fluid rendering only after mass-conservation and visibility probes pass",
+        "status": "explicit_model_gap"
+      },
+      {
+        "id": "tool_contact_and_crush",
+        "risk": "jaw geometry, pressure, dwell time and repeated grasps cause local irreversible damage",
+        "mitigation": "record contact pressure history per element and fit damage from instrumented grasp cycles",
+        "status": "damage_contract_defined_pending_bench_data"
+      },
+      {
+        "id": "optics_and_appearance",
+        "risk": "subsurface scattering, specularity, smoke, fluid, exposure and compression change visual cues",
+        "mitigation": "validate pose, wound-edge and puncture-site perception on held-out synchronized endoscopic video",
+        "status": "appearance_randomization_contract_defined"
+      },
+      {
+        "id": "numerical_convergence",
+        "risk": "mesh density, time step, contact margins and solver iterations change force and failure results",
+        "mitigation": "require mesh and time-step convergence with less than five percent change in qualified metrics",
+        "status": "automated_probe_required"
+      }
+    ]
+  },
+  "qualification": {
+    "policy": "fail_closed",
+    "requirements": [
+      {
+        "id": "geometry_and_topology",
+        "evidence": "positive tetrahedral volume, two watertight components, explicit open incision and deterministic hashes",
+        "status": "automated_in_repository"
+      },
+      {
+        "id": "intact_deformation",
+        "evidence": "native PhysX and Newton finite-state, inversion, volume, contact and replay sweeps",
+        "status": "pending_native_gpu_probe"
+      },
+      {
+        "id": "puncture",
+        "evidence": "single entry and exit, persistent tract, no unintended crossings and force-depth agreement",
+        "status": "blocked_pending_topology_backend"
+      },
+      {
+        "id": "stitch_capture_and_pullout",
+        "evidence": "bite-dependent holding, cyclic damage, edge tearing and thread pull-through calibration",
+        "status": "blocked_pending_bench_data"
+      },
+      {
+        "id": "wound_closure",
+        "evidence": "gap, eversion, pressure and tissue-damage agreement under held-out stitch patterns",
+        "status": "blocked_pending_bench_data"
+      },
+      {
+        "id": "perception_transfer",
+        "evidence": "held-out real-video wound-edge, needle, tract and thread pose errors by condition",
+        "status": "blocked_pending_real_capture"
+      },
+      {
+        "id": "clinical_use",
+        "evidence": "independent clinical validation for the intended use",
+        "status": "blocked"
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "title": "Isaac for Healthcare asset catalog v0.7.0",
+      "url": "https://github.com/isaac-for-healthcare/i4h-asset-catalog/blob/v0.7.0/catalog.md",
+      "used_for": "confirmed available robots, anatomy, static suture pad, needle and rigid instrument inventory"
+    },
+    {
+      "title": "Isaac Lab deformable object documentation",
+      "url": "https://isaac-sim.github.io/IsaacLab/release/3.0.0-beta2/source/tutorials/01_assets/run_deformable_object.html",
+      "used_for": "volume deformable simulation and collision TetMesh architecture"
+    },
+    {
+      "title": "Modeling of Needle-Tissue Interaction Forces During Surgical Suturing",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3966136/",
+      "used_for": "compression, cutting and shaft-friction force decomposition"
+    },
+    {
+      "title": "Experiment study on puncture force between MIS suture needle and soft tissue",
+      "url": "https://doi.org/10.1016/j.bsbt.2016.05.001",
+      "used_for": "puncture dependence on tissue, needle geometry, velocity and angle"
+    },
+    {
+      "title": "Fracture Mechanics Model of Needle Cutting Tissue",
+      "url": "https://pure.psu.edu/en/publications/fracture-mechanics-model-of-needle-cutting-tissue/",
+      "used_for": "fracture, spreading and friction contributions to insertion force"
+    },
+    {
+      "title": "A biomechanical study of suture pullout in linea alba",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/2530644/",
+      "used_for": "bite size and tissue thickness dependence of suture holding strength"
+    }
+  ],
+  "clinical_validation": false
+}

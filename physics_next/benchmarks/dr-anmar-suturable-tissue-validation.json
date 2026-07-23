@@ -1,0 +1,455 @@
+{
+  "asset_id": "dr-anmar-suturable-tissue",
+  "blocked_capability_boundary": [
+    "arbitrary_puncture",
+    "persistent_tract",
+    "thread_passage",
+    "cutting",
+    "clinical_use"
+  ],
+  "checks": {
+    "asset_report_matches_model": {
+      "expected": "generated report exactly matches derived model",
+      "measured": {
+        "clinical_validation": false,
+        "components": 2,
+        "points": 2470,
+        "surface_triangles": 2688,
+        "tetrahedra": 10368,
+        "tetrahedron_groups": {
+          "bulk": 6912,
+          "fascia": 1728,
+          "surface": 1728
+        }
+      },
+      "passed": true
+    },
+    "backend_neutral_tetmesh_contract": {
+      "expected": [
+        "defaultPrim = \"DrAnmarSuturableTissueTet\"",
+        "drAnmarRepresentation = \"explicit_openusd_tetmesh_with_surface_visualization\"",
+        "def TetMesh \"Simulation\"",
+        "int4[] tetVertexIndices",
+        "int3[] surfaceFaceVertexIndices",
+        "custom uniform token[] drAnmar:tetLayerNames = [\"fascia\", \"bulk\", \"surface\"]",
+        "custom int[] drAnmar:tetLayerIds",
+        "def Mesh \"Visual\""
+      ],
+      "measured": {
+        "missing": []
+      },
+      "passed": true
+    },
+    "bite_dependent_suture_holding": {
+      "expected": "larger bites hold more and local damage weakens only the affected site",
+      "measured": {
+        "capacities_n": [
+          3.2,
+          8.0,
+          12.8
+        ],
+        "half_damaged_capacity_n": 4.0
+      },
+      "passed": true
+    },
+    "complete_layered_surface_partition": {
+      "expected": "every surface face belongs to exactly one non-empty region",
+      "measured": {
+        "bulk": 672,
+        "fascia": 864,
+        "surface": 864,
+        "wound": 288
+      },
+      "passed": true
+    },
+    "complete_layered_tetrahedral_partition": {
+      "expected": "every tetrahedron belongs to exactly one non-empty surface, bulk, or fascia layer",
+      "measured": {
+        "bulk": 6912,
+        "fascia": 1728,
+        "surface": 1728
+      },
+      "passed": true
+    },
+    "current_thread_preserved": {
+      "expected": "the new room and asset do not replace the current thread",
+      "measured": {
+        "procedure_boundary": true,
+        "workstation_boundary": true
+      },
+      "passed": true
+    },
+    "cyclic_cheese_wire_damage": {
+      "expected": "damage begins only above the configured holding utilization",
+      "measured": {
+        "high_load": 0.6875,
+        "low_load": 0.0
+      },
+      "passed": true
+    },
+    "dedicated_bimanual_research_room": {
+      "expected": "one transparent bimanual wound-closure research room",
+      "measured": {
+        "anatomy_focus": "DrAnmar open-incision suturable tissue",
+        "anatomy_scene": "",
+        "bimanual": true,
+        "category": "Suturing and tissue mechanics",
+        "difficulty": "Research foundation",
+        "guide_kind": "dr_anmar_wound_closure",
+        "hide_anatomy": true,
+        "id": "dr-anmar-suturable-tissue",
+        "instrument": "DrAnmar Needle, 4-0 suture and two needle drivers",
+        "interaction": "Native PhysX FEM owns intact deformation and two-way tool contact. Arbitrary puncture, thread passage and cutting remain fail-closed until the topology-capable MPM probe passes.",
+        "objective": "Manipulate two deformable wound flaps, establish counter-traction, study wound-edge approximation, and qualify needle and stitch mechanics without replacing any task-owned thread.",
+        "robot": "Dual dVRK PSM",
+        "show_waypoint_markers": false,
+        "steps": [
+          {
+            "id": "inspect",
+            "instruction": "Survey both real wound edges, tissue thickness and the open incision.",
+            "signal": "wound geometry",
+            "title": "Inspect wound"
+          },
+          {
+            "id": "counter_traction",
+            "instruction": "Use both instruments to load opposite flaps gently and observe deformation.",
+            "signal": "two-way tissue contact",
+            "title": "Establish counter-traction"
+          },
+          {
+            "id": "approximate",
+            "instruction": "Bring the wound edges together without crushing or inverting them.",
+            "signal": "gap reduction",
+            "title": "Approximate edges"
+          },
+          {
+            "id": "plan_bites",
+            "instruction": "Present the DrAnmar Needle and select safe, repeatable entry and exit margins.",
+            "signal": "needle trajectory and bite geometry",
+            "title": "Plan symmetric bites"
+          },
+          {
+            "id": "qualify",
+            "instruction": "Record gap, force, deformation and damage evidence; do not claim puncture until the topology backend is qualified.",
+            "signal": "fail-closed evidence",
+            "title": "Qualify mechanics"
+          }
+        ],
+        "success_metrics": [
+          "bilateral tissue contact",
+          "wound gap reduction",
+          "edge eversion",
+          "contact force",
+          "volume preservation",
+          "needle path geometry",
+          "tissue damage proxy"
+        ],
+        "task": "Isaac-Reach-Dual-PSM-IK-Rel-v0",
+        "title": "DrAnmar deformable wound-closure laboratory",
+        "waypoints": []
+      },
+      "passed": true
+    },
+    "deterministic_mesh_resolution": {
+      "expected": {
+        "points": 2470,
+        "surface_triangles": "at least 2000",
+        "tetrahedra": 10368
+      },
+      "measured": {
+        "points": 2470,
+        "surface_triangles": 2688,
+        "tetrahedra": 10368
+      },
+      "passed": true
+    },
+    "deterministic_sim_to_real_sampling": {
+      "expected": "same seed exactly replays and a different seed changes the domain",
+      "measured": {
+        "seed_4107": {
+          "damping_ratio": 0.08153029776763655,
+          "density_kg_m3": 1076.92872149299,
+          "dynamic_friction": 0.15610501728281853,
+          "poisson_ratio": 0.45768749819732085,
+          "puncture_force_n": 0.6296204293184844,
+          "reference_pullout_force_n": 3.697192817271464,
+          "seed": 4107,
+          "shaft_drag_n_per_m": 46.45049995555582,
+          "static_friction": 0.3936756597358826,
+          "surface_roughness": 0.5383590760910874,
+          "wetness": 0.5210420470904013,
+          "youngs_modulus_pa": 625278.2655350255
+        },
+        "seed_4107_replay": {
+          "damping_ratio": 0.08153029776763655,
+          "density_kg_m3": 1076.92872149299,
+          "dynamic_friction": 0.15610501728281853,
+          "poisson_ratio": 0.45768749819732085,
+          "puncture_force_n": 0.6296204293184844,
+          "reference_pullout_force_n": 3.697192817271464,
+          "seed": 4107,
+          "shaft_drag_n_per_m": 46.45049995555582,
+          "static_friction": 0.3936756597358826,
+          "surface_roughness": 0.5383590760910874,
+          "wetness": 0.5210420470904013,
+          "youngs_modulus_pa": 625278.2655350255
+        },
+        "seed_4108": {
+          "damping_ratio": 0.19400822495965842,
+          "density_kg_m3": 1094.481368272274,
+          "dynamic_friction": 0.5299419111655511,
+          "poisson_ratio": 0.4455376821632584,
+          "puncture_force_n": 0.8492865296286993,
+          "reference_pullout_force_n": 10.258420735006073,
+          "seed": 4108,
+          "shaft_drag_n_per_m": 48.55231561818348,
+          "static_friction": 0.5662933638305622,
+          "surface_roughness": 0.5551810575656164,
+          "wetness": 0.608816513897559,
+          "youngs_modulus_pa": 635487.8433335873
+        }
+      },
+      "passed": true
+    },
+    "fail_closed_qualification": {
+      "expected": "clinical use and topology-changing puncture remain blocked",
+      "measured": {
+        "clinical": [
+          {
+            "evidence": "independent clinical validation for the intended use",
+            "id": "clinical_use",
+            "status": "blocked"
+          }
+        ],
+        "policy": "fail_closed",
+        "puncture": [
+          {
+            "evidence": "single entry and exit, persistent tract, no unintended crossings and force-depth agreement",
+            "id": "puncture",
+            "status": "blocked_pending_topology_backend"
+          }
+        ],
+        "requirement_count": 7
+      },
+      "passed": true
+    },
+    "independent_dr_anmar_asset": {
+      "expected": "no external geometry reference or inherited product identity",
+      "measured": {
+        "forbidden": []
+      },
+      "passed": true
+    },
+    "monotonic_wound_approximation": {
+      "expected": "gap decreases with tension without becoming negative",
+      "measured": [
+        0.004,
+        0.0024615384615384616,
+        0.001142857142857143,
+        0.0006666666666666666
+      ],
+      "passed": true
+    },
+    "needle_force_phase_model": {
+      "expected": "compression rises to puncture, then cutting, sweep, and shaft friction act",
+      "measured": {
+        "long_penetration": {
+          "compression_n": 0.4,
+          "cutting_n": 1.1,
+          "phase": "penetration",
+          "shaft_friction_n": 0.3,
+          "total_n": 1.8
+        },
+        "prepuncture_n": [
+          0.0,
+          0.2222222222222222,
+          0.8888888888888888,
+          2.0
+        ],
+        "short_penetration": {
+          "compression_n": 0.0,
+          "cutting_n": 1.1,
+          "phase": "penetration",
+          "shaft_friction_n": 0.075,
+          "total_n": 1.175
+        }
+      },
+      "passed": true
+    },
+    "opposed_attachment_runtime_support": {
+      "expected": "workstation pins both declared outer margins",
+      "measured": {
+        "maximum": true,
+        "minimum": true,
+        "supports_sides": true
+      },
+      "passed": true
+    },
+    "opposed_outer_attachment_capacity": {
+      "expected": "both outer margins expose a dense attachment band",
+      "measured": {
+        "attachment_nodes": 380,
+        "sides": [
+          "minimum",
+          "maximum"
+        ]
+      },
+      "passed": true
+    },
+    "physical_scale_volume_and_mass": {
+      "expected": "beveled volume within five percent of envelope and mass 5-50 g",
+      "measured": {
+        "ideal_unbeveled_volume_m3": 1.782e-05,
+        "mass_kg": 0.018427499999999906,
+        "volume_m3": 1.754999999999991e-05
+      },
+      "passed": true
+    },
+    "positive_right_handed_tetrahedra": {
+      "expected": "all positive and total equals reported volume",
+      "measured": {
+        "minimum_m3": 1.6432291666666643e-09,
+        "total_m3": 1.7550000000000003e-05
+      },
+      "passed": true
+    },
+    "profile_identity_and_boundary": {
+      "expected": "canonical research-only identity",
+      "measured": {
+        "clinical_validation": false,
+        "id": "dr-anmar-suturable-tissue-v1",
+        "name": "DrAnmar Suturable Tissue",
+        "status": "research_informed_engineering_model_pending_bench_and_clinical_validation"
+      },
+      "passed": true
+    },
+    "real_open_incision_geometry": {
+      "expected": "two disconnected flaps with a beveled open gap",
+      "measured": {
+        "bottom_gap_m": 0.004,
+        "components": 2,
+        "top_gap_m": 0.006
+      },
+      "passed": true
+    },
+    "repository_native_room_binding": {
+      "expected": "available repository-owned PhysX binding plus explicit TetMesh",
+      "measured": {
+        "alternate_tetmesh_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
+        "alternate_tetmesh_asset_path": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
+        "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+        "asset_contract": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+        "asset_contract_path": "/Users/home/gilgamesh/DrAnmar/physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+        "asset_path": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+        "attachment": {
+          "axis": "x",
+          "kind": "opposed_outer_axis_bands",
+          "sides": [
+            "minimum",
+            "maximum"
+          ],
+          "width_m": 0.004
+        },
+        "available": true,
+        "backend": "physx_fem",
+        "material": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+        "material_path": "/Users/home/gilgamesh/DrAnmar/physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+        "repository_asset": true,
+        "representation": "two_watertight_open_incision_flaps_with_native_physx_tetrahedralization",
+        "spawn": {
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "translation_m": [
+            0.0,
+            -0.08,
+            0.004
+          ]
+        },
+        "stage_key": "native_tissue"
+      },
+      "passed": true
+    },
+    "research_decision_recorded": {
+      "expected": "auditable asset-selection rationale",
+      "measured": "decision and inspected platform gap present",
+      "passed": true
+    },
+    "sim_to_real_gap_register": {
+      "expected": "at least ten complete gaps and ten sampled parameters",
+      "measured": {
+        "complete": true,
+        "gap_count": 10,
+        "sampled_parameters": 10
+      },
+      "passed": true
+    },
+    "stable_surface_asset_contract": {
+      "expected": [
+        "defaultPrim = \"DrAnmarSuturableTissue\"",
+        "drAnmarAssetId = \"dr-anmar-suturable-tissue\"",
+        "drAnmarAssetName = \"DrAnmar Suturable Tissue\"",
+        "drAnmarAssetVersion = \"1.0.0\"",
+        "drAnmarWoundTopology = \"two_disconnected_watertight_flaps_with_open_incision\"",
+        "drAnmarRepresentation = \"watertight_surface_for_native_physx_tetrahedral_cooking\"",
+        "def Mesh \"Surface\"",
+        "def GeomSubset \"SurfaceFaces\"",
+        "def GeomSubset \"BulkFaces\"",
+        "def GeomSubset \"FasciaFaces\"",
+        "def GeomSubset \"WoundFaces\"",
+        "PhysicsCollisionAPI"
+      ],
+      "measured": {
+        "missing": []
+      },
+      "passed": true
+    },
+    "suturing_suite_integration": {
+      "expected": "the tissue room is part of the needle-and-thread progression",
+      "measured": {
+        "description": "Progress from needle handling through transfer, regrasping and bimanual strand work.",
+        "id": "suturing-suite",
+        "rooms": [
+          "needle-pickup",
+          "needle-transfer",
+          "dr-anmar-suturable-tissue",
+          "needle-passing-regrasp",
+          "nvidia-strand-ring-threading",
+          "nvidia-native-surgical-bench"
+        ],
+        "title": "Needle and thread skills"
+      },
+      "passed": true
+    },
+    "traceable_research_provenance": {
+      "expected": "at least six traceable platform or primary research sources",
+      "measured": 6,
+      "passed": true
+    }
+  },
+  "clinical_validation": false,
+  "derived": {
+    "attachment_nodes": 380,
+    "connected_components": 2,
+    "mass_kg": 0.018427499999999906,
+    "points": 2470,
+    "rest_wound_gap_bottom_m": 0.004,
+    "rest_wound_gap_top_m": 0.006,
+    "sim_to_real_gap_count": 10,
+    "surface_triangles": 2688,
+    "tetrahedra": 10368,
+    "volume_m3": 1.754999999999991e-05
+  },
+  "passed": true,
+  "profile_id": "dr-anmar-suturable-tissue-v1",
+  "schema": "dr.anmar.suturable-tissue-validation.v1",
+  "stable_capability_boundary": [
+    "intact_deformation",
+    "two_way_contact",
+    "grasping",
+    "retraction",
+    "wound_edge_approximation"
+  ]
+}

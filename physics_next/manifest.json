@@ -5,10 +5,12 @@
   "required_contracts": [
     "assets/canonical_asset.schema.json",
     "materials/liver-research-default.json",
+    "tissues/dr-anmar-suturable-tissue-v1.json",
     "room_bindings.json",
     "softmimicgen.json",
     "benchmarks/liver-retraction.json",
     "benchmarks/needle-puncture.json",
+    "benchmarks/dr-anmar-suturable-tissue.json",
     "benchmarks/softmimicgen-needle-attachment.json",
     "benchmarks/softmimicgen-threading-replay.json"
   ],
@@ -76,9 +78,20 @@
     "organ_retraction": ["physx_fem", "newton_vbd"],
     "threaded_needle_core": ["physx_fem"],
     "needle_puncture": ["cressim_mpm"],
+    "wound_edge_approximation": ["physx_fem", "newton_vbd"],
     "suturing": ["cressim_mpm"],
     "cutting": ["cressim_mpm"],
     "policy_training": ["newton_vbd", "physx_fem", "physx_rigid"]
+  },
+  "foundational_assets": {
+    "dr_anmar_suturable_tissue": {
+      "profile": "tissues/dr-anmar-suturable-tissue-v1.json",
+      "benchmark": "benchmarks/dr-anmar-suturable-tissue.json",
+      "stable_surface": "../assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+      "explicit_tetmesh": "../assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
+      "current_capability": "intact_deformation_and_wound_edge_approximation",
+      "blocked_capability": "puncture_thread_passage_and_cutting"
+    }
   },
   "promotion_rule": "A procedure becomes runnable only when its active native backend owns every required physical capability and its calibration and replay evidence are recorded.",
   "clinical_validation": false

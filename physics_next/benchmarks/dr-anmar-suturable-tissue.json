@@ -1,0 +1,95 @@
+{
+  "schema": "dr.anmar.physics-benchmark.v1",
+  "id": "dr-anmar-suturable-tissue",
+  "title": "DrAnmar Suturable Tissue end-to-end qualification",
+  "purpose": "Qualify intact deformation, puncture, curved needle passage, thread capture, wound approximation, cyclic damage and overload failure against one versioned asset.",
+  "asset_profile": "../tissues/dr-anmar-suturable-tissue-v1.json",
+  "representations": {
+    "stable_surface": "../../assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+    "explicit_tetmesh": "../../assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda"
+  },
+  "backend_ownership": {
+    "physx_fem": [
+      "intact_deformation",
+      "two_way_contact",
+      "grasping",
+      "retraction",
+      "wound_edge_approximation"
+    ],
+    "newton_vbd": [
+      "intact_deformation_comparison",
+      "high_throughput_parameter_sweep"
+    ],
+    "cressim_mpm": [
+      "arbitrary_puncture",
+      "persistent_tract",
+      "thread_passage",
+      "cutting",
+      "local_topology_change"
+    ]
+  },
+  "phases": [
+    {"id": "rest", "duration_s": 1.0},
+    {"id": "indent", "duration_s": 1.0},
+    {"id": "puncture_entry", "duration_s": 0.5},
+    {"id": "follow_needle_curvature", "duration_s": 2.0},
+    {"id": "puncture_exit", "duration_s": 0.5},
+    {"id": "thread_transit", "duration_s": 2.0},
+    {"id": "second_bite", "duration_s": 3.0},
+    {"id": "wound_approximation", "duration_s": 2.0},
+    {"id": "cyclic_tension", "duration_s": 5.0},
+    {"id": "overload", "duration_s": 2.0},
+    {"id": "recovery", "duration_s": 3.0}
+  ],
+  "required_metrics": [
+    "finite_state_fraction",
+    "physics_step_ms_p50",
+    "physics_step_ms_p95",
+    "inverted_tetrahedra_peak",
+    "volume_error_fraction_max",
+    "contact_penetration_m_max",
+    "puncture_entry_event_count",
+    "puncture_exit_event_count",
+    "puncture_force_n",
+    "withdrawal_force_n",
+    "shaft_drag_n_mean",
+    "tract_curvature_error_m",
+    "unintended_surface_crossings",
+    "thread_capture_retention",
+    "bite_margin_m",
+    "engaged_layer_count",
+    "wound_gap_m",
+    "edge_eversion_m",
+    "peak_contact_pressure_pa",
+    "local_damage_peak",
+    "pullout_force_n",
+    "failure_mode",
+    "deterministic_replay_position_rmse_m"
+  ],
+  "engineering_requirements": {
+    "finite_state_fraction": 1.0,
+    "inverted_tetrahedra_peak": 0,
+    "unintended_surface_crossings": 0,
+    "puncture_entry_event_count": 1,
+    "puncture_exit_event_count": 1,
+    "thread_capture_retention": true,
+    "physics_step_ms_p95_max": 20.0,
+    "contact_penetration_m_max": 0.0005,
+    "volume_error_fraction_max": 0.05,
+    "deterministic_replay_position_rmse_m_max": 0.0005
+  },
+  "biomechanical_acceptance": {
+    "status": "blocked_pending_physical_dataset",
+    "comparison": "held_out_force_displacement_damage_and_failure_envelopes",
+    "required_conditions": [
+      "at_least_three_tissue_or_phantom_lots",
+      "wet_and_dry",
+      "multiple_bite_margins",
+      "multiple_needle_drive_angles",
+      "multiple_insertion_rates",
+      "cyclic_and_monotonic_loading"
+    ]
+  },
+  "promotion_rule": "No backend may claim a capability that it does not own, and no topology-changing result may be inferred from an intact-FEM contact run.",
+  "clinical_validation": false
+}

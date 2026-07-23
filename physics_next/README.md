@@ -43,6 +43,22 @@ separate render, collision and simulation representations plus explicit mapping,
 attachments, material regions, calibration provenance and an optional vascular
 graph.
 
+## DrAnmar Suturable Tissue
+
+`tissues/dr-anmar-suturable-tissue-v1.json` defines the first DrAnmar-owned
+open-incision tissue platform. Its deterministic package contains two
+disconnected watertight tissue flaps, a stable surface representation for
+native PhysX tetrahedral cooking, and an explicit OpenUSD `TetMesh` for
+Isaac Lab 3, Newton and topology-backend work. Surface, bulk, fascia and wound
+regions are explicit, every tetrahedron carries a volumetric layer ID, and the
+opposed fixture bands are versioned.
+
+The stable PhysX lane owns intact deformation, two-way contact and wound-edge
+approximation. It does not own puncture. The versioned
+`benchmarks/dr-anmar-suturable-tissue.json` contract requires persistent entry
+and exit tracts, thread capture, bite-dependent holding and local failure before
+the MPM lane can promote needle passage or complete suturing.
+
 Run `python scripts/dr_anmar_physics_next.py validate` for the fail-closed
 contract check. Use `./dr_anmar_physics_next.sh status` on Gilgamesh to inspect
 the isolated runtime without touching the live Dr.Anmar suite.

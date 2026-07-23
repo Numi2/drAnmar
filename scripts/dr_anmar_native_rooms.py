@@ -44,8 +44,15 @@ def resolve_native_room(procedure_id: str) -> dict[str, Any] | None:
         resolved["required_paths"] = [str(path) for path in required]
         resolved["available"] = bool(required) and all(path.is_file() for path in required)
         return resolved
-    resolved["asset_path"] = str((data_root / binding["asset"]).resolve())
-    resolved["asset_contract_path"] = str((data_root / binding["asset_contract"]).resolve())
+    asset_root = REPOSITORY_ROOT if binding.get("repository_asset") else data_root
+    resolved["asset_path"] = str((asset_root / binding["asset"]).resolve())
+    resolved["asset_contract_path"] = str(
+        (asset_root / binding["asset_contract"]).resolve()
+    )
+    if binding.get("alternate_tetmesh_asset"):
+        resolved["alternate_tetmesh_asset_path"] = str(
+            (asset_root / binding["alternate_tetmesh_asset"]).resolve()
+        )
     resolved["material_path"] = str((REPOSITORY_ROOT / binding["material"]).resolve())
     resolved["available"] = Path(resolved["asset_path"]).is_file() and Path(
         resolved["asset_contract_path"]

@@ -1,0 +1,48 @@
+{
+  "schema": "dr.anmar.suturable-tissue-asset-report.v1",
+  "name": "DrAnmar Suturable Tissue",
+  "asset_id": "dr-anmar-suturable-tissue",
+  "asset_version": "1.0.0",
+  "profile": "/Users/home/gilgamesh/DrAnmar/physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+  "profile_id": "dr-anmar-suturable-tissue-v1",
+  "surface_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+  "surface_asset_sha256": "5b98708da42aeca871c36e6160238a5116289e82513c6c47629ed0447faa3098",
+  "tetmesh_asset": "/Users/home/gilgamesh/DrAnmar/assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
+  "tetmesh_asset_sha256": "81ee5ebc5ad85772b624baa8e8ec95e9ec88407dd943e344034107623274420f",
+  "point_count": 2470,
+  "tetrahedron_count": 10368,
+  "surface_triangle_count": 2688,
+  "connected_components": 2,
+  "volume_m3": 1.754999999999991e-05,
+  "mass_kg": 0.018427499999999906,
+  "minimum_tetra_volume_m3": 1.6432291666666643e-09,
+  "rest_wound_gap_bottom_m": 0.004,
+  "rest_wound_gap_top_m": 0.006,
+  "outer_attachment_node_count": 380,
+  "surface_groups": {
+    "surface": 864,
+    "bulk": 672,
+    "fascia": 864,
+    "wound": 288
+  },
+  "tetrahedron_groups": {
+    "surface": 1728,
+    "bulk": 6912,
+    "fascia": 1728
+  },
+  "stable_capabilities": [
+    "intact_deformation",
+    "two_way_contact",
+    "grasping",
+    "retraction",
+    "wound_edge_approximation"
+  ],
+  "gated_capabilities": [
+    "arbitrary_puncture",
+    "persistent_tract",
+    "thread_passage",
+    "cutting"
+  ],
+  "sim_to_real_gap_count": 10,
+  "clinical_validation": false
+}

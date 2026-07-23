@@ -3760,7 +3760,7 @@ def main() -> None:
             orientation=None,
             **kwargs,
         ):
-            """Spawn the OpenUSD TetMesh and bind one native PhysX material."""
+            """Spawn the watertight surface, let PhysX cook it, and bind its material."""
 
             deformable_props = cfg.deformable_props
             source_cfg = cfg.replace(deformable_props=None)
@@ -4008,10 +4008,17 @@ def main() -> None:
         axis = {"x": 0, "y": 1, "z": 2}[str(attachment["axis"])]
         coordinates = positions[0, :, axis]
         width_m = float(attachment["width_m"])
-        if attachment["side"] == "minimum":
-            mask = coordinates <= torch.min(coordinates) + width_m
-        else:
-            mask = coordinates >= torch.max(coordinates) - width_m
+        sides = attachment.get("sides") or [attachment["side"]]
+        mask = torch.zeros_like(coordinates, dtype=torch.bool)
+        for side in sides:
+            if side == "minimum":
+                mask |= coordinates <= torch.min(coordinates) + width_m
+            elif side == "maximum":
+                mask |= coordinates >= torch.max(coordinates) - width_m
+            else:
+                raise RuntimeError(
+                    f"Unsupported native tissue attachment side: {side}"
+                )
         if int(mask.sum().item()) < 1:
             raise RuntimeError("The native tissue asset exposes no nodes in its attachment region")
         targets[0, mask, :3] = positions[0, mask]

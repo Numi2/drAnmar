@@ -1,6 +1,26 @@
 {
   "schema": "dr.anmar.native-room-bindings.v1",
   "rooms": {
+    "dr-anmar-suturable-tissue": {
+      "backend": "physx_fem",
+      "repository_asset": true,
+      "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+      "asset_contract": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+      "alternate_tetmesh_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
+      "representation": "two_watertight_open_incision_flaps_with_native_physx_tetrahedralization",
+      "stage_key": "native_tissue",
+      "spawn": {
+        "translation_m": [0.0, -0.08, 0.004],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "attachment": {
+        "kind": "opposed_outer_axis_bands",
+        "axis": "x",
+        "sides": ["minimum", "maximum"],
+        "width_m": 0.004
+      },
+      "material": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json"
+    },
     "nvidia-strand-ring-threading": {
       "backend": "physx_fem",
       "runtime_provider": "nvidia_softmimicgen",
