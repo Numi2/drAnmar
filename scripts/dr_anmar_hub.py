@@ -33,6 +33,8 @@ from dr_anmar_curriculum import curriculum_payload
 from dr_anmar_i4h_adapter import (
     I4H_ROOT,
     I4H_RELEASE,
+    I4H_ASSET_DOWNLOAD_DIR,
+    I4H_ASSET_HASH,
     HOLOHUB_CLI_COMMIT,
     MODALITY_CATALOG,
     POLICY_STARTING_POINTS,
@@ -92,6 +94,17 @@ WORKER_FATAL_MARKERS = (
     "CUBLAS_STATUS_ALLOC_FAILED",
     "ModuleNotFoundError:",
 )
+
+
+def missing_required_nvidia_assets(procedure: dict[str, Any]) -> list[str]:
+    """Return missing paths from a room's pinned NVIDIA asset contract."""
+
+    content_root = I4H_ASSET_DOWNLOAD_DIR / I4H_ASSET_HASH
+    return [
+        str(relative_path)
+        for relative_path in procedure.get("required_nvidia_assets", ())
+        if not (content_root / str(relative_path)).is_file()
+    ]
 
 
 ANATOMY_SCENES = (
@@ -1431,6 +1444,16 @@ def procedure_rooms() -> dict[str, Any]:
                 "ready": False,
                 "reason": "The native OpenUSD physical asset is not installed on this worker.",
             }
+        missing_nvidia_assets = missing_required_nvidia_assets(room)
+        if missing_nvidia_assets:
+            physics = {
+                **physics,
+                "ready": False,
+                "reason": (
+                    "Install the pinned NVIDIA surgical-core assets before opening "
+                    "this room. Missing: " + ", ".join(missing_nvidia_assets)
+                ),
+            }
         room["physics"] = physics
         room["simulation_ready"] = physics["ready"]
         room["readiness_reason"] = physics["reason"]
@@ -1583,14 +1606,31 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
             "ready": False,
             "reason": "The native OpenUSD physical asset is not installed on this worker.",
         }
+    missing_nvidia_assets = missing_required_nvidia_assets(procedure)
+    if missing_nvidia_assets:
+        physics = {
+            **physics,
+            "ready": False,
+            "reason": (
+                "Install the pinned NVIDIA surgical-core assets before opening this "
+                "room. Missing: " + ", ".join(missing_nvidia_assets)
+            ),
+        }
     if not physics["ready"]:
         raise HTTPException(409, physics["reason"])
-    selected_anatomy = request.anatomy_scene or procedure["anatomy_scene"]
-    room = anatomy_room(selected_anatomy)
-    if room is None:
-        raise HTTPException(404, "Unknown OpenUSD anatomy scene")
-    asset = anatomy_asset(room)
-    environment = openusd_environment_asset(room)
+    if procedure.get("hide_anatomy"):
+        selected_anatomy = ""
+        room_title = str(procedure.get("anatomy_focus") or "NVIDIA dry-lab field")
+        asset = None
+        environment = None
+    else:
+        selected_anatomy = request.anatomy_scene or procedure["anatomy_scene"]
+        room = anatomy_room(selected_anatomy)
+        if room is None:
+            raise HTTPException(404, "Unknown OpenUSD anatomy scene")
+        room_title = room["title"]
+        asset = anatomy_asset(room)
+        environment = openusd_environment_asset(room)
     ensure_worker_available("loading an operating room")
     current = worker_status()
     if (
@@ -1604,7 +1644,7 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
     reserve_worker_switch(procedure["title"])
     threading.Thread(
         target=switch_worker,
-        args=(procedure["task"], request.procedure_id, asset, selected_anatomy, room["title"], environment),
+        args=(procedure["task"], request.procedure_id, asset, selected_anatomy, room_title, environment),
         daemon=True,
         name="dr-anmar-procedure-switch",
     ).start()
@@ -1613,7 +1653,7 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         "procedure_id": request.procedure_id,
         "title": procedure["title"],
         "anatomy_scene": selected_anatomy,
-        "anatomy_title": room["title"],
+        "anatomy_title": room_title,
     }
 
 

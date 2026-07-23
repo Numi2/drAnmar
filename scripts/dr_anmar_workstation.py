@@ -33,6 +33,13 @@ from dr_anmar_native_rooms import resolve_native_room
 
 
 DATA_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
+I4H_ASSET_HASH = os.environ.get("DR_ANMAR_I4H_ASSET_HASH", "724f82e")
+I4H_ASSET_CONTENT_ROOT = Path(
+    os.environ.get(
+        "DR_ANMAR_I4H_ASSET_CONTENT_ROOT",
+        DATA_ROOT / "assets/i4h-catalog" / I4H_ASSET_HASH,
+    )
+).expanduser()
 
 
 def positive_environment_number(name: str, default: float, minimum: float) -> float:
@@ -150,12 +157,14 @@ from isaaclab_tasks.utils import parse_env_cfg
 
 if _softmimicgen_task:
     import softmimicgen_tasks  # noqa: F401
-    from orbit.surgical.assets.psm import PSM_HIGH_PD_CFG as ORBIT_PSM_HIGH_PD_CFG
     from orbit.surgical.tasks.surgical.handover.config.needle.ik_rel_env_cfg import (
         NeedleHandoverEnvCfg as ORBIT_NEEDLE_HANDOVER_CFG,
     )
 else:
     import orbit.surgical.tasks  # noqa: F401
+
+from orbit.surgical.assets.ecm import ECM_HIGH_PD_CFG as ORBIT_ECM_HIGH_PD_CFG
+from orbit.surgical.assets.psm import PSM_HIGH_PD_CFG as ORBIT_PSM_HIGH_PD_CFG
 
 from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
@@ -343,7 +352,7 @@ APP_HTML = r"""<!doctype html>
   </style>
 </head>
 <body>
-<header><div class="brand">DR.<span>ANMAR</span></div><section class="view-toolbar header-camera-toolbar" aria-label="Camera controls"><div class="view-toolbar-row"><span class="view-toolbar-label">Camera</span><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="4" onclick="setCamera('endoscope_left',this)">Left <kbd>4</kbd></button><button data-camera="endoscope_right" data-shortcut="5" onclick="setCamera('endoscope_right',this)">Right <kbd>5</kbd></button><button data-camera="wrist_1" data-shortcut="6" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>6</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="7" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>7</kbd></button></div></div><div class="view-toolbar-row"><span class="view-toolbar-label">Angle</span><div class="view-presets"><button data-view-mode="operative" data-shortcut="F1" onclick="setCameraView('operative',this)">Operative <kbd>F1</kbd></button><button data-view-mode="close" data-shortcut="F2" onclick="setCameraView('close',this)">Close <kbd>F2</kbd></button><button data-view-mode="overview" data-shortcut="F3" onclick="setCameraView('overview',this)">Wide <kbd>F3</kbd></button><button data-view-mode="overhead" data-shortcut="F4" onclick="setCameraView('overhead',this)">Overhead <kbd>F4</kbd></button><button data-view-mode="left_oblique" data-shortcut="F5" onclick="setCameraView('left_oblique',this)">Left angle <kbd>F5</kbd></button><button data-view-mode="right_oblique" data-shortcut="F6" onclick="setCameraView('right_oblique',this)">Right angle <kbd>F6</kbd></button><button data-view-mode="opposite" data-shortcut="F7" onclick="setCameraView('opposite',this)">Opposite <kbd>F7</kbd></button><button id="freeCameraButton" class="active" data-shortcut="F8" onclick="toggleFreeCamera()">Free <kbd>F8</kbd></button><button id="resetCameraButton" class="state-active" data-shortcut="Home" onclick="resetFreeCamera()">Reset <kbd>Home</kbd></button></div></div></section><button class="header-keyboard" data-shortcut="?" onclick="toggleKeyboardHelp()"><kbd>?</kbd> Keyboard map</button><div class="live"><i id="dot" class="dot"></i><span id="connection">Connecting…</span></div></header>
+<header><div class="brand">DR.<span>ANMAR</span></div><section class="view-toolbar header-camera-toolbar" aria-label="Camera controls"><div class="view-toolbar-row"><span class="view-toolbar-label">Camera</span><div class="camera-tabs"><button class="active" data-camera="endoscope_left" data-shortcut="4" onclick="setCamera('endoscope_left',this)">Left <kbd>4</kbd></button><button data-camera="endoscope_right" data-shortcut="5" onclick="setCamera('endoscope_right',this)">Right <kbd>5</kbd></button><button data-camera="wrist_1" data-shortcut="6" onclick="setCamera('wrist_1',this)">Wrist 1 <kbd>6</kbd></button><button id="wrist2Tab" class="hidden" data-camera="wrist_2" data-shortcut="7" onclick="setCamera('wrist_2',this)">Wrist 2 <kbd>7</kbd></button><button id="nvidiaEcmTab" class="hidden" data-camera="nvidia_ecm" data-shortcut="C" onclick="setCamera('nvidia_ecm',this)">ECM <kbd>C</kbd></button></div></div><div class="view-toolbar-row"><span class="view-toolbar-label">Angle</span><div class="view-presets"><button data-view-mode="operative" data-shortcut="F1" onclick="setCameraView('operative',this)">Operative <kbd>F1</kbd></button><button data-view-mode="close" data-shortcut="F2" onclick="setCameraView('close',this)">Close <kbd>F2</kbd></button><button data-view-mode="overview" data-shortcut="F3" onclick="setCameraView('overview',this)">Wide <kbd>F3</kbd></button><button data-view-mode="overhead" data-shortcut="F4" onclick="setCameraView('overhead',this)">Overhead <kbd>F4</kbd></button><button data-view-mode="left_oblique" data-shortcut="F5" onclick="setCameraView('left_oblique',this)">Left angle <kbd>F5</kbd></button><button data-view-mode="right_oblique" data-shortcut="F6" onclick="setCameraView('right_oblique',this)">Right angle <kbd>F6</kbd></button><button data-view-mode="opposite" data-shortcut="F7" onclick="setCameraView('opposite',this)">Opposite <kbd>F7</kbd></button><button id="freeCameraButton" class="active" data-shortcut="F8" onclick="toggleFreeCamera()">Free <kbd>F8</kbd></button><button id="resetCameraButton" class="state-active" data-shortcut="Home" onclick="resetFreeCamera()">Reset <kbd>Home</kbd></button></div></div></section><button class="header-keyboard" data-shortcut="?" onclick="toggleKeyboardHelp()"><kbd>?</kbd> Keyboard map</button><div class="live"><i id="dot" class="dot"></i><span id="connection">Connecting…</span></div></header>
 <main>
   <section id="cameraView" class="view free-camera"><img id="cameraImage" alt="Live simulated medical sensor view"><div id="recflag" class="recflag">● RECORDING</div><div id="gazeCursor" class="gaze-cursor"></div><div class="aim-reticle"></div><div id="freeCameraHud" class="free-camera-hud">Drag orbit · Shift-drag pan · wheel zoom</div></section>
   <aside>
@@ -636,6 +645,7 @@ class SharedState:
     camera_names: list[str] = field(default_factory=list)
     camera_subscribers: dict[str, int] = field(default_factory=dict)
     camera_poll_last_seen: float = 0.0
+    camera_poll_last_seen_by_name: dict[str, float] = field(default_factory=dict)
     jpeg_queue_depth: int = 0
     jpeg_frames_dropped: int = 0
     render_fps: float = 0.0
@@ -997,6 +1007,18 @@ class SharedState:
                 completed += int(self.procedure_motion_seen)
                 completed += int(self.procedure_grasp_seen)
                 completed = min(completed, max(0, step_count - 1))
+        elif kind == "native_suturing_bench":
+            # This dry-lab room deliberately avoids synthetic completion
+            # predicates.  Only an observed physical grasp and subsequent
+            # rigid-body transport advance the first two phases; regrasp,
+            # handoff, scissors exchange and recovery remain clinician-led
+            # until native per-object custody predicates are available.
+            completed = int(self.procedure_grasp_seen)
+            completed += int(
+                self.procedure_grasp_seen
+                and self.procedure_motion_seen
+                and self.procedure_object_motion_m >= 0.018
+            )
         elif kind == "needle_pass":
             completed = int(self.procedure_motion_seen)
             completed += int(self.procedure_waypoints_completed >= 2)
@@ -1897,7 +1919,9 @@ def build_web_app(state: SharedState) -> FastAPI:
     @app.get("/frame.jpg")
     def still_frame() -> Response:
         with state.lock:
-            state.camera_poll_last_seen = time.monotonic()
+            poll_time = time.monotonic()
+            state.camera_poll_last_seen = poll_time
+            state.camera_poll_last_seen_by_name["endoscope_left"] = poll_time
             jpeg = state.frame_jpeg
         if not jpeg:
             raise HTTPException(503, "The first camera frame is not ready")
@@ -1908,7 +1932,9 @@ def build_web_app(state: SharedState) -> FastAPI:
         if camera_name not in state.camera_names:
             raise HTTPException(404, "Unknown simulated camera")
         with state.lock:
-            state.camera_poll_last_seen = time.monotonic()
+            poll_time = time.monotonic()
+            state.camera_poll_last_seen = poll_time
+            state.camera_poll_last_seen_by_name[camera_name] = poll_time
             jpeg = state.camera_frames_jpeg.get(camera_name, b"")
         if not jpeg:
             raise HTTPException(503, "The first camera frame is not ready")
@@ -3146,6 +3172,30 @@ def main() -> None:
     procedure = dict(PROCEDURES_BY_ID.get(args_cli.procedure, {}))
     if args_cli.procedure and not procedure:
         raise ValueError(f"Unknown Dr.Anmar procedure room: {args_cli.procedure}")
+    nvidia_native_bench = bool(procedure.get("nvidia_native_bench"))
+    nvidia_bench_assets: dict[str, Path] = {}
+    if nvidia_native_bench:
+        nvidia_bench_assets = {
+            "psm": I4H_ASSET_CONTENT_ROOT / "Robots/dVRK/PSM/psm.usd",
+            "ecm": I4H_ASSET_CONTENT_ROOT / "Robots/dVRK/ECM/ecm.usd",
+            "needle": I4H_ASSET_CONTENT_ROOT / "Props/SutureNeedle/needle_sdf.usd",
+            "suture_pad": I4H_ASSET_CONTENT_ROOT / "Props/SuturePad/suture_pad.usd",
+            "table": I4H_ASSET_CONTENT_ROOT / "Props/Table/table.usd",
+            "scissors": I4H_ASSET_CONTENT_ROOT
+            / "Props/SurgicalInstruments/SurgicalScissors.usd",
+            "tray": I4H_ASSET_CONTENT_ROOT
+            / "Props/SurgicalInstruments/SurgicalTray.usd",
+        }
+        missing_nvidia_assets = [
+            f"{name}: {path}"
+            for name, path in nvidia_bench_assets.items()
+            if not path.is_file()
+        ]
+        if missing_nvidia_assets:
+            raise RuntimeError(
+                "The NVIDIA native surgical bench requires the pinned surgical-core "
+                "asset bundle. Missing " + "; ".join(missing_nvidia_assets)
+            )
     procedure_physics = _physics_authority.procedure_readiness(
         procedure or {"fidelity": "anatomy_context"},
         _physics_runtime,
@@ -3172,6 +3222,76 @@ def main() -> None:
         # not require freezing the renderer on stale OpenUSD transforms.
         use_fabric=not args_cli.disable_fabric,
     )
+    if nvidia_native_bench:
+        # Compose the room exclusively from the pinned Isaac for Healthcare
+        # catalog. The existing handover task continues to own both PSMs,
+        # relative IK actions, jaw contacts, needle state, resets and stepping.
+        for robot_name in ("robot_1", "robot_2"):
+            robot_cfg = getattr(env_cfg.scene, robot_name)
+            robot_cfg.spawn.usd_path = str(nvidia_bench_assets["psm"])
+        env_cfg.scene.table.spawn.usd_path = str(nvidia_bench_assets["table"])
+        env_cfg.scene.object.spawn.usd_path = str(nvidia_bench_assets["needle"])
+
+        # The pad is NVIDIA-authored static collision geometry. It intentionally
+        # remains rigid: this room must never turn contact into a fake puncture.
+        env_cfg.scene.suture_pad = AssetBaseCfg(
+            prim_path="{ENV_REGEX_NS}/SuturePad",
+            init_state=AssetBaseCfg.InitialStateCfg(pos=(0.035, 0.045, 0.001)),
+            spawn=sim_utils.UsdFileCfg(
+                usd_path=str(nvidia_bench_assets["suture_pad"]),
+            ),
+        )
+
+        # NVIDIA authors the tray and scissors as rigid OpenUSD assets. Their
+        # authored bodies, colliders, mass and PhysX response are preserved.
+        env_cfg.scene.surgical_tray = RigidObjectCfg(
+            prim_path="{ENV_REGEX_NS}/SurgicalTray",
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(-0.20, 0.0, 0.012),
+                rot=(1.0, 0.0, 0.0, 0.0),
+            ),
+            spawn=sim_utils.UsdFileCfg(
+                usd_path=str(nvidia_bench_assets["tray"]),
+            ),
+        )
+        env_cfg.scene.surgical_scissors = RigidObjectCfg(
+            prim_path="{ENV_REGEX_NS}/SurgicalScissors",
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(-0.20, -0.025, 0.075),
+                rot=(0.7071068, 0.0, 0.0, 0.7071068),
+            ),
+            spawn=sim_utils.UsdFileCfg(
+                usd_path=str(nvidia_bench_assets["scissors"]),
+            ),
+        )
+
+        # A third NVIDIA articulation supplies the endoscopic embodiment. It
+        # holds its authored joint pose while the two PSM action terms retain
+        # the exact upstream fourteen-dimensional control contract.
+        env_cfg.scene.ecm = ORBIT_ECM_HIGH_PD_CFG.replace(
+            prim_path="{ENV_REGEX_NS}/ECM"
+        )
+        env_cfg.scene.ecm.spawn.usd_path = str(nvidia_bench_assets["ecm"])
+        env_cfg.scene.ecm.init_state.pos = (0.0, 0.24, 0.15)
+        env_cfg.scene.ecm.init_state.joint_pos["ecm_main_insertion_joint"] = 0.12
+        env_cfg.scene.nvidia_ecm_camera = CameraCfg(
+            prim_path="{ENV_REGEX_NS}/ECM/ecm_end_link/camera",
+            update_period=0.04,
+            height=args_cli.camera_height,
+            width=args_cli.camera_width,
+            data_types=["rgb"],
+            spawn=sim_utils.PinholeCameraCfg(
+                focal_length=24.0,
+                focus_distance=0.25,
+                horizontal_aperture=20.955,
+                clipping_range=(0.005, 1.0),
+            ),
+            offset=CameraCfg.OffsetCfg(
+                pos=(0.0, 0.0, 0.0),
+                rot=(1.0, 0.0, 0.0, 0.0),
+                convention="ros",
+            ),
+        )
     if _softmimicgen_task:
         # There is one interactive room, so physics replication provides no
         # benefit and can drop cross-asset attachment relationships while the
@@ -3557,7 +3677,7 @@ def main() -> None:
             prim_path="{ENV_REGEX_NS}/OpenUSDOperatingRoom",
             spawn=sim_utils.UsdFileCfg(usd_path=str(openusd_environment)),
         )
-    elif not _softmimicgen_task:
+    elif not _softmimicgen_task and not nvidia_native_bench:
         # Offline fallback for development installations that do not yet have
         # the repaired OpenUSD compositions generated.
         wall_material = sim_utils.PreviewSurfaceCfg(diffuse_color=(0.20, 0.27, 0.30), roughness=0.72)
@@ -3658,12 +3778,25 @@ def main() -> None:
     scene = env.unwrapped.scene
     camera = scene["endoscope"]
     stereo_right_camera = scene["endoscope_right"] if args_cli.sensor_profile in {"stereo", "research"} else None
+    nvidia_ecm_camera = scene["nvidia_ecm_camera"] if nvidia_native_bench else None
     wrist_cameras = [scene[f"wrist_{index}"] for index in range(1, len(wrist_robot_names) + 1)] if args_cli.sensor_profile == "research" else []
     camera_sources = {"endoscope_left": camera}
     if stereo_right_camera is not None:
         camera_sources["endoscope_right"] = stereo_right_camera
+    if nvidia_ecm_camera is not None:
+        camera_sources["nvidia_ecm"] = nvidia_ecm_camera
     camera_sources.update({f"wrist_{index}": wrist_camera for index, wrist_camera in enumerate(wrist_cameras, start=1)})
-    robot_names = sorted(scene.articulations.keys())
+    all_robot_names = sorted(scene.articulations.keys())
+    robot_names = [
+        name
+        for name in all_robot_names
+        if all(
+            joint_name in tuple(scene[name].joint_names)
+            for joint_name in PSM_ARM_NAMES
+        )
+    ]
+    if not robot_names:
+        robot_names = all_robot_names
     robots = {name: scene[name] for name in robot_names}
     robot_body_names = {name: list(getattr(robot, "body_names", [])) for name, robot in robots.items()}
     object_names = sorted(scene.rigid_objects.keys())
@@ -3830,7 +3963,12 @@ def main() -> None:
     anatomy_collision_prims: list[Any] = []
     stage = None
     showcase_prim = None
-    if organ_usd.is_file() and not native_tissue_enabled and not _softmimicgen_task:
+    if (
+        organ_usd.is_file()
+        and not native_tissue_enabled
+        and not _softmimicgen_task
+        and not procedure.get("hide_anatomy")
+    ):
         import omni.usd
         from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt
 
@@ -4245,11 +4383,18 @@ def main() -> None:
         robot_body_names=robot_body_names,
         anatomy_showcase=str(procedure.get("anatomy_focus") or "Operative field"),
         anatomy_scene_id=args_cli.anatomy_scene_id,
-        anatomy_asset=str(organ_usd) if organ_usd.is_file() and not _softmimicgen_task else "",
+        anatomy_asset=(
+            str(organ_usd)
+            if organ_usd.is_file()
+            and not _softmimicgen_task
+            and not procedure.get("hide_anatomy")
+            else ""
+        ),
         openusd_environment=str(openusd_environment) if openusd_environment else "",
         procedure=procedure,
         openusd_scene_loaded=bool(
-            native_deformable_enabled
+            nvidia_native_bench
+            or native_deformable_enabled
             or (openusd_environment and organ_usd.is_file() and showcase_children)
         ),
         anatomy_collision_meshes=collision_mesh_count,
@@ -4354,6 +4499,7 @@ def main() -> None:
     state.runtime_provenance = runtime_provenance(state)
     state.camera_frame_ids = {name: 0 for name in camera_sources}
     state.camera_subscribers = {name: 0 for name in camera_sources}
+    state.camera_poll_last_seen_by_name = {name: 0.0 for name in camera_sources}
     jpeg_encoder = BoundedJpegEncoder(state)
     state.procedure_waypoints_total = len(room_waypoints)
     state.procedure_started_at = time.monotonic()
@@ -4987,6 +5133,32 @@ def main() -> None:
 
         motion_active = any(bool(np.any(action_np[state.body_action_slice(arm)])) for arm in range(state.arms))
         current_time = time.monotonic()
+        if (
+            procedure.get("nvidia_native_bench")
+            and not motion_active
+            and not native_grasp_arms
+        ):
+            with state.lock:
+                untouched_native_bench = (
+                    not state.procedure_motion_seen
+                    and not state.procedure_grasp_seen
+                )
+            if untouched_native_bench:
+                # Rigid assets may settle a few millimetres under PhysX after
+                # reset. Keep that passive motion out of procedure progress.
+                # The last fully idle pose becomes the user-action baseline.
+                initial_object_positions.clear()
+                initial_object_positions.update(
+                    {
+                        name: rigid_object.data.root_pos_w[0]
+                        .detach()
+                        .cpu()
+                        .numpy()
+                        .astype(np.float32)
+                        .copy()
+                        for name, rigid_object in objects.items()
+                    }
+                )
         max_object_lift = 0.0
         max_object_motion = 0.0
         for name, rigid_object in objects.items():
@@ -5197,6 +5369,11 @@ def main() -> None:
                 requested_cameras = {
                     name for name, count in state.camera_subscribers.items() if count > 0
                 }
+                requested_cameras.update(
+                    name
+                    for name, last_seen in state.camera_poll_last_seen_by_name.items()
+                    if now - last_seen < 1.0
+                )
             requested_cameras.add("endoscope_left")
             for camera_name in requested_cameras:
                 sensor_camera = camera_sources.get(camera_name)
