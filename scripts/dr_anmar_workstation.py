@@ -3252,12 +3252,17 @@ def main() -> None:
             # Use ORBIT's complete bimanual needle-handover action stack and
             # ordering. SoftMimicGen remains responsible only for the native
             # deformable strand, ring, and their PhysX behavior.
-            orbit_actions = ORBIT_NEEDLE_HANDOVER_CFG().actions
+            orbit_reference_cfg = ORBIT_NEEDLE_HANDOVER_CFG()
+            orbit_actions = orbit_reference_cfg.actions
             orbit_actions.robot_1_body_action.asset_name = "robot"
             orbit_actions.robot_1_gripper_action.asset_name = "robot"
             orbit_actions.robot_2_body_action.asset_name = "robot_2"
             orbit_actions.robot_2_gripper_action.asset_name = "robot_2"
             env_cfg.actions = orbit_actions
+            # Reuse the exact ORBIT surgical table asset and transform from
+            # the working needle-handover room instead of SoftMimicGen's
+            # visually different dry-lab table.
+            env_cfg.scene.table = orbit_reference_cfg.scene.table
         needle_usd = (
             Path(__file__).resolve().parents[1]
             / "source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd"
