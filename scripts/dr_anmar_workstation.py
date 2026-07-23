@@ -3387,6 +3387,8 @@ def main() -> None:
         "gripper_2_action",
         "robot_1_gripper_action",
         "robot_2_gripper_action",
+        "finger_joint_pos",
+        "finger_joint_pos_2",
     ):
         gripper_term = getattr(env_cfg.actions, gripper_term_name, None)
         if gripper_term is not None and hasattr(gripper_term, "close_command_expr"):
