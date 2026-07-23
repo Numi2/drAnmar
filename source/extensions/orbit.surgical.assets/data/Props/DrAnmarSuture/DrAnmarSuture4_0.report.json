@@ -1,0 +1,16 @@
+{
+  "schema": "dr.anmar.suture-asset-report.v1",
+  "profile": "/Users/home/gilgamesh/DrAnmar/physics_next/sutures/dr-anmar-suture-4-0.json",
+  "asset": "/Users/home/gilgamesh/DrAnmar/source/extensions/orbit.surgical.assets/data/Props/DrAnmarSuture/DrAnmarSuture4_0.usda",
+  "asset_sha256": "fe8b93035fcd348aa7bd523c58465f6e66a4ebf00bf42733c6bb3e810daf710e",
+  "representation": "visible_collision_capsules_with_breakable_d6_cosserat_joints",
+  "segment_count": 360,
+  "joint_count": 360,
+  "diameter_m": 0.00025,
+  "length_m": 0.18,
+  "mass_kg": 1.1486448139687682e-05,
+  "straight_failure_load_n": 22.5,
+  "knot_failure_load_n": 14.625,
+  "clinical_validation": false,
+  "independent_from_current_thread": true
+}

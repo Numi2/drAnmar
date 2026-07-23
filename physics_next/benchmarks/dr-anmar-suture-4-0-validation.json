@@ -1,0 +1,146 @@
+{
+  "checks": {
+    "actual_scale_not_visibility_inflated": {
+      "expected": 0.00025,
+      "measured": 0.00025,
+      "passed": true
+    },
+    "breakable_joint_resolution": {
+      "expected": 360,
+      "measured": {
+        "break_force_attributes": 360,
+        "joint_defs": 360
+      },
+      "passed": true
+    },
+    "combined_knot_and_crush_failure": {
+      "expected": "less than 14.625",
+      "measured": 9.667125,
+      "passed": true
+    },
+    "elongation_at_break": {
+      "expected": [
+        0.1,
+        0.3
+      ],
+      "measured": 0.22,
+      "passed": true
+    },
+    "independent_from_current_thread": {
+      "expected": "no current-thread reference",
+      "measured": {
+        "forbidden_references": []
+      },
+      "passed": true
+    },
+    "instrument_crush_damage": {
+      "expected": {
+        "five_grasps": 0.383,
+        "one_grasp": 0.661,
+        "zero_grasps": 1.0
+      },
+      "measured": {
+        "five_grasps": 0.383,
+        "one_grasp": 0.661,
+        "zero_grasps": 1.0
+      },
+      "passed": true
+    },
+    "knot_strength_reduction": {
+      "expected": [
+        0.5,
+        0.8
+      ],
+      "measured": 0.65,
+      "passed": true
+    },
+    "load_dependent_self_friction": {
+      "expected": "positive coefficient decreasing with load while friction force rises",
+      "measured": {
+        "mu_at_0_01_n": 0.45142857142857146,
+        "mu_at_2_n": 0.2963636363636364
+      },
+      "passed": true
+    },
+    "nonlinear_tension_curve": {
+      "expected": "positive yield force below a 20-25 N failed endpoint",
+      "measured": {
+        "break_force_n": 22.5,
+        "yield_force_n": 11.286024345865695
+      },
+      "passed": true
+    },
+    "physical_segment_resolution": {
+      "expected": 360,
+      "measured": 360,
+      "passed": true
+    },
+    "polymer_density": {
+      "expected": [
+        1200.0,
+        1400.0
+      ],
+      "measured": 1300.0,
+      "passed": true
+    },
+    "primary_research_provenance": {
+      "expected": "at least six traceable experimental/computational sources",
+      "measured": 9,
+      "passed": true
+    },
+    "runtime_physics_contract": {
+      "expected": [
+        "PhysicsRigidBodyAPI",
+        "PhysicsCollisionAPI",
+        "PhysicsDriveAPI:transX",
+        "PhysicsDriveAPI:rotY",
+        "PhysicsDriveAPI:rotZ",
+        "PhysicsFilteredPairsAPI",
+        "physxRigidBody:enableCCD",
+        "def Capsule \"NeedleInterface\"",
+        "drAnmar:swageFraction"
+      ],
+      "measured": {
+        "missing": []
+      },
+      "passed": true
+    },
+    "straight_failure_load": {
+      "expected": [
+        20.0,
+        25.0
+      ],
+      "measured": 22.5,
+      "passed": true
+    },
+    "true_4_0_diameter": {
+      "expected": [
+        0.0002,
+        0.0003
+      ],
+      "measured": 0.00025,
+      "passed": true
+    },
+    "wet_stress_relaxation": {
+      "expected": "largest early loss with configured asymptote",
+      "measured": {
+        "long_time": 0.59,
+        "two_hours": 0.6352509346530328
+      },
+      "passed": true
+    }
+  },
+  "clinical_validation": false,
+  "derived": {
+    "axial_joint_stiffness_n_m": 752401.6230577129,
+    "axial_rigidity_n": 376.2008115288565,
+    "bend_joint_stiffness_n_m_rad": 8e-05,
+    "mass_kg": 1.1486448139687682e-05,
+    "segment_mass_kg": 3.190680038802134e-08,
+    "twist_joint_stiffness_n_m_rad": 2.9999999999999997e-05
+  },
+  "note": "Deterministic engineering validation only; physical bench and clinician validation remain required.",
+  "passed": true,
+  "profile_id": "dr-anmar-suture-4-0-braided-v1",
+  "schema": "dr.anmar.suture-validation.v1"
+}

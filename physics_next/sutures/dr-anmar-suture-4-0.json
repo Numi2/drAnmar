@@ -1,0 +1,191 @@
+{
+  "schema": "dr.anmar.suture-profile.v1",
+  "id": "dr-anmar-suture-4-0-braided-v1",
+  "name": "Dr.Anmar 4-0 braided surgical suture",
+  "purpose": "Research-grade physical suture asset for operating-room simulation",
+  "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
+  "clinical_validation": false,
+  "medical_device": false,
+  "independent_asset": true,
+  "does_not_replace": "NVIDIA SoftMimicGen Rope.usd or the nvidia-strand-ring-threading room",
+  "units": "metres-kilograms-seconds",
+  "geometry": {
+    "usp_size": "4-0",
+    "metric_size": 1.5,
+    "length_m": 0.18,
+    "diameter_m": 0.00025,
+    "diameter_range_m": [
+      0.0002,
+      0.0003
+    ],
+    "segment_spacing_m": 0.0005,
+    "segment_count": 360,
+    "carrier_count": 12,
+    "surface_radius_modulation_fraction": 0.035,
+    "surface_modulation_period_segments": 6,
+    "construction": "coated_braided_multifilament_equivalent_discrete_cosserat_rod",
+    "color_rgb": [
+      0.42,
+      0.08,
+      0.55
+    ]
+  },
+  "material": {
+    "polymer_family": "polyglactin_910_equivalent",
+    "density_kg_m3": 1300.0,
+    "density_range_kg_m3": [
+      1200.0,
+      1400.0
+    ],
+    "initial_axial_modulus_pa": 7663900000.0,
+    "poisson_ratio": 0.36,
+    "flexural_rigidity_n_m2": 4e-08,
+    "torsional_rigidity_n_m2": 1.5e-08,
+    "axial_damping_ratio": 0.08,
+    "bending_damping_ratio": 0.12,
+    "linear_velocity_damping": 0.015,
+    "angular_velocity_damping": 0.025
+  },
+  "tension": {
+    "straight_failure_load_n": 22.5,
+    "straight_failure_range_n": [
+      20.0,
+      25.0
+    ],
+    "yield_strain": 0.03,
+    "failure_strain": 0.22,
+    "failure_strain_range": [
+      0.1,
+      0.3
+    ],
+    "post_yield_shape_exponent": 0.72,
+    "joint_extension_limit_fraction": 0.3
+  },
+  "contact": {
+    "static_friction": 0.42,
+    "dynamic_friction": 0.32,
+    "restitution": 0.0,
+    "load_dependent_self_friction": {
+      "low_load_coefficient": 0.46,
+      "high_load_coefficient": 0.28,
+      "transition_normal_load_n": 0.2
+    },
+    "self_collision": true,
+    "connected_segment_collision": false,
+    "speculative_ccd": true
+  },
+  "viscoelasticity": {
+    "wet_state": true,
+    "retained_stress_asymptote": 0.59,
+    "fast_relaxation_weight": 0.7,
+    "fast_time_constant_s": 600.0,
+    "slow_time_constant_s": 7200.0,
+    "hysteresis_loss_fraction_seed": 0.18
+  },
+  "knot": {
+    "nominal_strength_efficiency": 0.65,
+    "strength_efficiency_range": [
+      0.5,
+      0.8
+    ],
+    "tight_bend_radius_diameters": 2.0,
+    "compaction_enabled": true,
+    "slip_enabled": true
+  },
+  "instrument_damage": {
+    "reference_crush_pressure_pa": 45000000.0,
+    "reference_crush_duration_s": 1.0,
+    "crush_strength_remaining": [
+      {
+        "grasps": 0,
+        "fraction": 1.0
+      },
+      {
+        "grasps": 1,
+        "fraction": 0.661
+      },
+      {
+        "grasps": 3,
+        "fraction": 0.5
+      },
+      {
+        "grasps": 5,
+        "fraction": 0.383
+      }
+    ],
+    "abrasion_damage_enabled": true,
+    "abrasion_work_to_failure_j_seed": 0.18
+  },
+  "swage": {
+    "transition_length_m": 0.003,
+    "needle_end_diameter_m": 0.00034,
+    "axial_stiffness_multiplier": 1.8,
+    "bending_stiffness_multiplier": 4.0,
+    "pullout_force_n_seed": 18.0,
+    "interface_kind": "kinematic_test_interface_replaceable_by_fixed_needle_joint"
+  },
+  "solver": {
+    "backend": "NVIDIA PhysX rigid bodies and generic D6 joints",
+    "recommended_physics_dt_s": 0.0005,
+    "recommended_substeps_per_120_hz_frame": 16,
+    "position_iterations": 16,
+    "velocity_iterations": 4,
+    "minimum_solver_velocity_iterations": 2
+  },
+  "evidence": [
+    {
+      "doi": "10.3390/biomedicines11041055",
+      "url": "https://www.mdpi.com/2227-9059/11/4/1055",
+      "used_for": "4-0 polyglactin low-strain axial modulus and wet-environment response"
+    },
+    {
+      "doi": "10.3390/jpm12071041",
+      "url": "https://www.mdpi.com/2075-4426/12/7/1041",
+      "used_for": "4-0 straight failure load and repeated instrument-crush strength loss"
+    },
+    {
+      "doi": "10.1089/end.2005.19.1127",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/16283852/",
+      "used_for": "polyglactin elongation, failure load, and laparoscopic instrument damage"
+    },
+    {
+      "pmid": "31232540",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9929964/",
+      "used_for": "stress relaxation ordering and load-dependent suture friction"
+    },
+    {
+      "pmid": "28397451",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/28397451/",
+      "used_for": "wet-state long-duration stress retention"
+    },
+    {
+      "doi": "10.1002/jor.22185",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/22447664/",
+      "used_for": "bending and abrasion fatigue requirement"
+    },
+    {
+      "doi": "10.48550/arXiv.2010.09109",
+      "url": "https://arxiv.org/abs/2010.09109",
+      "used_for": "three-dimensional self-contact and Coulomb-friction knot mechanics"
+    },
+    {
+      "pmid": "899593",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/899593/",
+      "used_for": "dependence of knot efficiency on knot construction, material, and gauge"
+    },
+    {
+      "doi": "10.1371/journal.pone.0343682",
+      "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0343682",
+      "used_for": "S-shaped tensile response and inelastic load drops in knotted and looped sutures"
+    }
+  ],
+  "required_physical_calibration": [
+    "straight_tensile_force_extension",
+    "three_point_bending_or_ring_loop_flexural_rigidity",
+    "wet_stress_relaxation",
+    "suture_on_suture_capstan_friction_at_multiple_normal_loads",
+    "instrument_crush_and_abrasion_fatigue",
+    "square_and_surgeons_knot_security",
+    "needle_swage_pullout"
+  ]
+}
