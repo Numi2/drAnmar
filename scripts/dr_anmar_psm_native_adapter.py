@@ -33,6 +33,7 @@ from typing import Any, Sequence
 PSM_POLICY_ACTION_DIM = 7
 PSM_CARTESIAN_ACTION_DIM = 8
 PSM_ARM_DIM = 6
+DEFAULT_PSM_GRIPPER_CLOSE_RAD = 0.06
 CONTRACT_NAME = "dr_anmar.nvidia_psm_policy_action.v1"
 PSM_ARM_NAMES = (
     "psm_yaw_joint",
@@ -351,8 +352,8 @@ def _recorder_term_cfgs():
     return NativePsmRecorderManagerCfg
 
 
-def install_native_recorder(*, env_id: str, bootstrap_root: Path) -> None:
-    """Install a deferred hook that patches PSM recording after Kit starts."""
+def install_native_recorder(*, env_id: str, bootstrap_root: Path, gripper_close_rad: float) -> None:
+    """Install deferred PSM recording and jaw-target hooks after Kit starts."""
 
     global _PATCHED
     if _PATCHED:
@@ -365,23 +366,31 @@ def install_native_recorder(*, env_id: str, bootstrap_root: Path) -> None:
     original_build = env_cls.build
 
     def build_with_native_psm_recorder(self, args):
-        _patch_psm_recorder_config(bootstrap_root)
+        _patch_psm_recorder_config(bootstrap_root, gripper_close_rad)
         return original_build(self, args)
 
     env_cls.build = build_with_native_psm_recorder
     _PATCHED = True
 
 
-def _patch_psm_recorder_config(bootstrap_root: Path) -> None:
+def _patch_psm_recorder_config(bootstrap_root: Path, gripper_close_rad: float) -> None:
     """Patch the embodiment only after AppLauncher has initialized Omniverse."""
 
     from arena.embodiments.psm import DualPsmEmbodiment, PsmEmbodiment
 
-    if getattr(PsmEmbodiment, "_dr_anmar_native_recorder", False) and getattr(
-        DualPsmEmbodiment, "_dr_anmar_native_recorder", False
-    ):
-        return
+    if not 0.0 <= gripper_close_rad < 0.5:
+        raise ValueError(f"PSM closed-jaw target must be in [0.0, 0.5), got {gripper_close_rad}")
     recorder_manager_cfg = _recorder_term_cfgs()
+
+    def set_native_gripper_close(action_cfg):
+        for term_name in ("gripper_action", "gripper_1_action", "gripper_2_action"):
+            term = getattr(action_cfg, term_name, None)
+            if term is not None:
+                term.close_command_expr = {
+                    "psm_tool_gripper1_joint": -gripper_close_rad,
+                    "psm_tool_gripper2_joint": gripper_close_rad,
+                }
+        return action_cfg
 
     def get_recorder_term_cfg(self):
         cfg = recorder_manager_cfg()
@@ -393,6 +402,14 @@ def _patch_psm_recorder_config(bootstrap_root: Path) -> None:
         return cfg
 
     for embodiment_cls in (PsmEmbodiment, DualPsmEmbodiment):
+        if not getattr(embodiment_cls, "_dr_anmar_native_gripper_close", False):
+            original_get_action_cfg = embodiment_cls.get_action_cfg
+
+            def get_action_cfg(self, _original=original_get_action_cfg):
+                return set_native_gripper_close(_original(self))
+
+            embodiment_cls.get_action_cfg = get_action_cfg
+            embodiment_cls._dr_anmar_native_gripper_close = True
         embodiment_cls.get_recorder_term_cfg = get_recorder_term_cfg
         embodiment_cls._dr_anmar_native_recorder = True
     _install_recording_close_hook()
@@ -632,6 +649,11 @@ def _record_to_arg(argv: Sequence[str]) -> Path | None:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--inspect-hdf5", type=Path)
+    parser.add_argument(
+        "--gripper-close-rad",
+        type=float,
+        default=float(os.environ.get("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", DEFAULT_PSM_GRIPPER_CLOSE_RAD)),
+    )
     return parser
 
 
@@ -664,7 +686,11 @@ def main() -> None:
             str(record_to.expanduser().resolve().parent / ".recorder-bootstrap"),
         )
     )
-    install_native_recorder(env_id=env_id, bootstrap_root=bootstrap)
+    install_native_recorder(
+        env_id=env_id,
+        bootstrap_root=bootstrap,
+        gripper_close_rad=args.gripper_close_rad,
+    )
 
     from arena import run as arena_run
 

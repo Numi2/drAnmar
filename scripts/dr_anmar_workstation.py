@@ -48,6 +48,10 @@ MAX_DEMO_BYTES = int(positive_environment_number("DR_ANMAR_MAX_DEMO_BYTES", 1_50
 MEMORY_WARNING_BYTES = int(
     positive_environment_number("DR_ANMAR_MEMORY_WARNING_BYTES", 16_000_000_000, 1_000_000_000)
 )
+PSM_GRIPPER_CLOSE_RAD = min(
+    0.49,
+    positive_environment_number("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", 0.06, 0.0),
+)
 SENSOR_PROFILES = {"efficient", "stereo", "research"}
 EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"
 STUDY_ID = os.environ.get("DR_ANMAR_STUDY_ID", "").strip()
@@ -3368,8 +3372,28 @@ def main() -> None:
             asset_name="robot",
             joint_names=["psm_tool_gripper.*_joint"],
             open_command_expr={"psm_tool_gripper1_joint": -0.5, "psm_tool_gripper2_joint": 0.5},
-            close_command_expr={"psm_tool_gripper1_joint": -0.09, "psm_tool_gripper2_joint": 0.09},
+            close_command_expr={
+                "psm_tool_gripper1_joint": -PSM_GRIPPER_CLOSE_RAD,
+                "psm_tool_gripper2_joint": PSM_GRIPPER_CLOSE_RAD,
+            },
         )
+    # The upstream PSM rooms use a 0.09-radian residual jaw aperture, which is
+    # too wide for the scaled thin needle in interactive grasping. Preserve
+    # the native BinaryJointPositionAction and PhysX contact path while using
+    # a closer physical target for every available PSM gripper term.
+    for gripper_term_name in (
+        "gripper_action",
+        "gripper_1_action",
+        "gripper_2_action",
+        "robot_1_gripper_action",
+        "robot_2_gripper_action",
+    ):
+        gripper_term = getattr(env_cfg.actions, gripper_term_name, None)
+        if gripper_term is not None and hasattr(gripper_term, "close_command_expr"):
+            gripper_term.close_command_expr = {
+                "psm_tool_gripper1_joint": -PSM_GRIPPER_CLOSE_RAD,
+                "psm_tool_gripper2_joint": PSM_GRIPPER_CLOSE_RAD,
+            }
     camera_target = np.asarray(env_cfg.viewer.lookat, dtype=np.float32)
     # Start from the room-facing side used by the official OR scene so the
     # doctor sees the instrument, liver, table, and surrounding environment.
