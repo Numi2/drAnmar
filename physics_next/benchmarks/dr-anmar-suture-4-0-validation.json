@@ -5,12 +5,40 @@
       "measured": 0.00025,
       "passed": true
     },
+    "all_local_procedure_rooms_receive_instrument": {
+      "expected": [
+        "nvidia-native-surgical-bench",
+        "needle-pickup",
+        "needle-transfer",
+        "liver-retraction",
+        "synthetic-anatomy-navigation",
+        "nvidia-strand-ring-threading",
+        "needle-passing-regrasp",
+        "complication-recovery"
+      ],
+      "measured": [
+        "nvidia-native-surgical-bench",
+        "needle-pickup",
+        "needle-transfer",
+        "liver-retraction",
+        "synthetic-anatomy-navigation",
+        "nvidia-strand-ring-threading",
+        "needle-passing-regrasp",
+        "complication-recovery"
+      ],
+      "passed": true
+    },
     "breakable_joint_resolution": {
       "expected": 360,
       "measured": {
         "break_force_attributes": 360,
         "joint_defs": 360
       },
+      "passed": true
+    },
+    "breakable_swage_pullout": {
+      "expected": 18.0,
+      "measured": 18.0,
       "passed": true
     },
     "combined_knot_and_crush_failure": {
@@ -24,6 +52,22 @@
         0.3
       ],
       "measured": 0.22,
+      "passed": true
+    },
+    "factory_swaged_needle_composition": {
+      "expected": [
+        "defaultPrim = \"DrAnmarNeedleSuture4_0\"",
+        "prepend references = @../Surgical_needle/needle_sdf.usd@",
+        "prepend references = @DrAnmarSuture4_0.usda@",
+        "def PhysicsFixedJoint \"FactorySwage\"",
+        "physics:body0 = </DrAnmarNeedleSuture4_0/Needle>",
+        "physics:body1 = </DrAnmarNeedleSuture4_0/Suture/NeedleInterface>",
+        "physics:kinematicEnabled = false",
+        "drAnmarNeedleAssetSha256 = \"2b317a61f93631a7192e7ed2839ef20f7a75c05aa5f84a3905696134a64f36d7\""
+      ],
+      "measured": {
+        "missing": []
+      },
       "passed": true
     },
     "independent_from_current_thread": {
@@ -103,6 +147,11 @@
       "measured": {
         "missing": []
       },
+      "passed": true
+    },
+    "shared_unconditional_workstation_install": {
+      "expected": 1,
+      "measured": 1,
       "passed": true
     },
     "straight_failure_load": {

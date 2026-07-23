@@ -4,12 +4,20 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import math
 import re
 from pathlib import Path
 from typing import Any
 
+from dr_anmar_procedures import PROCEDURE_ROOMS
+from dr_anmar_suture_integration import (
+    NEEDLE_ASSET_SHA256,
+    SUTURE_ASSEMBLY_PATH,
+    configure_suture_instrument,
+    local_room_ids,
+)
 from dr_anmar_suture_model import (
     DEFAULT_PROFILE_PATH,
     crush_strength_fraction,
@@ -27,6 +35,8 @@ DEFAULT_ASSET = (
     REPOSITORY_ROOT
     / "source/extensions/orbit.surgical.assets/data/Props/DrAnmarSuture/DrAnmarSuture4_0.usda"
 )
+DEFAULT_ASSEMBLY = SUTURE_ASSEMBLY_PATH
+DEFAULT_WORKSTATION = REPOSITORY_ROOT / "scripts/dr_anmar_workstation.py"
 
 
 def check(
@@ -43,7 +53,12 @@ def check(
     }
 
 
-def validate(profile: dict[str, Any], asset_text: str) -> dict[str, Any]:
+def validate(
+    profile: dict[str, Any],
+    asset_text: str,
+    assembly_text: str,
+    workstation_text: str,
+) -> dict[str, Any]:
     checks: dict[str, dict[str, Any]] = {}
     derived = derive(profile)
     geometry = profile["geometry"]
@@ -215,6 +230,116 @@ def validate(profile: dict[str, Any], asset_text: str) -> dict[str, Any]:
         derived.diameter_m,
         0.00025,
     )
+    assembly_tokens = [
+        'defaultPrim = "DrAnmarNeedleSuture4_0"',
+        "prepend references = @../Surgical_needle/needle_sdf.usd@",
+        "prepend references = @DrAnmarSuture4_0.usda@",
+        'def PhysicsFixedJoint "FactorySwage"',
+        "physics:body0 = </DrAnmarNeedleSuture4_0/Needle>",
+        "physics:body1 = </DrAnmarNeedleSuture4_0/Suture/NeedleInterface>",
+        "physics:kinematicEnabled = false",
+        f'drAnmarNeedleAssetSha256 = "{NEEDLE_ASSET_SHA256}"',
+    ]
+    missing_assembly_tokens = [
+        token for token in assembly_tokens if token not in assembly_text
+    ]
+    check(
+        checks,
+        "factory_swaged_needle_composition",
+        not missing_assembly_tokens,
+        {"missing": missing_assembly_tokens},
+        assembly_tokens,
+    )
+    first_joint = re.search(
+        r'def PhysicsJoint "J0000".*?physics:breakForce = ([0-9.eE+-]+)',
+        asset_text,
+        re.DOTALL,
+    )
+    pullout_force_n = float(first_joint.group(1)) if first_joint else None
+    check(
+        checks,
+        "breakable_swage_pullout",
+        pullout_force_n is not None
+        and math.isclose(
+            pullout_force_n,
+            float(profile["swage"]["pullout_force_n_seed"]),
+        ),
+        pullout_force_n,
+        float(profile["swage"]["pullout_force_n_seed"]),
+    )
+
+    class FakeUsdFileCfg:
+        def __init__(self, **kwargs: Any) -> None:
+            self.kwargs = kwargs
+
+    class FakeAssetBaseCfg:
+        class InitialStateCfg:
+            def __init__(self, **kwargs: Any) -> None:
+                self.kwargs = kwargs
+
+        def __init__(self, **kwargs: Any) -> None:
+            self.kwargs = kwargs
+
+    class FakeScene:
+        pass
+
+    covered_local_rooms: list[str] = []
+    for room_id in local_room_ids(PROCEDURE_ROOMS):
+        fake_scene = FakeScene()
+        configure_suture_instrument(
+            fake_scene,
+            asset_base_cfg_type=FakeAssetBaseCfg,
+            usd_file_cfg_type=FakeUsdFileCfg,
+        )
+        if getattr(fake_scene, "dr_anmar_suture", None) is not None:
+            covered_local_rooms.append(room_id)
+    expected_local_rooms = list(local_room_ids(PROCEDURE_ROOMS))
+    check(
+        checks,
+        "all_local_procedure_rooms_receive_instrument",
+        covered_local_rooms == expected_local_rooms and bool(covered_local_rooms),
+        covered_local_rooms,
+        expected_local_rooms,
+    )
+
+    syntax_tree = ast.parse(workstation_text)
+    parents: dict[ast.AST, ast.AST] = {}
+    for parent in ast.walk(syntax_tree):
+        for child in ast.iter_child_nodes(parent):
+            parents[child] = parent
+    integration_calls = [
+        node
+        for node in ast.walk(syntax_tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "configure_suture_instrument"
+    ]
+    direct_main_calls = []
+    for call in integration_calls:
+        ancestor = parents.get(call)
+        guarded = False
+        while ancestor is not None and not isinstance(
+            ancestor, (ast.FunctionDef, ast.AsyncFunctionDef)
+        ):
+            if isinstance(
+                ancestor,
+                (ast.If, ast.For, ast.AsyncFor, ast.While, ast.Try, ast.With, ast.AsyncWith),
+            ):
+                guarded = True
+            ancestor = parents.get(ancestor)
+        if (
+            isinstance(ancestor, ast.FunctionDef)
+            and ancestor.name == "main"
+            and not guarded
+        ):
+            direct_main_calls.append(call.lineno)
+    check(
+        checks,
+        "shared_unconditional_workstation_install",
+        len(direct_main_calls) == 1,
+        len(direct_main_calls),
+        1,
+    )
     evidence = profile.get("evidence", [])
     check(
         checks,
@@ -247,11 +372,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE_PATH)
     parser.add_argument("--asset", type=Path, default=DEFAULT_ASSET)
+    parser.add_argument("--assembly", type=Path, default=DEFAULT_ASSEMBLY)
+    parser.add_argument("--workstation", type=Path, default=DEFAULT_WORKSTATION)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     profile = load_profile(args.profile)
     asset_text = args.asset.read_text(encoding="utf-8")
-    report = validate(profile, asset_text)
+    assembly_text = args.assembly.read_text(encoding="utf-8")
+    workstation_text = args.workstation.read_text(encoding="utf-8")
+    report = validate(profile, asset_text, assembly_text, workstation_text)
     encoded = json.dumps(report, indent=2, sort_keys=True)
     print(encoded)
     if args.output:

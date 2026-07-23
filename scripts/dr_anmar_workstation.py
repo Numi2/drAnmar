@@ -36,6 +36,7 @@ from dr_anmar_psm_gripper import (
     psm_gripper_command_expr,
     psm_gripper_profile_manifest,
 )
+from dr_anmar_suture_integration import configure_suture_instrument
 
 
 DATA_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
@@ -3509,6 +3510,14 @@ def main() -> None:
                 setattr(env_cfg.scene, camera_name, None)
             if hasattr(env_cfg.observations.policy, camera_name):
                 setattr(env_cfg.observations.policy, camera_name, None)
+    # Every locally constructed procedure room receives the same additional
+    # graspable needle-suture assembly on a sterile table landing. Existing
+    # task objects—including SoftMimicGen's current strand—remain untouched.
+    suture_instrument_manifest = configure_suture_instrument(
+        env_cfg.scene,
+        asset_base_cfg_type=AssetBaseCfg,
+        usd_file_cfg_type=sim_utils.UsdFileCfg,
+    )
     # RL environments end and auto-reset episodes on success, dropped
     # objects, force thresholds, and time limits.  That is correct during
     # policy training but disastrous during clinician teleoperation: a
@@ -3783,6 +3792,60 @@ def main() -> None:
 
     env = gym.make(args_cli.task, cfg=env_cfg)
     env.reset()
+    import omni.usd
+    from pxr import Usd, UsdPhysics
+
+    suture_stage = omni.usd.get_context().get_stage()
+    suture_root_path = str(suture_instrument_manifest["prim_path"])
+    suture_root = suture_stage.GetPrimAtPath(suture_root_path)
+    if not suture_root.IsValid():
+        raise RuntimeError("The Dr.Anmar needle-suture instrument did not enter the room")
+    suture_rigid_bodies = [
+        prim
+        for prim in Usd.PrimRange(suture_root)
+        if prim.HasAPI(UsdPhysics.RigidBodyAPI)
+    ]
+    factory_swage = UsdPhysics.FixedJoint.Get(
+        suture_stage,
+        f"{suture_root_path}/FactorySwage",
+    )
+    pullout_joint = UsdPhysics.Joint.Get(
+        suture_stage,
+        f"{suture_root_path}/Suture/Joints/J0000",
+    )
+    needle_interface = suture_stage.GetPrimAtPath(
+        f"{suture_root_path}/Suture/NeedleInterface"
+    )
+    interface_kinematic = UsdPhysics.RigidBodyAPI(
+        needle_interface
+    ).GetKinematicEnabledAttr().Get()
+    if (
+        len(suture_rigid_bodies) != 362
+        or not factory_swage.GetPrim().IsValid()
+        or not pullout_joint.GetPrim().IsValid()
+        or interface_kinematic is not False
+    ):
+        raise RuntimeError(
+            "The Dr.Anmar needle-suture physics composition is incomplete: "
+            f"rigid_bodies={len(suture_rigid_bodies)}, "
+            f"factory_swage={factory_swage.GetPrim().IsValid()}, "
+            f"pullout_joint={pullout_joint.GetPrim().IsValid()}, "
+            f"interface_kinematic={interface_kinematic}"
+        )
+    print(
+        "[DR_ANMAR_SUTURE_INSTRUMENT] "
+        + json.dumps(
+            {
+                **suture_instrument_manifest,
+                "rigid_body_count": len(suture_rigid_bodies),
+                "factory_swage": True,
+                "breakable_pullout_joint": True,
+                "clinical_validation": False,
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
     scene = env.unwrapped.scene
     camera = scene["endoscope"]
     stereo_right_camera = scene["endoscope_right"] if args_cli.sensor_profile in {"stereo", "research"} else None

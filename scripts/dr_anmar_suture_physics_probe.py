@@ -9,6 +9,8 @@ from pathlib import Path
 
 from isaaclab.app import AppLauncher
 
+from dr_anmar_suture_integration import NEEDLE_SWAGE_ANCHOR_M, NEEDLE_UNIFORM_SCALE
+
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--asset", type=Path, required=True)
@@ -25,6 +27,18 @@ import omni.usd  # noqa: E402
 from isaaclab.sim import PhysxCfg, SimulationCfg, SimulationContext  # noqa: E402
 from isaacsim.core.simulation_manager import SimulationManager  # noqa: E402
 from pxr import Gf, UsdGeom, UsdPhysics  # noqa: E402
+
+
+def rotate_xyzw(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
+    """Rotate one vector by the PhysX tensor API's XYZW quaternion."""
+
+    vector_part = quaternion[:3]
+    scalar_part = quaternion[3]
+    doubled_cross = 2.0 * np.cross(vector_part, vector)
+    return vector + scalar_part * doubled_cross + np.cross(
+        vector_part,
+        doubled_cross,
+    )
 
 
 def main() -> int:
@@ -73,12 +87,54 @@ def main() -> int:
 
     sim.reset()
     physics_view = SimulationManager.get_physics_sim_view()
+    assembly = stage.GetPrimAtPath(
+        "/World/IndependentDrAnmarSuture/Suture/Segments/S0000"
+    ).IsValid()
+    segment_pattern = (
+        "/World/IndependentDrAnmarSuture/Suture/Segments/S*"
+        if assembly
+        else "/World/IndependentDrAnmarSuture/Segments/S*"
+    )
+    joint_prefix = (
+        "/World/IndependentDrAnmarSuture/Suture/Joints/"
+        if assembly
+        else "/World/IndependentDrAnmarSuture/Joints/"
+    )
     segments = physics_view.create_rigid_body_view(
-        "/World/IndependentDrAnmarSuture/Segments/S*"
+        segment_pattern
     )
     if segments._backend is None or segments.count != 360:
         raise RuntimeError(
             f"PhysX created {segments.count if segments._backend else 0} of 360 suture bodies"
+        )
+    needle = None
+    interface = None
+    initial_swage_distance_m = None
+    if assembly:
+        needle = physics_view.create_rigid_body_view(
+            "/World/IndependentDrAnmarSuture/Needle"
+        )
+        interface = physics_view.create_rigid_body_view(
+            "/World/IndependentDrAnmarSuture/Suture/NeedleInterface"
+        )
+        if (
+            needle._backend is None
+            or needle.count != 1
+            or interface._backend is None
+            or interface.count != 1
+        ):
+            raise RuntimeError("PhysX did not create the needle and swage rigid bodies")
+        initial_needle = needle.get_transforms().cpu().numpy().astype(np.float64)[0]
+        initial_interface = (
+            interface.get_transforms().cpu().numpy().astype(np.float64)[0]
+        )
+        initial_anchor = initial_needle[:3] + rotate_xyzw(
+            initial_needle[3:7],
+            np.asarray(NEEDLE_SWAGE_ANCHOR_M, dtype=np.float64)
+            * NEEDLE_UNIFORM_SCALE,
+        )
+        initial_swage_distance_m = float(
+            np.linalg.norm(initial_anchor - initial_interface[:3])
         )
     initial = segments.get_transforms().cpu().numpy().astype(np.float64)
     for _ in range(max(1, args.steps)):
@@ -87,10 +143,27 @@ def main() -> int:
     finite = bool(np.isfinite(final).all())
     free_end_drop = float(initial[-1, 2] - final[-1, 2])
     displacement = np.linalg.norm(final[:, :3] - initial[:, :3], axis=1)
+    final_swage_distance_m = None
+    if needle is not None and interface is not None:
+        final_needle = needle.get_transforms().cpu().numpy().astype(np.float64)[0]
+        final_interface = (
+            interface.get_transforms().cpu().numpy().astype(np.float64)[0]
+        )
+        final_anchor = final_needle[:3] + rotate_xyzw(
+            final_needle[3:7],
+            np.asarray(NEEDLE_SWAGE_ANCHOR_M, dtype=np.float64)
+            * NEEDLE_UNIFORM_SCALE,
+        )
+        final_swage_distance_m = float(
+            np.linalg.norm(final_anchor - final_interface[:3])
+        )
     joint_count = sum(
         prim.GetTypeName() == "PhysicsJoint"
         for prim in stage.Traverse()
-        if str(prim.GetPath()).startswith("/World/IndependentDrAnmarSuture/Joints/")
+        if str(prim.GetPath()).startswith(joint_prefix)
+    )
+    factory_swage = stage.GetPrimAtPath(
+        "/World/IndependentDrAnmarSuture/FactorySwage"
     )
     report = {
         "schema": "dr.anmar.suture-native-physx-probe.v1",
@@ -99,6 +172,9 @@ def main() -> int:
         "steps": int(args.steps),
         "segment_count": int(segments.count),
         "joint_count": int(joint_count),
+        "factory_swage": bool(factory_swage.IsValid()) if assembly else None,
+        "initial_swage_distance_m": initial_swage_distance_m,
+        "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
         "free_end_drop_m": free_end_drop,
         "maximum_segment_displacement_m": float(displacement.max()),
@@ -113,6 +189,16 @@ def main() -> int:
         and report["joint_count"] == 360
         and free_end_drop > 0.0001
         and report["maximum_segment_displacement_m"] < 0.5
+        and (
+            not assembly
+            or (
+                report["factory_swage"]
+                and initial_swage_distance_m is not None
+                and initial_swage_distance_m < 0.0001
+                and final_swage_distance_m is not None
+                and final_swage_distance_m < 0.0005
+            )
+        )
     )
     encoded = json.dumps(report, indent=2, sort_keys=True)
     print(encoded)

@@ -3,6 +3,17 @@
   "profile": "/Users/home/gilgamesh/DrAnmar/physics_next/sutures/dr-anmar-suture-4-0.json",
   "asset": "/Users/home/gilgamesh/DrAnmar/source/extensions/orbit.surgical.assets/data/Props/DrAnmarSuture/DrAnmarSuture4_0.usda",
   "asset_sha256": "fe8b93035fcd348aa7bd523c58465f6e66a4ebf00bf42733c6bb3e810daf710e",
+  "needle_assembly": "/Users/home/gilgamesh/DrAnmar/source/extensions/orbit.surgical.assets/data/Props/DrAnmarSuture/DrAnmarNeedleSuture4_0.usda",
+  "needle_assembly_sha256": "3446d3ce79eee4b8398a62bebc43fe059b2270938a4a9e1eded6d8824cae2e1e",
+  "needle_asset": "/Users/home/gilgamesh/DrAnmar/source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd",
+  "needle_asset_sha256": "2b317a61f93631a7192e7ed2839ef20f7a75c05aa5f84a3905696134a64f36d7",
+  "needle_uniform_scale": 0.4,
+  "needle_swage_anchor_m": [
+    0.0478657183,
+    0.0491908647,
+    0.000957401
+  ],
+  "swage_connection": "fixed_needle_to_interface_then_breakable_pullout_joint",
   "representation": "visible_collision_capsules_with_breakable_d6_cosserat_joints",
   "segment_count": 360,
   "joint_count": 360,

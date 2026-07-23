@@ -13,10 +13,19 @@ import argparse
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 from typing import Any
 
 from dr_anmar_suture_model import DEFAULT_PROFILE_PATH, derive, load_profile
+from dr_anmar_suture_integration import (
+    NEEDLE_ASSET_PATH,
+    NEEDLE_ASSET_SHA256,
+    NEEDLE_SWAGE_ANCHOR_M,
+    NEEDLE_UNIFORM_SCALE,
+    SUTURE_ASSEMBLY_PATH,
+    SUTURE_NEEDLE_INTERFACE_CENTER_M,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +33,7 @@ DEFAULT_OUTPUT = (
     REPOSITORY_ROOT
     / "source/extensions/orbit.surgical.assets/data/Props/DrAnmarSuture/DrAnmarSuture4_0.usda"
 )
+DEFAULT_ASSEMBLY_OUTPUT = SUTURE_ASSEMBLY_PATH
 
 
 def usd_float(value: float) -> str:
@@ -342,6 +352,76 @@ def Xform "DrAnmarSuture4_0" (
 """
 
 
+def author_needle_assembly(
+    profile: dict[str, Any],
+    *,
+    suture_reference: str,
+    needle_reference: str,
+) -> str:
+    """Compose the standalone thread with the pinned atraumatic needle."""
+
+    scaled_anchor = tuple(
+        coordinate * NEEDLE_UNIFORM_SCALE
+        for coordinate in NEEDLE_SWAGE_ANCHOR_M
+    )
+    suture_translation = tuple(
+        scaled_anchor[index] - SUTURE_NEEDLE_INTERFACE_CENTER_M[index]
+        for index in range(3)
+    )
+    return f"""#usda 1.0
+(
+    defaultPrim = "DrAnmarNeedleSuture4_0"
+    doc = "Research-grade 4-0 braided suture factory-swaged to the pinned ORBIT atraumatic needle; not clinically validated."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarNeedleSuture4_0" (
+    customData = {{
+        bool drAnmarClinicalValidation = false
+        string drAnmarNeedleAssetSha256 = "{NEEDLE_ASSET_SHA256}"
+        string drAnmarProfileId = "{profile["id"]}"
+        string drAnmarSwageConnection = "fixed_needle_to_interface_then_breakable_pullout_joint"
+        string drAnmarStatus = "{profile["status"]}"
+    }}
+)
+{{
+    def Xform "Needle" (
+        prepend references = @{needle_reference}@
+    )
+    {{
+        double3 xformOp:scale = {usd_vec((NEEDLE_UNIFORM_SCALE,) * 3)}
+        uniform token[] xformOpOrder = ["xformOp:scale"]
+    }}
+
+    def Xform "Suture" (
+        prepend references = @{suture_reference}@
+    )
+    {{
+        double3 xformOp:translate = {usd_vec(suture_translation)}
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        over "NeedleInterface"
+        {{
+            bool physics:kinematicEnabled = false
+        }}
+    }}
+
+    def PhysicsFixedJoint "FactorySwage"
+    {{
+        rel physics:body0 = </DrAnmarNeedleSuture4_0/Needle>
+        rel physics:body1 = </DrAnmarNeedleSuture4_0/Suture/NeedleInterface>
+        point3f physics:localPos0 = {usd_vec(NEEDLE_SWAGE_ANCHOR_M)}
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        bool physics:collisionEnabled = false
+    }}
+}}
+"""
+
+
 def clamp01(value: float) -> float:
     return max(0.0, min(1.0, value))
 
@@ -362,19 +442,56 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE_PATH)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--assembly-output",
+        type=Path,
+        default=DEFAULT_ASSEMBLY_OUTPUT,
+    )
     args = parser.parse_args()
     profile = load_profile(args.profile)
     output = args.output.expanduser().resolve()
+    assembly_output = args.assembly_output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
     temporary.write_text(author(profile), encoding="utf-8")
     temporary.replace(output)
+    if not NEEDLE_ASSET_PATH.is_file():
+        raise RuntimeError(f"ORBIT-Surgical needle asset is missing: {NEEDLE_ASSET_PATH}")
+    needle_digest = sha256(NEEDLE_ASSET_PATH)
+    if needle_digest != NEEDLE_ASSET_SHA256:
+        raise RuntimeError(
+            "The pinned ORBIT needle mesh changed; re-derive its swage anchor before use"
+        )
+    assembly_output.parent.mkdir(parents=True, exist_ok=True)
+    assembly_temporary = assembly_output.with_suffix(assembly_output.suffix + ".tmp")
+    suture_reference = Path(
+        os.path.relpath(output, start=assembly_output.parent)
+    ).as_posix()
+    needle_reference = Path(
+        os.path.relpath(NEEDLE_ASSET_PATH, start=assembly_output.parent)
+    ).as_posix()
+    assembly_temporary.write_text(
+        author_needle_assembly(
+            profile,
+            suture_reference=suture_reference,
+            needle_reference=needle_reference,
+        ),
+        encoding="utf-8",
+    )
+    assembly_temporary.replace(assembly_output)
     derived = derive(profile)
     report = {
         "schema": "dr.anmar.suture-asset-report.v1",
         "profile": str(args.profile.resolve()),
         "asset": str(output),
         "asset_sha256": sha256(output),
+        "needle_assembly": str(assembly_output),
+        "needle_assembly_sha256": sha256(assembly_output),
+        "needle_asset": str(NEEDLE_ASSET_PATH),
+        "needle_asset_sha256": needle_digest,
+        "needle_uniform_scale": NEEDLE_UNIFORM_SCALE,
+        "needle_swage_anchor_m": list(NEEDLE_SWAGE_ANCHOR_M),
+        "swage_connection": "fixed_needle_to_interface_then_breakable_pullout_joint",
         "representation": "visible_collision_capsules_with_breakable_d6_cosserat_joints",
         "segment_count": derived.segment_count,
         "joint_count": derived.segment_count,
