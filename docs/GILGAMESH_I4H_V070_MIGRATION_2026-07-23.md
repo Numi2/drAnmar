@@ -108,6 +108,9 @@ Agentic surgical Arena setup.
 No policy checkpoint was downloaded and no policy-training or demonstration-generation run was started in
 this migration. Those are explicit research actions, not installation side effects.
 
+The matching content-addressed NVIDIA asset provider was added in a follow-up without changing the native
+Arena contracts. See [`I4H_ASSET_CATALOG_V070.md`](I4H_ASSET_CATALOG_V070.md).
+
 ## Rollback
 
 To restore the preserved v0.6 provider without deleting v0.7:

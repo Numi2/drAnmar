@@ -12,6 +12,8 @@ fi
 ROOT="${DR_ANMAR_ROOT:-${HOME}/.local/share/dr-anmar}"
 export DR_ANMAR_ROOT="${ROOT}"
 export DR_ANMAR_I4H_ROOT="${DR_ANMAR_I4H_ROOT:-${ROOT}/vendor/i4h-workflows-current}"
+export DR_ANMAR_I4H_ASSET_CATALOG_ROOT="${DR_ANMAR_I4H_ASSET_CATALOG_ROOT:-${ROOT}/vendor/i4h-asset-catalog-current}"
+export I4H_ASSET_DOWNLOAD_DIR="${I4H_ASSET_DOWNLOAD_DIR:-${ROOT}/assets/i4h-catalog}"
 if [[ -d "${HOME}/.local/bin" ]]; then
   export PATH="${HOME}/.local/bin:${PATH}"
 fi

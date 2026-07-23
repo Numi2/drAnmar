@@ -351,6 +351,26 @@ export PATH="$HOME/.local/bin:$PATH"
 ./scripts/setup_i4h_agentic.sh
 ```
 
+Install NVIDIA's matching v0.7.0 healthcare asset catalog and retrieve only the canonical surgical core:
+
+```bash
+./scripts/install_i4h_asset_catalog.sh
+./scripts/fetch_i4h_assets.sh surgical-core
+```
+
+The catalog source is pinned to commit `b0b7ad39f26490d58d12407cfa74b3c9ad861769`; its v0.7.0
+content address is `724f82e`. Assets are stored under `DR_ANMAR_ROOT`, never vendored into this repository.
+The catalog supplies the canonical dVRK PSM/ECM, STAR, suture needle and SDF, suture pad, surgical
+instruments, anatomy, ultrasound fixtures, medical robots and selected deformables. Downloads are split into
+explicit `surgical-core`, `surgical-anatomy`, `ultrasound`, `medical-robots`, and `rheo` bundles.
+
+Dr.Anmar does not rewrite the asset URLs inside NVIDIA's native Arena environments: the v0.7 Agentic source
+currently pins those surgical environments to its v0.5 catalog content. The separate v0.7 catalog provider is
+for provenance-safe new room composition until NVIDIA changes the upstream environment contract. Review the
+licence shipped with every downloaded asset before redistribution. Lightwheel assets are restricted to
+non-commercial research and development use. Installation, bundle sizes and the Gilgamesh evidence are in
+[`docs/I4H_ASSET_CATALOG_V070.md`](docs/I4H_ASSET_CATALOG_V070.md).
+
 Official workflow containers also require Docker Engine with NVIDIA GPU container support. DDS-based modes
 such as robotic ultrasound require a valid `RTI_LICENSE_FILE`. The Multimodal Lab reports these prerequisites
 and keeps launch disabled until they are present; the normal Dr.Anmar operating room does not require them.

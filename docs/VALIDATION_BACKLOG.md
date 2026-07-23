@@ -15,6 +15,18 @@ simulation, not clinical validation.
 - Clinical validation status: not started.
 - Intended use remains simulation, education, synthetic data, and preclinical research only.
 
+## NVIDIA healthcare asset catalog — 2026-07-23
+
+- The pinned v0.7.0 catalog source, helper and 85,337,862-byte surgical-core bundle are installed on Gilgamesh.
+- The nine cached surgical-core objects match the object size and S3 ETag of the v0.5 objects referenced by
+  NVIDIA's current Arena environments. Arena's source-owned asset URLs remain unchanged.
+- Dr.Anmar reports catalog source/content provenance and local asset readiness without copying physics
+  definitions or exposing new UI controls.
+
+Still required: download only the bundle needed by a proposed room; review its shipped asset licences; run a
+native scene/contact qualification before promotion. The v0.7 anatomy, ultrasound, KUKA/Kinova and Lightwheel
+assets are catalogued but not runtime-qualified by Dr.Anmar. Lightwheel remains non-commercial research-only.
+
 ## Bounded camera and recording pipeline — 2026-07-22
 
 - The live Isaac loop no longer performs JPEG compression. It copies only requested rendered camera frames into

@@ -27,6 +27,19 @@ I4H_RELEASE_COMMIT = os.environ.get(
     "DR_ANMAR_I4H_RELEASE_COMMIT",
     "9b526c6d107254727d3b113c612fb860fc65a5b2",
 )
+I4H_ASSET_CATALOG_RELEASE = os.environ.get("DR_ANMAR_I4H_ASSET_CATALOG_RELEASE", "v0.7.0")
+I4H_ASSET_CATALOG_COMMIT = os.environ.get(
+    "DR_ANMAR_I4H_ASSET_CATALOG_COMMIT",
+    "b0b7ad39f26490d58d12407cfa74b3c9ad861769",
+)
+I4H_ASSET_VERSION = os.environ.get("DR_ANMAR_I4H_ASSET_VERSION", "0.7.0")
+I4H_ASSET_HASH = os.environ.get("DR_ANMAR_I4H_ASSET_HASH", "724f82e")
+I4H_ASSET_CATALOG_ROOT = Path(
+    os.environ.get("DR_ANMAR_I4H_ASSET_CATALOG_ROOT", APP_ROOT / "vendor/i4h-asset-catalog-current")
+).expanduser()
+I4H_ASSET_DOWNLOAD_DIR = Path(
+    os.environ.get("I4H_ASSET_DOWNLOAD_DIR", APP_ROOT / "assets/i4h-catalog")
+).expanduser()
 HOLOHUB_CLI_COMMIT = os.environ.get(
     "DR_ANMAR_HOLOHUB_CLI_COMMIT",
     "f7e791dac061e01c560d3a2c5b7da82350915b69",
@@ -248,6 +261,120 @@ def agentic_workflow_modes() -> dict[str, Any]:
         "modes": modes,
         "agentic_runtime_prerequisites": prerequisites,
         "upstream_contract": "workflows/agentic/config/environments/<env>.yaml",
+    }
+
+
+def asset_catalog_payload() -> dict[str, Any]:
+    """Expose NVIDIA's pinned catalog without copying its asset definitions."""
+
+    catalog_path = I4H_ASSET_CATALOG_ROOT / "catalog.md"
+    hashes_path = I4H_ASSET_CATALOG_ROOT / "i4h_asset_helper/assets_sha256.json"
+    catalog_text = ""
+    installed_hash = None
+    try:
+        catalog_text = catalog_path.read_text(encoding="utf-8")
+    except OSError:
+        pass
+    try:
+        installed_hash = json.loads(hashes_path.read_text(encoding="utf-8")).get(I4H_ASSET_VERSION)
+    except (OSError, ValueError, AttributeError):
+        pass
+
+    checkout_head = None
+    try:
+        checkout_head = (I4H_ASSET_CATALOG_ROOT / ".git/HEAD").read_text().strip()
+        if checkout_head.startswith("ref: "):
+            checkout_head = (I4H_ASSET_CATALOG_ROOT / ".git" / checkout_head[5:]).read_text().strip()
+    except OSError:
+        pass
+
+    content_root = I4H_ASSET_DOWNLOAD_DIR / I4H_ASSET_HASH
+    remote_root = (
+        "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
+        f"Assets/Isaac/Healthcare/{I4H_ASSET_VERSION}/{I4H_ASSET_HASH}"
+    )
+    contracts = (
+        ("dvrk_psm", "Robots/dVRK/PSM/psm.usd", "surgical_core", False),
+        ("dvrk_ecm", "Robots/dVRK/ECM/ecm.usd", "surgical_core", False),
+        ("star", "Robots/STAR/star.usd", "surgical_core", False),
+        ("suture_needle", "Props/SutureNeedle/needle.usd", "surgical_core", False),
+        ("suture_needle_sdf", "Props/SutureNeedle/needle_sdf.usd", "surgical_core", False),
+        ("suture_pad", "Props/SuturePad/suture_pad.usd", "surgical_core", False),
+        ("surgical_table", "Props/Table/table.usd", "surgical_core", False),
+        ("surgical_scissors", "Props/SurgicalInstruments/SurgicalScissors.usd", "surgical_core", False),
+        ("surgical_tray", "Props/SurgicalInstruments/SurgicalTray.usd", "surgical_core", False),
+        ("organs", "Props/Organs/organs.usd", "surgical_anatomy", False),
+        ("ultrasound_fixture", "Props/UltrasoundCameraFixture/fixture.usda", "ultrasound", False),
+        ("kuka_lbr7_med", "Robots/KUKA_LBR/LBR7_R800_Med/LBR7Med.urdf", "medical_robots", False),
+        ("kinova_kima", "Robots/Kinova/KIMA/USD/L3M/L3M.usd", "medical_robots", False),
+        (
+            "deformable_cloth",
+            "Props/Lightwheel/Assets/DeformableCloth/cloth.usd",
+            "rheo",
+            True,
+        ),
+        (
+            "drainage_tube",
+            "Props/Lightwheel/Assets/DrainageTube002/DrainageTube003.usd",
+            "rheo",
+            True,
+        ),
+    )
+    assets = []
+    for asset_id, relative_path, bundle, research_only in contracts:
+        local_path = content_root / relative_path
+        assets.append(
+            {
+                "id": asset_id,
+                "bundle": bundle,
+                "relative_path": relative_path,
+                "catalog_entry_present": Path(relative_path).name in catalog_text,
+                "local_path": str(local_path),
+                "local_ready": local_path.is_file(),
+                "remote_url": f"{remote_root}/{relative_path}",
+                "license_review_required": True,
+                "noncommercial_research_only": research_only,
+            }
+        )
+
+    arena_constants = I4H_ROOT / "workflows/agentic/arena/arena/assets/constants.py"
+    arena_asset_root = None
+    try:
+        for line in arena_constants.read_text(encoding="utf-8").splitlines():
+            if line.startswith("ASSET_PATH = "):
+                arena_asset_root = line.split("=", 1)[1].strip().strip("\"'")
+                break
+    except OSError:
+        pass
+
+    source_ready = (
+        checkout_head == I4H_ASSET_CATALOG_COMMIT
+        and installed_hash == I4H_ASSET_HASH
+        and catalog_path.is_file()
+    )
+    return {
+        "release": I4H_ASSET_CATALOG_RELEASE,
+        "release_commit": I4H_ASSET_CATALOG_COMMIT,
+        "checkout_head": checkout_head,
+        "asset_version": I4H_ASSET_VERSION,
+        "asset_hash": I4H_ASSET_HASH,
+        "installed_asset_hash": installed_hash,
+        "source_root": str(I4H_ASSET_CATALOG_ROOT),
+        "source_ready": source_ready,
+        "download_root": str(I4H_ASSET_DOWNLOAD_DIR),
+        "content_root": str(content_root),
+        "remote_root": remote_root,
+        "assets": assets,
+        "ready_assets": sum(asset["local_ready"] for asset in assets),
+        "arena_asset_root": arena_asset_root,
+        "arena_asset_contract_discovered": bool(arena_asset_root),
+        "arena_uses_installed_catalog_version": bool(
+            arena_asset_root and arena_asset_root.rstrip("/") == remote_root.rstrip("/")
+        ),
+        "license_policy": (
+            "Review the licence shipped with every downloaded asset before redistribution. "
+            "Lightwheel assets are non-commercial research-and-development assets."
+        ),
     }
 
 
@@ -550,6 +677,7 @@ def platform_payload(anatomy_root: Path) -> dict[str, Any]:
         "i4h_cli_ready": i4h_cli.is_file(),
         "runtime_prerequisites": runtime_prerequisites(),
         "agentic_runtime_prerequisites": agentic_runtime_prerequisites(),
+        "asset_catalog": asset_catalog_payload(),
         "upstream_surgical_environments": agentic_workflow_modes()["modes"],
         "workflows": workflows,
         "modalities": [dict(item) for item in MODALITY_CATALOG],
@@ -564,6 +692,7 @@ def platform_payload(anatomy_root: Path) -> dict[str, Any]:
             ],
             "isaac_for_healthcare_owns": [
                 "OpenUSD physical assets",
+                "content-addressed healthcare asset catalog and asset licences",
                 "Isaac Lab actions, contacts, constraints, sensors and stepping",
                 "native physics backends",
                 "surgical environments and scripted state machines",
