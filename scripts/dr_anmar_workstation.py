@@ -3393,13 +3393,12 @@ def main() -> None:
                 "psm_tool_gripper2_joint": PSM_GRIPPER_CLOSE_RAD,
             },
         )
-    # The bimanual strand room now uses the same smaller PSM instrument and
-    # 0.09-radian needle-grasp target as ORBIT-Surgical's working needle lift
-    # and handover rooms. The tighter workstation override is only for the
-    # other PSM assets; applying it across different jaw geometries is wrong.
-    active_gripper_close_rad = (
-        0.09 if bimanual_softmimicgen else PSM_GRIPPER_CLOSE_RAD
-    )
+    # Use the configured tighter target with the matched ORBIT needle jaws.
+    # The unthreaded handover room can retain a 0.09-radian residual aperture,
+    # but the swaged FEM strand applies real load and torque to this needle.
+    # A 0.02-radian target supplies jaw preload through the native actuator;
+    # it does not attach, lock, or otherwise constrain the needle.
+    active_gripper_close_rad = PSM_GRIPPER_CLOSE_RAD
     for gripper_term_name in (
         "gripper_action",
         "gripper_1_action",
