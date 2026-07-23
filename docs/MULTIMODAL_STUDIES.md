@@ -1,8 +1,9 @@
 # Multimodal studies in Dr.Anmar
 
-Dr.Anmar is the clinician-facing study, teaching, and evidence layer over NVIDIA Isaac for Healthcare.
-It does not reimplement NVIDIA's medical sensor physics, policy runtimes, RTI DDS transport, or
-hardware-in-the-loop workflows.
+Dr.Anmar owns the clinician-facing study, teaching, and evidence workflow. It connects that workflow to
+NVIDIA Isaac for Healthcare and Isaac Lab providers without reimplementing their medical sensor physics,
+policy runtimes, RTI DDS transport, or hardware-in-the-loop workflows. See
+[`OWNERSHIP.md`](OWNERSHIP.md) for the product and provider boundary.
 
 ## Division of responsibility
 
