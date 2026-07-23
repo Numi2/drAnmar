@@ -112,10 +112,10 @@ The follow-up foundation qualification used
   saved as an unsuccessful diagnostic and is not a qualified needle-lift demonstration.
 - The pre-existing Dr.Anmar room on port 2396 remained reachable.
 
-Evidence remains on Gilgamesh under `/home/numi/dr_anmar/validation/psm-foundation/`. The surgical YAML's
-`psm_singlecam` GR00T data configuration is not registered by the installed GR00T package, its inference module
-is a zero-action smoke daemon, and `train_module` is `null`. HDF5 and LeRobot compatibility are qualified;
-GR00T surgical training is still a separate unfinished foundation piece.
+Evidence remains on Gilgamesh under `/home/numi/dr_anmar/validation/psm-foundation/`. Dr.Anmar now overlays the
+missing `psm_singlecam` GR00T data configuration, a real PSM fine-tuning module, and a finite-action inference
+daemon without modifying NVIDIA's checkout. The loader accepted the converted seven-action/eight-state dataset.
+No checkpoint was trained from the diagnostic reach trajectory.
 
 ## Qualification boundary
 

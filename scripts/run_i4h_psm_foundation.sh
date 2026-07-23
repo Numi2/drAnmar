@@ -31,7 +31,7 @@ export WORKFLOW_ROOT="${agentic_root}"
 export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-${app_root}/cache/uv}"
 export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-${app_root}/runtime/uv-python}"
-export PYTHONPATH="${arena_root}:${agentic_root}/common${PYTHONPATH:+:${PYTHONPATH}}"
+export PYTHONPATH="${project_root}/i4h_overlays:${arena_root}:${agentic_root}/common${PYTHONPATH:+:${PYTHONPATH}}"
 mkdir -p "${UV_CACHE_DIR}" "${UV_PYTHON_INSTALL_DIR}"
 
 if [[ "$(uname -m)" == "aarch64" ]]; then

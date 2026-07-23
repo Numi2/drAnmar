@@ -15,6 +15,21 @@ simulation, not clinical validation.
 - Clinical validation status: not started.
 - Intended use remains simulation, education, synthetic data, and preclinical research only.
 
+## Native PSM learning backbone — 2026-07-23
+
+- The workstation now records doctor Cartesian intent separately from the seven-value NVIDIA-native policy
+  action produced after Differential IK.
+- One isolated workstation recording on port 2496 produced synchronized 7D policy, 7D Cartesian, 8D physical
+  joint-state, resolved-target and RGB streams. The live port 2396 room was left untouched.
+- The `psm_singlecam` GR00T data configuration and real train/inference modules are available as overlays over
+  the immutable v0.7 provider. The loader accepted NVIDIA's converted seven-action/eight-state reach dataset.
+- A successful native dual-PSM reach produced a 150-step 14D HDF5 contract with per-arm target round-trip error
+  below `2e-9`.
+
+Still required: make native thin-needle lift repeatable, accept real successful clinician demonstrations, and
+complete the handover MDP's five physical phases before presenting either task as RL-ready. See
+`PSM_FOUNDATION_VALIDATION_2026-07-23.md`.
+
 ## NVIDIA healthcare asset catalog — 2026-07-23
 
 - The pinned v0.7.0 catalog source, helper and 85,337,862-byte surgical-core bundle are installed on Gilgamesh.
@@ -156,8 +171,9 @@ only the gates explicitly demonstrated in the new runtime report should be treat
 - [x] Validate the NVIDIA PSM control/data boundary: preserve Cartesian intent separately, record the canonical
   seven-value policy action, reproduce native IK joint targets within `1.49e-08`, replay 150 frames in the
   unmodified joint-position environment, and convert one synchronized 150-frame camera episode to LeRobot.
-- [ ] Register and qualify a real `psm_singlecam` GR00T data configuration and training module. NVIDIA v0.7's
-  surgical route is currently a zero-action inference smoke with `train_module: null`.
+- [x] Register and qualify a real `psm_singlecam` GR00T data configuration, training module, and inference
+  module as a Dr.Anmar overlay; NVIDIA's provider remains unchanged.
+- [x] Qualify the shared 14D dual-PSM recorder on a successful 150-step native coordinated-reach episode.
 - [ ] Keep Docker/RTI-dependent robotic ultrasound unavailable until its official prerequisites exist.
 
 Current evidence and commands are recorded in `GILGAMESH_I4H_V070_MIGRATION_2026-07-23.md`.

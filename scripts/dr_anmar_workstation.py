@@ -53,6 +53,14 @@ EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPE
 STUDY_ID = os.environ.get("DR_ANMAR_STUDY_ID", "").strip()
 CONSENT_PROTOCOL = os.environ.get("DR_ANMAR_CONSENT_PROTOCOL", "").strip()
 ACTION_CONTRACT = {
+    "id": "dr_anmar.nvidia_psm_policy_action.v1",
+    "dimensions_per_psm": 7,
+    "arm": "six raw NVIDIA JointPositionAction inputs",
+    "gripper": "one NVIDIA BinaryJointAction sign",
+    "source": "NVIDIA DifferentialInverseKinematicsAction resolved joint targets",
+    "doctor_intent_key": "cartesian_actions",
+}
+NON_PSM_ACTION_CONTRACT = {
     "id": "dr-anmar-cartesian-ik-relative-v1",
     "bounds": [-1.0, 1.0],
     "translation_scale_m": 0.01,
@@ -139,6 +147,11 @@ else:
 
 from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
+from dr_anmar_psm_native_adapter import (
+    CONTRACT_NAME as PSM_POLICY_CONTRACT_NAME,
+    PSM_ARM_NAMES,
+    canonical_policy_contract,
+)
 
 
 FAILURE_SCENARIOS = (
@@ -684,6 +697,9 @@ class SharedState:
     deformable_strand_ready: bool = False
     native_rigid_object_names: list[str] = field(default_factory=list)
     native_deformable_object_names: list[str] = field(default_factory=list)
+    native_psm_policy_contract: bool = False
+    native_psm_policy_dim: int = 0
+    native_psm_robot_names: list[str] = field(default_factory=list)
     ring_physics_ready: bool = False
     strand_self_collision_ready: bool = False
     reference_ghost_enabled: bool = False
@@ -789,7 +805,8 @@ class SharedState:
                 "sim_fps": self.sim_fps,
                 "sim_step": self.sim_step,
                 "action_dim": self.action_dim,
-                "action_contract": ACTION_CONTRACT,
+                "action_contract": ACTION_CONTRACT if self.native_psm_policy_contract else NON_PSM_ACTION_CONTRACT,
+                "native_psm_policy_dim": self.native_psm_policy_dim,
                 "arms": self.arms,
                 "has_grippers": self.has_grippers,
                 "robot_names": self.robot_names,
@@ -1806,7 +1823,7 @@ def build_web_app(state: SharedState) -> FastAPI:
 
     @app.get("/demos/{name}")
     def download_demo(name: str) -> FileResponse:
-        if Path(name).name != name or not name.endswith((".npz", ".json")):
+        if Path(name).name != name or not name.endswith((".npz", ".json", ".hdf5")):
             raise HTTPException(400, "Invalid demonstration name")
         path = state.demo_dir / name
         if not path.is_file():
@@ -2100,10 +2117,13 @@ def inspect_demo_file(path: Path) -> dict[str, Any]:
                     raise ValueError("time_s is not monotonic")
             manifest = read_demo_manifest(path)
             contract = manifest.get("action_contract", {})
-            contract_matches = contract.get("id") == ACTION_CONTRACT["id"]
+            contract_matches = contract.get("id") in {
+                ACTION_CONTRACT["id"],
+                NON_PSM_ACTION_CONTRACT["id"],
+            }
             warnings = [] if frame_count >= 2 else ["Recording has fewer than two control frames"]
             if not contract_matches:
-                warnings.append("Recording predates the normalized Cartesian IK-relative action contract")
+                warnings.append("Recording predates the current native PSM or Cartesian action contract")
             result = {
                 "valid": True,
                 "training_eligible": frame_count >= 2 and contract_matches,
@@ -2657,6 +2677,155 @@ class BoundedCaptureSpool:
         self.path.unlink(missing_ok=True)
 
 
+def write_native_psm_training_hdf5(
+    spool_path: Path,
+    destination: Path,
+    state: SharedState,
+) -> Path:
+    """Export the live room recording in Isaac Lab's native episode schema."""
+
+    temporary = destination.with_suffix(destination.suffix + ".tmp")
+    temporary.unlink(missing_ok=True)
+    try:
+        with h5py.File(spool_path, "r") as source, h5py.File(temporary, "w", libver="latest") as output:
+            required = {"actions", "cartesian_actions", "resolved_joint_targets", "time_s"}
+            missing = sorted(required.difference(source.keys()))
+            if missing:
+                raise ValueError(f"native PSM recording is missing {', '.join(missing)}")
+            actions = source["actions"]
+            cartesian = source["cartesian_actions"]
+            targets = source["resolved_joint_targets"]
+            expected_dim = 7 * len(state.native_psm_robot_names)
+            if actions.ndim != 2 or actions.shape[1] != expected_dim:
+                raise ValueError(f"native PSM policy actions have shape {actions.shape}; expected (T, {expected_dim})")
+            if targets.shape != actions.shape or cartesian.shape[0] != actions.shape[0]:
+                raise ValueError("native PSM action, Cartesian intent, and target streams are not frame-aligned")
+            if not np.isfinite(actions[:]).all() or not np.isfinite(targets[:]).all():
+                raise ValueError("native PSM action contract contains NaN or infinity")
+            if not np.isin(actions[:, 6::7], (-1.0, 1.0)).all():
+                raise ValueError("native PSM policy recording contains a non-binary gripper action")
+
+            data = output.create_group("data")
+            episode = data.create_group("demo_0")
+            observations = episode.create_group("obs")
+            states = episode.create_group("states").create_group("articulation")
+            initial = episode.create_group("initial_state").create_group("articulation")
+            _copy_hdf5_dataset(actions, episode, "actions")
+            episode["processed_actions"] = episode["actions"]
+            observations["actions"] = episode["actions"]
+            _copy_hdf5_dataset(cartesian, episode, "cartesian_actions")
+            _copy_hdf5_dataset(targets, episode, "resolved_joint_targets")
+
+            joint_positions = []
+            joint_velocities = []
+            for robot_name in state.native_psm_robot_names:
+                position_key = f"{robot_name}_joint_positions"
+                velocity_key = f"{robot_name}_joint_velocities"
+                if position_key not in source or velocity_key not in source:
+                    raise ValueError(f"native PSM recording is missing state for {robot_name}")
+                joint_positions.append(np.asarray(source[position_key]))
+                joint_velocities.append(np.asarray(source[velocity_key]))
+            position_values = np.concatenate(joint_positions, axis=-1)
+            velocity_values = np.concatenate(joint_velocities, axis=-1)
+            observations.create_dataset(
+                "joint_pos",
+                data=position_values,
+                chunks=(min(128, len(position_values)), position_values.shape[1]),
+                compression="lzf",
+            )
+            observations.create_dataset(
+                "joint_vel",
+                data=velocity_values,
+                chunks=(min(128, len(velocity_values)), velocity_values.shape[1]),
+                compression="lzf",
+            )
+
+            for robot_name in state.native_psm_robot_names:
+                robot_state = states.create_group(robot_name)
+                robot_initial = initial.create_group(robot_name)
+                for source_suffix, target_name in (
+                    ("joint_positions", "joint_position"),
+                    ("joint_velocities", "joint_velocity"),
+                    ("root_pose_w", "root_pose"),
+                    ("root_velocity_w", "root_velocity"),
+                ):
+                    source_key = f"{robot_name}_{source_suffix}"
+                    if source_key not in source:
+                        raise ValueError(f"native PSM recording is missing {source_key}")
+                    _copy_hdf5_dataset(source[source_key], robot_state, target_name)
+                    robot_initial.create_dataset(target_name, data=np.asarray(source[source_key][0:1]))
+
+            _write_aligned_room_observations(source, observations, len(actions))
+            success = bool(np.asarray(source.get("environment_success", [-1.0]))[-1] > 0.5)
+            episode.attrs.update(
+                {
+                    "num_samples": int(len(actions)),
+                    "success": success,
+                    "agentic_env_id": state.task,
+                    "dr_anmar_action_contract": PSM_POLICY_CONTRACT_NAME,
+                    "dr_anmar_policy_action_dim": int(expected_dim),
+                    "dr_anmar_cartesian_action_dim": int(cartesian.shape[1]),
+                    "dr_anmar_policy_action_semantics": (
+                        "seven NVIDIA-native joint-and-gripper values per PSM articulation"
+                    ),
+                }
+            )
+            data.attrs["total"] = int(len(actions))
+            data.attrs["env_args"] = json.dumps(
+                {
+                    "env_name": state.task,
+                    "type": 2,
+                    "sim_args": {"dt": 0.02, "decimation": 1, "render_interval": 1, "num_envs": 1},
+                },
+                sort_keys=True,
+            )
+            output.attrs["dr_anmar_action_contract"] = PSM_POLICY_CONTRACT_NAME
+            output.flush()
+        temporary.replace(destination)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+    return destination
+
+
+def _copy_hdf5_dataset(source: h5py.Dataset, destination: h5py.Group, name: str) -> h5py.Dataset:
+    rows = int(source.shape[0])
+    chunks = (min(128, max(1, rows)), *source.shape[1:])
+    target = destination.create_dataset(
+        name,
+        shape=source.shape,
+        dtype=source.dtype,
+        chunks=chunks,
+        compression="lzf",
+        shuffle=source.dtype.itemsize > 1,
+    )
+    for start in range(0, rows, 128):
+        target[start : start + 128] = source[start : start + 128]
+    return target
+
+
+def _write_aligned_room_observations(source: h5py.File, observations: h5py.Group, control_frames: int) -> None:
+    if "endoscope_rgb" not in source or "endoscope_time_s" not in source:
+        return
+    control_time = np.asarray(source["time_s"], dtype=np.float64)
+    vision_time = np.asarray(source["endoscope_time_s"], dtype=np.float64)
+    if not len(vision_time):
+        return
+    indices = np.searchsorted(vision_time, control_time, side="right") - 1
+    indices = np.clip(indices, 0, len(vision_time) - 1)
+    rgb = source["endoscope_rgb"]
+    room = observations.create_dataset(
+        "room",
+        shape=(control_frames, *rgb.shape[1:]),
+        dtype=rgb.dtype,
+        chunks=(min(12, max(1, control_frames)), *rgb.shape[1:]),
+        compression="lzf",
+    )
+    for start in range(0, control_frames, 12):
+        selected = indices[start : start + 12]
+        room[start : start + len(selected)] = np.stack([rgb[int(index)] for index in selected])
+
+
 def save_demo(
     state: SharedState,
     capture: BoundedCaptureSpool,
@@ -2670,6 +2839,7 @@ def save_demo(
     task_slug = state.task.lower().replace("isaac-", "").replace("-v0", "").replace("-", "_")
     name = f"dr_anmar_{task_slug}_{stamp}.npz"
     path = state.demo_dir / name
+    training_hdf5_path = path.with_suffix(".hdf5") if state.native_psm_policy_contract else None
     control_frame_count = capture.control_count
     vision_frame_count = capture.vision_count
     uncompressed_payload_bytes = capture.payload_bytes
@@ -2687,6 +2857,8 @@ def save_demo(
             times = np.asarray(arrays.get("time_s", []), dtype=np.float64).reshape(-1)
             array_shapes = {key: list(value.shape) for key, value in arrays.items()}
             array_keys = set(arrays)
+        if training_hdf5_path is not None:
+            write_native_psm_training_hdf5(spool_path, training_hdf5_path, state)
     finally:
         spool_path.unlink(missing_ok=True)
     observed_control_hz = 0.0
@@ -2723,7 +2895,7 @@ def save_demo(
         "robots": state.robot_names,
         "robot_body_names": state.robot_body_names,
         "action_dim": state.action_dim,
-        "action_contract": ACTION_CONTRACT,
+        "action_contract": ACTION_CONTRACT if state.native_psm_policy_contract else NON_PSM_ACTION_CONTRACT,
         "started_at": started_at,
         "finished_at": datetime.now(timezone.utc).isoformat(),
         "frames": control_frame_count,
@@ -2735,6 +2907,8 @@ def save_demo(
         "arrays": array_shapes,
         "data_file": name,
         "data_bytes": path.stat().st_size,
+        "training_hdf5": training_hdf5_path.name if training_hdf5_path is not None else None,
+        "training_hdf5_sha256": sha256_file(training_hdf5_path) if training_hdf5_path is not None else None,
         "modalities": {
             "robot_state_hz": round(observed_control_hz, 2),
             "robot_state_hz_nominal": 50,
@@ -3023,14 +3197,14 @@ def main() -> None:
         if bimanual_softmimicgen:
             # Reuse ORBIT-Surgical's established dual-PSM base placement while
             # retaining SoftMimicGen's native strand and rigid ring scene.
-            env_cfg.scene.robot.init_state.pos = (0.2, 0.0, 0.15)
+            env_cfg.scene.robot.init_state.pos = (0.1, 0.0, 0.15)
             env_cfg.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
             env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
             env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
             env_cfg.scene.robot_2 = env_cfg.scene.robot.replace(
                 prim_path="{ENV_REGEX_NS}/Robot_2"
             )
-            env_cfg.scene.robot_2.init_state.pos = (-0.2, 0.0, 0.15)
+            env_cfg.scene.robot_2.init_state.pos = (-0.1, 0.0, 0.15)
             env_cfg.scene.robot_2.init_state.rot = (1.0, 0.0, 0.0, 0.0)
             env_cfg.scene.robot_2.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
             env_cfg.scene.robot_2.init_state.joint_pos["psm_tool_gripper2_joint"] = 0.5
@@ -3063,14 +3237,22 @@ def main() -> None:
             (-0.001003713, 0.019714346, 0.008955040), dtype=np.float64
         )
         swage_rotation_sign = np.asarray((-1.0, -1.0, 1.0), dtype=np.float64)
-        native_needle_position = native_needle_reference_position + (
+        native_swage_target_world = native_needle_reference_position + (
             swage_rotation_sign
             * np.asarray(orbit_needle_swage_anchor_m, dtype=np.float64)
-            * (native_needle_reference_scale - native_needle_scale)
+            * native_needle_reference_scale
+        )
+        # Use ORBIT's graspable identity orientation. Solve the root position
+        # from the fixed swage target so changing orientation and thickness
+        # does not move the thread endpoint in world space.
+        native_needle_position = native_swage_target_world - (
+            np.asarray(orbit_needle_swage_anchor_m, dtype=np.float64)
+            * native_needle_scale
         )
         needle_spawn = sim_utils.UsdFileCfg(
             usd_path=str(needle_usd),
             scale=(native_needle_scale,) * 3,
+            activate_contact_sensors=True,
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 solver_position_iteration_count=16,
                 solver_velocity_iteration_count=8,
@@ -3120,6 +3302,15 @@ def main() -> None:
             # radius. It cannot reach the needle's middle or sharp endpoint.
             auto_attachment.CreateDeformableVertexOverlapOffsetAttr(0.0012)
             auto_attachment.CreateCollisionFilteringOffsetAttr(0.0012)
+            grip_material_path = f"{resolved_needle_path}/GripPhysicsMaterial"
+            grip_material = sim_utils.RigidBodyMaterialCfg(
+                static_friction=1.2,
+                dynamic_friction=1.0,
+                restitution=0.0,
+                friction_combine_mode="max",
+            )
+            grip_material.func(grip_material_path, grip_material)
+            sim_utils.bind_physics_material(resolved_needle_path, grip_material_path)
             return needle_prim
 
         needle_spawn.func = spawn_suture_needle_with_attachment
@@ -3127,10 +3318,11 @@ def main() -> None:
             prim_path="{ENV_REGEX_NS}/SutureNeedle",
             init_state=RigidObjectCfg.InitialStateCfg(
                 # Align the named swage anchor with the four terminal FEM
-                # surface nodes. A 180-degree yaw makes the free strand trail
-                # away from the needle arc rather than overlap it.
+                # surface nodes while matching ORBIT's grasp-ready needle
+                # orientation. The arc lies left of the swage and the free
+                # strand trails right into the ring workspace.
                 pos=tuple(native_needle_position.tolist()),
-                rot=(0.0, 0.0, 0.0, 1.0),
+                rot=(1.0, 0.0, 0.0, 0.0),
             ),
             spawn=needle_spawn,
         )
@@ -3943,6 +4135,23 @@ def main() -> None:
     action_dim = int(env.action_space.shape[-1])
     arms = min(2, len(robot_names))
     has_grippers = action_dim >= arms * 7
+    psm_scene_names = [
+        name
+        for name in robot_names
+        if all(joint_name in tuple(robots[name].joint_names) for joint_name in PSM_ARM_NAMES)
+    ]
+    native_psm_policy_dim = 0
+    if psm_scene_names:
+        with torch.inference_mode():
+            initial_policy_action, initial_joint_targets, native_robot_names = canonical_policy_contract(env)
+        native_psm_policy_dim = int(initial_policy_action.shape[-1])
+        if tuple(psm_scene_names) != native_robot_names:
+            raise RuntimeError(
+                f"PSM scene order {tuple(psm_scene_names)} does not match the native action contract "
+                f"{native_robot_names}"
+            )
+        if initial_joint_targets.shape[-1] != native_psm_policy_dim:
+            raise RuntimeError("NVIDIA PSM policy action and resolved target dimensions disagree")
     apply_endoscope_camera_view(
         "baseline",
         "free",
@@ -3984,6 +4193,9 @@ def main() -> None:
         deformable_strand_ready=bool("object" in deformables),
         native_rigid_object_names=object_names,
         native_deformable_object_names=deformable_names,
+        native_psm_policy_contract=bool(psm_scene_names),
+        native_psm_policy_dim=native_psm_policy_dim,
+        native_psm_robot_names=psm_scene_names,
         ring_physics_ready=ring_physics_ready,
         strand_self_collision_ready=strand_self_collision_ready,
     )
@@ -4412,7 +4624,12 @@ def main() -> None:
             replay_path = args_cli.demo_dir / Path(replay_request).name
             try:
                 with np.load(replay_path, allow_pickle=False) as replay_data:
-                    replay_actions = np.asarray(replay_data["actions"], dtype=np.float32)
+                    replay_key = (
+                        "cartesian_actions"
+                        if "cartesian_actions" in replay_data.files
+                        else "actions"
+                    )
+                    replay_actions = np.asarray(replay_data[replay_key], dtype=np.float32)
                 replay_index = 0
                 if not reset_requested:
                     with torch.inference_mode():
@@ -4593,7 +4810,12 @@ def main() -> None:
         grasp_distances: list[float | None] = [None] * state.arms
         grasp_offsets: list[list[float] | None] = [None] * state.arms
         grasp_target_position = None
-        if interactive_deformable is not None:
+        if bimanual_softmimicgen and "suture_needle" in objects:
+            grasp_target_position = (
+                objects["suture_needle"].data.root_pos_w[0, :3]
+                .detach().cpu().numpy().astype(np.float32)
+            )
+        elif interactive_deformable is not None:
             nodal_position_value = interactive_deformable.data.nodal_pos_w
             nodal_positions = getattr(nodal_position_value, "torch", nodal_position_value)
             grasp_target_position = nodal_positions[0].mean(dim=0).detach().cpu().numpy().astype(np.float32)
@@ -4641,6 +4863,15 @@ def main() -> None:
             write_native_attachment()
             _observations, reward, terminated, truncated, info = env.step(actions)
             update_wrist_camera_poses()
+            if state.native_psm_policy_contract:
+                native_policy_tensor, native_target_tensor, native_robot_names = canonical_policy_contract(env)
+                if native_robot_names != tuple(state.native_psm_robot_names):
+                    raise RuntimeError("The active PSM articulation order changed during the episode")
+                native_policy_action_np = native_policy_tensor[0].detach().cpu().numpy().astype(np.float32)
+                native_joint_targets_np = native_target_tensor[0].detach().cpu().numpy().astype(np.float32)
+            else:
+                native_policy_action_np = None
+                native_joint_targets_np = None
         environment_reward = scalar_value(reward)
         environment_terminated = bool(scalar_value(terminated))
         environment_truncated = bool(scalar_value(truncated))
@@ -4787,7 +5018,11 @@ def main() -> None:
                 state.procedure_event_code = 0
             frame = {
                 "time_s": np.array(time.monotonic() - demo_started_monotonic, dtype=np.float64),
-                "actions": action_np.copy(),
+                "actions": (
+                    native_policy_action_np.copy()
+                    if native_policy_action_np is not None
+                    else action_np.copy()
+                ),
                 "environment_reward": np.array(environment_reward, dtype=np.float32),
                 "environment_terminated": np.array(environment_terminated, dtype=np.bool_),
                 "environment_truncated": np.array(environment_truncated, dtype=np.bool_),
@@ -4826,9 +5061,19 @@ def main() -> None:
                 "anatomy_showcase_position_w": anatomy_showcase_position_w.copy(),
                 "anatomy_showcase_quaternion_w": anatomy_showcase_quaternion_w.copy(),
             }
+            if native_policy_action_np is not None and native_joint_targets_np is not None:
+                frame["cartesian_actions"] = action_np.copy()
+                frame["resolved_joint_targets"] = native_joint_targets_np.copy()
             for name, robot in robots.items():
                 frame[f"{name}_joint_positions"] = robot.data.joint_pos[0].detach().cpu().numpy().copy()
                 frame[f"{name}_joint_velocities"] = robot.data.joint_vel[0].detach().cpu().numpy().copy()
+                frame[f"{name}_root_pose_w"] = np.concatenate(
+                    (
+                        robot.data.root_pos_w[0].detach().cpu().numpy(),
+                        robot.data.root_quat_w[0].detach().cpu().numpy(),
+                    )
+                ).astype(np.float32)
+                frame[f"{name}_root_velocity_w"] = robot.data.root_vel_w[0].detach().cpu().numpy().astype(np.float32)
                 frame[f"{name}_body_positions_w"] = robot.data.body_pos_w[0].detach().cpu().numpy().copy()
                 frame[f"{name}_body_quaternions_w"] = robot.data.body_quat_w[0].detach().cpu().numpy().copy()
                 applied_torque = getattr(robot.data, "applied_torque", None)

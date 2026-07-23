@@ -191,7 +191,8 @@ observations, rewards, environments, iterations, logs, and checkpoints mean befo
 ![Dr.Anmar Policy Lab comparing robot-learning approaches and preparing a bounded training run](docs/screenshots/doctor-studio-policy-lab.png)
 
 The current RL truth boundary, NVIDIA-native PSM control/data contract, Gilgamesh qualification evidence, and
-remaining lift/handover work are documented in [`docs/RL_FOUNDATION.md`](docs/RL_FOUNDATION.md).
+remaining lift/handover work are documented in [`docs/RL_FOUNDATION.md`](docs/RL_FOUNDATION.md), with the exact
+qualification results in [`docs/PSM_FOUNDATION_VALIDATION_2026-07-23.md`](docs/PSM_FOUNDATION_VALIDATION_2026-07-23.md).
 
 ### Every practice attempt becomes structured training data
 
