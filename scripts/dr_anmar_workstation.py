@@ -50,7 +50,7 @@ MEMORY_WARNING_BYTES = int(
 )
 PSM_GRIPPER_CLOSE_RAD = min(
     0.49,
-    positive_environment_number("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", 0.09, 0.0),
+    positive_environment_number("DR_ANMAR_PSM_GRIPPER_CLOSE_RAD", 0.02, 0.0),
 )
 SENSOR_PROFILES = {"efficient", "stereo", "research"}
 EXTERNAL_OPERATOR_SENSORS_ENABLED = os.environ.get("DR_ANMAR_ENABLE_EXTERNAL_OPERATOR_SENSORS", "0") == "1"
@@ -3225,13 +3225,12 @@ def main() -> None:
                 prim_path="{ENV_REGEX_NS}/Robot"
             )
             env_cfg.scene.robot.spawn.activate_contact_sensors = True
-            # Preserve the matched ORBIT needle-jaw geometry, but use
-            # SoftMimicGen's native 10 Nm jaw effort for a deformable strand
-            # load. ORBIT's 0.1 Nm lift-room limit is insufficient once the
-            # attached FEM strand applies tension to the curved needle.
-            env_cfg.scene.robot.actuators["psm_tool"].effort_limit_sim = 10.0
-            env_cfg.scene.robot.actuators["psm_tool"].velocity_limit_sim = 1.0
-            env_cfg.scene.robot.actuators["psm_tool"].damping = 1.0
+            # Match the proven ORBIT needle-room jaw actuator exactly. The
+            # native thread remains physically attached but does not change
+            # the robot/needle grasp configuration.
+            env_cfg.scene.robot.actuators["psm_tool"].effort_limit_sim = 0.1
+            env_cfg.scene.robot.actuators["psm_tool"].velocity_limit_sim = 0.2
+            env_cfg.scene.robot.actuators["psm_tool"].damping = 0.1
             env_cfg.scene.robot.init_state.pos = (0.1, 0.0, 0.15)
             env_cfg.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
             env_cfg.scene.robot.init_state.joint_pos["psm_tool_gripper1_joint"] = -0.5
@@ -3262,12 +3261,10 @@ def main() -> None:
         # needle default prim. This is derived from the mesh end cap, not from
         # whichever needle surface happens to be closest to the strand.
         orbit_needle_swage_anchor_m = (0.0478657183, 0.0491908647, 0.0009574010)
-        # ORBIT's canonical 0.4 scale is difficult to acquire reliably with
-        # browser teleoperation beside a 0.8 mm strand. Increase the complete
-        # rigid asset uniformly so the rendered mesh and SDF collision remain
-        # identical and the PSM jaws have a substantial physical target.
+        # Use the same canonical rendered and collision scale as the proven
+        # ORBIT needle rooms.
         native_needle_reference_scale = 0.4
-        native_needle_scale = 0.55
+        native_needle_scale = 0.4
         native_needle_reference_position = np.asarray(
             (-0.001003713, 0.019714346, 0.008955040), dtype=np.float64
         )
@@ -3408,11 +3405,8 @@ def main() -> None:
                 "psm_tool_gripper2_joint": PSM_GRIPPER_CLOSE_RAD,
             },
         )
-    # Use the configured tighter target with the matched ORBIT needle jaws.
-    # The unthreaded handover room can retain a 0.09-radian residual aperture,
-    # but the swaged FEM strand applies real load and torque to this needle.
-    # A 0.09-radian target supplies jaw preload through the native actuator;
-    # it does not attach, lock, or otherwise constrain the needle.
+    # Match ORBIT's proven ±0.02-radian needle-room closed target. In this
+    # articulation, values closer to zero close the jaws more tightly.
     active_gripper_close_rad = PSM_GRIPPER_CLOSE_RAD
     for gripper_term_name in (
         "gripper_action",
