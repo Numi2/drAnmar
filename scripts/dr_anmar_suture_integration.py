@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,12 +32,41 @@ DR_ANMAR_NEEDLE_INTERACTIVE_ASSET_PATH = (
 DR_ANMAR_NEEDLE_INTERACTIVE_SOURCE_PATH = (
     DR_ANMAR_ASSET_ROOT / "needle/interactive/DrAnmarNeedleInteractive.usda"
 )
+DR_ANMAR_SUTURE_INTERACTIVE_ASSET_PATH = (
+    DR_ANMAR_ASSET_ROOT
+    / "needle/interactive/DrAnmarSuture4_0Interactive.usda"
+)
 DR_ANMAR_INTERACTIVE_SUTURE_SEGMENT_COUNT = 90
 DR_ANMAR_NEEDLE_BASE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_base.usda"
 DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_geometry.usd"
 DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_materials.usda"
 DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_physics.usda"
 DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_physx.usda"
+NVIDIA_NEEDLE_SUTURE_NAME = "NVIDIA Needle + Dr.Anmar 4-0 Suture"
+NVIDIA_NEEDLE_SUTURE_ASSET_ID = "nvidia-needle-dr-anmar-suture"
+NVIDIA_NEEDLE_SUTURE_ASSET_VERSION = "1.0.0"
+NVIDIA_NEEDLE_SUTURE_ROOT_PRIM = "NvidiaNeedleDrAnmarSuture"
+NVIDIA_NEEDLE_SUTURE_ASSET_PATH = (
+    DR_ANMAR_ASSET_ROOT
+    / "nvidia_needle_suture/NvidiaNeedleDrAnmarSuture.usda"
+)
+NVIDIA_NEEDLE_SUTURE_INTERACTIVE_ASSET_PATH = (
+    DR_ANMAR_ASSET_ROOT
+    / "nvidia_needle_suture/NvidiaNeedleDrAnmarSuture_interactive.usda"
+)
+NVIDIA_ORBIT_NEEDLE_ASSET_PATH = (
+    REPOSITORY_ROOT
+    / "source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd"
+)
+NVIDIA_ORBIT_NEEDLE_SHA256 = (
+    "2b317a61f93631a7192e7ed2839ef20f7a75c05aa5f84a3905696134a64f36d7"
+)
+NVIDIA_ORBIT_NEEDLE_SWAGE_ANCHOR_M = (
+    0.0478657183,
+    0.0491908647,
+    0.0009574010,
+)
+NVIDIA_ORBIT_NEEDLE_SCALE = 0.4
 SUTURE_NEEDLE_INTERFACE_CENTER_M = (-0.00025, 0.0, 0.0)
 
 # A 90-degree yaw keeps the 180 mm strand inside the shared PSM workspace.
@@ -150,6 +180,98 @@ def configure_dr_anmar_needle(
         "suture_physics_provenance": "independent_DrAnmar_4_0_model",
         "task_object_replaced": False,
         "current_thread_replaced": False,
+    }
+
+
+def validate_nvidia_needle_suture_assets() -> None:
+    """Validate the pinned NVIDIA needle and both authored compositions."""
+
+    missing = [
+        str(path)
+        for path in (
+            NVIDIA_ORBIT_NEEDLE_ASSET_PATH,
+            NVIDIA_NEEDLE_SUTURE_ASSET_PATH,
+            NVIDIA_NEEDLE_SUTURE_INTERACTIVE_ASSET_PATH,
+            SUTURE_ASSET_PATH,
+            DR_ANMAR_SUTURE_INTERACTIVE_ASSET_PATH,
+        )
+        if not path.is_file()
+    ]
+    if missing:
+        raise RuntimeError(
+            "The NVIDIA needle + Dr.Anmar suture asset is incomplete. Missing "
+            + ", ".join(missing)
+        )
+    needle_digest = hashlib.sha256(
+        NVIDIA_ORBIT_NEEDLE_ASSET_PATH.read_bytes()
+    ).hexdigest()
+    if needle_digest != NVIDIA_ORBIT_NEEDLE_SHA256:
+        raise RuntimeError(
+            "The pinned NVIDIA needle changed; re-derive and validate the "
+            "factory-swage anchor before composing it with the Dr.Anmar thread"
+        )
+
+
+def configure_nvidia_needle_dr_anmar_suture(
+    scene_cfg: Any,
+    *,
+    asset_base_cfg_type: Any,
+    usd_file_cfg_type: Any,
+    physics_lod: str = "interactive_90",
+) -> dict[str, Any]:
+    """Add the NVIDIA needle and Dr.Anmar thread as one physical assembly."""
+
+    validate_nvidia_needle_suture_assets()
+    if getattr(scene_cfg, "nvidia_needle_dr_anmar_suture", None) is not None:
+        raise RuntimeError(f"{NVIDIA_NEEDLE_SUTURE_NAME} was configured twice")
+    if physics_lod not in {"interactive_90", "full_360"}:
+        raise ValueError(f"Unsupported Dr.Anmar suture physics LOD: {physics_lod}")
+    interactive = physics_lod == "interactive_90"
+    runtime_asset = (
+        NVIDIA_NEEDLE_SUTURE_INTERACTIVE_ASSET_PATH
+        if interactive
+        else NVIDIA_NEEDLE_SUTURE_ASSET_PATH
+    )
+    scene_cfg.replicate_physics = False
+    scene_cfg.nvidia_needle_dr_anmar_suture = asset_base_cfg_type(
+        prim_path=f"{{ENV_REGEX_NS}}/{NVIDIA_NEEDLE_SUTURE_ROOT_PRIM}",
+        init_state=asset_base_cfg_type.InitialStateCfg(
+            pos=SUTURE_LANDING_POSITION_M,
+            rot=SUTURE_LANDING_ROTATION_WXYZ,
+        ),
+        spawn=usd_file_cfg_type(usd_path=str(runtime_asset)),
+    )
+    return {
+        "name": NVIDIA_NEEDLE_SUTURE_NAME,
+        "asset_id": NVIDIA_NEEDLE_SUTURE_ASSET_ID,
+        "asset_version": NVIDIA_NEEDLE_SUTURE_ASSET_VERSION,
+        "asset": str(NVIDIA_NEEDLE_SUTURE_ASSET_PATH),
+        "runtime_asset": str(runtime_asset),
+        "physics_lod": physics_lod,
+        "physics_lod_changes_discretization": interactive,
+        "segment_count": (
+            DR_ANMAR_INTERACTIVE_SUTURE_SEGMENT_COUNT if interactive else 360
+        ),
+        "prim_path": (
+            f"/World/envs/env_0/{NVIDIA_NEEDLE_SUTURE_ROOT_PRIM}"
+        ),
+        "landing_position_m": list(SUTURE_LANDING_POSITION_M),
+        "landing_rotation_wxyz": list(SUTURE_LANDING_ROTATION_WXYZ),
+        "needle_asset": str(NVIDIA_ORBIT_NEEDLE_ASSET_PATH),
+        "needle_sha256": NVIDIA_ORBIT_NEEDLE_SHA256,
+        "needle_scale": NVIDIA_ORBIT_NEEDLE_SCALE,
+        "needle_swage_anchor_m": list(NVIDIA_ORBIT_NEEDLE_SWAGE_ANCHOR_M),
+        "needle_geometry_provenance": "pinned_NVIDIA_ORBIT_surgical_needle",
+        "needle_physics_provenance": (
+            "native_NVIDIA_rigid_body_SDF_collision_and_PhysX"
+        ),
+        "suture_physics_provenance": "independent_DrAnmar_4_0_model",
+        "swage_connection": (
+            "fixed_factory_swage_then_breakable_suture_pullout_joint"
+        ),
+        "task_object_replaced": False,
+        "current_thread_replaced": False,
+        "clinical_validation": False,
     }
 
 

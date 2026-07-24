@@ -1,0 +1,99 @@
+#usda 1.0
+(
+    defaultPrim = "NvidiaNeedleDrAnmarSuture"
+    doc = "Pinned NVIDIA ORBIT surgical needle factory-swaged to the full 360-segment Dr.Anmar 4-0 PhysX suture; research simulation only."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "NvidiaNeedleDrAnmarSuture" (
+    assetInfo = {
+        string name = "NVIDIA Needle with Dr.Anmar 4-0 Suture"
+        string version = "1.0.0"
+    }
+    customData = {
+        string drAnmarAssetVersion = "1.0.0"
+        bool drAnmarClinicalValidation = false
+        string drAnmarConnection = "fixed_factory_swage_to_breakable_suture_pullout_joint"
+        string drAnmarNeedlePhysicsProvenance = "Pinned NVIDIA ORBIT needle_sdf.usd rigid body and collision"
+        string drAnmarNeedleSha256 = "2b317a61f93631a7192e7ed2839ef20f7a75c05aa5f84a3905696134a64f36d7"
+        string drAnmarRepresentation = "native_nvidia_needle_plus_dr_anmar_discrete_cosserat_rod"
+        string drAnmarStatus = "research_simulation_pending_physical_and_clinical_validation"
+        string drAnmarSuturePhysicsProvenance = "Independent Dr.Anmar 4-0 360-segment PhysX model"
+    }
+    displayName = "NVIDIA Needle + Dr.Anmar 4-0 Suture"
+    kind = "component"
+)
+{
+    def Xform "Needle" (
+        kind = "subcomponent"
+        prepend references = @../../../source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd@
+    )
+    {
+        float3 xformOp:scale = (0.4, 0.4, 0.4)
+        uniform token[] xformOpOrder = ["xformOp:scale"]
+
+        over "Looks" (
+            active = false
+        )
+        {
+        }
+
+        over "Needle"
+        {
+            over "Needle"
+            {
+                rel material:binding = </NvidiaNeedleDrAnmarSuture/Looks/NvidiaNeedleSteel>
+            }
+        }
+
+        def Xform "SutureAnchor"
+        {
+            double3 xformOp:translate = (0.0478657183, 0.0491908647, 0.000957401)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def Material "NvidiaNeedleSteel"
+        {
+            token outputs:surface.connect = </NvidiaNeedleDrAnmarSuture/Looks/NvidiaNeedleSteel/PreviewSurface.outputs:surface>
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.48, 0.52, 0.58)
+                float inputs:metallic = 0.92
+                float inputs:roughness = 0.17
+                token outputs:surface
+            }
+        }
+    }
+
+    def Xform "Suture" (
+        kind = "subcomponent"
+        prepend references = @../suture/DrAnmarSuture4_0.usda@
+    )
+    {
+        double3 xformOp:translate = (0.01939628732, 0.01967634588, 0.0003829604)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        over "NeedleInterface"
+        {
+            bool physics:kinematicEnabled = false
+        }
+    }
+
+    def PhysicsFixedJoint "FactorySwage"
+    {
+        rel physics:body0 = </NvidiaNeedleDrAnmarSuture/Needle>
+        rel physics:body1 = </NvidiaNeedleDrAnmarSuture/Suture/NeedleInterface>
+        point3f physics:localPos0 = (0.0478657183, 0.0491908647, 0.000957401)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        bool physics:collisionEnabled = false
+    }
+}

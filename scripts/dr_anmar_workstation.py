@@ -41,6 +41,7 @@ from dr_anmar_psm_gripper import (
 from dr_anmar_suture_integration import (
     apply_dr_anmar_needle_episode_domain,
     configure_dr_anmar_needle,
+    configure_nvidia_needle_dr_anmar_suture,
 )
 from dr_anmar_suture_model import (
     load_profile as load_suture_profile,
@@ -960,7 +961,12 @@ class SharedState:
                 self.procedure.get("active_bench_assets", ())
             )
             authored_suture_selected = bool(
-                "dr_anmar_needle_suture" in active_bench_assets
+                active_bench_assets.intersection(
+                    {
+                        "dr_anmar_needle_suture",
+                        "nvidia_needle_dr_anmar_suture",
+                    }
+                )
             )
             thread_required = bool(
                 guide_kind == "softmimicgen_threading"
@@ -977,6 +983,7 @@ class SharedState:
                         "needle",
                         "dr_anmar_needle",
                         "dr_anmar_needle_suture",
+                        "nvidia_needle_dr_anmar_suture",
                     }
                 )
             )
@@ -3547,7 +3554,7 @@ def main() -> None:
     procedure = dict(PROCEDURES_BY_ID.get(args_cli.procedure, {}))
     if args_cli.procedure and not procedure:
         raise ValueError(f"Unknown Dr.Anmar procedure room: {args_cli.procedure}")
-    dr_anmar_needle_enabled = bool(
+    dr_anmar_parametric_needle_enabled = bool(
         procedure.get("dr_anmar_needle_asset")
     )
     suture_physics_lod = os.environ.get(
@@ -3638,6 +3645,22 @@ def main() -> None:
         nvidia_native_bench
         and "dr_anmar_needle_suture" in selected_bench_assets
     )
+    nvidia_needle_dr_anmar_suture_enabled = bool(
+        nvidia_native_bench
+        and "nvidia_needle_dr_anmar_suture" in selected_bench_assets
+    )
+    if (
+        nvidia_needle_dr_anmar_suture_enabled
+        and "DR_ANMAR_SUTURE_PHYSICS_LOD" not in os.environ
+        and "suture_physics_lod" not in procedure
+    ):
+        # Preserve the authored 4-0 dimensions and joint behavior while using
+        # the real-time discretization intended for camera teleoperation.
+        suture_physics_lod = "interactive_90"
+    dr_anmar_needle_enabled = bool(
+        dr_anmar_parametric_needle_enabled
+        or nvidia_needle_dr_anmar_suture_enabled
+    )
     if "-IK-Rel" not in args_cli.task:
         raise ValueError("The browser workstation accepts relative-IK tasks. Other variants remain available via the CLI.")
     guide_kind = str(procedure.get("guide_kind", ""))
@@ -3670,7 +3693,11 @@ def main() -> None:
         env_cfg.decimation = orbit_psm_foundation.decimation
         env_cfg.sim.render_interval = orbit_psm_foundation.sim.render_interval
     microscopic_bench_assets = selected_bench_assets.intersection(
-        {"dr_anmar_needle", "dr_anmar_needle_suture"}
+        {
+            "dr_anmar_needle",
+            "dr_anmar_needle_suture",
+            "nvidia_needle_dr_anmar_suture",
+        }
     )
     interactive_rendering_mode = procedure.get("interactive_rendering_mode")
     if interactive_rendering_mode:
@@ -3806,6 +3833,8 @@ def main() -> None:
                         (0.060, 0.055, 0.0012)
                         if "needle" in selected_bench_assets
                         or "dr_anmar_needle_suture" in selected_bench_assets
+                        or "nvidia_needle_dr_anmar_suture"
+                        in selected_bench_assets
                         else (-0.195, 0.015, 0.0012)
                     ),
                     rot=(1.0, 0.0, 0.0, 0.0),
@@ -4195,13 +4224,20 @@ def main() -> None:
     # NVIDIA/ORBIT/SoftMimicGen rooms otherwise keep their native assets and
     # solver contracts unchanged.
     dr_anmar_needle_manifest = (
-        configure_dr_anmar_needle(
+        configure_nvidia_needle_dr_anmar_suture(
             env_cfg.scene,
             asset_base_cfg_type=AssetBaseCfg,
             usd_file_cfg_type=sim_utils.UsdFileCfg,
             physics_lod=suture_physics_lod,
         )
-        if dr_anmar_needle_enabled
+        if nvidia_needle_dr_anmar_suture_enabled
+        else configure_dr_anmar_needle(
+            env_cfg.scene,
+            asset_base_cfg_type=AssetBaseCfg,
+            usd_file_cfg_type=sim_utils.UsdFileCfg,
+            physics_lod=suture_physics_lod,
+        )
+        if dr_anmar_parametric_needle_enabled
         else None
     )
     # RL environments end and auto-reset episodes on success, dropped
@@ -4743,13 +4779,20 @@ def main() -> None:
                 f"pullout_joint={pullout_joint.GetPrim().IsValid()}, "
                 f"interface_kinematic={interface_kinematic}"
             )
-        initial_dr_anmar_needle_domain = (
-            apply_dr_anmar_needle_episode_domain(
-                suture_stage,
-                seed=DEFAULT_SCENARIO_SEED,
-                root_path=suture_root_path,
+        if dr_anmar_parametric_needle_enabled:
+            initial_dr_anmar_needle_domain = (
+                apply_dr_anmar_needle_episode_domain(
+                    suture_stage,
+                    seed=DEFAULT_SCENARIO_SEED,
+                    root_path=suture_root_path,
+                )
             )
-        )
+        else:
+            initial_dr_anmar_needle_domain = {
+                "needle_provider": "NVIDIA_ORBIT",
+                "needle_domain_randomization": False,
+                "reason": "preserve_pinned_native_needle_physics",
+            }
         _initial_suture_runtime_profile, initial_suture_domain = (
             sample_suture_runtime_profile(
                 suture_profile,
@@ -6031,7 +6074,7 @@ def main() -> None:
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
         dr_anmar_needle_domain: dict[str, Any] = {}
-        if dr_anmar_needle_enabled:
+        if dr_anmar_parametric_needle_enabled:
             dr_anmar_needle_domain = (
                 apply_dr_anmar_needle_episode_domain(
                     suture_stage,
@@ -6039,6 +6082,7 @@ def main() -> None:
                     root_path=suture_root_path,
                 )
             )
+        if dr_anmar_needle_enabled:
             (
                 _suture_runtime_profile,
                 suture_runtime_domain_state[0],

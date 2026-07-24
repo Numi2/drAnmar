@@ -91,6 +91,15 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
                 "default": False,
             },
             {
+                "id": "nvidia_needle_dr_anmar_suture",
+                "title": "NVIDIA needle + Dr.Anmar thread",
+                "description": "Pinned NVIDIA curved needle and native collision, factory-swaged to the Dr.Anmar 4-0 PhysX suture.",
+                "path": "assets/dr_anmar/nvidia_needle_suture/NvidiaNeedleDrAnmarSuture.usda",
+                "provider": "dr_anmar_repository",
+                "physics": "physx",
+                "default": False,
+            },
+            {
                 "id": "dr_anmar_needle_suture",
                 "title": "Dr.Anmar suture needle",
                 "description": "Curved needle factory-swaged to the native Dr.Anmar 4-0 PhysX suture.",
