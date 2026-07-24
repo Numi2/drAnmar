@@ -16,7 +16,15 @@ study and operating-room experience.
 </p>
 
 <p align="center"><strong>A surgical robotics lab that begins with the doctor—not the simulator manual</strong><br>
-Live native simulation control, training data, coaching, failure studies, and robot learning in one browser.</p>
+Camera-native hand teleoperation, live simulation, training data, coaching, failure studies, and robot learning in one browser.</p>
+
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="docs/WEBCAM_TELEOPERATION.md">Webcam control</a> ·
+  <a href="docs/KEYBOARD_CONTROLS.md">Input map</a> ·
+  <a href="docs/OWNERSHIP.md">Ownership</a> ·
+  <a href="SECURITY.md">Security</a>
+</p>
 
 Every visual below was captured from Dr.Anmar itself. No figures were copied from research papers.
 
@@ -31,10 +39,28 @@ Every visual below was captured from Dr.Anmar itself. No figures were copied fro
 | --- | --- | --- |
 | **Guided robotics curriculum** | 21 lessons that explain control, demonstration, vision, policies, procedures, safety, recovery and orthopedic ultrasound in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
 | **Interactive surgical digital twin** | Dr.Anmar rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | Native task bindings, versioned OpenUSD composition, contact instrumentation and simulator telemetry |
+| **Webcam surgical teleoperation** | Move one or two instruments with natural hand pose; use thumb–index distance as a proportional gripper and open the resting fingers to freeze | Camera-aligned six-axis targets, automatic per-camera calibration, quality gating, audited commands and native differential-IK execution |
 | **Procedure rooms** | Needle handling, retraction, anatomy navigation, recovery, thread work and ultrasound tasks that connect to real simulator environments | A compact catalog with direct task, asset and external-provider bindings |
 | **Demonstrations and Skills Twin** | Record a complete attempt, replay it, see phase-aware coaching, and compare against a clinician-selected reference | Checksummed trajectory/manifest pairs, task-native tool paths, multimodal observations, analysis and content-addressed dataset cards |
 | **Failure Lab and policy evaluation** | Practise shifted viewpoints, low light, occlusion, target variation, calibration drift, tissue variation and safe hand-back | Seeded challenge matrices, interventions, native outcomes, safety events and immutable policy-evaluation cards |
 | **Multimodal study builder** | Start from a clinical question and choose what the policy should perceive | Stereo RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact, deformation, operator input and procedure annotations, with guarded NVIDIA workflow bindings |
+
+### Recent upgrades
+
+- **Camera-native hand control:** palm translation and orientation follow the live operative view and are transformed
+  into each PSM's native NVIDIA differential-IK frame. Changing camera view freezes motion and requires a fresh,
+  jump-free anchor.
+- **Two-finger proportional grasping:** only thumb–index spacing controls jaw aperture. Curling two resting fingers
+  engages the motion clutch after 250 ms; opening them freezes immediately so the operator can recenter freely.
+- **Hands-free setup:** calibration advances automatically from on-screen instructions, works with either hand,
+  starts in one-hand mode, and admits a second hand only after an intentional open-then-curl gesture.
+- **Precision without mode juggling:** orientation-compensated relative depth, time-aware filtering, bounded
+  prediction and progressive gain keep small motions fine while preserving deliberate reach.
+- **A separate webcam workspace:** the camera preview launches from the operative view rather than the keymap
+  drawer, floats independently, can be moved and resized, remembers its geometry, and returns to a compact default
+  with **Fit**.
+- **Needle-to-thread continuity:** the pinned NVIDIA curved needle can now be selected with Dr.Anmar's braided
+  4-0 PhysX suture through an explicitly aligned factory-swage frame, without replacing the original NVIDIA bench.
 
 <p align="center">
   <img src="docs/screenshots/dr-anmar-platform-tour-2026.gif" width="960" alt="Fresh tour of Dr.Anmar Learn, Skills Twin, Failure Lab, Multimodal Lab, Policy Lab, and Anatomy Library workspaces">
@@ -129,9 +155,10 @@ learn immediately:
   per-hand precision, explicit gripper controls, live mode feedback and supported-controller haptics.
 - Push-to-talk voice and the matching typed-command fallback provide bounded robot nudges, explicit gripper actions,
   camera selection, speed changes, smart assist and emergency stop without creating an always-listening control path.
-- A pinned, locally served MediaPipe Hand Landmarker provides two-hand webcam pose control: left/right hands own the
-  corresponding PSM, palm motion/orientation supplies six-axis targets, and only thumb–index spacing controls each
-  proportional jaw. Explicit Engage/Freeze controls provide jump-free recentering and a 250 ms loss watchdog.
+- A checksum-pinned, locally served MediaPipe Hand Landmarker provides one- or two-hand webcam pose control:
+  left/right hands own the corresponding PSM, palm translation/orientation follows the displayed camera, and only
+  thumb–index spacing controls each proportional jaw. Automatic calibration, a natural resting-finger clutch,
+  jump-free recentering, independent hand-loss freezes and a 250 ms server watchdog keep motion bounded.
 - `Enter` becomes a contextual approach → grasp → lift control, while six hold-to-move surgical combinations
   provide orbiting, curved needle driving, reversal, lift/retract, and lower/approach with one key each.
 - A quick tap performs a bounded precision nudge; holding the same combination key gives continuous motion.
@@ -208,9 +235,12 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
 ## What is included
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
+- Camera-native one- or two-hand webcam teleoperation with automatic per-hand calibration, proportional
+  thumb–index grippers, natural motion clutching, a detached movable/resizable preview and local-only video.
 - OpenUSD operating rooms, seven pinned anatomy sources, and a repository-local
-  Dr.Anmar bench shelf with the standalone needle, swaged needle and 4-0
-  suture, suturable tissue, vascular clip, laparotomy sponge, and skin stapler.
+  Dr.Anmar bench shelf with the standalone needle, the pinned NVIDIA needle
+  factory-swaged to Dr.Anmar 4-0 suture, the native Dr.Anmar needle-suture
+  assembly, suturable tissue, vascular clip, laparotomy sponge, and skin stapler.
 - Native rigid-body needle pickup, dual-arm handover, passing/regrasp, navigation and recovery rooms.
 - PhysX contact sensors on the gripper bodies; no synthetic grasp joints or collision-disabling puncture paths.
 - A compact 12-room procedure catalog backed by local tasks, installed thread assets, NVIDIA ultrasound,
@@ -390,9 +420,10 @@ For Mac webcam control of the Gilgamesh room, use the private loopback launcher:
 ```
 
 It opens [http://127.0.0.1:12360](http://127.0.0.1:12360) through an authenticated SSH tunnel. Browsers treat the
-loopback origin as trustworthy, so **Hand control** can request the webcam without requiring Tailscale Serve or a
-tailnet HTTPS administrator. Use `./dr_anmar_webcam.sh status` or `./dr_anmar_webcam.sh stop` to inspect or close the
-exact tunnel.
+loopback origin as trustworthy, so **Webcam view** can request the camera without requiring Tailscale Serve or a
+tailnet HTTPS administrator. The preview and raw landmarks stay in the browser; only validated numeric pose,
+clutch, quality and aperture commands reach the workstation. Use `./dr_anmar_webcam.sh status` or
+`./dr_anmar_webcam.sh stop` to inspect or close the exact tunnel.
 
 The hub and worker listen on all network interfaces by default so another trusted device can reach the
 workstation. Optional token authentication and a single-operator browser lease are built in, but authentication
