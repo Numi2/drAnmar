@@ -1349,8 +1349,21 @@ def main() -> int:
         "--usdcat",
         default=shutil.which("usdcat") or "usdcat",
     )
+    parser.add_argument(
+        "--segment-count",
+        type=int,
+        help="Author a native interactive LOD with this many physical segments while preserving length and diameter.",
+    )
     args = parser.parse_args()
     profile = load_profile(args.profile)
+    if args.segment_count is not None:
+        if args.segment_count < 16:
+            parser.error("--segment-count must be at least 16")
+        profile = json.loads(json.dumps(profile))
+        profile["geometry"]["segment_count"] = args.segment_count
+        profile["geometry"]["segment_spacing_m"] = (
+            float(profile["geometry"]["length_m"]) / args.segment_count
+        )
     needle_profile = load_needle_profile(args.needle_profile)
     output = args.output.expanduser().resolve()
     base_output = args.base_output.expanduser().resolve()
@@ -1732,6 +1745,7 @@ def main() -> int:
             "braided_visual_meshes_on_rigid_xforms_with_hidden_capsule_colliders_and_breakable_d6_cosserat_joints"
         ),
         "segment_count": derived.segment_count,
+        "segment_count_override": args.segment_count,
         "joint_count": derived.segment_count,
         "diameter_m": derived.diameter_m,
         "length_m": derived.length_m,

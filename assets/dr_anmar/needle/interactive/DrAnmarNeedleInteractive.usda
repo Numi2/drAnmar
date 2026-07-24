@@ -1,0 +1,51 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarNeedle"
+    doc = "DrAnmar Needle interface with synchronized public NVIDIA-style Physics payload variants; not clinically validated."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarNeedle" (
+    prepend references = @./DrAnmarNeedleInteractive_base.usda@
+    variants = {
+        string Physics = "physx"
+    }
+    append variantSets = "Physics"
+)
+{
+    variantSet "Physics" = {
+        "none" {
+            over "Suture" (
+                variants = {
+                    string Physics = "none"
+                }
+            )
+            {
+            }
+        }
+        "physics" (
+            prepend payload = @./DrAnmarNeedleInteractive_physics.usda@
+        ) {
+            over "Suture" (
+                variants = {
+                    string Physics = "physics"
+                }
+            )
+            {
+            }
+        }
+        "physx" (
+            prepend payload = @./DrAnmarNeedleInteractive_physx.usda@
+        ) {
+            over "Suture" (
+                variants = {
+                    string Physics = "physx"
+                }
+            )
+            {
+            }
+        }
+    }
+}

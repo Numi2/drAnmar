@@ -1,0 +1,79 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarSuture4_0"
+    doc = "Dr.Anmar 4-0 suture visual look-development and inherited binding layer."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "DrAnmarSuture4_0"
+{
+    over "Looks"
+    {
+        def Material "SutureVisual"
+        {
+            string inputs:frame:tangentsPrimvarName = "tangents"
+            string inputs:frame:binormalsPrimvarName = "binormals"
+            string inputs:frame:stPrimvarName = "st"
+
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.42, 0.08, 0.55)
+                float inputs:ior = 1.46
+                float inputs:metallic = 0
+                normal3f inputs:normal.connect = </DrAnmarSuture4_0/Looks/SutureVisual/BraidNormalRoughness.outputs:rgb>
+                float inputs:roughness.connect = </DrAnmarSuture4_0/Looks/SutureVisual/BraidNormalRoughness.outputs:a>
+                token outputs:surface
+            }
+            def Shader "PrimvarReader_st"
+            {
+                uniform token info:id = "UsdPrimvarReader_float2"
+                string inputs:varname.connect = </DrAnmarSuture4_0/Looks/SutureVisual.inputs:frame:stPrimvarName>
+                float2 outputs:result
+            }
+            def Shader "BraidNormalRoughness"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @./textures/DrAnmarSuture4_0_braid_normal_roughness.png@
+                float4 inputs:bias = (-1, -1, -1, 0)
+                float4 inputs:scale = (2, 2, 2, 1)
+                token inputs:sourceColorSpace = "raw"
+                float2 inputs:st.connect = </DrAnmarSuture4_0/Looks/SutureVisual/PrimvarReader_st.outputs:result>
+                token inputs:wrapS = "repeat"
+                token inputs:wrapT = "repeat"
+                float outputs:a
+                float3 outputs:rgb
+            }
+            token outputs:surface.connect = </DrAnmarSuture4_0/Looks/SutureVisual/PreviewSurface.outputs:surface>
+        }
+
+        def Material "SwageVisual"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.58, 0.61, 0.66)
+                float inputs:metallic = 0.86
+                float inputs:roughness = 0.24
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSuture4_0/Looks/SwageVisual/PreviewSurface.outputs:surface>
+        }
+    }
+
+    over "NeedleInterface" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </DrAnmarSuture4_0/Looks/SwageVisual>
+    }
+
+    over "Segments" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </DrAnmarSuture4_0/Looks/SutureVisual>
+    }
+}

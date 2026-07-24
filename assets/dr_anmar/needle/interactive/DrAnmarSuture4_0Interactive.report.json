@@ -1,0 +1,564 @@
+{
+  "schema": "dr.anmar.suture-asset-report.v15",
+  "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
+  "asset": "assets/dr_anmar/needle/interactive/DrAnmarSuture4_0Interactive.usda",
+  "asset_sha256": "b74ec5d659fd107904c139a08fa658aab3fbb04734d429be07965848766d56af",
+  "suture_asset_version": "2.8.0",
+  "suture_entry_bytes": 722,
+  "suture_base": "assets/dr_anmar/needle/interactive/DrAnmarSuture4_0Interactive_base.usda",
+  "suture_base_sha256": "c52270bccb271dc57da2d20930bda889038bdd02cd051091b71d18f97092c994",
+  "suture_geometry": "assets/dr_anmar/needle/interactive/DrAnmarSuture4_0Interactive_geometry.usd",
+  "suture_geometry_format": "usdc",
+  "suture_geometry_sha256": "47618d3b3e8ec519276d15ee8d1cc9e3f8ba5507e4c01ee52587621165b54283",
+  "suture_geometry_bytes": 1425088,
+  "suture_interface_visual_mesh_schema": "UsdGeomMesh",
+  "suture_interface_visual_vertex_count": 674,
+  "suture_interface_visual_face_count": 720,
+  "suture_interface_minimum_collision_margin_m": -2.710505431213761e-20,
+  "suture_visual_mesh_schema": "UsdGeomMesh",
+  "suture_visual_vertices_per_segment": 338,
+  "suture_visual_faces_per_segment": 384,
+  "suture_visual_total_vertices": 30420,
+  "suture_visual_total_faces": 34560,
+  "suture_visual_texcoords_per_segment": 441,
+  "suture_visual_total_texcoords": 39690,
+  "suture_visual_texcoord_indices_per_segment": 1440,
+  "suture_visual_total_texcoord_indices": 129600,
+  "suture_visual_tangent_frame_values_per_segment": 338,
+  "suture_visual_tangent_frame_indices_per_segment": 1440,
+  "suture_visual_total_tangent_frame_values_per_channel": 30420,
+  "suture_visual_total_tangent_frame_indices_per_channel": 129600,
+  "suture_visual_minimum_radius_ratio": 0.6544117647058824,
+  "suture_visual_maximum_radius_ratio": 1.0,
+  "suture_collider_cylinder_height_m": 0.002,
+  "suture_minimum_visual_collision_margin_m": 0.0,
+  "suture_mass_property_contract": {
+    "segment_model": "mass_conserving_uniform_solid_cylinder",
+    "segment_axis": "X",
+    "segment_radius_policy": "nominal_physical_radius_not_collision_radius",
+    "segment_length_policy": "centerline_partition_spacing",
+    "interface_model": "mass_conserving_uniform_solid_capsule",
+    "interface_axis": "X",
+    "interface_radius_policy": "needle_end_radius",
+    "interface_cylinder_height_policy": "centerline_partition_spacing",
+    "interface_mass_policy": {
+      "policy": "stabilized_swage_bridge_body",
+      "segment_mass_multiplier": 8.0,
+      "minimum_kg": 1e-07
+    },
+    "collision_envelope_decoupled": true,
+    "inertia_policy": "physx_derives_center_of_mass_and_inertia_from_authored_capsule_colliders",
+    "usd_authoring": [
+      "physics:mass"
+    ],
+    "calibration_status": "explicit_mass_with_native_collider_derived_inertia_pending_mass_distribution_metrology"
+  },
+  "suture_segment_mass_properties": {
+    "mass_kg": 1.2762720155208535e-07,
+    "center_of_mass_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "diagonal_inertia_kg_m2": [
+      9.970875121256668e-16,
+      4.3040944273424616e-14,
+      4.3040944273424616e-14
+    ],
+    "principal_axes_wxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "suture_interface_mass_properties": {
+    "mass_kg": 1.0210176124166828e-06,
+    "center_of_mass_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "diagonal_inertia_kg_m2": [
+      1.4453329677277166e-14,
+      4.307090654220337e-13,
+      4.307090654220337e-13
+    ],
+    "principal_axes_wxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "suture_render_collision_separation": {
+    "rigid_body_prim_pattern": "Segments/S####",
+    "visual_prim_pattern": "Segments/S####/Visual",
+    "collider_prim_pattern": "Segments/S####/Collision",
+    "needle_interface_visual_prim": "NeedleInterface/Visual",
+    "needle_interface_collider_prim": "NeedleInterface/Collision",
+    "needle_interface_visual_schema": "UsdGeomMesh",
+    "needle_interface_visual_topology": "closed_non_subdivided_hemisphere_cylinder_and_tapered_suture_exit",
+    "needle_interface_visual_radial_samples": 48,
+    "needle_interface_visual_cap_samples": 6,
+    "needle_interface_visual_cylinder_samples": 4,
+    "needle_interface_suture_exit_taper_samples": 4,
+    "needle_interface_suture_overlap_m": 0.0001,
+    "needle_interface_suture_exit_radius_policy": "nominal_radius_times_one_minus_relief_depth",
+    "needle_interface_render_policy": "explicit_mesh_for_cross_delegate_rendering",
+    "visual_schema": "UsdGeomMesh",
+    "visual_topology": "closed_non_subdivided_crossed_carrier_relief",
+    "texture_coordinate_schema": "primvars:st",
+    "texture_coordinate_interpolation": "faceVarying",
+    "texture_coordinate_policy": "continuous_global_axial_pitch_and_wrapped_circumference",
+    "axial_samples_per_segment": 7,
+    "radial_samples": 48,
+    "braid_pitch_m_seed": 0.0012,
+    "relief_depth_fraction": 0.11,
+    "carrier_profile_exponent": 2.4,
+    "crossing_softmax_sharpness": 4.0,
+    "maximum_visual_to_collision_radius_ratio": 1.0,
+    "visual_radius_policy": "nominal_suture_radius_independent_of_swage_collision_envelope",
+    "segment_boundary_policy": "shared_nominal_visual_radius_with_global_braid_phase",
+    "collider_schema": "UsdGeomCapsule",
+    "collider_axis": "X",
+    "collider_cylinder_height_policy": "segment_spacing_with_adjacent_overlap_and_pair_filtering",
+    "exact_visual_point_containment_required": true,
+    "binary_visual_point_containment_tolerance_m": 1e-10,
+    "collider_purpose": "guide",
+    "collider_visibility": "invisible",
+    "collider_physics_material_binding": "material:binding:physics",
+    "reason": "solver_efficient_primitive_collision_with_explicit_render_meshes_for_the_swage_interface_and_each_braided_rigid_segment",
+    "calibration_status": "braid_pitch_relief_and_coating_response_pending_microscopy"
+  },
+  "suture_appearance": {
+    "material_model": "UsdPreviewSurface",
+    "workflow": "metal_rough",
+    "metallic_seed": 0.0,
+    "ior_seed": 1.46,
+    "normal_roughness_texture": {
+      "relative_path": "./textures/DrAnmarSuture4_0_braid_normal_roughness.png",
+      "format": "RGBA8_PNG",
+      "resolution": [
+        256,
+        256
+      ],
+      "source_color_space": "raw",
+      "wrap_s": "repeat",
+      "wrap_t": "repeat",
+      "normal_convention": "DirectX_tangent_space_with_explicit_right_handed_v_down_frame",
+      "tangent_frame": {
+        "tangent_primvar": "tangents",
+        "binormal_primvar": "binormals",
+        "st_primvar": "st",
+        "interpolation": "faceVarying",
+        "indexed": true,
+        "construction": "analytic_surface_derivatives_orthonormalized_against_authored_normals",
+        "handedness": "right_handed",
+        "binormal_direction": "negative_uv_v",
+        "hard_end_cap_frames": true
+      },
+      "normal_strength_seed": 0.035,
+      "roughness_base_seed": 0.4,
+      "roughness_variation_seed": 0.1,
+      "content": "braid_normal_rgb_and_roughness_alpha",
+      "calibration_status": "pending_cross_polarized_macro_capture"
+    }
+  },
+  "suture_normal_roughness_texture": "assets/dr_anmar/needle/interactive/textures/DrAnmarSuture4_0_braid_normal_roughness.png",
+  "suture_normal_roughness_texture_sha256": "47f55dfefbed80d9a12b5a12819fee2249af39caaa776ac877a88defde36f243",
+  "suture_normal_roughness_texture_bytes": 51778,
+  "suture_materials": "assets/dr_anmar/needle/interactive/DrAnmarSuture4_0Interactive_materials.usda",
+  "suture_materials_sha256": "a6e69d382187bb1a772e2e5b51075141e3f2aa7abadf5e906db3312849b1757b",
+  "suture_physics": "assets/dr_anmar/needle/interactive/DrAnmarSuture4_0Interactive_physics.usda",
+  "suture_physics_sha256": "a2973a17c2d9f69c8d3f28f05d9c0b94e2012df377561ab23b3228bf879af207",
+  "suture_physx": "assets/dr_anmar/needle/interactive/DrAnmarSuture4_0Interactive_physx.usda",
+  "suture_physx_sha256": "9743c658a0afa08b59e4782ff281393a6dae461d3673419ecaa3bb9391b689b9",
+  "suture_layer_contract": {
+    "entry_layer": "DrAnmarSuture4_0.usda",
+    "base_layer": "DrAnmarSuture4_0_base.usda",
+    "geometry_layer": "DrAnmarSuture4_0_geometry.usd",
+    "geometry_format": "usdc",
+    "materials_layer": "DrAnmarSuture4_0_materials.usda",
+    "physics_layer": "DrAnmarSuture4_0_physics.usda",
+    "physx_layer": "DrAnmarSuture4_0_physx.usda",
+    "entry_layer_max_bytes": 8192,
+    "composition": "entry_references_base_and_public_Physics_variant_payloads_none_physics_or_physx",
+    "default_runtime": "physx",
+    "variant_set": "Physics",
+    "variant_choices": [
+      "none",
+      "physics",
+      "physx"
+    ],
+    "model_identity": {
+      "kind": "component",
+      "asset_info_name": "DrAnmarSuture4_0",
+      "display_name": "DrAnmar 4-0 Braided Suture",
+      "semantic_schema_instance": "SemanticsLabelsAPI:wikidata_qcode",
+      "semantic_label_attribute": "semantics:labels:wikidata_qcode",
+      "wikidata_qcodes": [
+        "Q4948587"
+      ],
+      "semantic_label_inheritance": "root_label_inherited_by_all_descendant_geometry",
+      "composition_path_policy": "explicit_anchored_relative_asset_paths"
+    },
+    "physics_payload_loading": "deferred_until_selected_variant_is_loaded",
+    "entry_layer_owns": [
+      "stage_metadata",
+      "base_reference",
+      "public_physics_variant_contract",
+      "default_physics_selection"
+    ],
+    "base_layer_owns": [
+      "asset_identity",
+      "openusd_model_kind_asset_info_and_inherited_semantic_labels",
+      "structural_scopes",
+      "geometry_and_material_sublayer_composition"
+    ],
+    "geometry_layer_owns": [
+      "rigid_body_xforms",
+      "closed_braided_visual_mesh_topology",
+      "braided_visual_mesh_points_and_indexed_face_varying_tangent_frames",
+      "closed_swage_interface_visual_mesh_and_vertex_normals",
+      "continuous_face_varying_texture_coordinates",
+      "visual_mesh_extents_and_display_colors",
+      "guide_purpose_invisible_capsule_colliders"
+    ],
+    "materials_layer_owns": [
+      "visual_materials",
+      "visual_shaders",
+      "relative_raw_normal_roughness_texture_network",
+      "inherited_visual_material_bindings"
+    ],
+    "physics_layer_owns": [
+      "physics_materials",
+      "purpose_specific_collider_physics_material_bindings",
+      "explicit_rigid_body_mass_and_descendant_collision_schemas_with_collider_derived_inertia",
+      "adjacent_collision_filtering",
+      "breakable_cosserat_joints"
+    ],
+    "physx_layer_owns": [
+      "physx_material_combine_modes",
+      "hybrid_ccd",
+      "rigid_body_damping_and_solver_iterations",
+      "scale_aware_contact_offsets"
+    ],
+    "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
+    "content_isolation": "entry_contains_only_interface_composition_base_contains_identity_hierarchy_and_geometry_material_composition_geometry_contains_no_material_or_physics_payload_and_materials_contains_no_physics_payload"
+  },
+  "suture_model_identity": {
+    "kind": "component",
+    "asset_info_name": "DrAnmarSuture4_0",
+    "display_name": "DrAnmar 4-0 Braided Suture",
+    "semantic_schema_instance": "SemanticsLabelsAPI:wikidata_qcode",
+    "semantic_label_attribute": "semantics:labels:wikidata_qcode",
+    "wikidata_qcodes": [
+      "Q4948587"
+    ],
+    "semantic_label_inheritance": "root_label_inherited_by_all_descendant_geometry",
+    "composition_path_policy": "explicit_anchored_relative_asset_paths"
+  },
+  "dr_anmar_needle_name": "DrAnmar Needle",
+  "dr_anmar_needle_asset_id": "dr-anmar-needle",
+  "dr_anmar_needle_asset_version": "1.17.0",
+  "dr_anmar_needle": "assets/dr_anmar/needle/interactive/DrAnmarNeedleInteractive.usda",
+  "dr_anmar_needle_sha256": "98cabd46d38e4328bb7d9d88462b60999d3d3f2a408018ab69ae23d97e866f28",
+  "dr_anmar_needle_entry_bytes": 1202,
+  "dr_anmar_needle_base": "assets/dr_anmar/needle/interactive/DrAnmarNeedleInteractive_base.usda",
+  "dr_anmar_needle_base_sha256": "607e63f54bc74c2a155022b848f6a03de6415bcd95f65dfd5a79e2ca55792ef6",
+  "dr_anmar_needle_geometry": "assets/dr_anmar/needle/interactive/DrAnmarNeedleInteractive_geometry.usd",
+  "dr_anmar_needle_geometry_format": "usdc",
+  "dr_anmar_needle_geometry_sha256": "84a2993c9a4bfa84d57e2f9982660760481fab9f6060b0ea03ee7e19ab7c06db",
+  "dr_anmar_needle_geometry_bytes": 50761,
+  "dr_anmar_needle_materials": "assets/dr_anmar/needle/interactive/DrAnmarNeedleInteractive_materials.usda",
+  "dr_anmar_needle_materials_sha256": "9dd03f4ff1664d2e397ac44f7671cf1e34859c22e269eacc01fa3b60e3df73d4",
+  "dr_anmar_needle_physics": "assets/dr_anmar/needle/interactive/DrAnmarNeedleInteractive_physics.usda",
+  "dr_anmar_needle_physics_sha256": "9496fbf6230616ca417d4e3e58f78e985c64d3ea0c8265db07abe3caa63409de",
+  "dr_anmar_needle_physx": "assets/dr_anmar/needle/interactive/DrAnmarNeedleInteractive_physx.usda",
+  "dr_anmar_needle_physx_sha256": "6acf32c88df2a941942055cc66d3de88e30a1b9d04c536b76253e72eca1fd25a",
+  "dr_anmar_needle_layer_contract": {
+    "entry_layer": "DrAnmarNeedle.usda",
+    "base_layer": "DrAnmarNeedle_base.usda",
+    "geometry_layer": "DrAnmarNeedle_geometry.usd",
+    "geometry_format": "usdc",
+    "materials_layer": "DrAnmarNeedle_materials.usda",
+    "entry_layer_max_bytes": 8192,
+    "physics_layer": "DrAnmarNeedle_physics.usda",
+    "physx_layer": "DrAnmarNeedle_physx.usda",
+    "composition": "entry_references_base_and_public_Physics_variant_payloads_none_physics_or_physx",
+    "default_runtime": "physx",
+    "variant_set": "Physics",
+    "variant_choices": [
+      "none",
+      "physics",
+      "physx"
+    ],
+    "model_identity": {
+      "kind": "component",
+      "asset_info_name": "DrAnmarNeedle",
+      "display_name": "DrAnmar Needle and 4-0 Braided Suture",
+      "semantic_schema_instance": "SemanticsLabelsAPI:wikidata_qcode",
+      "semantic_label_attribute": "semantics:labels:wikidata_qcode",
+      "assembly_wikidata_qcodes": [
+        "Q619800"
+      ],
+      "needle_wikidata_qcodes": [
+        "Q28790452"
+      ],
+      "referenced_suture_wikidata_qcodes": [
+        "Q4948587"
+      ],
+      "child_model_kind": "subcomponent",
+      "semantic_label_inheritance": "nearest_authored_subcomponent_label_inherited_by_descendant_geometry",
+      "composition_path_policy": "explicit_anchored_relative_asset_paths"
+    },
+    "nested_suture_variant_policy": "assembly_Physics_selection_authors_the_same_selection_on_Suture",
+    "physics_payload_loading": "deferred_until_selected_variant_is_loaded",
+    "entry_layer_owns": [
+      "stage_metadata",
+      "base_reference",
+      "public_physics_variant_contract",
+      "default_physics_selection",
+      "nested_suture_physics_selection"
+    ],
+    "base_layer_owns": [
+      "asset_identity",
+      "openusd_model_kind_asset_info_and_inherited_semantic_labels",
+      "structural_hierarchy",
+      "suture_reference_and_transform",
+      "geometry_and_material_sublayer_composition"
+    ],
+    "geometry_layer_owns": [
+      "visual_mesh_topology",
+      "visual_mesh_points",
+      "visual_mesh_normals",
+      "visual_mesh_extent"
+    ],
+    "materials_layer_owns": [
+      "visual_material",
+      "visual_shader",
+      "visual_material_binding"
+    ],
+    "physics_layer_owns": [
+      "physics_material",
+      "rigid_body_schemas_and_attributes",
+      "compound_colliders",
+      "suture_interface_override",
+      "factory_swage_joint"
+    ],
+    "physx_layer_owns": [
+      "physx_material_schema_and_combine_mode",
+      "physx_rigid_body_schema_and_solver_tuning",
+      "physx_collision_schemas_and_contact_offsets"
+    ],
+    "physics_property_prefixes": [
+      "physics:"
+    ],
+    "physics_schema_prefixes": [
+      "Physics"
+    ],
+    "physx_property_prefixes": [
+      "physx"
+    ],
+    "physx_schema_prefixes": [
+      "Physx"
+    ],
+    "forbidden_live_schema_prefixes": [
+      "Newton"
+    ],
+    "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
+    "content_isolation": "entry_contains_only_interface_composition_base_contains_identity_hierarchy_suture_reference_and_geometry_material_composition_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
+  },
+  "dr_anmar_needle_model_identity": {
+    "kind": "component",
+    "asset_info_name": "DrAnmarNeedle",
+    "display_name": "DrAnmar Needle and 4-0 Braided Suture",
+    "semantic_schema_instance": "SemanticsLabelsAPI:wikidata_qcode",
+    "semantic_label_attribute": "semantics:labels:wikidata_qcode",
+    "assembly_wikidata_qcodes": [
+      "Q619800"
+    ],
+    "needle_wikidata_qcodes": [
+      "Q28790452"
+    ],
+    "referenced_suture_wikidata_qcodes": [
+      "Q4948587"
+    ],
+    "child_model_kind": "subcomponent",
+    "semantic_label_inheritance": "nearest_authored_subcomponent_label_inherited_by_descendant_geometry",
+    "composition_path_policy": "explicit_anchored_relative_asset_paths"
+  },
+  "needle_profile": "physics_next/needles/dr-anmar-needle-v1.json",
+  "needle_profile_id": "dr-anmar-needle-v1",
+  "needle_geometry_source": "independently_generated_parametric_geometry",
+  "needle_arc_length_m": 0.022,
+  "needle_curvature_radius_m": 0.0070028174960433945,
+  "needle_body_diameter_m": 0.00052,
+  "needle_mass_kg": 3.189542333463235e-05,
+  "needle_mass_property_integration_slices": 8192,
+  "needle_center_of_mass_m": [
+    0.0050193794285684976,
+    0.0006195416306296184,
+    0.0
+  ],
+  "needle_diagonal_inertia_kg_m2": [
+    9.42851455125687e-11,
+    6.565994298708686e-10,
+    7.498559124943369e-10
+  ],
+  "needle_principal_axes_wxyz": [
+    0.7491962903735767,
+    0.0,
+    0.0,
+    -0.6623480342618006
+  ],
+  "needle_visual_vertex_count": 2049,
+  "needle_visual_normal_quality": {
+    "interpolation": "faceVarying",
+    "normal_value_count": 2050,
+    "normal_index_count": 8192,
+    "face_corner_count": 8192,
+    "unused_normal_value_count": 0,
+    "invalid_normal_index_count": 0,
+    "non_finite_normal_component_count": 0,
+    "maximum_unit_length_error": 2.220446049250313e-16,
+    "minimum_face_area_m2": 3.809030057648221e-10,
+    "minimum_face_corner_alignment_dot": 0.05253506623084833,
+    "non_outward_face_corner_count": 0,
+    "maximum_surface_tangent_dot": 2.220446049250313e-16,
+    "minimum_cross_section_outward_dot": 0.9954631977418059,
+    "maximum_swage_cap_side_normal_dot": 0.0
+  },
+  "needle_collision_capsule_count": 40,
+  "needle_collision_contract": {
+    "primitive": "UsdGeomCapsule",
+    "partition": "equal_centerline_arc_segments",
+    "height_semantics": "cylinder_spine_excluding_spherical_caps",
+    "spine_length": "assigned_centerline_chord",
+    "endcap_overlap": "intentional_at_adjacent_partition_boundaries",
+    "curvature_coverage": "maximum_segment_radius_plus_exact_arc_sagitta",
+    "visual_face_coverage": "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face",
+    "coverage_epsilon_m": 1e-09,
+    "extent_policy": "explicit_local_extent_on_every_capsule",
+    "render_collision_separation": {
+      "visual_prim": "Needle/Visual",
+      "collider_prim_pattern": "Needle/Collision/C###",
+      "collider_purpose": "guide",
+      "collider_visibility": "invisible",
+      "collider_physics_material_binding": "material:binding:physics",
+      "collider_physics_material_path": "Looks/NeedleSteelPhysics",
+      "visual_material_binding": "material:binding",
+      "visual_material_path": "Looks/NeedleSteelVisual",
+      "reason": "nonrendering_debuggable_collision_geometry"
+    },
+    "contact_offsets": {
+      "policy": "clamped_fraction_of_final_collision_radius",
+      "basis": "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep",
+      "collision_radius_fraction": 0.1,
+      "minimum_m": 5e-06,
+      "maximum_m": 2.5e-05,
+      "rest_offset_m": 0.0,
+      "physx_authoring": [
+        "PhysxCollisionAPI",
+        "physxCollision:contactOffset",
+        "physxCollision:restOffset"
+      ],
+      "engine_layer": "DrAnmarNeedle_physx.usda",
+      "neutral_layer_policy": "no_engine_specific_contact_schema",
+      "unsupported_engine_schema_policy": "do_not_author_until_the_complete_needle_suture_assembly_is_qualified_on_that_backend"
+    }
+  },
+  "needle_material_organization": {
+    "scope": "Looks",
+    "visual_material": "NeedleSteelVisual",
+    "physics_material": "NeedleSteelPhysics",
+    "separate_by_purpose": true,
+    "visual_shader": "UsdPreviewSurface",
+    "physics_api_schemas": [
+      "PhysicsMaterialAPI",
+      "PhysxMaterialAPI"
+    ]
+  },
+  "needle_render_collision_separation": {
+    "visual_prim": "Needle/Visual",
+    "collider_prim_pattern": "Needle/Collision/C###",
+    "collider_purpose": "guide",
+    "collider_visibility": "invisible",
+    "collider_physics_material_binding": "material:binding:physics",
+    "collider_physics_material_path": "Looks/NeedleSteelPhysics",
+    "visual_material_binding": "material:binding",
+    "visual_material_path": "Looks/NeedleSteelVisual",
+    "reason": "nonrendering_debuggable_collision_geometry"
+  },
+  "needle_collision_guide_purpose_count": 40,
+  "needle_collision_invisible_count": 40,
+  "needle_collision_physics_material_binding_count": 40,
+  "needle_collision_max_curvature_sagitta_m": 5.398918502281386e-06,
+  "needle_collision_visual_seam_margin_m": 8.494447366884953e-06,
+  "needle_collision_max_chord_length_error_m": 0.0,
+  "needle_contact_offset_policy": {
+    "policy": "clamped_fraction_of_final_collision_radius",
+    "basis": "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep",
+    "collision_radius_fraction": 0.1,
+    "minimum_m": 5e-06,
+    "maximum_m": 2.5e-05,
+    "rest_offset_m": 0.0,
+    "physx_authoring": [
+      "PhysxCollisionAPI",
+      "physxCollision:contactOffset",
+      "physxCollision:restOffset"
+    ],
+    "engine_layer": "DrAnmarNeedle_physx.usda",
+    "neutral_layer_policy": "no_engine_specific_contact_schema",
+    "unsupported_engine_schema_policy": "do_not_author_until_the_complete_needle_suture_assembly_is_qualified_on_that_backend"
+  },
+  "needle_contact_offset_range_m": [
+    5e-06,
+    2.5e-05
+  ],
+  "needle_rest_offset_range_m": [
+    0.0,
+    0.0
+  ],
+  "needle_collision_visual_mesh_coverage": {
+    "visual_vertex_count": 2049,
+    "visual_face_count": 2049,
+    "uncovered_visual_vertex_count": 0,
+    "uncovered_visual_face_count": 0,
+    "minimum_visual_vertex_containment_margin_m": 8.694897944296997e-06,
+    "minimum_visual_face_containment_margin_m": 1.0000000000157452e-09,
+    "maximum_visual_vertex_containment_margin_m": 6.326416503478705e-05
+  },
+  "needle_swage_anchor_m": [
+    4.287989015771313e-19,
+    0.0070028174960433945,
+    0.0
+  ],
+  "needle_sim_to_real_gap_count": 7,
+  "suture_sim_to_real_gap_count": 8,
+  "swage_connection": "fixed_needle_to_interface_then_breakable_pullout_joint",
+  "representation": "braided_visual_meshes_on_rigid_xforms_with_hidden_capsule_colliders_and_breakable_d6_cosserat_joints",
+  "segment_count": 90,
+  "segment_count_override": 90,
+  "joint_count": 90,
+  "diameter_m": 0.00025,
+  "length_m": 0.18,
+  "mass_kg": 1.1486448139687682e-05,
+  "straight_failure_load_n": 22.5,
+  "knot_failure_load_n": 14.625,
+  "runtime_material_history_controller": null,
+  "runtime_physics_authority": "OpenUSD_PhysX",
+  "runtime_observation_source": "native_filtered_jaw_contacts_and_openusd_rigid_body_poses",
+  "runtime_self_contact_broadphase": {
+    "algorithm": "uniform_spatial_hash_over_expanded_centerline_edge_aabbs",
+    "cell_size_to_contact_distance": 2.0,
+    "maximum_cells_per_edge": 64,
+    "overflow_policy": "exact_test_overflow_edge_against_all_nonadjacent_edges",
+    "narrowphase": "exact_3d_segment_to_segment_closest_distance",
+    "contact_representation": "polyline_edge_capsule_distance",
+    "deterministic_pair_order": true
+  },
+  "clinical_validation": false,
+  "independent_from_current_thread": true
+}

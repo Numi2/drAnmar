@@ -135,6 +135,18 @@ if args_cli.procedure:
 
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
+if args_cli.headless:
+    # Camera render products are independent of the desktop viewport. NVIDIA
+    # recommends disabling that otherwise-hidden viewport in headless sensor
+    # workloads so the 4090 does not render every frame twice.
+    try:
+        from omni.kit.viewport.utility import get_active_viewport
+
+        active_viewport = get_active_viewport()
+        if active_viewport is not None:
+            active_viewport.updates_enabled = False
+    except (ImportError, AttributeError, RuntimeError):
+        pass
 
 import gymnasium as gym
 import h5py
@@ -759,6 +771,8 @@ class SharedState:
         default_factory=dict
     )
     upstream_task_success: bool | None = None
+    performance_timings_ms: dict[str, float] = field(default_factory=dict)
+    simulation_profile: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.pulse = np.zeros(self.action_dim, dtype=np.float32)
@@ -878,6 +892,8 @@ class SharedState:
                 "anatomy_collision_meshes": self.anatomy_collision_meshes,
                 "procedure": procedure_status,
                 "upstream_task_success": self.upstream_task_success,
+                "performance_timings_ms": dict(self.performance_timings_ms),
+                "simulation_profile": dict(self.simulation_profile),
                 "grippers_open": self.grippers_open,
                 "native_grasp_contact_active": self.native_grasp_contact_active,
                 "tool_to_object_distance_m": self.tool_to_object_distance_m,
@@ -3233,6 +3249,16 @@ def main() -> None:
     procedure = dict(PROCEDURES_BY_ID.get(args_cli.procedure, {}))
     if args_cli.procedure and not procedure:
         raise ValueError(f"Unknown Dr.Anmar procedure room: {args_cli.procedure}")
+    dr_anmar_needle_enabled = bool(
+        procedure.get("dr_anmar_needle_asset")
+    )
+    suture_physics_lod = os.environ.get(
+        "DR_ANMAR_SUTURE_PHYSICS_LOD",
+        str(procedure.get("suture_physics_lod", "full_360")),
+    )
+    single_active_camera_renderer = bool(
+        procedure.get("single_active_camera_renderer", True)
+    )
     nvidia_native_bench = bool(procedure.get("nvidia_native_bench"))
     nvidia_bench_assets: dict[str, Path] = {}
     if nvidia_native_bench:
@@ -3273,18 +3299,47 @@ def main() -> None:
         # not require freezing the renderer on stale OpenUSD transforms.
         use_fabric=not args_cli.disable_fabric,
     )
-    # The authored 4-0 suture is a 360-body sub-millimetre rod.  Advancing it
-    # at an upstream surgical-task timestep (typically 1/120 s) violates the
-    # asset's own solver contract and sends the light segments non-finite.
-    # PhysX remains the only authority: use the authored microstep and group
-    # sixteen native steps into one 125 Hz workstation action/render frame.
+    interactive_rendering_mode = procedure.get("interactive_rendering_mode")
+    if interactive_rendering_mode:
+        # Use Isaac Lab's official real-time RTX preset for the doctor-facing
+        # camera. It preserves the scene, shadows, materials, native sensors,
+        # and all PhysX state while disabling expensive sampled-lighting and
+        # denoising features intended for offline-quality output.
+        env_cfg.sim.render.rendering_mode = str(interactive_rendering_mode)
+    # The authored 4-0 suture uses a sub-millisecond native PhysX contract.
+    # Apply it only to the room that owns that asset; upstream NVIDIA rooms
+    # retain their own tested task timesteps and solvers.
     suture_profile = load_suture_profile()
     suture_solver = suture_profile["solver"]
-    env_cfg.sim.dt = float(suture_solver["recommended_physics_dt_s"])
-    env_cfg.decimation = int(
-        suture_solver["recommended_substeps_per_120_hz_frame"]
+    if dr_anmar_needle_enabled:
+        env_cfg.sim.dt = float(
+            os.environ.get(
+                "DR_ANMAR_SUTURE_PHYSICS_DT_S",
+                procedure.get(
+                    "suture_physics_dt_s",
+                    suture_solver["recommended_physics_dt_s"],
+                ),
+            )
+        )
+        env_cfg.decimation = int(
+            os.environ.get(
+                "DR_ANMAR_SUTURE_PHYSICS_DECIMATION",
+                procedure.get(
+                    "suture_physics_decimation",
+                    suture_solver["recommended_substeps_per_120_hz_frame"],
+                ),
+            )
+        )
+    # Render at the camera's authored 25 Hz cadence instead of once per
+    # 0.5 ms physics micro-step batch. PhysX still advances every native
+    # substep; only redundant RTX work is skipped between sensor samples.
+    interactive_camera_period_s = float(
+        procedure.get("interactive_camera_update_period_s", 0.04)
     )
-    env_cfg.sim.render_interval = env_cfg.decimation
+    env_cfg.sim.render_interval = max(
+        env_cfg.decimation,
+        int(round(interactive_camera_period_s / env_cfg.sim.dt)),
+    )
     if hasattr(env_cfg.sim.physx, "enable_external_forces_every_iteration"):
         env_cfg.sim.physx.enable_external_forces_every_iteration = True
     if nvidia_native_bench:
@@ -3544,13 +3599,18 @@ def main() -> None:
                 setattr(env_cfg.scene, camera_name, None)
             if hasattr(env_cfg.observations.policy, camera_name):
                 setattr(env_cfg.observations.policy, camera_name, None)
-    # Every locally constructed procedure room receives the same additional
-    # graspable needle-suture assembly on a sterile table landing. Existing
-    # task objects—including SoftMimicGen's current strand—remain untouched.
-    dr_anmar_needle_manifest = configure_dr_anmar_needle(
-        env_cfg.scene,
-        asset_base_cfg_type=AssetBaseCfg,
-        usd_file_cfg_type=sim_utils.UsdFileCfg,
+    # Only the authored Dr.Anmar suturing room receives this additional
+    # needle-strand system. NVIDIA/ORBIT/SoftMimicGen rooms must run their
+    # native assets and solver contracts without a hidden second suture.
+    dr_anmar_needle_manifest = (
+        configure_dr_anmar_needle(
+            env_cfg.scene,
+            asset_base_cfg_type=AssetBaseCfg,
+            usd_file_cfg_type=sim_utils.UsdFileCfg,
+            physics_lod=suture_physics_lod,
+        )
+        if dr_anmar_needle_enabled
+        else None
     )
     # RL environments end and auto-reset episodes on success, dropped
     # objects, force thresholds, and time limits.  That is correct during
@@ -3583,6 +3643,7 @@ def main() -> None:
     native_tissue_enabled = bool(
         native_deformable_enabled
         and native_room.get("representation") != "upstream_softmimicgen_task"
+        and native_room.get("runtime_provider") != "nvidia_softmimicgen"
     )
     native_static_collision_enabled = bool(
         native_room
@@ -3658,12 +3719,23 @@ def main() -> None:
         else (0.45, 0.25, 0.28),
         dtype=np.float32,
     )
-    endoscope_data_types = ["rgb"] if args_cli.sensor_profile == "efficient" else ["rgb", "distance_to_image_plane", "semantic_segmentation"]
+    interactive_camera_width = int(
+        procedure.get("interactive_camera_width_px", args_cli.camera_width)
+    )
+    interactive_camera_height = int(
+        procedure.get("interactive_camera_height_px", args_cli.camera_height)
+    )
+    endoscope_data_types = (
+        ["rgb"]
+        if procedure.get("interactive_rgb_only")
+        or args_cli.sensor_profile == "efficient"
+        else ["rgb", "distance_to_image_plane", "semantic_segmentation"]
+    )
     env_cfg.scene.endoscope = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Endoscope",
         update_period=0.04,
-        height=args_cli.camera_height,
-        width=args_cli.camera_width,
+        height=interactive_camera_height,
+        width=interactive_camera_width,
         data_types=endoscope_data_types,
         colorize_semantic_segmentation=False,
         spawn=sim_utils.PinholeCameraCfg(
@@ -3674,12 +3746,18 @@ def main() -> None:
         ),
         offset=CameraCfg.OffsetCfg(pos=tuple(camera_eye.tolist()), rot=(1.0, 0.0, 0.0, 0.0), convention="world"),
     )
-    if args_cli.sensor_profile in {"stereo", "research"}:
+    if (
+        not single_active_camera_renderer
+        and (
+            procedure.get("interactive_multiview")
+            or args_cli.sensor_profile in {"stereo", "research"}
+        )
+    ):
         env_cfg.scene.endoscope_right = CameraCfg(
             prim_path="{ENV_REGEX_NS}/EndoscopeRight",
             update_period=0.04,
-            height=args_cli.camera_height,
-            width=args_cli.camera_width,
+            height=interactive_camera_height,
+            width=interactive_camera_width,
             data_types=["rgb"],
             spawn=sim_utils.PinholeCameraCfg(
                 focal_length=22.0,
@@ -3697,9 +3775,10 @@ def main() -> None:
         if "Dual" in args_cli.task
         else ("Robot",)
     )
-    # Follow Isaac Lab's filterable-contact pattern: one sensor per rigid jaw.
-    # A regex spanning both jaws can report net force, but it cannot provide a
-    # reliable per-partner force matrix for localizing suture damage.
+    # One native net-force sensor per rigid jaw is sufficient for grasp
+    # detection. Per-segment filter matrices scale every jaw against the full
+    # suture body chain and were never consumed after PhysX became the sole
+    # thread authority.
     for contact_index, contact_robot_name in enumerate(wrist_robot_names, start=1):
         for jaw_index in (1, 2):
             setattr(
@@ -3713,34 +3792,32 @@ def main() -> None:
                     update_period=0.0,
                     history_length=3,
                     track_air_time=False,
-                    filter_prim_paths_expr=[
-                        "{ENV_REGEX_NS}/DrAnmarNeedle/Suture/Segments/S.*"
-                    ],
                 ),
             )
-    for wrist_index, wrist_robot_name in enumerate(wrist_robot_names, start=1):
-        setattr(
-            env_cfg.scene,
-            f"wrist_{wrist_index}",
-            CameraCfg(
-                prim_path=f"{{ENV_REGEX_NS}}/DrAnmarWristCamera{wrist_index}",
-                update_period=CANONICAL_PSM_GRIPPER_PROFILE.camera_update_period_s,
-                height=CANONICAL_PSM_GRIPPER_PROFILE.camera_height_px,
-                width=CANONICAL_PSM_GRIPPER_PROFILE.camera_width_px,
-                data_types=["rgb"],
-                spawn=sim_utils.PinholeCameraCfg(
-                    focal_length=CANONICAL_PSM_GRIPPER_PROFILE.camera_focal_length_mm,
-                    focus_distance=0.10,
-                    horizontal_aperture=20.955,
-                    clipping_range=(0.005, 0.50),
+    if not single_active_camera_renderer:
+        for wrist_index, wrist_robot_name in enumerate(wrist_robot_names, start=1):
+            setattr(
+                env_cfg.scene,
+                f"wrist_{wrist_index}",
+                CameraCfg(
+                    prim_path=f"{{ENV_REGEX_NS}}/DrAnmarWristCamera{wrist_index}",
+                    update_period=CANONICAL_PSM_GRIPPER_PROFILE.camera_update_period_s,
+                    height=CANONICAL_PSM_GRIPPER_PROFILE.camera_height_px,
+                    width=CANONICAL_PSM_GRIPPER_PROFILE.camera_width_px,
+                    data_types=["rgb"],
+                    spawn=sim_utils.PinholeCameraCfg(
+                        focal_length=CANONICAL_PSM_GRIPPER_PROFILE.camera_focal_length_mm,
+                        focus_distance=0.10,
+                        horizontal_aperture=20.955,
+                        clipping_range=(0.005, 0.50),
+                    ),
+                    offset=CameraCfg.OffsetCfg(
+                        pos=(0.20, 0.20, 0.14),
+                        rot=(1.0, 0.0, 0.0, 0.0),
+                        convention="world",
+                    ),
                 ),
-                offset=CameraCfg.OffsetCfg(
-                    pos=(0.20, 0.20, 0.14),
-                    rot=(1.0, 0.0, 0.0, 0.0),
-                    convention="world",
-                ),
-            ),
-        )
+            )
     organ_usd = args_cli.anatomy_scene.expanduser().resolve() if args_cli.anatomy_scene else (
         DATA_ROOT
         / "assets/sufia_bc/OR_scene_CTLiver-Prostate-Bladder"
@@ -4018,70 +4095,93 @@ def main() -> None:
     env.reset()
     import omni.usd
     from isaacsim.core.simulation_manager import SimulationManager
-    from pxr import Usd, UsdPhysics
+    from pxr import Gf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt
 
     suture_stage = omni.usd.get_context().get_stage()
-    suture_root_path = str(dr_anmar_needle_manifest["prim_path"])
-    suture_root = suture_stage.GetPrimAtPath(suture_root_path)
-    if not suture_root.IsValid():
-        raise RuntimeError("The Dr.Anmar needle-suture instrument did not enter the room")
-    suture_rigid_bodies = [
-        prim
-        for prim in Usd.PrimRange(suture_root)
-        if prim.HasAPI(UsdPhysics.RigidBodyAPI)
-    ]
-    factory_swage = UsdPhysics.FixedJoint.Get(
-        suture_stage,
-        f"{suture_root_path}/FactorySwage",
-    )
-    pullout_joint = UsdPhysics.Joint.Get(
-        suture_stage,
-        f"{suture_root_path}/Suture/Joints/J0000",
-    )
-    needle_interface = suture_stage.GetPrimAtPath(
-        f"{suture_root_path}/Suture/NeedleInterface"
-    )
-    interface_kinematic = UsdPhysics.RigidBodyAPI(
-        needle_interface
-    ).GetKinematicEnabledAttr().Get()
-    if (
-        len(suture_rigid_bodies) != 362
-        or not factory_swage.GetPrim().IsValid()
-        or not pullout_joint.GetPrim().IsValid()
-        or interface_kinematic is not False
-    ):
-        raise RuntimeError(
-            "The Dr.Anmar needle-suture physics composition is incomplete: "
-            f"rigid_bodies={len(suture_rigid_bodies)}, "
-            f"factory_swage={factory_swage.GetPrim().IsValid()}, "
-            f"pullout_joint={pullout_joint.GetPrim().IsValid()}, "
-            f"interface_kinematic={interface_kinematic}"
-        )
-    initial_dr_anmar_needle_domain = apply_dr_anmar_needle_episode_domain(
-        suture_stage,
-        seed=DEFAULT_SCENARIO_SEED,
-        root_path=suture_root_path,
-    )
-    initial_suture_runtime_profile, initial_suture_domain = (
-        sample_suture_runtime_profile(
-            suture_profile,
-            DEFAULT_SCENARIO_SEED,
-        )
-    )
-    suture_runtime_domain_state = [initial_suture_domain]
+    suture_root_path = ""
+    suture_segment_count = 0
+    suture_root = None
+    suture_rigid_bodies: list[Any] = []
+    initial_dr_anmar_needle_domain: dict[str, Any] = {}
+    suture_runtime_domain_state: list[dict[str, Any]] = [{}]
     suture_physics_view = SimulationManager.get_physics_sim_view()
-    suture_segment_paths = [
-        f"{suture_root_path}/Suture/Segments/S{index:04d}"
-        for index in range(360)
-    ]
-    suture_segment_view = suture_physics_view.create_rigid_body_view(
-        suture_segment_paths
-    )
-    if suture_segment_view._backend is None or suture_segment_view.count != 360:
-        raise RuntimeError(
-            "The Dr.Anmar live suture tensor view is incomplete: "
-            f"segments={suture_segment_view.count if suture_segment_view._backend else 0}"
+    suture_segment_view = None
+    if dr_anmar_needle_enabled:
+        if dr_anmar_needle_manifest is None:
+            raise RuntimeError(
+                "The authored Dr.Anmar suture room has no instrument manifest"
+            )
+        suture_root_path = str(dr_anmar_needle_manifest["prim_path"])
+        suture_segment_count = int(
+            dr_anmar_needle_manifest["segment_count"]
         )
+        suture_root = suture_stage.GetPrimAtPath(suture_root_path)
+        if not suture_root.IsValid():
+            raise RuntimeError(
+                "The Dr.Anmar needle-suture instrument did not enter the room"
+            )
+        suture_rigid_bodies = [
+            prim
+            for prim in Usd.PrimRange(suture_root)
+            if prim.HasAPI(UsdPhysics.RigidBodyAPI)
+        ]
+        factory_swage = UsdPhysics.FixedJoint.Get(
+            suture_stage,
+            f"{suture_root_path}/FactorySwage",
+        )
+        pullout_joint = UsdPhysics.Joint.Get(
+            suture_stage,
+            f"{suture_root_path}/Suture/Joints/J0000",
+        )
+        needle_interface = suture_stage.GetPrimAtPath(
+            f"{suture_root_path}/Suture/NeedleInterface"
+        )
+        interface_kinematic = UsdPhysics.RigidBodyAPI(
+            needle_interface
+        ).GetKinematicEnabledAttr().Get()
+        if (
+            len(suture_rigid_bodies) != suture_segment_count + 2
+            or not factory_swage.GetPrim().IsValid()
+            or not pullout_joint.GetPrim().IsValid()
+            or interface_kinematic is not False
+        ):
+            raise RuntimeError(
+                "The Dr.Anmar needle-suture physics composition is incomplete: "
+                f"rigid_bodies={len(suture_rigid_bodies)}, "
+                f"factory_swage={factory_swage.GetPrim().IsValid()}, "
+                f"pullout_joint={pullout_joint.GetPrim().IsValid()}, "
+                f"interface_kinematic={interface_kinematic}"
+            )
+        initial_dr_anmar_needle_domain = (
+            apply_dr_anmar_needle_episode_domain(
+                suture_stage,
+                seed=DEFAULT_SCENARIO_SEED,
+                root_path=suture_root_path,
+            )
+        )
+        _initial_suture_runtime_profile, initial_suture_domain = (
+            sample_suture_runtime_profile(
+                suture_profile,
+                DEFAULT_SCENARIO_SEED,
+            )
+        )
+        suture_runtime_domain_state[0] = initial_suture_domain
+        suture_segment_paths = [
+            f"{suture_root_path}/Suture/Segments/S{index:04d}"
+            for index in range(suture_segment_count)
+        ]
+        suture_segment_view = suture_physics_view.create_rigid_body_view(
+            suture_segment_paths
+        )
+        if (
+            suture_segment_view._backend is None
+            or suture_segment_view.count != suture_segment_count
+        ):
+            raise RuntimeError(
+                "The Dr.Anmar live suture tensor view is incomplete: "
+                f"segments="
+                f"{suture_segment_view.count if suture_segment_view._backend else 0}"
+            )
     hemostasis_clip_view = None
     if native_hemostasis_enabled:
         hemostasis_clip_view = suture_physics_view.create_rigid_body_view(
@@ -4113,36 +4213,67 @@ def main() -> None:
             + json.dumps(native_episode_domain, sort_keys=True),
             flush=True,
         )
-    print(
-        "[DR_ANMAR_NEEDLE] "
-        + json.dumps(
-            {
-                **dr_anmar_needle_manifest,
-                "rigid_body_count": len(suture_rigid_bodies),
-                "factory_swage": True,
-                "breakable_pullout_joint": True,
-                "episode_domain": initial_dr_anmar_needle_domain,
-                "live_material_history_controller": False,
-                "physics_authority": "OpenUSD_PhysX",
-                "live_segment_tensor_count": suture_segment_view.count,
-                "live_suture_domain": suture_runtime_domain_state[0],
-                "clinical_validation": False,
-            },
-            sort_keys=True,
-        ),
-        flush=True,
-    )
+    if dr_anmar_needle_enabled:
+        print(
+            "[DR_ANMAR_NEEDLE] "
+            + json.dumps(
+                {
+                    **(dr_anmar_needle_manifest or {}),
+                    "rigid_body_count": len(suture_rigid_bodies),
+                    "factory_swage": True,
+                    "breakable_pullout_joint": True,
+                    "episode_domain": initial_dr_anmar_needle_domain,
+                    "live_material_history_controller": False,
+                    "physics_authority": "OpenUSD_PhysX",
+                    "live_segment_tensor_count": suture_segment_view.count,
+                    "live_suture_domain": suture_runtime_domain_state[0],
+                    "clinical_validation": False,
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
     scene = env.unwrapped.scene
     camera = scene["endoscope"]
-    stereo_right_camera = scene["endoscope_right"] if args_cli.sensor_profile in {"stereo", "research"} else None
-    wrist_cameras = [
-        scene[f"wrist_{index}"]
-        for index in range(1, len(wrist_robot_names) + 1)
-    ]
+    shared_camera_renderer = single_active_camera_renderer
+    stereo_right_camera = (
+        None
+        if shared_camera_renderer
+        else scene["endoscope_right"]
+        if args_cli.sensor_profile in {"stereo", "research"}
+        or procedure.get("interactive_multiview")
+        else None
+    )
+    wrist_cameras = (
+        []
+        if shared_camera_renderer
+        else [
+            scene[f"wrist_{index}"]
+            for index in range(1, len(wrist_robot_names) + 1)
+        ]
+    )
     camera_sources = {"endoscope_left": camera}
-    if stereo_right_camera is not None:
+    if shared_camera_renderer:
+        if (
+            procedure.get("interactive_multiview")
+            or args_cli.sensor_profile in {"stereo", "research"}
+        ):
+            camera_sources["endoscope_right"] = camera
+        camera_sources.update(
+            {
+                f"wrist_{index}": camera
+                for index in range(1, len(wrist_robot_names) + 1)
+            }
+        )
+    elif stereo_right_camera is not None:
         camera_sources["endoscope_right"] = stereo_right_camera
-    camera_sources.update({f"wrist_{index}": wrist_camera for index, wrist_camera in enumerate(wrist_cameras, start=1)})
+    if not shared_camera_renderer:
+        camera_sources.update(
+            {
+                f"wrist_{index}": wrist_camera
+                for index, wrist_camera in enumerate(wrist_cameras, start=1)
+            }
+        )
     all_robot_names = sorted(scene.articulations.keys())
     robot_names = [
         name
@@ -4548,6 +4679,11 @@ def main() -> None:
         )
     )
     visible_procedure_waypoint_index: int | None = None
+    shared_camera_pose_cache: dict[str, Any] = {
+        "name": None,
+        "eye": None,
+        "target": None,
+    }
 
     def update_procedure_waypoint_marker(index: int, force: bool = False) -> None:
         """Show one unobtrusive next-step cue instead of covering the field."""
@@ -4572,78 +4708,168 @@ def main() -> None:
         )
         procedure_markers.set_visibility(True)
 
-    def update_wrist_camera_poses(
-        adjustments_by_name: dict[str, dict[str, float | bool | str]] | None = None,
-    ) -> None:
-        """Keep each camera on its gripper while applying its own bounded aim."""
+    def wrist_camera_pose(
+        arm: int,
+        adjustment: dict[str, float | bool | str] | None = None,
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        """Return the physical gripper-camera mount pose for one PSM."""
+        if arm >= len(robot_names):
+            return None
         world_up = np.asarray((0.0, 0.0, 1.0), dtype=np.float32)
         fallback_axis = np.asarray((1.0, 0.0, 0.0), dtype=np.float32)
-        for arm, wrist_camera in enumerate(wrist_cameras):
-            if arm >= len(robot_names):
-                continue
-            robot_name = robot_names[arm]
-            robot = robots[robot_name]
-            names = robot_body_names.get(robot_name, [])
-            tip_index = next(
-                (names.index(candidate) for candidate in (wrist_tip_name, "psm_tool_tip_link", "endo360_needle", "ecm_end_link") if candidate in names),
-                None,
-            )
-            if tip_index is None:
-                continue
-            rear_index = next(
-                (
-                    names.index(candidate)
-                    for candidate in ("psm_tool_roll_link", "psm_main_insertion_link_3", "endo360_link", "ecm_yaw_link")
-                    if candidate in names
-                ),
-                None,
-            )
-            positions = robot.data.body_pos_w[0, :, :3].detach().cpu().numpy().astype(np.float32)
-            tip = positions[tip_index]
-            shaft = tip - positions[rear_index] if rear_index is not None else np.asarray((0.0, 0.0, -1.0), dtype=np.float32)
-            shaft_norm = float(np.linalg.norm(shaft))
-            if shaft_norm < 1e-6:
-                continue
-            shaft /= shaft_norm
-            lateral = np.cross(shaft, world_up)
+        robot_name = robot_names[arm]
+        robot = robots[robot_name]
+        names = robot_body_names.get(robot_name, [])
+        tip_index = next(
+            (
+                names.index(candidate)
+                for candidate in (
+                    wrist_tip_name,
+                    "psm_tool_tip_link",
+                    "endo360_needle",
+                    "ecm_end_link",
+                )
+                if candidate in names
+            ),
+            None,
+        )
+        if tip_index is None:
+            return None
+        rear_index = next(
+            (
+                names.index(candidate)
+                for candidate in (
+                    "psm_tool_roll_link",
+                    "psm_main_insertion_link_3",
+                    "endo360_link",
+                    "ecm_yaw_link",
+                )
+                if candidate in names
+            ),
+            None,
+        )
+        positions = (
+            robot.data.body_pos_w[0, :, :3]
+            .detach()
+            .cpu()
+            .numpy()
+            .astype(np.float32)
+        )
+        tip = positions[tip_index]
+        shaft = (
+            tip - positions[rear_index]
+            if rear_index is not None
+            else np.asarray((0.0, 0.0, -1.0), dtype=np.float32)
+        )
+        shaft_norm = float(np.linalg.norm(shaft))
+        if shaft_norm < 1e-6:
+            return None
+        shaft /= shaft_norm
+        lateral = np.cross(shaft, world_up)
+        lateral_norm = float(np.linalg.norm(lateral))
+        if lateral_norm < 1e-6:
+            lateral = np.cross(shaft, fallback_axis)
             lateral_norm = float(np.linalg.norm(lateral))
-            if lateral_norm < 1e-6:
-                lateral = np.cross(shaft, fallback_axis)
-                lateral_norm = float(np.linalg.norm(lateral))
-            lateral /= max(lateral_norm, 1e-6)
-            camera_up = np.cross(lateral, shaft).astype(np.float32)
-            camera_up /= max(float(np.linalg.norm(camera_up)), 1e-6)
-            adjustment = (adjustments_by_name or {}).get(f"wrist_{arm + 1}", {})
-            adjustable = bool(adjustment.get("enabled", False))
-            zoom = float(adjustment.get("zoom", 1.0)) if adjustable else 1.0
-            mount_offset = (
-                lateral * float(adjustment.get("pan_x_m", 0.0))
-                + camera_up * float(adjustment.get("pan_y_m", 0.0))
-                if adjustable
-                else np.zeros(3, dtype=np.float32)
+        lateral /= max(lateral_norm, 1e-6)
+        camera_up = np.cross(lateral, shaft).astype(np.float32)
+        camera_up /= max(float(np.linalg.norm(camera_up)), 1e-6)
+        adjustment = adjustment or {}
+        adjustable = bool(adjustment.get("enabled", False))
+        zoom = float(adjustment.get("zoom", 1.0)) if adjustable else 1.0
+        mount_offset = (
+            lateral * float(adjustment.get("pan_x_m", 0.0))
+            + camera_up * float(adjustment.get("pan_y_m", 0.0))
+            if adjustable
+            else np.zeros(3, dtype=np.float32)
+        )
+        eye = (
+            tip
+            - shaft
+            * CANONICAL_PSM_GRIPPER_PROFILE.camera_backoff_m
+            * zoom
+            + lateral
+            * CANONICAL_PSM_GRIPPER_PROFILE.camera_lateral_offset_m
+            + mount_offset
+        )
+        aim = shaft
+        if adjustable:
+            aim = rotate_camera_vector(
+                aim,
+                camera_up,
+                float(adjustment.get("yaw_deg", 0.0)),
             )
-            eye = (
-                tip
-                - shaft * CANONICAL_PSM_GRIPPER_PROFILE.camera_backoff_m * zoom
-                + lateral * CANONICAL_PSM_GRIPPER_PROFILE.camera_lateral_offset_m
-                + mount_offset
+            aimed_right = np.cross(aim, camera_up).astype(np.float32)
+            aimed_right /= max(float(np.linalg.norm(aimed_right)), 1e-6)
+            aim = rotate_camera_vector(
+                aim,
+                aimed_right,
+                float(adjustment.get("pitch_deg", 0.0)),
             )
-            aim = shaft
-            if adjustable:
-                aim = rotate_camera_vector(
-                    aim,
-                    camera_up,
-                    float(adjustment.get("yaw_deg", 0.0)),
-                )
-                aimed_right = np.cross(aim, camera_up).astype(np.float32)
-                aimed_right /= max(float(np.linalg.norm(aimed_right)), 1e-6)
-                aim = rotate_camera_vector(
-                    aim,
-                    aimed_right,
-                    float(adjustment.get("pitch_deg", 0.0)),
-                )
-                aim /= max(float(np.linalg.norm(aim)), 1e-6)
-            target = eye + aim * CANONICAL_PSM_GRIPPER_PROFILE.camera_lookahead_m
+            aim /= max(float(np.linalg.norm(aim)), 1e-6)
+        target = (
+            eye
+            + aim * CANONICAL_PSM_GRIPPER_PROFILE.camera_lookahead_m
+        )
+        return eye, target
+
+    def set_shared_camera_pose(
+        camera_name: str,
+        eye: np.ndarray,
+        target: np.ndarray,
+    ) -> None:
+        """Move the shared RTX sensor only when its physical pose changed."""
+        cached_eye = shared_camera_pose_cache["eye"]
+        cached_target = shared_camera_pose_cache["target"]
+        unchanged = (
+            shared_camera_pose_cache["name"] == camera_name
+            and cached_eye is not None
+            and cached_target is not None
+            and float(np.max(np.abs(cached_eye - eye))) < 1e-5
+            and float(np.max(np.abs(cached_target - target))) < 1e-5
+        )
+        if unchanged:
+            return
+        camera.set_world_poses_from_view(
+            torch.tensor([eye.tolist()], device=camera.device),
+            torch.tensor([target.tolist()], device=camera.device),
+        )
+        shared_camera_pose_cache["name"] = camera_name
+        shared_camera_pose_cache["eye"] = eye.copy()
+        shared_camera_pose_cache["target"] = target.copy()
+
+    def update_wrist_camera_poses(
+        adjustments_by_name: dict[str, dict[str, float | bool | str]] | None = None,
+        active_camera_name: str = "endoscope_left",
+    ) -> None:
+        """Keep native or shared render sensors on their physical mounts."""
+        if shared_camera_renderer:
+            if not active_camera_name.startswith("wrist_"):
+                return
+            try:
+                arm = int(active_camera_name.split("_", 1)[1]) - 1
+            except (ValueError, IndexError):
+                return
+            pose = wrist_camera_pose(
+                arm,
+                (adjustments_by_name or {}).get(active_camera_name, {}),
+            )
+            if pose is None:
+                return
+            eye, target = pose
+            set_shared_camera_pose(
+                active_camera_name,
+                eye,
+                target,
+            )
+            return
+        for arm, wrist_camera in enumerate(wrist_cameras):
+            pose = wrist_camera_pose(
+                arm,
+                (adjustments_by_name or {}).get(f"wrist_{arm + 1}", {}),
+            )
+            if pose is None:
+                continue
+            eye, target = pose
             wrist_camera.set_world_poses_from_view(
                 torch.tensor([eye.tolist()], device=wrist_camera.device),
                 torch.tensor([target.tolist()], device=wrist_camera.device),
@@ -4679,37 +4905,9 @@ def main() -> None:
                 continue
         return max(observed, default=0.0)
 
-    def filtered_suture_contact_force(arm: int) -> float:
-        """Return only native jaw force whose partner is the DrAnmar suture."""
-
-        observed: list[float] = []
-        for jaw_index in (1, 2):
-            sensor = contact_sensors.get(
-                f"gripper_contact_{arm + 1}_jaw_{jaw_index}"
-            )
-            if sensor is None:
-                continue
-            try:
-                forces = sensor.data.force_matrix_w
-                if forces is None:
-                    continue
-                observed.append(
-                    float(
-                        torch.linalg.vector_norm(
-                            forces[0].reshape(-1, 3),
-                            dim=-1,
-                        )
-                        .max()
-                        .detach()
-                        .cpu()
-                        .item()
-                    )
-                )
-            except (AttributeError, IndexError, RuntimeError):
-                continue
-        return max(observed, default=0.0)
-
     def suture_segment_positions() -> np.ndarray:
+        if suture_segment_view is None:
+            return np.empty((0, 3), dtype=np.float64)
         transforms = (
             suture_segment_view.get_transforms()
             .detach()
@@ -4717,7 +4915,10 @@ def main() -> None:
             .numpy()
             .astype(np.float64)
         )
-        if transforms.shape != (360, 7) or not np.isfinite(transforms).all():
+        if (
+            transforms.shape != (suture_segment_count, 7)
+            or not np.isfinite(transforms).all()
+        ):
             finite_rows = (
                 int(np.isfinite(transforms).all(axis=1).sum())
                 if transforms.ndim == 2 and transforms.shape[1] == 7
@@ -4733,16 +4934,203 @@ def main() -> None:
             )
             raise RuntimeError(
                 "The Dr.Anmar live suture tensor state is non-finite or incomplete: "
-                f"shape={transforms.shape}, finite_rows={finite_rows}/360, "
+                f"shape={transforms.shape}, "
+                f"finite_rows={finite_rows}/{suture_segment_count}, "
                 f"first_invalid_row={first_invalid_row}"
             )
         return transforms[:, :3]
 
+    def disabled_suture_curve_update(
+        _world_positions: np.ndarray,
+    ) -> None:
+        return
+
+    update_realtime_suture_curve = disabled_suture_curve_update
+    if dr_anmar_needle_enabled:
+        # Present the native PhysX strand to RTX as one dynamic curve. Drawing
+        # one detailed mesh per physical segment forces Hydra to synchronize
+        # every moving visual prim on every camera frame. The curve is visual
+        # only and retains the authored 0.25 mm physical diameter.
+        realtime_suture_curve = UsdGeom.BasisCurves.Define(
+            suture_stage,
+            f"{suture_root_path}/Suture/RealtimeVisual",
+        )
+        realtime_suture_curve.CreateTypeAttr(UsdGeom.Tokens.linear)
+        realtime_suture_curve.CreateWrapAttr(UsdGeom.Tokens.nonperiodic)
+        realtime_suture_curve.CreateCurveVertexCountsAttr(
+            Vt.IntArray([suture_segment_count])
+        )
+        realtime_suture_curve.CreateWidthsAttr(Vt.FloatArray([0.00025]))
+        realtime_suture_curve.SetWidthsInterpolation(
+            UsdGeom.Tokens.constant
+        )
+        realtime_suture_curve.CreateDisplayColorAttr(
+            Vt.Vec3fArray([Gf.Vec3f(0.86, 0.82, 0.72)])
+        )
+        realtime_suture_material = UsdShade.Material.Get(
+            suture_stage,
+            f"{suture_root_path}/Suture/Looks/SutureVisual",
+        )
+        if realtime_suture_material.GetPrim().IsValid():
+            UsdShade.MaterialBindingAPI.Apply(
+                realtime_suture_curve.GetPrim()
+            ).Bind(realtime_suture_material)
+        for segment_index in range(suture_segment_count):
+            segment_visual = suture_stage.GetPrimAtPath(
+                f"{suture_root_path}/Suture/Segments/"
+                f"S{segment_index:04d}/Visual"
+            )
+            if segment_visual.IsValid():
+                UsdGeom.Imageable(segment_visual).MakeInvisible()
+        suture_root_world_inverse = (
+            UsdGeom.Xformable(suture_root)
+            .ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+            .GetInverse()
+        )
+
+        def realtime_suture_local_points(
+            world_positions: np.ndarray,
+        ) -> list[Gf.Vec3d]:
+            return [
+                suture_root_world_inverse.Transform(
+                    Gf.Vec3d(
+                        float(point[0]),
+                        float(point[1]),
+                        float(point[2]),
+                    )
+                )
+                for point in world_positions
+            ]
+
+        initial_suture_world_positions = suture_segment_positions()
+        initial_suture_local_points = realtime_suture_local_points(
+            initial_suture_world_positions
+        )
+        realtime_suture_curve.CreatePointsAttr().Set(
+            Vt.Vec3fArray(
+                [
+                    Gf.Vec3f(
+                        float(point[0]),
+                        float(point[1]),
+                        float(point[2]),
+                    )
+                    for point in initial_suture_local_points
+                ]
+            )
+        )
+        initial_suture_local_array = np.asarray(
+            [
+                (float(point[0]), float(point[1]), float(point[2]))
+                for point in initial_suture_local_points
+            ],
+            dtype=np.float32,
+        )
+        suture_extent_padding_m = max(
+            0.25,
+            float(
+                np.linalg.norm(
+                    np.ptp(initial_suture_local_array, axis=0)
+                )
+            )
+            * 2.0,
+        )
+        realtime_suture_curve.CreateExtentAttr().Set(
+            Vt.Vec3fArray(
+                [
+                    Gf.Vec3f(
+                        *(
+                            initial_suture_local_array.min(axis=0)
+                            - suture_extent_padding_m
+                        ).tolist()
+                    ),
+                    Gf.Vec3f(
+                        *(
+                            initial_suture_local_array.max(axis=0)
+                            + suture_extent_padding_m
+                        ).tolist()
+                    ),
+                ]
+            )
+        )
+
+        # USDRT writes dynamic point data to NVIDIA Fabric. OpenUSD remains
+        # the asset authority while Hydra avoids a full stage invalidation.
+        from usdrt import Gf as RtGf
+        from usdrt import Rt as Rt
+        from usdrt import Sdf as RtSdf
+        from usdrt import Usd as RtUsd
+        from usdrt import Vt as RtVt
+
+        realtime_fabric_stage = RtUsd.Stage.Attach(
+            omni.usd.get_context().get_stage_id()
+        )
+        realtime_fabric_prim = realtime_fabric_stage.GetPrimAtPath(
+            RtSdf.Path(str(realtime_suture_curve.GetPath()))
+        )
+        if not realtime_fabric_prim:
+            raise RuntimeError(
+                "The real-time suture visual did not populate into Fabric"
+            )
+        initial_suture_world_array = np.asarray(
+            initial_suture_world_positions,
+            dtype=np.float32,
+        )
+        realtime_fabric_boundable = Rt.Boundable(
+            realtime_fabric_prim
+        )
+        realtime_fabric_boundable.CreateWorldExtentAttr().Set(
+            RtGf.Range3d(
+                RtGf.Vec3d(
+                    *(
+                        initial_suture_world_array.min(axis=0)
+                        - suture_extent_padding_m
+                    ).tolist()
+                ),
+                RtGf.Vec3d(
+                    *(
+                        initial_suture_world_array.max(axis=0)
+                        + suture_extent_padding_m
+                    ).tolist()
+                ),
+            )
+        )
+        realtime_fabric_points = realtime_fabric_prim.GetAttribute(
+            "points"
+        )
+        if not realtime_fabric_points:
+            raise RuntimeError(
+                "The real-time suture visual exposes no Fabric points"
+            )
+
+        def fabric_suture_curve_update(
+            world_positions: np.ndarray,
+        ) -> None:
+            local_points = realtime_suture_local_points(
+                world_positions
+            )
+            realtime_fabric_points.Set(
+                RtVt.Vec3fArray(
+                    [
+                        RtGf.Vec3f(
+                            float(point[0]),
+                            float(point[1]),
+                            float(point[2]),
+                        )
+                        for point in local_points
+                    ]
+                )
+            )
+
+        update_realtime_suture_curve = fabric_suture_curve_update
+        update_realtime_suture_curve(
+            initial_suture_world_positions
+        )
 
     def apply_endoscope_camera_view(
         selected_scenario: str,
         view_mode: str,
         adjustment: dict[str, float] | None = None,
+        active_camera_name: str = "endoscope_left",
     ) -> None:
         selected_eye, selected_target = scenario_camera_pose(camera_eye, camera_target, selected_scenario)
         base_mode = str((adjustment or {}).get("base_mode", "operative")) if view_mode == "free" else view_mode
@@ -4757,14 +5145,27 @@ def main() -> None:
                 float(adjustment.get("pan_x_m", 0.0)),
                 float(adjustment.get("pan_y_m", 0.0)),
             )
-        camera.set_world_poses_from_view(
-            torch.tensor([selected_eye.tolist()], device=camera.device),
-            torch.tensor([selected_target.tolist()], device=camera.device),
-        )
         right_offset = SCENARIO_NATIVE_PROFILES.get(selected_scenario, {}).get(
             "right_camera_offset_m", (0.0, 0.006, 0.0)
         )
         selected_right_eye = selected_eye + np.asarray(right_offset, dtype=np.float32)
+        primary_eye = (
+            selected_right_eye
+            if shared_camera_renderer
+            and active_camera_name == "endoscope_right"
+            else selected_eye
+        )
+        if shared_camera_renderer:
+            set_shared_camera_pose(
+                active_camera_name,
+                primary_eye,
+                selected_target,
+            )
+        else:
+            camera.set_world_poses_from_view(
+                torch.tensor([primary_eye.tolist()], device=camera.device),
+                torch.tensor([selected_target.tolist()], device=camera.device),
+            )
         if stereo_right_camera is not None:
             stereo_right_camera.set_world_poses_from_view(
                 torch.tensor([selected_right_eye.tolist()], device=stereo_right_camera.device),
@@ -4822,8 +5223,8 @@ def main() -> None:
 
     state = SharedState(
         task=args_cli.task,
-        camera_width=args_cli.camera_width,
-        camera_height=args_cli.camera_height,
+        camera_width=interactive_camera_width,
+        camera_height=interactive_camera_height,
         demo_dir=args_cli.demo_dir,
         action_dim=action_dim,
         arms=arms,
@@ -4863,6 +5264,19 @@ def main() -> None:
         ring_physics_ready=ring_physics_ready,
         strand_self_collision_ready=strand_self_collision_ready,
     )
+    state.simulation_profile = {
+        "scene_authority": "OpenUSD",
+        "simulation_authority": "Isaac Lab",
+        "physics_authority": "NVIDIA PhysX",
+        "device": str(env.unwrapped.device),
+        "physics_dt_s": float(env_cfg.sim.dt),
+        "action_decimation": int(env_cfg.decimation),
+        "render_interval_physics_steps": int(env_cfg.sim.render_interval),
+        "single_active_camera_renderer": shared_camera_renderer,
+        "suture_physics_lod": (
+            suture_physics_lod if dr_anmar_needle_enabled else None
+        ),
+    }
     state.camera_names = list(camera_sources)
     update_procedure_waypoint_marker(0, force=True)
     expert_controller = ExpertDemonstrationController(
@@ -4947,6 +5361,32 @@ def main() -> None:
     state.camera_frame_ids = {name: 0 for name in camera_sources}
     state.camera_subscribers = {name: 0 for name in camera_sources}
     state.camera_poll_last_seen_by_name = {name: 0.0 for name in camera_sources}
+
+    def active_logical_camera_name(now: float | None = None) -> str:
+        """Resolve the one doctor-selected view backed by the shared sensor."""
+        if not shared_camera_renderer:
+            return "endoscope_left"
+        now = time.monotonic() if now is None else now
+        with state.lock:
+            subscribed = [
+                name
+                for name, count in state.camera_subscribers.items()
+                if count > 0
+            ]
+            if subscribed:
+                return max(
+                    subscribed,
+                    key=lambda name: state.camera_poll_last_seen_by_name.get(
+                        name, 0.0
+                    ),
+                )
+            camera_name, last_seen = max(
+                state.camera_poll_last_seen_by_name.items(),
+                key=lambda item: item[1],
+                default=("endoscope_left", 0.0),
+            )
+        return camera_name if now - last_seen < 1.5 else "endoscope_left"
+
     jpeg_encoder = BoundedJpegEncoder(state)
     state.procedure_waypoints_total = len(room_waypoints)
     state.procedure_started_at = time.monotonic()
@@ -4976,19 +5416,23 @@ def main() -> None:
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
-        dr_anmar_needle_domain = apply_dr_anmar_needle_episode_domain(
-            suture_stage,
-            seed=selected_seed,
-            root_path=suture_root_path,
-        )
-        (
-            _suture_runtime_profile,
-            suture_runtime_domain_state[0],
-        ) = sample_suture_runtime_profile(
-            suture_profile,
-            selected_seed,
-        )
-        suture_last_sample_time[0] = time.monotonic()
+        dr_anmar_needle_domain: dict[str, Any] = {}
+        if dr_anmar_needle_enabled:
+            dr_anmar_needle_domain = (
+                apply_dr_anmar_needle_episode_domain(
+                    suture_stage,
+                    seed=selected_seed,
+                    root_path=suture_root_path,
+                )
+            )
+            (
+                _suture_runtime_profile,
+                suture_runtime_domain_state[0],
+            ) = sample_suture_runtime_profile(
+                suture_profile,
+                selected_seed,
+            )
+            suture_last_sample_time[0] = time.monotonic()
         if native_episode_domain:
             native_episode_domain["requested_reset_seed"] = selected_seed
             native_episode_domain["requires_scene_rebuild_for_new_material_domain"] = (
@@ -5047,16 +5491,27 @@ def main() -> None:
             state.native_telemetry = {}
             state.dr_anmar_needle_domain = dr_anmar_needle_domain
             state.upstream_task_success = False if _softmimicgen_task else None
+        selected_active_camera = active_logical_camera_name()
         with state.lock:
             selected_view_mode = state.camera_view_mode
-            selected_camera_adjustment = state.camera_adjustment()
+            selected_camera_adjustment = state.camera_adjustment(
+                selected_active_camera
+            )
             selected_wrist_camera_adjustments = {
                 name: state.camera_adjustment(name)
                 for name in state.camera_names
                 if name.startswith("wrist_")
             }
-        apply_endoscope_camera_view(selected_scenario, selected_view_mode, selected_camera_adjustment)
-        update_wrist_camera_poses(selected_wrist_camera_adjustments)
+        apply_endoscope_camera_view(
+            selected_scenario,
+            selected_view_mode,
+            selected_camera_adjustment,
+            selected_active_camera,
+        )
+        update_wrist_camera_poses(
+            selected_wrist_camera_adjustments,
+            selected_active_camera,
+        )
     task_slug = args_cli.task.lower().replace("isaac-", "").replace("-v0", "").replace("-", "_")
     existing = sorted(args_cli.demo_dir.glob(f"dr_anmar_{task_slug}_*.npz"), reverse=True)
     if existing:
@@ -5106,6 +5561,7 @@ def main() -> None:
     while simulation_app.is_running() and not stop_event.is_set():
         loop_started = time.monotonic()
         action_uses_upstream_softmimicgen_units = False
+        selected_active_camera = active_logical_camera_name(loop_started)
         with state.lock:
             reset_requested = state.reset_requested
             state.reset_requested = False
@@ -5119,7 +5575,10 @@ def main() -> None:
             scenario_seed = state.scenario_seed
             camera_view_request = state.camera_view_request
             state.camera_view_request = None
-            camera_adjustment = state.camera_adjustment()
+            selected_camera_view_mode = state.camera_view_mode
+            camera_adjustment = state.camera_adjustment(
+                selected_active_camera
+            )
             wrist_camera_adjustments = {
                 name: state.camera_adjustment(name)
                 for name in state.camera_names
@@ -5219,9 +5678,23 @@ def main() -> None:
                 if state.recording:
                     state.record_request = "stop"
 
-        if camera_view_request is not None and not reset_requested:
+        if (
+            not reset_requested
+            and (
+                camera_view_request is not None
+                or (
+                    shared_camera_renderer
+                    and selected_active_camera.startswith("endoscope_")
+                )
+            )
+        ):
             with torch.inference_mode():
-                apply_endoscope_camera_view(scenario_id, camera_view_request, camera_adjustment)
+                apply_endoscope_camera_view(
+                    scenario_id,
+                    camera_view_request or selected_camera_view_mode,
+                    camera_adjustment,
+                    selected_active_camera,
+                )
 
         if record_request == "start":
             if capture_spool is not None:
@@ -5552,10 +6025,32 @@ def main() -> None:
         # Dr.Anmar forwards the requested action unchanged. PhysX/Isaac Lab own
         # contacts, limits, constraints and the resulting physical state.
         actions = torch.from_numpy(action_np).to(device=env.unwrapped.device).reshape(1, -1)
+        env_step_started = time.perf_counter()
         with torch.inference_mode():
             write_native_attachment()
             _observations, reward, terminated, truncated, info = env.step(actions)
-            update_wrist_camera_poses(wrist_camera_adjustments)
+            env_step_finished = time.perf_counter()
+            with state.lock:
+                suture_visual_active = (
+                    state.recording
+                    or any(
+                        count > 0
+                        for count in state.camera_subscribers.values()
+                    )
+                    or time.monotonic() - state.camera_poll_last_seen < 1.0
+                )
+            if suture_visual_active:
+                curve_update_started = time.perf_counter()
+                update_realtime_suture_curve(suture_segment_positions())
+                curve_update_ms = (
+                    time.perf_counter() - curve_update_started
+                ) * 1000.0
+            else:
+                curve_update_ms = 0.0
+            update_wrist_camera_poses(
+                wrist_camera_adjustments,
+                selected_active_camera,
+            )
             if state.native_psm_policy_contract:
                 native_policy_tensor, native_target_tensor, native_robot_names = canonical_policy_contract(env)
                 if native_robot_names != tuple(state.native_psm_robot_names):
@@ -5565,6 +6060,16 @@ def main() -> None:
             else:
                 native_policy_action_np = None
                 native_joint_targets_np = None
+        with state.lock:
+            state.performance_timings_ms.update(
+                {
+                    "env_step": round(
+                        (env_step_finished - env_step_started) * 1000.0,
+                        3,
+                    ),
+                    "suture_curve": round(curve_update_ms, 3),
+                }
+            )
         environment_reward = scalar_value(reward)
         environment_terminated = bool(scalar_value(terminated))
         environment_truncated = bool(scalar_value(truncated))
@@ -5763,10 +6268,16 @@ def main() -> None:
                 0.0,
                 suture_sample_time - suture_last_sample_time[0],
             )
-            suture_sample_period_s = float(
-                suture_profile["runtime_detection"]["sample_period_s"]
+            suture_sample_period_s = max(
+                float(suture_profile["runtime_detection"]["sample_period_s"]),
+                float(procedure.get("suture_telemetry_period_s", 0.0))
+                if not is_recording
+                else 0.0,
             )
-            if suture_dt_s >= suture_sample_period_s:
+            if (
+                dr_anmar_needle_enabled
+                and suture_dt_s >= suture_sample_period_s
+            ):
                 live_suture_positions = suture_segment_positions()
                 latest_suture_telemetry = {
                     "schema": "dr.anmar.native-suture-telemetry.v1",
@@ -5942,6 +6453,7 @@ def main() -> None:
         fps_steps += 1
         frame_interval = 0.04 if interactive_active else 0.20
         if camera.data.output.get("rgb") is not None and now - last_frame_time >= frame_interval:
+            camera_extract_started = time.perf_counter()
             camera_arrays: dict[str, np.ndarray] = {}
             dropout_profile = SCENARIO_NATIVE_PROFILES.get(scenario_id, {})
             dropout_period = int(dropout_profile.get("dropout_period_frames", 0))
@@ -5958,7 +6470,15 @@ def main() -> None:
                     for name, last_seen in state.camera_poll_last_seen_by_name.items()
                     if now - last_seen < 1.0
                 )
-            requested_cameras.add("endoscope_left")
+            if shared_camera_renderer:
+                # Every logical view is backed by the same physical RTX
+                # render product. Encode only its current mount; duplicating
+                # the same GPU tensor under multiple names wastes CPU/JPEG
+                # work and can publish a wrist view as the endoscope during
+                # a view switch.
+                requested_cameras = {selected_active_camera}
+            else:
+                requested_cameras.add("endoscope_left")
             for camera_name in requested_cameras:
                 sensor_camera = camera_sources.get(camera_name)
                 if sensor_camera is None:
@@ -6008,14 +6528,31 @@ def main() -> None:
                     if not state.semantic_labels:
                         with state.lock:
                             state.semantic_labels = camera_semantic_labels(camera)
-                for camera_name in ("endoscope_right", "wrist_1", "wrist_2"):
-                    sensor_camera = camera_sources.get(camera_name)
-                    sensor_rgb = sensor_camera.data.output.get("rgb") if sensor_camera is not None else None
-                    if sensor_rgb is not None:
-                        sensor_image = rgb_tensor_to_image(sensor_rgb[0], scenario_id, dropout_active).resize(
-                            (360, 240), Image.Resampling.BILINEAR
+                if not shared_camera_renderer:
+                    for camera_name in (
+                        "endoscope_right",
+                        "wrist_1",
+                        "wrist_2",
+                    ):
+                        sensor_camera = camera_sources.get(camera_name)
+                        sensor_rgb = (
+                            sensor_camera.data.output.get("rgb")
+                            if sensor_camera is not None
+                            else None
                         )
-                        vision_frame[f"{camera_name}_rgb"] = np.asarray(sensor_image, dtype=np.uint8)
+                        if sensor_rgb is not None:
+                            sensor_image = rgb_tensor_to_image(
+                                sensor_rgb[0],
+                                scenario_id,
+                                dropout_active,
+                            ).resize(
+                                (360, 240),
+                                Image.Resampling.BILINEAR,
+                            )
+                            vision_frame[f"{camera_name}_rgb"] = np.asarray(
+                                sensor_image,
+                                dtype=np.uint8,
+                            )
                 if capture_spool is not None:
                     capture_spool.append_vision(vision_frame)
                 with state.lock:
@@ -6034,6 +6571,11 @@ def main() -> None:
                 last_vision_sample_time = now
             frame_count += 1
             last_frame_time = now
+            with state.lock:
+                state.performance_timings_ms["camera_extract_submit"] = round(
+                    (time.perf_counter() - camera_extract_started) * 1000.0,
+                    3,
+                )
         if now - last_fps_time >= 1.0:
             with state.lock:
                 state.sim_fps = fps_steps / (now - last_fps_time)

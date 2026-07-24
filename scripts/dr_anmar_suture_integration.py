@@ -25,6 +25,13 @@ SUTURE_NORMAL_ROUGHNESS_TEXTURE_PATH = (
 SUTURE_PHYSICS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_physics.usda"
 SUTURE_PHYSX_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_physx.usda"
 DR_ANMAR_NEEDLE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle.usda"
+DR_ANMAR_NEEDLE_INTERACTIVE_ASSET_PATH = (
+    DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_interactive.usda"
+)
+DR_ANMAR_NEEDLE_INTERACTIVE_SOURCE_PATH = (
+    DR_ANMAR_ASSET_ROOT / "needle/interactive/DrAnmarNeedleInteractive.usda"
+)
+DR_ANMAR_INTERACTIVE_SUTURE_SEGMENT_COUNT = 90
 DR_ANMAR_NEEDLE_BASE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_base.usda"
 DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_geometry.usd"
 DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_materials.usda"
@@ -67,6 +74,8 @@ def validate_source_assets() -> None:
             SUTURE_PHYSICS_ASSET_PATH,
             SUTURE_PHYSX_ASSET_PATH,
             DR_ANMAR_NEEDLE_ASSET_PATH,
+            DR_ANMAR_NEEDLE_INTERACTIVE_ASSET_PATH,
+            DR_ANMAR_NEEDLE_INTERACTIVE_SOURCE_PATH,
             DR_ANMAR_NEEDLE_BASE_ASSET_PATH,
             DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH,
             DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH,
@@ -84,25 +93,41 @@ def configure_dr_anmar_needle(
     *,
     asset_base_cfg_type: Any,
     usd_file_cfg_type: Any,
+    physics_lod: str = "full_360",
 ) -> dict[str, Any]:
     """Add the composed instrument without replacing any task-owned entity."""
 
     validate_source_assets()
     if getattr(scene_cfg, "dr_anmar_needle", None) is not None:
         raise RuntimeError(f"{DR_ANMAR_NEEDLE_NAME} was configured twice")
+    if physics_lod not in {"interactive_90", "full_360"}:
+        raise ValueError(f"Unsupported Dr.Anmar suture physics LOD: {physics_lod}")
+    runtime_asset = (
+        DR_ANMAR_NEEDLE_INTERACTIVE_ASSET_PATH
+        if physics_lod == "interactive_90"
+        else DR_ANMAR_NEEDLE_ASSET_PATH
+    )
     scene_cfg.dr_anmar_needle = asset_base_cfg_type(
         prim_path=f"{{ENV_REGEX_NS}}/{DR_ANMAR_NEEDLE_ROOT_PRIM}",
         init_state=asset_base_cfg_type.InitialStateCfg(
             pos=SUTURE_LANDING_POSITION_M,
             rot=SUTURE_LANDING_ROTATION_WXYZ,
         ),
-        spawn=usd_file_cfg_type(usd_path=str(DR_ANMAR_NEEDLE_ASSET_PATH)),
+        spawn=usd_file_cfg_type(usd_path=str(runtime_asset)),
     )
     return {
         "name": DR_ANMAR_NEEDLE_NAME,
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID,
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION,
         "asset": str(DR_ANMAR_NEEDLE_ASSET_PATH),
+        "runtime_asset": str(runtime_asset),
+        "physics_lod": physics_lod,
+        "physics_lod_changes_discretization": physics_lod == "interactive_90",
+        "segment_count": (
+            DR_ANMAR_INTERACTIVE_SUTURE_SEGMENT_COUNT
+            if physics_lod == "interactive_90"
+            else 360
+        ),
         "suture_entry_layer": str(SUTURE_ASSET_PATH),
         "suture_base_layer": str(SUTURE_BASE_ASSET_PATH),
         "suture_geometry_layer": str(SUTURE_GEOMETRY_ASSET_PATH),

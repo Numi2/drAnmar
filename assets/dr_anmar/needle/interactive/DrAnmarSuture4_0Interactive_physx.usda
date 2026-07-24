@@ -1,0 +1,1854 @@
+#usda 1.0
+(
+    subLayers = [
+        @./DrAnmarSuture4_0Interactive_physics.usda@
+    ]
+    defaultPrim = "DrAnmarSuture4_0"
+    doc = "Dr.Anmar 4-0 suture PhysX-specific CCD, damping, solver, contact-offset, and combine-mode layer."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "DrAnmarSuture4_0"
+{
+    over "Materials"
+    {
+        over "SutureMaterial" (
+            prepend apiSchemas = ["PhysxMaterialAPI"]
+        )
+        {
+            uniform token physxMaterial:frictionCombineMode = "max"
+        }
+
+        over "SwageSteel" (
+            prepend apiSchemas = ["PhysxMaterialAPI"]
+        )
+        {
+            uniform token physxMaterial:frictionCombineMode = "max"
+        }
+    }
+
+    over "NeedleInterface" (
+        prepend apiSchemas = ["PhysxRigidBodyAPI"]
+    )
+    {
+        bool physxRigidBody:enableCCD = true
+        bool physxRigidBody:enableSpeculativeCCD = true
+        float physxRigidBody:linearDamping = 0.015
+        float physxRigidBody:angularDamping = 0.025
+        int physxRigidBody:solverPositionIterationCount = 16
+        int physxRigidBody:solverVelocityIterationCount = 4
+        float physxRigidBody:maxDepenetrationVelocity = 0.25
+        over "Collision" (
+            prepend apiSchemas = ["PhysxCollisionAPI"]
+        )
+        {
+            float physxCollision:contactOffset = 1.7e-05
+            float physxCollision:restOffset = 0
+        }
+    }
+
+    over "Segments"
+    {
+        over "S0000" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.7e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0001" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0002" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0003" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0004" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0005" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0006" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0007" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0008" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0009" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0010" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0011" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0012" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0013" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0014" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0015" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0016" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0017" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0018" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0019" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0020" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0021" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0022" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0023" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0024" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0025" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0026" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0027" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0028" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0029" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0030" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0031" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0032" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0033" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0034" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0035" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0036" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0037" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0038" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0039" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0040" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0041" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0042" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0043" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0044" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0045" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0046" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0047" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0048" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0049" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0050" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0051" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0052" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0053" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0054" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0055" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0056" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0057" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0058" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0059" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0060" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0061" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0062" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0063" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0064" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0065" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0066" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0067" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0068" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0069" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0070" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0071" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0072" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0073" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0074" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0075" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0076" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0077" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0078" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0079" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0080" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0081" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0082" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0083" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0084" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0085" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0086" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0087" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0088" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+
+        over "S0089" (
+            prepend apiSchemas = ["PhysxRigidBodyAPI"]
+        )
+        {
+            bool physxRigidBody:enableCCD = true
+            bool physxRigidBody:enableSpeculativeCCD = true
+            float physxRigidBody:linearDamping = 0.015
+            float physxRigidBody:angularDamping = 0.025
+            int physxRigidBody:solverPositionIterationCount = 16
+            int physxRigidBody:solverVelocityIterationCount = 4
+            float physxRigidBody:maxDepenetrationVelocity = 0.25
+            over "Collision" (
+                prepend apiSchemas = ["PhysxCollisionAPI"]
+            )
+            {
+                float physxCollision:contactOffset = 1.25e-05
+                float physxCollision:restOffset = 0
+            }
+        }
+    }
+}

@@ -1,0 +1,21 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarNeedle"
+    doc = "Interactive Dr.Anmar needle composition. The native 90-segment PhysX strand preserves the authored dimensions and is rendered at runtime as one tensor-driven BasisCurves strand."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarNeedle" (
+    prepend references = @./interactive/DrAnmarNeedleInteractive.usda@
+)
+{
+    over "Suture"
+    {
+        over "Segments"
+        {
+            token visibility = "invisible"
+        }
+    }
+}
