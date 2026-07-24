@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Runtime state and OpenUSD updates for the Dr.Anmar surgical suture.
 
-PhysX owns motion, contact, joint constraints, and breakage.  This controller
-only updates physical joint parameters from observed operative events that a
-static USD cannot remember: wet relaxation time, knot compaction, needle-driver
-crush, and abrasion work.
+The selected dynamics backend owns motion, contact, constraints, and breakage.
+This controller maintains operative history that a static USD cannot remember:
+wet relaxation time, knot compaction, needle-driver crush, and abrasion work.
+Its stage-update path targets the compatible PhysX payload; the Warp backend
+consumes the same profile and per-segment strength fractions directly.
 """
 
 from __future__ import annotations

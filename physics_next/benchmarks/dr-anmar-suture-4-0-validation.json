@@ -1416,6 +1416,19 @@
       "measured": 0.00025,
       "passed": true
     },
+    "warp_segment_capsule_knotting_backend": {
+      "expected": "current Warp GPU kernel backend and passing Gilgamesh qualification",
+      "measured": {
+        "backend": "dr-anmar-warp-xpbd-segment-capsule-v1",
+        "device": "cuda:0",
+        "engine": "NVIDIA Warp",
+        "missing_implementation_tokens": [],
+        "pair_count": 63903,
+        "qualification_passed": true,
+        "warp_version": "1.15.0"
+      },
+      "passed": true
+    },
     "wet_stress_relaxation": {
       "expected": "largest early loss with configured asymptote",
       "measured": {

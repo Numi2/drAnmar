@@ -90,6 +90,11 @@ DEFAULT_NEEDLE_PHYSICS = DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH
 DEFAULT_NEEDLE_PHYSX = DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH
 DEFAULT_WORKSTATION = REPOSITORY_ROOT / "scripts/dr_anmar_workstation.py"
 DEFAULT_NATIVE_PROBE = REPOSITORY_ROOT / "scripts/dr_anmar_suture_physics_probe.py"
+DEFAULT_WARP_BACKEND = REPOSITORY_ROOT / "scripts/dr_anmar_warp_suture.py"
+DEFAULT_WARP_REPORT = (
+    REPOSITORY_ROOT
+    / "physics_next/benchmarks/dr-anmar-warp-suture-qualification.json"
+)
 DEFAULT_INTEGRATION = REPOSITORY_ROOT / "scripts/dr_anmar_suture_integration.py"
 
 
@@ -509,7 +514,7 @@ def add_suture_layer_checks(
         and model_identity["composition_path_policy"] == "explicit_anchored_relative_asset_paths"
         and 'prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]' in base_text
         and 'string name = "DrAnmarSuture4_0"' in base_text
-        and 'string version = "2.7.0"' in base_text
+        and 'string version = "2.8.0"' in base_text
         and 'displayName = "DrAnmar 4-0 Braided Suture"' in base_text
         and 'kind = "component"' in base_text
         and 'token[] semantics:labels:wikidata_qcode = ["Q4948587"]' in base_text
@@ -520,7 +525,7 @@ def add_suture_layer_checks(
     check(
         checks,
         "suture_asset_structure_source_ownership",
-        profile["version"] == "2.7.0"
+        profile["version"] == "2.8.0"
         and layer_contract["entry_layer"] == "DrAnmarSuture4_0.usda"
         and layer_contract["base_layer"] == "DrAnmarSuture4_0_base.usda"
         and layer_contract["geometry_layer"] == "DrAnmarSuture4_0_geometry.usd"
@@ -1914,6 +1919,8 @@ def validate(
         needle_mesh,
     )
     native_probe_text = DEFAULT_NATIVE_PROBE.read_text(encoding="utf-8")
+    warp_backend_text = DEFAULT_WARP_BACKEND.read_text(encoding="utf-8")
+    warp_report = json.loads(DEFAULT_WARP_REPORT.read_text(encoding="utf-8"))
     integration_text = DEFAULT_INTEGRATION.read_text(encoding="utf-8")
     asset_text = "\n".join(
         (
@@ -3614,6 +3621,64 @@ def validate(
             "naive_pairs": naive_pairs,
         },
         "edge-distance contact with deterministic spatial pruning",
+    )
+    dynamics_backends = profile["dynamics_backends"]
+    warp_contract = dynamics_backends["high_fidelity_knotting"]
+    required_warp_tokens = (
+        'BACKEND_ID = "dr-anmar-warp-xpbd-segment-capsule-v1"',
+        "def _project_stretch_global(",
+        "def _solve_contact_pairs(",
+        "def _gather_contact_corrections(",
+        "def _update_segment_contact_history(",
+        "def _evaluate_breakage(",
+        "def _evaluate_attachment_failure(",
+        "def set_needle_connection(",
+        "def set_instrument_grasp(",
+        "def segment_transforms(",
+        "maximum_displacement = self.config.diameter_m * 0.45",
+    )
+    missing_warp_tokens = [
+        token for token in required_warp_tokens if token not in warp_backend_text
+    ]
+    warp_checks = warp_report.get("checks", {})
+    check(
+        checks,
+        "warp_segment_capsule_knotting_backend",
+        dynamics_backends["default_openusd_runtime"] == "physx"
+        and warp_contract["engine"] == "NVIDIA Warp"
+        and warp_contract["minimum_tested_version"] == "1.15.0"
+        and warp_contract["implementation"] == "scripts/dr_anmar_warp_suture.py"
+        and warp_contract["device_requirement"] == "CUDA"
+        and warp_contract["determinism"]
+        == "fixed_pair_order_and_gather_without_floating_point_atomics"
+        and not missing_warp_tokens
+        and warp_report["schema"] == "dr.anmar.warp-suture-qualification.v1"
+        and warp_report["backend"] == warp_contract["id"]
+        and warp_report["profile_version"] == profile["version"]
+        and warp_report["warp_version"] == "1.15.0"
+        and warp_report["device"] == "cuda:0"
+        and warp_report["passed"] is True
+        and all(
+            warp_checks[name]["passed"]
+            for name in (
+                "deterministic_replay",
+                "straight_strand_stability",
+                "overhand_knot_compaction",
+                "instrument_grasp_transfer",
+                "needle_swage_pullout",
+                "excessive_load_breakage",
+            )
+        ),
+        {
+            "backend": warp_contract["id"],
+            "engine": warp_contract["engine"],
+            "device": warp_report.get("device"),
+            "warp_version": warp_report.get("warp_version"),
+            "pair_count": warp_report.get("pair_policy", {}).get("pair_count"),
+            "missing_implementation_tokens": missing_warp_tokens,
+            "qualification_passed": warp_report.get("passed"),
+        },
+        "current Warp GPU kernel backend and passing Gilgamesh qualification",
     )
     evidence = profile.get("evidence", [])
     check(

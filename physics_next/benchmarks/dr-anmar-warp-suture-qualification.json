@@ -1,0 +1,77 @@
+{
+  "backend": "dr-anmar-warp-xpbd-segment-capsule-v1",
+  "checks": {
+    "deterministic_replay": {
+      "maximum_absolute_difference_m": 0.0,
+      "passed": true
+    },
+    "excessive_load_breakage": {
+      "broken_segment_count": 1,
+      "first_break_global_extension_fraction": 0.22013333333333335,
+      "passed": true,
+      "peak_measured_segment_force_n": 22.469741821289062,
+      "target_failure_force_n": 22.5
+    },
+    "instrument_grasp_transfer": {
+      "broken_segment_count": 0,
+      "first_instrument_tracking_error_m": 0.0,
+      "grasp_released": true,
+      "needle_attachment_retained": true,
+      "passed": true,
+      "second_instrument_tracking_error_m": 0.0
+    },
+    "needle_swage_pullout": {
+      "needle_attachment_released": true,
+      "passed": true,
+      "pullout_force_n": 18.026561737060547,
+      "pullout_global_extension_fraction": 0.12384615384615386,
+      "suture_broken_segment_count": 0,
+      "target_pullout_force_n": 18.0
+    },
+    "overhand_knot_compaction": {
+      "broken_segment_count": 0,
+      "compacted_pair_count": 9,
+      "compacted_segment_count": 10,
+      "minimum_active_centerline_distance_m": 0.00024610417312942445,
+      "minimum_knot_strength_fraction": 0.6499999761581421,
+      "passed": true,
+      "penetrating_pair_count": 8,
+      "simulated_seconds": 0.5,
+      "wall_seconds": 4.015739160997327,
+      "world_steps_per_second": 29.88241894929188
+    },
+    "straight_strand_stability": {
+      "broken_segment_count": 0,
+      "configuration": "needle_attached_vertical_hanging_strand",
+      "maximum_quaternion_norm_error": 5.960464477539063e-08,
+      "maximum_segment_strain": 0.00010633468627929688,
+      "passed": true,
+      "penetrating_pair_count": 0,
+      "usd_segment_transform_count": 360
+    }
+  },
+  "clinical_validation": false,
+  "device": "cuda:0",
+  "note": "GPU engineering qualification only; physical bench, convergence, sim-to-real, and clinical validation remain required.",
+  "pair_policy": {
+    "correction_gather": "fixed_order_csr_without_float_atomics",
+    "excluded_index_distance": 2,
+    "kind": "exhaustive_nonlocal_segment_capsules",
+    "pair_count": 63903,
+    "segment_count": 360
+  },
+  "passed": true,
+  "profile_id": "dr-anmar-suture-4-0-braided-v1",
+  "profile_version": "2.8.0",
+  "schema": "dr.anmar.warp-suture-qualification.v1",
+  "solver_policy": {
+    "failure": "xpbd_constraint_force_or_failure_strain",
+    "friction": "coulomb_tangential_position_limit",
+    "internal_substeps": 4,
+    "maximum_free_displacement_per_substep_diameters": 0.45,
+    "method": "nonlinear_axial_xpbd_plus_discrete_bending",
+    "self_contact": "exact_segment_segment_closest_points"
+  },
+  "wall_seconds": 27.673907024029177,
+  "warp_version": "1.15.0"
+}

@@ -2,7 +2,7 @@
   "schema": "dr.anmar.suture-profile.v1",
   "id": "dr-anmar-suture-4-0-braided-v1",
   "name": "Dr.Anmar 4-0 braided surgical suture",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "purpose": "Research-grade physical suture asset for operating-room simulation",
   "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
   "clinical_validation": false,
@@ -82,6 +82,28 @@
     ],
     "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
     "content_isolation": "entry_contains_only_interface_composition_base_contains_identity_hierarchy_and_geometry_material_composition_geometry_contains_no_material_or_physics_payload_and_materials_contains_no_physics_payload"
+  },
+  "dynamics_backends": {
+    "default_openusd_runtime": "physx",
+    "high_fidelity_knotting": {
+      "id": "dr-anmar-warp-xpbd-segment-capsule-v1",
+      "engine": "NVIDIA Warp",
+      "minimum_tested_version": "1.15.0",
+      "implementation": "scripts/dr_anmar_warp_suture.py",
+      "launcher": "dr_anmar_suture_warp.sh",
+      "device_requirement": "CUDA",
+      "state_mapping": "one_particle_per_segment_boundary_with_authored_USD_centerline_and_material_profile_retained_as_the_asset_contract",
+      "axial_solver": "nondimensionalized_global_tridiagonal_nonlinear_XPBD",
+      "bending_solver": "discrete_three_particle_curvature_XPBD",
+      "self_contact": "exhaustive_nonlocal_segment_capsule_closest_point_constraints_with_fixed_order_CSR_gather",
+      "friction": "low_load_seeded_Coulomb_tangential_position_limit_pending_load_speed_wet_calibration",
+      "topology_protection": "maximum_free_displacement_below_half_a_diameter_per_internal_substep",
+      "attachment": "transferable_kinematic_particle_grasps_and_breakable_DrAnmar_Needle_swage_exit_target",
+      "failure": "single_localized_weakest_constraint_failure_from_the_profile_force_elongation_envelope",
+      "determinism": "fixed_pair_order_and_gather_without_floating_point_atomics",
+      "qualification_report": "physics_next/benchmarks/dr-anmar-warp-suture-qualification.json",
+      "status": "gpu_engineering_qualified_on_gilgamesh_pending_physical_convergence_and_clinical_validation"
+    }
   },
   "geometry": {
     "usp_size": "4-0",
@@ -404,7 +426,7 @@
         "id": "numerical_convergence",
         "risk": "segment length, time step, contact offsets and solver iterations affect knotting and breakage",
         "mitigation": "require segment, time-step and solver convergence below five percent on promoted metrics",
-        "status": "native_gpu_probe_required"
+        "status": "warp_gpu_probe_passed_convergence_sweep_pending"
       },
       {
         "id": "visual_perception",
@@ -424,8 +446,8 @@
       },
       {
         "id": "native_physics_stability",
-        "evidence": "finite state, convergence, knot, transfer, breakage and deterministic replay sweeps",
-        "status": "blocked_pending_native_gpu_probe"
+        "evidence": "physics_next/benchmarks/dr-anmar-warp-suture-qualification.json",
+        "status": "warp_gpu_engineering_probe_passed_pending_resolution_timestep_and_physical_validation"
       },
       {
         "id": "straight_and_knotted_mechanics",
