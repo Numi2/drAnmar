@@ -20,6 +20,10 @@ Dr.Anmar's webcam controller is a simulation-only master-pose input for the two 
   larger deliberate movements receive more reach without a mode change.
 - The second hand must first appear open and then deliberately curl before it
   is admitted. Visibility alone never activates Instrument 2.
+- The webcam launcher lives on the operative camera rather than inside the
+  keyboard-control drawer. Its window floats independently above the room,
+  can be dragged by its title bar, resized from the lower corner, and restores
+  its last position and size. `Fit` returns it to a safe visible default.
 
 Calibration records a robust median from 24 stable samples for neutral palm scale and normalized closed/open
 thumb–index spacing per browser camera in `localStorage`. Median absolute deviation rejects a moving hand rather than

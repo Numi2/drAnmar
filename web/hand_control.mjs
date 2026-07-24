@@ -425,9 +425,12 @@ function numericCalibration(calibration) {
 function createInterface() {
   const style = document.createElement("style");
   style.textContent = `
-    .hand-control-launch{background:#123440!important;border-color:#2cd2e8!important;color:#eaffff!important}
-    .hand-control-launch.state-active{background:#2cd2e8!important;color:#031014!important}
-    .hand-panel{box-sizing:border-box;container-type:inline-size;position:fixed;z-index:70;right:18px;bottom:18px;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 12px));min-height:min(260px,calc(100vh - 12px));max-width:calc(100vw - 12px);max-height:min(560px,calc(100vh - 24px));resize:both;overflow:auto;border:1px solid #2f5968;border-radius:14px;background:#07151df2;color:#e9f8fa;box-shadow:0 18px 52px #000b;backdrop-filter:blur(16px);padding:12px}
+    .hand-control-dock{position:absolute;z-index:32;left:12px;top:12px;display:flex;align-items:center;pointer-events:auto}
+    .hand-control-launch{display:flex;align-items:center;gap:7px;min-height:34px!important;padding:0 10px!important;border:1px solid #52747d!important;border-radius:9px!important;background:#101a1fdd!important;color:#e6eef0!important;box-shadow:0 8px 26px #0008!important;backdrop-filter:blur(10px);font-size:10px!important}
+    .hand-control-launch:hover{border-color:#8bc6cd!important;background:#1c2a30ee!important}.hand-control-launch .hand-camera-dot{width:7px;height:7px;border-radius:50%;background:#718087;box-shadow:0 0 0 3px #71808722}
+    .hand-control-launch.state-active{border-color:#79c8a2!important;background:#162922ee!important;color:#effff7!important}.hand-control-launch.state-active .hand-camera-dot{background:#79c8a2;box-shadow:0 0 10px #79c8a299}
+    .hand-control-launch kbd{height:18px;min-width:30px;padding:0 4px;font-size:8px}
+    .hand-panel{box-sizing:border-box;container-type:inline-size;position:fixed;z-index:70;right:18px;bottom:18px;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 12px));min-height:min(260px,calc(100vh - 12px));max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);resize:both;overflow:auto;border:1px solid #2f5968;border-radius:14px;background:#07151df2;color:#e9f8fa;box-shadow:0 18px 52px #000b;backdrop-filter:blur(16px);padding:12px}
     .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:8px;cursor:grab;touch-action:none;user-select:none}.hand-head.dragging{cursor:grabbing}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:11px}.hand-head .spacer{flex:1}.hand-head-actions{display:flex;gap:5px}.hand-head button{min-height:32px;padding:5px 8px;cursor:pointer;touch-action:auto;font-size:10px}.hand-head button.engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
     .hand-video-wrap{position:relative;margin-top:12px;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:#020608;border:1px solid #24404d}.hand-video-wrap video,.hand-video-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.hand-video-wrap canvas{transform:none;pointer-events:none}
     .hand-banner{box-sizing:border-box;position:absolute;left:10px;top:10px;max-width:62%;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px/1.35 ui-monospace,SFMono-Regular;white-space:normal}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
@@ -436,26 +439,34 @@ function createInterface() {
     .hand-cards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.hand-card{padding:8px;border:1px solid #24404d;border-radius:9px;background:#091920}.hand-card.inactive{opacity:.62}.hand-card.quality-hold{border-color:#82513d;background:#1b1412}.hand-card header{height:auto;padding:0;border:0;background:none}.hand-card b{font-size:11px}.hand-card .track{margin-left:auto;color:#ff8a90;font:800 8px ui-monospace}.hand-card.tracked .track{color:#42e49b}.hand-card dl{display:grid;grid-template-columns:auto 1fr;margin:7px 0 0;gap:3px 7px;font:9px ui-monospace,SFMono-Regular}.hand-card dt{color:#71929d}.hand-card dd{margin:0;text-align:right}.hand-card button{width:100%;margin-top:7px;min-height:30px}
     .hand-advanced.hidden{display:none}
     .hand-calibration{margin-top:10px;padding:10px;border:1px solid #7a693d;border-radius:10px;background:#241f12}.hand-calibration.hidden{display:none}.hand-calibration b{display:block;margin-bottom:4px}.hand-calibration p{margin:0 0 8px;color:#d8cda9;font-size:12px}.hand-calibration progress{width:100%;height:7px;margin:2px 0 8px;accent-color:#2cd2e8}.hand-privacy{margin:10px 2px 0;color:#6f909b;font-size:10px}
+    .hand-resize-handle{position:sticky;z-index:4;right:0;bottom:0;float:right;width:28px!important;min-width:28px!important;height:28px!important;min-height:28px!important;margin:-22px -8px -8px 0!important;padding:0!important;border:0!important;border-radius:8px 0 8px 0!important;background:linear-gradient(135deg,transparent 45%,#315766 46% 53%,transparent 54% 62%,#8bc6cd 63% 70%,transparent 71%)!important;box-shadow:none!important;cursor:nwse-resize!important;touch-action:none}
+    .hand-resize-handle:focus-visible{outline:2px solid #8bc6cd;outline-offset:-2px}.hand-resize-handle:hover{background:linear-gradient(135deg,transparent 42%,#52747d 43% 51%,transparent 52% 60%,#b9f6ff 61% 70%,transparent 71%)!important}
     @container(max-width:350px){.hand-cards{grid-template-columns:1fr}.hand-actions{grid-template-columns:1fr 1fr}.hand-head p{font-size:10px}.hand-metrics{top:auto;bottom:7px;left:7px;right:7px;max-width:none;justify-content:flex-start}}
-    @media(max-width:640px){.hand-panel{right:6px;bottom:6px;width:calc(100vw - 12px);resize:vertical}}
+    @media(max-width:640px){.hand-control-dock{left:8px;top:8px}.hand-control-launch{min-height:32px!important;padding:0 8px!important}.hand-panel{right:6px;bottom:6px;width:calc(100vw - 12px);resize:vertical}}
   `;
   document.head.append(style);
 
+  const launchDock = document.createElement("div");
+  launchDock.className = "hand-control-dock";
   const launch = document.createElement("button");
   launch.id = "handControlLaunch";
   launch.className = "hand-control-launch";
   launch.dataset.shortcut = "CAM";
-  launch.innerHTML = "Hand control <kbd>CAM</kbd>";
-  const stopRow = document.querySelector(".control-stop-row");
-  if (stopRow) stopRow.prepend(launch);
-  else document.body.append(launch);
+  launch.setAttribute("aria-controls", "handControlPanel");
+  launch.setAttribute("aria-expanded", "false");
+  launch.setAttribute("aria-label", "Open webcam hand control");
+  launch.innerHTML = '<span class="hand-camera-dot" aria-hidden="true"></span><span>Webcam view</span><kbd>CAM</kbd>';
+  launchDock.append(launch);
+  const operativeView = document.querySelector("#cameraView, .view");
+  if (operativeView) operativeView.append(launchDock);
+  else document.body.append(launchDock);
 
   const panel = document.createElement("section");
   panel.id = "handControlPanel";
   panel.className = "hand-panel hidden";
   panel.setAttribute("aria-label", "Webcam hand control");
   panel.innerHTML = `
-    <div class="hand-head"><div><h2>Two-finger surgical control</h2><p>Natural clutch · drag to move · corner to resize</p></div><div class="spacer"></div><div class="hand-head-actions"><button id="handControlsToggle" aria-controls="handAdvanced" aria-expanded="false">Controls</button><button id="handClose" data-shortcut="CAM">Close</button></div></div>
+    <div class="hand-head"><div><h2>Two-finger surgical control</h2><p>Drag this bar · resize from the corner</p></div><div class="spacer"></div><div class="hand-head-actions"><button id="handPanelReset" aria-label="Reset webcam window position and size">Fit</button><button id="handControlsToggle" aria-controls="handAdvanced" aria-expanded="false">Controls</button><button id="handClose" data-shortcut="CAM">Close</button></div></div>
     <div class="hand-video-wrap"><video id="handVideo" playsinline muted></video><canvas id="handOverlay"></canvas><div id="handBanner" class="hand-banner">Camera off</div><div class="hand-metrics"><span id="handRate">0 Hz</span><span id="handInference">— ms vision</span><span id="handLatency">— ms loop</span></div></div>
     <div id="handAdvanced" class="hand-advanced hidden">
       <div class="hand-actions"><button id="handStart" data-shortcut="CAM">Start camera</button><button id="handFreezeAll" data-shortcut="FREEZE">Freeze hand</button><button id="handEngageAll" data-shortcut="ENGAGE">Engage hand</button><button id="handPrecision" class="engaged" data-shortcut="PRECISION">Precision on</button><button id="handRecalibrate" data-shortcut="CAL">Recalibrate</button><button id="handMode">One hand ready</button></div>
@@ -466,6 +477,7 @@ function createInterface() {
       <div id="handCalibration" class="hand-calibration hidden"><b id="handCalibrationTitle">Camera calibration</b><p id="handCalibrationText"></p><progress id="handCalibrationProgress" max="${CALIBRATION_SAMPLE_COUNT}" value="0"></progress><button id="handCalibrationCapture" data-shortcut="CAL">Capture stable sample</button></div>
       <p class="hand-privacy">Only calibrated numeric pose commands leave this browser. Webcam frames and raw landmarks are never uploaded or recorded. Single-camera depth is relative, not metric or clinical-grade.</p>
     </div>
+    <button id="handPanelResize" class="hand-resize-handle" aria-label="Resize webcam window" title="Drag to resize · arrow keys also work"></button>
   `;
   document.body.append(panel);
   return { launch, panel };
@@ -547,6 +559,7 @@ class HandController {
     this.panelGeometryKey = "drAnmar.handPanelGeometry.v3";
     this.panelGeometryReady = false;
     this.panelDrag = null;
+    this.panelResize = null;
     this.panelResizeObserver = null;
     this.controlsExpanded = false;
     this.operatorId = this.resolveOperatorId();
@@ -576,16 +589,26 @@ class HandController {
       "click",
       () => this.toggleAdvancedControls(),
     );
+    this.panel.querySelector("#handPanelReset").addEventListener(
+      "click",
+      () => this.resetPanelGeometry(),
+    );
     const dragHandle = this.panel.querySelector(".hand-head");
     dragHandle.addEventListener("pointerdown", event => this.startPanelDrag(event));
     dragHandle.addEventListener("pointermove", event => this.movePanel(event));
     dragHandle.addEventListener("pointerup", event => this.endPanelDrag(event));
     dragHandle.addEventListener("pointercancel", event => this.endPanelDrag(event));
+    const resizeHandle = this.panel.querySelector("#handPanelResize");
+    resizeHandle.addEventListener("pointerdown", event => this.startPanelResize(event));
+    resizeHandle.addEventListener("pointermove", event => this.movePanelResize(event));
+    resizeHandle.addEventListener("pointerup", event => this.endPanelResize(event));
+    resizeHandle.addEventListener("pointercancel", event => this.endPanelResize(event));
+    resizeHandle.addEventListener("keydown", event => this.resizePanelFromKeyboard(event));
     this.handleWindowResize = () => this.constrainPanelToViewport(true);
     window.addEventListener("resize", this.handleWindowResize);
     if (typeof ResizeObserver === "function") {
       this.panelResizeObserver = new ResizeObserver(() => {
-        if (this.panelGeometryReady && !this.panelDrag) {
+        if (this.panelGeometryReady && !this.panelDrag && !this.panelResize) {
           this.constrainPanelToViewport(true);
         }
       });
@@ -641,7 +664,7 @@ class HandController {
     const viewportWidth = Math.max(1, window.innerWidth);
     const viewportHeight = Math.max(1, window.innerHeight);
     const maximumWidth = Math.max(1, viewportWidth - 12);
-    const maximumHeight = Math.max(1, Math.min(560, viewportHeight - 12));
+    const maximumHeight = Math.max(1, viewportHeight - 12);
     const minimumWidth = Math.min(300, maximumWidth);
     const minimumHeight = Math.min(260, maximumHeight);
     const width = clamp(Number(stored?.width) || rect.width, minimumWidth, maximumWidth);
@@ -712,11 +735,65 @@ class HandController {
     this.savePanelGeometry();
   }
 
+  startPanelResize(event) {
+    if (event.button !== 0) return;
+    this.preparePanelGeometry();
+    const rect = this.panel.getBoundingClientRect();
+    this.panelResize = {
+      pointerId: event.pointerId,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      width: rect.width,
+      height: rect.height,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  movePanelResize(event) {
+    const resize = this.panelResize;
+    if (!resize || resize.pointerId !== event.pointerId) return;
+    this.setPanelSize(
+      resize.width + event.clientX - resize.pointerX,
+      resize.height + event.clientY - resize.pointerY,
+    );
+    event.preventDefault();
+  }
+
+  endPanelResize(event) {
+    if (!this.panelResize || this.panelResize.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    this.panelResize = null;
+    this.constrainPanelToViewport(true);
+  }
+
+  resizePanelFromKeyboard(event) {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+    this.preparePanelGeometry();
+    const rect = this.panel.getBoundingClientRect();
+    const step = event.shiftKey ? 64 : 24;
+    const width = rect.width + (event.key === "ArrowRight" ? step : event.key === "ArrowLeft" ? -step : 0);
+    const height = rect.height + (event.key === "ArrowDown" ? step : event.key === "ArrowUp" ? -step : 0);
+    this.setPanelSize(width, height);
+    this.constrainPanelToViewport(true);
+    event.preventDefault();
+  }
+
+  setPanelSize(width, height) {
+    const maximumWidth = Math.max(1, window.innerWidth - 12);
+    const maximumHeight = Math.max(1, window.innerHeight - 12);
+    const minimumWidth = Math.min(300, maximumWidth);
+    const minimumHeight = Math.min(260, maximumHeight);
+    this.panel.style.width = `${clamp(width, minimumWidth, maximumWidth)}px`;
+    this.panel.style.height = `${clamp(height, minimumHeight, maximumHeight)}px`;
+  }
+
   constrainPanelToViewport(save = false) {
     if (!this.panelGeometryReady || this.panel.classList.contains("hidden")) return;
     const rect = this.panel.getBoundingClientRect();
     const maximumWidth = Math.max(1, window.innerWidth - 12);
-    const maximumHeight = Math.max(1, Math.min(560, window.innerHeight - 12));
+    const maximumHeight = Math.max(1, window.innerHeight - 12);
     const width = Math.min(rect.width, maximumWidth);
     const height = Math.min(rect.height, maximumHeight);
     const left = clamp(rect.left, 6, Math.max(6, window.innerWidth - width - 6));
@@ -741,14 +818,22 @@ class HandController {
     } catch (_error) {}
   }
 
-  compactPanelHeight() {
-    const headerHeight = this.panel.querySelector(".hand-head")?.getBoundingClientRect().height || 45;
-    const videoHeight = this.panel.querySelector(".hand-video-wrap")?.getBoundingClientRect().height || 220;
-    return clamp(
-      headerHeight + videoHeight + 38,
-      260,
-      Math.max(260, Math.min(560, window.innerHeight - 12)),
-    );
+  resetPanelGeometry() {
+    this.toggleAdvancedControls(false);
+    try {
+      localStorage.removeItem(this.panelGeometryKey);
+    } catch (_error) {}
+    this.panelGeometryReady = false;
+    Object.assign(this.panel.style, {
+      left: "",
+      top: "",
+      right: "",
+      bottom: "",
+      width: "",
+      height: "",
+    });
+    this.preparePanelGeometry();
+    this.setBanner("Webcam window fitted to the operative view", "good");
   }
 
   toggleAdvancedControls(force = null) {
@@ -760,9 +845,6 @@ class HandController {
     button.setAttribute("aria-expanded", String(this.controlsExpanded));
     button.classList.toggle("engaged", this.controlsExpanded);
     if (this.panelGeometryReady) {
-      this.panel.style.height = this.controlsExpanded
-        ? `${Math.max(this.panel.getBoundingClientRect().height, Math.min(560, window.innerHeight - 12))}px`
-        : `${this.compactPanelHeight()}px`;
       this.constrainPanelToViewport(true);
     }
   }
@@ -958,6 +1040,8 @@ class HandController {
 
   async open() {
     this.panel.classList.remove("hidden");
+    this.launch.setAttribute("aria-expanded", "true");
+    this.launch.setAttribute("aria-label", "Webcam hand control is open");
     this.preparePanelGeometry();
     if (!this.running) await this.start();
   }
@@ -2028,6 +2112,8 @@ class HandController {
     await this.setServerEnabled(false);
     this.stopMedia();
     this.panel.classList.add("hidden");
+    this.launch.setAttribute("aria-expanded", "false");
+    this.launch.setAttribute("aria-label", "Open webcam hand control");
   }
 
   dispose() {
