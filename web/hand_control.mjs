@@ -338,15 +338,15 @@ function createInterface() {
   style.textContent = `
     .hand-control-launch{background:#123440!important;border-color:#2cd2e8!important;color:#eaffff!important}
     .hand-control-launch.state-active{background:#2cd2e8!important;color:#031014!important}
-    .hand-panel{position:fixed;z-index:70;right:24px;bottom:24px;width:min(620px,calc(100vw - 32px));max-height:calc(100vh - 96px);overflow:auto;border:1px solid #2f5968;border-radius:16px;background:#07151df2;color:#e9f8fa;box-shadow:0 24px 70px #000b;backdrop-filter:blur(16px);padding:15px}
-    .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:12px}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:12px}.hand-head .spacer{flex:1}
+    .hand-panel{box-sizing:border-box;position:fixed;z-index:70;right:24px;bottom:24px;width:min(500px,calc(100vw - 32px));min-width:min(340px,calc(100vw - 16px));min-height:min(320px,calc(100vh - 16px));max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);resize:both;overflow:auto;border:1px solid #2f5968;border-radius:16px;background:#07151df2;color:#e9f8fa;box-shadow:0 24px 70px #000b;backdrop-filter:blur(16px);padding:15px}
+    .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:12px;cursor:grab;touch-action:none;user-select:none}.hand-head.dragging{cursor:grabbing}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:12px}.hand-head .spacer{flex:1}.hand-head button{cursor:pointer;touch-action:auto}
     .hand-video-wrap{position:relative;margin-top:12px;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:#020608;border:1px solid #24404d}.hand-video-wrap video,.hand-video-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.hand-video-wrap canvas{transform:none;pointer-events:none}
-    .hand-banner{position:absolute;left:10px;top:10px;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px ui-monospace,SFMono-Regular}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
+    .hand-banner{box-sizing:border-box;position:absolute;left:10px;top:10px;max-width:62%;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px/1.35 ui-monospace,SFMono-Regular;white-space:normal}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
     .hand-metrics{position:absolute;right:10px;top:10px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:72%}.hand-metrics span{padding:5px 7px;border-radius:6px;background:#07151ddd;border:1px solid #264653;color:#9db6bf;font:700 9px ui-monospace,SFMono-Regular}
     .hand-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:10px}.hand-actions button{min-height:40px}.hand-actions .engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
     .hand-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.hand-card{padding:10px;border:1px solid #24404d;border-radius:10px;background:#091920}.hand-card.quality-hold{border-color:#82513d;background:#1b1412}.hand-card header{height:auto;padding:0;border:0;background:none}.hand-card b{font-size:12px}.hand-card .track{margin-left:auto;color:#ff8a90;font:800 9px ui-monospace}.hand-card.tracked .track{color:#42e49b}.hand-card dl{display:grid;grid-template-columns:auto 1fr;margin:8px 0 0;gap:4px 8px;font:10px ui-monospace,SFMono-Regular}.hand-card dt{color:#71929d}.hand-card dd{margin:0;text-align:right}.hand-card button{width:100%;margin-top:8px;min-height:32px}
     .hand-calibration{margin-top:10px;padding:10px;border:1px solid #7a693d;border-radius:10px;background:#241f12}.hand-calibration.hidden{display:none}.hand-calibration b{display:block;margin-bottom:4px}.hand-calibration p{margin:0 0 8px;color:#d8cda9;font-size:12px}.hand-calibration progress{width:100%;height:7px;margin:2px 0 8px;accent-color:#2cd2e8}.hand-privacy{margin:10px 2px 0;color:#6f909b;font-size:10px}
-    @media(max-width:640px){.hand-panel{right:8px;bottom:8px;width:calc(100vw - 16px)}.hand-cards{grid-template-columns:1fr}.hand-actions{grid-template-columns:1fr 1fr}.hand-actions button:first-child{grid-column:1/-1}.hand-metrics{top:auto;bottom:9px;left:9px;right:9px;max-width:none;justify-content:flex-start}}
+    @media(max-width:640px){.hand-panel{right:8px;bottom:8px;width:calc(100vw - 16px);resize:vertical}.hand-cards{grid-template-columns:1fr}.hand-actions{grid-template-columns:1fr 1fr}.hand-actions button:first-child{grid-column:1/-1}.hand-metrics{top:auto;bottom:9px;left:9px;right:9px;max-width:none;justify-content:flex-start}}
   `;
   document.head.append(style);
 
@@ -364,7 +364,7 @@ function createInterface() {
   panel.className = "hand-panel hidden";
   panel.setAttribute("aria-label", "Webcam hand control");
   panel.innerHTML = `
-    <div class="hand-head"><div><h2>Two-finger surgical control</h2><p>Left hand → Instrument 1 · Right hand → Instrument 2</p></div><div class="spacer"></div><button id="handClose" data-shortcut="CAM">Close</button></div>
+    <div class="hand-head"><div><h2>Two-finger surgical control</h2><p>Left → Instrument 1 · Right → Instrument 2 · Drag bar · resize corner</p></div><div class="spacer"></div><button id="handClose" data-shortcut="CAM">Close</button></div>
     <div class="hand-video-wrap"><video id="handVideo" playsinline muted></video><canvas id="handOverlay"></canvas><div id="handBanner" class="hand-banner">Camera off</div><div class="hand-metrics"><span id="handRate">0 Hz</span><span id="handInference">— ms vision</span><span id="handLatency">— ms loop</span></div></div>
     <div class="hand-actions"><button id="handStart" data-shortcut="CAM">Start camera</button><button id="handFreezeAll" data-shortcut="FREEZE">Freeze both</button><button id="handEngageAll" data-shortcut="ENGAGE">Engage tracked</button><button id="handPrecision" class="engaged" data-shortcut="PRECISION">Precision on</button><button id="handRecalibrate" data-shortcut="CAL">Recalibrate</button></div>
     <div class="hand-cards">
@@ -434,9 +434,15 @@ class HandController {
     this.calibrationAutomatic = false;
     this.calibrationStep = 0;
     this.calibrationDraft = { hands: {} };
+    this.calibrationTargetArms = [];
+    this.calibrationCandidateSignature = "";
     this.calibrationCapture = null;
     this.calibrationReadySince = null;
     this.calibrationStageStartedAt = 0;
+    this.panelGeometryKey = "drAnmar.handPanelGeometry.v1";
+    this.panelGeometryReady = false;
+    this.panelDrag = null;
+    this.panelResizeObserver = null;
     this.operatorId = this.resolveOperatorId();
     this.bind();
   }
@@ -444,17 +450,37 @@ class HandController {
   resolveOperatorId() {
     const query = new URLSearchParams(location.search).get("operator");
     if (query) return query;
-    let value = sessionStorage.getItem("drAnmarOperatorId");
+    // Standalone localhost tabs must share the same operator lease. A
+    // per-tab session identity lets an older camera tab indefinitely lock a
+    // newly opened one out of motion even though both belong to this browser.
+    let value = localStorage.getItem("drAnmarHandOperatorId")
+      || sessionStorage.getItem("drAnmarOperatorId");
     if (!value) {
       value = `browser-${crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)}`;
-      sessionStorage.setItem("drAnmarOperatorId", value);
     }
+    localStorage.setItem("drAnmarHandOperatorId", value);
+    sessionStorage.setItem("drAnmarOperatorId", value);
     return value;
   }
 
   bind() {
     this.launch.addEventListener("click", () => this.open());
     this.panel.querySelector("#handClose").addEventListener("click", () => this.close());
+    const dragHandle = this.panel.querySelector(".hand-head");
+    dragHandle.addEventListener("pointerdown", event => this.startPanelDrag(event));
+    dragHandle.addEventListener("pointermove", event => this.movePanel(event));
+    dragHandle.addEventListener("pointerup", event => this.endPanelDrag(event));
+    dragHandle.addEventListener("pointercancel", event => this.endPanelDrag(event));
+    this.handleWindowResize = () => this.constrainPanelToViewport(true);
+    window.addEventListener("resize", this.handleWindowResize);
+    if (typeof ResizeObserver === "function") {
+      this.panelResizeObserver = new ResizeObserver(() => {
+        if (this.panelGeometryReady && !this.panelDrag) {
+          this.constrainPanelToViewport(true);
+        }
+      });
+      this.panelResizeObserver.observe(this.panel);
+    }
     this.panel.querySelector("#handStart").addEventListener("click", () => this.start());
     this.panel.querySelector("#handFreezeAll").addEventListener("click", () => {
       this.cancelAutomaticEngage();
@@ -483,6 +509,119 @@ class HandController {
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) this.freezeAll(false);
     });
+  }
+
+  preparePanelGeometry() {
+    if (this.panelGeometryReady) {
+      this.constrainPanelToViewport();
+      return;
+    }
+    const rect = this.panel.getBoundingClientRect();
+    let stored = null;
+    try {
+      stored = JSON.parse(localStorage.getItem(this.panelGeometryKey) || "null");
+    } catch (_error) {}
+    const viewportWidth = Math.max(1, window.innerWidth);
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const maximumWidth = Math.max(1, viewportWidth - 16);
+    const maximumHeight = Math.max(1, viewportHeight - 16);
+    const minimumWidth = Math.min(340, maximumWidth);
+    const minimumHeight = Math.min(320, maximumHeight);
+    const width = clamp(Number(stored?.width) || rect.width, minimumWidth, maximumWidth);
+    const height = clamp(Number(stored?.height) || rect.height, minimumHeight, maximumHeight);
+    const left = clamp(
+      Number.isFinite(Number(stored?.left)) ? Number(stored.left) : rect.left,
+      8,
+      Math.max(8, viewportWidth - width - 8),
+    );
+    const top = clamp(
+      Number.isFinite(Number(stored?.top)) ? Number(stored.top) : rect.top,
+      8,
+      Math.max(8, viewportHeight - height - 8),
+    );
+    Object.assign(this.panel.style, {
+      left: `${left}px`,
+      top: `${top}px`,
+      right: "auto",
+      bottom: "auto",
+      width: `${width}px`,
+      height: `${height}px`,
+    });
+    this.panelGeometryReady = true;
+    this.savePanelGeometry();
+  }
+
+  startPanelDrag(event) {
+    if (event.button !== 0 || event.target.closest("button, input, select, textarea, a")) return;
+    this.preparePanelGeometry();
+    const rect = this.panel.getBoundingClientRect();
+    this.panelDrag = {
+      pointerId: event.pointerId,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.currentTarget.classList.add("dragging");
+    event.preventDefault();
+  }
+
+  movePanel(event) {
+    const drag = this.panelDrag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const left = clamp(
+      drag.left + event.clientX - drag.pointerX,
+      8,
+      Math.max(8, window.innerWidth - drag.width - 8),
+    );
+    const top = clamp(
+      drag.top + event.clientY - drag.pointerY,
+      8,
+      Math.max(8, window.innerHeight - drag.height - 8),
+    );
+    this.panel.style.left = `${left}px`;
+    this.panel.style.top = `${top}px`;
+    event.preventDefault();
+  }
+
+  endPanelDrag(event) {
+    if (!this.panelDrag || this.panelDrag.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    event.currentTarget.classList.remove("dragging");
+    this.panelDrag = null;
+    this.savePanelGeometry();
+  }
+
+  constrainPanelToViewport(save = false) {
+    if (!this.panelGeometryReady || this.panel.classList.contains("hidden")) return;
+    const rect = this.panel.getBoundingClientRect();
+    const maximumWidth = Math.max(1, window.innerWidth - 16);
+    const maximumHeight = Math.max(1, window.innerHeight - 16);
+    const width = Math.min(rect.width, maximumWidth);
+    const height = Math.min(rect.height, maximumHeight);
+    const left = clamp(rect.left, 8, Math.max(8, window.innerWidth - width - 8));
+    const top = clamp(rect.top, 8, Math.max(8, window.innerHeight - height - 8));
+    if (width !== rect.width) this.panel.style.width = `${width}px`;
+    if (height !== rect.height) this.panel.style.height = `${height}px`;
+    this.panel.style.left = `${left}px`;
+    this.panel.style.top = `${top}px`;
+    if (save) this.savePanelGeometry();
+  }
+
+  savePanelGeometry() {
+    if (!this.panelGeometryReady || this.panel.classList.contains("hidden")) return;
+    const rect = this.panel.getBoundingClientRect();
+    try {
+      localStorage.setItem(this.panelGeometryKey, JSON.stringify({
+        left: Math.round(rect.left),
+        top: Math.round(rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+      }));
+    } catch (_error) {}
   }
 
   emptyCommand(arm) {
@@ -516,6 +655,7 @@ class HandController {
 
   async open() {
     this.panel.classList.remove("hidden");
+    this.preparePanelGeometry();
     if (!this.running) await this.start();
   }
 
@@ -650,6 +790,8 @@ class HandController {
     this.calibrationAutomatic = automatic;
     this.calibrationStep = 0;
     this.calibrationDraft = { hands: {} };
+    this.calibrationTargetArms = [];
+    this.calibrationCandidateSignature = "";
     this.calibrationCapture = null;
     this.calibrationReadySince = null;
     this.panel.querySelector("#handCalibration").classList.remove("hidden");
@@ -658,9 +800,9 @@ class HandController {
 
   renderCalibration() {
     const instructions = [
-      ["1 · Neutral pose", "Show both hands comfortably in the center and hold still. Capture starts automatically."],
-      ["2 · Fully closed", "Touch each thumb and index fingertip together and hold. No button is needed."],
-      ["3 · Fully open", "Open each thumb and index finger comfortably and hold. Calibration will finish automatically."],
+      ["1 · Neutral pose", "Show one hand or both comfortably in the center. The camera detects which hand is present."],
+      ["2 · Fully closed", "Touch thumb and index together on the detected hand or hands and hold."],
+      ["3 · Fully open", "Open thumb and index comfortably on the detected hand or hands and hold."],
     ];
     const [title, text] = instructions[this.calibrationStep] || instructions[0];
     this.calibrationStageStartedAt = performance.now();
@@ -670,35 +812,61 @@ class HandController {
     progress.value = 0;
     const button = this.panel.querySelector("#handCalibrationCapture");
     button.disabled = this.calibrationAutomatic;
+    button.style.display = this.calibrationAutomatic ? "none" : "";
     button.textContent = this.calibrationAutomatic
       ? "Automatic capture armed"
       : this.calibrationStep === 2
         ? "Sample open and finish"
         : "Capture stable sample";
     if (this.calibrationAutomatic) {
-      const prompts = [
-        "Show both hands in a neutral pose",
-        "Touch thumb and index on both hands",
-        "Open thumb and index on both hands",
-      ];
-      this.setBanner(`${prompts[this.calibrationStep]} · waiting for stability`, "warn");
+      this.setBanner(`${this.calibrationStagePrompt()} · waiting for stability`, "warn");
     }
   }
 
-  captureCalibration() {
+  calibrationStagePrompt(arms = this.calibrationTargetArms) {
+    const subject = arms.length === 2
+      ? "Both hands"
+      : arms[0] === 0
+        ? "Left hand"
+        : arms[0] === 1
+          ? "Right hand"
+          : null;
+    return [
+      subject ? `1/3 · ${subject} detected · hold neutral` : "1/3 · Show one hand or both at neutral",
+      subject ? `2/3 · ${subject}: touch thumb + index` : "2/3 · Touch thumb + index",
+      subject ? `3/3 · ${subject}: open thumb + index` : "3/3 · Open thumb + index",
+    ][this.calibrationStep] || "Calibration";
+  }
+
+  captureCalibration(arms = null) {
     if (!this.poses.size) {
       this.setBanner("Show at least one hand before capturing", "warn");
+      return;
+    }
+    const visibleArms = (arms || [...this.poses.keys()])
+      .filter(arm => this.poses.get(arm)?.quality >= MIN_TRACKING_QUALITY);
+    if (!visibleArms.length) {
+      this.setBanner("Hold one clearly tracked hand in view", "warn");
+      return;
+    }
+    if (!this.calibrationTargetArms.length) {
+      this.calibrationTargetArms = [...visibleArms].sort();
+    }
+    const captureArms = this.calibrationTargetArms.filter(arm => visibleArms.includes(arm));
+    if (captureArms.length !== this.calibrationTargetArms.length) {
+      this.setBanner(`${this.calibrationStagePrompt()} · keep the detected hand in view`, "warn");
       return;
     }
     this.calibrationCapture = {
       step: this.calibrationStep,
       startedAt: performance.now(),
+      arms: captureArms,
       samples: { 0: [], 1: [] },
     };
     const button = this.panel.querySelector("#handCalibrationCapture");
     button.disabled = true;
     button.textContent = "Hold steady · sampling 0%";
-    this.setBanner("Sampling stable hand geometry…");
+    this.setBanner(`${this.calibrationStagePrompt()} · sampling 0%`, "warn");
   }
 
   collectCalibrationSamples(timestampMs) {
@@ -707,16 +875,24 @@ class HandController {
       this.maybeStartAutomaticCalibrationCapture(timestampMs);
       return;
     }
-    for (const [arm, pose] of this.poses) {
+    for (const arm of capture.arms) {
+      const pose = this.poses.get(arm);
+      if (!pose) continue;
       if (pose.quality < MIN_TRACKING_QUALITY) continue;
       const value = capture.step === 0 ? pose.scale : pose.pinchRatio;
       if (capture.samples[arm].length < CALIBRATION_SAMPLE_COUNT) capture.samples[arm].push(value);
     }
-    const visibleCounts = [...this.poses.keys()].map(arm => capture.samples[arm].length);
+    const visibleCounts = capture.arms.map(arm => capture.samples[arm].length);
     const progressCount = visibleCounts.length ? Math.min(...visibleCounts) : 0;
     this.panel.querySelector("#handCalibrationProgress").value = progressCount;
     this.panel.querySelector("#handCalibrationCapture").textContent =
       `Hold steady · sampling ${Math.round(100 * progressCount / CALIBRATION_SAMPLE_COUNT)}%`;
+    if (this.calibrationAutomatic) {
+      this.setBanner(
+        `${this.calibrationStagePrompt()} · sampling ${Math.round(100 * progressCount / CALIBRATION_SAMPLE_COUNT)}%`,
+        "warn",
+      );
+    }
     const complete = visibleCounts.length && visibleCounts.every(count => count >= CALIBRATION_SAMPLE_COUNT);
     if (complete || timestampMs - capture.startedAt > 1600) this.finishCalibrationCapture();
   }
@@ -724,33 +900,54 @@ class HandController {
   maybeStartAutomaticCalibrationCapture(timestampMs) {
     if (!this.calibrationActive || !this.calibrationAutomatic || this.calibrationCapture) return;
     if (timestampMs - this.calibrationStageStartedAt < 900) return;
-    const poses = [this.poses.get(0), this.poses.get(1)];
+    const visibleArms = [0, 1].filter(arm => this.poses.get(arm)?.quality >= MIN_TRACKING_QUALITY);
+    const targetArms = this.calibrationTargetArms.length
+      ? this.calibrationTargetArms
+      : visibleArms;
+    const signature = targetArms.join(",");
+    if (signature !== this.calibrationCandidateSignature) {
+      this.calibrationCandidateSignature = signature;
+      this.calibrationReadySince = null;
+    }
+    if (!targetArms.length) {
+      this.setBanner(this.calibrationStagePrompt(), "warn");
+      return;
+    }
+    const poses = targetArms.map(arm => this.poses.get(arm));
     let ready = poses.every(pose => pose && pose.quality >= MIN_TRACKING_QUALITY);
     if (ready && this.calibrationStep === 1) {
       ready = poses.every(pose => pose.pinchRatio <= 0.24);
     }
     if (ready && this.calibrationStep === 2) {
-      ready = poses.every((pose, arm) => {
+      ready = targetArms.every((arm, index) => {
         const closed = this.calibrationDraft.hands[arm]?.closeRatio;
+        const pose = poses[index];
         return Number.isFinite(closed) && pose.pinchRatio >= closed + 0.18;
       });
     }
     if (!ready) {
       this.calibrationReadySince = null;
+      if (this.calibrationTargetArms.length) {
+        this.setBanner(`${this.calibrationStagePrompt()} · hold the pose in view`, "warn");
+      }
       return;
     }
     if (this.calibrationReadySince === null) this.calibrationReadySince = timestampMs;
     const stableForMs = timestampMs - this.calibrationReadySince;
     const remainingMs = Math.max(0, 650 - stableForMs);
+    const stagePrompt = this.calibrationStagePrompt(targetArms);
     this.setBanner(
       remainingMs
-        ? `Hold pose · automatic capture in ${(remainingMs / 1000).toFixed(1)} s`
-        : "Pose stable · capturing automatically",
+        ? `${stagePrompt} · hold ${(remainingMs / 1000).toFixed(1)} s`
+        : `${stagePrompt} · capturing automatically`,
       remainingMs ? "warn" : "good",
     );
     if (stableForMs >= 650) {
       this.calibrationReadySince = null;
-      this.captureCalibration();
+      if (!this.calibrationTargetArms.length) {
+        this.calibrationTargetArms = [...targetArms];
+      }
+      this.captureCalibration(targetArms);
     }
   }
 
@@ -759,7 +956,7 @@ class HandController {
     this.calibrationCapture = null;
     let accepted = 0;
     try {
-      for (const arm of [0, 1]) {
+      for (const arm of capture.arms) {
         if (capture.samples[arm].length < 12) continue;
         const sample = robustCalibrationSample(capture.samples[arm]);
         const draft = this.calibrationDraft.hands[arm] || {};
@@ -770,8 +967,8 @@ class HandController {
         this.calibrationDraft.hands[arm] = draft;
         accepted += 1;
       }
-      if (this.calibrationAutomatic && accepted !== 2) {
-        throw new Error("Keep both hands visible through the complete sample");
+      if (this.calibrationAutomatic && accepted !== capture.arms.length) {
+        throw new Error("Keep the detected hand visible through the complete sample");
       }
       if (!accepted) throw new Error("No stable hand sample was captured");
     } catch (error) {
@@ -783,10 +980,15 @@ class HandController {
       this.calibrationStep += 1;
       this.calibrationReadySince = null;
       this.renderCalibration();
-      this.setBanner("Sample accepted · continue calibration", "good");
       return;
     }
-    const calibration = numericCalibration({ version: 2, hands: this.calibrationDraft.hands });
+    const calibration = numericCalibration({
+      version: 2,
+      hands: {
+        ...(this.calibration?.hands || {}),
+        ...this.calibrationDraft.hands,
+      },
+    });
     if (!calibration) {
       this.setBanner("Calibration span is too small · try again", "warn");
       this.beginCalibration();
@@ -1332,6 +1534,7 @@ class HandController {
   }
 
   async close() {
+    this.savePanelGeometry();
     this.freezeAll(false);
     await this.setServerEnabled(false);
     this.stopMedia();
@@ -1339,6 +1542,9 @@ class HandController {
   }
 
   dispose() {
+    this.savePanelGeometry();
+    this.panelResizeObserver?.disconnect();
+    window.removeEventListener("resize", this.handleWindowResize);
     this.startGeneration += 1;
     this.starting = false;
     this.running = false;
