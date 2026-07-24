@@ -6,6 +6,7 @@ PROFILE="${REPOSITORY_ROOT}/physics_next/sutures/dr-anmar-suture-4-0.json"
 NEEDLE_PROFILE="${REPOSITORY_ROOT}/physics_next/needles/dr-anmar-needle-v1.json"
 ASSET="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 DR_ANMAR_NEEDLE="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle.usda"
+DR_ANMAR_NEEDLE_PHYSICS="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_physics.usda"
 REPORT="${REPOSITORY_ROOT}/physics_next/benchmarks/dr-anmar-suture-4-0-validation.json"
 ISAAC_PYTHON="${DR_ANMAR_STABLE_ISAAC_PYTHON:-}"
 
@@ -15,7 +16,8 @@ case "${1:-validate}" in
             --profile "${PROFILE}" \
             --needle-profile "${NEEDLE_PROFILE}" \
             --output "${ASSET}" \
-            --needle-output "${DR_ANMAR_NEEDLE}"
+            --needle-output "${DR_ANMAR_NEEDLE}" \
+            --needle-physics-output "${DR_ANMAR_NEEDLE_PHYSICS}"
         ;;
     validate)
         python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_suture_validate.py" \
@@ -23,6 +25,7 @@ case "${1:-validate}" in
             --needle-profile "${NEEDLE_PROFILE}" \
             --asset "${ASSET}" \
             --needle "${DR_ANMAR_NEEDLE}" \
+            --needle-physics "${DR_ANMAR_NEEDLE_PHYSICS}" \
             --output "${REPORT}"
         python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_suture_runtime.py" \
             --profile "${PROFILE}" \

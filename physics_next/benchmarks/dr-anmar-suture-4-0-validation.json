@@ -55,7 +55,8 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.6.0\"",
+        "drAnmarAssetVersion = \"1.7.0\"",
+        "@DrAnmarNeedle_physics.usda@",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "drAnmarGeometrySource = \"independently_generated_parametric_geometry\"",
         "drAnmarMassPropertyIntegrationSlices = 8192",
@@ -63,6 +64,7 @@
         "drAnmarNormalContract = \"analytic_taper_and_curvature_aware_indexed_face_varying_primvar\"",
         "drAnmarRenderCollisionContract = \"separate_visual_mesh_and_guide_purpose_invisible_compound_colliders\"",
         "drAnmarMaterialContract = \"top_level_looks_with_separate_visual_and_physics_materials\"",
+        "drAnmarLayerContract = \"entry_visual_composition_plus_dedicated_physics_sublayer\"",
         "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
         "drAnmarCollisionContract = \"curvature_sagitta_bounded_capsules_with_explicit_extents\"",
         "\"PhysicsMaterialAPI\", \"PhysxMaterialAPI\"",
@@ -81,9 +83,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.6.0",
+        "integration_version": "1.7.0",
         "missing": [],
-        "profile_version": "1.6.0"
+        "profile_version": "1.7.0"
       },
       "passed": true
     },
@@ -250,6 +252,46 @@
       },
       "passed": true
     },
+    "needle_dedicated_physics_layer_source_ownership": {
+      "expected": "stable entry layer owns identity and visuals while all local simulation schemas and properties are isolated in DrAnmarNeedle_physics.usda",
+      "measured": {
+        "contract": {
+          "composition": "entry_layer_sublayers_physics_layer",
+          "entry_layer": "DrAnmarNeedle.usda",
+          "entry_layer_owns": [
+            "stage_metadata",
+            "asset_identity",
+            "visual_geometry",
+            "visual_material",
+            "suture_reference_and_transform"
+          ],
+          "physics_layer": "DrAnmarNeedle_physics.usda",
+          "physics_layer_owns": [
+            "physics_material",
+            "rigid_body_schemas_and_attributes",
+            "compound_colliders",
+            "suture_interface_override",
+            "factory_swage_joint"
+          ],
+          "physics_property_prefixes": [
+            "physics:",
+            "physx",
+            "newton:"
+          ],
+          "physics_schema_prefixes": [
+            "Physics",
+            "Physx",
+            "Newton"
+          ]
+        },
+        "entry_physics_properties": [],
+        "entry_physics_schemas": [],
+        "entry_physics_typed_prims": [],
+        "missing_physics_layer_tokens": [],
+        "physics_layer_visual_payload_tokens": []
+      },
+      "passed": true
+    },
     "needle_explicit_geometry_mass_properties": {
       "expected": "explicit converged geometry-derived USD mass properties with density-consistent episode scaling",
       "measured": {
@@ -321,7 +363,7 @@
       "passed": true
     },
     "needle_nvidia_stack_collision_contract": {
-      "expected": "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, and material schema contract",
+      "expected": "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, material, and source-layer contract",
       "measured": {
         "ccd": true,
         "collision_contract": {
@@ -367,7 +409,7 @@
         },
         "friction_combine_mode": "max",
         "missing_native_probe_tokens": [],
-        "reference_count": 9
+        "reference_count": 10
       },
       "passed": true
     },

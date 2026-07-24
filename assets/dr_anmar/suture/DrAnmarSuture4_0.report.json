@@ -1,13 +1,44 @@
 {
-  "schema": "dr.anmar.suture-asset-report.v3",
+  "schema": "dr.anmar.suture-asset-report.v4",
   "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
   "asset": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
   "asset_sha256": "7b33b49b6b2c7934af9569d789b45bf2bdf0df16e98cc7d9806f56440e831c90",
   "dr_anmar_needle_name": "DrAnmar Needle",
   "dr_anmar_needle_asset_id": "dr-anmar-needle",
-  "dr_anmar_needle_asset_version": "1.6.0",
+  "dr_anmar_needle_asset_version": "1.7.0",
   "dr_anmar_needle": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
-  "dr_anmar_needle_sha256": "a99f9c54e1977ea686ee9325dc7d3cfb4457dfef3baa0ddf4ec131a952c7265c",
+  "dr_anmar_needle_sha256": "7109a7a4de2f704616e69dec461c4895b21bcc4be4e7af33bf316b8f916c29f0",
+  "dr_anmar_needle_physics": "assets/dr_anmar/needle/DrAnmarNeedle_physics.usda",
+  "dr_anmar_needle_physics_sha256": "1e6ee3170b422e11c20be9604809e6e6f1cec9fcd9eb9e1f1eb20e93d1e6f398",
+  "dr_anmar_needle_layer_contract": {
+    "entry_layer": "DrAnmarNeedle.usda",
+    "physics_layer": "DrAnmarNeedle_physics.usda",
+    "composition": "entry_layer_sublayers_physics_layer",
+    "entry_layer_owns": [
+      "stage_metadata",
+      "asset_identity",
+      "visual_geometry",
+      "visual_material",
+      "suture_reference_and_transform"
+    ],
+    "physics_layer_owns": [
+      "physics_material",
+      "rigid_body_schemas_and_attributes",
+      "compound_colliders",
+      "suture_interface_override",
+      "factory_swage_joint"
+    ],
+    "physics_property_prefixes": [
+      "physics:",
+      "physx",
+      "newton:"
+    ],
+    "physics_schema_prefixes": [
+      "Physics",
+      "Physx",
+      "Newton"
+    ]
+  },
   "needle_profile": "physics_next/needles/dr-anmar-needle-v1.json",
   "needle_profile_id": "dr-anmar-needle-v1",
   "needle_geometry_source": "independently_generated_parametric_geometry",

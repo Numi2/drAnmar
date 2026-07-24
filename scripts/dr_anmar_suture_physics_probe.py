@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 from dr_anmar_needle_model import build_needle_collision_capsules, build_needle_mesh, derive_needle, load_needle_profile
@@ -165,7 +166,44 @@ def main() -> int:
     needle_collision_physics_material_binding_count = None
     needle_render_collision_separation_valid = None
     needle_material_organization_valid = None
+    needle_local_physics_layer_name = None
+    needle_local_physics_layer_source_ownership_valid = None
     if assembly:
+        layer_organization = needle_profile["construction"]["layer_organization"]
+        needle_local_physics_layer_name = str(layer_organization["physics_layer"])
+        local_physics_path = args.asset.resolve().parent / needle_local_physics_layer_name
+        entry_layer_text = args.asset.read_text(encoding="utf-8")
+        physics_layer_text = local_physics_path.read_text(encoding="utf-8")
+        entry_physics_properties = re.findall(
+            r"\b(?:physics:|physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*",
+            entry_layer_text,
+        )
+        entry_physics_schemas = re.findall(
+            r'"((?:Physics|Physx|Newton)[A-Za-z0-9_]*API)"',
+            entry_layer_text,
+        )
+        entry_physics_typed_prims = re.findall(
+            r"\bdef\s+(Physics[A-Za-z0-9_]+)\s+\"",
+            entry_layer_text,
+        )
+        needle_local_physics_layer_source_ownership_valid = bool(
+            layer_organization["entry_layer"] == args.asset.name
+            and needle_local_physics_layer_name.endswith("_physics.usda")
+            and f"@{needle_local_physics_layer_name}@" in entry_layer_text
+            and not entry_physics_properties
+            and not entry_physics_schemas
+            and not entry_physics_typed_prims
+            and 'def Material "NeedleSteelPhysics"' in physics_layer_text
+            and '"PhysicsMaterialAPI", "PhysxMaterialAPI"' in physics_layer_text
+            and '"PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"' in physics_layer_text
+            and 'def Scope "Collision"' in physics_layer_text
+            and 'over "NeedleInterface"' in physics_layer_text
+            and 'def PhysicsFixedJoint "FactorySwage"' in physics_layer_text
+            and 'def Mesh "Visual"' not in physics_layer_text
+            and "point3f[] points" not in physics_layer_text
+            and 'def Shader "PreviewSurface"' not in physics_layer_text
+            and "prepend references =" not in physics_layer_text
+        )
         needle_collision_capsules = [
             prim
             for prim in stage.Traverse()
@@ -394,7 +432,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v6",
+        "schema": "dr.anmar.needle-native-physx-probe.v7",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -428,6 +466,8 @@ def main() -> int:
         "needle_collision_physics_material_binding_count": needle_collision_physics_material_binding_count,
         "needle_render_collision_separation_valid": needle_render_collision_separation_valid,
         "needle_material_organization_valid": needle_material_organization_valid,
+        "needle_local_physics_layer_name": needle_local_physics_layer_name,
+        "needle_local_physics_layer_source_ownership_valid": needle_local_physics_layer_source_ownership_valid,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -463,6 +503,7 @@ def main() -> int:
                 and report["needle_collision_physics_material_binding_count"] == derived_needle.collision_capsule_count
                 and report["needle_render_collision_separation_valid"]
                 and report["needle_material_organization_valid"]
+                and report["needle_local_physics_layer_source_ownership_valid"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None

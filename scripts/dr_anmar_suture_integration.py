@@ -12,11 +12,12 @@ from dr_anmar_needle_model import derive_needle, load_needle_profile, sample_epi
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DR_ANMAR_NEEDLE_NAME = "DrAnmar Needle"
 DR_ANMAR_NEEDLE_ASSET_ID = "dr-anmar-needle"
-DR_ANMAR_NEEDLE_ASSET_VERSION = "1.6.0"
+DR_ANMAR_NEEDLE_ASSET_VERSION = "1.7.0"
 DR_ANMAR_NEEDLE_ROOT_PRIM = "DrAnmarNeedle"
 DR_ANMAR_ASSET_ROOT = REPOSITORY_ROOT / "assets/dr_anmar"
 SUTURE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0.usda"
 DR_ANMAR_NEEDLE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle.usda"
+DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_physics.usda"
 SUTURE_NEEDLE_INTERFACE_CENTER_M = (-0.00025, 0.0, 0.0)
 
 # A 90-degree yaw keeps the 180 mm strand inside the shared PSM workspace.
@@ -48,6 +49,7 @@ def validate_source_assets() -> None:
         for path in (
             SUTURE_ASSET_PATH,
             DR_ANMAR_NEEDLE_ASSET_PATH,
+            DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH,
         )
         if not path.is_file()
     ]
@@ -79,6 +81,7 @@ def configure_dr_anmar_needle(
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID,
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION,
         "asset": str(DR_ANMAR_NEEDLE_ASSET_PATH),
+        "physics_layer": str(DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH),
         "prim_path": f"/World/envs/env_0/{DR_ANMAR_NEEDLE_ROOT_PRIM}",
         "landing_position_m": list(SUTURE_LANDING_POSITION_M),
         "landing_rotation_wxyz": list(SUTURE_LANDING_ROTATION_WXYZ),
@@ -106,8 +109,8 @@ def apply_dr_anmar_needle_episode_domain(
         parameters.mass_kg,
     )
     needle_prim = stage.GetPrimAtPath(f"{root_path}/Needle")
-    material_prim = stage.GetPrimAtPath(f"{root_path}/Materials/NeedleSteel")
-    shader_prim = stage.GetPrimAtPath(f"{root_path}/Materials/NeedleSteel/PreviewSurface")
+    material_prim = stage.GetPrimAtPath(f"{root_path}/Looks/NeedleSteelPhysics")
+    shader_prim = stage.GetPrimAtPath(f"{root_path}/Looks/NeedleSteelVisual/PreviewSurface")
     if not needle_prim.IsValid() or not material_prim.IsValid() or not shader_prim.IsValid():
         raise RuntimeError(f"{DR_ANMAR_NEEDLE_NAME} episode domain is missing")
     mass_api = UsdPhysics.MassAPI(needle_prim)

@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -98,6 +98,35 @@
       "nvidia_unit_length_tolerance": 0.0001,
       "deterministic_unit_length_tolerance": 1e-10,
       "minimum_outward_winding_alignment_dot": 0.0
+    },
+    "layer_organization": {
+      "entry_layer": "DrAnmarNeedle.usda",
+      "physics_layer": "DrAnmarNeedle_physics.usda",
+      "composition": "entry_layer_sublayers_physics_layer",
+      "entry_layer_owns": [
+        "stage_metadata",
+        "asset_identity",
+        "visual_geometry",
+        "visual_material",
+        "suture_reference_and_transform"
+      ],
+      "physics_layer_owns": [
+        "physics_material",
+        "rigid_body_schemas_and_attributes",
+        "compound_colliders",
+        "suture_interface_override",
+        "factory_swage_joint"
+      ],
+      "physics_property_prefixes": [
+        "physics:",
+        "physx",
+        "newton:"
+      ],
+      "physics_schema_prefixes": [
+        "Physics",
+        "Physx",
+        "Newton"
+      ]
     }
   },
   "material": {
@@ -198,12 +227,17 @@
     {
       "title": "Isaac Sim asset validation",
       "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_validation.html",
-      "used_for": "top-level Looks organization plus guide-purpose and invisible collision representation validation"
+      "used_for": "top-level Looks organization, guide-purpose invisible collision representation, and dedicated physics source-layer validation"
     },
     {
       "title": "OpenUSD Exchange SDK physics material binding",
       "url": "https://docs.omniverse.nvidia.com/usd/code-docs/usd-exchange-sdk/2.2.0/api/group__physicsmaterials.html",
       "used_for": "purpose-specific physics material binding on nonrendering colliders"
+    },
+    {
+      "title": "Isaac Sim asset structure",
+      "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_structure.html",
+      "used_for": "stable composed entry asset with visual and physics responsibilities isolated in separate lightweight layers"
     }
   ],
   "sim_to_real": {
