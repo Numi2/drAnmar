@@ -160,7 +160,7 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.15.0\"",
+        "drAnmarAssetVersion = \"1.16.0\"",
         "@./DrAnmarNeedle_base.usda@",
         "@./DrAnmarNeedle_physx.usda@",
         "@./DrAnmarNeedle_materials.usda@",
@@ -168,7 +168,7 @@
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "prepend apiSchemas = [\"SemanticsLabelsAPI:wikidata_qcode\"]",
         "string name = \"DrAnmarNeedle\"",
-        "string version = \"1.15.0\"",
+        "string version = \"1.16.0\"",
         "displayName = \"DrAnmar Needle and 4-0 Braided Suture\"",
         "kind = \"component\"",
         "kind = \"subcomponent\"",
@@ -200,9 +200,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.15.0",
+        "integration_version": "1.16.0",
         "missing": [],
-        "profile_version": "1.15.0"
+        "profile_version": "1.16.0"
       },
       "passed": true
     },
@@ -834,6 +834,10 @@
         "physxRigidBody:enableCCD",
         "def Xform \"NeedleInterface\"",
         "def Mesh \"Visual\"",
+        "vector3f[] primvars:tangents",
+        "vector3f[] primvars:binormals",
+        "int[] primvars:tangents:indices",
+        "int[] primvars:binormals:indices",
         "def Capsule \"Collision\"",
         "uniform token purpose = \"guide\"",
         "token visibility = \"invisible\"",
@@ -933,7 +937,7 @@
           "geometry_layer_owns": [
             "rigid_body_xforms",
             "closed_braided_visual_mesh_topology",
-            "braided_visual_mesh_points_and_vertex_normals",
+            "braided_visual_mesh_points_and_indexed_face_varying_tangent_frames",
             "closed_swage_interface_visual_mesh_and_vertex_normals",
             "continuous_face_varying_texture_coordinates",
             "visual_mesh_extents_and_display_colors",
@@ -1017,6 +1021,15 @@
         ],
         "authored_interface_minimum_collision_margin_m": -1.056672465997964e-11,
         "authored_interface_point_count": 674,
+        "authored_tangent_frame_errors": [],
+        "authored_tangent_frame_payload_counts": {
+          "binormal_indices": 360,
+          "binormals": 360,
+          "normal_indices": 360,
+          "normals": 360,
+          "tangent_indices": 360,
+          "tangents": 360
+        },
         "authored_visual_point_count": 121680,
         "contract": {
           "axial_samples_per_segment": 7,
@@ -1070,13 +1083,18 @@
         "interface_overlap_m": 9.999999999999999e-05,
         "interface_topology_errors": [],
         "interface_vertex_count": 674,
+        "maximum_authored_tangent_frame_error": 5.7363723549030965e-08,
+        "maximum_binormal_unit_error": 2.220446049250313e-16,
+        "maximum_frame_orthogonality_error": 1.953732314818879e-16,
         "maximum_normal_unit_error": 3.3306690738754696e-16,
         "maximum_segment_boundary_gap_m": 2.7776743367531704e-17,
+        "maximum_tangent_unit_error": 2.220446049250313e-16,
         "maximum_uv_seam_u_error": 0.0,
         "maximum_uv_segment_boundary_gap": 2.842170943040401e-14,
         "maximum_visual_to_collision_radius_ratio": 1.0,
         "minimum_authored_visual_collision_margin_m": 0.0,
         "minimum_face_outward_dot": 1.2134272797754363e-09,
+        "minimum_frame_handedness": 0.9999999999999996,
         "minimum_normal_outward_dot": 0.9097043058407941,
         "minimum_visual_collision_margin_m": 0.0,
         "minimum_visual_to_collision_radius_ratio": 0.6544117647058824,
@@ -1087,10 +1105,14 @@
           180,
           359
         ],
+        "tangent_frame_indices_per_segment": 1440,
+        "tangent_frame_values_per_segment": 338,
         "texcoord_indices_per_segment": 1440,
         "texcoords_per_segment": 441,
         "topology_errors": [],
         "total_faces": 138240,
+        "total_tangent_frame_indices_per_channel": 518400,
+        "total_tangent_frame_values_per_channel": 121680,
         "total_texcoord_indices": 518400,
         "total_texcoords": 158760,
         "total_vertices": 121680,
@@ -1131,7 +1153,7 @@
       "passed": true
     },
     "suture_indexed_uv_pbr_material": {
-      "expected": "compact indexed UVs drive one relative-path raw normal and roughness texture through portable UsdPreviewSurface",
+      "expected": "compact indexed UVs and an explicit analytic right-handed tangent frame drive one relative-path raw normal and roughness texture through portable UsdPreviewSurface",
       "measured": {
         "chunks": [
           "IHDR",
@@ -1146,7 +1168,7 @@
             "calibration_status": "pending_cross_polarized_macro_capture",
             "content": "braid_normal_rgb_and_roughness_alpha",
             "format": "RGBA8_PNG",
-            "normal_convention": "DirectX_tangent_space",
+            "normal_convention": "DirectX_tangent_space_with_explicit_right_handed_v_down_frame",
             "normal_strength_seed": 0.035,
             "relative_path": "./textures/DrAnmarSuture4_0_braid_normal_roughness.png",
             "resolution": [
@@ -1156,6 +1178,17 @@
             "roughness_base_seed": 0.4,
             "roughness_variation_seed": 0.1,
             "source_color_space": "raw",
+            "tangent_frame": {
+              "binormal_direction": "negative_uv_v",
+              "binormal_primvar": "binormals",
+              "construction": "analytic_surface_derivatives_orthonormalized_against_authored_normals",
+              "handedness": "right_handed",
+              "hard_end_cap_frames": true,
+              "indexed": true,
+              "interpolation": "faceVarying",
+              "st_primvar": "st",
+              "tangent_primvar": "tangents"
+            },
             "wrap_s": "repeat",
             "wrap_t": "repeat"
           },

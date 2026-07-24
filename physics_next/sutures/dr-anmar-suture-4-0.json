@@ -2,7 +2,7 @@
   "schema": "dr.anmar.suture-profile.v1",
   "id": "dr-anmar-suture-4-0-braided-v1",
   "name": "Dr.Anmar 4-0 braided surgical suture",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "purpose": "Research-grade physical suture asset for operating-room simulation",
   "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
   "clinical_validation": false,
@@ -55,7 +55,7 @@
     "geometry_layer_owns": [
       "rigid_body_xforms",
       "closed_braided_visual_mesh_topology",
-      "braided_visual_mesh_points_and_vertex_normals",
+      "braided_visual_mesh_points_and_indexed_face_varying_tangent_frames",
       "closed_swage_interface_visual_mesh_and_vertex_normals",
       "continuous_face_varying_texture_coordinates",
       "visual_mesh_extents_and_display_colors",
@@ -158,7 +158,18 @@
       "source_color_space": "raw",
       "wrap_s": "repeat",
       "wrap_t": "repeat",
-      "normal_convention": "DirectX_tangent_space",
+      "normal_convention": "DirectX_tangent_space_with_explicit_right_handed_v_down_frame",
+      "tangent_frame": {
+        "tangent_primvar": "tangents",
+        "binormal_primvar": "binormals",
+        "st_primvar": "st",
+        "interpolation": "faceVarying",
+        "indexed": true,
+        "construction": "analytic_surface_derivatives_orthonormalized_against_authored_normals",
+        "handedness": "right_handed",
+        "binormal_direction": "negative_uv_v",
+        "hard_end_cap_frames": true
+      },
       "normal_strength_seed": 0.035,
       "roughness_base_seed": 0.4,
       "roughness_variation_seed": 0.1,
@@ -499,7 +510,7 @@
     {
       "title": "NVIDIA Omniverse materials",
       "url": "https://docs.omniverse.nvidia.com/materials-and-rendering/latest/materials.html",
-      "used_for": "raw color-space normal and roughness data, correctly scaled UsdUVTexture normal input, and portable material validation"
+      "used_for": "raw color-space normal and roughness data, correctly scaled UsdUVTexture normal input, explicit named tangent frame, and portable material validation"
     },
     {
       "title": "NVIDIA SimReady material best practices",

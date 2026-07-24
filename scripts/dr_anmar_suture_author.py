@@ -180,6 +180,9 @@ def braided_segment_geometry_block(
     total_half_length = cylinder_height_m / 2.0 + collision_radius_m
     points = ",\n            ".join(usd_vec(point) for point in mesh.points)
     normals = ",\n            ".join(usd_vec(normal) for normal in mesh.normals)
+    tangents = ",\n            ".join(usd_vec(tangent) for tangent in mesh.tangents)
+    binormals = ",\n            ".join(usd_vec(binormal) for binormal in mesh.binormals)
+    tangent_frame_indices = ", ".join(str(value) for value in mesh.tangent_frame_indices)
     texcoords = ",\n            ".join(usd_vec2(texcoord) for texcoord in mesh.texcoords)
     texcoord_indices = ", ".join(str(value) for value in mesh.texcoord_indices)
     face_counts = ", ".join(str(value) for value in mesh.face_vertex_counts)
@@ -201,8 +204,21 @@ def braided_segment_geometry_block(
         normal3f[] primvars:normals = [
             {normals}
         ] (
-            interpolation = "vertex"
+            interpolation = "faceVarying"
         )
+        int[] primvars:normals:indices = [{tangent_frame_indices}]
+        vector3f[] primvars:tangents = [
+            {tangents}
+        ] (
+            interpolation = "faceVarying"
+        )
+        int[] primvars:tangents:indices = [{tangent_frame_indices}]
+        vector3f[] primvars:binormals = [
+            {binormals}
+        ] (
+            interpolation = "faceVarying"
+        )
+        int[] primvars:binormals:indices = [{tangent_frame_indices}]
         texCoord2f[] primvars:st = [
             {texcoords}
         ] (
@@ -637,6 +653,10 @@ over "DrAnmarSuture4_0"
     {{
         def Material "SutureVisual"
         {{
+            string inputs:frame:tangentsPrimvarName = "{material_texture["tangent_frame"]["tangent_primvar"]}"
+            string inputs:frame:binormalsPrimvarName = "{material_texture["tangent_frame"]["binormal_primvar"]}"
+            string inputs:frame:stPrimvarName = "{material_texture["tangent_frame"]["st_primvar"]}"
+
             def Shader "PreviewSurface"
             {{
                 uniform token info:id = "UsdPreviewSurface"
@@ -650,7 +670,7 @@ over "DrAnmarSuture4_0"
             def Shader "PrimvarReader_st"
             {{
                 uniform token info:id = "UsdPrimvarReader_float2"
-                string inputs:varname = "st"
+                string inputs:varname.connect = <{suture_visual_path}.inputs:frame:stPrimvarName>
                 float2 outputs:result
             }}
             def Shader "BraidNormalRoughness"
@@ -1485,6 +1505,8 @@ def main() -> int:
     suture_visual_face_count = 0
     suture_visual_texcoord_count = 0
     suture_visual_texcoord_index_count = 0
+    suture_visual_tangent_frame_value_count = 0
+    suture_visual_tangent_frame_index_count = 0
     suture_visual_minimum_radius_ratio = math.inf
     suture_visual_maximum_radius_ratio = 0.0
     suture_minimum_visual_collision_margin_m = math.inf
@@ -1517,6 +1539,8 @@ def main() -> int:
         suture_visual_face_count += len(suture_visual_mesh.face_vertex_counts)
         suture_visual_texcoord_count += len(suture_visual_mesh.texcoords)
         suture_visual_texcoord_index_count += len(suture_visual_mesh.texcoord_indices)
+        suture_visual_tangent_frame_value_count += len(suture_visual_mesh.normals)
+        suture_visual_tangent_frame_index_count += len(suture_visual_mesh.tangent_frame_indices)
         suture_visual_minimum_radius_ratio = min(
             suture_visual_minimum_radius_ratio,
             suture_visual_mesh.minimum_radius_m / collision_radius,
@@ -1540,7 +1564,7 @@ def main() -> int:
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v13",
+        "schema": "dr.anmar.suture-asset-report.v14",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
@@ -1567,6 +1591,14 @@ def main() -> int:
         "suture_visual_total_texcoords": suture_visual_texcoord_count,
         "suture_visual_texcoord_indices_per_segment": suture_visual_texcoord_index_count // derived.segment_count,
         "suture_visual_total_texcoord_indices": suture_visual_texcoord_index_count,
+        "suture_visual_tangent_frame_values_per_segment": (
+            suture_visual_tangent_frame_value_count // derived.segment_count
+        ),
+        "suture_visual_tangent_frame_indices_per_segment": (
+            suture_visual_tangent_frame_index_count // derived.segment_count
+        ),
+        "suture_visual_total_tangent_frame_values_per_channel": suture_visual_tangent_frame_value_count,
+        "suture_visual_total_tangent_frame_indices_per_channel": suture_visual_tangent_frame_index_count,
         "suture_visual_minimum_radius_ratio": suture_visual_minimum_radius_ratio,
         "suture_visual_maximum_radius_ratio": suture_visual_maximum_radius_ratio,
         "suture_collider_cylinder_height_m": derived.segment_spacing_m,

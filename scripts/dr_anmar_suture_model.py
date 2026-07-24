@@ -227,6 +227,9 @@ class DerivedSuture:
 class SutureVisualMesh:
     points: tuple[tuple[float, float, float], ...]
     normals: tuple[tuple[float, float, float], ...]
+    tangents: tuple[tuple[float, float, float], ...]
+    binormals: tuple[tuple[float, float, float], ...]
+    tangent_frame_indices: tuple[int, ...]
     face_vertex_counts: tuple[int, ...]
     face_vertex_indices: tuple[int, ...]
     texcoords: tuple[tuple[float, float], ...]
@@ -680,6 +683,8 @@ def build_suture_visual_mesh(
 
     points: list[tuple[float, float, float]] = []
     normals: list[tuple[float, float, float]] = []
+    tangents: list[tuple[float, float, float]] = []
+    binormals: list[tuple[float, float, float]] = []
     minimum_radius = math.inf
     maximum_radius = 0.0
     epsilon_x = min(spacing, pitch) * 1.0e-5
@@ -725,14 +730,56 @@ def build_suture_visual_mesh(
                     normal[2] / length,
                 )
             )
+            unit_normal = normals[-1]
+            normal_projection = sum(
+                normal_component * tangent_component
+                for normal_component, tangent_component in zip(
+                    unit_normal,
+                    tangent_x,
+                    strict=True,
+                )
+            )
+            orthogonal_tangent = (
+                tangent_x[0] - normal_projection * unit_normal[0],
+                tangent_x[1] - normal_projection * unit_normal[1],
+                tangent_x[2] - normal_projection * unit_normal[2],
+            )
+            tangent_length = math.sqrt(sum(component * component for component in orthogonal_tangent))
+            unit_tangent = (
+                orthogonal_tangent[0] / tangent_length,
+                orthogonal_tangent[1] / tangent_length,
+                orthogonal_tangent[2] / tangent_length,
+            )
+            # Use N x T so the explicit right-handed frame's binormal points
+            # opposite increasing UV-v.  This exactly matches the generated
+            # DirectX-style normal map's positive green-channel convention.
+            binormal = (
+                unit_normal[1] * unit_tangent[2] - unit_normal[2] * unit_tangent[1],
+                unit_normal[2] * unit_tangent[0] - unit_normal[0] * unit_tangent[2],
+                unit_normal[0] * unit_tangent[1] - unit_normal[1] * unit_tangent[0],
+            )
+            binormal_length = math.sqrt(sum(component * component for component in binormal))
+            tangents.append(unit_tangent)
+            binormals.append(
+                (
+                    binormal[0] / binormal_length,
+                    binormal[1] / binormal_length,
+                    binormal[2] / binormal_length,
+                )
+            )
     left_center = len(points)
     points.append((-spacing / 2.0, 0.0, 0.0))
     normals.append((-1.0, 0.0, 0.0))
+    tangents.append((0.0, 1.0, 0.0))
+    binormals.append((0.0, 0.0, -1.0))
     right_center = len(points)
     points.append((spacing / 2.0, 0.0, 0.0))
     normals.append((1.0, 0.0, 0.0))
+    tangents.append((0.0, 1.0, 0.0))
+    binormals.append((0.0, 0.0, 1.0))
     face_counts: list[int] = []
     face_indices: list[int] = []
+    tangent_frame_indices: list[int] = []
     texcoords: list[tuple[float, float]] = []
     texcoord_indices: list[int] = []
     for axial_index in range(axial_samples):
@@ -775,6 +822,14 @@ def build_suture_visual_mesh(
                     right_ring + radial_index,
                 )
             )
+            tangent_frame_indices.extend(
+                (
+                    left_ring + radial_index,
+                    left_ring + next_radial,
+                    right_ring + next_radial,
+                    right_ring + radial_index,
+                )
+            )
             texcoord_indices.extend(
                 (
                     left_uv_ring + radial_index,
@@ -794,6 +849,7 @@ def build_suture_visual_mesh(
                 radial_index,
             )
         )
+        tangent_frame_indices.extend((left_center, left_center, left_center))
         texcoord_indices.extend(
             (
                 left_cap_center_uv,
@@ -809,6 +865,7 @@ def build_suture_visual_mesh(
                 last_ring + next_radial,
             )
         )
+        tangent_frame_indices.extend((right_center, right_center, right_center))
         texcoord_indices.extend(
             (
                 right_cap_center_uv,
@@ -829,6 +886,9 @@ def build_suture_visual_mesh(
     return SutureVisualMesh(
         points=tuple(points),
         normals=tuple(normals),
+        tangents=tuple(tangents),
+        binormals=tuple(binormals),
+        tangent_frame_indices=tuple(tangent_frame_indices),
         face_vertex_counts=tuple(face_counts),
         face_vertex_indices=tuple(face_indices),
         texcoords=tuple(texcoords),

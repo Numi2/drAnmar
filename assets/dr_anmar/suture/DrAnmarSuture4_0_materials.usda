@@ -13,6 +13,10 @@ over "DrAnmarSuture4_0"
     {
         def Material "SutureVisual"
         {
+            string inputs:frame:tangentsPrimvarName = "tangents"
+            string inputs:frame:binormalsPrimvarName = "binormals"
+            string inputs:frame:stPrimvarName = "st"
+
             def Shader "PreviewSurface"
             {
                 uniform token info:id = "UsdPreviewSurface"
@@ -26,7 +30,7 @@ over "DrAnmarSuture4_0"
             def Shader "PrimvarReader_st"
             {
                 uniform token info:id = "UsdPrimvarReader_float2"
-                string inputs:varname = "st"
+                string inputs:varname.connect = </DrAnmarSuture4_0/Looks/SutureVisual.inputs:frame:stPrimvarName>
                 float2 outputs:result
             }
             def Shader "BraidNormalRoughness"

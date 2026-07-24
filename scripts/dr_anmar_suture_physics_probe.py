@@ -10,7 +10,7 @@ from pathlib import Path
 
 from dr_anmar_needle_model import build_needle_collision_capsules, build_needle_mesh, derive_needle, load_needle_profile
 from dr_anmar_suture_integration import DR_ANMAR_NEEDLE_ASSET_ID, DR_ANMAR_NEEDLE_ASSET_VERSION, DR_ANMAR_NEEDLE_NAME
-from dr_anmar_suture_model import build_suture_interface_visual_mesh
+from dr_anmar_suture_model import build_suture_interface_visual_mesh, build_suture_visual_mesh
 from dr_anmar_suture_model import derive as derive_suture
 from dr_anmar_suture_model import load_profile as load_suture_profile
 
@@ -303,6 +303,12 @@ def main() -> int:
     suture_visual_mesh_count = None
     suture_visual_mesh_vertex_count = None
     suture_visual_normals_valid_count = None
+    suture_visual_tangent_frame_value_count = None
+    suture_visual_tangent_frame_index_count = None
+    suture_visual_tangent_frame_valid_count = None
+    suture_visual_tangent_frame_maximum_error = None
+    suture_visual_tangent_frame_maximum_orthogonality_error = None
+    suture_visual_tangent_frame_minimum_handedness = None
     suture_visual_uv_value_count = None
     suture_visual_uv_index_count = None
     suture_visual_uv_valid_count = None
@@ -572,10 +578,15 @@ def main() -> int:
             and suture_geometry_text.count('token visibility = "invisible"') == 361
             and suture_geometry_text.count('uniform token subdivisionScheme = "none"') == 361
             and suture_geometry_text.count("normal3f[] primvars:normals") == 361
-            and suture_geometry_text.count('interpolation = "vertex"') == 361
+            and suture_geometry_text.count('interpolation = "vertex"') == 1
+            and suture_geometry_text.count("int[] primvars:normals:indices") == 360
+            and suture_geometry_text.count("vector3f[] primvars:tangents") == 360
+            and suture_geometry_text.count("int[] primvars:tangents:indices") == 360
+            and suture_geometry_text.count("vector3f[] primvars:binormals") == 360
+            and suture_geometry_text.count("int[] primvars:binormals:indices") == 360
             and suture_geometry_text.count("texCoord2f[] primvars:st") == 360
             and suture_geometry_text.count("int[] primvars:st:indices") == 360
-            and suture_geometry_text.count('interpolation = "faceVarying"') == 360
+            and suture_geometry_text.count('interpolation = "faceVarying"') == 1440
             and "apiSchemas" not in suture_geometry_text
             and "material:binding" not in suture_geometry_text
             and "physics:" not in suture_geometry_text
@@ -583,7 +594,10 @@ def main() -> int:
             and suture_materials_text.count('def Material "') == 2
             and suture_materials_text.count('def Shader "PreviewSurface"') == 2
             and suture_materials_text.count('uniform token info:id = "UsdPrimvarReader_float2"') == 1
-            and suture_materials_text.count('string inputs:varname = "st"') == 1
+            and suture_materials_text.count('string inputs:frame:tangentsPrimvarName = "tangents"') == 1
+            and suture_materials_text.count('string inputs:frame:binormalsPrimvarName = "binormals"') == 1
+            and suture_materials_text.count('string inputs:frame:stPrimvarName = "st"') == 1
+            and suture_materials_text.count("string inputs:varname.connect =") == 1
             and suture_materials_text.count('uniform token info:id = "UsdUVTexture"') == 1
             and ("asset inputs:file = @./textures/DrAnmarSuture4_0_braid_normal_roughness.png@")
             in suture_materials_text
@@ -670,6 +684,7 @@ def main() -> int:
         suture_preview_shader = stage.GetPrimAtPath(suture_preview_shader_path)
         suture_primvar_reader = stage.GetPrimAtPath(suture_primvar_reader_path)
         suture_texture_shader = stage.GetPrimAtPath(suture_texture_shader_path)
+        suture_visual_material_prim = stage.GetPrimAtPath(suture_visual_material_path)
         suture_texture_asset = suture_texture_shader.GetAttribute("inputs:file").Get()
         suture_pbr_material_graph_valid = bool(
             suture_preview_shader.GetTypeName() == "Shader"
@@ -677,7 +692,11 @@ def main() -> int:
             and suture_primvar_reader.GetTypeName() == "Shader"
             and str(suture_primvar_reader.GetAttribute("info:id").Get()) == "UsdPrimvarReader_float2"
             and str(suture_primvar_reader.GetAttribute("inputs:varname").GetTypeName()) == "string"
-            and str(suture_primvar_reader.GetAttribute("inputs:varname").Get()) == "st"
+            and [str(path) for path in suture_primvar_reader.GetAttribute("inputs:varname").GetConnections()]
+            == [f"{suture_visual_material_path}.inputs:frame:stPrimvarName"]
+            and str(suture_visual_material_prim.GetAttribute("inputs:frame:tangentsPrimvarName").Get()) == "tangents"
+            and str(suture_visual_material_prim.GetAttribute("inputs:frame:binormalsPrimvarName").Get()) == "binormals"
+            and str(suture_visual_material_prim.GetAttribute("inputs:frame:stPrimvarName").Get()) == "st"
             and suture_texture_shader.GetTypeName() == "Shader"
             and str(suture_texture_shader.GetAttribute("info:id").Get()) == "UsdUVTexture"
             and getattr(suture_texture_asset, "path", "") == "./textures/DrAnmarSuture4_0_braid_normal_roughness.png"
@@ -697,27 +716,140 @@ def main() -> int:
             len(UsdGeom.Mesh(prim).GetPointsAttr().Get()) for prim in suture_visual_prims
         )
         suture_visual_normals_valid_count = 0
+        suture_visual_tangent_frame_value_count = 0
+        suture_visual_tangent_frame_index_count = 0
+        suture_visual_tangent_frame_valid_count = 0
+        suture_visual_tangent_frame_maximum_error = 0.0
+        suture_visual_tangent_frame_maximum_orthogonality_error = 0.0
+        suture_visual_tangent_frame_minimum_handedness = np.inf
         suture_visual_uv_value_count = 0
         suture_visual_uv_index_count = 0
         suture_visual_uv_valid_count = 0
-        for prim in suture_visual_prims:
+        for segment_index, prim in enumerate(suture_visual_prims):
             mesh = UsdGeom.Mesh(prim)
             points = mesh.GetPointsAttr().Get()
-            normals = mesh.GetNormalsAttr().Get()
-            normal_array = np.asarray(normals, dtype=np.float64)
-            if (
-                len(points) == len(normals)
-                and mesh.GetNormalsAttr().GetMetadata("interpolation") == "vertex"
-                and mesh.GetSubdivisionSchemeAttr().Get() == "none"
-                and np.isfinite(normal_array).all()
-                and np.allclose(
-                    np.linalg.norm(normal_array, axis=1),
-                    1.0,
-                    rtol=0.0,
-                    atol=2.0e-5,
+            normal_attribute = prim.GetAttribute("primvars:normals")
+            tangent_attribute = prim.GetAttribute("primvars:tangents")
+            binormal_attribute = prim.GetAttribute("primvars:binormals")
+            normal_index_attribute = prim.GetAttribute("primvars:normals:indices")
+            tangent_index_attribute = prim.GetAttribute("primvars:tangents:indices")
+            binormal_index_attribute = prim.GetAttribute("primvars:binormals:indices")
+            normals = normal_attribute.Get()
+            tangents = tangent_attribute.Get()
+            binormals = binormal_attribute.Get()
+            normal_indices = normal_index_attribute.Get()
+            tangent_indices = tangent_index_attribute.Get()
+            binormal_indices = binormal_index_attribute.Get()
+            if all(
+                value is not None
+                for value in (
+                    normals,
+                    tangents,
+                    binormals,
+                    normal_indices,
+                    tangent_indices,
+                    binormal_indices,
                 )
             ):
-                suture_visual_normals_valid_count += 1
+                expected_mesh = build_suture_visual_mesh(
+                    suture_profile,
+                    segment_index,
+                    derived=derived_suture,
+                )
+                normal_array = np.asarray(normals, dtype=np.float64)
+                tangent_array = np.asarray(tangents, dtype=np.float64)
+                binormal_array = np.asarray(binormals, dtype=np.float64)
+                normal_index_array = np.asarray(normal_indices, dtype=np.int64)
+                tangent_index_array = np.asarray(tangent_indices, dtype=np.int64)
+                binormal_index_array = np.asarray(binormal_indices, dtype=np.int64)
+                expected_normal_array = np.asarray(expected_mesh.normals, dtype=np.float64)
+                expected_tangent_array = np.asarray(expected_mesh.tangents, dtype=np.float64)
+                expected_binormal_array = np.asarray(expected_mesh.binormals, dtype=np.float64)
+                expected_frame_indices = np.asarray(expected_mesh.tangent_frame_indices, dtype=np.int64)
+                frame_values_valid = bool(
+                    normal_array.shape == tangent_array.shape == binormal_array.shape == (len(expected_mesh.normals), 3)
+                    and np.isfinite(normal_array).all()
+                    and np.isfinite(tangent_array).all()
+                    and np.isfinite(binormal_array).all()
+                    and np.allclose(
+                        np.linalg.norm(normal_array, axis=1),
+                        1.0,
+                        rtol=0.0,
+                        atol=2.0e-5,
+                    )
+                    and np.allclose(
+                        np.linalg.norm(tangent_array, axis=1),
+                        1.0,
+                        rtol=0.0,
+                        atol=2.0e-5,
+                    )
+                    and np.allclose(
+                        np.linalg.norm(binormal_array, axis=1),
+                        1.0,
+                        rtol=0.0,
+                        atol=2.0e-5,
+                    )
+                )
+                frame_indices_valid = bool(
+                    normal_index_array.shape
+                    == tangent_index_array.shape
+                    == binormal_index_array.shape
+                    == expected_frame_indices.shape
+                    and np.array_equal(normal_index_array, expected_frame_indices)
+                    and np.array_equal(tangent_index_array, expected_frame_indices)
+                    and np.array_equal(binormal_index_array, expected_frame_indices)
+                )
+                frame_interpolation_valid = all(
+                    attribute.GetMetadata("interpolation") == "faceVarying"
+                    for attribute in (
+                        normal_attribute,
+                        tangent_attribute,
+                        binormal_attribute,
+                    )
+                )
+                if frame_values_valid:
+                    frame_orthogonality_error = float(
+                        max(
+                            np.abs(np.sum(normal_array * tangent_array, axis=1)).max(),
+                            np.abs(np.sum(normal_array * binormal_array, axis=1)).max(),
+                            np.abs(np.sum(tangent_array * binormal_array, axis=1)).max(),
+                        )
+                    )
+                    frame_handedness = np.sum(
+                        np.cross(tangent_array, binormal_array) * normal_array,
+                        axis=1,
+                    )
+                    frame_maximum_error = float(
+                        max(
+                            np.abs(normal_array - expected_normal_array).max(),
+                            np.abs(tangent_array - expected_tangent_array).max(),
+                            np.abs(binormal_array - expected_binormal_array).max(),
+                        )
+                    )
+                    suture_visual_tangent_frame_maximum_orthogonality_error = max(
+                        suture_visual_tangent_frame_maximum_orthogonality_error,
+                        frame_orthogonality_error,
+                    )
+                    suture_visual_tangent_frame_minimum_handedness = min(
+                        suture_visual_tangent_frame_minimum_handedness,
+                        float(frame_handedness.min()),
+                    )
+                    suture_visual_tangent_frame_maximum_error = max(
+                        suture_visual_tangent_frame_maximum_error,
+                        frame_maximum_error,
+                    )
+                    suture_visual_tangent_frame_value_count += len(normals)
+                    suture_visual_tangent_frame_index_count += len(normal_indices)
+                    if (
+                        frame_indices_valid
+                        and frame_interpolation_valid
+                        and frame_orthogonality_error <= 2.0e-5
+                        and float(frame_handedness.min()) >= 1.0 - 2.0e-5
+                        and frame_maximum_error <= 1.0e-6
+                        and mesh.GetSubdivisionSchemeAttr().Get() == "none"
+                    ):
+                        suture_visual_normals_valid_count += 1
+                        suture_visual_tangent_frame_valid_count += 1
             st_attribute = prim.GetAttribute("primvars:st")
             st_index_attribute = prim.GetAttribute("primvars:st:indices")
             texture_coordinates = st_attribute.Get()
@@ -955,6 +1087,12 @@ def main() -> int:
             suture_visual_mesh_count == 360
             and suture_visual_mesh_vertex_count == 360 * expected_visual_vertices_per_segment
             and suture_visual_normals_valid_count == 360
+            and suture_visual_tangent_frame_value_count == 360 * expected_visual_vertices_per_segment
+            and suture_visual_tangent_frame_index_count == 360 * 1440
+            and suture_visual_tangent_frame_valid_count == 360
+            and suture_visual_tangent_frame_maximum_error <= 1.0e-6
+            and suture_visual_tangent_frame_maximum_orthogonality_error <= 2.0e-5
+            and suture_visual_tangent_frame_minimum_handedness >= 1.0 - 2.0e-5
             and suture_visual_uv_value_count == 360 * 441
             and suture_visual_uv_index_count == 360 * 1440
             and suture_visual_uv_valid_count == 360
@@ -1204,7 +1342,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v14",
+        "schema": "dr.anmar.needle-native-physx-probe.v15",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -1271,6 +1409,14 @@ def main() -> int:
         "suture_visual_mesh_count": suture_visual_mesh_count,
         "suture_visual_mesh_vertex_count": suture_visual_mesh_vertex_count,
         "suture_visual_normals_valid_count": suture_visual_normals_valid_count,
+        "suture_visual_tangent_frame_value_count": suture_visual_tangent_frame_value_count,
+        "suture_visual_tangent_frame_index_count": suture_visual_tangent_frame_index_count,
+        "suture_visual_tangent_frame_valid_count": suture_visual_tangent_frame_valid_count,
+        "suture_visual_tangent_frame_maximum_error": suture_visual_tangent_frame_maximum_error,
+        "suture_visual_tangent_frame_maximum_orthogonality_error": (
+            suture_visual_tangent_frame_maximum_orthogonality_error
+        ),
+        "suture_visual_tangent_frame_minimum_handedness": suture_visual_tangent_frame_minimum_handedness,
         "suture_visual_uv_value_count": suture_visual_uv_value_count,
         "suture_visual_uv_index_count": suture_visual_uv_index_count,
         "suture_visual_uv_valid_count": suture_visual_uv_valid_count,
@@ -1337,6 +1483,12 @@ def main() -> int:
                 and report["suture_material_bindings_valid"]
                 and report["suture_visual_mesh_count"] == 360
                 and report["suture_visual_normals_valid_count"] == 360
+                and report["suture_visual_tangent_frame_value_count"] == 360 * 338
+                and report["suture_visual_tangent_frame_index_count"] == 360 * 1440
+                and report["suture_visual_tangent_frame_valid_count"] == 360
+                and report["suture_visual_tangent_frame_maximum_error"] <= 1.0e-6
+                and report["suture_visual_tangent_frame_maximum_orthogonality_error"] <= 2.0e-5
+                and report["suture_visual_tangent_frame_minimum_handedness"] >= 1.0 - 2.0e-5
                 and report["suture_visual_uv_value_count"] == 360 * 441
                 and report["suture_visual_uv_index_count"] == 360 * 1440
                 and report["suture_visual_uv_valid_count"] == 360

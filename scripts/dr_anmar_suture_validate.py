@@ -54,6 +54,7 @@ from dr_anmar_suture_integration import (
 )
 from dr_anmar_suture_model import (
     DEFAULT_PROFILE_PATH,
+    DerivedSuture,
     build_suture_interface_visual_mesh,
     build_suture_material_texture,
     build_suture_visual_mesh,
@@ -211,6 +212,7 @@ def add_suture_texture_checks(
 
     appearance = profile["appearance"]
     texture_contract = appearance["normal_roughness_texture"]
+    tangent_frame_contract = texture_contract["tangent_frame"]
     expected_texture = build_suture_material_texture(profile)
     expected_png = encode_suture_material_texture_png(expected_texture)
     decode_error: str | None = None
@@ -251,7 +253,11 @@ def add_suture_texture_checks(
     required_material_tokens = [
         'uniform token info:id = "UsdPreviewSurface"',
         'uniform token info:id = "UsdPrimvarReader_float2"',
-        'string inputs:varname = "st"',
+        'string inputs:frame:tangentsPrimvarName = "tangents"',
+        'string inputs:frame:binormalsPrimvarName = "binormals"',
+        'string inputs:frame:stPrimvarName = "st"',
+        "string inputs:varname.connect =",
+        ".inputs:frame:stPrimvarName>",
         'uniform token info:id = "UsdUVTexture"',
         f'asset inputs:file = @{texture_contract["relative_path"]}@',
         f'token inputs:sourceColorSpace = "{texture_contract["source_color_space"]}"',
@@ -280,13 +286,30 @@ def add_suture_texture_checks(
         and texture_contract["source_color_space"] == "raw"
         and texture_contract["wrap_s"] == "repeat"
         and texture_contract["wrap_t"] == "repeat"
-        and texture_contract["normal_convention"] == "DirectX_tangent_space"
+        and texture_contract["normal_convention"] == "DirectX_tangent_space_with_explicit_right_handed_v_down_frame"
+        and tangent_frame_contract
+        == {
+            "tangent_primvar": "tangents",
+            "binormal_primvar": "binormals",
+            "st_primvar": "st",
+            "interpolation": "faceVarying",
+            "indexed": True,
+            "construction": "analytic_surface_derivatives_orthonormalized_against_authored_normals",
+            "handedness": "right_handed",
+            "binormal_direction": "negative_uv_v",
+            "hard_end_cap_frames": True,
+        }
         and texture_contract["content"] == "braid_normal_rgb_and_roughness_alpha"
         and texture_contract["calibration_status"] == "pending_cross_polarized_macro_capture"
         and not missing_material_tokens
         and geometry_text.count("texCoord2f[] primvars:st") == segment_count
         and geometry_text.count("int[] primvars:st:indices") == segment_count
-        and geometry_text.count('interpolation = "faceVarying"') == segment_count
+        and geometry_text.count("vector3f[] primvars:tangents") == segment_count
+        and geometry_text.count("int[] primvars:tangents:indices") == segment_count
+        and geometry_text.count("vector3f[] primvars:binormals") == segment_count
+        and geometry_text.count("int[] primvars:binormals:indices") == segment_count
+        and geometry_text.count("int[] primvars:normals:indices") == segment_count
+        and geometry_text.count('interpolation = "faceVarying"') == segment_count * 4
         and decode_error is None
         and (width, height) == tuple(texture_contract["resolution"])
         and chunk_names == ("IHDR", "IDAT", "IEND")
@@ -328,8 +351,8 @@ def add_suture_texture_checks(
             ],
             "maximum_wrap_edge_channel_error": edge_channel_error,
         },
-        "compact indexed UVs drive one relative-path raw normal and roughness texture through portable"
-        " UsdPreviewSurface",
+        "compact indexed UVs and an explicit analytic right-handed tangent frame drive one relative-path raw"
+        " normal and roughness texture through portable UsdPreviewSurface",
     )
 
 
@@ -484,7 +507,7 @@ def add_suture_layer_checks(
         and model_identity["composition_path_policy"] == "explicit_anchored_relative_asset_paths"
         and 'prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]' in base_text
         and 'string name = "DrAnmarSuture4_0"' in base_text
-        and 'string version = "2.5.0"' in base_text
+        and 'string version = "2.6.0"' in base_text
         and 'displayName = "DrAnmar 4-0 Braided Suture"' in base_text
         and 'kind = "component"' in base_text
         and 'token[] semantics:labels:wikidata_qcode = ["Q4948587"]' in base_text
@@ -493,7 +516,7 @@ def add_suture_layer_checks(
     check(
         checks,
         "suture_asset_structure_source_ownership",
-        profile["version"] == "2.5.0"
+        profile["version"] == "2.6.0"
         and layer_contract["entry_layer"] == "DrAnmarSuture4_0.usda"
         and layer_contract["base_layer"] == "DrAnmarSuture4_0_base.usda"
         and layer_contract["geometry_layer"] == "DrAnmarSuture4_0_geometry.usd"
@@ -552,14 +575,22 @@ def add_suture_layer_checks(
         and geometry_text.count('token visibility = "invisible"') == segment_count + 1
         and geometry_text.count('uniform token subdivisionScheme = "none"') == segment_count + 1
         and geometry_text.count("normal3f[] primvars:normals") == segment_count + 1
-        and geometry_text.count('interpolation = "vertex"') == segment_count + 1
+        and geometry_text.count('interpolation = "vertex"') == 1
+        and geometry_text.count("int[] primvars:normals:indices") == segment_count
+        and geometry_text.count("vector3f[] primvars:tangents") == segment_count
+        and geometry_text.count("int[] primvars:tangents:indices") == segment_count
+        and geometry_text.count("vector3f[] primvars:binormals") == segment_count
+        and geometry_text.count("int[] primvars:binormals:indices") == segment_count
         and geometry_text.count("texCoord2f[] primvars:st") == segment_count
         and geometry_text.count("int[] primvars:st:indices") == segment_count
-        and geometry_text.count('interpolation = "faceVarying"') == segment_count
+        and geometry_text.count('interpolation = "faceVarying"') == segment_count * 4
         and materials_text.count('def Material "') == 2
         and materials_text.count('def Shader "PreviewSurface"') == 2
         and materials_text.count('uniform token info:id = "UsdPrimvarReader_float2"') == 1
-        and materials_text.count('string inputs:varname = "st"') == 1
+        and materials_text.count('string inputs:frame:tangentsPrimvarName = "tangents"') == 1
+        and materials_text.count('string inputs:frame:binormalsPrimvarName = "binormals"') == 1
+        and materials_text.count('string inputs:frame:stPrimvarName = "st"') == 1
+        and materials_text.count("string inputs:varname.connect =") == 1
         and materials_text.count('uniform token info:id = "UsdUVTexture"') == 1
         and "asset inputs:file = @./textures/DrAnmarSuture4_0_braid_normal_roughness.png@" in materials_text
         and 'token inputs:sourceColorSpace = "raw"' in materials_text
@@ -820,6 +851,135 @@ def add_physics_variant_checks(
     )
 
 
+def parse_vec3_payload(payload: str) -> tuple[tuple[float, float, float], ...]:
+    """Parse a USDA vector-array payload into exact three-component tuples."""
+
+    values: list[tuple[float, float, float]] = []
+    for encoded_value in re.findall(r"\(([^()]*)\)", payload):
+        components = tuple(float(value.strip()) for value in encoded_value.split(","))
+        if len(components) != 3:
+            raise ValueError("tangent-frame vector does not have three components")
+        values.append(components)
+    return tuple(values)
+
+
+def parse_index_payload(payload: str) -> tuple[int, ...]:
+    """Parse a USDA integer-array payload."""
+
+    return tuple(int(value.strip()) for value in payload.split(",") if value.strip())
+
+
+def validate_authored_tangent_frame_payloads(
+    profile: dict[str, Any],
+    *,
+    segment_count: int,
+    derived: DerivedSuture,
+    segment_geometry_text: str,
+) -> tuple[dict[str, int], list[str], float]:
+    """Compare every serialized tangent frame with the analytic source model."""
+
+    vector_payloads = (
+        re.findall(
+            r'normal3f\[\] primvars:normals = \[(.*?)\]\s*\(\s*interpolation = "faceVarying"\s*\)',
+            segment_geometry_text,
+            flags=re.DOTALL,
+        ),
+        re.findall(
+            r'vector3f\[\] primvars:tangents = \[(.*?)\]\s*\(\s*interpolation = "faceVarying"\s*\)',
+            segment_geometry_text,
+            flags=re.DOTALL,
+        ),
+        re.findall(
+            r'vector3f\[\] primvars:binormals = \[(.*?)\]\s*\(\s*interpolation = "faceVarying"\s*\)',
+            segment_geometry_text,
+            flags=re.DOTALL,
+        ),
+    )
+    index_payloads = (
+        re.findall(
+            r"int\[\] primvars:normals:indices = \[([^\]]*)\]",
+            segment_geometry_text,
+        ),
+        re.findall(
+            r"int\[\] primvars:tangents:indices = \[([^\]]*)\]",
+            segment_geometry_text,
+        ),
+        re.findall(
+            r"int\[\] primvars:binormals:indices = \[([^\]]*)\]",
+            segment_geometry_text,
+        ),
+    )
+    payload_counts = {
+        "normals": len(vector_payloads[0]),
+        "tangents": len(vector_payloads[1]),
+        "binormals": len(vector_payloads[2]),
+        "normal_indices": len(index_payloads[0]),
+        "tangent_indices": len(index_payloads[1]),
+        "binormal_indices": len(index_payloads[2]),
+    }
+    errors: list[str] = []
+    maximum_error = 0.0
+    if not all(count == segment_count for count in payload_counts.values()):
+        return payload_counts, ["payload_count"], maximum_error
+
+    for segment_index, payloads in enumerate(
+        zip(
+            *vector_payloads,
+            *index_payloads,
+            strict=True,
+        )
+    ):
+        expected_mesh = build_suture_visual_mesh(
+            profile,
+            segment_index,
+            collision_radius_m=suture_segment_collision_radius(
+                profile,
+                segment_index,
+                derived=derived,
+            ),
+            derived=derived,
+        )
+        try:
+            authored_vectors = tuple(parse_vec3_payload(payload) for payload in payloads[:3])
+            authored_indices = tuple(parse_index_payload(payload) for payload in payloads[3:])
+        except ValueError as error:
+            errors.append(f"S{segment_index:04d}:{error}")
+            continue
+        expected_vectors = (
+            expected_mesh.normals,
+            expected_mesh.tangents,
+            expected_mesh.binormals,
+        )
+        if any(len(authored) != len(expected) for authored, expected in zip(authored_vectors, expected_vectors)):
+            errors.append(f"S{segment_index:04d}:vector_count")
+            continue
+        if any(indices != expected_mesh.tangent_frame_indices for indices in authored_indices):
+            errors.append(f"S{segment_index:04d}:indices")
+            continue
+        maximum_error = max(
+            maximum_error,
+            *(
+                abs(authored_component - expected_component)
+                for authored_values, expected_values in zip(
+                    authored_vectors,
+                    expected_vectors,
+                    strict=True,
+                )
+                for authored_vector, expected_vector in zip(
+                    authored_values,
+                    expected_values,
+                    strict=True,
+                )
+                for authored_component, expected_component in zip(
+                    authored_vector,
+                    expected_vector,
+                    strict=True,
+                )
+            ),
+        )
+    return payload_counts, errors, maximum_error
+
+
 def add_suture_visual_mesh_checks(
     checks: dict[str, dict[str, Any]],
     profile: dict[str, Any],
@@ -938,6 +1098,10 @@ def add_suture_visual_mesh_checks(
     )
     topology_errors: list[str] = []
     maximum_normal_unit_error = 0.0
+    maximum_tangent_unit_error = 0.0
+    maximum_binormal_unit_error = 0.0
+    maximum_frame_orthogonality_error = 0.0
+    minimum_frame_handedness = math.inf
     minimum_normal_outward_dot = math.inf
     minimum_face_outward_dot = math.inf
     maximum_visual_to_collision_ratio = 0.0
@@ -949,6 +1113,8 @@ def add_suture_visual_mesh_checks(
     total_faces = 0
     total_texcoords = 0
     total_texcoord_indices = 0
+    total_tangent_frame_values = 0
+    total_tangent_frame_indices = 0
     maximum_uv_segment_boundary_gap = 0.0
     maximum_uv_seam_u_error = 0.0
     previous_right_u: float | None = None
@@ -969,6 +1135,8 @@ def add_suture_visual_mesh_checks(
         total_faces += len(mesh.face_vertex_counts)
         total_texcoords += len(mesh.texcoords)
         total_texcoord_indices += len(mesh.texcoord_indices)
+        total_tangent_frame_values += len(mesh.normals)
+        total_tangent_frame_indices += len(mesh.tangent_frame_indices)
         maximum_visual_to_collision_ratio = max(
             maximum_visual_to_collision_ratio,
             mesh.maximum_radius_m / collision_radius,
@@ -988,13 +1156,75 @@ def add_suture_visual_mesh_checks(
                 for point in mesh.points
             ),
         )
-        for point, normal in zip(mesh.points, mesh.normals, strict=True):
-            values = (*point, *normal)
+        for point, normal, tangent, binormal in zip(
+            mesh.points,
+            mesh.normals,
+            mesh.tangents,
+            mesh.binormals,
+            strict=True,
+        ):
+            values = (*point, *normal, *tangent, *binormal)
             non_finite_value_count += sum(not math.isfinite(value) for value in values)
             normal_length = math.sqrt(sum(component * component for component in normal))
+            tangent_length = math.sqrt(sum(component * component for component in tangent))
+            binormal_length = math.sqrt(sum(component * component for component in binormal))
             maximum_normal_unit_error = max(
                 maximum_normal_unit_error,
                 abs(normal_length - 1.0),
+            )
+            maximum_tangent_unit_error = max(
+                maximum_tangent_unit_error,
+                abs(tangent_length - 1.0),
+            )
+            maximum_binormal_unit_error = max(
+                maximum_binormal_unit_error,
+                abs(binormal_length - 1.0),
+            )
+            normal_tangent_dot = sum(
+                left * right
+                for left, right in zip(
+                    normal,
+                    tangent,
+                    strict=True,
+                )
+            )
+            normal_binormal_dot = sum(
+                left * right
+                for left, right in zip(
+                    normal,
+                    binormal,
+                    strict=True,
+                )
+            )
+            tangent_binormal_dot = sum(
+                left * right
+                for left, right in zip(
+                    tangent,
+                    binormal,
+                    strict=True,
+                )
+            )
+            maximum_frame_orthogonality_error = max(
+                maximum_frame_orthogonality_error,
+                abs(normal_tangent_dot),
+                abs(normal_binormal_dot),
+                abs(tangent_binormal_dot),
+            )
+            tangent_cross_binormal = (
+                tangent[1] * binormal[2] - tangent[2] * binormal[1],
+                tangent[2] * binormal[0] - tangent[0] * binormal[2],
+                tangent[0] * binormal[1] - tangent[1] * binormal[0],
+            )
+            minimum_frame_handedness = min(
+                minimum_frame_handedness,
+                sum(
+                    left * right
+                    for left, right in zip(
+                        tangent_cross_binormal,
+                        normal,
+                        strict=True,
+                    )
+                ),
             )
             if abs(point[0]) < derived.segment_spacing_m / 2.0 - 1.0e-12:
                 radial_length = math.hypot(point[1], point[2])
@@ -1057,10 +1287,12 @@ def add_suture_visual_mesh_checks(
         if segment_index not in sampled_indices:
             continue
         if (
-            len(mesh.points) != len(mesh.normals)
+            not (len(mesh.points) == len(mesh.normals) == len(mesh.tangents) == len(mesh.binormals))
             or sum(mesh.face_vertex_counts) != len(mesh.face_vertex_indices)
             or len(mesh.texcoord_indices) != len(mesh.face_vertex_indices)
+            or len(mesh.tangent_frame_indices) != len(mesh.face_vertex_indices)
             or any(index < 0 or index >= len(mesh.texcoords) for index in mesh.texcoord_indices)
+            or any(index < 0 or index >= len(mesh.normals) for index in mesh.tangent_frame_indices)
             or any(index < 0 or index >= len(mesh.points) for index in mesh.face_vertex_indices)
         ):
             topology_errors.append(f"S{segment_index:04d}:array_contract")
@@ -1127,6 +1359,8 @@ def add_suture_visual_mesh_checks(
     expected_faces_per_segment = (axial_samples - 1) * radial_samples + 2 * radial_samples
     expected_texcoords_per_segment = (axial_samples + 2) * (radial_samples + 1)
     expected_texcoord_indices_per_segment = 4 * (axial_samples - 1) * radial_samples + 6 * radial_samples
+    expected_tangent_frame_values_per_segment = expected_vertices_per_segment
+    expected_tangent_frame_indices_per_segment = expected_texcoord_indices_per_segment
     authored_collider_records = [
         (float(height), float(radius))
         for height, radius in re.findall(
@@ -1151,6 +1385,16 @@ def add_suture_visual_mesh_checks(
         r'def Mesh "Visual"\s*\{.*?point3f\[\] points = \[([^\]]*)\]',
         interface_geometry_text,
         flags=re.DOTALL,
+    )
+    (
+        authored_tangent_frame_payload_counts,
+        authored_tangent_frame_errors,
+        maximum_authored_tangent_frame_error,
+    ) = validate_authored_tangent_frame_payloads(
+        profile,
+        segment_count=segment_count,
+        derived=derived,
+        segment_geometry_text=segment_geometry_text,
     )
     authored_visual_point_count = 0
     minimum_authored_visual_collision_margin_m = math.inf
@@ -1250,7 +1494,7 @@ def add_suture_visual_mesh_checks(
         == [
             "rigid_body_xforms",
             "closed_braided_visual_mesh_topology",
-            "braided_visual_mesh_points_and_vertex_normals",
+            "braided_visual_mesh_points_and_indexed_face_varying_tangent_frames",
             "closed_swage_interface_visual_mesh_and_vertex_normals",
             "continuous_face_varying_texture_coordinates",
             "visual_mesh_extents_and_display_colors",
@@ -1276,6 +1520,10 @@ def add_suture_visual_mesh_checks(
         and not topology_errors
         and non_finite_value_count == 0
         and maximum_normal_unit_error <= 1.0e-12
+        and maximum_tangent_unit_error <= 1.0e-12
+        and maximum_binormal_unit_error <= 1.0e-12
+        and maximum_frame_orthogonality_error <= 1.0e-12
+        and minimum_frame_handedness >= 1.0 - 1.0e-12
         and minimum_normal_outward_dot > 0.9
         and minimum_face_outward_dot > 0.0
         and maximum_visual_to_collision_ratio <= float(visual["maximum_visual_to_collision_radius_ratio"]) + 1.0e-12
@@ -1294,6 +1542,10 @@ def add_suture_visual_mesh_checks(
         and total_faces == expected_faces_per_segment * segment_count
         and total_texcoords == expected_texcoords_per_segment * segment_count
         and total_texcoord_indices == expected_texcoord_indices_per_segment * segment_count
+        and total_tangent_frame_values == expected_tangent_frame_values_per_segment * segment_count
+        and total_tangent_frame_indices == expected_tangent_frame_indices_per_segment * segment_count
+        and not authored_tangent_frame_errors
+        and maximum_authored_tangent_frame_error <= 1.0e-6
         and geometry_text.count('def Mesh "Visual"') == segment_count + 1
         and geometry_text.count('def Capsule "Visual"') == 0
         and geometry_text.count('def Capsule "Collision"') == segment_count + 1
@@ -1321,10 +1573,17 @@ def add_suture_visual_mesh_checks(
             "faces_per_segment": expected_faces_per_segment,
             "texcoords_per_segment": expected_texcoords_per_segment,
             "texcoord_indices_per_segment": expected_texcoord_indices_per_segment,
+            "tangent_frame_values_per_segment": expected_tangent_frame_values_per_segment,
+            "tangent_frame_indices_per_segment": expected_tangent_frame_indices_per_segment,
             "total_vertices": total_vertices,
             "total_faces": total_faces,
             "total_texcoords": total_texcoords,
             "total_texcoord_indices": total_texcoord_indices,
+            "total_tangent_frame_values_per_channel": total_tangent_frame_values,
+            "total_tangent_frame_indices_per_channel": total_tangent_frame_indices,
+            "authored_tangent_frame_payload_counts": authored_tangent_frame_payload_counts,
+            "authored_tangent_frame_errors": authored_tangent_frame_errors,
+            "maximum_authored_tangent_frame_error": maximum_authored_tangent_frame_error,
             "interface_vertex_count": len(interface_mesh.points),
             "interface_face_count": len(interface_mesh.face_vertex_counts),
             "interface_topology_errors": interface_topology_errors,
@@ -1338,6 +1597,10 @@ def add_suture_visual_mesh_checks(
             "authored_interface_point_count": authored_interface_point_count,
             "authored_interface_minimum_collision_margin_m": authored_interface_minimum_collision_margin_m,
             "maximum_normal_unit_error": maximum_normal_unit_error,
+            "maximum_tangent_unit_error": maximum_tangent_unit_error,
+            "maximum_binormal_unit_error": maximum_binormal_unit_error,
+            "maximum_frame_orthogonality_error": maximum_frame_orthogonality_error,
+            "minimum_frame_handedness": minimum_frame_handedness,
             "minimum_normal_outward_dot": minimum_normal_outward_dot,
             "minimum_face_outward_dot": minimum_face_outward_dot,
             "minimum_visual_to_collision_radius_ratio": minimum_visual_to_collision_ratio,
@@ -1570,6 +1833,10 @@ def validate(
         "physxRigidBody:enableCCD",
         'def Xform "NeedleInterface"',
         'def Mesh "Visual"',
+        "vector3f[] primvars:tangents",
+        "vector3f[] primvars:binormals",
+        "int[] primvars:tangents:indices",
+        "int[] primvars:binormals:indices",
         'def Capsule "Collision"',
         'uniform token purpose = "guide"',
         'token visibility = "invisible"',
@@ -2447,6 +2714,12 @@ def validate(
         "suture_visual_mesh_count",
         "suture_visual_mesh_vertex_count",
         "suture_visual_normals_valid_count",
+        "suture_visual_tangent_frame_value_count",
+        "suture_visual_tangent_frame_index_count",
+        "suture_visual_tangent_frame_valid_count",
+        "suture_visual_tangent_frame_maximum_error",
+        "suture_visual_tangent_frame_maximum_orthogonality_error",
+        "suture_visual_tangent_frame_minimum_handedness",
         "suture_visual_uv_value_count",
         "suture_visual_uv_index_count",
         "suture_visual_uv_valid_count",

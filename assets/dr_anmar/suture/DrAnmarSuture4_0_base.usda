@@ -15,10 +15,10 @@ def Xform "DrAnmarSuture4_0" (
     prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]
     assetInfo = {
         string name = "DrAnmarSuture4_0"
-        string version = "2.5.0"
+        string version = "2.6.0"
     }
     customData = {
-        string drAnmarAssetVersion = "2.5.0"
+        string drAnmarAssetVersion = "2.6.0"
         bool drAnmarClinicalValidation = false
         string drAnmarCanonicalAssetPackage = "assets/dr_anmar"
         bool drAnmarIndependentAsset = true
