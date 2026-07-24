@@ -14,6 +14,9 @@ import hashlib
 import json
 import math
 import os
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +33,8 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ASSET_ID,
     DR_ANMAR_NEEDLE_ASSET_PATH,
     DR_ANMAR_NEEDLE_ASSET_VERSION,
+    DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH,
+    DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH,
     DR_ANMAR_NEEDLE_NAME,
     DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH,
     DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH,
@@ -41,6 +46,8 @@ from dr_anmar_suture_model import DEFAULT_PROFILE_PATH, derive, load_profile
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 DEFAULT_NEEDLE_OUTPUT = DR_ANMAR_NEEDLE_ASSET_PATH
+DEFAULT_NEEDLE_GEOMETRY_OUTPUT = DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH
+DEFAULT_NEEDLE_MATERIALS_OUTPUT = DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH
 DEFAULT_NEEDLE_PHYSICS_OUTPUT = DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH
 DEFAULT_NEEDLE_PHYSX_OUTPUT = DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH
 
@@ -340,10 +347,12 @@ def author_dr_anmar_needle(
     needle_profile: dict[str, Any],
     *,
     suture_reference: str,
+    geometry_sublayer_reference: str,
+    materials_sublayer_reference: str,
     physx_sublayer_reference: str,
     neutral_physics_sublayer_reference: str,
-) -> tuple[str, str, str]:
-    """Author visual entry, neutral physics, and PhysX-specific layers."""
+) -> tuple[str, str, str, str, str]:
+    """Author entry, geometry, materials, neutral physics, and PhysX layers."""
 
     derived_needle = derive_needle(needle_profile)
     mass_properties = derived_needle.mass_properties
@@ -413,7 +422,9 @@ def author_dr_anmar_needle(
     entry_layer = f"""#usda 1.0
 (
     subLayers = [
-        @{physx_sublayer_reference}@
+        @{physx_sublayer_reference}@,
+        @{materials_sublayer_reference}@,
+        @{geometry_sublayer_reference}@
     ]
     defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
     doc = "{DR_ANMAR_NEEDLE_NAME}: independently generated research-grade curved taper-point needle with factory-swaged Dr.Anmar 4-0 suture; not clinically validated."
@@ -435,7 +446,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         string drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"
         string drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"
         string drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"
-        string drAnmarLayerContract = "entry_sublayers_physx_which_sublayers_neutral_physics"
+        string drAnmarLayerContract = "entry_sublayers_physx_materials_geometry_with_neutral_physics_under_physx"
         string drAnmarNeedleProfileId = "{needle_profile["id"]}"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
@@ -448,46 +459,8 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
     }}
 )
 {{
-    def Scope "{material_organization["scope"]}"
-    {{
-        def Material "{material_organization["visual_material"]}"
-        {{
-            def Shader "PreviewSurface"
-            {{
-                uniform token info:id = "{material_organization["visual_shader"]}"
-                color3f inputs:diffuseColor = (0.53, 0.58, 0.64)
-                float inputs:metallic = {usd_float(float(needle_profile["appearance"]["metallic_seed"]))}
-                float inputs:roughness = {usd_float(float(needle_profile["appearance"]["roughness_seed"]))}
-                token outputs:surface
-            }}
-            token outputs:surface.connect = <{visual_material_path}/PreviewSurface.outputs:surface>
-        }}
-
-    }}
-
     def Xform "Needle"
     {{
-        def Mesh "Visual" (
-            prepend apiSchemas = ["MaterialBindingAPI"]
-        )
-        {{
-            uniform bool doubleSided = false
-            float3[] extent = [{usd_vec(mesh.extent_min)}, {usd_vec(mesh.extent_max)}]
-            int[] faceVertexCounts = [{face_counts}]
-            int[] faceVertexIndices = [{face_indices}]
-            point3f[] points = [
-            {mesh_points}
-            ]
-            normal3f[] primvars:normals = [
-            {mesh_normals}
-            ] (
-                interpolation = "faceVarying"
-            )
-            int[] primvars:normals:indices = [{normal_indices}]
-            uniform token subdivisionScheme = "none"
-            rel material:binding = <{visual_material_path}>
-        }}
-
         def Xform "SutureAnchor"
         {{
             quatf xformOp:orient = {usd_quat(swage_orientation)}
@@ -503,6 +476,79 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         double3 xformOp:translate = {usd_vec(suture_translation)}
         quatf xformOp:orient = {usd_quat(swage_orientation)}
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }}
+}}
+"""
+
+    geometry_layer = f"""#usda 1.0
+(
+    defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
+    doc = "{DR_ANMAR_NEEDLE_NAME} binary visual geometry layer. Composed by DrAnmarNeedle.usda."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
+{{
+    over "Needle"
+    {{
+        def Mesh "Visual"
+        {{
+            uniform bool doubleSided = false
+            float3[] extent = [{usd_vec(mesh.extent_min)}, {usd_vec(mesh.extent_max)}]
+            int[] faceVertexCounts = [{face_counts}]
+            int[] faceVertexIndices = [{face_indices}]
+            point3f[] points = [
+            {mesh_points}
+            ]
+            normal3f[] primvars:normals = [
+            {mesh_normals}
+            ] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:normals:indices = [{normal_indices}]
+            uniform token subdivisionScheme = "none"
+        }}
+    }}
+}}
+"""
+
+    materials_layer = f"""#usda 1.0
+(
+    defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
+    doc = "{DR_ANMAR_NEEDLE_NAME} visual look-development and binding layer. Composed by DrAnmarNeedle.usda."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
+{{
+    def Scope "{material_organization["scope"]}"
+    {{
+        def Material "{material_organization["visual_material"]}"
+        {{
+            def Shader "PreviewSurface"
+            {{
+                uniform token info:id = "{material_organization["visual_shader"]}"
+                color3f inputs:diffuseColor = (0.53, 0.58, 0.64)
+                float inputs:metallic = {usd_float(float(needle_profile["appearance"]["metallic_seed"]))}
+                float inputs:roughness = {usd_float(float(needle_profile["appearance"]["roughness_seed"]))}
+                token outputs:surface
+            }}
+            token outputs:surface.connect = <{visual_material_path}/PreviewSurface.outputs:surface>
+        }}
+    }}
+
+    over "Needle"
+    {{
+        over "Visual" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {{
+            rel material:binding = <{visual_material_path}>
+        }}
     }}
 }}
 """
@@ -608,7 +654,7 @@ over "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
     }}
 }}
 """
-    return entry_layer, physics_layer, physx_layer
+    return entry_layer, geometry_layer, materials_layer, physics_layer, physx_layer
 
 
 def clamp01(value: float) -> float:
@@ -635,6 +681,30 @@ def portable_path(path: Path) -> str:
         return resolved.as_posix()
 
 
+def write_usdc(text: str, output: Path, usdcat_command: str) -> None:
+    usdcat_path = shutil.which(usdcat_command)
+    if usdcat_path is None:
+        raise RuntimeError(f"OpenUSD usdcat is required to author binary geometry: {usdcat_command}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".dr_anmar_needle_geometry_", dir=output.parent) as temporary_directory:
+        temporary_root = Path(temporary_directory)
+        source = temporary_root / "DrAnmarNeedle_geometry.usda"
+        binary = temporary_root / "DrAnmarNeedle_geometry.usd"
+        source.write_text(text, encoding="utf-8")
+        subprocess.run(
+            [
+                usdcat_path,
+                str(source),
+                "--out",
+                str(binary),
+                "--usdFormat",
+                "usdc",
+            ],
+            check=True,
+        )
+        binary.replace(output)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=DEFAULT_PROFILE_PATH)
@@ -652,6 +722,16 @@ def main() -> int:
         default=DEFAULT_NEEDLE_OUTPUT,
     )
     parser.add_argument(
+        "--needle-geometry-output",
+        type=Path,
+        default=DEFAULT_NEEDLE_GEOMETRY_OUTPUT,
+    )
+    parser.add_argument(
+        "--needle-materials-output",
+        type=Path,
+        default=DEFAULT_NEEDLE_MATERIALS_OUTPUT,
+    )
+    parser.add_argument(
         "--needle-physics-output",
         type=Path,
         default=DEFAULT_NEEDLE_PHYSICS_OUTPUT,
@@ -661,11 +741,17 @@ def main() -> int:
         type=Path,
         default=DEFAULT_NEEDLE_PHYSX_OUTPUT,
     )
+    parser.add_argument(
+        "--usdcat",
+        default=shutil.which("usdcat") or "usdcat",
+    )
     args = parser.parse_args()
     profile = load_profile(args.profile)
     needle_profile = load_needle_profile(args.needle_profile)
     output = args.output.expanduser().resolve()
     needle_output = args.needle_output.expanduser().resolve()
+    needle_geometry_output = args.needle_geometry_output.expanduser().resolve()
+    needle_materials_output = args.needle_materials_output.expanduser().resolve()
     needle_physics_output = args.needle_physics_output.expanduser().resolve()
     needle_physx_output = args.needle_physx_output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -673,12 +759,27 @@ def main() -> int:
     temporary.write_text(author(profile), encoding="utf-8")
     temporary.replace(output)
     needle_output.parent.mkdir(parents=True, exist_ok=True)
+    needle_geometry_output.parent.mkdir(parents=True, exist_ok=True)
+    needle_materials_output.parent.mkdir(parents=True, exist_ok=True)
     needle_physics_output.parent.mkdir(parents=True, exist_ok=True)
     needle_physx_output.parent.mkdir(parents=True, exist_ok=True)
     needle_temporary = needle_output.with_suffix(needle_output.suffix + ".tmp")
+    needle_materials_temporary = needle_materials_output.with_suffix(needle_materials_output.suffix + ".tmp")
     needle_physics_temporary = needle_physics_output.with_suffix(needle_physics_output.suffix + ".tmp")
     needle_physx_temporary = needle_physx_output.with_suffix(needle_physx_output.suffix + ".tmp")
     suture_reference = Path(os.path.relpath(output, start=needle_output.parent)).as_posix()
+    geometry_sublayer_reference = Path(
+        os.path.relpath(
+            needle_geometry_output,
+            start=needle_output.parent,
+        )
+    ).as_posix()
+    materials_sublayer_reference = Path(
+        os.path.relpath(
+            needle_materials_output,
+            start=needle_output.parent,
+        )
+    ).as_posix()
     physx_sublayer_reference = Path(
         os.path.relpath(
             needle_physx_output,
@@ -691,16 +792,27 @@ def main() -> int:
             start=needle_physx_output.parent,
         )
     ).as_posix()
-    needle_entry_text, needle_physics_text, needle_physx_text = author_dr_anmar_needle(
+    (
+        needle_entry_text,
+        needle_geometry_text,
+        needle_materials_text,
+        needle_physics_text,
+        needle_physx_text,
+    ) = author_dr_anmar_needle(
         profile,
         needle_profile,
         suture_reference=suture_reference,
+        geometry_sublayer_reference=geometry_sublayer_reference,
+        materials_sublayer_reference=materials_sublayer_reference,
         physx_sublayer_reference=physx_sublayer_reference,
         neutral_physics_sublayer_reference=neutral_physics_sublayer_reference,
     )
     needle_temporary.write_text(needle_entry_text, encoding="utf-8")
+    needle_materials_temporary.write_text(needle_materials_text, encoding="utf-8")
     needle_physics_temporary.write_text(needle_physics_text, encoding="utf-8")
     needle_physx_temporary.write_text(needle_physx_text, encoding="utf-8")
+    write_usdc(needle_geometry_text, needle_geometry_output, args.usdcat)
+    needle_materials_temporary.replace(needle_materials_output)
     needle_physics_temporary.replace(needle_physics_output)
     needle_physx_temporary.replace(needle_physx_output)
     needle_temporary.replace(needle_output)
@@ -709,7 +821,7 @@ def main() -> int:
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v5",
+        "schema": "dr.anmar.suture-asset-report.v6",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
@@ -718,6 +830,13 @@ def main() -> int:
         "dr_anmar_needle_asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION,
         "dr_anmar_needle": portable_path(needle_output),
         "dr_anmar_needle_sha256": sha256(needle_output),
+        "dr_anmar_needle_entry_bytes": needle_output.stat().st_size,
+        "dr_anmar_needle_geometry": portable_path(needle_geometry_output),
+        "dr_anmar_needle_geometry_format": "usdc",
+        "dr_anmar_needle_geometry_sha256": sha256(needle_geometry_output),
+        "dr_anmar_needle_geometry_bytes": needle_geometry_output.stat().st_size,
+        "dr_anmar_needle_materials": portable_path(needle_materials_output),
+        "dr_anmar_needle_materials_sha256": sha256(needle_materials_output),
         "dr_anmar_needle_physics": portable_path(needle_physics_output),
         "dr_anmar_needle_physics_sha256": sha256(needle_physics_output),
         "dr_anmar_needle_physx": portable_path(needle_physx_output),

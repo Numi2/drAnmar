@@ -6,6 +6,8 @@ PROFILE="${REPOSITORY_ROOT}/physics_next/sutures/dr-anmar-suture-4-0.json"
 NEEDLE_PROFILE="${REPOSITORY_ROOT}/physics_next/needles/dr-anmar-needle-v1.json"
 ASSET="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 DR_ANMAR_NEEDLE="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle.usda"
+DR_ANMAR_NEEDLE_GEOMETRY="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_geometry.usd"
+DR_ANMAR_NEEDLE_MATERIALS="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_materials.usda"
 DR_ANMAR_NEEDLE_PHYSICS="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_physics.usda"
 DR_ANMAR_NEEDLE_PHYSX="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_physx.usda"
 REPORT="${REPOSITORY_ROOT}/physics_next/benchmarks/dr-anmar-suture-4-0-validation.json"
@@ -18,6 +20,8 @@ case "${1:-validate}" in
             --needle-profile "${NEEDLE_PROFILE}" \
             --output "${ASSET}" \
             --needle-output "${DR_ANMAR_NEEDLE}" \
+            --needle-geometry-output "${DR_ANMAR_NEEDLE_GEOMETRY}" \
+            --needle-materials-output "${DR_ANMAR_NEEDLE_MATERIALS}" \
             --needle-physics-output "${DR_ANMAR_NEEDLE_PHYSICS}" \
             --needle-physx-output "${DR_ANMAR_NEEDLE_PHYSX}"
         ;;
@@ -27,6 +31,8 @@ case "${1:-validate}" in
             --needle-profile "${NEEDLE_PROFILE}" \
             --asset "${ASSET}" \
             --needle "${DR_ANMAR_NEEDLE}" \
+            --needle-geometry "${DR_ANMAR_NEEDLE_GEOMETRY}" \
+            --needle-materials "${DR_ANMAR_NEEDLE_MATERIALS}" \
             --needle-physics "${DR_ANMAR_NEEDLE_PHYSICS}" \
             --needle-physx "${DR_ANMAR_NEEDLE_PHYSX}" \
             --output "${REPORT}"

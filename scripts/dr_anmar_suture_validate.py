@@ -8,6 +8,8 @@ import ast
 import json
 import math
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +31,8 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ASSET_ID,
     DR_ANMAR_NEEDLE_ASSET_PATH,
     DR_ANMAR_NEEDLE_ASSET_VERSION,
+    DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH,
+    DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH,
     DR_ANMAR_NEEDLE_NAME,
     DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH,
     DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH,
@@ -53,6 +57,8 @@ from dr_anmar_suture_runtime import SutureRuntime
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ASSET = REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 DEFAULT_NEEDLE = DR_ANMAR_NEEDLE_ASSET_PATH
+DEFAULT_NEEDLE_GEOMETRY = DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH
+DEFAULT_NEEDLE_MATERIALS = DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH
 DEFAULT_NEEDLE_PHYSICS = DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH
 DEFAULT_NEEDLE_PHYSX = DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH
 DEFAULT_WORKSTATION = REPOSITORY_ROOT / "scripts/dr_anmar_workstation.py"
@@ -82,11 +88,26 @@ def present_text_tokens(texts: tuple[str, ...], tokens: tuple[str, ...]) -> list
     return [token for token in tokens if any(token in text for text in texts)]
 
 
+def read_usd_as_text(path: Path, usdcat_command: str) -> str:
+    usdcat_path = shutil.which(usdcat_command)
+    if usdcat_path is None:
+        raise RuntimeError(f"OpenUSD usdcat is required to validate binary geometry: {usdcat_command}")
+    return subprocess.run(
+        [usdcat_path, str(path)],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+
+
 def validate(
     profile: dict[str, Any],
     needle_profile: dict[str, Any],
     asset_text: str,
     needle_entry_text: str,
+    needle_geometry_text: str,
+    needle_geometry_is_usdc: bool,
+    needle_materials_text: str,
     needle_physics_text: str,
     needle_physx_text: str,
     workstation_text: str,
@@ -101,7 +122,15 @@ def validate(
     )
     native_probe_text = DEFAULT_NATIVE_PROBE.read_text(encoding="utf-8")
     integration_text = DEFAULT_INTEGRATION.read_text(encoding="utf-8")
-    needle_text = needle_entry_text + "\n" + needle_physics_text + "\n" + needle_physx_text
+    needle_text = "\n".join(
+        (
+            needle_entry_text,
+            needle_geometry_text,
+            needle_materials_text,
+            needle_physics_text,
+            needle_physx_text,
+        )
+    )
     geometry = profile["geometry"]
     material = profile["material"]
     tension = profile["tension"]
@@ -262,6 +291,8 @@ def validate(
         f'drAnmarAssetName = "{DR_ANMAR_NEEDLE_NAME}"',
         f'drAnmarAssetVersion = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"',
         "@DrAnmarNeedle_physx.usda@",
+        "@DrAnmarNeedle_materials.usda@",
+        "@DrAnmarNeedle_geometry.usd@",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         'drAnmarGeometrySource = "independently_generated_parametric_geometry"',
         f"drAnmarMassPropertyIntegrationSlices = {DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES}",
@@ -269,7 +300,7 @@ def validate(
         'drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"',
         'drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"',
         'drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"',
-        'drAnmarLayerContract = "entry_sublayers_physx_which_sublayers_neutral_physics"',
+        'drAnmarLayerContract = "entry_sublayers_physx_materials_geometry_with_neutral_physics_under_physx"',
         'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
         'drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"',
         '"PhysicsMaterialAPI"',
@@ -306,6 +337,71 @@ def validate(
     entry_physics_properties = sorted(set(re.findall(engine_property_pattern, needle_entry_text)))
     entry_physics_schemas = sorted(set(re.findall(engine_schema_pattern, needle_entry_text)))
     entry_physics_typed_prims = sorted(set(re.findall(r"\bdef\s+(Physics[A-Za-z0-9_]+)\s+\"", needle_entry_text)))
+    entry_forbidden_content_tokens = present_text_tokens(
+        (needle_entry_text,),
+        (
+            'def Mesh "Visual"',
+            "point3f[] points",
+            "faceVertexIndices",
+            "primvars:normals",
+            'def Material "NeedleSteelVisual"',
+            'def Shader "PreviewSurface"',
+            "material:binding",
+        ),
+    )
+    geometry_required_tokens = [
+        'defaultPrim = "DrAnmarNeedle"',
+        'over "DrAnmarNeedle"',
+        'over "Needle"',
+        'def Mesh "Visual"',
+        "float3[] extent",
+        "int[] faceVertexCounts",
+        "int[] faceVertexIndices",
+        "point3f[] points",
+        "normal3f[] primvars:normals",
+        "int[] primvars:normals:indices",
+        'uniform token subdivisionScheme = "none"',
+    ]
+    materials_required_tokens = [
+        'defaultPrim = "DrAnmarNeedle"',
+        'over "DrAnmarNeedle"',
+        'def Scope "Looks"',
+        'def Material "NeedleSteelVisual"',
+        'def Shader "PreviewSurface"',
+        'uniform token info:id = "UsdPreviewSurface"',
+        'over "Visual" (',
+        '"MaterialBindingAPI"',
+        "rel material:binding",
+    ]
+    missing_geometry_layer_tokens = missing_text_tokens(needle_geometry_text, geometry_required_tokens)
+    missing_materials_layer_tokens = missing_text_tokens(needle_materials_text, materials_required_tokens)
+    geometry_forbidden_content_tokens = present_text_tokens(
+        (needle_geometry_text,),
+        (
+            "apiSchemas",
+            "material:binding",
+            'def Material "',
+            'def Shader "',
+            "physics:",
+            "physx",
+            "newton:",
+            "prepend references =",
+        ),
+    )
+    materials_forbidden_content_tokens = present_text_tokens(
+        (needle_materials_text,),
+        (
+            "point3f[] points",
+            "faceVertexIndices",
+            "primvars:normals",
+            "physics:",
+            "Physx",
+            "physx",
+            "Newton",
+            "newton:",
+            "prepend references =",
+        ),
+    )
     neutral_required_tokens = [
         'defaultPrim = "DrAnmarNeedle"',
         'over "DrAnmarNeedle"',
@@ -345,7 +441,7 @@ def validate(
     physx_neutral_properties = sorted(set(re.findall(r"\bphysics:[A-Za-z][A-Za-z0-9_]*", needle_physx_text)))
     physx_newton_properties = sorted(set(re.findall(r"\bnewton:[A-Za-z][A-Za-z0-9_]*", needle_physx_text)))
     physx_newton_schemas = sorted(set(re.findall(r'"(Newton[A-Za-z0-9_]*API)"', needle_physx_text)))
-    non_entry_visual_payload_tokens = present_text_tokens(
+    physics_visual_payload_tokens = present_text_tokens(
         (needle_physics_text, needle_physx_text),
         (
             'def Mesh "Visual"',
@@ -356,20 +452,36 @@ def validate(
     )
     check(
         checks,
-        "needle_engine_layer_source_ownership",
+        "needle_asset_structure_source_ownership",
         layer_organization["entry_layer"] == "DrAnmarNeedle.usda"
+        and layer_organization["geometry_layer"] == "DrAnmarNeedle_geometry.usd"
+        and layer_organization["geometry_format"] == "usdc"
+        and layer_organization["materials_layer"] == "DrAnmarNeedle_materials.usda"
+        and layer_organization["entry_layer_max_bytes"] == 8192
         and layer_organization["physics_layer"] == "DrAnmarNeedle_physics.usda"
         and layer_organization["physx_layer"] == "DrAnmarNeedle_physx.usda"
         and layer_organization["composition"]
-        == "entry_layer_sublayers_physx_layer_which_sublayers_neutral_physics_layer"
+        == "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics"
         and layer_organization["default_runtime"] == "physx"
         and layer_organization["entry_layer_owns"]
         == [
             "stage_metadata",
             "asset_identity",
-            "visual_geometry",
-            "visual_material",
+            "structural_hierarchy",
             "suture_reference_and_transform",
+        ]
+        and layer_organization["geometry_layer_owns"]
+        == [
+            "visual_mesh_topology",
+            "visual_mesh_points",
+            "visual_mesh_normals",
+            "visual_mesh_extent",
+        ]
+        and layer_organization["materials_layer_owns"]
+        == [
+            "visual_material",
+            "visual_shader",
+            "visual_material_binding",
         ]
         and layer_organization["physics_layer_owns"]
         == [
@@ -392,12 +504,23 @@ def validate(
         and layer_organization["forbidden_live_schema_prefixes"] == ["Newton"]
         and layer_organization["engine_isolation"]
         == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
+        and layer_organization["content_isolation"]
+        == "entry_contains_no_mesh_shader_or_physics_payload_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
         and "@DrAnmarNeedle_physx.usda@" in needle_entry_text
+        and "@DrAnmarNeedle_materials.usda@" in needle_entry_text
+        and "@DrAnmarNeedle_geometry.usd@" in needle_entry_text
         and "@DrAnmarNeedle_physics.usda@" not in needle_entry_text
         and "@DrAnmarNeedle_physics.usda@" in needle_physx_text
+        and len(needle_entry_text.encode("utf-8")) <= int(layer_organization["entry_layer_max_bytes"])
+        and needle_geometry_is_usdc
         and not entry_physics_properties
         and not entry_physics_schemas
         and not entry_physics_typed_prims
+        and not entry_forbidden_content_tokens
+        and not missing_geometry_layer_tokens
+        and not missing_materials_layer_tokens
+        and not geometry_forbidden_content_tokens
+        and not materials_forbidden_content_tokens
         and not missing_neutral_layer_tokens
         and not missing_physx_layer_tokens
         and not neutral_engine_specific_properties
@@ -405,7 +528,7 @@ def validate(
         and not physx_neutral_properties
         and not physx_newton_properties
         and not physx_newton_schemas
-        and not non_entry_visual_payload_tokens
+        and not physics_visual_payload_tokens
         and "Newton" not in needle_text
         and "newton:" not in needle_text,
         {
@@ -413,6 +536,13 @@ def validate(
             "entry_physics_properties": entry_physics_properties,
             "entry_physics_schemas": entry_physics_schemas,
             "entry_physics_typed_prims": entry_physics_typed_prims,
+            "entry_bytes": len(needle_entry_text.encode("utf-8")),
+            "entry_forbidden_content_tokens": entry_forbidden_content_tokens,
+            "geometry_is_usdc": needle_geometry_is_usdc,
+            "missing_geometry_layer_tokens": missing_geometry_layer_tokens,
+            "geometry_forbidden_content_tokens": geometry_forbidden_content_tokens,
+            "missing_materials_layer_tokens": missing_materials_layer_tokens,
+            "materials_forbidden_content_tokens": materials_forbidden_content_tokens,
             "missing_neutral_layer_tokens": missing_neutral_layer_tokens,
             "missing_physx_layer_tokens": missing_physx_layer_tokens,
             "neutral_engine_specific_properties": neutral_engine_specific_properties,
@@ -420,10 +550,10 @@ def validate(
             "physx_neutral_properties": physx_neutral_properties,
             "physx_newton_properties": physx_newton_properties,
             "physx_newton_schemas": physx_newton_schemas,
-            "non_entry_visual_payload_tokens": non_entry_visual_payload_tokens,
+            "physics_visual_payload_tokens": physics_visual_payload_tokens,
         },
-        "stable entry owns visuals, neutral USD physics stays engine-clean, and PhysX tuning is isolated without"
-        " unqualified Newton schemas",
+        "lightweight entry, binary mesh, visual look-development, neutral physics, and PhysX tuning each have"
+        " isolated source ownership without unqualified cross-engine schemas",
     )
     forbidden_needle_tokens = [
         "../Surgical_needle",
@@ -512,7 +642,7 @@ def validate(
         and "normal3f[] normals" not in needle_text
         and len(authored_normals) == len(needle_mesh.normals)
         and authored_normal_indices == needle_mesh.normal_indices
-        and maximum_authored_normal_error <= float(visual_normal_contract["deterministic_unit_length_tolerance"])
+        and maximum_authored_normal_error <= float(visual_normal_contract["binary_storage_component_tolerance"])
         and len(needle_mesh.normals) == len(needle_mesh.points) + 1
         and len(needle_mesh.normal_indices) == len(needle_mesh.face_vertex_indices)
         and int(needle_normal_quality["unused_normal_value_count"]) == 0
@@ -534,8 +664,8 @@ def validate(
             "authored_normal_index_count": len(authored_normal_indices),
             "maximum_authored_normal_error": maximum_authored_normal_error,
         },
-        "indexed face-varying unit normals match analytic tapered-surface derivatives, outward winding, and hard"
-        " swage cap",
+        "binary indexed face-varying normals remain within bounded float storage error of analytic tapered-surface"
+        " derivatives, outward winding, and hard swage cap",
     )
     needle_collision_capsules = build_needle_collision_capsules(needle_profile)
     collision_contract = needle_profile["construction"]["collision_contract"]
@@ -709,7 +839,7 @@ def validate(
     )
     visual_material_match = re.search(
         rf'def Material "{re.escape(str(material_organization["visual_material"]))}"\s*' r"\{(.*?)\n        \}",
-        needle_entry_text,
+        needle_materials_text,
         flags=re.DOTALL,
     )
     neutral_physics_material_match = re.search(
@@ -871,13 +1001,13 @@ def validate(
         "needle_collision_physics_material_binding_count",
         "needle_render_collision_separation_valid",
         "needle_material_organization_valid",
-        "needle_engine_layer_source_ownership_valid",
+        "needle_asset_structure_source_ownership_valid",
     ]
     missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(
         checks,
         "needle_nvidia_stack_collision_contract",
-        len(nvidia_stack_references) >= 10
+        len(nvidia_stack_references) >= 11
         and all(
             item.get("url", "").startswith(
                 (
@@ -900,12 +1030,17 @@ def validate(
         and render_collision_contract["collider_physics_material_binding"] == "material:binding:physics"
         and material_organization["scope"] == "Looks"
         and material_organization["separate_by_purpose"] is True
+        and layer_organization["geometry_layer"].endswith("_geometry.usd")
+        and layer_organization["geometry_format"] == "usdc"
+        and layer_organization["materials_layer"].endswith("_materials.usda")
         and layer_organization["physics_layer"].endswith("_physics.usda")
         and layer_organization["physx_layer"].endswith("_physx.usda")
         and layer_organization["composition"]
-        == "entry_layer_sublayers_physx_layer_which_sublayers_neutral_physics_layer"
+        == "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics"
         and layer_organization["engine_isolation"]
         == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
+        and layer_organization["content_isolation"]
+        == "entry_contains_no_mesh_shader_or_physics_payload_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
         and contact_offset_contract["engine_layer"] == "DrAnmarNeedle_physx.usda"
         and contact_offset_contract["neutral_layer_policy"] == "no_engine_specific_contact_schema"
         and needle_profile["solver"]["ccd"] is True
@@ -918,7 +1053,7 @@ def validate(
             "friction_combine_mode": needle_profile["contact"]["combine_mode"],
             "missing_native_probe_tokens": missing_native_probe_tokens,
         },
-        "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, material, and engine-isolated"
+        "NVIDIA binary-geometry, look-development, primitive-collider, CCD, material, and engine-isolated"
         " source-layer contract",
     )
     construction = needle_profile["construction"]
@@ -1501,6 +1636,16 @@ def main() -> int:
         default=DEFAULT_NEEDLE,
     )
     parser.add_argument(
+        "--needle-geometry",
+        type=Path,
+        default=DEFAULT_NEEDLE_GEOMETRY,
+    )
+    parser.add_argument(
+        "--needle-materials",
+        type=Path,
+        default=DEFAULT_NEEDLE_MATERIALS,
+    )
+    parser.add_argument(
         "--needle-physics",
         type=Path,
         default=DEFAULT_NEEDLE_PHYSICS,
@@ -1510,6 +1655,10 @@ def main() -> int:
         type=Path,
         default=DEFAULT_NEEDLE_PHYSX,
     )
+    parser.add_argument(
+        "--usdcat",
+        default=shutil.which("usdcat") or "usdcat",
+    )
     parser.add_argument("--workstation", type=Path, default=DEFAULT_WORKSTATION)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -1517,6 +1666,9 @@ def main() -> int:
     needle_profile = load_needle_profile(args.needle_profile)
     asset_text = args.asset.read_text(encoding="utf-8")
     needle_entry_text = args.needle.read_text(encoding="utf-8")
+    needle_geometry_text = read_usd_as_text(args.needle_geometry, args.usdcat)
+    needle_geometry_is_usdc = args.needle_geometry.read_bytes()[:8] == b"PXR-USDC"
+    needle_materials_text = args.needle_materials.read_text(encoding="utf-8")
     needle_physics_text = args.needle_physics.read_text(encoding="utf-8")
     needle_physx_text = args.needle_physx.read_text(encoding="utf-8")
     workstation_text = args.workstation.read_text(encoding="utf-8")
@@ -1525,6 +1677,9 @@ def main() -> int:
         needle_profile,
         asset_text,
         needle_entry_text,
+        needle_geometry_text,
+        needle_geometry_is_usdc,
+        needle_materials_text,
         needle_physics_text,
         needle_physx_text,
         workstation_text,

@@ -55,8 +55,10 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.8.0\"",
+        "drAnmarAssetVersion = \"1.9.0\"",
         "@DrAnmarNeedle_physx.usda@",
+        "@DrAnmarNeedle_materials.usda@",
+        "@DrAnmarNeedle_geometry.usd@",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "drAnmarGeometrySource = \"independently_generated_parametric_geometry\"",
         "drAnmarMassPropertyIntegrationSlices = 8192",
@@ -64,7 +66,7 @@
         "drAnmarNormalContract = \"analytic_taper_and_curvature_aware_indexed_face_varying_primvar\"",
         "drAnmarRenderCollisionContract = \"separate_visual_mesh_and_guide_purpose_invisible_compound_colliders\"",
         "drAnmarMaterialContract = \"top_level_looks_with_separate_visual_and_physics_materials\"",
-        "drAnmarLayerContract = \"entry_sublayers_physx_which_sublayers_neutral_physics\"",
+        "drAnmarLayerContract = \"entry_sublayers_physx_materials_geometry_with_neutral_physics_under_physx\"",
         "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
         "drAnmarCollisionContract = \"curvature_sagitta_bounded_capsules_with_explicit_extents\"",
         "\"PhysicsMaterialAPI\"",
@@ -84,9 +86,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.8.0",
+        "integration_version": "1.9.0",
         "missing": [],
-        "profile_version": "1.8.0"
+        "profile_version": "1.9.0"
       },
       "passed": true
     },
@@ -191,7 +193,7 @@
       "passed": true
     },
     "needle_analytic_indexed_visual_normals": {
-      "expected": "indexed face-varying unit normals match analytic tapered-surface derivatives, outward winding, and hard swage cap",
+      "expected": "binary indexed face-varying normals remain within bounded float storage error of analytic tapered-surface derivatives, outward winding, and hard swage cap",
       "measured": {
         "authored_normal_index_count": 8192,
         "authored_normal_value_count": 2050,
@@ -201,6 +203,7 @@
             "tip_taper_slope",
             "swage_taper_slope"
           ],
+          "binary_storage_component_tolerance": 1e-07,
           "deterministic_unit_length_tolerance": 1e-10,
           "hard_edges": [
             "swage_end_cap"
@@ -212,7 +215,7 @@
           "representation": "primvars:normals",
           "source": "analytic_tapered_curved_swept_surface_derivatives"
         },
-        "maximum_authored_normal_error": 4.99933427988708e-13,
+        "maximum_authored_normal_error": 5.641443878712238e-08,
         "quality": {
           "face_corner_count": 8192,
           "interpolation": "faceVarying",
@@ -232,44 +235,38 @@
       },
       "passed": true
     },
-    "needle_collision_envelope_matches_centerline_partition": {
-      "expected": "capsule spine equals each assigned chord with curvature-bounded radius, explicit extents, and complete visual-mesh coverage",
-      "measured": {
-        "attribute_errors": [],
-        "authored_extent_count": 41,
-        "capsule_count": 40,
-        "maximum_chord_length_error_m": 0.0,
-        "maximum_curvature_sagitta_m": 5.398918502281386e-06,
-        "maximum_visual_seam_margin_m": 8.494447366884953e-06,
-        "visual_mesh_collision_coverage": {
-          "maximum_visual_vertex_containment_margin_m": 6.326416503478705e-05,
-          "minimum_visual_face_containment_margin_m": 1.0000000000157452e-09,
-          "minimum_visual_vertex_containment_margin_m": 8.694897944296997e-06,
-          "uncovered_visual_face_count": 0,
-          "uncovered_visual_vertex_count": 0,
-          "visual_face_count": 2049,
-          "visual_vertex_count": 2049
-        }
-      },
-      "passed": true
-    },
-    "needle_engine_layer_source_ownership": {
-      "expected": "stable entry owns visuals, neutral USD physics stays engine-clean, and PhysX tuning is isolated without unqualified Newton schemas",
+    "needle_asset_structure_source_ownership": {
+      "expected": "lightweight entry, binary mesh, visual look-development, neutral physics, and PhysX tuning each have isolated source ownership without unqualified cross-engine schemas",
       "measured": {
         "contract": {
-          "composition": "entry_layer_sublayers_physx_layer_which_sublayers_neutral_physics_layer",
+          "composition": "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics",
+          "content_isolation": "entry_contains_no_mesh_shader_or_physics_payload_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding",
           "default_runtime": "physx",
           "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
           "entry_layer": "DrAnmarNeedle.usda",
+          "entry_layer_max_bytes": 8192,
           "entry_layer_owns": [
             "stage_metadata",
             "asset_identity",
-            "visual_geometry",
-            "visual_material",
+            "structural_hierarchy",
             "suture_reference_and_transform"
           ],
           "forbidden_live_schema_prefixes": [
             "Newton"
+          ],
+          "geometry_format": "usdc",
+          "geometry_layer": "DrAnmarNeedle_geometry.usd",
+          "geometry_layer_owns": [
+            "visual_mesh_topology",
+            "visual_mesh_points",
+            "visual_mesh_normals",
+            "visual_mesh_extent"
+          ],
+          "materials_layer": "DrAnmarNeedle_materials.usda",
+          "materials_layer_owns": [
+            "visual_material",
+            "visual_shader",
+            "visual_material_binding"
           ],
           "physics_layer": "DrAnmarNeedle_physics.usda",
           "physics_layer_owns": [
@@ -298,17 +295,45 @@
             "Physx"
           ]
         },
+        "entry_bytes": 2810,
+        "entry_forbidden_content_tokens": [],
         "entry_physics_properties": [],
         "entry_physics_schemas": [],
         "entry_physics_typed_prims": [],
+        "geometry_forbidden_content_tokens": [],
+        "geometry_is_usdc": true,
+        "materials_forbidden_content_tokens": [],
+        "missing_geometry_layer_tokens": [],
+        "missing_materials_layer_tokens": [],
         "missing_neutral_layer_tokens": [],
         "missing_physx_layer_tokens": [],
         "neutral_engine_specific_properties": [],
         "neutral_engine_specific_schemas": [],
-        "non_entry_visual_payload_tokens": [],
+        "physics_visual_payload_tokens": [],
         "physx_neutral_properties": [],
         "physx_newton_properties": [],
         "physx_newton_schemas": []
+      },
+      "passed": true
+    },
+    "needle_collision_envelope_matches_centerline_partition": {
+      "expected": "capsule spine equals each assigned chord with curvature-bounded radius, explicit extents, and complete visual-mesh coverage",
+      "measured": {
+        "attribute_errors": [],
+        "authored_extent_count": 41,
+        "capsule_count": 40,
+        "maximum_chord_length_error_m": 0.0,
+        "maximum_curvature_sagitta_m": 5.398918502281386e-06,
+        "maximum_visual_seam_margin_m": 8.494447366884953e-06,
+        "visual_mesh_collision_coverage": {
+          "maximum_visual_vertex_containment_margin_m": 6.326416503478705e-05,
+          "minimum_visual_face_containment_margin_m": 1.0000000000157452e-09,
+          "minimum_visual_vertex_containment_margin_m": 8.694897944296997e-06,
+          "uncovered_visual_face_count": 0,
+          "uncovered_visual_vertex_count": 0,
+          "visual_face_count": 2049,
+          "visual_vertex_count": 2049
+        }
       },
       "passed": true
     },
@@ -383,7 +408,7 @@
       "passed": true
     },
     "needle_nvidia_stack_collision_contract": {
-      "expected": "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, material, and engine-isolated source-layer contract",
+      "expected": "NVIDIA binary-geometry, look-development, primitive-collider, CCD, material, and engine-isolated source-layer contract",
       "measured": {
         "ccd": true,
         "collision_contract": {
@@ -426,7 +451,7 @@
         },
         "friction_combine_mode": "max",
         "missing_native_probe_tokens": [],
-        "reference_count": 10
+        "reference_count": 11
       },
       "passed": true
     },

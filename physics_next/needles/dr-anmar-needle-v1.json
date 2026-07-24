@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -94,20 +94,35 @@
       ],
       "nvidia_unit_length_tolerance": 0.0001,
       "deterministic_unit_length_tolerance": 1e-10,
+      "binary_storage_component_tolerance": 1e-07,
       "minimum_outward_winding_alignment_dot": 0.0
     },
     "layer_organization": {
       "entry_layer": "DrAnmarNeedle.usda",
+      "geometry_layer": "DrAnmarNeedle_geometry.usd",
+      "geometry_format": "usdc",
+      "materials_layer": "DrAnmarNeedle_materials.usda",
+      "entry_layer_max_bytes": 8192,
       "physics_layer": "DrAnmarNeedle_physics.usda",
       "physx_layer": "DrAnmarNeedle_physx.usda",
-      "composition": "entry_layer_sublayers_physx_layer_which_sublayers_neutral_physics_layer",
+      "composition": "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics",
       "default_runtime": "physx",
       "entry_layer_owns": [
         "stage_metadata",
         "asset_identity",
-        "visual_geometry",
-        "visual_material",
+        "structural_hierarchy",
         "suture_reference_and_transform"
+      ],
+      "geometry_layer_owns": [
+        "visual_mesh_topology",
+        "visual_mesh_points",
+        "visual_mesh_normals",
+        "visual_mesh_extent"
+      ],
+      "materials_layer_owns": [
+        "visual_material",
+        "visual_shader",
+        "visual_material_binding"
       ],
       "physics_layer_owns": [
         "physics_material",
@@ -136,7 +151,8 @@
       "forbidden_live_schema_prefixes": [
         "Newton"
       ],
-      "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
+      "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
+      "content_isolation": "entry_contains_no_mesh_shader_or_physics_payload_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
     }
   },
   "material": {
@@ -248,6 +264,11 @@
       "title": "Isaac Sim multiphysics robot assets",
       "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/assets/usd_assets_robots.html",
       "used_for": "preventing engine-specific schema contamination in neutral physics layers"
+    },
+    {
+      "title": "Isaac Sim Asset Transformer",
+      "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_transformer.html",
+      "used_for": "routing geometry to a dedicated binary layer and materials to a dedicated look-development layer"
     }
   ],
   "sim_to_real": {

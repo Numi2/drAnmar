@@ -27,7 +27,7 @@ import numpy as np  # noqa: E402
 
 import omni.usd  # noqa: E402
 from isaacsim.core.simulation_manager import SimulationManager  # noqa: E402
-from pxr import Gf, UsdGeom, UsdPhysics  # noqa: E402
+from pxr import Gf, Usd, UsdGeom, UsdPhysics  # noqa: E402
 
 from isaaclab.sim import PhysxCfg, SimulationCfg, SimulationContext  # noqa: E402
 
@@ -165,16 +165,27 @@ def main() -> int:
     needle_collision_physics_material_binding_count = None
     needle_render_collision_separation_valid = None
     needle_material_organization_valid = None
+    needle_geometry_layer_name = None
+    needle_materials_layer_name = None
     needle_neutral_physics_layer_name = None
     needle_physx_layer_name = None
-    needle_engine_layer_source_ownership_valid = None
+    needle_asset_structure_source_ownership_valid = None
     if assembly:
         layer_organization = needle_profile["construction"]["layer_organization"]
+        needle_geometry_layer_name = str(layer_organization["geometry_layer"])
+        needle_materials_layer_name = str(layer_organization["materials_layer"])
         needle_neutral_physics_layer_name = str(layer_organization["physics_layer"])
         needle_physx_layer_name = str(layer_organization["physx_layer"])
+        local_geometry_path = args.asset.resolve().parent / needle_geometry_layer_name
+        local_materials_path = args.asset.resolve().parent / needle_materials_layer_name
         local_physics_path = args.asset.resolve().parent / needle_neutral_physics_layer_name
         local_physx_path = args.asset.resolve().parent / needle_physx_layer_name
         entry_layer_text = args.asset.read_text(encoding="utf-8")
+        geometry_stage = Usd.Stage.Open(str(local_geometry_path))
+        if geometry_stage is None:
+            raise RuntimeError(f"Could not open the needle geometry layer: {local_geometry_path}")
+        geometry_layer_text = geometry_stage.GetRootLayer().ExportToString()
+        materials_layer_text = local_materials_path.read_text(encoding="utf-8")
         physics_layer_text = local_physics_path.read_text(encoding="utf-8")
         physx_layer_text = local_physx_path.read_text(encoding="utf-8")
         entry_physics_properties = re.findall(
@@ -209,15 +220,44 @@ def main() -> int:
             r'"(Newton[A-Za-z0-9_]*API)"',
             physx_layer_text,
         )
-        needle_engine_layer_source_ownership_valid = bool(
+        needle_asset_structure_source_ownership_valid = bool(
             layer_organization["entry_layer"] == args.asset.name
+            and needle_geometry_layer_name.endswith("_geometry.usd")
+            and layer_organization["geometry_format"] == "usdc"
+            and local_geometry_path.read_bytes()[:8] == b"PXR-USDC"
+            and needle_materials_layer_name.endswith("_materials.usda")
             and needle_neutral_physics_layer_name.endswith("_physics.usda")
             and needle_physx_layer_name.endswith("_physx.usda")
             and f"@{needle_physx_layer_name}@" in entry_layer_text
+            and f"@{needle_materials_layer_name}@" in entry_layer_text
+            and f"@{needle_geometry_layer_name}@" in entry_layer_text
             and f"@{needle_neutral_physics_layer_name}@" in physx_layer_text
+            and len(entry_layer_text.encode("utf-8")) <= int(layer_organization["entry_layer_max_bytes"])
             and not entry_physics_properties
             and not entry_physics_schemas
             and not entry_physics_typed_prims
+            and 'def Mesh "Visual"' not in entry_layer_text
+            and "point3f[] points" not in entry_layer_text
+            and 'def Material "NeedleSteelVisual"' not in entry_layer_text
+            and 'def Shader "PreviewSurface"' not in entry_layer_text
+            and 'def Mesh "Visual"' in geometry_layer_text
+            and "point3f[] points" in geometry_layer_text
+            and "faceVertexIndices" in geometry_layer_text
+            and "primvars:normals" in geometry_layer_text
+            and "apiSchemas" not in geometry_layer_text
+            and "material:binding" not in geometry_layer_text
+            and 'def Material "' not in geometry_layer_text
+            and 'def Shader "' not in geometry_layer_text
+            and 'def Scope "Looks"' in materials_layer_text
+            and 'def Material "NeedleSteelVisual"' in materials_layer_text
+            and 'def Shader "PreviewSurface"' in materials_layer_text
+            and '"MaterialBindingAPI"' in materials_layer_text
+            and "rel material:binding" in materials_layer_text
+            and "point3f[] points" not in materials_layer_text
+            and "faceVertexIndices" not in materials_layer_text
+            and "physics:" not in materials_layer_text
+            and "physx" not in materials_layer_text
+            and "newton:" not in materials_layer_text
             and not neutral_engine_properties
             and not neutral_engine_schemas
             and not physx_neutral_properties
@@ -461,7 +501,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v8",
+        "schema": "dr.anmar.needle-native-physx-probe.v9",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -494,9 +534,11 @@ def main() -> int:
         "needle_collision_physics_material_binding_count": needle_collision_physics_material_binding_count,
         "needle_render_collision_separation_valid": needle_render_collision_separation_valid,
         "needle_material_organization_valid": needle_material_organization_valid,
+        "needle_geometry_layer_name": needle_geometry_layer_name,
+        "needle_materials_layer_name": needle_materials_layer_name,
         "needle_neutral_physics_layer_name": needle_neutral_physics_layer_name,
         "needle_physx_layer_name": needle_physx_layer_name,
-        "needle_engine_layer_source_ownership_valid": needle_engine_layer_source_ownership_valid,
+        "needle_asset_structure_source_ownership_valid": needle_asset_structure_source_ownership_valid,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -533,7 +575,7 @@ def main() -> int:
                 and report["needle_collision_physics_material_binding_count"] == derived_needle.collision_capsule_count
                 and report["needle_render_collision_separation_valid"]
                 and report["needle_material_organization_valid"]
-                and report["needle_engine_layer_source_ownership_valid"]
+                and report["needle_asset_structure_source_ownership_valid"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None
