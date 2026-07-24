@@ -339,12 +339,13 @@ function createInterface() {
     .hand-control-launch{background:#123440!important;border-color:#2cd2e8!important;color:#eaffff!important}
     .hand-control-launch.state-active{background:#2cd2e8!important;color:#031014!important}
     .hand-panel{box-sizing:border-box;container-type:inline-size;position:fixed;z-index:70;right:18px;bottom:18px;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 12px));min-height:min(260px,calc(100vh - 12px));max-width:calc(100vw - 12px);max-height:min(560px,calc(100vh - 24px));resize:both;overflow:auto;border:1px solid #2f5968;border-radius:14px;background:#07151df2;color:#e9f8fa;box-shadow:0 18px 52px #000b;backdrop-filter:blur(16px);padding:12px}
-    .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:12px;cursor:grab;touch-action:none;user-select:none}.hand-head.dragging{cursor:grabbing}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:12px}.hand-head .spacer{flex:1}.hand-head button{cursor:pointer;touch-action:auto}
+    .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:8px;cursor:grab;touch-action:none;user-select:none}.hand-head.dragging{cursor:grabbing}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:11px}.hand-head .spacer{flex:1}.hand-head-actions{display:flex;gap:5px}.hand-head button{min-height:32px;padding:5px 8px;cursor:pointer;touch-action:auto;font-size:10px}.hand-head button.engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
     .hand-video-wrap{position:relative;margin-top:12px;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:#020608;border:1px solid #24404d}.hand-video-wrap video,.hand-video-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.hand-video-wrap canvas{transform:none;pointer-events:none}
     .hand-banner{box-sizing:border-box;position:absolute;left:10px;top:10px;max-width:62%;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px/1.35 ui-monospace,SFMono-Regular;white-space:normal}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
     .hand-metrics{position:absolute;right:10px;top:10px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:72%}.hand-metrics span{padding:5px 7px;border-radius:6px;background:#07151ddd;border:1px solid #264653;color:#9db6bf;font:700 9px ui-monospace,SFMono-Regular}
     .hand-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}.hand-actions button{min-width:0;min-height:36px;padding:6px;font-size:10px}.hand-actions .engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
     .hand-cards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.hand-card{padding:8px;border:1px solid #24404d;border-radius:9px;background:#091920}.hand-card.inactive{opacity:.62}.hand-card.quality-hold{border-color:#82513d;background:#1b1412}.hand-card header{height:auto;padding:0;border:0;background:none}.hand-card b{font-size:11px}.hand-card .track{margin-left:auto;color:#ff8a90;font:800 8px ui-monospace}.hand-card.tracked .track{color:#42e49b}.hand-card dl{display:grid;grid-template-columns:auto 1fr;margin:7px 0 0;gap:3px 7px;font:9px ui-monospace,SFMono-Regular}.hand-card dt{color:#71929d}.hand-card dd{margin:0;text-align:right}.hand-card button{width:100%;margin-top:7px;min-height:30px}
+    .hand-advanced.hidden{display:none}
     .hand-calibration{margin-top:10px;padding:10px;border:1px solid #7a693d;border-radius:10px;background:#241f12}.hand-calibration.hidden{display:none}.hand-calibration b{display:block;margin-bottom:4px}.hand-calibration p{margin:0 0 8px;color:#d8cda9;font-size:12px}.hand-calibration progress{width:100%;height:7px;margin:2px 0 8px;accent-color:#2cd2e8}.hand-privacy{margin:10px 2px 0;color:#6f909b;font-size:10px}
     @container(max-width:350px){.hand-cards{grid-template-columns:1fr}.hand-actions{grid-template-columns:1fr 1fr}.hand-head p{font-size:10px}.hand-metrics{top:auto;bottom:7px;left:7px;right:7px;max-width:none;justify-content:flex-start}}
     @media(max-width:640px){.hand-panel{right:6px;bottom:6px;width:calc(100vw - 12px);resize:vertical}}
@@ -365,15 +366,17 @@ function createInterface() {
   panel.className = "hand-panel hidden";
   panel.setAttribute("aria-label", "Webcam hand control");
   panel.innerHTML = `
-    <div class="hand-head"><div><h2>Two-finger surgical control</h2><p>One hand first · add the second when ready · drag · resize</p></div><div class="spacer"></div><button id="handClose" data-shortcut="CAM">Close</button></div>
+    <div class="hand-head"><div><h2>Two-finger surgical control</h2><p>Automatic control · drag to move · corner to resize</p></div><div class="spacer"></div><div class="hand-head-actions"><button id="handControlsToggle" aria-controls="handAdvanced" aria-expanded="false">Controls</button><button id="handClose" data-shortcut="CAM">Close</button></div></div>
     <div class="hand-video-wrap"><video id="handVideo" playsinline muted></video><canvas id="handOverlay"></canvas><div id="handBanner" class="hand-banner">Camera off</div><div class="hand-metrics"><span id="handRate">0 Hz</span><span id="handInference">— ms vision</span><span id="handLatency">— ms loop</span></div></div>
-    <div class="hand-actions"><button id="handStart" data-shortcut="CAM">Start camera</button><button id="handFreezeAll" data-shortcut="FREEZE">Freeze hand</button><button id="handEngageAll" data-shortcut="ENGAGE">Engage hand</button><button id="handPrecision" class="engaged" data-shortcut="PRECISION">Precision on</button><button id="handRecalibrate" data-shortcut="CAL">Recalibrate</button><button id="handMode">Try one hand first</button></div>
-    <div class="hand-cards">
-      <article id="handCard0" class="hand-card"><header><b>Left hand · Instrument 1</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Frozen</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="0" data-shortcut="L CAM">Engage left</button></article>
-      <article id="handCard1" class="hand-card"><header><b>Right hand · Instrument 2</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Frozen</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="1" data-shortcut="R CAM">Engage right</button></article>
+    <div id="handAdvanced" class="hand-advanced hidden">
+      <div class="hand-actions"><button id="handStart" data-shortcut="CAM">Start camera</button><button id="handFreezeAll" data-shortcut="FREEZE">Freeze hand</button><button id="handEngageAll" data-shortcut="ENGAGE">Engage hand</button><button id="handPrecision" class="engaged" data-shortcut="PRECISION">Precision on</button><button id="handRecalibrate" data-shortcut="CAL">Recalibrate</button><button id="handMode">Auto one hand</button></div>
+      <div class="hand-cards">
+        <article id="handCard0" class="hand-card"><header><b>Left hand · Instrument 1</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Frozen</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="0" data-shortcut="L CAM">Engage left</button></article>
+        <article id="handCard1" class="hand-card"><header><b>Right hand · Instrument 2</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Frozen</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="1" data-shortcut="R CAM">Engage right</button></article>
+      </div>
+      <div id="handCalibration" class="hand-calibration hidden"><b id="handCalibrationTitle">Camera calibration</b><p id="handCalibrationText"></p><progress id="handCalibrationProgress" max="${CALIBRATION_SAMPLE_COUNT}" value="0"></progress><button id="handCalibrationCapture" data-shortcut="CAL">Capture stable sample</button></div>
+      <p class="hand-privacy">Only calibrated numeric pose commands leave this browser. Webcam frames and raw landmarks are never uploaded or recorded. Single-camera depth is relative, not metric or clinical-grade.</p>
     </div>
-    <div id="handCalibration" class="hand-calibration hidden"><b id="handCalibrationTitle">Camera calibration</b><p id="handCalibrationText"></p><progress id="handCalibrationProgress" max="${CALIBRATION_SAMPLE_COUNT}" value="0"></progress><button id="handCalibrationCapture" data-shortcut="CAL">Capture stable sample</button></div>
-    <p class="hand-privacy">Only calibrated numeric pose commands leave this browser. Webcam frames and raw landmarks are never uploaded or recorded. Single-camera depth is relative, not metric or clinical-grade.</p>
   `;
   document.body.append(panel);
   return { launch, panel };
@@ -418,6 +421,10 @@ class HandController {
     this.controlMode = "single";
     this.primaryArm = null;
     this.singleHandTried = false;
+    this.singleHandTriedAt = null;
+    this.secondHandVisibleSince = null;
+    this.automaticSecondHandSuppressed = false;
+    this.automaticSecondHandStarting = false;
     this.provisionalCalibration = [null, null];
     this.autoEngagePending = false;
     this.autoEngageTimer = null;
@@ -443,10 +450,11 @@ class HandController {
     this.calibrationCapture = null;
     this.calibrationReadySince = null;
     this.calibrationStageStartedAt = 0;
-    this.panelGeometryKey = "drAnmar.handPanelGeometry.v2";
+    this.panelGeometryKey = "drAnmar.handPanelGeometry.v3";
     this.panelGeometryReady = false;
     this.panelDrag = null;
     this.panelResizeObserver = null;
+    this.controlsExpanded = false;
     this.operatorId = this.resolveOperatorId();
     this.bind();
   }
@@ -470,6 +478,10 @@ class HandController {
   bind() {
     this.launch.addEventListener("click", () => this.open());
     this.panel.querySelector("#handClose").addEventListener("click", () => this.close());
+    this.panel.querySelector("#handControlsToggle").addEventListener(
+      "click",
+      () => this.toggleAdvancedControls(),
+    );
     const dragHandle = this.panel.querySelector(".hand-head");
     dragHandle.addEventListener("pointerdown", event => this.startPanelDrag(event));
     dragHandle.addEventListener("pointermove", event => this.movePanel(event));
@@ -635,6 +647,32 @@ class HandController {
     } catch (_error) {}
   }
 
+  compactPanelHeight() {
+    const headerHeight = this.panel.querySelector(".hand-head")?.getBoundingClientRect().height || 45;
+    const videoHeight = this.panel.querySelector(".hand-video-wrap")?.getBoundingClientRect().height || 220;
+    return clamp(
+      headerHeight + videoHeight + 38,
+      260,
+      Math.max(260, Math.min(560, window.innerHeight - 12)),
+    );
+  }
+
+  toggleAdvancedControls(force = null) {
+    this.controlsExpanded = force === null ? !this.controlsExpanded : Boolean(force);
+    const advanced = this.panel.querySelector("#handAdvanced");
+    const button = this.panel.querySelector("#handControlsToggle");
+    advanced.classList.toggle("hidden", !this.controlsExpanded);
+    button.textContent = this.controlsExpanded ? "Hide controls" : "Controls";
+    button.setAttribute("aria-expanded", String(this.controlsExpanded));
+    button.classList.toggle("engaged", this.controlsExpanded);
+    if (this.panelGeometryReady) {
+      this.panel.style.height = this.controlsExpanded
+        ? `${Math.max(this.panel.getBoundingClientRect().height, Math.min(560, window.innerHeight - 12))}px`
+        : `${this.compactPanelHeight()}px`;
+      this.constrainPanelToViewport(true);
+    }
+  }
+
   isArmEnabled(arm) {
     return this.controlMode === "dual" || this.primaryArm === arm;
   }
@@ -667,18 +705,22 @@ class HandController {
     button.textContent = dual
       ? "Use one hand"
       : this.singleHandTried
-        ? "Add second hand"
-        : "Try one hand first";
+        ? "Add second now"
+        : "Auto one hand";
     button.disabled = !dual && !this.singleHandTried;
     button.classList.toggle("engaged", dual);
     this.panel.querySelector("#handFreezeAll").textContent = dual ? "Freeze both" : "Freeze hand";
     this.panel.querySelector("#handEngageAll").textContent = dual ? "Engage both" : "Engage hand";
   }
 
-  toggleControlMode() {
+  toggleControlMode({ automatic = false } = {}) {
     this.cancelAutomaticEngage();
+    this.automaticSecondHandStarting = false;
     if (this.controlMode === "dual") {
       this.controlMode = "single";
+      this.automaticSecondHandSuppressed = !automatic;
+      this.secondHandVisibleSince = null;
+      this.singleHandTriedAt = performance.now() / 1000;
       const selectedArm = this.bestTrackedArm() ?? this.primaryArm ?? 0;
       this.selectPrimaryArm(selectedArm);
       this.freezeAll(false);
@@ -692,6 +734,7 @@ class HandController {
       this.setBanner("Try one-hand control first", "warn");
       return;
     }
+    this.automaticSecondHandSuppressed = false;
     this.controlMode = "dual";
     this.freezeAll(false);
     this.renderModeControl();
@@ -708,6 +751,57 @@ class HandController {
     this.setBanner("Two-hand mode · hold both hands steady", "good");
     this.scheduleAutomaticEngage();
     this.renderCards();
+  }
+
+  maybeAddSecondHandAutomatically(timestampSeconds) {
+    if (
+      this.controlMode !== "single"
+      || !this.singleHandTried
+      || this.primaryArm === null
+      || !this.engaged[this.primaryArm]
+      || this.calibrationActive
+      || this.automaticSecondHandSuppressed
+      || this.automaticSecondHandStarting
+    ) {
+      this.secondHandVisibleSince = null;
+      return;
+    }
+    const secondArm = this.primaryArm === 0 ? 1 : 0;
+    const secondPose = this.poses.get(secondArm);
+    const triedAt = this.singleHandTriedAt ?? timestampSeconds;
+    const eligibleAt = triedAt + 3.0;
+    if (!secondPose) {
+      this.secondHandVisibleSince = null;
+      if (timestampSeconds >= eligibleAt) {
+        this.setBanner(
+          `One-hand active · show ${secondArm === 0 ? "left" : "right"} hand to add it`,
+          "good",
+        );
+      }
+      return;
+    }
+    if (timestampSeconds < eligibleAt) {
+      this.secondHandVisibleSince = null;
+      this.setBanner(
+        `One-hand active · try it for ${(eligibleAt - timestampSeconds).toFixed(1)} s`,
+        "good",
+      );
+      return;
+    }
+    if (this.secondHandVisibleSince === null) this.secondHandVisibleSince = timestampSeconds;
+    const holdSeconds = timestampSeconds - this.secondHandVisibleSince;
+    const remaining = Math.max(0, 1.4 - holdSeconds);
+    this.setBanner(
+      remaining
+        ? `Keep ${secondArm === 0 ? "left" : "right"} hand visible · adding in ${remaining.toFixed(1)} s`
+        : `Adding ${secondArm === 0 ? "left" : "right"} hand automatically`,
+      remaining ? "warn" : "good",
+    );
+    if (holdSeconds >= 1.4) {
+      this.automaticSecondHandStarting = true;
+      this.secondHandVisibleSince = null;
+      this.toggleControlMode({ automatic: true });
+    }
   }
 
   emptyCommand(arm) {
@@ -1227,6 +1321,7 @@ class HandController {
     this.updateCommands(timestampSeconds);
     this.renderCards();
     this.scheduleAutomaticEngage();
+    this.maybeAddSecondHandAutomatically(timestampSeconds);
   }
 
   updateCommands(timestampSeconds) {
@@ -1423,6 +1518,7 @@ class HandController {
     this.poseFilters[arm].reset([0, 0, 0, 0, 0, 0], pose.timestampSeconds);
     this.engaged[arm] = true;
     if (this.controlMode === "single") {
+      if (!this.singleHandTried) this.singleHandTriedAt = pose.timestampSeconds;
       this.singleHandTried = true;
       this.renderModeControl();
     }
@@ -1492,6 +1588,10 @@ class HandController {
       return;
     }
     if (this.controlMode === "single") {
+      if (!this.singleHandTried) {
+        this.singleHandTriedAt = this.poses.get(trackedArms[0])?.timestampSeconds
+          ?? performance.now() / 1000;
+      }
       this.singleHandTried = true;
       this.renderModeControl();
     }
