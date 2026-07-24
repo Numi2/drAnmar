@@ -414,6 +414,9 @@ class HandController {
     this.poseDiagnostics = new Map();
     this.anchors = new Map();
     this.engaged = [false, false];
+    this.provisionalCalibration = [null, null];
+    this.autoEngagePending = false;
+    this.autoEngageTimer = null;
     this.precision = true;
     this.poseFilters = [
       new OneEuroVectorFilter(6),
@@ -449,8 +452,14 @@ class HandController {
     this.launch.addEventListener("click", () => this.open());
     this.panel.querySelector("#handClose").addEventListener("click", () => this.close());
     this.panel.querySelector("#handStart").addEventListener("click", () => this.start());
-    this.panel.querySelector("#handFreezeAll").addEventListener("click", () => this.freezeAll());
-    this.panel.querySelector("#handEngageAll").addEventListener("click", () => this.engageAll());
+    this.panel.querySelector("#handFreezeAll").addEventListener("click", () => {
+      this.cancelAutomaticEngage();
+      this.freezeAll();
+    });
+    this.panel.querySelector("#handEngageAll").addEventListener("click", () => {
+      this.cancelAutomaticEngage();
+      this.engageAll();
+    });
     this.panel.querySelector("#handPrecision").addEventListener("click", () => {
       this.precision = !this.precision;
       const button = this.panel.querySelector("#handPrecision");
@@ -460,7 +469,10 @@ class HandController {
     });
     this.panel.querySelector("#handRecalibrate").addEventListener("click", () => this.beginCalibration());
     this.panel.querySelectorAll("[data-hand-arm]").forEach(button => {
-      button.addEventListener("click", () => this.toggleArm(Number(button.dataset.handArm)));
+      button.addEventListener("click", () => {
+        this.cancelAutomaticEngage();
+        this.toggleArm(Number(button.dataset.handArm));
+      });
     });
     this.panel.querySelector("#handCalibrationCapture").addEventListener("click", () => this.captureCalibration());
     window.addEventListener("pagehide", () => this.dispose(), { once: true });
@@ -582,7 +594,13 @@ class HandController {
       this.panel.querySelector("#handStart").textContent = "Camera active";
       this.setBanner("Tracking hands · motion frozen", "good");
       await this.setServerEnabled(true);
-      if (!this.calibration) this.beginCalibration();
+      this.autoEngagePending = true;
+      this.setBanner(
+        this.calibration
+          ? "Tracking hands · hold steady for safe engagement"
+          : "Tracking hands · provisional calibration · hold steady",
+        "good",
+      );
       this.scheduleFrame();
     } catch (error) {
       if (generation === this.startGeneration) {
@@ -621,6 +639,7 @@ class HandController {
   }
 
   beginCalibration() {
+    this.cancelAutomaticEngage();
     this.freezeAll(false);
     this.calibrationStep = 0;
     this.calibrationDraft = { hands: {} };
@@ -713,9 +732,13 @@ class HandController {
       return;
     }
     this.calibration = calibration;
+    for (const arm of Object.keys(calibration.hands).map(Number)) {
+      this.provisionalCalibration[arm] = null;
+    }
     localStorage.setItem(this.calibrationKey, JSON.stringify(calibration));
     this.panel.querySelector("#handCalibration").classList.add("hidden");
-    this.setBanner("Stable calibration saved · motion frozen", "good");
+    this.autoEngagePending = true;
+    this.setBanner("Stable calibration saved · hold steady to engage", "good");
   }
 
   poseFromLandmarks(landmarks, worldLandmarks, confidence) {
@@ -796,7 +819,10 @@ class HandController {
     const detections = [];
     (result.landmarks || []).forEach((landmarks, index) => {
       const category = result.handednesses?.[index]?.[0];
-      const proposedArm = handednessToArm(category?.categoryName);
+      // The pinned Tasks Vision landmarker already reports the physical hand
+      // identity for this front-facing stream. Only the preview canvas is
+      // mirrored, so swapping the inference label here reverses ownership.
+      const proposedArm = handednessToArm(category?.categoryName, true);
       if (proposedArm === null || proposedArm > 1) return;
       try {
         detections.push({
@@ -839,6 +865,7 @@ class HandController {
     this.poseDiagnostics = diagnostics;
     this.updateCommands(timestampSeconds);
     this.renderCards();
+    this.scheduleAutomaticEngage();
   }
 
   updateCommands(timestampSeconds) {
@@ -847,10 +874,10 @@ class HandController {
 
   buildCommandForArm(arm, timestampSeconds) {
     const pose = this.poses.get(arm);
-    const calibration = this.calibration?.hands?.[arm];
-    if (!pose || !calibration) {
+    if (!pose) {
       return this.emptyCommand(arm);
     }
+    const calibration = this.controlCalibration(arm, pose);
     let aperture = this.lastAperture[arm];
     try {
       const rawAperture = normalizedAperture(pose.pinchRatio, calibration.closeRatio, calibration.openRatio);
@@ -890,6 +917,20 @@ class HandController {
       aperture_normalized: aperture,
       confidence: clamp(pose.quality, 0, 1),
     };
+  }
+
+  controlCalibration(arm, pose) {
+    const calibrated = this.calibration?.hands?.[arm];
+    if (calibrated) return calibrated;
+    if (!this.provisionalCalibration[arm]) {
+      this.provisionalCalibration[arm] = {
+        neutralScale: pose.scale,
+        closeRatio: 0.10,
+        openRatio: 0.50,
+        stability: 0,
+      };
+    }
+    return this.provisionalCalibration[arm];
   }
 
   commandForArm(arm) {
@@ -990,8 +1031,8 @@ class HandController {
 
   async engageArm(arm) {
     const pose = this.poses.get(arm);
-    if (!pose || !this.calibration?.hands?.[arm]) {
-      this.setBanner("Track and calibrate that hand first", "warn");
+    if (!pose) {
+      this.setBanner("Track that hand first", "warn");
       return;
     }
     if (!this.serverEnabled && !(await this.setServerEnabled(true))) return;
@@ -1034,16 +1075,22 @@ class HandController {
     else this.engageArm(arm);
   }
 
-  async engageAll() {
-    if (!this.serverEnabled && !(await this.setServerEnabled(true))) return;
-    const trackedArms = [0, 1].filter(
-      arm => this.poses.has(arm) && this.calibration?.hands?.[arm],
-    );
+  async engageAll({ automatic = false } = {}) {
+    if (!this.serverEnabled && !(await this.setServerEnabled(true))) {
+      this.autoEngagePending = automatic;
+      return;
+    }
+    const trackedArms = [0, 1].filter(arm => this.poses.has(arm));
+    if (!trackedArms.length) {
+      this.setBanner("Show at least one hand before engaging", "warn");
+      return;
+    }
     const needsReacquire = trackedArms.filter(arm => this.reacquire[arm]);
     if (needsReacquire.length) await this.sendFrozenFor(needsReacquire);
+    let engagedCount = 0;
     for (const arm of [0, 1]) {
       const pose = this.poses.get(arm);
-      if (!pose || !this.calibration?.hands?.[arm] || this.reacquire[arm]) continue;
+      if (!pose || this.reacquire[arm]) continue;
       this.anchors.set(arm, {
         center: { ...pose.center },
         scale: pose.scale,
@@ -1052,9 +1099,49 @@ class HandController {
       this.resetMotionFilter(arm);
       this.poseFilters[arm].reset([0, 0, 0, 0, 0, 0], pose.timestampSeconds);
       this.engaged[arm] = true;
+      engagedCount += 1;
     }
-    this.setBanner("Tracked instruments engaged", "good");
+    if (!engagedCount) {
+      this.autoEngagePending = automatic;
+      this.setBanner("Hold steady while the motion safety latch rearms", "warn");
+      return;
+    }
+    const provisional = trackedArms.some(arm => !this.calibration?.hands?.[arm]);
+    this.setBanner(
+      provisional
+        ? "Motion engaged · recalibrate for an exact personal jaw span"
+        : automatic
+          ? "Stable tracking · instruments engaged"
+          : "Tracked instruments engaged",
+      provisional ? "warn" : "good",
+    );
     this.renderCards();
+  }
+
+  cancelAutomaticEngage() {
+    this.autoEngagePending = false;
+    if (this.autoEngageTimer !== null) {
+      window.clearTimeout(this.autoEngageTimer);
+      this.autoEngageTimer = null;
+    }
+  }
+
+  scheduleAutomaticEngage() {
+    if (!this.autoEngagePending || !this.running || this.calibrationCapture) return;
+    if (!this.poses.size) {
+      if (this.autoEngageTimer !== null) {
+        window.clearTimeout(this.autoEngageTimer);
+        this.autoEngageTimer = null;
+      }
+      return;
+    }
+    if (this.autoEngageTimer !== null) return;
+    this.autoEngageTimer = window.setTimeout(async () => {
+      this.autoEngageTimer = null;
+      if (!this.autoEngagePending || !this.running || !this.poses.size) return;
+      this.autoEngagePending = false;
+      await this.engageAll({ automatic: true });
+    }, 450);
   }
 
   freezeAll(transmit = true) {
@@ -1157,6 +1244,7 @@ class HandController {
   }
 
   stopMedia() {
+    this.cancelAutomaticEngage();
     this.startGeneration += 1;
     this.starting = false;
     this.running = false;
