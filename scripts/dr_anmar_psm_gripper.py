@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import copy
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -83,6 +83,35 @@ NVIDIA_ORBIT_GRIPPER_TERM_MAP = (
 )
 
 
+def resolve_psm_gripper_profile(
+    *,
+    open_rad: float | None = None,
+    close_rad: float | None = None,
+) -> PsmGripperProfile:
+    """Resolve one safe runtime profile without changing NVIDIA's action layout."""
+
+    profile = replace(
+        CANONICAL_PSM_GRIPPER_PROFILE,
+        open_rad=(
+            CANONICAL_PSM_GRIPPER_PROFILE.open_rad
+            if open_rad is None
+            else float(open_rad)
+        ),
+        close_rad=(
+            CANONICAL_PSM_GRIPPER_PROFILE.close_rad
+            if close_rad is None
+            else float(close_rad)
+        ),
+    )
+    if not 0.10 <= profile.open_rad <= 0.60:
+        raise ValueError("PSM open target must be between 0.10 and 0.60 radians")
+    if not 0.00 <= profile.close_rad <= 0.15:
+        raise ValueError("PSM closed target must be between 0.00 and 0.15 radians")
+    if profile.close_rad >= profile.open_rad:
+        raise ValueError("PSM closed target must be smaller than the open target")
+    return profile
+
+
 def complete_psm_actions_from_nvidia_orbit(
     actions: Any,
     scene: Any,
@@ -136,10 +165,13 @@ def psm_gripper_command_expr(aperture_rad: float) -> dict[str, float]:
     }
 
 
-def apply_psm_gripper_action_profile(actions: Any) -> list[str]:
+def apply_psm_gripper_action_profile(
+    actions: Any,
+    profile: PsmGripperProfile | None = None,
+) -> list[str]:
     """Apply identical open/close commands to every recognized PSM action term."""
 
-    profile = CANONICAL_PSM_GRIPPER_PROFILE
+    profile = profile or CANONICAL_PSM_GRIPPER_PROFILE
     applied: list[str] = []
     for term_name in PSM_GRIPPER_ACTION_TERMS:
         term = getattr(actions, term_name, None)
@@ -151,7 +183,10 @@ def apply_psm_gripper_action_profile(actions: Any) -> list[str]:
     return applied
 
 
-def apply_psm_gripper_articulation_profile(robot_cfg: Any) -> bool:
+def apply_psm_gripper_articulation_profile(
+    robot_cfg: Any,
+    profile: PsmGripperProfile | None = None,
+) -> bool:
     """Apply the same jaw actuator and reset posture to one PSM articulation."""
 
     actuators = getattr(robot_cfg, "actuators", None)
@@ -160,7 +195,7 @@ def apply_psm_gripper_articulation_profile(robot_cfg: Any) -> bool:
     if not isinstance(actuators, dict) or "psm_tool" not in actuators or not isinstance(joint_pos, dict):
         return False
 
-    profile = CANONICAL_PSM_GRIPPER_PROFILE
+    profile = profile or CANONICAL_PSM_GRIPPER_PROFILE
     joint_pos.update(psm_gripper_command_expr(profile.open_rad))
     actuator = actuators["psm_tool"]
     actuator.effort_limit_sim = profile.effort_limit_nm
@@ -172,12 +207,13 @@ def apply_psm_gripper_articulation_profile(robot_cfg: Any) -> bool:
 
 def psm_gripper_profile_manifest(
     *,
+    profile: PsmGripperProfile | None = None,
     action_terms: list[str] | None = None,
     articulations: list[str] | None = None,
 ) -> dict[str, Any]:
     """Return an API-safe record of the physical configuration in force."""
 
-    manifest = asdict(CANONICAL_PSM_GRIPPER_PROFILE)
+    manifest = asdict(profile or CANONICAL_PSM_GRIPPER_PROFILE)
     manifest["action_terms"] = list(action_terms or [])
     manifest["articulations"] = list(articulations or [])
     return manifest

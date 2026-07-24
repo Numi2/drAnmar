@@ -31,9 +31,12 @@ from dr_anmar_procedures import PROCEDURES_BY_ID
 from dr_anmar_native_rooms import resolve_native_room
 from dr_anmar_psm_gripper import (
     CANONICAL_PSM_GRIPPER_PROFILE,
+    apply_psm_gripper_action_profile,
+    apply_psm_gripper_articulation_profile,
     complete_psm_actions_from_nvidia_orbit,
     psm_articulation_names,
     psm_gripper_profile_manifest,
+    resolve_psm_gripper_profile,
 )
 from dr_anmar_suture_integration import (
     apply_dr_anmar_needle_episode_domain,
@@ -115,6 +118,8 @@ parser.add_argument(
     default="default",
     help="comma-separated NVIDIA bench prop ids, 'default', or 'none'",
 )
+parser.add_argument("--gripper_open_rad", type=float)
+parser.add_argument("--gripper_close_rad", type=float)
 parser.add_argument(
     "--sensor_profile",
     choices=sorted(SENSOR_PROFILES),
@@ -3720,17 +3725,31 @@ def main() -> None:
             ),
         )
     configured_psm_articulations = psm_articulation_names(env_cfg.scene)
+    runtime_psm_gripper_profile = resolve_psm_gripper_profile(
+        open_rad=args_cli.gripper_open_rad,
+        close_rad=args_cli.gripper_close_rad,
+    )
     for robot_attribute in configured_psm_articulations:
         robot_cfg = getattr(env_cfg.scene, robot_attribute, None)
-        if robot_cfg is not None and getattr(robot_cfg, "spawn", None) is not None:
-            robot_cfg.spawn.activate_contact_sensors = True
+        if robot_cfg is not None:
+            if getattr(robot_cfg, "spawn", None) is not None:
+                robot_cfg.spawn.activate_contact_sensors = True
+            apply_psm_gripper_articulation_profile(
+                robot_cfg,
+                runtime_psm_gripper_profile,
+            )
     reference_actions = ORBIT_NEEDLE_HANDOVER_CFG().actions
     configured_psm_action_terms = complete_psm_actions_from_nvidia_orbit(
         env_cfg.actions,
         env_cfg.scene,
         reference_actions,
     )
+    apply_psm_gripper_action_profile(
+        env_cfg.actions,
+        runtime_psm_gripper_profile,
+    )
     configured_psm_gripper_profile = psm_gripper_profile_manifest(
+        profile=runtime_psm_gripper_profile,
         action_terms=configured_psm_action_terms,
         articulations=configured_psm_articulations,
     )

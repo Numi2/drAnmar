@@ -18,6 +18,8 @@ ANATOMY_SCENE_ID="${6:-}"
 ANATOMY_TITLE="${7:-}"
 OPENUSD_ENVIRONMENT="${8:-}"
 BENCH_ASSETS="${9:-default}"
+GRIPPER_OPEN_RAD="${10:-}"
+GRIPPER_CLOSE_RAD="${11:-}"
 PID_FILE="${ROOT}/run/workstation.pid"
 LOG_FILE="${ROOT}/logs/workstation.log"
 
@@ -96,7 +98,7 @@ case "${1:-status}" in
         fi
         rm -f "${PID_FILE}"
         cd "${ORBIT_ROOT}"
-        nohup ./dr_anmar.sh workstation "${PORT}" "${TASK}" "${PROCEDURE}" "${ANATOMY_SCENE}" "${ANATOMY_SCENE_ID}" "${ANATOMY_TITLE}" "${OPENUSD_ENVIRONMENT}" "${BENCH_ASSETS}" >>"${LOG_FILE}" 2>&1 &
+        nohup ./dr_anmar.sh workstation "${PORT}" "${TASK}" "${PROCEDURE}" "${ANATOMY_SCENE}" "${ANATOMY_SCENE_ID}" "${ANATOMY_TITLE}" "${OPENUSD_ENVIRONMENT}" "${BENCH_ASSETS}" "${GRIPPER_OPEN_RAD}" "${GRIPPER_CLOSE_RAD}" >>"${LOG_FILE}" 2>&1 &
         echo "$!" >"${PID_FILE}"
         echo "Starting Dr.Anmar workstation on port ${PORT}: ${TASK} (PID $!)"
         echo "Log: ${LOG_FILE}"
@@ -158,7 +160,7 @@ case "${1:-status}" in
         ;;
     restart)
         "$0" stop || true
-        "$0" start "${PORT}" "${TASK}" "${PROCEDURE}" "${ANATOMY_SCENE}" "${ANATOMY_SCENE_ID}" "${ANATOMY_TITLE}" "${OPENUSD_ENVIRONMENT}" "${BENCH_ASSETS}"
+        "$0" start "${PORT}" "${TASK}" "${PROCEDURE}" "${ANATOMY_SCENE}" "${ANATOMY_SCENE_ID}" "${ANATOMY_TITLE}" "${OPENUSD_ENVIRONMENT}" "${BENCH_ASSETS}" "${GRIPPER_OPEN_RAD}" "${GRIPPER_CLOSE_RAD}"
         ;;
     restart-anatomy)
         room_id="${3:?A room id is required}"

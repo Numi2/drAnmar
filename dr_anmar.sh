@@ -64,6 +64,8 @@ case "${command}" in
         anatomy_title="${7:-}"
         openusd_environment="${8:-}"
         bench_assets="${9:-default}"
+        gripper_open_rad="${10:-}"
+        gripper_close_rad="${11:-}"
         if [[ "${task}" == Isaac-Thread-PSM-* ]]; then
             activate_softmimicgen
         fi
@@ -81,6 +83,8 @@ case "${command}" in
         [[ -n "${anatomy_title}" ]] && workstation_args+=(--anatomy_title "${anatomy_title}")
         [[ -n "${openusd_environment}" ]] && workstation_args+=(--openusd_environment "${openusd_environment}")
         workstation_args+=(--bench_assets "${bench_assets}")
+        [[ -n "${gripper_open_rad}" ]] && workstation_args+=(--gripper_open_rad "${gripper_open_rad}")
+        [[ -n "${gripper_close_rad}" ]] && workstation_args+=(--gripper_close_rad "${gripper_close_rad}")
         exec "${PYTHON}" scripts/dr_anmar_workstation.py \
             "${workstation_args[@]}" \
             --kit_args "--portable-root ${PORTABLE_ROOT}"

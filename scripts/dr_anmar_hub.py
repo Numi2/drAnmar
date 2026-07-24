@@ -63,6 +63,7 @@ from dr_anmar_operator import (
     access_is_authorized,
     configured_access_token,
 )
+from dr_anmar_psm_gripper import CANONICAL_PSM_GRIPPER_PROFILE
 
 
 parser = argparse.ArgumentParser()
@@ -116,6 +117,36 @@ def bench_asset_selection(
     if unknown:
         raise HTTPException(400, "Unknown NVIDIA bench assets: " + ", ".join(unknown))
     return tuple(str(item["id"]) for item in catalog if str(item["id"]) in selected)
+
+
+def psm_gripper_selection(
+    procedure: dict[str, Any],
+    requested_open_rad: float | None,
+    requested_close_rad: float | None,
+) -> tuple[float, float] | None:
+    """Resolve explicit numeric jaw targets for the native NVIDIA bench."""
+
+    if not procedure.get("nvidia_native_bench"):
+        if requested_open_rad is not None or requested_close_rad is not None:
+            raise HTTPException(400, "This room does not expose PSM jaw target settings")
+        return None
+    open_rad = (
+        CANONICAL_PSM_GRIPPER_PROFILE.open_rad
+        if requested_open_rad is None
+        else float(requested_open_rad)
+    )
+    close_rad = (
+        CANONICAL_PSM_GRIPPER_PROFILE.close_rad
+        if requested_close_rad is None
+        else float(requested_close_rad)
+    )
+    if not math.isfinite(open_rad) or not 0.10 <= open_rad <= 0.60:
+        raise HTTPException(400, "Open target must be between 0.10 and 0.60 radians")
+    if not math.isfinite(close_rad) or not 0.00 <= close_rad <= 0.15:
+        raise HTTPException(400, "Closed target must be between 0.00 and 0.15 radians")
+    if close_rad >= open_rad:
+        raise HTTPException(400, "Closed target must be smaller than the open target")
+    return open_rad, close_rad
 
 
 def missing_required_nvidia_assets(
@@ -210,6 +241,8 @@ class ProcedureLaunchRequest(BaseModel):
     procedure_id: str
     anatomy_scene: str | None = None
     bench_assets: list[str] | None = None
+    gripper_open_rad: float | None = None
+    gripper_close_rad: float | None = None
 
 
 class ProgressRequest(BaseModel):
@@ -632,6 +665,10 @@ def capture_worker_context(current: dict[str, Any] | None, enabled: bool = True)
     active_bench_assets = current.get("procedure", {}).get("active_bench_assets")
     if isinstance(active_bench_assets, list):
         context["bench_assets"] = tuple(str(item) for item in active_bench_assets)
+    gripper_profile = current.get("gripper_profile")
+    if isinstance(gripper_profile, dict):
+        context["gripper_open_rad"] = float(gripper_profile["open_rad"])
+        context["gripper_close_rad"] = float(gripper_profile["close_rad"])
     anatomy_scene = current.get("anatomy_asset")
     environment = current.get("openusd_environment")
     if anatomy_scene:
@@ -717,6 +754,8 @@ def switch_worker(
     anatomy_title: str = "",
     openusd_environment: Path | None = None,
     bench_assets: tuple[str, ...] | None = None,
+    gripper_open_rad: float | None = None,
+    gripper_close_rad: float | None = None,
 ) -> None:
     log_offset = WORKSTATION_LOG_PATH.stat().st_size if WORKSTATION_LOG_PATH.exists() else 0
     try:
@@ -733,6 +772,8 @@ def switch_worker(
             "default"
             if bench_assets is None
             else ",".join(bench_assets) if bench_assets else "none",
+            "" if gripper_open_rad is None else f"{gripper_open_rad:.6g}",
+            "" if gripper_close_rad is None else f"{gripper_close_rad:.6g}",
         ]
         result = subprocess.run(command, cwd=args.root, capture_output=True, text=True, timeout=60)
         if result.returncode != 0:
@@ -1482,6 +1523,11 @@ def procedure_rooms() -> dict[str, Any]:
     payload = procedure_payload()
     available_anatomy = {scene["id"]: scene for scene in anatomy_payload()["scenes"]}
     for room in payload["rooms"]:
+        if room.get("nvidia_native_bench"):
+            room["gripper_profile"] = {
+                "open_rad": CANONICAL_PSM_GRIPPER_PROFILE.open_rad,
+                "close_rad": CANONICAL_PSM_GRIPPER_PROFILE.close_rad,
+            }
         anatomy = available_anatomy.get(room["anatomy_scene"])
         room["location"] = (
             "main" if room["id"] == payload["default"] else "research"
@@ -1635,6 +1681,8 @@ def switch_sonogym_to_worker(
     anatomy_title: str,
     openusd_environment: Path | None,
     bench_assets: tuple[str, ...] | None = None,
+    gripper_open_rad: float | None = None,
+    gripper_close_rad: float | None = None,
 ) -> None:
     """Replace the active SonoGym process with the selected Isaac room."""
     try:
@@ -1652,6 +1700,8 @@ def switch_sonogym_to_worker(
         anatomy_title,
         openusd_environment,
         bench_assets,
+        gripper_open_rad,
+        gripper_close_rad,
     )
 
 
@@ -1704,6 +1754,11 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
             "native_provider": "SonoGym on Isaac Lab 2.1.0",
         }
     selected_bench_assets = bench_asset_selection(procedure, request.bench_assets)
+    selected_gripper_profile = psm_gripper_selection(
+        procedure,
+        request.gripper_open_rad,
+        request.gripper_close_rad,
+    )
     binding = resolve_native_room(str(procedure["id"]))
     if binding and not binding.get("available"):
         raise HTTPException(409, "Required room assets are not installed on this worker.")
@@ -1749,6 +1804,14 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
             or tuple(current.get("procedure", {}).get("active_bench_assets", ()))
             == selected_bench_assets
         )
+        and (
+            selected_gripper_profile is None
+            or (
+                float(current.get("gripper_profile", {}).get("open_rad", -1.0)),
+                float(current.get("gripper_profile", {}).get("close_rad", -1.0)),
+            )
+            == selected_gripper_profile
+        )
         and current.get("frame_id", 0) > 0
     ):
         return {"ok": True, "procedure_id": request.procedure_id, "already_ready": True}
@@ -1764,6 +1827,8 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
             room_title,
             environment,
             selected_bench_assets,
+            selected_gripper_profile[0] if selected_gripper_profile else None,
+            selected_gripper_profile[1] if selected_gripper_profile else None,
         ),
         daemon=True,
         name="dr-anmar-sonogym-room-switch" if replacing_sonogym else "dr-anmar-procedure-switch",
@@ -1775,6 +1840,12 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         "anatomy_scene": selected_anatomy,
         "anatomy_title": room_title,
         "bench_assets": list(selected_bench_assets or ()),
+        "gripper_open_rad": (
+            selected_gripper_profile[0] if selected_gripper_profile else None
+        ),
+        "gripper_close_rad": (
+            selected_gripper_profile[1] if selected_gripper_profile else None
+        ),
     }
 
 
