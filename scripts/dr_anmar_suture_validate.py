@@ -20,6 +20,7 @@ from dr_anmar_needle_model import (
     derive_needle_mass_properties,
     load_needle_profile,
     needle_mesh_collision_coverage,
+    needle_mesh_normal_quality,
     reconstruct_inertia_tensor,
     sample_episode_parameters,
 )
@@ -80,6 +81,10 @@ def validate(
     derived = derive(profile)
     derived_needle = derive_needle(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
+    needle_normal_quality = needle_mesh_normal_quality(
+        needle_profile,
+        needle_mesh,
+    )
     native_probe_text = DEFAULT_NATIVE_PROBE.read_text(encoding="utf-8")
     integration_text = DEFAULT_INTEGRATION.read_text(encoding="utf-8")
     geometry = profile["geometry"]
@@ -245,6 +250,7 @@ def validate(
         'drAnmarGeometrySource = "independently_generated_parametric_geometry"',
         f"drAnmarMassPropertyIntegrationSlices = {DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES}",
         'drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"',
+        'drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"',
         'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
         'drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"',
         '"PhysicsMaterialAPI", "PhysxMaterialAPI"',
@@ -301,6 +307,90 @@ def validate(
             "visual_vertices": derived_needle.visual_vertex_count,
             "collision_capsules": derived_needle.collision_capsule_count,
         },
+    )
+    authored_normals_match = re.search(
+        r"normal3f\[\] primvars:normals = \[(.*?)\]" r"\s*\(\s*interpolation = \"faceVarying\"\s*\)",
+        needle_text,
+        flags=re.DOTALL,
+    )
+    authored_normal_indices_match = re.search(
+        r"int\[\] primvars:normals:indices = \[(.*?)\]",
+        needle_text,
+        flags=re.DOTALL,
+    )
+    authored_normals: tuple[tuple[float, float, float], ...] = ()
+    if authored_normals_match is not None:
+        authored_normals = tuple(
+            (
+                float(match.group(1)),
+                float(match.group(2)),
+                float(match.group(3)),
+            )
+            for match in re.finditer(
+                r"\(\s*([-+0-9.eE]+)\s*,\s*" r"([-+0-9.eE]+)\s*,\s*" r"([-+0-9.eE]+)\s*\)",
+                authored_normals_match.group(1),
+            )
+        )
+    authored_normal_indices = (
+        tuple(int(value.strip()) for value in authored_normal_indices_match.group(1).split(",") if value.strip())
+        if authored_normal_indices_match is not None
+        else ()
+    )
+    maximum_authored_normal_error = (
+        max(
+            abs(authored - expected)
+            for authored_normal, expected_normal in zip(
+                authored_normals,
+                needle_mesh.normals,
+                strict=True,
+            )
+            for authored, expected in zip(
+                authored_normal,
+                expected_normal,
+                strict=True,
+            )
+        )
+        if len(authored_normals) == len(needle_mesh.normals)
+        else math.inf
+    )
+    visual_normal_contract = needle_profile["construction"]["visual_normals"]
+    check(
+        checks,
+        "needle_analytic_indexed_visual_normals",
+        visual_normal_contract["representation"] == "primvars:normals"
+        and visual_normal_contract["interpolation"] == "faceVarying"
+        and visual_normal_contract["indexed"] is True
+        and visual_normal_contract["source"] == "analytic_tapered_curved_swept_surface_derivatives"
+        and authored_normals_match is not None
+        and authored_normal_indices_match is not None
+        and needle_text.count("normal3f[] primvars:normals") == 1
+        and "normal3f[] normals" not in needle_text
+        and len(authored_normals) == len(needle_mesh.normals)
+        and authored_normal_indices == needle_mesh.normal_indices
+        and maximum_authored_normal_error <= float(visual_normal_contract["deterministic_unit_length_tolerance"])
+        and len(needle_mesh.normals) == len(needle_mesh.points) + 1
+        and len(needle_mesh.normal_indices) == len(needle_mesh.face_vertex_indices)
+        and int(needle_normal_quality["unused_normal_value_count"]) == 0
+        and int(needle_normal_quality["invalid_normal_index_count"]) == 0
+        and int(needle_normal_quality["non_finite_normal_component_count"]) == 0
+        and float(needle_normal_quality["maximum_unit_length_error"])
+        <= float(visual_normal_contract["deterministic_unit_length_tolerance"])
+        and float(needle_normal_quality["minimum_face_corner_alignment_dot"])
+        > float(visual_normal_contract["minimum_outward_winding_alignment_dot"])
+        and int(needle_normal_quality["non_outward_face_corner_count"]) == 0
+        and float(needle_normal_quality["minimum_face_area_m2"]) > 0.0
+        and float(needle_normal_quality["maximum_surface_tangent_dot"]) <= 1.0e-12
+        and float(needle_normal_quality["minimum_cross_section_outward_dot"]) > 0.99
+        and float(needle_normal_quality["maximum_swage_cap_side_normal_dot"]) <= 1.0e-12,
+        {
+            "contract": visual_normal_contract,
+            "quality": needle_normal_quality,
+            "authored_normal_value_count": len(authored_normals),
+            "authored_normal_index_count": len(authored_normal_indices),
+            "maximum_authored_normal_error": maximum_authored_normal_error,
+        },
+        "indexed face-varying unit normals match analytic tapered-surface derivatives, outward winding, and hard"
+        " swage cap",
     )
     needle_collision_capsules = build_needle_collision_capsules(needle_profile)
     collision_attribute_errors: list[str] = []
@@ -511,12 +601,15 @@ def validate(
         "needle_physx_contact_offset_range_m",
         "needle_newton_contact_gap_range_m",
         "needle_contact_offset_mapping_matches",
+        "needle_visual_normal_value_count",
+        "needle_visual_normal_index_count",
+        "needle_visual_normals_valid",
     ]
     missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(
         checks,
         "needle_nvidia_stack_collision_contract",
-        len(nvidia_stack_references) >= 5
+        len(nvidia_stack_references) >= 7
         and all(
             item.get("url", "").startswith("https://docs.omniverse.nvidia.com/") and item.get("used_for")
             for item in nvidia_stack_references
@@ -1100,6 +1193,7 @@ def validate(
             "needle_diagonal_inertia_kg_m2": derived_needle.mass_properties.diagonal_inertia_kg_m2,
             "needle_principal_axes_wxyz": derived_needle.mass_properties.principal_axes_wxyz,
             "needle_visual_vertex_count": derived_needle.visual_vertex_count,
+            "needle_visual_normal_quality": needle_normal_quality,
             "needle_collision_capsule_count": derived_needle.collision_capsule_count,
             "sim_to_real_gap_count": len(gaps),
         },

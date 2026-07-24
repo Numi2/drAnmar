@@ -24,6 +24,7 @@ from dr_anmar_needle_model import (
     derive_needle,
     load_needle_profile,
     needle_mesh_collision_coverage,
+    needle_mesh_normal_quality,
 )
 from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ASSET_ID,
@@ -365,8 +366,10 @@ def author_dr_anmar_needle(
     root = f"/{DR_ANMAR_NEEDLE_ROOT_PRIM}"
     steel_material_path = f"{root}/Materials/NeedleSteel"
     mesh_points = ",\n            ".join(usd_vec(point) for point in mesh.points)
+    mesh_normals = ",\n            ".join(usd_vec(normal) for normal in mesh.normals)
     face_counts = ", ".join(str(value) for value in mesh.face_vertex_counts)
     face_indices = ", ".join(str(value) for value in mesh.face_vertex_indices)
+    normal_indices = ", ".join(str(value) for value in mesh.normal_indices)
     collision_blocks: list[str] = []
     collision_capsules = build_needle_collision_capsules(needle_profile)
     for index, capsule in enumerate(collision_capsules):
@@ -410,6 +413,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
         int drAnmarMassPropertyIntegrationSlices = {mass_properties.integration_slices}
         string drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"
+        string drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"
         string drAnmarNeedleProfileId = "{needle_profile["id"]}"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
@@ -471,6 +475,12 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
             point3f[] points = [
             {mesh_points}
             ]
+            normal3f[] primvars:normals = [
+            {mesh_normals}
+            ] (
+                interpolation = "faceVarying"
+            )
+            int[] primvars:normals:indices = [{normal_indices}]
             uniform token subdivisionScheme = "none"
             rel material:binding = <{steel_material_path}>
         }}
@@ -603,6 +613,10 @@ def main() -> int:
         "needle_diagonal_inertia_kg_m2": list(derived_needle.mass_properties.diagonal_inertia_kg_m2),
         "needle_principal_axes_wxyz": list(derived_needle.mass_properties.principal_axes_wxyz),
         "needle_visual_vertex_count": derived_needle.visual_vertex_count,
+        "needle_visual_normal_quality": needle_mesh_normal_quality(
+            needle_profile,
+            needle_mesh,
+        ),
         "needle_collision_capsule_count": derived_needle.collision_capsule_count,
         "needle_collision_contract": needle_profile["construction"]["collision_contract"],
         "needle_collision_max_curvature_sagitta_m": max(capsule.curvature_sagitta_m for capsule in collision_capsules),

@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -70,6 +70,23 @@
         "physics:principalAxes"
       ],
       "episode_density_scaling": "mass_and_diagonal_inertia_scale_together_while_geometry_center_of_mass_and_principal_axes_remain_fixed"
+    },
+    "visual_normals": {
+      "representation": "primvars:normals",
+      "interpolation": "faceVarying",
+      "indexed": true,
+      "source": "analytic_tapered_curved_swept_surface_derivatives",
+      "accounts_for": [
+        "centerline_curvature",
+        "tip_taper_slope",
+        "swage_taper_slope"
+      ],
+      "hard_edges": [
+        "swage_end_cap"
+      ],
+      "nvidia_unit_length_tolerance": 0.0001,
+      "deterministic_unit_length_tolerance": 1e-10,
+      "minimum_outward_winding_alignment_dot": 0.0
     }
   },
   "material": {
@@ -145,6 +162,16 @@
       "title": "NVIDIA Newton schema and PhysX migration mapping",
       "url": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/latest/dev_guide/schemas/newtonSchema.html",
       "used_for": "forward-compatible contact margin and gap authoring with explicit PhysX mapping"
+    },
+    {
+      "title": "NVIDIA mesh normals existence requirement",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/latest/capabilities/geometry/requirements/usdgeom-mesh-normals-exist.html",
+      "used_for": "preferred indexed primvars normals representation on non-subdivided visual meshes"
+    },
+    {
+      "title": "NVIDIA mesh normals validity requirement",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.7.1/capabilities/geometry/requirements/usdgeom-mesh-normals-must-be-valid.html",
+      "used_for": "normal count, unit length, finite value, interpolation and outward winding checks"
     }
   ],
   "sim_to_real": {

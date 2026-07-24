@@ -7,7 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
-from dr_anmar_needle_model import build_needle_collision_capsules, derive_needle, load_needle_profile
+from dr_anmar_needle_model import build_needle_collision_capsules, build_needle_mesh, derive_needle, load_needle_profile
 from dr_anmar_suture_integration import DR_ANMAR_NEEDLE_ASSET_ID, DR_ANMAR_NEEDLE_ASSET_VERSION, DR_ANMAR_NEEDLE_NAME
 
 from isaaclab.app import AppLauncher
@@ -53,6 +53,7 @@ def main() -> int:
     needle_profile = load_needle_profile()
     derived_needle = derive_needle(needle_profile)
     expected_collision_capsules = build_needle_collision_capsules(needle_profile)
+    expected_needle_mesh = build_needle_mesh(needle_profile)
     sim = SimulationContext(
         SimulationCfg(
             dt=0.0005,
@@ -155,6 +156,10 @@ def main() -> int:
     needle_newton_contact_gap_range_m = None
     needle_newton_contact_margin_range_m = None
     needle_contact_offset_mapping_matches = None
+    needle_visual_normal_value_count = None
+    needle_visual_normal_index_count = None
+    needle_visual_normal_interpolation = None
+    needle_visual_normals_valid = None
     if assembly:
         needle_collision_capsules = [
             prim
@@ -291,8 +296,57 @@ def main() -> int:
                 atol=1.0e-6,
             )
         )
+        visual_prim = stage.GetPrimAtPath(f"{root_path}/Needle/Visual")
+        normal_attribute = visual_prim.GetAttribute("primvars:normals")
+        normal_index_attribute = visual_prim.GetAttribute("primvars:normals:indices")
+        authored_normals = normal_attribute.Get()
+        authored_normal_indices = normal_index_attribute.Get()
+        if authored_normals is None or authored_normal_indices is None:
+            raise RuntimeError("The needle visual mesh is missing indexed normals")
+        needle_visual_normal_value_count = len(authored_normals)
+        needle_visual_normal_index_count = len(authored_normal_indices)
+        needle_visual_normal_interpolation = str(normal_attribute.GetMetadata("interpolation"))
+        normal_values = np.asarray(
+            authored_normals,
+            dtype=np.float64,
+        )
+        normal_indices = np.asarray(
+            authored_normal_indices,
+            dtype=np.int64,
+        )
+        expected_normal_values = np.asarray(
+            expected_needle_mesh.normals,
+            dtype=np.float64,
+        )
+        expected_normal_indices = np.asarray(
+            expected_needle_mesh.normal_indices,
+            dtype=np.int64,
+        )
+        needle_visual_normals_valid = bool(
+            needle_visual_normal_interpolation == "faceVarying"
+            and not visual_prim.GetAttribute("normals").HasAuthoredValueOpinion()
+            and normal_values.shape == expected_normal_values.shape
+            and normal_indices.shape == expected_normal_indices.shape
+            and np.isfinite(normal_values).all()
+            and np.allclose(
+                np.linalg.norm(normal_values, axis=1),
+                1.0,
+                rtol=0.0,
+                atol=1.0e-4,
+            )
+            and np.allclose(
+                normal_values,
+                expected_normal_values,
+                rtol=1.0e-6,
+                atol=1.0e-7,
+            )
+            and np.array_equal(
+                normal_indices,
+                expected_normal_indices,
+            )
+        )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v3",
+        "schema": "dr.anmar.needle-native-physx-probe.v4",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -317,6 +371,10 @@ def main() -> int:
         "needle_newton_contact_gap_range_m": needle_newton_contact_gap_range_m,
         "needle_newton_contact_margin_range_m": needle_newton_contact_margin_range_m,
         "needle_contact_offset_mapping_matches": needle_contact_offset_mapping_matches,
+        "needle_visual_normal_value_count": needle_visual_normal_value_count,
+        "needle_visual_normal_index_count": needle_visual_normal_index_count,
+        "needle_visual_normal_interpolation": needle_visual_normal_interpolation,
+        "needle_visual_normals_valid": needle_visual_normals_valid,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -344,6 +402,9 @@ def main() -> int:
                 and report["needle_physx_collision_api_count"] == derived_needle.collision_capsule_count
                 and report["needle_newton_collision_api_count"] == derived_needle.collision_capsule_count
                 and report["needle_contact_offset_mapping_matches"]
+                and report["needle_visual_normal_value_count"] == len(expected_needle_mesh.normals)
+                and report["needle_visual_normal_index_count"] == len(expected_needle_mesh.normal_indices)
+                and report["needle_visual_normals_valid"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None

@@ -51,6 +51,8 @@ class NeedleMesh:
     points: tuple[tuple[float, float, float], ...]
     face_vertex_counts: tuple[int, ...]
     face_vertex_indices: tuple[int, ...]
+    normals: tuple[tuple[float, float, float], ...]
+    normal_indices: tuple[int, ...]
     extent_min: tuple[float, float, float]
     extent_max: tuple[float, float, float]
 
@@ -141,6 +143,29 @@ def radius_at_distance(profile: dict[str, Any], distance_m: float) -> float:
     return body_radius
 
 
+def radius_slope_at_distance(
+    profile: dict[str, Any],
+    distance_m: float,
+) -> float:
+    """Return dr/ds for the smooth tip and swage taper profile."""
+
+    construction = profile["construction"]
+    length = float(construction["centerline_arc_length_m"])
+    body_radius = float(construction["body_diameter_m"]) / 2.0
+    tip_radius = float(construction["tip_end_diameter_m"]) / 2.0
+    swage_radius = float(construction["swage_end_diameter_m"]) / 2.0
+    tip_length = float(construction["tip_taper_length_m"])
+    swage_length = float(construction["swage_transition_length_m"])
+    distance = max(0.0, min(length, float(distance_m)))
+    if 0.0 < distance < tip_length:
+        amount = distance / tip_length
+        return (body_radius - tip_radius) * 6.0 * amount * (1.0 - amount) / tip_length
+    if length - swage_length < distance < length:
+        amount = (distance - (length - swage_length)) / swage_length
+        return (swage_radius - body_radius) * 6.0 * amount * (1.0 - amount) / swage_length
+    return 0.0
+
+
 def centerline_at(
     profile: dict[str, Any],
     fraction: float,
@@ -158,6 +183,72 @@ def centerline_at(
     )
     tangent = (-math.sin(theta), math.cos(theta), 0.0)
     return point, tangent
+
+
+def _normalized(
+    vector: tuple[float, float, float],
+) -> tuple[float, float, float]:
+    length = math.sqrt(sum(component * component for component in vector))
+    if not math.isfinite(length) or length <= 1.0e-18:
+        raise ValueError("cannot normalize a zero or non-finite vector")
+    return (
+        vector[0] / length,
+        vector[1] / length,
+        vector[2] / length,
+    )
+
+
+def _dot(
+    left: tuple[float, float, float],
+    right: tuple[float, float, float],
+) -> float:
+    return sum(left[axis] * right[axis] for axis in range(3))
+
+
+def _cross(
+    left: tuple[float, float, float],
+    right: tuple[float, float, float],
+) -> tuple[float, float, float]:
+    return (
+        left[1] * right[2] - left[2] * right[1],
+        left[2] * right[0] - left[0] * right[2],
+        left[0] * right[1] - left[1] * right[0],
+    )
+
+
+def needle_surface_normal(
+    profile: dict[str, Any],
+    fraction: float,
+    phi: float,
+) -> tuple[float, float, float]:
+    """Return the analytic outward normal of the tapered swept surface."""
+
+    construction = profile["construction"]
+    arc_length = float(construction["centerline_arc_length_m"])
+    curvature_radius = arc_length / math.pi
+    amount = max(0.0, min(1.0, float(fraction)))
+    center, tangent = centerline_at(profile, amount)
+    outward_radial = tuple(component / curvature_radius for component in center)
+    radius = radius_at_distance(profile, amount * arc_length)
+    radius_slope = radius_slope_at_distance(
+        profile,
+        amount * arc_length,
+    )
+    cosine = math.cos(phi)
+    sine = math.sin(phi)
+    cross_section_normal = (
+        cosine * outward_radial[0],
+        cosine * outward_radial[1],
+        sine,
+    )
+    tangential_scale = 1.0 + radius * cosine / curvature_radius
+    return _normalized(
+        (
+            cross_section_normal[0] - radius_slope * tangent[0] / tangential_scale,
+            cross_section_normal[1] - radius_slope * tangent[1] / tangential_scale,
+            cross_section_normal[2] - radius_slope * tangent[2] / tangential_scale,
+        )
+    )
 
 
 def derive_needle_mass_properties(
@@ -403,8 +494,9 @@ def build_needle_mesh(profile: dict[str, Any]) -> NeedleMesh:
     centerline_samples = int(construction["visual_centerline_samples"])
     radial_samples = int(construction["visual_radial_samples"])
     arc_length = float(construction["centerline_arc_length_m"])
-    tip_point, _tip_tangent = centerline_at(profile, 0.0)
+    tip_point, tip_tangent = centerline_at(profile, 0.0)
     points: list[tuple[float, float, float]] = [tip_point]
+    normals: list[tuple[float, float, float]] = [(-tip_tangent[0], -tip_tangent[1], -tip_tangent[2])]
     for centerline_index in range(1, centerline_samples):
         fraction = centerline_index / (centerline_samples - 1)
         center, _tangent = centerline_at(profile, fraction)
@@ -420,18 +512,26 @@ def build_needle_mesh(profile: dict[str, Any]) -> NeedleMesh:
                     radius * math.sin(phi),
                 )
             )
+            normals.append(
+                needle_surface_normal(
+                    profile,
+                    fraction,
+                    phi,
+                )
+            )
     counts: list[int] = []
     indices: list[int] = []
+    normal_indices: list[int] = []
     first_ring = 1
     for radial_index in range(radial_samples):
         counts.append(3)
-        indices.extend(
-            (
-                0,
-                first_ring + radial_index,
-                first_ring + (radial_index + 1) % radial_samples,
-            )
+        triangle = (
+            0,
+            first_ring + radial_index,
+            first_ring + (radial_index + 1) % radial_samples,
         )
+        indices.extend(triangle)
+        normal_indices.extend(triangle)
     ring_count = centerline_samples - 1
     for ring_index in range(ring_count - 1):
         left = 1 + ring_index * radial_samples
@@ -439,17 +539,21 @@ def build_needle_mesh(profile: dict[str, Any]) -> NeedleMesh:
         for radial_index in range(radial_samples):
             next_radial = (radial_index + 1) % radial_samples
             counts.append(4)
-            indices.extend(
-                (
-                    left + radial_index,
-                    right + radial_index,
-                    right + next_radial,
-                    left + next_radial,
-                )
+            quad = (
+                left + radial_index,
+                right + radial_index,
+                right + next_radial,
+                left + next_radial,
             )
+            indices.extend(quad)
+            normal_indices.extend(quad)
     last_ring = 1 + (ring_count - 1) * radial_samples
     counts.append(radial_samples)
     indices.extend(last_ring + radial_index for radial_index in reversed(range(radial_samples)))
+    _swage_center, swage_tangent = centerline_at(profile, 1.0)
+    cap_normal_index = len(normals)
+    normals.append(swage_tangent)
+    normal_indices.extend(cap_normal_index for _ in range(radial_samples))
     extent_min = (
         min(point[0] for point in points),
         min(point[1] for point in points),
@@ -464,9 +568,161 @@ def build_needle_mesh(profile: dict[str, Any]) -> NeedleMesh:
         points=tuple(points),
         face_vertex_counts=tuple(counts),
         face_vertex_indices=tuple(indices),
+        normals=tuple(normals),
+        normal_indices=tuple(normal_indices),
         extent_min=extent_min,
         extent_max=extent_max,
     )
+
+
+def needle_mesh_normal_quality(
+    profile: dict[str, Any],
+    mesh: NeedleMesh | None = None,
+) -> dict[str, float | int | str]:
+    """Measure normal validity, winding alignment, and analytic tangency."""
+
+    visual = mesh if mesh is not None else build_needle_mesh(profile)
+    if len(visual.normal_indices) != len(visual.face_vertex_indices):
+        return {
+            "interpolation": "faceVarying",
+            "normal_value_count": len(visual.normals),
+            "normal_index_count": len(visual.normal_indices),
+            "face_corner_count": len(visual.face_vertex_indices),
+            "normal_index_count_error": abs(len(visual.normal_indices) - len(visual.face_vertex_indices)),
+        }
+    normal_lengths = [math.sqrt(_dot(normal, normal)) for normal in visual.normals]
+    non_finite_components = sum(not math.isfinite(component) for normal in visual.normals for component in normal)
+    used_normal_indices = set(visual.normal_indices)
+    invalid_normal_indices = sum(index < 0 or index >= len(visual.normals) for index in visual.normal_indices)
+    if invalid_normal_indices:
+        return {
+            "interpolation": "faceVarying",
+            "normal_value_count": len(visual.normals),
+            "normal_index_count": len(visual.normal_indices),
+            "face_corner_count": len(visual.face_vertex_indices),
+            "invalid_normal_index_count": invalid_normal_indices,
+        }
+
+    minimum_face_area = math.inf
+    minimum_alignment = math.inf
+    non_outward_corner_count = 0
+    cursor = 0
+    for face_count in visual.face_vertex_counts:
+        face_indices = visual.face_vertex_indices[cursor : cursor + face_count]
+        face_normal_indices = visual.normal_indices[cursor : cursor + face_count]
+        cursor += face_count
+        origin = visual.points[face_indices[0]]
+        area_vector = (0.0, 0.0, 0.0)
+        for corner in range(1, face_count - 1):
+            left_point = visual.points[face_indices[corner]]
+            right_point = visual.points[face_indices[corner + 1]]
+            left_edge = (
+                left_point[0] - origin[0],
+                left_point[1] - origin[1],
+                left_point[2] - origin[2],
+            )
+            right_edge = (
+                right_point[0] - origin[0],
+                right_point[1] - origin[1],
+                right_point[2] - origin[2],
+            )
+            triangle_area_vector = _cross(left_edge, right_edge)
+            area_vector = (
+                area_vector[0] + triangle_area_vector[0],
+                area_vector[1] + triangle_area_vector[1],
+                area_vector[2] + triangle_area_vector[2],
+            )
+        area_m2 = 0.5 * math.sqrt(_dot(area_vector, area_vector))
+        minimum_face_area = min(minimum_face_area, area_m2)
+        if area_m2 <= 1.0e-24:
+            non_outward_corner_count += face_count
+            minimum_alignment = min(minimum_alignment, -1.0)
+            continue
+        face_normal = _normalized(area_vector)
+        for normal_index in face_normal_indices:
+            alignment = _dot(
+                face_normal,
+                visual.normals[normal_index],
+            )
+            minimum_alignment = min(minimum_alignment, alignment)
+            if alignment <= 0.0:
+                non_outward_corner_count += 1
+
+    construction = profile["construction"]
+    centerline_samples = int(construction["visual_centerline_samples"])
+    radial_samples = int(construction["visual_radial_samples"])
+    arc_length = float(construction["centerline_arc_length_m"])
+    curvature_radius = arc_length / math.pi
+    maximum_tangent_error = 0.0
+    minimum_radial_alignment = math.inf
+    for centerline_index in range(1, centerline_samples):
+        fraction = centerline_index / (centerline_samples - 1)
+        center, tangent = centerline_at(profile, fraction)
+        outward_radial = tuple(component / curvature_radius for component in center)
+        radius = radius_at_distance(profile, fraction * arc_length)
+        radius_slope = radius_slope_at_distance(profile, fraction * arc_length)
+        for radial_index in range(radial_samples):
+            phi = 2.0 * math.pi * radial_index / radial_samples
+            cosine = math.cos(phi)
+            sine = math.sin(phi)
+            cross_section_normal = (
+                cosine * outward_radial[0],
+                cosine * outward_radial[1],
+                sine,
+            )
+            circumferential_tangent = (
+                -sine * outward_radial[0],
+                -sine * outward_radial[1],
+                cosine,
+            )
+            longitudinal_tangent = (
+                (1.0 + radius * cosine / curvature_radius) * tangent[0] + radius_slope * cross_section_normal[0],
+                (1.0 + radius * cosine / curvature_radius) * tangent[1] + radius_slope * cross_section_normal[1],
+                radius_slope * cross_section_normal[2],
+            )
+            point_index = 1 + (centerline_index - 1) * radial_samples + radial_index
+            normal = visual.normals[point_index]
+            maximum_tangent_error = max(
+                maximum_tangent_error,
+                abs(
+                    _dot(
+                        normal,
+                        _normalized(longitudinal_tangent),
+                    )
+                ),
+                abs(
+                    _dot(
+                        normal,
+                        circumferential_tangent,
+                    )
+                ),
+            )
+            minimum_radial_alignment = min(
+                minimum_radial_alignment,
+                _dot(normal, cross_section_normal),
+            )
+
+    cap_normal = visual.normals[-1]
+    last_ring = 1 + (centerline_samples - 2) * radial_samples
+    maximum_cap_side_dot = max(
+        abs(_dot(cap_normal, visual.normals[last_ring + index])) for index in range(radial_samples)
+    )
+    return {
+        "interpolation": "faceVarying",
+        "normal_value_count": len(visual.normals),
+        "normal_index_count": len(visual.normal_indices),
+        "face_corner_count": len(visual.face_vertex_indices),
+        "unused_normal_value_count": len(visual.normals) - len(used_normal_indices),
+        "invalid_normal_index_count": invalid_normal_indices,
+        "non_finite_normal_component_count": non_finite_components,
+        "maximum_unit_length_error": max(abs(length - 1.0) for length in normal_lengths),
+        "minimum_face_area_m2": minimum_face_area,
+        "minimum_face_corner_alignment_dot": minimum_alignment,
+        "non_outward_face_corner_count": non_outward_corner_count,
+        "maximum_surface_tangent_dot": maximum_tangent_error,
+        "minimum_cross_section_outward_dot": minimum_radial_alignment,
+        "maximum_swage_cap_side_normal_dot": maximum_cap_side_dot,
+    }
 
 
 def build_needle_collision_capsules(

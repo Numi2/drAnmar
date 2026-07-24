@@ -55,11 +55,12 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.3.0\"",
+        "drAnmarAssetVersion = \"1.4.0\"",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "drAnmarGeometrySource = \"independently_generated_parametric_geometry\"",
         "drAnmarMassPropertyIntegrationSlices = 8192",
         "drAnmarContactOffsetContract = \"scale_aware_dual_physx_newton_authoring\"",
+        "drAnmarNormalContract = \"analytic_taper_and_curvature_aware_indexed_face_varying_primvar\"",
         "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
         "drAnmarCollisionContract = \"curvature_sagitta_bounded_capsules_with_explicit_extents\"",
         "\"PhysicsMaterialAPI\", \"PhysxMaterialAPI\"",
@@ -78,9 +79,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.3.0",
+        "integration_version": "1.4.0",
         "missing": [],
-        "profile_version": "1.3.0"
+        "profile_version": "1.4.0"
       },
       "passed": true
     },
@@ -181,6 +182,48 @@
       "measured": {
         "mu_at_0_01_n": 0.45142857142857146,
         "mu_at_2_n": 0.2963636363636364
+      },
+      "passed": true
+    },
+    "needle_analytic_indexed_visual_normals": {
+      "expected": "indexed face-varying unit normals match analytic tapered-surface derivatives, outward winding, and hard swage cap",
+      "measured": {
+        "authored_normal_index_count": 8192,
+        "authored_normal_value_count": 2050,
+        "contract": {
+          "accounts_for": [
+            "centerline_curvature",
+            "tip_taper_slope",
+            "swage_taper_slope"
+          ],
+          "deterministic_unit_length_tolerance": 1e-10,
+          "hard_edges": [
+            "swage_end_cap"
+          ],
+          "indexed": true,
+          "interpolation": "faceVarying",
+          "minimum_outward_winding_alignment_dot": 0.0,
+          "nvidia_unit_length_tolerance": 0.0001,
+          "representation": "primvars:normals",
+          "source": "analytic_tapered_curved_swept_surface_derivatives"
+        },
+        "maximum_authored_normal_error": 4.99933427988708e-13,
+        "quality": {
+          "face_corner_count": 8192,
+          "interpolation": "faceVarying",
+          "invalid_normal_index_count": 0,
+          "maximum_surface_tangent_dot": 2.237793284010081e-16,
+          "maximum_swage_cap_side_normal_dot": 0.0,
+          "maximum_unit_length_error": 2.220446049250313e-16,
+          "minimum_cross_section_outward_dot": 0.9954631977418059,
+          "minimum_face_area_m2": 3.809030057648221e-10,
+          "minimum_face_corner_alignment_dot": 0.05253506623084833,
+          "non_finite_normal_component_count": 0,
+          "non_outward_face_corner_count": 0,
+          "normal_index_count": 8192,
+          "normal_value_count": 2050,
+          "unused_normal_value_count": 0
+        }
       },
       "passed": true
     },
@@ -311,7 +354,7 @@
         },
         "friction_combine_mode": "max",
         "missing_native_probe_tokens": [],
-        "reference_count": 5
+        "reference_count": 7
       },
       "passed": true
     },
@@ -583,6 +626,22 @@
       0.0,
       -0.6623480342618006
     ],
+    "needle_visual_normal_quality": {
+      "face_corner_count": 8192,
+      "interpolation": "faceVarying",
+      "invalid_normal_index_count": 0,
+      "maximum_surface_tangent_dot": 2.237793284010081e-16,
+      "maximum_swage_cap_side_normal_dot": 0.0,
+      "maximum_unit_length_error": 2.220446049250313e-16,
+      "minimum_cross_section_outward_dot": 0.9954631977418059,
+      "minimum_face_area_m2": 3.809030057648221e-10,
+      "minimum_face_corner_alignment_dot": 0.05253506623084833,
+      "non_finite_normal_component_count": 0,
+      "non_outward_face_corner_count": 0,
+      "normal_index_count": 8192,
+      "normal_value_count": 2050,
+      "unused_normal_value_count": 0
+    },
     "needle_visual_vertex_count": 2049,
     "segment_mass_kg": 3.190680038802134e-08,
     "sim_to_real_gap_count": 7,
