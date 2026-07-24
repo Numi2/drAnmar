@@ -2,12 +2,12 @@
   "schema": "dr.anmar.native-room-bindings.v1",
   "rooms": {
     "dr-anmar-suturable-tissue": {
-      "backend": "physx_fem",
+      "backend": "openusd_static_collision",
       "repository_asset": true,
       "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
       "asset_contract": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
       "alternate_tetmesh_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
-      "representation": "two_watertight_open_incision_flaps_with_native_physx_tetrahedralization",
+      "representation": "two_watertight_open_incision_flaps_with_static_openusd_collision",
       "stage_key": "native_tissue",
       "stage_prim_name": "NativeTissue",
       "spawn": {

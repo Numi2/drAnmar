@@ -6,11 +6,11 @@
   "suture_asset_version": "2.8.0",
   "suture_entry_bytes": 689,
   "suture_base": "assets/dr_anmar/suture/DrAnmarSuture4_0_base.usda",
-  "suture_base_sha256": "4a337d3553c389f3d52fe40910279142e651f44d0febffa48072207f2ed17681",
+  "suture_base_sha256": "2f67b32f3d0b42826ead6b67bb51f9b63eae95f1b93250587d05be734626b134",
   "suture_geometry": "assets/dr_anmar/suture/DrAnmarSuture4_0_geometry.usd",
   "suture_geometry_format": "usdc",
-  "suture_geometry_sha256": "4c2d6d913e642a3e1d4337cea34e355c9145b68ead12478281639d221600d4d2",
-  "suture_geometry_bytes": 5062034,
+  "suture_geometry_sha256": "f39b8b37597212b5d23ddcc53720c76320ea00807d748838b44820657ead7c41",
+  "suture_geometry_bytes": 5060786,
   "suture_interface_visual_mesh_schema": "UsdGeomMesh",
   "suture_interface_visual_vertex_count": 674,
   "suture_interface_visual_face_count": 720,
@@ -46,16 +46,12 @@
       "segment_mass_multiplier": 8.0,
       "minimum_kg": 1e-07
     },
-    "center_of_mass": "local_origin",
-    "principal_axes": "body_local_xyz_identity",
     "collision_envelope_decoupled": true,
+    "inertia_policy": "physx_derives_center_of_mass_and_inertia_from_authored_capsule_colliders",
     "usd_authoring": [
-      "physics:mass",
-      "physics:centerOfMass",
-      "physics:diagonalInertia",
-      "physics:principalAxes"
+      "physics:mass"
     ],
-    "calibration_status": "analytical_effective_solids_pending_mass_distribution_metrology"
+    "calibration_status": "explicit_mass_with_native_collider_derived_inertia_pending_mass_distribution_metrology"
   },
   "suture_segment_mass_properties": {
     "mass_kg": 3.190680038802134e-08,
@@ -175,7 +171,7 @@
   "suture_materials": "assets/dr_anmar/suture/DrAnmarSuture4_0_materials.usda",
   "suture_materials_sha256": "a6e69d382187bb1a772e2e5b51075141e3f2aa7abadf5e906db3312849b1757b",
   "suture_physics": "assets/dr_anmar/suture/DrAnmarSuture4_0_physics.usda",
-  "suture_physics_sha256": "f878f23893690b2851673b11eba311ad1ef81cf46cdbd83c85fdd7fe809a6df8",
+  "suture_physics_sha256": "9bd9aa9746ff5d1b4ce9f70ddfd738928fd579b1ab8e2ab1970890efa57c8780",
   "suture_physx": "assets/dr_anmar/suture/DrAnmarSuture4_0_physx.usda",
   "suture_physx_sha256": "3a3486f46ca81e93d6d88a2755732b66577e9066fd335e161a29df1d82d22641",
   "suture_layer_contract": {
@@ -238,7 +234,7 @@
     "physics_layer_owns": [
       "physics_materials",
       "purpose_specific_collider_physics_material_bindings",
-      "explicit_rigid_body_mass_center_inertia_principal_axes_and_descendant_collision_schemas",
+      "explicit_rigid_body_mass_and_descendant_collision_schemas_with_collider_derived_inertia",
       "adjacent_collision_filtering",
       "breakable_cosserat_joints"
     ],
@@ -273,8 +269,8 @@
   "dr_anmar_needle_base_sha256": "5285f826d880f88da9b33278b834cfe3c89673056dbde1f46c4e1e554cc57367",
   "dr_anmar_needle_geometry": "assets/dr_anmar/needle/DrAnmarNeedle_geometry.usd",
   "dr_anmar_needle_geometry_format": "usdc",
-  "dr_anmar_needle_geometry_sha256": "25b800950d5f3c955eca7de299b8412ac5549a7f435e3b6eee9c0f0935f8665a",
-  "dr_anmar_needle_geometry_bytes": 50809,
+  "dr_anmar_needle_geometry_sha256": "84a2993c9a4bfa84d57e2f9982660760481fab9f6060b0ea03ee7e19ab7c06db",
+  "dr_anmar_needle_geometry_bytes": 50761,
   "dr_anmar_needle_materials": "assets/dr_anmar/needle/DrAnmarNeedle_materials.usda",
   "dr_anmar_needle_materials_sha256": "9dd03f4ff1664d2e397ac44f7671cf1e34859c22e269eacc01fa3b60e3df73d4",
   "dr_anmar_needle_physics": "assets/dr_anmar/needle/DrAnmarNeedle_physics.usda",
@@ -403,13 +399,13 @@
   "needle_mass_property_integration_slices": 8192,
   "needle_center_of_mass_m": [
     0.0050193794285684976,
-    0.0006195416306296188,
+    0.0006195416306296184,
     0.0
   ],
   "needle_diagonal_inertia_kg_m2": [
-    9.42851455125689e-11,
+    9.42851455125687e-11,
     6.565994298708686e-10,
-    7.498559124943371e-10
+    7.498559124943369e-10
   ],
   "needle_principal_axes_wxyz": [
     0.7491962903735767,
@@ -430,7 +426,7 @@
     "minimum_face_area_m2": 3.809030057648221e-10,
     "minimum_face_corner_alignment_dot": 0.05253506623084833,
     "non_outward_face_corner_count": 0,
-    "maximum_surface_tangent_dot": 2.237793284010081e-16,
+    "maximum_surface_tangent_dot": 2.220446049250313e-16,
     "minimum_cross_section_outward_dot": 0.9954631977418059,
     "maximum_swage_cap_side_normal_dot": 0.0
   },
@@ -550,7 +546,8 @@
   "mass_kg": 1.1486448139687682e-05,
   "straight_failure_load_n": 22.5,
   "knot_failure_load_n": 14.625,
-  "runtime_material_history_controller": "scripts/dr_anmar_suture_runtime.py",
+  "runtime_material_history_controller": null,
+  "runtime_physics_authority": "OpenUSD_PhysX",
   "runtime_observation_source": "native_filtered_jaw_contacts_and_openusd_rigid_body_poses",
   "runtime_self_contact_broadphase": {
     "algorithm": "uniform_spatial_hash_over_expanded_centerline_edge_aabbs",

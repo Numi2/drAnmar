@@ -70,7 +70,7 @@
     "physics_layer_owns": [
       "physics_materials",
       "purpose_specific_collider_physics_material_bindings",
-      "explicit_rigid_body_mass_center_inertia_principal_axes_and_descendant_collision_schemas",
+      "explicit_rigid_body_mass_and_descendant_collision_schemas_with_collider_derived_inertia",
       "adjacent_collision_filtering",
       "breakable_cosserat_joints"
     ],
@@ -132,16 +132,12 @@
         "segment_mass_multiplier": 8.0,
         "minimum_kg": 1e-7
       },
-      "center_of_mass": "local_origin",
-      "principal_axes": "body_local_xyz_identity",
       "collision_envelope_decoupled": true,
+      "inertia_policy": "physx_derives_center_of_mass_and_inertia_from_authored_capsule_colliders",
       "usd_authoring": [
-        "physics:mass",
-        "physics:centerOfMass",
-        "physics:diagonalInertia",
-        "physics:principalAxes"
+        "physics:mass"
       ],
-      "calibration_status": "analytical_effective_solids_pending_mass_distribution_metrology"
+      "calibration_status": "explicit_mass_with_native_collider_derived_inertia_pending_mass_distribution_metrology"
     },
     "visual_representation": {
       "rigid_body_prim_pattern": "Segments/S####",
@@ -542,12 +538,12 @@
     {
       "title": "Omni Physics rigid bodies",
       "url": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/107.3/dev_guide/rigid_bodies_articulations/rigid_bodies.html",
-      "used_for": "explicit mass center of mass diagonal inertia and principal axes plus hybrid sweep and speculative CCD on thin fast-moving bodies"
+      "used_for": "explicit mass with collider-derived inertial properties plus hybrid sweep and speculative CCD on thin fast-moving bodies"
     },
     {
       "title": "NVIDIA rigid-body mass asset requirement",
       "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.11.2/capabilities/physics_bodies/physics_rigid_bodies/requirements/rigid-body-mass.html",
-      "used_for": "explicit mass and inertial properties on every movable suture and swage-interface rigid body"
+      "used_for": "explicit mass on every movable suture and swage-interface rigid body while native physics derives inertia from colliders"
     },
     {
       "title": "Omni Physics colliders",

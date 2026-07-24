@@ -129,7 +129,17 @@ def unanchored_local_asset_paths(texts: tuple[str, ...]) -> list[str]:
 def read_usd_as_text(path: Path, usdcat_command: str) -> str:
     usdcat_path = shutil.which(usdcat_command)
     if usdcat_path is None:
-        raise RuntimeError(f"OpenUSD usdcat is required to validate binary geometry: {usdcat_command}")
+        try:
+            from pxr import Sdf
+        except ImportError as exc:
+            raise RuntimeError(
+                "OpenUSD usdcat or the pxr Python bindings are required to "
+                f"validate binary geometry: {usdcat_command}"
+            ) from exc
+        layer = Sdf.Layer.FindOrOpen(str(path))
+        if layer is None:
+            raise RuntimeError(f"OpenUSD could not open binary geometry: {path}")
+        return layer.ExportToString()
     return subprocess.run(
         [usdcat_path, str(path)],
         check=True,
@@ -370,8 +380,6 @@ def compose_physics_variant(
     """Flatten one public Physics selection through an external referencing stage."""
 
     usdcat_path = shutil.which(usdcat_command)
-    if usdcat_path is None:
-        raise RuntimeError(f"OpenUSD usdcat is required to compose variants: {usdcat_command}")
     asset_reference = asset_path.expanduser().resolve().as_posix()
     wrapper_text = f"""#usda 1.0
 (
@@ -390,6 +398,18 @@ def Xform "Probe" (
     with tempfile.TemporaryDirectory(prefix=".dr_anmar_variant_", dir=asset_path.parent) as temporary_directory:
         wrapper = Path(temporary_directory) / f"{selection}.usda"
         wrapper.write_text(wrapper_text, encoding="utf-8")
+        if usdcat_path is None:
+            try:
+                from pxr import Usd
+            except ImportError as exc:
+                raise RuntimeError(
+                    "OpenUSD usdcat or the pxr Python bindings are required "
+                    f"to compose variants: {usdcat_command}"
+                ) from exc
+            stage = Usd.Stage.Open(str(wrapper))
+            if stage is None:
+                raise RuntimeError(f"OpenUSD could not compose variant wrapper: {wrapper}")
+            return stage.Flatten().ExportToString()
         return subprocess.run(
             [usdcat_path, "--flatten", str(wrapper)],
             check=True,
@@ -517,7 +537,7 @@ def add_suture_layer_checks(
         and 'displayName = "DrAnmar 4-0 Braided Suture"' in base_text
         and 'kind = "component"' in base_text
         and 'token[] semantics:labels:wikidata_qcode = ["Q4948587"]' in base_text
-        and ('drAnmarMassPropertyContract = "explicit_physical_envelope_decoupled_mass_center_inertia_principal_axes"')
+        and ('drAnmarMassPropertyContract = "explicit_mass_with_native_collider_derived_inertia"')
         in base_text
         and not unanchored_asset_paths
     )
@@ -605,9 +625,9 @@ def add_suture_layer_checks(
         and materials_text.count("rel material:binding =") == 2
         and physics_text.count('"PhysicsRigidBodyAPI"') == segment_count + 1
         and physics_text.count('"PhysicsMassAPI"') == segment_count + 1
-        and physics_text.count("point3f physics:centerOfMass") == segment_count + 1
-        and physics_text.count("float3 physics:diagonalInertia") == segment_count + 1
-        and physics_text.count("quatf physics:principalAxes") == segment_count + 1
+        and physics_text.count("point3f physics:centerOfMass") == 0
+        and physics_text.count("float3 physics:diagonalInertia") == 0
+        and physics_text.count("quatf physics:principalAxes") == 0
         and physics_text.count('"PhysicsCollisionAPI"') == segment_count + 1
         and physics_text.count("rel material:binding:physics =") == segment_count + 1
         and len(re.findall(r'def PhysicsJoint "J\d{4}"', physics_text)) == segment_count
@@ -773,7 +793,7 @@ def add_suture_mass_property_checks(
     segment_count: int,
     physics_text: str,
 ) -> None:
-    """Validate explicit analytical mass distribution on every rigid body."""
+    """Validate explicit mass and native collider-derived inertia on every rigid body."""
 
     derived = derive(profile)
     segment_properties = suture_segment_mass_properties(
@@ -805,59 +825,22 @@ def add_suture_mass_property_checks(
             physics_text,
         )
     ]
-    centers = authored_tuples(
-        "point3f",
-        "physics:centerOfMass",
-        3,
-    )
-    inertias = authored_tuples(
-        "float3",
-        "physics:diagonalInertia",
-        3,
-    )
-    principal_axes = authored_tuples(
-        "quatf",
-        "physics:principalAxes",
-        4,
-    )
+    centers = authored_tuples("point3f", "physics:centerOfMass", 3)
+    inertias = authored_tuples("float3", "physics:diagonalInertia", 3)
+    principal_axes = authored_tuples("quatf", "physics:principalAxes", 4)
     body_count = segment_count + 1
-    expected_records = [interface_properties, *(segment_properties for _ in range(segment_count))]
     errors: list[str] = []
-    if not (len(masses) == len(centers) == len(inertias) == len(principal_axes) == body_count):
+    if len(masses) != body_count:
         errors.append("attribute_count")
-    else:
-        for body_index, (mass, center, inertia, axes, expected) in enumerate(
-            zip(
-                masses,
-                centers,
-                inertias,
-                principal_axes,
-                expected_records,
-                strict=True,
-            )
-        ):
-            authored_expected_pairs = (
-                (mass, expected.mass_kg),
-                *zip(center, expected.center_of_mass_m, strict=True),
-                *zip(inertia, expected.diagonal_inertia_kg_m2, strict=True),
-                *zip(axes, expected.principal_axes_wxyz, strict=True),
-            )
-            if not all(
-                math.isclose(authored, target, rel_tol=1.0e-10, abs_tol=1.0e-30)
-                for authored, target in authored_expected_pairs
-            ):
-                errors.append(f"{body_index}:authored_value")
-            if (
-                not all(math.isfinite(value) and value > 0.0 for value in (mass, *inertia))
-                or any(inertia[index] > sum(inertia) - inertia[index] + 1.0e-30 for index in range(3))
-                or not math.isclose(
-                    math.sqrt(sum(value * value for value in axes)),
-                    1.0,
-                    rel_tol=0.0,
-                    abs_tol=1.0e-12,
-                )
-            ):
+    if centers or inertias or principal_axes:
+        errors.append("manual_inertia_attributes_present")
+    expected_masses = [interface_properties.mass_kg, *(segment_properties.mass_kg for _ in range(segment_count))]
+    if len(masses) == body_count:
+        for body_index, (mass, expected_mass) in enumerate(zip(masses, expected_masses, strict=True)):
+            if not math.isfinite(mass) or mass <= 0.0:
                 errors.append(f"{body_index}:physical_validity")
+            if not math.isclose(mass, expected_mass, rel_tol=1.0e-10, abs_tol=1.0e-30):
+                errors.append(f"{body_index}:authored_value")
 
     expected_segment_axial_inertia = 0.5 * derived.segment_mass_kg * derived.radius_m**2
     expected_segment_transverse_inertia = (
@@ -901,22 +884,16 @@ def add_suture_mass_property_checks(
                 "segment_mass_multiplier": 8.0,
                 "minimum_kg": 1.0e-7,
             },
-            "center_of_mass": "local_origin",
-            "principal_axes": "body_local_xyz_identity",
             "collision_envelope_decoupled": True,
-            "usd_authoring": [
-                "physics:mass",
-                "physics:centerOfMass",
-                "physics:diagonalInertia",
-                "physics:principalAxes",
-            ],
-            "calibration_status": "analytical_effective_solids_pending_mass_distribution_metrology",
+            "inertia_policy": "physx_derives_center_of_mass_and_inertia_from_authored_capsule_colliders",
+            "usd_authoring": ["physics:mass"],
+            "calibration_status": "explicit_mass_with_native_collider_derived_inertia_pending_mass_distribution_metrology",
         }
         and profile["asset_structure"]["physics_layer_owns"]
         == [
             "physics_materials",
             "purpose_specific_collider_physics_material_bindings",
-            "explicit_rigid_body_mass_center_inertia_principal_axes_and_descendant_collision_schemas",
+            "explicit_rigid_body_mass_and_descendant_collision_schemas_with_collider_derived_inertia",
             "adjacent_collision_filtering",
             "breakable_cosserat_joints",
         ]
@@ -987,7 +964,7 @@ def add_suture_mass_property_checks(
             "segment_mass_sum_kg": segment_properties.mass_kg * segment_count,
             "collision_envelope_decoupled": contract["collision_envelope_decoupled"],
         },
-        "all movable suture bodies explicitly author finite physical-envelope mass center inertia and principal axes",
+        "all movable suture bodies author finite mass while native physics derives stable inertia from their colliders",
     )
 
 
@@ -1043,9 +1020,9 @@ def add_physics_variant_checks(
         and suture_metrics["physics"]["physics_api_schemas"] > 0
         and suture_metrics["physics"]["physics_properties"] > 0
         and suture_metrics["physics"]["explicit_masses"] == segment_count + 1
-        and suture_metrics["physics"]["explicit_centers_of_mass"] == segment_count + 1
-        and suture_metrics["physics"]["explicit_diagonal_inertias"] == segment_count + 1
-        and suture_metrics["physics"]["explicit_principal_axes"] == segment_count + 1
+        and suture_metrics["physics"]["explicit_centers_of_mass"] == 0
+        and suture_metrics["physics"]["explicit_diagonal_inertias"] == 0
+        and suture_metrics["physics"]["explicit_principal_axes"] == 0
         and suture_metrics["physics"]["physx_api_schemas"] == 0
         and suture_metrics["physics"]["physx_properties"] == 0
         and suture_metrics["physics"]["suture_joints"] == segment_count
@@ -1056,9 +1033,9 @@ def add_physics_variant_checks(
         and suture_metrics["physx"]["physx_api_schemas"] > 0
         and suture_metrics["physx"]["physics_properties"] > 0
         and suture_metrics["physx"]["explicit_masses"] == segment_count + 1
-        and suture_metrics["physx"]["explicit_centers_of_mass"] == segment_count + 1
-        and suture_metrics["physx"]["explicit_diagonal_inertias"] == segment_count + 1
-        and suture_metrics["physx"]["explicit_principal_axes"] == segment_count + 1
+        and suture_metrics["physx"]["explicit_centers_of_mass"] == 0
+        and suture_metrics["physx"]["explicit_diagonal_inertias"] == 0
+        and suture_metrics["physx"]["explicit_principal_axes"] == 0
         and suture_metrics["physx"]["physx_properties"] > 0
         and suture_metrics["physx"]["suture_joints"] == segment_count,
         suture_metrics,
@@ -1089,9 +1066,9 @@ def add_physics_variant_checks(
         and needle_metrics["physics"]["physics_api_schemas"] > 0
         and needle_metrics["physics"]["physics_properties"] > 0
         and needle_metrics["physics"]["explicit_masses"] == segment_count + 2
-        and needle_metrics["physics"]["explicit_centers_of_mass"] == segment_count + 2
-        and needle_metrics["physics"]["explicit_diagonal_inertias"] == segment_count + 2
-        and needle_metrics["physics"]["explicit_principal_axes"] == segment_count + 2
+        and needle_metrics["physics"]["explicit_centers_of_mass"] == 1
+        and needle_metrics["physics"]["explicit_diagonal_inertias"] == 1
+        and needle_metrics["physics"]["explicit_principal_axes"] == 1
         and needle_metrics["physics"]["physx_api_schemas"] == 0
         and needle_metrics["physics"]["physx_properties"] == 0
         and needle_metrics["physics"]["suture_joints"] == segment_count
@@ -1103,9 +1080,9 @@ def add_physics_variant_checks(
         and needle_metrics["physx"]["physics_api_schemas"] > 0
         and needle_metrics["physx"]["physics_properties"] > 0
         and needle_metrics["physx"]["explicit_masses"] == segment_count + 2
-        and needle_metrics["physx"]["explicit_centers_of_mass"] == segment_count + 2
-        and needle_metrics["physx"]["explicit_diagonal_inertias"] == segment_count + 2
-        and needle_metrics["physx"]["explicit_principal_axes"] == segment_count + 2
+        and needle_metrics["physx"]["explicit_centers_of_mass"] == 1
+        and needle_metrics["physx"]["explicit_diagonal_inertias"] == 1
+        and needle_metrics["physx"]["explicit_principal_axes"] == 1
         and needle_metrics["physx"]["physx_api_schemas"] > 0
         and needle_metrics["physx"]["physx_properties"] > 0
         and needle_metrics["physx"]["suture_joints"] == segment_count

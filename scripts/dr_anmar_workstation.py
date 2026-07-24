@@ -44,7 +44,6 @@ from dr_anmar_suture_model import (
     load_profile as load_suture_profile,
     sample_suture_runtime_profile,
 )
-from dr_anmar_suture_runtime import SutureRuntime
 from dr_anmar_tissue_model import (
     sample_tissue_episode_parameters,
     stable_physx_proxy_parameters,
@@ -3274,6 +3273,20 @@ def main() -> None:
         # not require freezing the renderer on stale OpenUSD transforms.
         use_fabric=not args_cli.disable_fabric,
     )
+    # The authored 4-0 suture is a 360-body sub-millimetre rod.  Advancing it
+    # at an upstream surgical-task timestep (typically 1/120 s) violates the
+    # asset's own solver contract and sends the light segments non-finite.
+    # PhysX remains the only authority: use the authored microstep and group
+    # sixteen native steps into one 125 Hz workstation action/render frame.
+    suture_profile = load_suture_profile()
+    suture_solver = suture_profile["solver"]
+    env_cfg.sim.dt = float(suture_solver["recommended_physics_dt_s"])
+    env_cfg.decimation = int(
+        suture_solver["recommended_substeps_per_120_hz_frame"]
+    )
+    env_cfg.sim.render_interval = env_cfg.decimation
+    if hasattr(env_cfg.sim.physx, "enable_external_forces_every_iteration"):
+        env_cfg.sim.physx.enable_external_forces_every_iteration = True
     if nvidia_native_bench:
         # Compose the room exclusively from the pinned Isaac for Healthcare
         # catalog. The existing handover task continues to own both PSMs,
@@ -3571,6 +3584,26 @@ def main() -> None:
         native_deformable_enabled
         and native_room.get("representation") != "upstream_softmimicgen_task"
     )
+    native_static_collision_enabled = bool(
+        native_room
+        and native_room.get("backend") == "openusd_static_collision"
+    )
+    if native_static_collision_enabled:
+        spawn = native_room["spawn"]
+        setattr(
+            env_cfg.scene,
+            str(native_room["stage_key"]),
+            AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/DrAnmarSuturableTissue",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    pos=tuple(spawn["translation_m"])
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(native_room["asset_path"]),
+                    scale=tuple(spawn["scale"]),
+                ),
+            ),
+        )
     configured_psm_articulations: list[str] = []
     for robot_attribute in ("robot", "robot_1", "robot_2"):
         robot_cfg = getattr(env_cfg.scene, robot_attribute, None)
@@ -4029,24 +4062,20 @@ def main() -> None:
         seed=DEFAULT_SCENARIO_SEED,
         root_path=suture_root_path,
     )
-    suture_profile = load_suture_profile()
     initial_suture_runtime_profile, initial_suture_domain = (
         sample_suture_runtime_profile(
             suture_profile,
             DEFAULT_SCENARIO_SEED,
         )
     )
-    suture_runtime_profile_state = [initial_suture_runtime_profile]
     suture_runtime_domain_state = [initial_suture_domain]
-    suture_runtime_state = [
-        SutureRuntime(
-            suture_runtime_profile_state[0],
-            root_path=f"{suture_root_path}/Suture",
-        )
-    ]
     suture_physics_view = SimulationManager.get_physics_sim_view()
+    suture_segment_paths = [
+        f"{suture_root_path}/Suture/Segments/S{index:04d}"
+        for index in range(360)
+    ]
     suture_segment_view = suture_physics_view.create_rigid_body_view(
-        f"{suture_root_path}/Suture/Segments/S*"
+        suture_segment_paths
     )
     if suture_segment_view._backend is None or suture_segment_view.count != 360:
         raise RuntimeError(
@@ -4065,14 +4094,6 @@ def main() -> None:
             raise RuntimeError(
                 "The DrAnmar Vascular Clip did not create one native rigid body"
             )
-    initial_suture_stage_update = suture_runtime_state[0].apply_to_stage(
-        suture_stage,
-        representative_self_contact_load_n=0.0,
-    )
-    if initial_suture_stage_update["missing_joints"]:
-        raise RuntimeError(
-            "The Dr.Anmar live suture controller could not bind all authored joints"
-        )
     if native_episode_domain:
         native_root = suture_stage.GetPrimAtPath(
             f"/World/envs/env_0/{native_deformable_prim_name}"
@@ -4101,7 +4122,8 @@ def main() -> None:
                 "factory_swage": True,
                 "breakable_pullout_joint": True,
                 "episode_domain": initial_dr_anmar_needle_domain,
-                "live_material_history_controller": True,
+                "live_material_history_controller": False,
+                "physics_authority": "OpenUSD_PhysX",
                 "live_segment_tensor_count": suture_segment_view.count,
                 "live_suture_domain": suture_runtime_domain_state[0],
                 "clinical_validation": False,
@@ -4696,8 +4718,23 @@ def main() -> None:
             .astype(np.float64)
         )
         if transforms.shape != (360, 7) or not np.isfinite(transforms).all():
+            finite_rows = (
+                int(np.isfinite(transforms).all(axis=1).sum())
+                if transforms.ndim == 2 and transforms.shape[1] == 7
+                else 0
+            )
+            first_invalid_row = next(
+                (
+                    index
+                    for index, row in enumerate(transforms)
+                    if not np.isfinite(row).all()
+                ),
+                None,
+            )
             raise RuntimeError(
-                "The Dr.Anmar live suture tensor state is non-finite or incomplete"
+                "The Dr.Anmar live suture tensor state is non-finite or incomplete: "
+                f"shape={transforms.shape}, finite_rows={finite_rows}/360, "
+                f"first_invalid_row={first_invalid_row}"
             )
         return transforms[:, :3]
 
@@ -4807,6 +4844,7 @@ def main() -> None:
         openusd_scene_loaded=bool(
             nvidia_native_bench
             or native_deformable_enabled
+            or native_static_collision_enabled
             or (openusd_environment and organ_usd.is_file() and showcase_children)
         ),
         anatomy_collision_meshes=collision_mesh_count,
@@ -4944,24 +4982,12 @@ def main() -> None:
             root_path=suture_root_path,
         )
         (
-            suture_runtime_profile_state[0],
+            _suture_runtime_profile,
             suture_runtime_domain_state[0],
         ) = sample_suture_runtime_profile(
             suture_profile,
             selected_seed,
         )
-        suture_runtime_state[0] = SutureRuntime(
-            suture_runtime_profile_state[0],
-            root_path=f"{suture_root_path}/Suture",
-        )
-        reset_suture_stage_update = suture_runtime_state[0].apply_to_stage(
-            suture_stage,
-            representative_self_contact_load_n=0.0,
-        )
-        if reset_suture_stage_update["missing_joints"]:
-            raise RuntimeError(
-                "The Dr.Anmar suture material history failed to reset cleanly"
-            )
         suture_last_sample_time[0] = time.monotonic()
         if native_episode_domain:
             native_episode_domain["requested_reset_seed"] = selected_seed
@@ -5742,43 +5768,19 @@ def main() -> None:
             )
             if suture_dt_s >= suture_sample_period_s:
                 live_suture_positions = suture_segment_positions()
-                filtered_suture_forces = {
-                    arm: filtered_suture_contact_force(arm)
-                    for arm in current_tool_positions
-                }
-                representative_suture_load_n = max(
-                    filtered_suture_forces.values(),
-                    default=0.0,
-                )
-                suture_observation = suture_runtime_state[
-                    0
-                ].observe_segment_positions(
-                    live_suture_positions,
-                    dt_s=suture_dt_s,
-                    representative_self_contact_load_n=representative_suture_load_n,
-                )
-                instrument_observations = {
-                    str(arm): suture_runtime_state[0].record_instrument_contact(
-                        live_suture_positions,
-                        tool_position=position,
-                        contact_force_n=filtered_suture_forces.get(arm, 0.0),
-                        duration_s=suture_dt_s,
-                    )
-                    for arm, position in current_tool_positions.items()
-                }
-                suture_stage_update = suture_runtime_state[0].apply_to_stage(
-                    suture_stage,
-                    representative_self_contact_load_n=representative_suture_load_n,
-                )
                 latest_suture_telemetry = {
-                    **suture_runtime_state[0].telemetry(),
+                    "schema": "dr.anmar.native-suture-telemetry.v1",
+                    "profile_id": suture_profile["id"],
+                    "physics_authority": "OpenUSD_PhysX",
+                    "segment_count": int(live_suture_positions.shape[0]),
+                    "native_state_finite": bool(
+                        np.isfinite(live_suture_positions).all()
+                    ),
+                    "material_history_controller": False,
                     "episode_domain": dict(suture_runtime_domain_state[0]),
-                    "observation": suture_observation,
-                    "instrument_contacts": instrument_observations,
-                    "stage_update": suture_stage_update,
                     "sample_period_s": suture_dt_s,
                     "evidence_source": (
-                        "native_physx_tensor_poses_and_filtered_jaw_contacts"
+                        "native_physx_tensor_poses"
                     ),
                 }
                 suture_last_sample_time[0] = suture_sample_time

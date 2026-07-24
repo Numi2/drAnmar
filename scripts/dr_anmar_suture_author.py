@@ -266,9 +266,6 @@ def capsule_physics_block(
     bool physics:rigidBodyEnabled = true
     bool physics:kinematicEnabled = {"true" if kinematic else "false"}
     float physics:mass = {usd_float(mass_properties.mass_kg)}
-    point3f physics:centerOfMass = {usd_vec(mass_properties.center_of_mass_m)}
-    float3 physics:diagonalInertia = {usd_vec(mass_properties.diagonal_inertia_kg_m2)}
-    quatf physics:principalAxes = {usd_quat(mass_properties.principal_axes_wxyz)}
     {filtered.lstrip()}
 
     over "Collision" (
@@ -542,7 +539,7 @@ def author(
         "drAnmarCanonicalAssetPackage": "assets/dr_anmar",
         "drAnmarIndependentAsset": True,
         "drAnmarLayerContract": "interface_references_base_with_public_none_physics_physx_payload_variants",
-        "drAnmarMassPropertyContract": "explicit_physical_envelope_decoupled_mass_center_inertia_principal_axes",
+        "drAnmarMassPropertyContract": "explicit_mass_with_native_collider_derived_inertia",
         "drAnmarProfileId": profile["id"],
         "drAnmarRepresentation": "discrete_cosserat_rod_with_braided_render_mesh_and_capsule_colliders",
         "drAnmarStatus": profile["status"],
@@ -1243,7 +1240,20 @@ def portable_path(path: Path) -> str:
 def write_usdc(text: str, output: Path, usdcat_command: str) -> None:
     usdcat_path = shutil.which(usdcat_command)
     if usdcat_path is None:
-        raise RuntimeError(f"OpenUSD usdcat is required to author binary geometry: {usdcat_command}")
+        try:
+            from pxr import Sdf
+        except ImportError as exc:
+            raise RuntimeError(
+                "OpenUSD usdcat or the pxr Python bindings are required to "
+                f"author binary geometry: {usdcat_command}"
+            ) from exc
+        layer = Sdf.Layer.CreateAnonymous(f"{output.stem}.usda")
+        if not layer.ImportFromString(text):
+            raise RuntimeError(f"OpenUSD rejected generated geometry for {output}")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        if not layer.Export(str(output), args={"format": "usdc"}):
+            raise RuntimeError(f"OpenUSD could not export binary geometry to {output}")
+        return
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".dr_anmar_usdc_", dir=output.parent) as temporary_directory:
         temporary_root = Path(temporary_directory)
@@ -1728,7 +1738,8 @@ def main() -> int:
         "mass_kg": derived.mass_kg,
         "straight_failure_load_n": derived.straight_failure_load_n,
         "knot_failure_load_n": derived.knot_failure_load_n,
-        "runtime_material_history_controller": "scripts/dr_anmar_suture_runtime.py",
+        "runtime_material_history_controller": None,
+        "runtime_physics_authority": "OpenUSD_PhysX",
         "runtime_observation_source": profile["runtime_detection"]["observation_source"],
         "runtime_self_contact_broadphase": profile["runtime_detection"]["self_contact_broadphase"],
         "clinical_validation": False,
