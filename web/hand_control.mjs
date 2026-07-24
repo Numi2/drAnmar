@@ -504,7 +504,7 @@ function createInterface() {
     .hand-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}.hand-actions button{min-width:0;min-height:36px;padding:6px;font-size:10px}.hand-actions .engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
     .hand-cards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.hand-card{padding:8px;border:1px solid #24404d;border-radius:9px;background:#091920}.hand-card.inactive{opacity:.62}.hand-card.quality-hold{border-color:#82513d;background:#1b1412}.hand-card header{height:auto;padding:0;border:0;background:none}.hand-card b{font-size:11px}.hand-card .track{margin-left:auto;color:#ff8a90;font:800 8px ui-monospace}.hand-card.tracked .track{color:#42e49b}.hand-card dl{display:grid;grid-template-columns:auto 1fr;margin:7px 0 0;gap:3px 7px;font:9px ui-monospace,SFMono-Regular}.hand-card dt{color:#71929d}.hand-card dd{margin:0;text-align:right}.hand-card button{width:100%;margin-top:7px;min-height:30px}
     .hand-advanced.hidden{display:none}
-    .hand-calibration{margin-top:10px;padding:10px;border:1px solid #7a693d;border-radius:10px;background:#241f12}.hand-calibration.hidden{display:none}.hand-calibration b{display:block;margin-bottom:4px}.hand-calibration p{margin:0 0 8px;color:#d8cda9;font-size:12px}.hand-calibration progress{width:100%;height:7px;margin:2px 0 8px;accent-color:#2cd2e8}.hand-privacy{margin:10px 2px 0;color:#6f909b;font-size:10px}
+    .hand-privacy{margin:10px 2px 0;color:#6f909b;font-size:10px}
     .hand-resize-handle{position:sticky;z-index:4;right:0;bottom:0;float:right;width:28px!important;min-width:28px!important;height:28px!important;min-height:28px!important;margin:-22px -8px -8px 0!important;padding:0!important;border:0!important;border-radius:8px 0 8px 0!important;background:linear-gradient(135deg,transparent 45%,#315766 46% 53%,transparent 54% 62%,#8bc6cd 63% 70%,transparent 71%)!important;box-shadow:none!important;cursor:nwse-resize!important;touch-action:none}
     .hand-resize-handle:focus-visible{outline:2px solid #8bc6cd;outline-offset:-2px}.hand-resize-handle:hover{background:linear-gradient(135deg,transparent 42%,#52747d 43% 51%,transparent 52% 60%,#b9f6ff 61% 70%,transparent 71%)!important}
     @container(max-width:350px){.hand-cards{grid-template-columns:1fr}.hand-actions{grid-template-columns:1fr 1fr}.hand-head p{font-size:10px}.hand-metrics{top:auto;bottom:7px;left:7px;right:7px;max-width:none;justify-content:flex-start}}
@@ -540,7 +540,6 @@ function createInterface() {
         <article id="handCard0" class="hand-card"><header><b>Left hand · Instrument 1</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Point index ↓</dd><dt>Table reach</dt><dd data-field="table">0%</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="0" data-shortcut="L CAM">Engage left</button></article>
         <article id="handCard1" class="hand-card"><header><b>Right hand · Instrument 2</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Point index ↓</dd><dt>Table reach</dt><dd data-field="table">0%</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="1" data-shortcut="R CAM">Engage right</button></article>
       </div>
-      <div id="handCalibration" class="hand-calibration hidden"><b id="handCalibrationTitle">Camera calibration</b><p id="handCalibrationText"></p><progress id="handCalibrationProgress" max="${CALIBRATION_SAMPLE_COUNT}" value="0"></progress><button id="handCalibrationCapture" data-shortcut="CAL">Capture stable sample</button></div>
       <p class="hand-privacy">Only calibrated numeric pose commands leave this browser. Webcam frames and raw landmarks are never uploaded or recorded. Single-camera depth is relative, not metric or clinical-grade.</p>
     </div>
     <button id="handPanelResize" class="hand-resize-handle" aria-label="Resize webcam window" title="Drag to resize · arrow keys also work"></button>
@@ -712,7 +711,6 @@ class HandController {
         this.toggleArm(Number(button.dataset.handArm));
       });
     });
-    this.panel.querySelector("#handCalibrationCapture").addEventListener("click", () => this.captureCalibration());
     window.addEventListener("pagehide", () => this.dispose(), { once: true });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) this.freezeAll(false);
@@ -1260,33 +1258,12 @@ class HandController {
     this.calibrationCandidateSignature = "";
     this.calibrationCapture = null;
     this.calibrationReadySince = null;
-    this.panel.querySelector("#handCalibration").classList.remove("hidden");
     this.renderCalibration();
   }
 
   renderCalibration() {
-    const instructions = [
-      ["1 · Neutral pose", "Show the one hand you want to use. The camera selects it automatically."],
-      ["2 · Fully closed", "Touch thumb and index together on that hand and hold."],
-      ["3 · Fully open", "Open thumb and index comfortably on that hand and hold."],
-    ];
-    const [title, text] = instructions[this.calibrationStep] || instructions[0];
     this.calibrationStageStartedAt = performance.now();
-    this.panel.querySelector("#handCalibrationTitle").textContent = title;
-    this.panel.querySelector("#handCalibrationText").textContent = text;
-    const progress = this.panel.querySelector("#handCalibrationProgress");
-    progress.value = 0;
-    const button = this.panel.querySelector("#handCalibrationCapture");
-    button.disabled = this.calibrationAutomatic;
-    button.style.display = this.calibrationAutomatic ? "none" : "";
-    button.textContent = this.calibrationAutomatic
-      ? "Automatic capture armed"
-      : this.calibrationStep === 2
-        ? "Sample open and finish"
-        : "Capture stable sample";
-    if (this.calibrationAutomatic) {
-      this.setBanner(`${this.calibrationStagePrompt()} · waiting for stability`, "warn");
-    }
+    this.setBanner(`${this.calibrationStagePrompt()} · waiting for stability`, "warn");
   }
 
   calibrationStagePrompt(arms = this.calibrationTargetArms) {
@@ -1333,9 +1310,6 @@ class HandController {
       arms: captureArms,
       samples: { 0: [], 1: [] },
     };
-    const button = this.panel.querySelector("#handCalibrationCapture");
-    button.disabled = true;
-    button.textContent = "Hold steady · sampling 0%";
     this.setBanner(`${this.calibrationStagePrompt()} · sampling 0%`, "warn");
   }
 
@@ -1354,15 +1328,10 @@ class HandController {
     }
     const visibleCounts = capture.arms.map(arm => capture.samples[arm].length);
     const progressCount = visibleCounts.length ? Math.min(...visibleCounts) : 0;
-    this.panel.querySelector("#handCalibrationProgress").value = progressCount;
-    this.panel.querySelector("#handCalibrationCapture").textContent =
-      `Hold steady · sampling ${Math.round(100 * progressCount / CALIBRATION_SAMPLE_COUNT)}%`;
-    if (this.calibrationAutomatic) {
-      this.setBanner(
-        `${this.calibrationStagePrompt()} · sampling ${Math.round(100 * progressCount / CALIBRATION_SAMPLE_COUNT)}%`,
-        "warn",
-      );
-    }
+    this.setBanner(
+      `${this.calibrationStagePrompt()} · sampling ${Math.round(100 * progressCount / CALIBRATION_SAMPLE_COUNT)}%`,
+      "warn",
+    );
     const complete = visibleCounts.length && visibleCounts.every(count => count >= CALIBRATION_SAMPLE_COUNT);
     if (complete || timestampMs - capture.startedAt > 1600) this.finishCalibrationCapture();
   }
@@ -1477,7 +1446,6 @@ class HandController {
       this.selectPrimaryArm(this.calibrationTargetArms[0]);
     }
     localStorage.setItem(this.calibrationKey, JSON.stringify(calibration));
-    this.panel.querySelector("#handCalibration").classList.add("hidden");
     this.autoEngagePending = false;
     this.setBanner("Calibration saved · point the index finger down to move", "good");
   }

@@ -255,3 +255,12 @@ test("vision inference is synchronized to decoded video frames", async () => {
   assert.match(source, /generation !== this\.startGeneration/);
   assert.match(source, /stream\.getTracks\(\)\.forEach\(track => track\.stop\(\)\)/);
 });
+
+test("calibration instructions use the webcam overlay without a duplicate yellow card", async () => {
+  const source = await readFile(new URL("../web/hand_control.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /id="handCalibration"/);
+  assert.doesNotMatch(source, /\.hand-calibration/);
+  assert.doesNotMatch(source, /background:#241f12/);
+  assert.match(source, /calibrationStagePrompt\(\).*waiting for stability/s);
+  assert.match(source, /calibrationStagePrompt\(\).*sampling/s);
+});
