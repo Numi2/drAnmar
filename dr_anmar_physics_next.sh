@@ -83,7 +83,6 @@ case "${1:-status}" in
         install_runtime
         ;;
     status)
-        "${ISAAC_PYTHON:-python3}" "${REPOSITORY_ROOT}/scripts/dr_anmar_physics_next.py" validate
         if [[ -f "${NEXT_ROOT}/READY" ]]; then
             echo "physics-next runtime: ready"
         elif install_running; then

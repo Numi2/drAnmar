@@ -18,7 +18,7 @@ boundary. No component contains a physical-robot driver or a clinical workflow i
 4. `scripts/dr_anmar_anatomy_viewer.py` provides a low-overhead static preview for an installed official
    anatomy scene without keeping an Isaac worker active.
 5. `web/doctor_studio.html` presents the doctor-facing learning and operating-room interface.
-6. `scripts/dr_anmar_physics_authority.py` validates the optional multi-solver manifest and reports runtime
+6. `scripts/dr_anmar_physics_authority.py` reads the optional multi-solver manifest and reports runtime
    diagnostics for physics development.
 7. `dr_anmar_physics_next.sh` manages a separate Isaac Sim 6 / Isaac Lab 3 environment under mutable runtime
    storage. It never replaces or stops the stable worker.

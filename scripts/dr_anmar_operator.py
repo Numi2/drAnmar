@@ -38,8 +38,10 @@ class OperatorLease:
                 self._operator_id = operator_id
                 self._last_seen = now
                 return True, ""
-            remaining = max(1, round(self.ttl_seconds - (now - self._last_seen)))
-        return False, f"Another browser is controlling this workstation. It releases automatically in {remaining}s."
+        return False, (
+            "Another live browser is controlling this workstation. "
+            "Close that tab or stop using its controls, then try again."
+        )
 
     def release(self, operator_id: str | None) -> bool:
         with self._lock:

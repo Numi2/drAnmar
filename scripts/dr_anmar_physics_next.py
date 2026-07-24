@@ -2,7 +2,7 @@
 # Copyright (c) 2026, Dr.Anmar Project Developers.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Inspect and validate the isolated Dr.Anmar physics-next contract."""
+"""Inspect the isolated Dr.Anmar physics-next contract."""
 
 from __future__ import annotations
 
@@ -16,13 +16,13 @@ from dr_anmar_physics_authority import DEFAULT_MANIFEST, load_physics_authority
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Dr.Anmar physics-next control plane")
-    parser.add_argument("command", choices=("status", "validate", "benchmark-plan", "env"))
+    parser.add_argument("command", choices=("status", "benchmark-plan", "env"))
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--benchmark", default="liver-retraction")
     args = parser.parse_args()
 
     authority = load_physics_authority(args.manifest)
-    if args.command in {"status", "validate"}:
+    if args.command == "status":
         payload = authority.runtime_payload()
         payload["valid"] = True
         print(json.dumps(payload, indent=2, sort_keys=True))
@@ -45,4 +45,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

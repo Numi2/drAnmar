@@ -5,11 +5,9 @@ REPOSITORY_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DATA_ROOT="${DR_ANMAR_ROOT:-${HOME}/.local/share/dr-anmar}"
 RUNTIME_ROOT="${DR_ANMAR_SUTURE_NATIVE_ROOT:-${DATA_ROOT}/native-suture}"
 ASSET_ROOT="${RUNTIME_ROOT}/softmimicgen-assets"
-REPORT_ROOT="${RUNTIME_ROOT}/reports"
 UPSTREAM_ROOT="${DR_ANMAR_SOFTMIMICGEN_ROOT:-${DATA_ROOT}/native-suture-runtime/SoftMimicGen}"
-ISAAC_PYTHON="${DR_ANMAR_STABLE_ISAAC_PYTHON:-}"
 
-mkdir -p "${ASSET_ROOT}" "${REPORT_ROOT}" "${RUNTIME_ROOT}/tmp"
+mkdir -p "${ASSET_ROOT}" "${RUNTIME_ROOT}/tmp"
 
 manifest_value() {
     python3 -c 'import json,sys; value=json.load(open(sys.argv[1]));
@@ -42,19 +40,6 @@ install_upstream() {
         "${UPSTREAM_ROOT}/datasets/annotated_dataset/annotated_dataset_surgical_threading.hdf5"
 }
 
-upstream_pythonpath() {
-    printf '%s' \
-        "${UPSTREAM_ROOT}/third_party/IsaacLab/source/isaaclab:"\
-"${UPSTREAM_ROOT}/third_party/IsaacLab/source/isaaclab_assets:"\
-"${UPSTREAM_ROOT}/third_party/IsaacLab/source/isaaclab_mimic:"\
-"${UPSTREAM_ROOT}/third_party/IsaacLab/source/isaaclab_rl:"\
-"${UPSTREAM_ROOT}/third_party/IsaacLab/source/isaaclab_tasks:"\
-"${UPSTREAM_ROOT}/source/softmimicgen:"\
-"${UPSTREAM_ROOT}/source/softmimicgen_assets:"\
-"${UPSTREAM_ROOT}/source/softmimicgen_tasks:"\
-"${PYTHONPATH:-}"
-}
-
 case "${1:-status}" in
     fetch)
         python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_fetch_softmimicgen.py" \
@@ -67,34 +52,9 @@ case "${1:-status}" in
     status)
         python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_fetch_softmimicgen.py" \
             --output "${ASSET_ROOT}" --verify-only
-        latest="$(find "${REPORT_ROOT}" -maxdepth 1 -name 'softmimicgen-suture-*.json' -type f -print 2>/dev/null | sort | tail -1)"
-        if [[ -n "${latest}" ]]; then
-            echo "Latest diagnostic: ${latest}"
-            python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print("checks=",r.get("checks",{}))' "${latest}"
-        fi
-        latest_replay="$(find "${REPORT_ROOT}" -maxdepth 1 -name 'softmimicgen-replay-*.json' -type f -print 2>/dev/null | sort | tail -1)"
-        if [[ -n "${latest_replay}" ]]; then
-            echo "Latest upstream replay: ${latest_replay}"
-            python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print("pass=",r.get("pass"),"live_terminal_success=",r.get("live_terminal_success"),"first_success_step=",r.get("first_live_success_step"))' "${latest_replay}"
-        fi
-        ;;
-    validate-upstream)
-        [[ -x "${ISAAC_PYTHON}" ]] || { echo "Isaac Python not found: ${ISAAC_PYTHON}" >&2; exit 1; }
-        dataset="${UPSTREAM_ROOT}/datasets/annotated_dataset/annotated_dataset_surgical_threading.hdf5"
-        [[ -f "${dataset}" ]] || { echo "Install the pinned upstream runtime first." >&2; exit 1; }
-        output="${REPORT_ROOT}/softmimicgen-replay-$(date -u +%Y%m%dT%H%M%SZ).json"
-        PYTHONPATH="$(upstream_pythonpath)" TMPDIR="${RUNTIME_ROOT}/tmp" \
-            "${ISAAC_PYTHON}" "${REPOSITORY_ROOT}/scripts/dr_anmar_softmimicgen_replay_validate.py" \
-            --headless \
-            --task Isaac-Thread-PSM-IK-Rel-v0 \
-            --dataset "${dataset}" \
-            --episode "${2:-demo_0}" \
-            --report "${output}" \
-            --kit_args "--portable-root ${DATA_ROOT}/isaac_portable-softmimicgen-validation"
-        echo "Replay validation: ${output}"
         ;;
     *)
-        echo "Usage: $0 {fetch|install-upstream|status|validate-upstream [demo_0]}" >&2
+        echo "Usage: $0 {fetch|install-upstream|status}" >&2
         exit 2
         ;;
 esac

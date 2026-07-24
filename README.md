@@ -54,10 +54,10 @@ bounded training or an external workflow.
   <img src="docs/screenshots/dr-anmar-live-operating-room-2026.png" width="960" alt="Live Dr.Anmar liver-retraction operating room with OpenUSD anatomy, dVRK instrument, complete keyboard control dock, guidance, and camera HUD">
 </p>
 
-The current library contains 12 rooms: the NVIDIA surgical bench, needle pickup and handoff, liver
-retraction, anatomy navigation, bimanual strand/ring work, needle regrasping, ultrasound-guided access,
-complication recovery, and three SonoGym L4 ultrasound tasks. Each entry maps directly to a local task or an
-external provider; unfinished procedure placeholders are not shown.
+The main Operating Room is one stable NVIDIA surgical bench. Needle pickup, handover and passing are
+progressive guided lessons inside that bench, while dropped-needle recovery is a repeatable physical scenario
+on the same scene. Experimental tissue, anatomy and strand work lives in Research Labs. Orthopedic ultrasound
+is one SonoGym workspace with navigation, reconstruction and guided-surgery modes.
 
 ### Executable expert guidance
 

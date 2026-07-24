@@ -241,6 +241,13 @@ FAILURE_SCENARIOS = (
         "doctor_focus": "Use parallax and controlled tool motion to confirm depth before closing the gripper.",
     },
     {
+        "id": "dropped_object_recovery",
+        "title": "Dropped needle recovery",
+        "difficulty": "Research challenge",
+        "description": "The needle begins displaced from its usual presentation after a simulated drop.",
+        "doctor_focus": "Stop, rebuild the camera view, reacquire with controlled contact, and return to stable custody.",
+    },
+    {
         "id": "calibration_bias",
         "title": "Control calibration bias",
         "difficulty": "Research challenge",
@@ -280,6 +287,7 @@ SCENARIOS_BY_ID = {item["id"]: item for item in FAILURE_SCENARIOS}
 SCENARIO_NATIVE_PROFILES = {
     "target_lateral_offset": {"object_offset_m": (0.0, 0.025, 0.0)},
     "target_depth_offset": {"object_offset_m": (0.025, 0.0, 0.0)},
+    "dropped_object_recovery": {"object_offset_m": (0.035, -0.030, 0.0)},
     "calibration_bias": {"translation_yaw_deg": 7.0, "axis_scale": (1.08, 0.92, 1.0)},
     "stereo_miscalibration": {"right_camera_offset_m": (0.0, 0.010, 0.004)},
     "sensor_dropout": {"dropout_frames": 8, "dropout_period_frames": 40},
@@ -852,7 +860,10 @@ class SharedState:
             needle_geometry_ready = not needle_required or self.needle_visual_ready
             camera_frame_ready = bool(self.frame_id > 0 and self.frame_jpeg and self.camera_nonblank_seen)
             render_contract = {
-                "ready": bool(camera_frame_ready and needle_geometry_ready and thread_geometry_ready),
+                # A real camera frame is the only condition for presenting the
+                # room. Needle and strand fields below are research telemetry,
+                # never UI gates.
+                "ready": camera_frame_ready,
                 "camera_frame_ready": camera_frame_ready,
                 "camera_nonblank_seen": self.camera_nonblank_seen,
                 "needle_required": needle_required,
@@ -2428,7 +2439,12 @@ def apply_native_object_scenario(objects: dict[str, Any], scenario_id: str, seed
     offset = profile.get("object_offset_m")
     if offset is None or not objects:
         return
-    targets = {"object": objects["object"]} if "object" in objects else objects
+    if "object" in objects:
+        targets = {"object": objects["object"]}
+    elif "suture_needle" in objects:
+        targets = {"suture_needle": objects["suture_needle"]}
+    else:
+        return
     generator = np.random.default_rng(seed)
     seeded_jitter = generator.uniform(-0.0015, 0.0015, size=3).astype(np.float32)
     seeded_jitter[2] = 0.0
@@ -3837,8 +3853,6 @@ def main() -> None:
     room_waypoints = procedure_waypoints(procedure)
     if guide_kind == "navigation":
         anatomy_position = (-0.117, -0.0945, -0.189)
-    elif procedure_id in {"needle-pickup", "needle-transfer"}:
-        anatomy_position = (-0.117, -0.2445, -0.144)
     else:
         anatomy_position = (-0.117, -0.1945, -0.164)
     native_episode_domain: dict[str, Any] = {}
@@ -5175,7 +5189,9 @@ def main() -> None:
         ),
         anatomy_collision_meshes=collision_mesh_count,
         sensor_profile=args_cli.sensor_profile,
-        needle_visual_ready=bool("suture_needle" in objects)
+        needle_visual_ready=bool(
+            "suture_needle" in objects or "object" in objects
+        )
         if guide_kind in NATIVE_NEEDLE_GUIDE_KINDS or bimanual_softmimicgen
         else True,
         deformable_strand_ready=bool("object" in deformables),

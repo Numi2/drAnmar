@@ -60,17 +60,14 @@ case "${1:-status}" in
             echo "$!" >"${PID_FILE}"
         fi
         if ! "${ORBIT_ROOT}/dr_anmar_workstation.sh" status "${WORKER_PORT}" >/dev/null 2>&1; then
-            default_anatomy_id="OR_scene_CTLiver-Prostate-Bladder"
-            default_anatomy="$("${PYTHON}" -c 'import json,sys; data=json.load(open(sys.argv[1])); target=sys.argv[2]; print(next(item["runtime_organ_usd"] for item in data["scenes"] if item["id"] == target))' "${ROOT}/scenes/openusd/manifest.json" "${default_anatomy_id}")"
-            default_environment="${ROOT}/scenes/openusd/${default_anatomy_id}/environment.usda"
             "${ORBIT_ROOT}/dr_anmar_workstation.sh" start \
                 "${WORKER_PORT}" \
-                "Isaac-Lift-Needle-PSM-IK-Rel-v0" \
-                "needle-pickup" \
-                "${default_anatomy}" \
-                "${default_anatomy_id}" \
-                "CT liver, prostate & bladder" \
-                "${default_environment}"
+                "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0" \
+                "nvidia-native-surgical-bench" \
+                "" \
+                "" \
+                "NVIDIA surgical dry-lab bench" \
+                ""
         fi
         echo "Dr.Anmar suite starting: http://localhost:${HUB_PORT}/"
         ;;

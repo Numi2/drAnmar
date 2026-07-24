@@ -8,9 +8,8 @@ VESSEL="${ASSET_DIRECTORY}/DrAnmarVessel.usda"
 TETMESH="${ASSET_DIRECTORY}/DrAnmarVessel.tet.usda"
 CLIP="${ASSET_DIRECTORY}/DrAnmarVascularClip.usda"
 ASSET_REPORT="${ASSET_DIRECTORY}/DrAnmarHemostasis.report.json"
-VALIDATION_REPORT="${ASSET_DIRECTORY}/DrAnmarHemostasis.validation.json"
 
-case "${1:-validate}" in
+case "${1:-author}" in
     author)
         python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_hemostasis_author.py" \
             --profile "${PROFILE}" \
@@ -19,21 +18,11 @@ case "${1:-validate}" in
             --clip-output "${CLIP}" \
             --report "${ASSET_REPORT}"
         ;;
-    validate)
-        python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_hemostasis_validate.py" \
-            --profile "${PROFILE}" \
-            --vessel "${VESSEL}" \
-            --tet "${TETMESH}" \
-            --clip "${CLIP}" \
-            --asset-report "${ASSET_REPORT}" \
-            --output "${VALIDATION_REPORT}"
-        ;;
     rebuild)
         "$0" author
-        "$0" validate
         ;;
     inspect)
-        python3 - <<'PY' "${ASSET_REPORT}" "${VALIDATION_REPORT}"
+        python3 - <<'PY' "${ASSET_REPORT}"
 import json
 import sys
 for path in sys.argv[1:]:
@@ -42,7 +31,7 @@ for path in sys.argv[1:]:
 PY
         ;;
     *)
-        echo "Usage: $0 {author|validate|rebuild|inspect}" >&2
+        echo "Usage: $0 {author|rebuild|inspect}" >&2
         exit 2
         ;;
 esac

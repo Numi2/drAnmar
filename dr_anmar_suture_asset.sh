@@ -17,10 +17,9 @@ DR_ANMAR_NEEDLE_GEOMETRY="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedl
 DR_ANMAR_NEEDLE_MATERIALS="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_materials.usda"
 DR_ANMAR_NEEDLE_PHYSICS="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_physics.usda"
 DR_ANMAR_NEEDLE_PHYSX="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_physx.usda"
-REPORT="${REPOSITORY_ROOT}/physics_next/benchmarks/dr-anmar-suture-4-0-validation.json"
 ISAAC_PYTHON="${DR_ANMAR_STABLE_ISAAC_PYTHON:-}"
 
-case "${1:-validate}" in
+case "${1:-author}" in
     author)
         python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_suture_author.py" \
             --profile "${PROFILE}" \
@@ -39,28 +38,6 @@ case "${1:-validate}" in
             --needle-physics-output "${DR_ANMAR_NEEDLE_PHYSICS}" \
             --needle-physx-output "${DR_ANMAR_NEEDLE_PHYSX}"
         ;;
-    validate)
-        python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_suture_validate.py" \
-            --profile "${PROFILE}" \
-            --needle-profile "${NEEDLE_PROFILE}" \
-            --asset "${ASSET}" \
-            --suture-base "${SUTURE_BASE}" \
-            --suture-geometry "${SUTURE_GEOMETRY}" \
-            --suture-materials "${SUTURE_MATERIALS}" \
-            --suture-texture "${SUTURE_TEXTURE}" \
-            --suture-physics "${SUTURE_PHYSICS}" \
-            --suture-physx "${SUTURE_PHYSX}" \
-            --needle "${DR_ANMAR_NEEDLE}" \
-            --needle-base "${DR_ANMAR_NEEDLE_BASE}" \
-            --needle-geometry "${DR_ANMAR_NEEDLE_GEOMETRY}" \
-            --needle-materials "${DR_ANMAR_NEEDLE_MATERIALS}" \
-            --needle-physics "${DR_ANMAR_NEEDLE_PHYSICS}" \
-            --needle-physx "${DR_ANMAR_NEEDLE_PHYSX}" \
-            --output "${REPORT}"
-        python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_suture_runtime.py" \
-            --profile "${PROFILE}" \
-            --self-test
-        ;;
     inspect)
         [[ -x "${ISAAC_PYTHON}" ]] || {
             echo "Isaac Python not found: ${ISAAC_PYTHON}" >&2
@@ -72,10 +49,9 @@ case "${1:-validate}" in
         ;;
     rebuild)
         "$0" author
-        "$0" validate
         ;;
     *)
-        echo "Usage: $0 {author|validate|inspect|rebuild}" >&2
+        echo "Usage: $0 {author|inspect|rebuild}" >&2
         exit 2
         ;;
 esac

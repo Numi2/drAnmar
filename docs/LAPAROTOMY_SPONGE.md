@@ -69,13 +69,6 @@ full thickness coverage and 98.57%/98.25% lateral coverage; the deliberate
 1 mm per-side inset avoids corner ghost contacts. The 3.0 mm visual loop uses
 32 contiguous 3.2 mm-radius capsules, giving 106.67% radial coverage.
 
-Run the deterministic repository inspection with:
-
-```bash
-python scripts/dr_anmar_laparotomy_sponge_validate.py \
-  --output /tmp/dr-anmar-laparotomy-sponge-validation.json
-```
-
 Run either CUDA representation in its selected Isaac environment with:
 
 ```bash

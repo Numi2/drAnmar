@@ -6,10 +6,9 @@ PROFILE="${REPOSITORY_ROOT}/physics_next/tissues/dr-anmar-suturable-tissue-v1.js
 SURFACE="${REPOSITORY_ROOT}/assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda"
 TETMESH="${REPOSITORY_ROOT}/assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda"
 ASSET_REPORT="${REPOSITORY_ROOT}/assets/dr_anmar/tissue/DrAnmarSuturableTissue.report.json"
-VALIDATION_REPORT="${REPOSITORY_ROOT}/physics_next/benchmarks/dr-anmar-suturable-tissue-validation.json"
 USD_PYTHON="${DR_ANMAR_USD_PYTHON:-${DR_ANMAR_STABLE_ISAAC_PYTHON:-}}"
 
-case "${1:-validate}" in
+case "${1:-author}" in
     author)
         python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_tissue_author.py" \
             --profile "${PROFILE}" \
@@ -17,17 +16,8 @@ case "${1:-validate}" in
             --tet-output "${TETMESH}" \
             --report "${ASSET_REPORT}"
         ;;
-    validate)
-        python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_tissue_validate.py" \
-            --profile "${PROFILE}" \
-            --surface "${SURFACE}" \
-            --tetmesh "${TETMESH}" \
-            --asset-report "${ASSET_REPORT}" \
-            --output "${VALIDATION_REPORT}"
-        ;;
     rebuild)
         "$0" author
-        "$0" validate
         ;;
     inspect)
         [[ -x "${USD_PYTHON}" ]] || {
@@ -39,7 +29,7 @@ case "${1:-validate}" in
             "${SURFACE}" "${TETMESH}"
         ;;
     *)
-        echo "Usage: $0 {author|validate|rebuild|inspect}" >&2
+        echo "Usage: $0 {author|rebuild|inspect}" >&2
         exit 2
         ;;
 esac

@@ -1432,63 +1432,31 @@ def anatomy() -> dict[str, Any]:
 
 @app.get("/api/procedure-rooms")
 def procedure_rooms() -> dict[str, Any]:
+    """Return the room catalog without duplicating runtime launch checks.
+
+    The main NVIDIA bench and experimental research rooms share one launch
+    endpoint. Asset and provider errors are reported by that endpoint when the
+    user actually opens a room; stale preflight booleans must never hide a
+    running simulator or disable the clinician UI.
+    """
+
     payload = procedure_payload()
     available_anatomy = {scene["id"]: scene for scene in anatomy_payload()["scenes"]}
     for room in payload["rooms"]:
         anatomy = available_anatomy.get(room["anatomy_scene"])
+        room["location"] = (
+            "main" if room["id"] == payload["default"] else "research"
+        )
         if room.get("external_provider") == "nvidia_robotic_ultrasound":
-            catalog = workflow_modes("robotic_ultrasound")
-            mode = next(
-                (item for item in catalog.get("modes", []) if item.get("id") == room.get("provider_mode")),
-                None,
-            )
-            ready = bool(mode and mode.get("launch_ready"))
-            missing = list(mode.get("missing_prerequisites", [])) if mode else ["NVIDIA workflow metadata"]
-            room["ready"] = ready
-            room["readiness_reason"] = (
-                "" if ready else "The robotic ultrasound room needs " + ", ".join(missing) + "."
-            )
             room["anatomy_title"] = "NVIDIA robotic ultrasound patient model"
             continue
         if room.get("external_provider") == "sonogym_orthopedics":
-            catalog = sonogym_workflow_modes()
-            mode = next(
-                (item for item in catalog.get("modes", []) if item.get("id") == room.get("provider_mode")),
-                None,
-            )
-            ready = bool(mode and mode.get("launch_ready"))
-            missing = list(mode.get("missing_prerequisites", [])) if mode else ["SonoGym task metadata"]
-            room["ready"] = ready
-            room["readiness_reason"] = (
-                "" if ready else "The orthopedic ultrasound room needs " + ", ".join(missing) + "."
-            )
             room["anatomy_title"] = "SonoGym CT-derived lumbar patient · L4 vertebra"
             continue
-        binding = resolve_native_room(str(room["id"]))
-        ready = not binding or bool(binding.get("available"))
-        reason = "" if ready else "Required room assets are not installed on this worker."
-        missing_nvidia_assets = missing_required_nvidia_assets(room)
-        if missing_nvidia_assets:
-            ready = False
-            reason = "Missing required room assets: " + ", ".join(missing_nvidia_assets) + "."
-        room["readiness_reason"] = reason
-        environment_scene = available_anatomy.get(
-            str(room.get("operating_room_environment", ""))
-        )
-        anatomy_ready = (
-            bool(room.get("hide_anatomy"))
-            and (
-                not room.get("operating_room_environment")
-                or bool(environment_scene and environment_scene.get("openusd_ready"))
-            )
-        ) or bool(anatomy and anatomy.get("openusd_ready"))
-        room["ready"] = bool(anatomy_ready and ready)
-        if ready and not anatomy_ready:
-            room["readiness_reason"] = "Required anatomy assets are not installed on this worker."
         room["anatomy_title"] = (
             str(room.get("anatomy_focus") or "Dry-lab field")
             if room.get("hide_anatomy")
-            else anatomy["title"] if anatomy else room["anatomy_scene"]
+            else anatomy["title"] if anatomy else room.get("anatomy_focus", "")
         )
     return payload
 
@@ -1560,6 +1528,90 @@ def launch_sonogym_procedure(procedure: dict[str, Any], force_restart: bool = Fa
             write_json(manifest_path, manifest)
         result["resume_task"] = preserved_resume.get("task")
     return result
+
+
+def reserve_sonogym_room_switch(label: str) -> bool:
+    """Reserve a normal room while a native SonoGym worker is active."""
+    with state.lock:
+        active_sonogym = (
+            state.healthcare_status in {"preparing", "running", "stopping"}
+            and state.healthcare_workflow == "sonogym_orthopedics"
+        )
+        if not active_sonogym:
+            return False
+        if state.switching:
+            raise HTTPException(409, f"The operating room is already loading {state.requested_task}")
+        if state.training_status in {"preparing", "running", "stopping"}:
+            raise HTTPException(409, "Stop policy training before loading another room")
+        if state.matrix_status in {"preparing", "running"}:
+            raise HTTPException(409, "Finish the Failure Lab matrix before loading another room")
+        state.switching = True
+        state.requested_task = label
+        state.error = None
+        return True
+
+
+def stop_sonogym_for_room_switch() -> None:
+    """Stop SonoGym without restoring the room that preceded it."""
+    with state.lock:
+        process = state.healthcare_process
+        job_id = state.healthcare_job_id
+        active_sonogym = (
+            state.healthcare_status in {"preparing", "running", "stopping"}
+            and state.healthcare_workflow == "sonogym_orthopedics"
+        )
+        if not active_sonogym:
+            return
+        state.healthcare_skip_resume_job_id = job_id
+        state.healthcare_status = "stopping"
+    if process is None:
+        raise RuntimeError("The active SonoGym worker has no managed process")
+    if process.poll() is None:
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            process.wait(timeout=45)
+        except subprocess.TimeoutExpired as exc:
+            raise TimeoutError("The SonoGym room did not finish closing") from exc
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        with state.lock:
+            released = (
+                state.healthcare_job_id != job_id
+                or state.healthcare_status not in {"preparing", "running", "stopping"}
+            )
+        if released:
+            return
+        time.sleep(0.05)
+    raise TimeoutError("The SonoGym room did not release the native runtime")
+
+
+def switch_sonogym_to_worker(
+    task: str,
+    procedure_id: str,
+    anatomy_scene: Path | None,
+    anatomy_scene_id: str,
+    anatomy_title: str,
+    openusd_environment: Path | None,
+) -> None:
+    """Replace the active SonoGym process with the selected Isaac room."""
+    try:
+        stop_sonogym_for_room_switch()
+    except Exception as exc:
+        with state.lock:
+            state.error = str(exc)
+            state.switching = False
+        return
+    switch_worker(
+        task,
+        procedure_id,
+        anatomy_scene,
+        anatomy_scene_id,
+        anatomy_title,
+        openusd_environment,
+    )
 
 
 @app.post("/api/healthcare-job/restart")
@@ -1640,22 +1692,26 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         room_title = room["title"]
         asset = anatomy_asset(room)
         environment = openusd_environment_asset(room)
-    ensure_worker_available("loading an operating room")
+    replacing_sonogym = reserve_sonogym_room_switch(procedure["title"])
+    if not replacing_sonogym:
+        ensure_worker_available("loading an operating room")
     current = worker_status()
     if (
-        current
+        not replacing_sonogym
+        and current
         and current.get("task") == procedure["task"]
         and current.get("procedure", {}).get("id") == request.procedure_id
         and current.get("anatomy_scene_id") == selected_anatomy
         and current.get("frame_id", 0) > 0
     ):
         return {"ok": True, "procedure_id": request.procedure_id, "already_ready": True}
-    reserve_worker_switch(procedure["title"])
+    if not replacing_sonogym:
+        reserve_worker_switch(procedure["title"])
     threading.Thread(
-        target=switch_worker,
+        target=switch_sonogym_to_worker if replacing_sonogym else switch_worker,
         args=(procedure["task"], request.procedure_id, asset, selected_anatomy, room_title, environment),
         daemon=True,
-        name="dr-anmar-procedure-switch",
+        name="dr-anmar-sonogym-room-switch" if replacing_sonogym else "dr-anmar-procedure-switch",
     ).start()
     return {
         "ok": True,
