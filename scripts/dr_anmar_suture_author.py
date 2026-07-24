@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Author the independent Dr.Anmar 4-0 suture as an OpenUSD physics asset.
+"""Author the independent Dr.Anmar 4-0 suture as a layered OpenUSD asset.
 
-The asset is a high-resolution discrete Cosserat rod: closed braided meshes
-provide segment-local render detail, hidden primitive capsules provide
-solver-efficient collision, and D6 joints independently model axial stretch,
-bending, torsion, damping, and overload breakage.  No NVIDIA Rope.usd data is
-read or referenced.
+Closed braided meshes provide segment-local render detail. Hidden primitive
+capsules and D6 joints form the portable PhysX compatibility payload; the
+promoted knotting runtime consumes the same centerline and material profile
+through the NVIDIA Warp backend. No NVIDIA Rope.usd data is read or referenced.
 """
 
 from __future__ import annotations

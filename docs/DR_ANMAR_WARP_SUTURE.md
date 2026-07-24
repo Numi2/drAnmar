@@ -7,9 +7,9 @@ identity, geometry, material, damage, and validation contracts.
 
 ## Why this backend exists
 
-The 360-body PhysX representation remains useful for ordinary OpenUSD
-inspection and compatibility, but its microscopic rigid contacts are not the
-promoted knotting path. The Warp backend represents the 360 authored segments
+The layered PhysX payload remains useful for ordinary OpenUSD inspection and
+compatibility, but it is not the promoted microscopic knotting path. The Warp
+backend represents the 360 authored segments
 with 361 particles and solves:
 
 - a global, nonlinear axial XPBD system;

@@ -89,7 +89,6 @@ DEFAULT_NEEDLE_MATERIALS = DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH
 DEFAULT_NEEDLE_PHYSICS = DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH
 DEFAULT_NEEDLE_PHYSX = DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH
 DEFAULT_WORKSTATION = REPOSITORY_ROOT / "scripts/dr_anmar_workstation.py"
-DEFAULT_NATIVE_PROBE = REPOSITORY_ROOT / "scripts/dr_anmar_suture_physics_probe.py"
 DEFAULT_WARP_BACKEND = REPOSITORY_ROOT / "scripts/dr_anmar_warp_suture.py"
 DEFAULT_WARP_REPORT = (
     REPOSITORY_ROOT
@@ -1918,7 +1917,6 @@ def validate(
         needle_profile,
         needle_mesh,
     )
-    native_probe_text = DEFAULT_NATIVE_PROBE.read_text(encoding="utf-8")
     warp_backend_text = DEFAULT_WARP_BACKEND.read_text(encoding="utf-8")
     warp_report = json.loads(DEFAULT_WARP_REPORT.read_text(encoding="utf-8"))
     integration_text = DEFAULT_INTEGRATION.read_text(encoding="utf-8")
@@ -2945,77 +2943,6 @@ def validate(
         },
         "bounded scale-aware PhysX offsets on every collider with no unqualified cross-engine schema authoring",
     )
-    native_probe_tokens = [
-        "needle_collision_capsule_count",
-        "needle_collision_explicit_extent_count",
-        "needle_friction_combine_mode",
-        "needle_authored_mass_kg",
-        "needle_center_of_mass_m",
-        "needle_diagonal_inertia_kg_m2",
-        "needle_principal_axes_wxyz",
-        "needle_mass_properties_match_geometry",
-        "needle_physx_contact_offset_range_m",
-        "needle_physx_contact_offsets_match_profile",
-        "needle_newton_collision_api_count",
-        "needle_engine_schema_isolation_valid",
-        "needle_visual_normal_value_count",
-        "needle_visual_normal_index_count",
-        "needle_visual_normals_valid",
-        "needle_collision_guide_purpose_count",
-        "needle_collision_invisible_count",
-        "needle_collision_physics_material_binding_count",
-        "needle_render_collision_separation_valid",
-        "needle_material_organization_valid",
-        "needle_physics_variant_selection",
-        "suture_physics_variant_selection",
-        "physics_variant_contract_valid",
-        "root_asset_info_name",
-        "root_asset_info_version",
-        "root_model_identity_valid",
-        "needle_subcomponent_identity_valid",
-        "suture_subcomponent_identity_valid",
-        "semantic_visual_mesh_count",
-        "semantic_visual_mesh_labels_valid",
-        "semantic_visual_mesh_failures",
-        "needle_base_layer_name",
-        "needle_source_model_identity_valid",
-        "needle_asset_structure_source_ownership_valid",
-        "suture_base_layer_name",
-        "suture_source_model_identity_valid",
-        "suture_asset_structure_source_ownership_valid",
-        "suture_physx_collision_api_count",
-        "suture_hybrid_ccd_body_count",
-        "suture_physx_contact_offsets_match_profile",
-        "suture_explicit_mass_properties_valid_count",
-        "suture_mass_property_maximum_relative_error",
-        "suture_mass_property_minimum_inertia_kg_m2",
-        "suture_material_bindings_valid",
-        "suture_visual_mesh_count",
-        "suture_visual_mesh_vertex_count",
-        "suture_visual_normals_valid_count",
-        "suture_visual_tangent_frame_value_count",
-        "suture_visual_tangent_frame_index_count",
-        "suture_visual_tangent_frame_valid_count",
-        "suture_visual_tangent_frame_maximum_error",
-        "suture_visual_tangent_frame_maximum_orthogonality_error",
-        "suture_visual_tangent_frame_minimum_handedness",
-        "suture_visual_uv_value_count",
-        "suture_visual_uv_index_count",
-        "suture_visual_uv_valid_count",
-        "suture_material_texture_path",
-        "suture_material_texture_exists",
-        "suture_pbr_material_graph_valid",
-        "suture_collision_capsule_count",
-        "suture_collision_guide_purpose_count",
-        "suture_collision_invisible_count",
-        "suture_collision_physics_material_binding_count",
-        "suture_collider_cylinder_height_range_m",
-        "suture_minimum_visual_collision_margin_m",
-        "suture_interface_minimum_visual_collision_margin_m",
-        "suture_interface_visual_mesh_valid",
-        "suture_render_collision_separation_valid",
-    ]
-    missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(
         checks,
         "needle_nvidia_stack_collision_contract",
@@ -3056,14 +2983,12 @@ def validate(
         and contact_offset_contract["engine_layer"] == "DrAnmarNeedle_physx.usda"
         and contact_offset_contract["neutral_layer_policy"] == "no_engine_specific_contact_schema"
         and needle_profile["solver"]["ccd"] is True
-        and needle_profile["contact"]["combine_mode"] == "max"
-        and not missing_native_probe_tokens,
+        and needle_profile["contact"]["combine_mode"] == "max",
         {
             "reference_count": len(nvidia_stack_references),
             "collision_contract": collision_contract,
             "ccd": needle_profile["solver"]["ccd"],
             "friction_combine_mode": needle_profile["contact"]["combine_mode"],
-            "missing_native_probe_tokens": missing_native_probe_tokens,
         },
         "NVIDIA binary-geometry, look-development, primitive-collider, CCD, material, and engine-isolated"
         " source-layer contract",

@@ -29,14 +29,10 @@ official Isaac Lab fork and verified assets into the mutable runtime directory.
 physical replay check. Its passing Gilgamesh report is
 `benchmarks/softmimicgen-threading-replay.json`.
 
-`./dr_anmar_suture_native.sh diagnose` composes the unchanged strand with
-the real ORBIT-Surgical rigid needle through a separate native PhysX attachment
-probe.
-
-Gilgamesh has passed that core boundary twice. The measured evidence is in
-`benchmarks/softmimicgen-needle-attachment.json`. The threaded room launches
-when its runtime assets are installed. The diagnostic measures ring, release,
-self-contact and reset behavior separately without controlling room availability.
+The threaded room launches when its runtime assets are installed. This upstream
+replay is kept as a separate NVIDIA reference task; DrAnmar knotting, instrument
+transfer, needle attachment and strand failure are qualified by the dedicated
+Warp backend described in `docs/DR_ANMAR_WARP_SUTURE.md`.
 
 OpenUSD remains the common scene and visual-asset layer. A canonical organ has
 separate render, collision and simulation representations plus explicit mapping,

@@ -1,154 +1,95 @@
-# Dr.Anmar 4-0 Surgical Suture Asset
+# DrAnmar 4-0 Surgical Suture
 
-The Dr.Anmar 4-0 suture is a separate, research-grade physics asset for
-operating-room simulation. It does not modify, replace, reference, or inherit
-the current NVIDIA SoftMimicGen thread.
+DrAnmar Suture is an independently authored, research-grade 4-0 braided
+surgical-thread asset. Its dimensions and constitutive seeds are
+research-informed, but the model is not a medical device and remains blocked
+from clinical use pending physical and clinician validation.
 
-## Research basis
+## Promoted implementation
 
-The design is based on primary experimental and computational work, not a
-generic rope preset:
+The NVIDIA Warp backend is the only promoted dynamics path for knotting:
 
-- Pagnanelli et al. measured 4-0 polyglactin 910 at 7.6639 GPa over the first
-  0–3% strain and showed that its stiffness and strength change in biological
-  fluids.
-- Horch et al. measured 24.22 N mean straight strength for 4-0 Vicryl and
-  quantified progressive loss after repeated needle-holder crush cycles.
-- Bariol et al. found 42.4 N and 26.3% extension for undamaged 3-0 Vicryl and
-  demonstrated damage after a 45 MPa, one-second laparoscopic instrument grasp.
-- Wang et al. found that relaxation is greatest early, and that suture-on-suture
-  friction force increases with normal load while remaining effectively
-  velocity-independent over their test range.
-- Stasiak et al. measured about 59% retained stress for wet braided PGA after
-  long-duration relaxation, supporting a two-time-constant wet model.
-- Savage et al. showed that repeated bending and abrasion are distinct suture
-  fatigue modes rather than cosmetic effects.
-- Tera and Åberg demonstrated that knot efficiency depends jointly on knot,
-  material, and gauge; it cannot be one universal constant.
-- Baek et al. showed that tight knots require full three-dimensional
-  deformation, self-contact, and Coulomb friction rather than a loose 1-D
-  centerline approximation.
-- Karthikeyan et al. measured S-shaped tensile response and inelastic load
-  drops in knotted and looped braided Vicryl.
+- 360 segments represented by 361 particles at the authored 0.5 mm spacing;
+- global nonlinear axial XPBD and discrete bending constraints;
+- exact non-local segment-capsule self-contact;
+- Coulomb tangential friction and persistent knot compaction;
+- transferable instrument grasps;
+- a breakable DrAnmar Needle swage attachment;
+- localized strand failure from the profile force-elongation envelope; and
+- deterministic correction gathering without floating-point atomics.
 
-The exact source URLs, identifiers, and the parameter each informed are stored
-in the profile JSON alongside the asset.
+The OpenUSD asset remains authoritative for identity, scale, render geometry,
+materials, collision geometry, and its research parameter contract. Its
+layered PhysX payload is retained for portable loading and inspection. It is a
+compatibility representation, not the promoted microscopic knot solver.
 
-## What was built
+Implementation and qualification details are in
+`docs/DR_ANMAR_WARP_SUTURE.md`.
 
-The asset is authored at its real 0.25 mm diameter and 180 mm length. It is a
-360-element discrete Cosserat rod: every visible capsule is also the exact
-collision body. Breakable D6 joints independently represent axial stiffness,
-bending compliance, torsion, damping, limited extension, and overload failure.
-There is no enlarged collision proxy and no rendered curve that can diverge
-from physics.
+## Asset construction
 
-The design includes:
+The authored strand is 180 mm long and 0.25 mm in nominal diameter. It includes
+closed braided render geometry, a compact normal/roughness texture, a smooth
+3 mm swage transition, and a physical envelope that is not enlarged for visual
+convenience.
 
-- 4-0 coated, braided-polyglactin-equivalent geometry and density;
-- physical micrometre-scale radius modulation to approximate braid texture;
-- non-adjacent self-contact for loops and knots, with adjacent bodies filtered;
-- Coulomb contact friction and a sidecar load-dependent self-friction model;
-- a 20–25 N straight failure envelope and reduced knotted strength;
-- wet stress relaxation, cyclic hysteresis seed, crush damage, and abrasion
-  state in the constitutive contract;
-- automatic per-joint overload failure;
-- a tapered 3 mm swage transition with greater axial and bending stiffness;
-- a replaceable needle interface whose pullout joint fails separately.
+The mechanical profile includes:
 
-The central invention is the representation itself. A conventional isotropic
-FEM rope ties axial and bending stiffness together and cannot independently
-match a thin braided suture's high tensile stiffness and soft handling. This
-asset instead uses a discrete Cosserat rod: axial, flexural, and torsional
-responses are independently calibrated at every 0.5 mm element. It also stores
-damage locally, so crushing one section or compacting one knot does not
-incorrectly weaken or relax the whole strand.
+- 1,200–1,400 kg/m³ density bounds;
+- a 20–25 N straight-strand failure envelope;
+- 10–30% elongation-at-break bounds;
+- local knot-strength reduction;
+- wet stress relaxation;
+- crush and abrasion damage state; and
+- load-dependent suture-on-suture friction seeds.
 
-The profile and derived mechanics live in
-`physics_next/sutures/dr-anmar-suture-4-0.json`. The committed OpenUSD asset is
-`assets/dr_anmar/suture/DrAnmarSuture4_0.usda`.
+Exact sources and the parameter each source informed are recorded in
+`physics_next/sutures/dr-anmar-suture-4-0.json`.
 
-The entry file is intentionally lightweight. It composes a binary USDC capsule
-geometry layer, a visual look-development layer, an engine-neutral physics
-layer, and a PhysX-only tuning layer. Geometry contains no material or physics
-opinions; the neutral layer contains no PhysX or Newton schemas; and the PhysX
-layer owns hybrid sweep/speculative CCD, solver iterations, damping,
-friction-combine modes, and radius-scaled contact offsets. This follows the
-NVIDIA USD Asset Structure pattern while preserving the original prim paths
-used by the runtime.
+## Needle connection
 
-## DrAnmar Needle
+`assets/dr_anmar/needle/DrAnmarNeedle.usda` contains the independently authored
+DrAnmar Needle and swage geometry. The runtime attaches the first suture
+particle to the needle's swage-exit target. This constraint is stiffer than the
+free strand, follows the needle during manipulation, and releases separately
+when the configured pullout force is exceeded.
 
-`assets/dr_anmar/needle/DrAnmarNeedle.usda` is the independently authored
-DrAnmar Needle, not a renamed or inherited needle mesh. Its 22 mm half-circle
-centerline, taper point, swage transition, 2,049-vertex visual mesh, 40-part
-compound collision shape, mass, material, and solver settings are generated
-from `physics_next/needles/dr-anmar-needle-v1.json`. A fixed factory-swage joint
-connects the needle to the replaceable suture interface; the first suture joint
-retains the separate pullout failure limit.
+The connection models a factory-swaged transition, not a thread passed through
+an eye. Its current 18 N pullout value is an engineering seed and requires
+bench calibration.
 
-Every locally constructed procedure room receives this additional instrument
-without replacing the room's existing task object or current thread.
+## Build and qualify
 
-## Sim-to-real boundary
-
-The live workstation deterministically randomizes needle mass, contact
-friction, restitution, and surface roughness from bounded ranges on every
-scenario reset. The scenario seed exactly replays the sampled domain, and the
-sampled values are exposed in workstation state and recordings.
-
-The needle profile also carries a machine-readable gap register and fail-closed
-qualification gates for manufacturing metrology, bend and yield, driver slip,
-tissue puncture, swage pullout, endoscopic perception, and numerical contact.
-The current needle is intentionally rigid: recoverable bending, permanent set,
-and needle breakage remain explicit model gaps until physical bend tests can
-identify them. Clinical use remains blocked until independent validation under
-an approved protocol.
-
-## Build and validate
+Author and validate the portable asset:
 
 ```bash
 ./dr_anmar_suture_asset.sh rebuild
 ./dr_anmar_suture_asset.sh inspect
-./dr_anmar_suture_asset.sh physics-probe
 ```
 
-`rebuild` is platform-independent and deterministically authors the asset,
-validates the constitutive contract, and tests the stateful damage runtime.
-`inspect` uses the Isaac/Kit OpenUSD runtime to parse and count the authored
-prims. `physics-probe` runs the complete 360-body, 360-joint asset under native
-PhysX gravity and fails if the strand is absent, static, non-finite, or unstable.
+Run the promoted GPU qualification on an NVIDIA CUDA host:
 
-The recommended simulation step is 0.5 ms (16 substeps per 120 Hz rendered
-frame). Hybrid linear and angular continuous collision detection is enabled
-because a 0.25 mm strand can otherwise tunnel through fast instruments or thin
-tissue.
+```bash
+DR_ANMAR_STABLE_ISAAC_PYTHON=/path/to/isaaclab/python \
+./dr_anmar_suture_warp.sh qualify
+```
 
-## Integration contract
+The deterministic validator checks scale, material and source provenance,
+layer isolation, render/collision correspondence, constitutive behavior,
+runtime damage behavior, room integration, and the committed Warp GPU report.
 
-Reference the asset's default prim, transform it into the operative pose, and
-replace the `NeedleInterface` kinematic test role with a fixed attachment to the
-rigid needle's swage body. The interface and first segment are connected by the
-separately breakable swage joint `J0000`. Do not radially rescale the asset:
-changing its scale invalidates the 4-0 diameter, mass, stiffness, friction, and
-failure calibration.
+## Sim-to-real boundary
 
-Instrument software can record local crush and abrasion events through the
-profile's damage curve. `scripts/dr_anmar_suture_runtime.py` turns those events
-into live per-joint break force, break torque, drive-force ceiling, and relaxed
-axial stiffness. Tight-knot compaction applies the configured 0.50–0.80
-efficiency range locally rather than weakening the entire strand. The base
-asset supplies the self-contact, flexural mechanics, friction, and breakable
-joints consumed by that runtime.
+GPU qualification is engineering evidence, not clinical validation. Promotion
+to a calibrated medical model still requires:
 
-## Validation boundary
+- resolution and timestep convergence;
+- straight and knotted tensile distributions across manufacturing lots;
+- wet relaxation and friction measurements;
+- driver crush, abrasion, and grasp-transfer testing;
+- needle-swage pullout testing;
+- tissue interaction and puncture calibration; and
+- clinician validation under an approved protocol.
 
-The deterministic validator proves scale, density, constitutive targets,
-relaxation shape, friction behavior, crush damage, swage structure, breakable
-joint coverage, physical/render identity, source provenance, and isolation from
-the current thread. It does not prove clinical fidelity.
-
-Before this is treated as a medical model, it still requires physical tests for
-straight tension, flexural rigidity, wet relaxation, load-dependent capstan
-friction, instrument damage, abrasion fatigue, square/surgeon's knot security,
-and needle pullout, followed by clinician validation.
+Do not radially rescale the asset: doing so invalidates its diameter, mass,
+contact, stiffness, friction, and failure calibration.

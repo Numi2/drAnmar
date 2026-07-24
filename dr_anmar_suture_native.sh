@@ -8,7 +8,6 @@ ASSET_ROOT="${RUNTIME_ROOT}/softmimicgen-assets"
 REPORT_ROOT="${RUNTIME_ROOT}/reports"
 UPSTREAM_ROOT="${DR_ANMAR_SOFTMIMICGEN_ROOT:-${DATA_ROOT}/native-suture-runtime/SoftMimicGen}"
 ISAAC_PYTHON="${DR_ANMAR_STABLE_ISAAC_PYTHON:-}"
-NEEDLE_USD="${DR_ANMAR_NEEDLE_USD:-${REPOSITORY_ROOT}/source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd}"
 
 mkdir -p "${ASSET_ROOT}" "${REPORT_ROOT}" "${RUNTIME_ROOT}/tmp"
 
@@ -79,18 +78,6 @@ case "${1:-status}" in
             python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print("pass=",r.get("pass"),"live_terminal_success=",r.get("live_terminal_success"),"first_success_step=",r.get("first_live_success_step"))' "${latest_replay}"
         fi
         ;;
-    diagnose)
-        [[ -x "${ISAAC_PYTHON}" ]] || { echo "Isaac Python not found: ${ISAAC_PYTHON}" >&2; exit 1; }
-        [[ -f "${NEEDLE_USD}" ]] || { echo "Needle asset not found: ${NEEDLE_USD}" >&2; exit 1; }
-        python3 "${REPOSITORY_ROOT}/scripts/dr_anmar_fetch_softmimicgen.py" --output "${ASSET_ROOT}"
-        output="${REPORT_ROOT}/softmimicgen-suture-diagnostic-$(date -u +%Y%m%dT%H%M%SZ).json"
-        TMPDIR="${RUNTIME_ROOT}/tmp" "${ISAAC_PYTHON}" "${REPOSITORY_ROOT}/scripts/dr_anmar_softmimicgen_suture_probe.py" \
-            --asset-dir "${ASSET_ROOT}" \
-            --needle-usd "${NEEDLE_USD}" \
-            --output "${output}" \
-            --headless
-        echo "Diagnostic: ${output}"
-        ;;
     validate-upstream)
         [[ -x "${ISAAC_PYTHON}" ]] || { echo "Isaac Python not found: ${ISAAC_PYTHON}" >&2; exit 1; }
         dataset="${UPSTREAM_ROOT}/datasets/annotated_dataset/annotated_dataset_surgical_threading.hdf5"
@@ -107,7 +94,7 @@ case "${1:-status}" in
         echo "Replay validation: ${output}"
         ;;
     *)
-        echo "Usage: $0 {fetch|install-upstream|status|diagnose|validate-upstream [demo_0]}" >&2
+        echo "Usage: $0 {fetch|install-upstream|status|validate-upstream [demo_0]}" >&2
         exit 2
         ;;
 esac

@@ -11,7 +11,6 @@
     "benchmarks/liver-retraction.json",
     "benchmarks/needle-puncture.json",
     "benchmarks/dr-anmar-suturable-tissue.json",
-    "benchmarks/softmimicgen-needle-attachment.json",
     "benchmarks/softmimicgen-threading-replay.json"
   ],
   "backends": {

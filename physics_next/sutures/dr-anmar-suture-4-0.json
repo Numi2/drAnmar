@@ -367,7 +367,7 @@
     "interface_kind": "kinematic_test_interface_replaceable_by_fixed_needle_joint"
   },
   "solver": {
-    "backend": "NVIDIA PhysX rigid bodies and generic D6 joints",
+    "backend": "OpenUSD PhysX compatibility payload; NVIDIA Warp is promoted for knotting",
     "recommended_physics_dt_s": 0.0005,
     "recommended_substeps_per_120_hz_frame": 16,
     "position_iterations": 16,

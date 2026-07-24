@@ -625,7 +625,6 @@
           "visual_face_coverage": "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face"
         },
         "friction_combine_mode": "max",
-        "missing_native_probe_tokens": [],
         "reference_count": 14
       },
       "passed": true

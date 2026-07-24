@@ -2,7 +2,6 @@
 set -euo pipefail
 
 REPOSITORY_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-DATA_ROOT="${DR_ANMAR_ROOT:-${HOME}/dr_anmar/dr-anmar-runtime}"
 PROFILE="${REPOSITORY_ROOT}/physics_next/sutures/dr-anmar-suture-4-0.json"
 NEEDLE_PROFILE="${REPOSITORY_ROOT}/physics_next/needles/dr-anmar-needle-v1.json"
 ASSET="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
@@ -71,34 +70,12 @@ case "${1:-validate}" in
             'from pxr import Usd; import sys; stage=Usd.Stage.Open(sys.argv[1]); print(stage.GetDefaultPrim()); print("prims=", sum(1 for _ in stage.Traverse()))' \
             "${DR_ANMAR_NEEDLE}"
         ;;
-    physics-probe)
-        [[ -x "${ISAAC_PYTHON}" ]] || {
-            echo "Isaac Python not found: ${ISAAC_PYTHON}" >&2
-            exit 1
-        }
-        portable_root="${DATA_ROOT}/isaac_portable-suture-asset"
-        temporary_root="${DATA_ROOT}/tmp"
-        mkdir -p "${portable_root}" "${temporary_root}"
-        output="${REPOSITORY_ROOT}/physics_next/benchmarks/dr-anmar-suture-4-0-physx.json"
-        probe_status=0
-        TMPDIR="${temporary_root}" \
-            "${ISAAC_PYTHON}" "${REPOSITORY_ROOT}/scripts/dr_anmar_suture_physics_probe.py" \
-            --asset "${DR_ANMAR_NEEDLE}" \
-            --output "${output}" \
-            --device cuda:0 \
-            --headless \
-            --kit_args "--portable-root ${portable_root}" || probe_status=$?
-        python3 -c \
-            'import json,sys; report=json.load(open(sys.argv[1])); raise SystemExit(0 if report.get("passed") is True else 1)' \
-            "${output}" || exit 1
-        [[ "${probe_status}" -eq 0 ]] || exit "${probe_status}"
-        ;;
     rebuild)
         "$0" author
         "$0" validate
         ;;
     *)
-        echo "Usage: $0 {author|validate|inspect|physics-probe|rebuild}" >&2
+        echo "Usage: $0 {author|validate|inspect|rebuild}" >&2
         exit 2
         ;;
 esac
