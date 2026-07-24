@@ -67,6 +67,10 @@ NVIDIA_ORBIT_NEEDLE_SWAGE_ANCHOR_M = (
     0.0009574010,
 )
 NVIDIA_ORBIT_NEEDLE_SCALE = 0.4
+NVIDIA_ORBIT_NEEDLE_SCALED_SWAGE_ANCHOR_M = tuple(
+    coordinate * NVIDIA_ORBIT_NEEDLE_SCALE
+    for coordinate in NVIDIA_ORBIT_NEEDLE_SWAGE_ANCHOR_M
+)
 SUTURE_NEEDLE_INTERFACE_CENTER_M = (-0.00025, 0.0, 0.0)
 
 # A 90-degree yaw keeps the 180 mm strand inside the shared PSM workspace.
@@ -261,6 +265,9 @@ def configure_nvidia_needle_dr_anmar_suture(
         "needle_sha256": NVIDIA_ORBIT_NEEDLE_SHA256,
         "needle_scale": NVIDIA_ORBIT_NEEDLE_SCALE,
         "needle_swage_anchor_m": list(NVIDIA_ORBIT_NEEDLE_SWAGE_ANCHOR_M),
+        "needle_scaled_swage_anchor_m": list(
+            NVIDIA_ORBIT_NEEDLE_SCALED_SWAGE_ANCHOR_M
+        ),
         "needle_geometry_provenance": "pinned_NVIDIA_ORBIT_surgical_needle",
         "needle_physics_provenance": (
             "native_NVIDIA_rigid_body_SDF_collision_and_PhysX"

@@ -90,7 +90,7 @@ def Xform "NvidiaNeedleDrAnmarSuture" (
     {
         rel physics:body0 = </NvidiaNeedleDrAnmarSuture/Needle>
         rel physics:body1 = </NvidiaNeedleDrAnmarSuture/Suture/NeedleInterface>
-        point3f physics:localPos0 = (0.0478657183, 0.0491908647, 0.000957401)
+        point3f physics:localPos0 = (0.01914628732, 0.01967634588, 0.0003829604)
         point3f physics:localPos1 = (0, 0, 0)
         quatf physics:localRot0 = (1, 0, 0, 0)
         quatf physics:localRot1 = (1, 0, 0, 0)
