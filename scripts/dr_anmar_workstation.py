@@ -3315,27 +3315,25 @@ def main() -> None:
         # denoising features intended for offline-quality output.
         env_cfg.sim.render.rendering_mode = str(interactive_rendering_mode)
     # The authored 4-0 suture uses a sub-millisecond native PhysX contract.
-    # Apply it only to the room that owns that asset; upstream NVIDIA rooms
-    # retain their own tested task timesteps and solvers.
+    # Apply its complete solver cadence only to the room that owns that asset;
+    # upstream NVIDIA rooms retain their own tested task timesteps.  Keeping
+    # ``dt`` without the matching control-frame substeps makes the PSM advance
+    # only 0.5 ms per workstation action and appear frozen in the live view.
+    # The suture profile is the single source of truth; environment variables
+    # remain available for isolated solver experiments.
     suture_profile = load_suture_profile()
     suture_solver = suture_profile["solver"]
     if dr_anmar_needle_enabled:
         env_cfg.sim.dt = float(
             os.environ.get(
                 "DR_ANMAR_SUTURE_PHYSICS_DT_S",
-                procedure.get(
-                    "suture_physics_dt_s",
-                    suture_solver["recommended_physics_dt_s"],
-                ),
+                suture_solver["recommended_physics_dt_s"],
             )
         )
         env_cfg.decimation = int(
             os.environ.get(
                 "DR_ANMAR_SUTURE_PHYSICS_DECIMATION",
-                procedure.get(
-                    "suture_physics_decimation",
-                    suture_solver["recommended_substeps_per_120_hz_frame"],
-                ),
+                suture_solver["recommended_substeps_per_120_hz_frame"],
             )
         )
     # Render at the camera's authored 25 Hz cadence instead of once per
@@ -3680,29 +3678,38 @@ def main() -> None:
             robot_cfg.spawn.activate_contact_sensors = True
             if apply_psm_gripper_articulation_profile(robot_cfg):
                 configured_psm_articulations.append(robot_attribute)
-    if native_tissue_enabled:
-        gripper_terms = (
-            ("gripper_action", "robot"),
-            ("gripper_1_action", "robot_1"),
-            ("gripper_2_action", "robot_2"),
-        )
-        for term_name, asset_name in gripper_terms:
-            if not hasattr(env_cfg.actions, term_name):
-                continue
-            setattr(
-                env_cfg.actions,
-                term_name,
-                BinaryJointPositionActionCfg(
-                    asset_name=asset_name,
-                    joint_names=["psm_tool_gripper.*_joint"],
-                    open_command_expr=psm_gripper_command_expr(
-                        CANONICAL_PSM_GRIPPER_PROFILE.open_rad
-                    ),
-                    close_command_expr=psm_gripper_command_expr(
-                        CANONICAL_PSM_GRIPPER_PROFILE.close_rad
-                    ),
+    # ORBIT's reach environments intentionally leave their optional gripper
+    # terms empty. The doctor-facing workstation needs the complete native PSM
+    # embodiment, so populate those existing slots without changing the
+    # registered RL task or inventing a second controller. Config declaration
+    # order stays arm, gripper, arm, gripper: the same 7-value-per-PSM contract
+    # used by NVIDIA's handover rooms and Dr.Anmar recordings.
+    gripper_terms = (
+        ("gripper_action", "robot"),
+        ("gripper_1_action", "robot_1"),
+        ("gripper_2_action", "robot_2"),
+    )
+    for term_name, asset_name in gripper_terms:
+        if (
+            not hasattr(env_cfg.actions, term_name)
+            or getattr(env_cfg.actions, term_name) is not None
+            or getattr(env_cfg.scene, asset_name, None) is None
+        ):
+            continue
+        setattr(
+            env_cfg.actions,
+            term_name,
+            BinaryJointPositionActionCfg(
+                asset_name=asset_name,
+                joint_names=["psm_tool_gripper.*_joint"],
+                open_command_expr=psm_gripper_command_expr(
+                    CANONICAL_PSM_GRIPPER_PROFILE.open_rad
                 ),
-            )
+                close_command_expr=psm_gripper_command_expr(
+                    CANONICAL_PSM_GRIPPER_PROFILE.close_rad
+                ),
+            ),
+        )
     # Every interactive PSM room consumes the same foundation profile.
     configured_psm_action_terms = apply_psm_gripper_action_profile(env_cfg.actions)
     configured_psm_gripper_profile = psm_gripper_profile_manifest(
