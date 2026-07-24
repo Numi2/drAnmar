@@ -2,7 +2,7 @@
   "profile_id": "nvidia-orbit-psm-v1",
   "gripper": {
     "open_rad": 0.5,
-    "close_rad": 0.02,
+    "close_rad": 0.06,
     "effort_limit_nm": 0.1,
     "velocity_limit_rad_s": 1.0,
     "stiffness": 500.0,

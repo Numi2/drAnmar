@@ -111,6 +111,11 @@ parser.add_argument("--openusd_environment", type=Path)
 parser.add_argument("--anatomy_scene_id", default="")
 parser.add_argument("--anatomy_title", default="")
 parser.add_argument(
+    "--bench_assets",
+    default="default",
+    help="comma-separated NVIDIA bench prop ids, 'default', or 'none'",
+)
+parser.add_argument(
     "--sensor_profile",
     choices=sorted(SENSOR_PROFILES),
     default=os.environ.get("DR_ANMAR_SENSOR_PROFILE", "research"),
@@ -3279,13 +3284,41 @@ def main() -> None:
     nvidia_native_bench = bool(procedure.get("nvidia_native_bench"))
     nvidia_bench_assets: dict[str, Path] = {}
     if nvidia_native_bench:
-        nvidia_bench_assets = {
+        bench_catalog = tuple(procedure.get("bench_asset_catalog", ()))
+        allowed_bench_assets = {str(item["id"]) for item in bench_catalog}
+        if args_cli.bench_assets == "default":
+            selected_bench_assets = {
+                str(item["id"]) for item in bench_catalog if item.get("default")
+            }
+        elif args_cli.bench_assets == "none":
+            selected_bench_assets = set()
+        else:
+            selected_bench_assets = {
+                item.strip() for item in args_cli.bench_assets.split(",") if item.strip()
+            }
+        unknown_bench_assets = sorted(selected_bench_assets - allowed_bench_assets)
+        if unknown_bench_assets:
+            raise ValueError(
+                "Unknown NVIDIA bench assets: " + ", ".join(unknown_bench_assets)
+            )
+        procedure["active_bench_assets"] = [
+            str(item["id"])
+            for item in bench_catalog
+            if str(item["id"]) in selected_bench_assets
+        ]
+        core_bench_assets = {
             "psm": I4H_ASSET_CONTENT_ROOT / "Robots/dVRK/PSM/psm.usd",
-            "needle": I4H_ASSET_CONTENT_ROOT / "Props/SutureNeedle/needle_sdf.usd",
-            "suture_pad": I4H_ASSET_CONTENT_ROOT / "Props/SuturePad/suture_pad.usd",
+            "needle_runtime": I4H_ASSET_CONTENT_ROOT
+            / "Props/SutureNeedle/needle_sdf.usd",
             "table": I4H_ASSET_CONTENT_ROOT / "Props/Table/table.usd",
-            "scissors": I4H_ASSET_CONTENT_ROOT
-            / "Props/SurgicalInstruments/SurgicalScissors.usd",
+        }
+        nvidia_bench_assets = {
+            **core_bench_assets,
+            **{
+                str(item["id"]): I4H_ASSET_CONTENT_ROOT / str(item["path"])
+                for item in bench_catalog
+                if str(item["id"]) in selected_bench_assets
+            },
         }
         missing_nvidia_assets = [
             f"{name}: {path}"
@@ -3364,9 +3397,13 @@ def main() -> None:
             robot_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
         env_cfg.scene.table.spawn.usd_path = str(nvidia_bench_assets["table"])
         env_cfg.scene.table.init_state.pos = (0.0, 0.0, -0.457)
-        env_cfg.scene.object.spawn.usd_path = str(nvidia_bench_assets["needle"])
+        env_cfg.scene.object.spawn.usd_path = str(nvidia_bench_assets["needle_runtime"])
         env_cfg.scene.object.spawn.scale = (0.4, 0.4, 0.4)
-        env_cfg.scene.object.init_state.pos = (-0.195, 0.015, 0.0008)
+        env_cfg.scene.object.init_state.pos = (
+            (-0.195, 0.015, 0.0008)
+            if "needle" in selected_bench_assets
+            else (0.0, 0.0, -1.5)
+        )
         env_cfg.scene.object.init_state.rot = (1.0, 0.0, 0.0, 0.0)
         if getattr(env_cfg, "events", None) is not None:
             # The upstream handover randomizer targets a broad bare table.
@@ -3375,31 +3412,45 @@ def main() -> None:
 
         # The pad is NVIDIA-authored static collision geometry. It intentionally
         # remains rigid: this room must never turn contact into a fake puncture.
-        env_cfg.scene.suture_pad = AssetBaseCfg(
-            prim_path="{ENV_REGEX_NS}/SuturePad",
-            init_state=AssetBaseCfg.InitialStateCfg(
-                pos=(0.030, 0.055, 0.0005),
-                rot=(1.0, 0.0, 0.0, 0.0),
-            ),
-            spawn=sim_utils.UsdFileCfg(
-                usd_path=str(nvidia_bench_assets["suture_pad"]),
-            ),
-        )
+        if "suture_pad" in selected_bench_assets:
+            env_cfg.scene.suture_pad = AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/SuturePad",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    pos=(0.030, 0.055, 0.0005),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(nvidia_bench_assets["suture_pad"]),
+                ),
+            )
 
         # NVIDIA authors the scissors in centimetres. Preserve its native
         # collider and PhysX response while normalizing it into the metre stage.
-        env_cfg.scene.surgical_scissors = RigidObjectCfg(
-            prim_path="{ENV_REGEX_NS}/SurgicalScissors",
-            init_state=RigidObjectCfg.InitialStateCfg(
-                # The 190 mm instrument rests on a separate table landing.
-                pos=(-0.135, -0.130, 0.0114),
-                rot=(1.0, 0.0, 0.0, 0.0),
-            ),
-            spawn=sim_utils.UsdFileCfg(
-                usd_path=str(nvidia_bench_assets["scissors"]),
-                scale=(0.01, 0.01, 0.01),
-            ),
-        )
+        if "scissors" in selected_bench_assets:
+            env_cfg.scene.surgical_scissors = RigidObjectCfg(
+                prim_path="{ENV_REGEX_NS}/SurgicalScissors",
+                init_state=RigidObjectCfg.InitialStateCfg(
+                    # The 190 mm instrument rests on a separate table landing.
+                    pos=(-0.135, -0.130, 0.0114),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(nvidia_bench_assets["scissors"]),
+                    scale=(0.01, 0.01, 0.01),
+                ),
+            )
+        if "tray" in selected_bench_assets:
+            env_cfg.scene.surgical_tray = AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/SurgicalTray",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    pos=(0.135, -0.125, 0.001),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(nvidia_bench_assets["tray"]),
+                    scale=(0.01, 0.01, 0.01),
+                ),
+            )
 
     if _softmimicgen_task:
         # There is one interactive room, so physics replication provides no

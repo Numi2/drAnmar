@@ -96,13 +96,44 @@ WORKER_FATAL_MARKERS = (
 )
 
 
-def missing_required_nvidia_assets(procedure: dict[str, Any]) -> list[str]:
+def bench_asset_selection(
+    procedure: dict[str, Any], requested: list[str] | tuple[str, ...] | None
+) -> tuple[str, ...] | None:
+    """Resolve one ordered, allow-listed NVIDIA bench composition."""
+
+    catalog = tuple(procedure.get("bench_asset_catalog", ()))
+    if not catalog:
+        if requested:
+            raise HTTPException(400, "This room does not support configurable bench assets")
+        return None
+    allowed = {str(item["id"]) for item in catalog}
+    selected = (
+        {str(item["id"]) for item in catalog if item.get("default")}
+        if requested is None
+        else set(requested)
+    )
+    unknown = sorted(selected - allowed)
+    if unknown:
+        raise HTTPException(400, "Unknown NVIDIA bench assets: " + ", ".join(unknown))
+    return tuple(str(item["id"]) for item in catalog if str(item["id"]) in selected)
+
+
+def missing_required_nvidia_assets(
+    procedure: dict[str, Any], bench_assets: tuple[str, ...] | None = None
+) -> list[str]:
     """Return missing paths from a room's pinned NVIDIA asset contract."""
 
     content_root = I4H_ASSET_DOWNLOAD_DIR / I4H_ASSET_HASH
+    required = [str(path) for path in procedure.get("required_nvidia_assets", ())]
+    selected = set(bench_assets or ())
+    required.extend(
+        str(item["path"])
+        for item in procedure.get("bench_asset_catalog", ())
+        if str(item["id"]) in selected
+    )
     return [
         str(relative_path)
-        for relative_path in procedure.get("required_nvidia_assets", ())
+        for relative_path in required
         if not (content_root / str(relative_path)).is_file()
     ]
 
@@ -178,6 +209,7 @@ class AnatomyLaunchRequest(BaseModel):
 class ProcedureLaunchRequest(BaseModel):
     procedure_id: str
     anatomy_scene: str | None = None
+    bench_assets: list[str] | None = None
 
 
 class ProgressRequest(BaseModel):
@@ -597,6 +629,9 @@ def capture_worker_context(current: dict[str, Any] | None, enabled: bool = True)
         "anatomy_scene_id": current.get("anatomy_scene_id", ""),
         "anatomy_title": current.get("anatomy_showcase", ""),
     }
+    active_bench_assets = current.get("procedure", {}).get("active_bench_assets")
+    if isinstance(active_bench_assets, list):
+        context["bench_assets"] = tuple(str(item) for item in active_bench_assets)
     anatomy_scene = current.get("anatomy_asset")
     environment = current.get("openusd_environment")
     if anatomy_scene:
@@ -681,6 +716,7 @@ def switch_worker(
     anatomy_scene_id: str = "",
     anatomy_title: str = "",
     openusd_environment: Path | None = None,
+    bench_assets: tuple[str, ...] | None = None,
 ) -> None:
     log_offset = WORKSTATION_LOG_PATH.stat().st_size if WORKSTATION_LOG_PATH.exists() else 0
     try:
@@ -694,6 +730,9 @@ def switch_worker(
             anatomy_scene_id,
             anatomy_title,
             str(openusd_environment or ""),
+            "default"
+            if bench_assets is None
+            else ",".join(bench_assets) if bench_assets else "none",
         ]
         result = subprocess.run(command, cwd=args.root, capture_output=True, text=True, timeout=60)
         if result.returncode != 0:
@@ -1595,6 +1634,7 @@ def switch_sonogym_to_worker(
     anatomy_scene_id: str,
     anatomy_title: str,
     openusd_environment: Path | None,
+    bench_assets: tuple[str, ...] | None = None,
 ) -> None:
     """Replace the active SonoGym process with the selected Isaac room."""
     try:
@@ -1611,6 +1651,7 @@ def switch_sonogym_to_worker(
         anatomy_scene_id,
         anatomy_title,
         openusd_environment,
+        bench_assets,
     )
 
 
@@ -1662,10 +1703,11 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
             "title": procedure["title"],
             "native_provider": "SonoGym on Isaac Lab 2.1.0",
         }
+    selected_bench_assets = bench_asset_selection(procedure, request.bench_assets)
     binding = resolve_native_room(str(procedure["id"]))
     if binding and not binding.get("available"):
         raise HTTPException(409, "Required room assets are not installed on this worker.")
-    missing_nvidia_assets = missing_required_nvidia_assets(procedure)
+    missing_nvidia_assets = missing_required_nvidia_assets(procedure, selected_bench_assets)
     if missing_nvidia_assets:
         raise HTTPException(
             409,
@@ -1702,6 +1744,11 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         and current.get("task") == procedure["task"]
         and current.get("procedure", {}).get("id") == request.procedure_id
         and current.get("anatomy_scene_id") == selected_anatomy
+        and (
+            selected_bench_assets is None
+            or tuple(current.get("procedure", {}).get("active_bench_assets", ()))
+            == selected_bench_assets
+        )
         and current.get("frame_id", 0) > 0
     ):
         return {"ok": True, "procedure_id": request.procedure_id, "already_ready": True}
@@ -1709,7 +1756,15 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         reserve_worker_switch(procedure["title"])
     threading.Thread(
         target=switch_sonogym_to_worker if replacing_sonogym else switch_worker,
-        args=(procedure["task"], request.procedure_id, asset, selected_anatomy, room_title, environment),
+        args=(
+            procedure["task"],
+            request.procedure_id,
+            asset,
+            selected_anatomy,
+            room_title,
+            environment,
+            selected_bench_assets,
+        ),
         daemon=True,
         name="dr-anmar-sonogym-room-switch" if replacing_sonogym else "dr-anmar-procedure-switch",
     ).start()
@@ -1719,6 +1774,7 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         "title": procedure["title"],
         "anatomy_scene": selected_anatomy,
         "anatomy_title": room_title,
+        "bench_assets": list(selected_bench_assets or ()),
     }
 
 

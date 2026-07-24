@@ -63,6 +63,7 @@ case "${command}" in
         anatomy_scene_id="${6:-}"
         anatomy_title="${7:-}"
         openusd_environment="${8:-}"
+        bench_assets="${9:-default}"
         if [[ "${task}" == Isaac-Thread-PSM-* ]]; then
             activate_softmimicgen
         fi
@@ -79,6 +80,7 @@ case "${command}" in
         [[ -n "${anatomy_scene_id}" ]] && workstation_args+=(--anatomy_scene_id "${anatomy_scene_id}")
         [[ -n "${anatomy_title}" ]] && workstation_args+=(--anatomy_title "${anatomy_title}")
         [[ -n "${openusd_environment}" ]] && workstation_args+=(--openusd_environment "${openusd_environment}")
+        workstation_args+=(--bench_assets "${bench_assets}")
         exec "${PYTHON}" scripts/dr_anmar_workstation.py \
             "${workstation_args[@]}" \
             --kit_args "--portable-root ${PORTABLE_ROOT}"

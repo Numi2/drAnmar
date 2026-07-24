@@ -37,9 +37,41 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "required_nvidia_assets": (
             "Robots/dVRK/PSM/psm.usd",
             "Props/SutureNeedle/needle_sdf.usd",
-            "Props/SuturePad/suture_pad.usd",
             "Props/Table/table.usd",
-            "Props/SurgicalInstruments/SurgicalScissors.usd",
+        ),
+        "bench_core_assets": (
+            {"id": "dual_psm", "title": "Dual dVRK PSMs"},
+            {"id": "table", "title": "Surgical table"},
+        ),
+        "bench_asset_catalog": (
+            {
+                "id": "needle",
+                "title": "Suture needle",
+                "description": "Curved NVIDIA needle with native rigid-body collision.",
+                "path": "Props/SutureNeedle/needle_sdf.usd",
+                "default": True,
+            },
+            {
+                "id": "suture_pad",
+                "title": "Suture pad",
+                "description": "NVIDIA dry-lab pad for approach and contact rehearsal.",
+                "path": "Props/SuturePad/suture_pad.usd",
+                "default": True,
+            },
+            {
+                "id": "scissors",
+                "title": "Surgical scissors",
+                "description": "Rigid NVIDIA instrument for pickup and exchange practice.",
+                "path": "Props/SurgicalInstruments/SurgicalScissors.usd",
+                "default": True,
+            },
+            {
+                "id": "tray",
+                "title": "Surgical tray",
+                "description": "Optional NVIDIA tray for instrument organization exercises.",
+                "path": "Props/SurgicalInstruments/SurgicalTray.usd",
+                "default": False,
+            },
         ),
         "nvidia_native_bench": True,
         "hide_anatomy": True,
