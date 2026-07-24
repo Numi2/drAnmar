@@ -353,13 +353,32 @@ def asset_catalog_payload() -> dict[str, Any]:
             "Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
             "rigid_body_compound_collision_proxy",
         ),
+        (
+            "skin_stapler_articulated",
+            "Props/SurgicalClosure/SkinStapler/skin_stapler_articulated.usda",
+            "trigger_and_pusher_articulation",
+        ),
+        (
+            "skin_stapler_rigid_proxy",
+            "Props/SurgicalClosure/SkinStapler/skin_stapler_rigid_proxy.usda",
+            "loaded_or_empty_rigid_body_compound_collision_proxy",
+        ),
+        (
+            "skin_staple",
+            "Props/SurgicalClosure/SkinStapler/skin_staple.usda",
+            "standalone_formed_staple_rigid_body",
+        ),
     ):
         local_path = dr_anmar_asset_root / relative_path
         assets.append(
             {
                 "id": asset_id,
                 "provider": "dr_anmar",
-                "bundle": "surgical_count",
+                "bundle": (
+                    "surgical_closure"
+                    if relative_path.startswith("Props/SurgicalClosure/")
+                    else "surgical_count"
+                ),
                 "relative_path": relative_path,
                 "catalog_entry_present": True,
                 "local_path": str(local_path),

@@ -107,6 +107,21 @@
       "native_gpu_qualification": "qualified_rigid_and_surface_cuda_isaac_sim_5.1_and_6.0",
       "physical_qualification": "provisional_category_grounded_parameters_active",
       "clinical_validation": false
+    },
+    {
+      "id": "dr-anmar-skin-stapler-v0.2.0",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_rigid_proxy.usda",
+      "articulated_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_articulated.usda",
+      "deployed_staple_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_staple.usda",
+      "profile": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/physics_profile.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/interaction_frames.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/integration_report.json",
+      "live_integration": "optional_loaded_rigid_prop_in_main_operating_room",
+      "live_behavior": "loaded_or_empty_rigid_perception_grasp_handover_positioning_and_contact_plus_separate_articulated_trigger_pusher_and_deterministic_simulated_staple_deployment_helpers",
+      "deployment": "enabled_as_optional_rigid_operating_room_prop",
+      "native_gpu_qualification": "pending_isaac_sim_5_1_and_6_0_cuda_execution",
+      "physical_qualification": "provisional_unmeasured_parameters_active",
+      "clinical_validation": false
     }
   ],
   "validation": {

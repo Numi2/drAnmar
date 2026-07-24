@@ -1,0 +1,119 @@
+{
+  "asset_id": "dranmar.surgical_closure.skin_stapler",
+  "asset_version": "0.2.0",
+  "authoring_checks": [
+    {
+      "name": "skin_stapler_articulated.usda:flat_quaternions",
+      "passed": true
+    },
+    {
+      "name": "skin_stapler_articulated.usda:multiline_over_blocks",
+      "passed": true
+    },
+    {
+      "name": "skin_stapler_articulated.usda:relative_texture_paths",
+      "passed": true
+    },
+    {
+      "name": "skin_stapler_rigid_proxy.usda:flat_quaternions",
+      "passed": true
+    },
+    {
+      "name": "skin_stapler_rigid_proxy.usda:multiline_over_blocks",
+      "passed": true
+    },
+    {
+      "name": "skin_stapler_rigid_proxy.usda:relative_texture_paths",
+      "passed": true
+    },
+    {
+      "name": "skin_staple.usda:flat_quaternions",
+      "passed": true
+    },
+    {
+      "name": "skin_staple.usda:multiline_over_blocks",
+      "passed": true
+    },
+    {
+      "name": "skin_staple.usda:relative_texture_paths",
+      "passed": true
+    }
+  ],
+  "collision_group_count": 8,
+  "generated_files": {
+    "geometry/AlignmentGuide.ply": "a645a424b6b539cbde85f014ed2e7df5bb91a7b2063cc390e8c85f27f67db346",
+    "geometry/BodySeam.ply": "37c185db7f5859738c299a20d49122d50daced65e208a442a335a8fc3ad2acb4",
+    "geometry/ChamberedStaple.ply": "d87d64997918e748fb2f14054d36063f7e229426c2906aade396a52732d7ad8b",
+    "geometry/CountTicks.ply": "6ea77c735b5d73a44d442082d2ceccdc9fc9ea6b4d3fc8daa6e6181367cb6b8e",
+    "geometry/DriverBlade.ply": "df920b55ce9904212b563c85a5457d1d6cea9146aea281dd83f1e9a4a868c7af",
+    "geometry/GripOvermold.ply": "33c91bae5ec0e8be88ca680d6c0834eed4519961a592d0e270bd9dc98707af0f",
+    "geometry/GripRibs.ply": "3ba989967553eaffa1d63aa34e4eb1f6670e078ab9b3eccb7342dc226e147024",
+    "geometry/GripShell.ply": "09bf83dc3b372ef457a0d31f691afd360e1741bbcb6394c012f3758780025bd1",
+    "geometry/JawBridge.ply": "c77e092fb4444b2161f485f8020e36c7309cd8b3863792875ab8ea5a90550ade",
+    "geometry/JawLower.ply": "cc5ca2848efc8bb9d97b2f228be88feef01d1500e9bcbdb00b35241c9b11b5ee",
+    "geometry/JawUpper.ply": "8d988687eb0736af5ef88eae2638b2e86280307aa72a1971f5d119c125366778",
+    "geometry/LabelPanel.ply": "87d3baa1c09b500e6f51bef69e72dcc927a4be5ba6d120cefde205ddd444a450",
+    "geometry/MagazineFloor.ply": "353fb6063801037e18f97d7e7b6ef82c7556cfb9d79e7a54b414f6ab27e704ce",
+    "geometry/MagazineFrontFrame.ply": "67fd520b4b4f0e571581eaf63b9be1e8cc3ee61c7d1388948ed5973d477b9ed5",
+    "geometry/MagazineRail.ply": "ab597a8bf1ea84c5387f732553e8d874e586cda71b946171148fb9b930a10a62",
+    "geometry/MagazineRearFrame.ply": "cf59ae70bffc7a6fc563b303069d385214ad0d4903e197d46a4a0ff4f4ad1abe",
+    "geometry/MagazineWindowLeft.ply": "36b4f17ba766c05d63bff8db4780f30662b3971f6e2f5b0613d115cf0f8a0c05",
+    "geometry/MagazineWindowRight.ply": "bba79fd32aad4e8f22271073c7111e0c85798ec9c862bbafff5c3895ac3cdf5a",
+    "geometry/NoseShroud.ply": "ebfa0aa0c2015a76b5428e5aaee78cd2c4b86dd9beaa9b21eb0befc1e15b7a1d",
+    "geometry/OpenSkinStaple.ply": "80db2d5a11530b1fdf894bc86e3e1552d67d21dc9d615f0cdeaf541fd8ce2978",
+    "geometry/PivotPin.ply": "fc82ef87c000f45d51d3b503d3cc9620b29eeb4310272d5b563ac5f7c041238b",
+    "geometry/PlacementFootLeft.ply": "f02ed98d054eb039c340d43eb9598a0d6e4b7d6883f9824a4d9708d733e0c612",
+    "geometry/PlacementFootRight.ply": "92da1eefff5b28a1360f0dd9889e9581436f6d9e9ac58b1d8fc41e5c441cff7c",
+    "geometry/PusherFace.ply": "8a134d4801ea8b1131a2ead4613d4c27d3f08af76ca1575ce0750fca48933335",
+    "geometry/PusherRail.ply": "49998a0e5e3fbaf826f0c78c319476c6d7ea6e387e972898fb360d374fee601e",
+    "geometry/RearHousing.ply": "f09446e7d2c4365cc1b30d736c99bb55bcb8c2f0837733c18529e615a11712a0",
+    "geometry/SkinStaple.ply": "43d03dd7b55946a73878186e637d118b12c9e8eb0c2f61f49aa0c9858a0847f4",
+    "geometry/StapleFollower.ply": "3b510b853f6772c9c4ce4d6496d41898a05f618cbb9be7981d4ab7f2ede518fc",
+    "geometry/StapleGuideLeft.ply": "e507fd14a15e503825d6d6435d246e838f02499f8492bd3e1c1ded33cf29bc26",
+    "geometry/StapleGuideRight.ply": "e90ca06fd52f99dd2ffd9c4b277a22604892bb43d01c7c5e60a62f1c07762c9d",
+    "geometry/StapleStack.ply": "e55be8a330ea28a40185bad1130adb72d0f0ba3bb0ce6df78dfa87c590467fbd",
+    "geometry/StateIndicator.ply": "079c2ec96553d0d15883a00cc79ffaf2700aae97ecfc78a369e7edf1ad08d4b7",
+    "geometry/TriggerLever.ply": "d4295cc2f92b8327464501d5c3b05dbd1f9aae3fe71ec94cbc693b83446216e2",
+    "geometry/TriggerPad.ply": "0b027414275735e634ac45f61905bed7971f488add8af7d660918124fb40f028",
+    "geometry/UpperHousing.ply": "7eeecf6d437a9e7262598d9d37723322377d08c11bfbea44afb7eebf9504dcc8",
+    "geometry/geometry_summary.json": "26296ab2b3b09f32bae9f6510d003e0a0a5717ea8bcbf94e6f5cd6070c8bb0dc",
+    "glb/skin_staple.glb": "4780b1c55dd02345d2a9f59d8733251c3b70506a5ac78b9d7fbad6d8c122186e",
+    "glb/skin_staple_collision_debug.glb": "ead65eee886e154a1d224af846a101345cb093f6994d7c20904cee9cc1a2dca7",
+    "glb/skin_staple_open_reference.glb": "8a323e22558aa64475ad2094611385e08d873fdf9244d90ac55a97997a617820",
+    "glb/skin_stapler_articulated.glb": "3c8dc036ae97b3fab29d0d550f64ad4fdbea44f3ef8343b87516b29b49651d13",
+    "glb/skin_stapler_articulated_fired.glb": "b329e845ef202826c6f9daf4b116806fccfe4fdd506d55b5553740f547d20e3a",
+    "glb/skin_stapler_articulated_loaded.glb": "3c8dc036ae97b3fab29d0d550f64ad4fdbea44f3ef8343b87516b29b49651d13",
+    "glb/skin_stapler_collision_debug.glb": "b7f8788e152ded079a4a5bbb532c70f03be968e999a6b8901f44220d4779c04b",
+    "glb/skin_stapler_collision_debug_fired.glb": "ec2901eae2eb112e057c46c70d31ea27409f5db5c530ed7aa2f5db77cc65b2a4",
+    "glb/skin_stapler_collision_debug_rest.glb": "b7f8788e152ded079a4a5bbb532c70f03be968e999a6b8901f44220d4779c04b",
+    "glb/skin_stapler_frame_debug.glb": "336b53efaccb6deb374fa9858acba9edb8b238a2b39bd2900af1cf08c6222931",
+    "glb/skin_stapler_mechanism_exploded.glb": "58152b9277db31988ab6207430ab817a9dd353b4593e3808f91b92268557ec33",
+    "glb/skin_stapler_rigid_proxy.glb": "d16d0a67ea6327509d8a6c4fb7b735ee4a5bb6e84b8ffec4e9f7c2f49158e768",
+    "glb/skin_stapler_rigid_proxy_empty.glb": "87ad0a6dfca61432d05ad2643d147d4a88d2a8aa745cf4d8d57657ab81617343",
+    "glb/skin_stapler_rigid_proxy_loaded.glb": "d16d0a67ea6327509d8a6c4fb7b735ee4a5bb6e84b8ffec4e9f7c2f49158e768",
+    "interaction_frames.json": "8c2f5798e810563dbe4d025fe9c2b6ccd0f29b1f4b76e94b74a15cf9078440cd",
+    "physics_profile.json": "bc54766c36f8757b916be0a2a90bbd3873f8b24b71f5648012ceef3808eaaea6",
+    "skin_staple.usda": "1424639d8576d078e069b4e14f854707ccb929ecfe6558934d319d4363d6d2f2",
+    "skin_stapler_articulated.usda": "d2b9317475a588118c4c3c3ae41b9cdf67ffa7f0894bc7d1c14b03db732da4c0",
+    "skin_stapler_rigid_proxy.usda": "11a1f537df5daba1f8ed8c57da1cdd9f6f786486706c832b074b4e02fe1bb284",
+    "textures/body_polymer_basecolor.png": "8fb19044d89f2a89e0f8608ac485e607420db17bdaedf8ed55d1a89e943f94af",
+    "textures/count_markings.png": "e7324840f771272eff28d12ffc21163f2be9147b658daca3596b8bc943a87c73",
+    "textures/elastomer_normal.png": "c5a42e0a8b33e2a984d97623337a8c5a205d239cf0859e719113d7b426d58e5f",
+    "textures/elastomer_roughness.png": "7bd1b8c1d20775bffa921ab3d5031e9df8b315cc186ad550284e333f35849d61",
+    "textures/handle_elastomer_basecolor.png": "fb4b0fd28c96275dcade51ce7cb2f0c367b49b5d4a299893f82c381b9be4a715",
+    "textures/label_dranmar.png": "48d2819f33da025c66689a3df79cec607e00ceeefa8d64db48516ee15d6902cd",
+    "textures/metal_brushed_basecolor.png": "48499f698d338a463775a8cd265bf0a896d3aed6dcdb8bd4228b5dd4bdadf3dc",
+    "textures/metal_roughness.png": "0116cf05a93599a75a8942942dffc25a9bca97c8270860e6562d72c8fad7dcb7",
+    "textures/polymer_normal.png": "73db8937c46169293f56eafd900f2441ac7a97e7902a430e2a86658b00171fd5",
+    "textures/polymer_roughness.png": "91c5fd1567a704b5df706265d77fb3e4cf57e612051e2fe115d9b0da8125a458",
+    "textures/trigger_polymer_basecolor.png": "ee6282a19d175718ddf8e8de025ad9cbbf71da02173391d39dbc9bfa776fa7e4"
+  },
+  "runtime_validation": {
+    "isaac_sim_5_1_isaac_lab_2_3_2_cuda": "not_run",
+    "isaac_sim_6_0_1_isaac_lab_3_0_beta2_cuda": "not_run",
+    "openusd_target_runtime_parse": "not_run",
+    "owner": "integrating_user"
+  },
+  "schema_version": 2,
+  "status": "authoring_complete_runtime_validation_delegated"
+}

@@ -1,0 +1,10 @@
+DrAnmar Skin Stapler research asset
+Copyright 2026 DrAnmar asset contributors
+
+This package contains original procedural geometry, textures, documentation, and
+software. The name DrAnmar identifies this research asset package and does not
+represent a manufacturer certification, regulatory clearance, or clinical claim.
+
+Reference dimensions for a common wide formed skin staple are cited only to set
+category-level scale. No manufacturer geometry, trademarks, packaging artwork,
+or proprietary CAD files are included.

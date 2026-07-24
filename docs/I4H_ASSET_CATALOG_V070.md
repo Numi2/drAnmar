@@ -16,22 +16,30 @@ repository, rename physical assets, or replace their authored OpenUSD physics.
 The upstream helper retrieves public assets from NVIDIA's production object store. No asset payload is
 committed to Dr.Anmar.
 
-## DrAnmar-authored surgical-count extension
+## DrAnmar-authored catalog extensions
 
 DrAnmar also ships its own Apache-2.0 catalog content under the same relative
 addressing convention:
 
 ```text
 Props/SurgicalCount/LaparotomySponge
+Props/SurgicalClosure/SkinStapler
 ```
 
-This local extension is not represented as NVIDIA-authored catalog content.
+These local extensions are not represented as NVIDIA-authored catalog content.
 `SurgicalCountAssets` exposes the unfolded and folded paths in the form
-expected by `BaseI4HAssets`, while DrAnmar's capability payload identifies
-`provider: dr_anmar`, the local path, licence, representation, and readiness.
-The package keeps both dry/wet representations runnable and records provisional
-physics and nonclinical provenance in
-[`LAPAROTOMY_SPONGE.md`](LAPAROTOMY_SPONGE.md).
+expected by `BaseI4HAssets`; `SurgicalClosureAssets` exposes the rigid stapler,
+articulated stapler and standalone staple. DrAnmar's capability payload
+identifies `provider: dr_anmar`, the local path, licence, representation and
+readiness.
+
+The sponge package keeps both dry/wet representations runnable. The stapler
+package adds loaded/empty state handling, stable and articulated runtime
+routes, semantics, trigger/pusher control, simulated deployment bookkeeping
+and an optional loaded rigid prop in the main operating room. Provisional
+physics and nonclinical provenance are recorded in
+[`LAPAROTOMY_SPONGE.md`](LAPAROTOMY_SPONGE.md) and
+[`SKIN_STAPLER.md`](SKIN_STAPLER.md).
 
 ## Useful Dr.Anmar bundles
 

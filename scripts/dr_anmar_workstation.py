@@ -56,6 +56,7 @@ from dr_anmar_hemostasis_model import (
 )
 
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DATA_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
 I4H_ASSET_HASH = os.environ.get("DR_ANMAR_I4H_ASSET_HASH", "724f82e")
 I4H_ASSET_CONTENT_ROOT = Path(
@@ -3326,7 +3327,7 @@ def main() -> None:
         procedure.get("single_active_camera_renderer", True)
     )
     nvidia_native_bench = bool(procedure.get("nvidia_native_bench"))
-    nvidia_bench_assets: dict[str, Path] = {}
+    bench_asset_paths: dict[str, Path] = {}
     if nvidia_native_bench:
         bench_catalog = tuple(procedure.get("bench_asset_catalog", ()))
         allowed_bench_assets = {str(item["id"]) for item in bench_catalog}
@@ -3343,7 +3344,8 @@ def main() -> None:
         unknown_bench_assets = sorted(selected_bench_assets - allowed_bench_assets)
         if unknown_bench_assets:
             raise ValueError(
-                "Unknown NVIDIA bench assets: " + ", ".join(unknown_bench_assets)
+                "Unknown operating-room bench assets: "
+                + ", ".join(unknown_bench_assets)
             )
         procedure["active_bench_assets"] = [
             str(item["id"])
@@ -3356,23 +3358,31 @@ def main() -> None:
             / "Props/SutureNeedle/needle_sdf.usd",
             "table": I4H_ASSET_CONTENT_ROOT / "Props/Table/table.usd",
         }
-        nvidia_bench_assets = {
+        dr_anmar_asset_root = (
+            REPOSITORY_ROOT / "source/extensions/orbit.surgical.assets/data"
+        )
+        bench_asset_paths = {
             **core_bench_assets,
             **{
-                str(item["id"]): I4H_ASSET_CONTENT_ROOT / str(item["path"])
+                str(item["id"]): (
+                    dr_anmar_asset_root
+                    if item.get("provider") == "dr_anmar"
+                    else I4H_ASSET_CONTENT_ROOT
+                )
+                / str(item["path"])
                 for item in bench_catalog
                 if str(item["id"]) in selected_bench_assets
             },
         }
-        missing_nvidia_assets = [
+        missing_bench_assets = [
             f"{name}: {path}"
-            for name, path in nvidia_bench_assets.items()
+            for name, path in bench_asset_paths.items()
             if not path.is_file()
         ]
-        if missing_nvidia_assets:
+        if missing_bench_assets:
             raise RuntimeError(
-                "The NVIDIA native surgical bench requires the pinned surgical-core "
-                "asset bundle. Missing " + "; ".join(missing_nvidia_assets)
+                "The operating-room bench is missing required assets: "
+                + "; ".join(missing_bench_assets)
             )
     if "-IK-Rel" not in args_cli.task:
         raise ValueError("The browser workstation accepts relative-IK tasks. Other variants remain available via the CLI.")
@@ -3436,12 +3446,12 @@ def main() -> None:
         }
         for robot_name, root_position in psm_root_positions.items():
             robot_cfg = getattr(env_cfg.scene, robot_name)
-            robot_cfg.spawn.usd_path = str(nvidia_bench_assets["psm"])
+            robot_cfg.spawn.usd_path = str(bench_asset_paths["psm"])
             robot_cfg.init_state.pos = root_position
             robot_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
-        env_cfg.scene.table.spawn.usd_path = str(nvidia_bench_assets["table"])
+        env_cfg.scene.table.spawn.usd_path = str(bench_asset_paths["table"])
         env_cfg.scene.table.init_state.pos = (0.0, 0.0, -0.457)
-        env_cfg.scene.object.spawn.usd_path = str(nvidia_bench_assets["needle_runtime"])
+        env_cfg.scene.object.spawn.usd_path = str(bench_asset_paths["needle_runtime"])
         env_cfg.scene.object.spawn.scale = (0.4, 0.4, 0.4)
         env_cfg.scene.object.init_state.pos = (
             (-0.195, 0.015, 0.0008)
@@ -3464,7 +3474,7 @@ def main() -> None:
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=sim_utils.UsdFileCfg(
-                    usd_path=str(nvidia_bench_assets["suture_pad"]),
+                    usd_path=str(bench_asset_paths["suture_pad"]),
                 ),
             )
 
@@ -3479,7 +3489,7 @@ def main() -> None:
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=sim_utils.UsdFileCfg(
-                    usd_path=str(nvidia_bench_assets["scissors"]),
+                    usd_path=str(bench_asset_paths["scissors"]),
                     scale=(0.01, 0.01, 0.01),
                 ),
             )
@@ -3491,8 +3501,29 @@ def main() -> None:
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=sim_utils.UsdFileCfg(
-                    usd_path=str(nvidia_bench_assets["tray"]),
+                    usd_path=str(bench_asset_paths["tray"]),
                     scale=(0.01, 0.01, 0.01),
+                ),
+            )
+        if "skin_stapler" in selected_bench_assets:
+            env_cfg.scene.skin_stapler = RigidObjectCfg(
+                prim_path="{ENV_REGEX_NS}/SkinStapler",
+                init_state=RigidObjectCfg.InitialStateCfg(
+                    # Rest the stapler on its broad side at a separate landing.
+                    pos=(0.135, 0.145, 0.014),
+                    rot=(0.70710678, 0.70710678, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(bench_asset_paths["skin_stapler"]),
+                    variants={"state": "loaded"},
+                    semantic_tags=[
+                        ("class", "skin_stapler"),
+                        ("device_type", "surgical_closure_device"),
+                        ("workflow_handover", "handover"),
+                        ("workflow_closure", "closure"),
+                        ("state", "loaded"),
+                    ],
+                    activate_contact_sensors=True,
                 ),
             )
 

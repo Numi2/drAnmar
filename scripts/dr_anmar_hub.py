@@ -100,7 +100,7 @@ WORKER_FATAL_MARKERS = (
 def bench_asset_selection(
     procedure: dict[str, Any], requested: list[str] | tuple[str, ...] | None
 ) -> tuple[str, ...] | None:
-    """Resolve one ordered, allow-listed NVIDIA bench composition."""
+    """Resolve one ordered, allow-listed operating-room bench composition."""
 
     catalog = tuple(procedure.get("bench_asset_catalog", ()))
     if not catalog:
@@ -115,7 +115,7 @@ def bench_asset_selection(
     )
     unknown = sorted(selected - allowed)
     if unknown:
-        raise HTTPException(400, "Unknown NVIDIA bench assets: " + ", ".join(unknown))
+        raise HTTPException(400, "Unknown operating-room bench assets: " + ", ".join(unknown))
     return tuple(str(item["id"]) for item in catalog if str(item["id"]) in selected)
 
 
@@ -149,23 +149,30 @@ def psm_gripper_selection(
     return open_rad, close_rad
 
 
-def missing_required_nvidia_assets(
+def missing_required_bench_assets(
     procedure: dict[str, Any], bench_assets: tuple[str, ...] | None = None
 ) -> list[str]:
-    """Return missing paths from a room's pinned NVIDIA asset contract."""
+    """Return missing NVIDIA or DrAnmar paths from a room's asset contract."""
 
     content_root = I4H_ASSET_DOWNLOAD_DIR / I4H_ASSET_HASH
-    required = [str(path) for path in procedure.get("required_nvidia_assets", ())]
+    required: list[tuple[Path, str]] = [
+        (content_root, str(path))
+        for path in procedure.get("required_nvidia_assets", ())
+    ]
     selected = set(bench_assets or ())
-    required.extend(
-        str(item["path"])
-        for item in procedure.get("bench_asset_catalog", ())
-        if str(item["id"]) in selected
+    dr_anmar_asset_root = (
+        args.root / "source/extensions/orbit.surgical.assets/data"
     )
+    for item in procedure.get("bench_asset_catalog", ()):
+        if str(item["id"]) not in selected:
+            continue
+        provider = str(item.get("provider", "nvidia_i4h"))
+        root = dr_anmar_asset_root if provider == "dr_anmar" else content_root
+        required.append((root, str(item["path"])))
     return [
         str(relative_path)
-        for relative_path in required
-        if not (content_root / str(relative_path)).is_file()
+        for root, relative_path in required
+        if not (root / relative_path).is_file()
     ]
 
 
@@ -1762,11 +1769,11 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
     binding = resolve_native_room(str(procedure["id"]))
     if binding and not binding.get("available"):
         raise HTTPException(409, "Required room assets are not installed on this worker.")
-    missing_nvidia_assets = missing_required_nvidia_assets(procedure, selected_bench_assets)
-    if missing_nvidia_assets:
+    missing_bench_assets = missing_required_bench_assets(procedure, selected_bench_assets)
+    if missing_bench_assets:
         raise HTTPException(
             409,
-            "Missing required room assets: " + ", ".join(missing_nvidia_assets) + ".",
+            "Missing required room assets: " + ", ".join(missing_bench_assets) + ".",
         )
     if procedure.get("hide_anatomy"):
         selected_anatomy = ""

@@ -8,7 +8,7 @@
 import os
 import toml
 
-from setuptools import setup
+from setuptools import find_namespace_packages, setup
 
 # Obtain the extension data from the extension.toml file
 EXTENSION_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -27,7 +27,9 @@ setup(
     keywords=EXTENSION_TOML_DATA["package"]["keywords"],
     include_package_data=True,
     python_requires=">=3.10",
-    packages=["orbit.surgical.assets"],
+    packages=find_namespace_packages(
+        include=["orbit.surgical.assets", "orbit.surgical.assets.*"]
+    ),
     classifiers=[
         "Natural Language :: English",
         "Programming Language :: Python :: 3.10",

@@ -13,6 +13,9 @@
     "benchmarks/dr-anmar-suturable-tissue.json",
     "surgical-count/dr-anmar-laparotomy-sponge-v1.json",
     "benchmarks/dr-anmar-laparotomy-sponge-validation.json",
+    "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/physics_profile.json",
+    "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/interaction_frames.json",
+    "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/integration_report.json",
     "benchmarks/softmimicgen-threading-replay.json"
   ],
   "backends": {
@@ -102,6 +105,16 @@
       "folded_rigid_proxy": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
       "current_capability": "dry_wet_rigid_manipulation_and_surface_deformable_surgical_count_research",
       "deployment": "enabled"
+    },
+    "dr_anmar_skin_stapler": {
+      "profile": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/physics_profile.json",
+      "interaction_frames": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/interaction_frames.json",
+      "validation": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/integration_report.json",
+      "rigid_proxy": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_rigid_proxy.usda",
+      "articulated": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_articulated.usda",
+      "formed_staple": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_staple.usda",
+      "current_capability": "optional_loaded_rigid_operating_room_prop_and_articulated_research_helpers",
+      "deployment": "enabled_with_native_runtime_qualification_pending"
     }
   },
   "promotion_rule": "A procedure becomes runnable only when its active native backend owns every required physical capability and its calibration and replay evidence are recorded.",

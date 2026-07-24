@@ -1,0 +1,209 @@
+{
+  "asset_id": "dranmar.surgical_closure.skin_stapler",
+  "asset_version": "0.2.0",
+  "coordinate_system": {
+    "forward_axis": "+X",
+    "quaternion_order": "wxyz",
+    "units": "metres",
+    "up_axis": "+Z"
+  },
+  "frames": {
+    "count_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Housing",
+      "role": [
+        "perception",
+        "loaded_empty_state"
+      ],
+      "translation_m": [
+        0.016,
+        -0.0157,
+        0.047
+      ]
+    },
+    "driver_blade_tip": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Pusher",
+      "role": [
+        "staple_driver",
+        "deployment"
+      ],
+      "translation_m": [
+        0.0865,
+        0.0,
+        0.0105
+      ]
+    },
+    "formed_staple_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Housing",
+      "role": [
+        "formed_staple_spawn",
+        "closure_task"
+      ],
+      "translation_m": [
+        0.096,
+        0.0,
+        0.001
+      ]
+    },
+    "handle_grasp": {
+      "axis_convention": {
+        "+X": "grip_longitudinal_up",
+        "+Y": "recommended_parallel_jaw_closing_axis",
+        "+Z": "grasp_approach_normal"
+      },
+      "orientation_wxyz": [
+        0.788205438016,
+        0.0,
+        -0.615412209403,
+        0.0
+      ],
+      "parent_link": "Housing",
+      "provisional_grasp_width_m": 0.028,
+      "role": [
+        "grasp",
+        "handover"
+      ],
+      "translation_m": [
+        -0.071,
+        0.0,
+        -0.014
+      ]
+    },
+    "jaw_tip": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Housing",
+      "role": [
+        "positioning",
+        "closure"
+      ],
+      "translation_m": [
+        0.093,
+        0.0,
+        0.01
+      ]
+    },
+    "placement_reference": {
+      "axis_convention": {
+        "+X": "stapler_forward",
+        "+Y": "staple_crown_lateral",
+        "+Z": "toward_contact_plane"
+      },
+      "orientation_wxyz": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Housing",
+      "role": [
+        "tissue_approach",
+        "placement",
+        "closure"
+      ],
+      "translation_m": [
+        0.092,
+        0.0,
+        -0.0012
+      ]
+    },
+    "pusher_face": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Pusher",
+      "role": [
+        "mechanism_tracking"
+      ],
+      "translation_m": [
+        0.079,
+        0.0,
+        0.0105
+      ]
+    },
+    "staple_exit": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Housing",
+      "role": [
+        "preform_exit",
+        "deployment",
+        "closure"
+      ],
+      "translation_m": [
+        0.094,
+        0.0,
+        0.0105
+      ]
+    },
+    "trigger_contact": {
+      "axis_convention": {
+        "+Y": "lateral_across_trigger_pad",
+        "+Z": "intended_press_direction_toward_handle"
+      },
+      "orientation_wxyz": [
+        0.834841092238,
+        0.0,
+        -0.550491008746,
+        0.0
+      ],
+      "parent_link": "Trigger",
+      "role": [
+        "contact",
+        "actuation",
+        "closure"
+      ],
+      "translation_m": [
+        -0.061,
+        0.0,
+        -0.027
+      ]
+    },
+    "trigger_pivot": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Housing",
+      "role": [
+        "joint_reference"
+      ],
+      "translation_m": [
+        -0.047,
+        0.0,
+        0.021
+      ]
+    }
+  },
+  "schema_version": 1
+}

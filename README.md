@@ -204,7 +204,8 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
 ## What is included
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
-- OpenUSD operating rooms and seven pinned anatomy sources.
+- OpenUSD operating rooms, seven pinned anatomy sources, and repository-local
+  Dr.Anmar surgical assets including the optional skin stapler.
 - Native rigid-body needle pickup, dual-arm handover, passing/regrasp, navigation and recovery rooms.
 - PhysX contact sensors on the gripper bodies; no synthetic grasp joints or collision-disabling puncture paths.
 - A compact 12-room procedure catalog backed by local tasks, installed thread assets, NVIDIA ultrasound,
@@ -341,7 +342,7 @@ Install NVIDIA's matching v0.7.0 healthcare asset catalog and retrieve only the 
 ```
 
 The catalog source is pinned to commit `b0b7ad39f26490d58d12407cfa74b3c9ad861769`; its v0.7.0
-content address is `724f82e`. Assets are stored under `DR_ANMAR_ROOT`, never vendored into this repository.
+content address is `724f82e`. NVIDIA catalog payloads are stored under `DR_ANMAR_ROOT`, never vendored into this repository.
 The catalog supplies the canonical dVRK PSM/ECM, STAR, suture needle and SDF, suture pad, surgical
 instruments, anatomy, ultrasound fixtures, medical robots and selected deformables. Downloads are split into
 explicit `surgical-core`, `surgical-anatomy`, `ultrasound`, `medical-robots`, and `rheo` bundles.
@@ -352,6 +353,11 @@ for provenance-safe new room composition until NVIDIA changes the upstream envir
 licence shipped with every downloaded asset before redistribution. Lightwheel assets are restricted to
 non-commercial research and development use. Installation, bundle sizes and the Gilgamesh evidence are in
 [`docs/I4H_ASSET_CATALOG_V070.md`](docs/I4H_ASSET_CATALOG_V070.md).
+
+Dr.Anmar's own Apache-2.0 skin stapler is shipped locally and can be enabled
+from the main operating-room setup. Its rigid, articulated and standalone
+staple representations, helpers and qualification boundary are documented in
+[`docs/SKIN_STAPLER.md`](docs/SKIN_STAPLER.md).
 
 Official workflow containers also require Docker Engine with NVIDIA GPU container support. DDS-based modes
 such as robotic ultrasound require a valid `RTI_LICENSE_FILE`. The Multimodal Lab reports these prerequisites

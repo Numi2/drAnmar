@@ -1,6 +1,21 @@
 Changelog
 ---------
 
+0.3.0 (2026-07-24)
+~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added the DrAnmar skin stapler under
+  ``Props/SurgicalClosure/SkinStapler`` with rigid, articulated and standalone
+  staple representations.
+* Added I4H-compatible paths, Isaac Lab 2.3.2 and 3.0 configuration factories,
+  state selection, semantics, trigger/pusher control, simulated deployment and
+  closure-task helpers.
+* Added the rigid loaded stapler as an optional prop in the main operating-room
+  bench.
+
 0.2.0 (2026-07-24)
 ~~~~~~~~~~~~~~~~~~
 

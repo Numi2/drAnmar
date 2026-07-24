@@ -121,3 +121,26 @@ All entries remain simulation/research-only and not clinically validated.
 
 These values are active provisional research parameters. They are not
 manufacturer measurements, clinical validation, or patient-care approval.
+
+## 2026-07-24 — skin stapler integration
+
+- Imported the user-authored Apache-2.0 v0.2.0 payload at
+  `Props/SurgicalClosure/SkinStapler`: 36 geometry files, 14 GLB inspection
+  exports, 11 textures, rigid and articulated staplers, a standalone formed
+  staple, interaction frames and a physics profile.
+- Corrected all 11 `UsdPrimvarReader_float2.inputs:varname` declarations from
+  `token` to the shader-required `string` type. This changed no geometry,
+  collision or physics values.
+- All three integrated layers pass `usdcat`. Current `usdchecker` passes the
+  default layers and the loaded/empty variants.
+- Added I4H-compatible paths plus Isaac Lab 2.3.2 rigid and Isaac Lab 3.0
+  articulated configuration factories, semantic labels, synchronized
+  trigger/pusher control, simulated deployment bookkeeping and closure-task
+  helpers.
+- Added the loaded rigid representation as an optional, contact-instrumented
+  prop in the main operating-room bench. It is disabled by default so the
+  established bench composition remains unchanged until selected.
+- Native Isaac Sim 5.1 and 6.0 CUDA qualification is still pending. Physical
+  parameters remain provisional and unmeasured; tissue penetration, staple
+  formation, closure strength, healing, sterility and clinical quality remain
+  outside the model.

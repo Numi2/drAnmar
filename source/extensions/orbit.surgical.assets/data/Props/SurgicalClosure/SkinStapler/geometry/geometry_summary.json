@@ -1,0 +1,693 @@
+{
+  "asset_id": "dranmar.surgical_closure.skin_stapler",
+  "asset_version": "0.2.0",
+  "claim_boundary": "Original category-level geometry. Device dimensions and physical allocations are provisional and not manufacturer metrology.",
+  "coordinate_system": {
+    "forward": "+X",
+    "lateral": "+Y",
+    "units": "metres",
+    "up": "+Z"
+  },
+  "formed_staple": {
+    "bounds_m": [
+      [
+        -0.0003,
+        -0.0035499999999999998,
+        -0.00205
+      ],
+      [
+        0.0003,
+        0.0035499999999999998,
+        0.0023499963689388296
+      ]
+    ],
+    "computed_mass_kg": 3.092467576903476e-05,
+    "triangles": 512,
+    "vertices": 258
+  },
+  "mesh_count": 33,
+  "meshes": {
+    "AlignmentGuide": {
+      "bounds_m": [
+        [
+          0.069763165609507,
+          -0.0006,
+          0.015874836533688354
+        ],
+        [
+          0.089236834390493,
+          0.0006,
+          0.024125163466311647
+        ]
+      ],
+      "material_family": "TriggerPolymer",
+      "triangles": 956,
+      "vertices": 480,
+      "volume_m3": 7.227206988384279e-08,
+      "watertight": true
+    },
+    "BodySeam": {
+      "bounds_m": [
+        [
+          -0.054,
+          -0.015325,
+          0.029675
+        ],
+        [
+          0.028000000000000004,
+          0.015325,
+          0.030324999999999998
+        ]
+      ],
+      "material_family": "InternalDark",
+      "triangles": 24,
+      "vertices": 16,
+      "volume_m3": 3.7309999999999836e-08,
+      "watertight": true
+    },
+    "ChamberedStaple": {
+      "bounds_m": [
+        [
+          0.0867,
+          -0.0054,
+          0.0095
+        ],
+        [
+          0.08729999999999999,
+          0.0054,
+          0.012799999383261445
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 512,
+      "vertices": 258,
+      "volume_m3": 4.328138352162528e-09,
+      "watertight": true
+    },
+    "CountTicks": {
+      "bounds_m": [
+        [
+          -0.0124,
+          -0.016050000000000002,
+          0.02325
+        ],
+        [
+          0.036399999999999995,
+          0.016050000000000002,
+          0.027749999999999997
+        ]
+      ],
+      "material_family": "CountMark",
+      "triangles": 216,
+      "vertices": 144,
+      "volume_m3": 2.908800000000004e-08,
+      "watertight": true
+    },
+    "DriverBlade": {
+      "bounds_m": [
+        [
+          0.08539999999999999,
+          -0.005,
+          0.004999999999999999
+        ],
+        [
+          0.0866,
+          0.005,
+          0.017
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 12,
+      "vertices": 8,
+      "volume_m3": 1.4399999999999952e-07,
+      "watertight": true
+    },
+    "GripOvermold": {
+      "bounds_m": [
+        [
+          -0.08558830890768629,
+          -0.014,
+          -0.03959956914500636
+        ],
+        [
+          -0.059816135853057624,
+          0.014,
+          -0.00114132753536428
+        ]
+      ],
+      "material_family": "HandleElastomer",
+      "triangles": 1916,
+      "vertices": 960,
+      "volume_m3": 1.9360481330121754e-05,
+      "watertight": true
+    },
+    "GripRibs": {
+      "bounds_m": [
+        [
+          -0.07814000000000002,
+          -0.015,
+          -0.03106
+        ],
+        [
+          -0.06486,
+          0.015,
+          -0.01394
+        ]
+      ],
+      "material_family": "HandleElastomer",
+      "triangles": 480,
+      "vertices": 250,
+      "volume_m3": 6.708589649057341e-07,
+      "watertight": true
+    },
+    "GripShell": {
+      "bounds_m": [
+        [
+          -0.08582394531955885,
+          -0.013,
+          -0.03979792221624548
+        ],
+        [
+          -0.041766713889544047,
+          0.013,
+          0.027718894262387637
+        ]
+      ],
+      "material_family": "BodyPolymer",
+      "triangles": 2556,
+      "vertices": 1280,
+      "volume_m3": 4.903292313902393e-05,
+      "watertight": true
+    },
+    "JawBridge": {
+      "bounds_m": [
+        [
+          0.06329394198829484,
+          -0.009,
+          0.005
+        ],
+        [
+          0.07520854980165756,
+          0.009,
+          0.021500000000000002
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 1276,
+      "vertices": 640,
+      "volume_m3": 2.7603117342548744e-06,
+      "watertight": true
+    },
+    "JawLower": {
+      "bounds_m": [
+        [
+          0.06830422889397318,
+          -0.008,
+          0.001
+        ],
+        [
+          0.09249540657171433,
+          0.008,
+          0.008
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 1276,
+      "vertices": 640,
+      "volume_m3": 2.3460340830371866e-06,
+      "watertight": true
+    },
+    "JawUpper": {
+      "bounds_m": [
+        [
+          0.06932215213876979,
+          -0.008,
+          0.014
+        ],
+        [
+          0.091726104322984,
+          0.008,
+          0.021
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 1276,
+      "vertices": 640,
+      "volume_m3": 2.1324939204217575e-06,
+      "watertight": true
+    },
+    "LabelPanel": {
+      "bounds_m": [
+        [
+          -0.05410858953713382,
+          -0.015700000000000002,
+          0.04
+        ],
+        [
+          -0.009071453564320722,
+          -0.015000000000000001,
+          0.05373536064952398
+        ]
+      ],
+      "material_family": "Label",
+      "triangles": 1276,
+      "vertices": 640,
+      "volume_m3": 3.59080516018343e-07,
+      "watertight": true
+    },
+    "MagazineFloor": {
+      "bounds_m": [
+        [
+          -0.0265,
+          -0.0065,
+          0.0199
+        ],
+        [
+          0.0485,
+          0.0065,
+          0.0211
+        ]
+      ],
+      "material_family": "InternalDark",
+      "triangles": 12,
+      "vertices": 8,
+      "volume_m3": 1.1699999999999998e-06,
+      "watertight": true
+    },
+    "MagazineFrontFrame": {
+      "bounds_m": [
+        [
+          0.04325564699608045,
+          -0.013,
+          0.02
+        ],
+        [
+          0.062433468313502175,
+          0.013,
+          0.040191775736883435
+        ]
+      ],
+      "material_family": "BodyPolymer",
+      "triangles": 1276,
+      "vertices": 640,
+      "volume_m3": 7.591754707240401e-06,
+      "watertight": true
+    },
+    "MagazineRail": {
+      "bounds_m": [
+        [
+          -0.033142723636333166,
+          -0.012,
+          0.013
+        ],
+        [
+          0.0632203396359934,
+          0.012,
+          0.024
+        ]
+      ],
+      "material_family": "BodyPolymer",
+      "triangles": 1916,
+      "vertices": 960,
+      "volume_m3": 2.23093159464865e-05,
+      "watertight": true
+    },
+    "MagazineRearFrame": {
+      "bounds_m": [
+        [
+          -0.036152431840370175,
+          -0.0135,
+          0.019
+        ],
+        [
+          -0.019525003949154143,
+          0.0135,
+          0.04049299759445515
+        ]
+      ],
+      "material_family": "BodyPolymer",
+      "triangles": 1276,
+      "vertices": 640,
+      "volume_m3": 7.014468161528287e-06,
+      "watertight": true
+    },
+    "MagazineWindowLeft": {
+      "bounds_m": [
+        [
+          -0.0245,
+          -0.015700000000000002,
+          0.019755974613102502
+        ],
+        [
+          0.05298173752868473,
+          -0.0145,
+          0.038
+        ]
+      ],
+      "material_family": "ClearPolymer",
+      "triangles": 1916,
+      "vertices": 960,
+      "volume_m3": 1.4276042196441127e-06,
+      "watertight": true
+    },
+    "MagazineWindowRight": {
+      "bounds_m": [
+        [
+          -0.0245,
+          0.0145,
+          0.019755974613102502
+        ],
+        [
+          0.05298173752868473,
+          0.015700000000000002,
+          0.038
+        ]
+      ],
+      "material_family": "ClearPolymer",
+      "triangles": 1916,
+      "vertices": 960,
+      "volume_m3": 1.4276042196441127e-06,
+      "watertight": true
+    },
+    "NoseShroud": {
+      "bounds_m": [
+        [
+          0.048,
+          -0.014,
+          0.0085
+        ],
+        [
+          0.082,
+          0.014,
+          0.049
+        ]
+      ],
+      "material_family": "BodyPolymer",
+      "triangles": 384,
+      "vertices": 194,
+      "volume_m3": 1.6555782749956536e-05,
+      "watertight": true
+    },
+    "PivotPin": {
+      "bounds_m": [
+        [
+          -0.0502,
+          -0.0155,
+          0.0178
+        ],
+        [
+          -0.0438,
+          0.0155,
+          0.024200000000000003
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 160,
+      "vertices": 82,
+      "volume_m3": 9.931711316474172e-07,
+      "watertight": true
+    },
+    "PlacementFootLeft": {
+      "bounds_m": [
+        [
+          0.089,
+          -0.0072,
+          -0.0012000000000000001
+        ],
+        [
+          0.093,
+          -0.0031999999999999997,
+          0.0008
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 12,
+      "vertices": 8,
+      "volume_m3": 3.2e-08,
+      "watertight": true
+    },
+    "PlacementFootRight": {
+      "bounds_m": [
+        [
+          0.089,
+          0.0031999999999999997,
+          -0.0012000000000000001
+        ],
+        [
+          0.093,
+          0.0072,
+          0.0008
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 12,
+      "vertices": 8,
+      "volume_m3": 3.2e-08,
+      "watertight": true
+    },
+    "PusherFace": {
+      "bounds_m": [
+        [
+          0.07775,
+          -0.0065,
+          0.004000000000000001
+        ],
+        [
+          0.08025,
+          0.0065,
+          0.017
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 12,
+      "vertices": 8,
+      "volume_m3": 4.2250000000000035e-07,
+      "watertight": true
+    },
+    "PusherRail": {
+      "bounds_m": [
+        [
+          -0.009157052899061309,
+          -0.003,
+          0.014
+        ],
+        [
+          0.07921442696264325,
+          0.003,
+          0.02048306172111136
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 1276,
+      "vertices": 640,
+      "volume_m3": 2.6388808399796227e-06,
+      "watertight": true
+    },
+    "RearHousing": {
+      "bounds_m": [
+        [
+          -0.08167332608061524,
+          -0.014,
+          0.018798895218692047
+        ],
+        [
+          -0.05414315037228419,
+          0.014,
+          0.05287110187965568
+        ]
+      ],
+      "material_family": "BodyPolymer",
+      "triangles": 1916,
+      "vertices": 960,
+      "volume_m3": 1.9109111368245205e-05,
+      "watertight": true
+    },
+    "StapleFollower": {
+      "bounds_m": [
+        [
+          -0.022,
+          -0.006,
+          0.020999999999999998
+        ],
+        [
+          -0.016,
+          0.006,
+          0.031
+        ]
+      ],
+      "material_family": "TriggerPolymer",
+      "triangles": 12,
+      "vertices": 8,
+      "volume_m3": 7.2e-07,
+      "watertight": true
+    },
+    "StapleGuideLeft": {
+      "bounds_m": [
+        [
+          0.086,
+          -0.0070999999999999995,
+          0.005999999999999999
+        ],
+        [
+          0.092,
+          -0.0039,
+          0.016
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 12,
+      "vertices": 8,
+      "volume_m3": 1.9200000000000032e-07,
+      "watertight": true
+    },
+    "StapleGuideRight": {
+      "bounds_m": [
+        [
+          0.086,
+          0.0039,
+          0.005999999999999999
+        ],
+        [
+          0.092,
+          0.0070999999999999995,
+          0.016
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 12,
+      "vertices": 8,
+      "volume_m3": 1.9200000000000032e-07,
+      "watertight": true
+    },
+    "StapleStack": {
+      "bounds_m": [
+        [
+          -0.0123,
+          -0.0054,
+          0.024499999999999997
+        ],
+        [
+          0.029550000000000003,
+          0.0054,
+          0.027799999383261442
+        ]
+      ],
+      "material_family": "Metal",
+      "triangles": 17408,
+      "vertices": 8772,
+      "volume_m3": 1.4715670397352745e-07,
+      "watertight": true
+    },
+    "StateIndicator": {
+      "bounds_m": [
+        [
+          0.01,
+          -0.0162,
+          0.044
+        ],
+        [
+          0.022,
+          -0.015199999999999998,
+          0.05
+        ]
+      ],
+      "material_family": "NeutralIndicator",
+      "triangles": 12,
+      "vertices": 8,
+      "volume_m3": 7.200000000000013e-08,
+      "watertight": true
+    },
+    "TriggerLever": {
+      "bounds_m": [
+        [
+          -0.0700188079880236,
+          -0.0095,
+          -0.032988235441556046
+        ],
+        [
+          -0.036500000000000005,
+          0.0095,
+          0.01964810737701006
+        ]
+      ],
+      "material_family": "TriggerPolymer",
+      "triangles": 2236,
+      "vertices": 1120,
+      "volume_m3": 1.7534801929640143e-05,
+      "watertight": true
+    },
+    "TriggerPad": {
+      "bounds_m": [
+        [
+          -0.07134470080413308,
+          -0.0115,
+          -0.03302802361756021
+        ],
+        [
+          -0.051250000000000004,
+          0.0115,
+          -0.019942772946977848
+        ]
+      ],
+      "material_family": "TriggerPolymer",
+      "triangles": 1596,
+      "vertices": 800,
+      "volume_m3": 4.074209540212006e-06,
+      "watertight": true
+    },
+    "UpperHousing": {
+      "bounds_m": [
+        [
+          -0.0758696681007688,
+          -0.015,
+          0.025316453175564593
+        ],
+        [
+          0.058384139307320525,
+          0.015,
+          0.059
+        ]
+      ],
+      "material_family": "BodyPolymer",
+      "triangles": 2556,
+      "vertices": 1280,
+      "volume_m3": 0.00011026999751569859,
+      "watertight": true
+    }
+  },
+  "open_staple": {
+    "bounds_m": [
+      [
+        -0.0003,
+        -0.0054,
+        -0.0015
+      ],
+      [
+        0.0003,
+        0.0054,
+        0.0017999993832614452
+      ]
+    ],
+    "computed_mass_kg": 3.4625106817300544e-05,
+    "triangles": 512,
+    "vertices": 258
+  },
+  "overall_visual_bounds_m": [
+    [
+      -0.08582394531955885,
+      -0.0162,
+      -0.03979792221624548
+    ],
+    [
+      0.093,
+      0.016050000000000002,
+      0.059
+    ]
+  ],
+  "overall_visual_extent_m": [
+    0.17882394531955886,
+    0.03225,
+    0.09879792221624548
+  ],
+  "schema_version": 2
+}

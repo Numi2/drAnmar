@@ -1,0 +1,66 @@
+{
+  "schema": "dr.anmar.skin-stapler-integration.v1",
+  "asset_id": "dranmar.surgical_closure.skin_stapler",
+  "asset_version": "0.2.0",
+  "integrated_on": "2026-07-24",
+  "catalog_subpath": "Props/SurgicalClosure/SkinStapler",
+  "source": {
+    "name": "dranmar_skin_stapler",
+    "ownership": "user_authored_dr_anmar_work",
+    "license": "Apache-2.0",
+    "source_payload_files": 67
+  },
+  "integrated_payload": {
+    "files_including_integration_metadata": 72,
+    "bytes": 59730548,
+    "geometry_files": 36,
+    "glb_files": 14,
+    "texture_files": 11,
+    "runtime_layers": {
+      "skin_stapler_articulated.usda": "0749ac4007279469fc5d7ef516bdaf457bcf1ea40c5e2ad0ef284c9116b4d670",
+      "skin_stapler_rigid_proxy.usda": "172164906df09ba2e75cac88cb0fcc830c758102ca4d44194c3601ed328c1384",
+      "skin_staple.usda": "ad8713071f4918f4da031f90daabde0347eaa2de77330f6505df4a15b462c3b3"
+    },
+    "contracts": {
+      "physics_profile.json": "bc54766c36f8757b916be0a2a90bbd3873f8b24b71f5648012ceef3808eaaea6",
+      "interaction_frames.json": "8c2f5798e810563dbe4d025fe9c2b6ccd0f29b1f4b76e94b74a15cf9078440cd"
+    }
+  },
+  "integration_corrections": [
+    {
+      "scope": "all three OpenUSD runtime layers",
+      "change": "UsdPrimvarReader_float2 inputs:varname changed from token to string",
+      "reason": "match the declared shader input type and pass current usdchecker ShaderSdrCompliance validation",
+      "geometry_changed": false,
+      "physics_changed": false
+    }
+  ],
+  "validation": {
+    "usdcat_parse": "passed_all_three_layers",
+    "usdchecker": "passed_all_layers_and_loaded_empty_state_variants",
+    "python_compileall": "passed",
+    "doctor_studio_javascript_syntax": "passed",
+    "isaac_sim_5_1_lab_2_3_2_cuda": "pending_gilgamesh_runtime_qualification",
+    "isaac_sim_6_0_1_lab_3_0_beta2_cuda": "pending_gilgamesh_runtime_qualification"
+  },
+  "operating_room": {
+    "room": "nvidia-native-surgical-bench",
+    "selection_id": "skin_stapler",
+    "default_enabled": false,
+    "representation": "skin_stapler_rigid_proxy.usda",
+    "state": "loaded",
+    "physics": "native_rigid_body_with_authored_mass_inertia_colliders_and_materials",
+    "contact_sensors": true
+  },
+  "limitations": {
+    "physics_parameters": "provisional_and_unmeasured",
+    "tissue_penetration": false,
+    "staple_formation": false,
+    "wound_healing": false,
+    "sterility": false,
+    "closure_strength": false,
+    "clinical_validation": false,
+    "patient_care": false
+  },
+  "status": "integrated_and_locally_openusd_validated_runtime_qualification_pending"
+}
