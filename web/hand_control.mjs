@@ -430,7 +430,7 @@ function createInterface() {
     .hand-control-launch:hover{border-color:#8bc6cd!important;background:#1c2a30ee!important}.hand-control-launch .hand-camera-dot{width:7px;height:7px;border-radius:50%;background:#718087;box-shadow:0 0 0 3px #71808722}
     .hand-control-launch.state-active{border-color:#79c8a2!important;background:#162922ee!important;color:#effff7!important}.hand-control-launch.state-active .hand-camera-dot{background:#79c8a2;box-shadow:0 0 10px #79c8a299}
     .hand-control-launch kbd{height:18px;min-width:30px;padding:0 4px;font-size:8px}
-    .hand-panel{box-sizing:border-box;container-type:inline-size;position:fixed;z-index:70;right:18px;bottom:18px;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 12px));min-height:min(260px,calc(100vh - 12px));max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);resize:both;overflow:auto;border:1px solid #2f5968;border-radius:14px;background:#07151df2;color:#e9f8fa;box-shadow:0 18px 52px #000b;backdrop-filter:blur(16px);padding:12px}
+    .hand-panel{box-sizing:border-box;container-type:inline-size;position:fixed;z-index:70;right:18px;bottom:18px;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 12px));min-height:min(260px,calc(100vh - 12px));max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);resize:none;overflow:auto;border:1px solid #2f5968;border-radius:14px;background:#07151df2;color:#e9f8fa;box-shadow:0 18px 52px #000b;backdrop-filter:blur(16px);padding:12px}
     .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:8px;cursor:grab;touch-action:none;user-select:none}.hand-head.dragging{cursor:grabbing}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:11px}.hand-head .spacer{flex:1}.hand-head-actions{display:flex;gap:5px}.hand-head button{min-height:32px;padding:5px 8px;cursor:pointer;touch-action:auto;font-size:10px}.hand-head button.engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
     .hand-video-wrap{position:relative;margin-top:12px;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:#020608;border:1px solid #24404d}.hand-video-wrap video,.hand-video-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.hand-video-wrap canvas{transform:none;pointer-events:none}
     .hand-banner{box-sizing:border-box;position:absolute;left:10px;top:10px;max-width:62%;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px/1.35 ui-monospace,SFMono-Regular;white-space:normal}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
@@ -442,7 +442,7 @@ function createInterface() {
     .hand-resize-handle{position:sticky;z-index:4;right:0;bottom:0;float:right;width:28px!important;min-width:28px!important;height:28px!important;min-height:28px!important;margin:-22px -8px -8px 0!important;padding:0!important;border:0!important;border-radius:8px 0 8px 0!important;background:linear-gradient(135deg,transparent 45%,#315766 46% 53%,transparent 54% 62%,#8bc6cd 63% 70%,transparent 71%)!important;box-shadow:none!important;cursor:nwse-resize!important;touch-action:none}
     .hand-resize-handle:focus-visible{outline:2px solid #8bc6cd;outline-offset:-2px}.hand-resize-handle:hover{background:linear-gradient(135deg,transparent 42%,#52747d 43% 51%,transparent 52% 60%,#b9f6ff 61% 70%,transparent 71%)!important}
     @container(max-width:350px){.hand-cards{grid-template-columns:1fr}.hand-actions{grid-template-columns:1fr 1fr}.hand-head p{font-size:10px}.hand-metrics{top:auto;bottom:7px;left:7px;right:7px;max-width:none;justify-content:flex-start}}
-    @media(max-width:640px){.hand-control-dock{left:8px;top:8px}.hand-control-launch{min-height:32px!important;padding:0 8px!important}.hand-panel{right:6px;bottom:6px;width:calc(100vw - 12px);resize:vertical}}
+    @media(max-width:640px){.hand-control-dock{left:8px;top:8px}.hand-control-launch{min-height:32px!important;padding:0 8px!important}.hand-panel{right:6px;bottom:6px;width:calc(100vw - 12px)}}
   `;
   document.head.append(style);
 
@@ -561,6 +561,8 @@ class HandController {
     this.panelDrag = null;
     this.panelResize = null;
     this.panelResizeObserver = null;
+    this.handlePanelResizeMove = event => this.movePanelResize(event);
+    this.handlePanelResizeEnd = event => this.endPanelResize(event);
     this.controlsExpanded = false;
     this.operatorId = this.resolveOperatorId();
     this.bind();
@@ -745,8 +747,14 @@ class HandController {
       pointerY: event.clientY,
       width: rect.width,
       height: rect.height,
+      handle: event.currentTarget,
     };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    } catch (_error) {}
+    window.addEventListener("pointermove", this.handlePanelResizeMove);
+    window.addEventListener("pointerup", this.handlePanelResizeEnd);
+    window.addEventListener("pointercancel", this.handlePanelResizeEnd);
     event.preventDefault();
     event.stopPropagation();
   }
@@ -763,8 +771,13 @@ class HandController {
 
   endPanelResize(event) {
     if (!this.panelResize || this.panelResize.pointerId !== event.pointerId) return;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    try {
+      this.panelResize.handle?.releasePointerCapture?.(event.pointerId);
+    } catch (_error) {}
     this.panelResize = null;
+    window.removeEventListener("pointermove", this.handlePanelResizeMove);
+    window.removeEventListener("pointerup", this.handlePanelResizeEnd);
+    window.removeEventListener("pointercancel", this.handlePanelResizeEnd);
     this.constrainPanelToViewport(true);
   }
 
@@ -2119,6 +2132,9 @@ class HandController {
   dispose() {
     this.savePanelGeometry();
     this.panelResizeObserver?.disconnect();
+    window.removeEventListener("pointermove", this.handlePanelResizeMove);
+    window.removeEventListener("pointerup", this.handlePanelResizeEnd);
+    window.removeEventListener("pointercancel", this.handlePanelResizeEnd);
     window.removeEventListener("resize", this.handleWindowResize);
     this.startGeneration += 1;
     this.starting = false;
