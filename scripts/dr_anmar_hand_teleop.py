@@ -123,6 +123,32 @@ def proportional_jaw_targets(
     return -jaw, jaw
 
 
+def camera_pose_to_action_frame(
+    hand: dict[str, Any],
+    camera_to_action_basis: Iterable[Iterable[float]],
+) -> dict[str, Any]:
+    """Rotate camera-forward/right/up offsets into one robot IK action frame."""
+
+    basis = [[float(value) for value in row] for row in camera_to_action_basis]
+    if len(basis) != 3 or any(len(row) != 3 for row in basis):
+        raise ValueError("camera_to_action_basis must be a 3 by 3 matrix")
+    if not all(math.isfinite(value) for row in basis for value in row):
+        raise ValueError("camera_to_action_basis must contain only finite values")
+    translation = [float(value) for value in hand["translation_offset_m"]]
+    rotation = [float(value) for value in hand["rotation_vector_rad"]]
+
+    def rotate(values: list[float]) -> list[float]:
+        return [
+            sum(row[column] * values[column] for column in range(3))
+            for row in basis
+        ]
+
+    transformed = dict(hand)
+    transformed["translation_offset_m"] = rotate(translation)
+    transformed["rotation_vector_rad"] = rotate(rotation)
+    return transformed
+
+
 @dataclass
 class HandArmState:
     tracked: bool = False

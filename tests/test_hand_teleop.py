@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from dr_anmar_hand_teleop import (  # noqa: E402
     HandTeleopRuntime,
+    camera_pose_to_action_frame,
     proportional_gripper_action,
     proportional_jaw_targets,
     validate_hand_frame,
@@ -47,6 +48,23 @@ def hand(
 
 
 class HandFrameValidationTests(unittest.TestCase):
+    def test_camera_frame_offsets_rotate_into_native_action_axes(self) -> None:
+        command = hand(
+            translation=[0.03, 0.02, -0.01],
+            rotation=[0.3, 0.2, -0.1],
+        )
+        transformed = camera_pose_to_action_frame(
+            command,
+            (
+                (0.0, 1.0, 0.0),
+                (0.0, 0.0, 1.0),
+                (1.0, 0.0, 0.0),
+            ),
+        )
+        self.assertEqual(transformed["translation_offset_m"], [0.02, -0.01, 0.03])
+        self.assertEqual(transformed["rotation_vector_rad"], [0.2, -0.1, 0.3])
+        self.assertEqual(command["translation_offset_m"], [0.03, 0.02, -0.01])
+
     def test_rejects_duplicate_arm_and_non_finite_values(self) -> None:
         with self.assertRaisesRegex(ValueError, "appear once"):
             validate_hand_frame(1, [hand(), hand()], arms=2)

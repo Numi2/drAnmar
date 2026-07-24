@@ -5,12 +5,21 @@ Dr.Anmar's webcam controller is a simulation-only master-pose input for the two 
 ## Operator behavior
 
 - Physical left hand controls Instrument 1; physical right hand controls Instrument 2.
-- Hand translation maps to relative depth, lateral motion, and vertical motion.
-- Palm-frame orientation maps to bounded roll, pitch, and yaw.
+- Hand translation maps to endoscope-forward depth plus the live operative
+  view's right and up axes. The worker rotates that camera-space target into
+  each PSM's native IK root frame.
+- Palm-frame orientation maps through the same live camera frame to bounded
+  tool rotation.
 - Only thumb and index spacing controls proportional jaw aperture.
-- Explicit per-arm and global Engage/Freeze buttons are the motion clutch. No other finger pose is a command.
-- A new engagement captures a new hand anchor, so freezing and recentering cannot move the robot.
-- Precision mode is enabled by default and scales motion without changing camera calibration.
+- Curling at least two of the middle, ring, and little fingers is the natural
+  motion clutch. Extending them freezes immediately; curling them steadily for
+  250 ms engages. These fingers never affect jaw aperture or an analog axis.
+- A new engagement captures the current hand pose and robot target, then ramps
+  gain in smoothly, so freezing and recentering cannot jump.
+- Precision is progressive: small movements receive microsurgical gain while
+  larger deliberate movements receive more reach without a mode change.
+- The second hand must first appear open and then deliberately curl before it
+  is admitted. Visibility alone never activates Instrument 2.
 
 Calibration records a robust median from 24 stable samples for neutral palm scale and normalized closed/open
 thumb–index spacing per browser camera in `localStorage`. Median absolute deviation rejects a moving hand rather than
@@ -27,6 +36,11 @@ lag during deliberate motion. A bounded 25 ms velocity prediction compensates pa
 small translation and rotation deadbands remove resting chatter, and the interface exposes vision rate, inference
 time, round-trip command time, per-arm quality, and the active safety state.
 
+Depth uses the ratio between image-space palm geometry and corresponding
+camera-aligned world-landmark geometry. This compensates for palm
+foreshortening before the calibrated relative-depth logarithm is evaluated, so
+wrist rotation does not masquerade as pushing the hand toward the camera.
+
 ## Runtime contract
 
 The browser sends:
@@ -39,8 +53,8 @@ POST /api/teleop/hands
     arm,
     tracked,
     motion_engaged,
-    translation_offset_m: [depth, lateral, vertical],
-    rotation_vector_rad: [roll, pitch, yaw],
+    translation_offset_m: [camera_forward, camera_right, camera_up],
+    rotation_vector_rad: [camera_forward, camera_right, camera_up],
     aperture_normalized,
     confidence
   }]
@@ -50,6 +64,11 @@ POST /api/teleop/hands
 The endpoint accepts one complete frame at a time, validates unique available arms, finite values, confidence and
 aperture in `0..1`, translation inside ±0.12 m, rotation inside ±0.8 rad, the active operator lease, and strictly
 increasing sequence numbers. A rejected frame does not alter robot state.
+
+The workstation resolves the camera forward/right/up basis against each PSM
+root orientation. Changing or aiming the operative camera freezes webcam
+motion and increments the control-frame revision; engagement then captures a
+fresh anchor in the new view.
 
 Each arm keeps a cumulative master-pose target and the displacement already consumed by the simulator. Every
 simulation step divides the remaining displacement by the six real scales read from that arm's active NVIDIA

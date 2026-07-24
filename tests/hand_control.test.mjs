@@ -6,12 +6,15 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   OneEuroFilter,
+  adaptiveMotionGain,
   assignHandDetections,
   conditionPoseVector,
   depthOffset,
   handednessToArm,
   median,
+  naturalClutchScore,
   normalizedAperture,
+  orientationCompensatedPalmScale,
   palmFrame,
   poseOffset,
   predictPoseVector,
@@ -70,9 +73,9 @@ test("closer palm scale advances monotonically and clamps", () => {
   const anchor = { scale: 0.2, center: { x: 0.5, y: 0.5, z: 0 } };
   const near = { scale: 0.24, center: { x: 0.5, y: 0.5, z: -0.01 } };
   const nearer = { scale: 0.30, center: { x: 0.5, y: 0.5, z: -0.02 } };
-  assert.ok(depthOffset(anchor, near) < 0);
-  assert.ok(depthOffset(anchor, nearer) < depthOffset(anchor, near));
-  assert.ok(depthOffset(anchor, { ...nearer, scale: 20 }) >= -0.12);
+  assert.ok(depthOffset(anchor, near) > 0);
+  assert.ok(depthOffset(anchor, nearer) > depthOffset(anchor, near));
+  assert.ok(depthOffset(anchor, { ...nearer, scale: 20 }) <= 0.12);
 });
 
 test("palm rotation produces a bounded three-axis rotation vector", () => {
@@ -94,12 +97,49 @@ test("translation follows displayed lateral/vertical directions and smoothing", 
   assert.deepEqual(smoothVector([0, 0], [1, -1], 0.25), [0.25, -0.25]);
 });
 
-test("only thumb and index are intentional gesture controls", async () => {
+test("thumb-index aperture remains independent from the natural safety clutch", async () => {
   const source = await readFile(new URL("../web/hand_control.mjs", import.meta.url), "utf8");
   assert.match(source, /landmarks\[4\], landmarks\[8\]/);
-  assert.doesNotMatch(source, /middle.*curl|ring.*curl|pinky.*curl/i);
-  assert.match(source, /Engage tracked/);
-  assert.match(source, /Freeze both/);
+  assert.match(source, /Two-of-three consensus/);
+  assert.match(source, /Instrument .* frozen · recenter freely/);
+  assert.match(source, /curl the resting fingers to move/i);
+});
+
+test("natural clutch uses two-of-three finger flexion and adaptive motion gain", () => {
+  const extended = baseHand();
+  const fingerChains = [
+    [9, 10, 11, 12, 0.50],
+    [13, 14, 15, 16, 0.44],
+    [17, 18, 19, 20, 0.38],
+  ];
+  for (const [mcp, pip, dip, tip, x] of fingerChains) {
+    extended[mcp] = { x, y: 0.58, z: 0 };
+    extended[pip] = { x, y: 0.46, z: 0 };
+    extended[dip] = { x, y: 0.34, z: 0 };
+    extended[tip] = { x, y: 0.22, z: 0 };
+  }
+  const curled = structuredClone(extended);
+  for (const [, pip, dip, tip, x] of fingerChains) {
+    curled[pip] = { x, y: 0.48, z: 0 };
+    curled[dip] = { x: x + 0.07, y: 0.50, z: 0 };
+    curled[tip] = { x: x + 0.08, y: 0.58, z: 0 };
+  }
+  assert.ok(naturalClutchScore(extended) < 0.1);
+  assert.ok(naturalClutchScore(curled) > 0.34);
+  assert.ok(adaptiveMotionGain(0.001, true) < adaptiveMotionGain(0.04, true));
+  assert.ok(adaptiveMotionGain(0.04, true) < adaptiveMotionGain(0.04, false));
+});
+
+test("world/image palm fusion supplies an orientation-compensated depth scale", () => {
+  const image = baseHand();
+  const world = image.map(point => ({
+    x: (point.x - 0.5) * 0.20,
+    y: (point.y - 0.5) * 0.20,
+    z: point.z,
+  }));
+  const scale = orientationCompensatedPalmScale(image, world);
+  assert.ok(Number.isFinite(scale));
+  assert.ok(scale > 0);
 });
 
 test("robust calibration rejects motion and ignores isolated outliers", () => {

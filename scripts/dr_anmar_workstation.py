@@ -214,6 +214,7 @@ from dr_anmar_psm_native_adapter import (
 )
 from dr_anmar_hand_teleop import (
     HandTeleopRuntime,
+    camera_pose_to_action_frame,
     proportional_gripper_action,
     validate_hand_frame,
 )
@@ -779,6 +780,9 @@ class SharedState:
     gripper_apertures: list[float] = field(init=False)
     hand_teleop: HandTeleopRuntime = field(init=False)
     native_ik_scales: list[list[float]] = field(default_factory=list)
+    hand_camera_to_action_basis: list[list[list[float]]] = field(default_factory=list)
+    hand_camera_control_name: str = "endoscope_left"
+    hand_camera_control_revision: int = 0
     native_grasp_contact_active: list[bool] = field(init=False)
     tool_to_object_distance_m: list[float | None] = field(init=False)
     tool_to_object_offset_m: list[list[float] | None] = field(init=False)
@@ -915,6 +919,21 @@ class SharedState:
 
         self.hand_teleop.disable_motion(require_unclutched=require_unclutched)
 
+    def hand_teleop_snapshot(self, *, now: float | None = None) -> dict[str, Any]:
+        """Return hand state plus the live camera-aligned IK control frame."""
+
+        snapshot = self.hand_teleop.snapshot(now=now)
+        snapshot["control_frame"] = {
+            "name": self.hand_camera_control_name,
+            "revision": self.hand_camera_control_revision,
+            "semantic_axes": ["camera_forward", "camera_right", "camera_up"],
+            "camera_to_action_basis": [
+                [list(row) for row in basis]
+                for basis in self.hand_camera_to_action_basis
+            ],
+        }
+        return snapshot
+
     def camera_adjustment(self, camera_name: str = "endoscope_left") -> dict[str, float | bool | str]:
         """Return one camera's adjustment while the caller owns ``lock``."""
 
@@ -1036,7 +1055,7 @@ class SharedState:
                 "simulation_profile": dict(self.simulation_profile),
                 "grippers_open": self.grippers_open,
                 "gripper_apertures": self.gripper_apertures,
-                "hand_teleop": self.hand_teleop.snapshot(),
+                "hand_teleop": self.hand_teleop_snapshot(),
                 "native_grasp_contact_active": self.native_grasp_contact_active,
                 "tool_to_object_distance_m": self.tool_to_object_distance_m,
                 "tool_to_object_offset_m": self.tool_to_object_offset_m,
@@ -1153,7 +1172,7 @@ class SharedState:
                 },
                 "grippers_open": list(self.grippers_open),
                 "gripper_apertures": list(self.gripper_apertures),
-                "hand_teleop": self.hand_teleop.snapshot(),
+                "hand_teleop": self.hand_teleop_snapshot(),
                 "native_grasp_contact_active": list(self.native_grasp_contact_active),
                 "tool_to_object_distance_m": list(self.tool_to_object_distance_m),
                 "tool_to_object_offset_m": [list(value) if value is not None else None for value in self.tool_to_object_offset_m],
@@ -1619,11 +1638,39 @@ def build_web_app(state: SharedState) -> FastAPI:
         command = np.zeros(state.action_dim, dtype=np.float32)
         now = time.monotonic()
         with state.lock:
+            if len(state.hand_camera_to_action_basis) != state.arms:
+                raise HTTPException(
+                    409,
+                    "The live endoscope-to-instrument control frame is not ready",
+                )
+            action_hands = []
+            for hand in hands:
+                transformed = camera_pose_to_action_frame(
+                    hand,
+                    state.hand_camera_to_action_basis[hand["arm"]],
+                )
+                transformed["translation_offset_m"] = np.clip(
+                    np.asarray(
+                        transformed["translation_offset_m"],
+                        dtype=np.float64,
+                    ),
+                    -0.12,
+                    0.12,
+                ).tolist()
+                transformed["rotation_vector_rad"] = np.clip(
+                    np.asarray(
+                        transformed["rotation_vector_rad"],
+                        dtype=np.float64,
+                    ),
+                    -0.8,
+                    0.8,
+                ).tolist()
+                action_hands.append(transformed)
             try:
-                state.hand_teleop.submit(sequence, hands, now=now)
+                state.hand_teleop.submit(sequence, action_hands, now=now)
             except ValueError as error:
                 raise HTTPException(409, str(error)) from error
-            for hand in hands:
+            for hand in action_hands:
                 arm = hand["arm"]
                 arm_state = state.hand_teleop.arm_states[arm]
                 if arm_state.tracked and state.has_grippers and state.hand_teleop.enabled:
@@ -1642,7 +1689,7 @@ def build_web_app(state: SharedState) -> FastAPI:
                     )
             state.operator_input_source = "webcam_hands"
             state.note_control("webcam_hands", "webcam_hands", command)
-            snapshot = state.hand_teleop.snapshot(now=now)
+            snapshot = state.hand_teleop_snapshot(now=now)
         state.wake_event.set()
         return {"ok": True, "hand_teleop": snapshot}
 
@@ -1668,7 +1715,7 @@ def build_web_app(state: SharedState) -> FastAPI:
                 "webcam_hands",
                 np.zeros(state.action_dim, dtype=np.float32),
             )
-            snapshot = state.hand_teleop.snapshot()
+            snapshot = state.hand_teleop_snapshot()
         state.wake_event.set()
         return {"ok": True, "message": message, "hand_teleop": snapshot}
 
@@ -1709,6 +1756,7 @@ def build_web_app(state: SharedState) -> FastAPI:
         if request.mode not in camera_modes:
             raise HTTPException(400, f"camera view must be one of: {', '.join(sorted(camera_modes))}")
         with state.lock:
+            state.disable_hand_motion()
             state.camera_view_mode = request.mode
             state.camera_view_request = request.mode
             state.camera_free_enabled = False
@@ -1738,6 +1786,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             raise HTTPException(400, "Only the adjustable camera and gripper cameras can be aimed")
 
         with state.lock:
+            state.disable_hand_motion()
             if adjustment_camera.startswith("wrist_"):
                 adjustment = state.camera_adjustment(adjustment_camera)
                 if request.reset:
@@ -5934,6 +5983,88 @@ def main() -> None:
             suture_physics_lod if dr_anmar_needle_enabled else None
         ),
     }
+
+    def refresh_hand_camera_control_frame() -> None:
+        """Align camera forward/right/up with each PSM's native IK root frame."""
+
+        cached_eye = shared_camera_pose_cache.get("eye")
+        cached_target = shared_camera_pose_cache.get("target")
+        if cached_eye is None or cached_target is None:
+            return
+        eye = np.asarray(cached_eye, dtype=np.float64)
+        target = np.asarray(cached_target, dtype=np.float64)
+        forward = target - eye
+        forward_norm = float(np.linalg.norm(forward))
+        if forward_norm < 1.0e-7:
+            return
+        forward /= forward_norm
+        world_up = np.asarray((0.0, 0.0, 1.0), dtype=np.float64)
+        right = np.cross(forward, world_up)
+        if float(np.linalg.norm(right)) < 1.0e-6:
+            right = np.asarray((1.0, 0.0, 0.0), dtype=np.float64)
+        right /= max(float(np.linalg.norm(right)), 1.0e-7)
+        camera_up = np.cross(right, forward)
+        camera_up /= max(float(np.linalg.norm(camera_up)), 1.0e-7)
+        camera_basis_world = np.column_stack((forward, right, camera_up))
+        bases: list[list[list[float]]] = []
+        for arm, robot_name in enumerate(robot_names[: state.arms]):
+            quaternion = (
+                robots[robot_name]
+                .data.root_quat_w[0]
+                .detach()
+                .cpu()
+                .numpy()
+                .astype(np.float64)
+            )
+            quaternion /= max(float(np.linalg.norm(quaternion)), 1.0e-12)
+            w, x, y, z = quaternion
+            root_rotation_world = np.asarray(
+                (
+                    (
+                        1.0 - 2.0 * (y * y + z * z),
+                        2.0 * (x * y - z * w),
+                        2.0 * (x * z + y * w),
+                    ),
+                    (
+                        2.0 * (x * y + z * w),
+                        1.0 - 2.0 * (x * x + z * z),
+                        2.0 * (y * z - x * w),
+                    ),
+                    (
+                        2.0 * (x * z - y * w),
+                        2.0 * (y * z + x * w),
+                        1.0 - 2.0 * (x * x + y * y),
+                    ),
+                ),
+                dtype=np.float64,
+            )
+            action_basis = root_rotation_world.T @ camera_basis_world
+            bases.append(action_basis.round(9).tolist())
+        if len(bases) != state.arms:
+            return
+        control_name = str(
+            shared_camera_pose_cache.get("name") or "endoscope_left"
+        )
+        with state.lock:
+            previous = state.hand_camera_to_action_basis
+            changed = (
+                state.hand_camera_control_name != control_name
+                or len(previous) != len(bases)
+                or not np.allclose(
+                    np.asarray(previous, dtype=np.float64),
+                    np.asarray(bases, dtype=np.float64),
+                    atol=1.0e-6,
+                    rtol=0.0,
+                )
+            )
+            if changed:
+                if previous:
+                    state.disable_hand_motion()
+                state.hand_camera_to_action_basis = bases
+                state.hand_camera_control_name = control_name
+                state.hand_camera_control_revision += 1
+
+    refresh_hand_camera_control_frame()
     state.camera_names = list(camera_sources)
     update_procedure_waypoint_marker(0, force=True)
     expert_controller = ExpertDemonstrationController(
@@ -6221,6 +6352,7 @@ def main() -> None:
 
     while simulation_app.is_running() and not stop_event.is_set():
         loop_started = time.monotonic()
+        refresh_hand_camera_control_frame()
         action_uses_upstream_softmimicgen_units = False
         selected_active_camera = active_logical_camera_name(loop_started)
         with state.lock:
