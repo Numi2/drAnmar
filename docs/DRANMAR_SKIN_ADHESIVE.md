@@ -26,6 +26,20 @@ The live status reports commanded and measured activation, both paddle angles,
 piston travel, cap readiness, and bead state. State variants are selected while
 the assets spawn, before Isaac creates its physics views.
 
+## One-button pickup and uncapping
+
+Press **Use adhesive** in the workstation panel. The selected instrument closes
+its jaws, the authored `body_grasp` frame is aligned inside the tool, and the
+applicator follows that instrument while the cap is moved to its bench parking
+position. The operator can immediately move the instrument instead of manually
+coordinating two PSMs around the applicator.
+
+This is an explicit guided grasp assist, reported as
+`guided_kinematic_grasp`. It is a usability feature for the simulated
+workstation, not a claim that a physical robot autonomously planned or executed
+the pickup. Resetting the scene releases the assist and restores the applicator
+and cap to their initial bench poses.
+
 ## Python integration
 
 ```python
