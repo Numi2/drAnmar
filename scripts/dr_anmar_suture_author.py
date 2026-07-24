@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Author the independent Dr.Anmar 4-0 suture as an OpenUSD physics asset.
 
-The asset is a high-resolution discrete Cosserat rod: every visible capsule is
-also its collision body, while D6 joints independently model axial stretch,
+The asset is a high-resolution discrete Cosserat rod: closed braided meshes
+provide segment-local render detail, hidden primitive capsules provide
+solver-efficient collision, and D6 joints independently model axial stretch,
 bending, torsion, damping, and overload breakage.  No NVIDIA Rope.usd data is
 read or referenced.
 """
@@ -48,7 +49,15 @@ from dr_anmar_suture_integration import (
     SUTURE_PHYSICS_ASSET_PATH,
     SUTURE_PHYSX_ASSET_PATH,
 )
-from dr_anmar_suture_model import DEFAULT_PROFILE_PATH, derive, load_profile
+from dr_anmar_suture_model import (
+    DEFAULT_PROFILE_PATH,
+    SutureVisualMesh,
+    build_suture_visual_mesh,
+    capsule_point_containment_margin,
+    derive,
+    load_profile,
+    suture_segment_collision_radius,
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = SUTURE_ASSET_PATH
@@ -82,24 +91,93 @@ def indent(text: str, spaces: int = 4) -> str:
     return "\n".join(prefix + line if line else "" for line in text.splitlines())
 
 
-def capsule_geometry_block(
+def capsule_body_geometry_block(
     *,
     name: str,
     x_m: float,
     radius_m: float,
     cylinder_height_m: float,
     color: tuple[float, float, float],
+    collider_purpose: str,
+    collider_visibility: str,
 ) -> str:
     total_half_length = cylinder_height_m / 2.0 + radius_m
-    return f"""def Capsule "{name}"
+    return f"""def Xform "{name}"
 {{
-    uniform token axis = "X"
-    float height = {usd_float(cylinder_height_m)}
-    float radius = {usd_float(radius_m)}
-    float3[] extent = [{usd_vec((-total_half_length, -radius_m, -radius_m))}, {usd_vec((total_half_length, radius_m, radius_m))}]
-    color3f[] primvars:displayColor = [{usd_vec(color)}]
     double3 xformOp:translate = {usd_vec((x_m, 0.0, 0.0))}
     uniform token[] xformOpOrder = ["xformOp:translate"]
+
+    def Capsule "Visual"
+    {{
+        uniform token axis = "X"
+        float height = {usd_float(cylinder_height_m)}
+        float radius = {usd_float(radius_m)}
+        float3[] extent = [{usd_vec((-total_half_length, -radius_m, -radius_m))}, {usd_vec((total_half_length, radius_m, radius_m))}]
+        color3f[] primvars:displayColor = [{usd_vec(color)}]
+    }}
+
+    def Capsule "Collision"
+    {{
+        uniform token axis = "X"
+        float height = {usd_float(cylinder_height_m)}
+        float radius = {usd_float(radius_m)}
+        float3[] extent = [{usd_vec((-total_half_length, -radius_m, -radius_m))}, {usd_vec((total_half_length, radius_m, radius_m))}]
+        uniform token purpose = "{collider_purpose}"
+        token visibility = "{collider_visibility}"
+    }}
+}}"""
+
+
+def braided_segment_geometry_block(
+    *,
+    name: str,
+    x_m: float,
+    collision_radius_m: float,
+    cylinder_height_m: float,
+    color: tuple[float, float, float],
+    mesh: SutureVisualMesh,
+    collider_purpose: str,
+    collider_visibility: str,
+) -> str:
+    """Author one rigid segment with a detailed render mesh and primitive collider."""
+
+    total_half_length = cylinder_height_m / 2.0 + collision_radius_m
+    points = ",\n            ".join(usd_vec(point) for point in mesh.points)
+    normals = ",\n            ".join(usd_vec(normal) for normal in mesh.normals)
+    face_counts = ", ".join(str(value) for value in mesh.face_vertex_counts)
+    face_indices = ", ".join(str(value) for value in mesh.face_vertex_indices)
+    return f"""def Xform "{name}"
+{{
+    double3 xformOp:translate = {usd_vec((x_m, 0.0, 0.0))}
+    uniform token[] xformOpOrder = ["xformOp:translate"]
+
+    def Mesh "Visual"
+    {{
+        uniform bool doubleSided = false
+        float3[] extent = [{usd_vec(mesh.extent_min)}, {usd_vec(mesh.extent_max)}]
+        int[] faceVertexCounts = [{face_counts}]
+        int[] faceVertexIndices = [{face_indices}]
+        point3f[] points = [
+            {points}
+        ]
+        normal3f[] primvars:normals = [
+            {normals}
+        ] (
+            interpolation = "vertex"
+        )
+        color3f[] primvars:displayColor = [{usd_vec(color)}]
+        uniform token subdivisionScheme = "none"
+    }}
+
+    def Capsule "Collision"
+    {{
+        uniform token axis = "X"
+        float height = {usd_float(cylinder_height_m)}
+        float radius = {usd_float(collision_radius_m)}
+        float3[] extent = [{usd_vec((-total_half_length, -collision_radius_m, -collision_radius_m))}, {usd_vec((total_half_length, collision_radius_m, collision_radius_m))}]
+        uniform token purpose = "{collider_purpose}"
+        token visibility = "{collider_visibility}"
+    }}
 }}"""
 
 
@@ -111,26 +189,30 @@ def capsule_physics_block(
     filtered_pair: str | None,
     physics_material_path: str | None = None,
 ) -> str:
-    schemas = [
-        '"PhysicsCollisionAPI"',
-        '"PhysicsRigidBodyAPI"',
-        '"PhysicsMassAPI"',
-    ]
+    schemas = ['"PhysicsRigidBodyAPI"', '"PhysicsMassAPI"']
     if filtered_pair:
         schemas.append('"PhysicsFilteredPairsAPI"')
-    if physics_material_path:
-        schemas.append('"MaterialBindingAPI"')
     filtered = f"\n    rel physics:filteredPairs = <{filtered_pair}>" if filtered_pair else ""
-    binding = f"\n    rel material:binding:physics = <{physics_material_path}>" if physics_material_path else ""
+    collision_schemas = ['"PhysicsCollisionAPI"']
+    if physics_material_path:
+        collision_schemas.append('"MaterialBindingAPI"')
+    binding = f"\n        rel material:binding:physics = <{physics_material_path}>" if physics_material_path else ""
     return f"""over "{name}" (
     prepend apiSchemas = [{", ".join(schemas)}]
 )
 {{
-    bool physics:collisionEnabled = true
     bool physics:rigidBodyEnabled = true
     bool physics:kinematicEnabled = {"true" if kinematic else "false"}
     float physics:mass = {usd_float(mass_kg)}
-    {(filtered + binding).lstrip()}
+    {filtered.lstrip()}
+
+    over "Collision" (
+        prepend apiSchemas = [{", ".join(collision_schemas)}]
+    )
+    {{
+        bool physics:collisionEnabled = true
+        {binding.lstrip()}
+    }}
 }}"""
 
 
@@ -151,7 +233,7 @@ def capsule_physx_block(
         ),
     )
     return f"""over "{name}" (
-    prepend apiSchemas = ["PhysxRigidBodyAPI", "PhysxCollisionAPI"]
+    prepend apiSchemas = ["PhysxRigidBodyAPI"]
 )
 {{
     bool physxRigidBody:enableCCD = true
@@ -161,8 +243,13 @@ def capsule_physx_block(
     int physxRigidBody:solverPositionIterationCount = {int(solver["position_iterations"])}
     int physxRigidBody:solverVelocityIterationCount = {int(solver["velocity_iterations"])}
     float physxRigidBody:maxDepenetrationVelocity = 0.25
-    float physxCollision:contactOffset = {usd_float(contact_offset)}
-    float physxCollision:restOffset = {usd_float(float(offset_contract["rest_offset_m"]))}
+    over "Collision" (
+        prepend apiSchemas = ["PhysxCollisionAPI"]
+    )
+    {{
+        float physxCollision:contactOffset = {usd_float(contact_offset)}
+        float physxCollision:restOffset = {usd_float(float(offset_contract["rest_offset_m"]))}
+    }}
 }}"""
 
 
@@ -261,39 +348,46 @@ def author(
     tension = profile["tension"]
     contact = profile["contact"]
     swage = profile["swage"]
+    visual_representation = geometry["visual_representation"]
     color = (
         float(geometry["color_rgb"][0]),
         float(geometry["color_rgb"][1]),
         float(geometry["color_rgb"][2]),
     )
     spacing = derived.segment_spacing_m
-    base_radius = derived.radius_m
     root = "/DrAnmarSuture4_0"
     suture_visual_path = f"{root}/Looks/SutureVisual"
     swage_visual_path = f"{root}/Looks/SwageVisual"
     suture_physics_path = f"{root}/Materials/SutureMaterial"
     swage_physics_path = f"{root}/Materials/SwageSteel"
     swage_radius = float(swage["needle_end_diameter_m"]) / 2.0
-    interface_height = max(spacing - 2.0 * swage_radius, spacing * 0.05)
+    interface_height = spacing
     geometry_blocks: list[str] = [
-        capsule_geometry_block(
+        capsule_body_geometry_block(
             name="NeedleInterface",
             x_m=-spacing / 2.0,
             radius_m=swage_radius,
             cylinder_height_m=interface_height,
             color=(0.58, 0.61, 0.66),
+            collider_purpose=str(visual_representation["collider_purpose"]),
+            collider_visibility=str(visual_representation["collider_visibility"]),
         )
     ]
     segment_geometry_blocks: list[str] = []
     segment_physics_blocks: list[str] = []
     segment_physx_blocks: list[str] = []
-    modulation = float(geometry["surface_radius_modulation_fraction"])
-    modulation_period = int(geometry["surface_modulation_period_segments"])
     for index in range(derived.segment_count):
-        swage_fraction = clamp01(1.0 - index / max(1, derived.swage_segment_count - 1))
-        taper_radius = base_radius + (swage_radius - base_radius) * swage_fraction
-        roughness = 1.0 + modulation * math.sin(2.0 * math.pi * index / modulation_period)
-        radius = taper_radius * roughness
+        radius = suture_segment_collision_radius(
+            profile,
+            index,
+            derived=derived,
+        )
+        visual_mesh = build_suture_visual_mesh(
+            profile,
+            index,
+            collision_radius_m=radius,
+            derived=derived,
+        )
         shade = 0.92 + 0.08 * ((index % 3) / 2.0)
         segment_color = (
             max(0.0, min(1.0, color[0] * shade)),
@@ -301,14 +395,17 @@ def author(
             max(0.0, min(1.0, color[2] * shade)),
         )
         previous_path = f"{root}/NeedleInterface" if index == 0 else f"{root}/Segments/S{index - 1:04d}"
-        cylinder_height = max(spacing - 2.0 * radius, spacing * 0.05)
+        cylinder_height = spacing
         segment_geometry_blocks.append(
-            capsule_geometry_block(
+            braided_segment_geometry_block(
                 name=f"S{index:04d}",
                 x_m=(index + 0.5) * spacing,
-                radius_m=radius,
+                collision_radius_m=radius,
                 cylinder_height_m=cylinder_height,
                 color=segment_color,
+                mesh=visual_mesh,
+                collider_purpose=str(visual_representation["collider_purpose"]),
+                collider_visibility=str(visual_representation["collider_visibility"]),
             )
         )
         segment_physics_blocks.append(
@@ -317,6 +414,7 @@ def author(
                 mass_kg=derived.segment_mass_kg,
                 kinematic=False,
                 filtered_pair=previous_path,
+                physics_material_path=suture_physics_path,
             )
         )
         segment_physx_blocks.append(
@@ -364,7 +462,7 @@ def author(
         "drAnmarIndependentAsset": True,
         "drAnmarLayerContract": "interface_references_base_with_public_none_physics_physx_payload_variants",
         "drAnmarProfileId": profile["id"],
-        "drAnmarRepresentation": "discrete_cosserat_rod",
+        "drAnmarRepresentation": "discrete_cosserat_rod_with_braided_render_mesh_and_capsule_colliders",
         "drAnmarStatus": profile["status"],
     }
     custom_lines = "\n".join(
@@ -447,7 +545,7 @@ def Xform "DrAnmarSuture4_0" (
     geometry_layer = f"""#usda 1.0
 (
     defaultPrim = "DrAnmarSuture4_0"
-    doc = "Dr.Anmar 4-0 suture binary capsule geometry layer. Composed by DrAnmarSuture4_0.usda."
+    doc = "Dr.Anmar 4-0 suture binary braided visual-mesh and primitive-collider geometry layer."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -559,12 +657,8 @@ over "DrAnmarSuture4_0"
 
 {indent(interface_physics)}
 
-    over "Segments" (
-        prepend apiSchemas = ["MaterialBindingAPI"]
-    )
+    over "Segments"
     {{
-        rel material:binding:physics = <{suture_physics_path}>
-
 {segment_physics_source}
     }}
 
@@ -1248,11 +1342,49 @@ def main() -> int:
     needle_base_temporary.replace(needle_base_output)
     needle_temporary.replace(needle_output)
     derived = derive(profile)
+    suture_visual_vertex_count = 0
+    suture_visual_face_count = 0
+    suture_visual_minimum_radius_ratio = math.inf
+    suture_visual_maximum_radius_ratio = 0.0
+    suture_minimum_visual_collision_margin_m = math.inf
+    for segment_index in range(derived.segment_count):
+        collision_radius = suture_segment_collision_radius(
+            profile,
+            segment_index,
+            derived=derived,
+        )
+        suture_visual_mesh = build_suture_visual_mesh(
+            profile,
+            segment_index,
+            collision_radius_m=collision_radius,
+            derived=derived,
+        )
+        suture_visual_vertex_count += len(suture_visual_mesh.points)
+        suture_visual_face_count += len(suture_visual_mesh.face_vertex_counts)
+        suture_visual_minimum_radius_ratio = min(
+            suture_visual_minimum_radius_ratio,
+            suture_visual_mesh.minimum_radius_m / collision_radius,
+        )
+        suture_visual_maximum_radius_ratio = max(
+            suture_visual_maximum_radius_ratio,
+            suture_visual_mesh.maximum_radius_m / collision_radius,
+        )
+        suture_minimum_visual_collision_margin_m = min(
+            suture_minimum_visual_collision_margin_m,
+            *(
+                capsule_point_containment_margin(
+                    point,
+                    radius_m=collision_radius,
+                    cylinder_height_m=derived.segment_spacing_m,
+                )
+                for point in suture_visual_mesh.points
+            ),
+        )
     derived_needle = derive_needle(needle_profile)
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v8",
+        "schema": "dr.anmar.suture-asset-report.v10",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
@@ -1264,6 +1396,16 @@ def main() -> int:
         "suture_geometry_format": "usdc",
         "suture_geometry_sha256": sha256(geometry_output),
         "suture_geometry_bytes": geometry_output.stat().st_size,
+        "suture_visual_mesh_schema": profile["geometry"]["visual_representation"]["visual_schema"],
+        "suture_visual_vertices_per_segment": suture_visual_vertex_count // derived.segment_count,
+        "suture_visual_faces_per_segment": suture_visual_face_count // derived.segment_count,
+        "suture_visual_total_vertices": suture_visual_vertex_count,
+        "suture_visual_total_faces": suture_visual_face_count,
+        "suture_visual_minimum_radius_ratio": suture_visual_minimum_radius_ratio,
+        "suture_visual_maximum_radius_ratio": suture_visual_maximum_radius_ratio,
+        "suture_collider_cylinder_height_m": derived.segment_spacing_m,
+        "suture_minimum_visual_collision_margin_m": suture_minimum_visual_collision_margin_m,
+        "suture_render_collision_separation": profile["geometry"]["visual_representation"],
         "suture_materials": portable_path(materials_output),
         "suture_materials_sha256": sha256(materials_output),
         "suture_physics": portable_path(physics_output),
@@ -1337,7 +1479,9 @@ def main() -> int:
         "needle_sim_to_real_gap_count": len(needle_profile["sim_to_real"]["gaps"]),
         "suture_sim_to_real_gap_count": len(profile["sim_to_real"]["gaps"]),
         "swage_connection": "fixed_needle_to_interface_then_breakable_pullout_joint",
-        "representation": "visible_collision_capsules_with_breakable_d6_cosserat_joints",
+        "representation": (
+            "braided_visual_meshes_on_rigid_xforms_with_hidden_capsule_colliders_and_breakable_d6_cosserat_joints"
+        ),
         "segment_count": derived.segment_count,
         "joint_count": derived.segment_count,
         "diameter_m": derived.diameter_m,

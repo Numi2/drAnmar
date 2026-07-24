@@ -51,6 +51,8 @@ from dr_anmar_suture_integration import (
 )
 from dr_anmar_suture_model import (
     DEFAULT_PROFILE_PATH,
+    build_suture_visual_mesh,
+    capsule_point_containment_margin,
     crush_strength_fraction,
     derive,
     effective_failure_load,
@@ -59,6 +61,7 @@ from dr_anmar_suture_model import (
     sample_suture_runtime_profile,
     self_friction_coefficient,
     stress_retention,
+    suture_segment_collision_radius,
 )
 from dr_anmar_suture_runtime import SutureRuntime
 
@@ -246,7 +249,7 @@ def add_suture_layer_checks(
     check(
         checks,
         "suture_asset_structure_source_ownership",
-        profile["version"] == "2.1.0"
+        profile["version"] == "2.2.0"
         and layer_contract["entry_layer"] == "DrAnmarSuture4_0.usda"
         and layer_contract["base_layer"] == "DrAnmarSuture4_0_base.usda"
         and layer_contract["geometry_layer"] == "DrAnmarSuture4_0_geometry.usd"
@@ -288,21 +291,32 @@ def add_suture_layer_checks(
         and not materials_forbidden
         and not neutral_engine_specific
         and not physx_neutral_or_newton
-        and len(re.findall(r'def Capsule "S\d{4}"', geometry_text)) == segment_count
-        and geometry_text.count('def Capsule "NeedleInterface"') == 1
+        and len(re.findall(r'def Xform "S\d{4}"', geometry_text)) == segment_count
+        and geometry_text.count('def Xform "NeedleInterface"') == 1
+        and geometry_text.count('def Mesh "Visual"') == segment_count
+        and geometry_text.count('def Capsule "Visual"') == 1
+        and geometry_text.count('def Capsule "Collision"') == segment_count + 1
+        and geometry_text.count('uniform token purpose = "guide"') == segment_count + 1
+        and geometry_text.count('token visibility = "invisible"') == segment_count + 1
+        and geometry_text.count('uniform token subdivisionScheme = "none"') == segment_count
+        and geometry_text.count("normal3f[] primvars:normals") == segment_count
+        and geometry_text.count('interpolation = "vertex"') == segment_count
         and materials_text.count('def Material "') == 2
         and materials_text.count('def Shader "PreviewSurface"') == 2
         and materials_text.count("rel material:binding =") == 2
         and physics_text.count('"PhysicsRigidBodyAPI"') == segment_count + 1
+        and physics_text.count('"PhysicsMassAPI"') == segment_count + 1
         and physics_text.count('"PhysicsCollisionAPI"') == segment_count + 1
+        and physics_text.count("rel material:binding:physics =") == segment_count + 1
         and len(re.findall(r'def PhysicsJoint "J\d{4}"', physics_text)) == segment_count
-        and physx_text.count('"PhysxRigidBodyAPI", "PhysxCollisionAPI"') == segment_count + 1
+        and physx_text.count('"PhysxRigidBodyAPI"') == segment_count + 1
+        and physx_text.count('"PhysxCollisionAPI"') == segment_count + 1
         and physx_text.count("physxRigidBody:enableCCD") == segment_count + 1
         and physx_text.count("physxRigidBody:enableSpeculativeCCD") == segment_count + 1
         and physx_text.count("physxCollision:contactOffset") == segment_count + 1
         and physx_text.count("physxCollision:restOffset") == segment_count + 1
         and physx_text.count('"PhysxMaterialAPI"') == 2
-        and len(nvidia_references) >= 5
+        and len(nvidia_references) >= 6
         and all(
             item.get("url", "").startswith(
                 (
@@ -329,40 +343,50 @@ def add_suture_layer_checks(
             "physx_neutral_or_newton": physx_neutral_or_newton,
             "nvidia_reference_count": len(nvidia_references),
         },
-        "lightweight entry, binary capsule geometry, visual look-development, neutral mechanics, and PhysX tuning"
-        " have isolated deterministic source ownership",
+        "lightweight entry, binary braided render geometry with primitive colliders, visual look-development,"
+        " neutral mechanics, and PhysX tuning have isolated deterministic source ownership",
     )
 
     offset_contract = profile["contact"]["contact_offsets"]
-    contact_offsets: list[float] = []
-    rest_offsets: list[float] = []
-    attribute_errors: list[str] = []
-    body_names = ["NeedleInterface", *(f"S{index:04d}" for index in range(segment_count))]
-    for body_name in body_names:
-        geometry_match = re.search(
-            rf'def Capsule "{body_name}".*?\n\s*\}}',
-            geometry_text,
-            flags=re.DOTALL,
-        )
-        physx_match = re.search(
-            rf'over "{body_name}".*?\n\s*\}}',
+    collision_blocks = re.findall(
+        r'def Capsule "Collision"\s*\{(.*?)\n\s*\}',
+        geometry_text,
+        flags=re.DOTALL,
+    )
+    collision_radii = [
+        float(match.group(1))
+        for block in collision_blocks
+        if (match := re.search(r"float radius = ([0-9.eE+-]+)", block)) is not None
+    ]
+    contact_offsets = [
+        float(value)
+        for value in re.findall(
+            r"float physxCollision:contactOffset = ([0-9.eE+-]+)",
             physx_text,
-            flags=re.DOTALL,
         )
-        if geometry_match is None or physx_match is None:
-            attribute_errors.append(f"{body_name}:missing_geometry_or_physx_block")
-            continue
-        geometry_block = geometry_match.group(0)
-        physx_block = physx_match.group(0)
-        radius_match = re.search(r"float radius = ([0-9.eE+-]+)", geometry_block)
-        contact_match = re.search(r"float physxCollision:contactOffset = ([0-9.eE+-]+)", physx_block)
-        rest_match = re.search(r"float physxCollision:restOffset = ([0-9.eE+-]+)", physx_block)
-        if radius_match is None or contact_match is None or rest_match is None:
-            attribute_errors.append(f"{body_name}:missing_radius_or_offset")
-            continue
-        radius = float(radius_match.group(1))
-        contact_offset = float(contact_match.group(1))
-        rest_offset = float(rest_match.group(1))
+    ]
+    rest_offsets = [
+        float(value)
+        for value in re.findall(
+            r"float physxCollision:restOffset = ([0-9.eE+-]+)",
+            physx_text,
+        )
+    ]
+    attribute_errors: list[str] = []
+    body_count = segment_count + 1
+    if not (len(collision_blocks) == len(collision_radii) == len(contact_offsets) == len(rest_offsets) == body_count):
+        attribute_errors.append("collider_or_offset_count")
+    for body_index, (
+        radius,
+        contact_offset,
+        rest_offset,
+    ) in enumerate(
+        zip(
+            collision_radii,
+            contact_offsets,
+            rest_offsets,
+        )
+    ):
         expected_contact_offset = max(
             float(offset_contract["minimum_m"]),
             min(
@@ -376,24 +400,26 @@ def add_suture_layer_checks(
             rel_tol=0.0,
             abs_tol=1.0e-12,
         ):
-            attribute_errors.append(f"{body_name}:contact_offset")
+            attribute_errors.append(f"{body_index}:contact_offset")
         if not math.isclose(
             rest_offset,
             float(offset_contract["rest_offset_m"]),
             rel_tol=0.0,
             abs_tol=1.0e-12,
         ):
-            attribute_errors.append(f"{body_name}:rest_offset")
-        for token in (
-            "bool physxRigidBody:enableCCD = true",
-            "bool physxRigidBody:enableSpeculativeCCD = true",
-            f'int physxRigidBody:solverPositionIterationCount = {int(profile["solver"]["position_iterations"])}',
-            f'int physxRigidBody:solverVelocityIterationCount = {int(profile["solver"]["velocity_iterations"])}',
-        ):
-            if token not in physx_block:
-                attribute_errors.append(f"{body_name}:{token.split(':')[-1].split()[0]}")
-        contact_offsets.append(contact_offset)
-        rest_offsets.append(rest_offset)
+            attribute_errors.append(f"{body_index}:rest_offset")
+    expected_body_attribute_counts = {
+        "sweep_ccd": physx_text.count("bool physxRigidBody:enableCCD = true"),
+        "speculative_ccd": physx_text.count("bool physxRigidBody:enableSpeculativeCCD = true"),
+        "position_iterations": physx_text.count(
+            f'int physxRigidBody:solverPositionIterationCount = {int(profile["solver"]["position_iterations"])}'
+        ),
+        "velocity_iterations": physx_text.count(
+            f'int physxRigidBody:solverVelocityIterationCount = {int(profile["solver"]["velocity_iterations"])}'
+        ),
+    }
+    if any(value != body_count for value in expected_body_attribute_counts.values()):
+        attribute_errors.append("physx_body_attribute_count")
     check(
         checks,
         "suture_hybrid_ccd_and_scale_aware_contact",
@@ -419,6 +445,7 @@ def add_suture_layer_checks(
         and physx_text.count('physxMaterial:frictionCombineMode = "max"') == 2,
         {
             "attribute_errors": attribute_errors,
+            "body_attribute_counts": expected_body_attribute_counts,
             "body_count": len(contact_offsets),
             "contact_offset_range_m": [
                 min(contact_offsets) if contact_offsets else None,
@@ -450,7 +477,9 @@ def add_physics_variant_checks(
             "physx_api_schemas": len(re.findall(r'"Physx[A-Za-z0-9_:]*API(?::[A-Za-z0-9_]+)?"', text)),
             "physics_properties": len(re.findall(r"\bphysics:[A-Za-z][A-Za-z0-9_]*", text)),
             "physx_properties": len(re.findall(r"\bphysx[A-Za-z]*:[A-Za-z][A-Za-z0-9_]*", text)),
-            "suture_capsules": len(re.findall(r'def Capsule "S\d{4}"', text)),
+            "suture_segments": len(re.findall(r'def Xform "S\d{4}"', text)),
+            "suture_visual_meshes": text.count('def Mesh "Visual"'),
+            "suture_colliders": text.count('def Capsule "Collision"'),
             "suture_joints": len(re.findall(r'def PhysicsJoint "J\d{4}"', text)),
             "needle_colliders": len(re.findall(r'def Capsule "C\d{3}"', text)),
             "factory_swage_joints": text.count('def PhysicsFixedJoint "FactorySwage"'),
@@ -462,19 +491,25 @@ def add_physics_variant_checks(
         checks,
         "suture_public_physics_variants_compose",
         set(suture_variants) == {"none", "physics", "physx"}
-        and suture_metrics["none"]["suture_capsules"] == segment_count
+        and suture_metrics["none"]["suture_segments"] == segment_count
+        and suture_metrics["none"]["suture_visual_meshes"] == segment_count
+        and suture_metrics["none"]["suture_colliders"] == segment_count + 1
         and suture_metrics["none"]["physics_api_schemas"] == 0
         and suture_metrics["none"]["physics_properties"] == 0
         and suture_metrics["none"]["physx_api_schemas"] == 0
         and suture_metrics["none"]["physx_properties"] == 0
         and suture_metrics["none"]["suture_joints"] == 0
-        and suture_metrics["physics"]["suture_capsules"] == segment_count
+        and suture_metrics["physics"]["suture_segments"] == segment_count
+        and suture_metrics["physics"]["suture_visual_meshes"] == segment_count
+        and suture_metrics["physics"]["suture_colliders"] == segment_count + 1
         and suture_metrics["physics"]["physics_api_schemas"] > 0
         and suture_metrics["physics"]["physics_properties"] > 0
         and suture_metrics["physics"]["physx_api_schemas"] == 0
         and suture_metrics["physics"]["physx_properties"] == 0
         and suture_metrics["physics"]["suture_joints"] == segment_count
-        and suture_metrics["physx"]["suture_capsules"] == segment_count
+        and suture_metrics["physx"]["suture_segments"] == segment_count
+        and suture_metrics["physx"]["suture_visual_meshes"] == segment_count
+        and suture_metrics["physx"]["suture_colliders"] == segment_count + 1
         and suture_metrics["physx"]["physics_api_schemas"] > 0
         and suture_metrics["physx"]["physx_api_schemas"] > 0
         and suture_metrics["physx"]["physics_properties"] > 0
@@ -487,7 +522,9 @@ def add_physics_variant_checks(
         checks,
         "needle_public_physics_variants_compose_and_synchronize_suture",
         set(needle_variants) == {"none", "physics", "physx"}
-        and needle_metrics["none"]["suture_capsules"] == segment_count
+        and needle_metrics["none"]["suture_segments"] == segment_count
+        and needle_metrics["none"]["suture_visual_meshes"] == segment_count + 1
+        and needle_metrics["none"]["suture_colliders"] == segment_count + 1
         and needle_metrics["none"]["needle_colliders"] == 0
         and needle_metrics["none"]["physics_api_schemas"] == 0
         and needle_metrics["none"]["physics_properties"] == 0
@@ -495,7 +532,9 @@ def add_physics_variant_checks(
         and needle_metrics["none"]["physx_properties"] == 0
         and needle_metrics["none"]["suture_joints"] == 0
         and needle_metrics["none"]["factory_swage_joints"] == 0
-        and needle_metrics["physics"]["suture_capsules"] == segment_count
+        and needle_metrics["physics"]["suture_segments"] == segment_count
+        and needle_metrics["physics"]["suture_visual_meshes"] == segment_count + 1
+        and needle_metrics["physics"]["suture_colliders"] == segment_count + 1
         and needle_metrics["physics"]["needle_colliders"] == needle_collision_count
         and needle_metrics["physics"]["physics_api_schemas"] > 0
         and needle_metrics["physics"]["physics_properties"] > 0
@@ -503,7 +542,9 @@ def add_physics_variant_checks(
         and needle_metrics["physics"]["physx_properties"] == 0
         and needle_metrics["physics"]["suture_joints"] == segment_count
         and needle_metrics["physics"]["factory_swage_joints"] == 1
-        and needle_metrics["physx"]["suture_capsules"] == segment_count
+        and needle_metrics["physx"]["suture_segments"] == segment_count
+        and needle_metrics["physx"]["suture_visual_meshes"] == segment_count + 1
+        and needle_metrics["physx"]["suture_colliders"] == segment_count + 1
         and needle_metrics["physx"]["needle_colliders"] == needle_collision_count
         and needle_metrics["physx"]["physics_api_schemas"] > 0
         and needle_metrics["physx"]["physics_properties"] > 0
@@ -513,6 +554,313 @@ def add_physics_variant_checks(
         and needle_metrics["physx"]["factory_swage_joints"] == 1,
         needle_metrics,
         "the assembly choice switches needle and nested suture together without mixed physics backends",
+    )
+
+
+def add_suture_visual_mesh_checks(
+    checks: dict[str, dict[str, Any]],
+    profile: dict[str, Any],
+    *,
+    segment_count: int,
+    geometry_text: str,
+) -> None:
+    """Validate braided render topology, normals, envelope, and segment continuity."""
+
+    derived = derive(profile)
+    visual = profile["geometry"]["visual_representation"]
+    radial_samples = int(visual["radial_samples"])
+    axial_samples = int(visual["axial_samples_per_segment"])
+    sampled_indices = sorted(
+        {
+            0,
+            min(segment_count - 1, derived.swage_segment_count - 1),
+            segment_count // 2,
+            segment_count - 1,
+        }
+    )
+    topology_errors: list[str] = []
+    maximum_normal_unit_error = 0.0
+    minimum_normal_outward_dot = math.inf
+    minimum_face_outward_dot = math.inf
+    maximum_visual_to_collision_ratio = 0.0
+    minimum_visual_to_collision_ratio = math.inf
+    minimum_visual_collision_margin_m = math.inf
+    maximum_segment_boundary_gap_m = 0.0
+    non_finite_value_count = 0
+    total_vertices = 0
+    total_faces = 0
+    previous_right_ring: tuple[tuple[float, float, float], ...] | None = None
+    for segment_index in range(segment_count):
+        collision_radius = suture_segment_collision_radius(
+            profile,
+            segment_index,
+            derived=derived,
+        )
+        mesh = build_suture_visual_mesh(
+            profile,
+            segment_index,
+            collision_radius_m=collision_radius,
+            derived=derived,
+        )
+        total_vertices += len(mesh.points)
+        total_faces += len(mesh.face_vertex_counts)
+        maximum_visual_to_collision_ratio = max(
+            maximum_visual_to_collision_ratio,
+            mesh.maximum_radius_m / collision_radius,
+        )
+        minimum_visual_to_collision_ratio = min(
+            minimum_visual_to_collision_ratio,
+            mesh.minimum_radius_m / collision_radius,
+        )
+        minimum_visual_collision_margin_m = min(
+            minimum_visual_collision_margin_m,
+            *(
+                capsule_point_containment_margin(
+                    point,
+                    radius_m=collision_radius,
+                    cylinder_height_m=derived.segment_spacing_m,
+                )
+                for point in mesh.points
+            ),
+        )
+        for point, normal in zip(mesh.points, mesh.normals, strict=True):
+            values = (*point, *normal)
+            non_finite_value_count += sum(not math.isfinite(value) for value in values)
+            normal_length = math.sqrt(sum(component * component for component in normal))
+            maximum_normal_unit_error = max(
+                maximum_normal_unit_error,
+                abs(normal_length - 1.0),
+            )
+            if abs(point[0]) < derived.segment_spacing_m / 2.0 - 1.0e-12:
+                radial_length = math.hypot(point[1], point[2])
+                if radial_length > 0.0:
+                    outward = (
+                        0.0,
+                        point[1] / radial_length,
+                        point[2] / radial_length,
+                    )
+                    minimum_normal_outward_dot = min(
+                        minimum_normal_outward_dot,
+                        sum(
+                            left * right
+                            for left, right in zip(
+                                normal,
+                                outward,
+                                strict=True,
+                            )
+                        ),
+                    )
+        left_ring = mesh.points[:radial_samples]
+        right_start = (axial_samples - 1) * radial_samples
+        right_ring = mesh.points[right_start : right_start + radial_samples]
+        segment_center_x = (segment_index + 0.5) * derived.segment_spacing_m
+        world_left_ring = tuple((point[0] + segment_center_x, point[1], point[2]) for point in left_ring)
+        world_right_ring = tuple((point[0] + segment_center_x, point[1], point[2]) for point in right_ring)
+        if previous_right_ring is not None:
+            maximum_segment_boundary_gap_m = max(
+                maximum_segment_boundary_gap_m,
+                max(
+                    math.dist(previous, current)
+                    for previous, current in zip(
+                        previous_right_ring,
+                        world_left_ring,
+                        strict=True,
+                    )
+                ),
+            )
+        previous_right_ring = world_right_ring
+        if segment_index not in sampled_indices:
+            continue
+        if (
+            len(mesh.points) != len(mesh.normals)
+            or sum(mesh.face_vertex_counts) != len(mesh.face_vertex_indices)
+            or any(index < 0 or index >= len(mesh.points) for index in mesh.face_vertex_indices)
+        ):
+            topology_errors.append(f"S{segment_index:04d}:array_contract")
+            continue
+        edge_counts: dict[tuple[int, int], int] = {}
+        cursor = 0
+        for face_count in mesh.face_vertex_counts:
+            face = mesh.face_vertex_indices[cursor : cursor + face_count]
+            cursor += face_count
+            for left, right in zip(
+                face,
+                (*face[1:], face[0]),
+                strict=True,
+            ):
+                edge = (min(left, right), max(left, right))
+                edge_counts[edge] = edge_counts.get(edge, 0) + 1
+            first = mesh.points[face[0]]
+            second = mesh.points[face[1]]
+            third = mesh.points[face[2]]
+            edge_a = tuple(second[axis] - first[axis] for axis in range(3))
+            edge_b = tuple(third[axis] - first[axis] for axis in range(3))
+            face_normal = (
+                edge_a[1] * edge_b[2] - edge_a[2] * edge_b[1],
+                edge_a[2] * edge_b[0] - edge_a[0] * edge_b[2],
+                edge_a[0] * edge_b[1] - edge_a[1] * edge_b[0],
+            )
+            face_center = tuple(sum(mesh.points[index][axis] for index in face) / face_count for axis in range(3))
+            if math.isclose(
+                abs(face_center[0]),
+                derived.segment_spacing_m / 2.0,
+                rel_tol=0.0,
+                abs_tol=1.0e-12,
+            ):
+                outward = (
+                    math.copysign(1.0, face_center[0]),
+                    0.0,
+                    0.0,
+                )
+            else:
+                radial_length = math.hypot(
+                    face_center[1],
+                    face_center[2],
+                )
+                outward = (
+                    0.0,
+                    face_center[1] / radial_length,
+                    face_center[2] / radial_length,
+                )
+            minimum_face_outward_dot = min(
+                minimum_face_outward_dot,
+                sum(
+                    left * right
+                    for left, right in zip(
+                        face_normal,
+                        outward,
+                        strict=True,
+                    )
+                ),
+            )
+        nonmanifold_edges = sum(count != 2 for count in edge_counts.values())
+        if nonmanifold_edges:
+            topology_errors.append(f"S{segment_index:04d}:nonmanifold_edges={nonmanifold_edges}")
+    expected_vertices_per_segment = axial_samples * radial_samples + 2
+    expected_faces_per_segment = (axial_samples - 1) * radial_samples + 2 * radial_samples
+    authored_collider_records = [
+        (float(height), float(radius))
+        for height, radius in re.findall(
+            r'def Capsule "Collision"\s*\{.*?float height = ([0-9.eE+-]+).*?float radius = ([0-9.eE+-]+)',
+            geometry_text,
+            flags=re.DOTALL,
+        )
+    ]
+    authored_collider_heights = [height for height, _ in authored_collider_records]
+    authored_mesh_point_payloads = re.findall(
+        r'def Mesh "Visual"\s*\{.*?point3f\[\] points = \[([^\]]*)\]',
+        geometry_text,
+        flags=re.DOTALL,
+    )
+    authored_visual_point_count = 0
+    minimum_authored_visual_collision_margin_m = math.inf
+    if len(authored_collider_records) == segment_count + 1:
+        for payload, (cylinder_height, radius) in zip(
+            authored_mesh_point_payloads,
+            authored_collider_records[1:],
+            strict=False,
+        ):
+            for encoded_point in re.findall(r"\(([^()]*)\)", payload):
+                components = tuple(float(value.strip()) for value in encoded_point.split(","))
+                if len(components) != 3:
+                    continue
+                authored_visual_point_count += 1
+                minimum_authored_visual_collision_margin_m = min(
+                    minimum_authored_visual_collision_margin_m,
+                    capsule_point_containment_margin(
+                        (components[0], components[1], components[2]),
+                        radius_m=radius,
+                        cylinder_height_m=cylinder_height,
+                    ),
+                )
+    layer_geometry_ownership = profile["asset_structure"]["geometry_layer_owns"]
+    check(
+        checks,
+        "suture_braided_render_collision_separation",
+        visual["rigid_body_prim_pattern"] == "Segments/S####"
+        and visual["visual_prim_pattern"] == "Segments/S####/Visual"
+        and visual["collider_prim_pattern"] == "Segments/S####/Collision"
+        and visual["needle_interface_visual_prim"] == "NeedleInterface/Visual"
+        and visual["needle_interface_collider_prim"] == "NeedleInterface/Collision"
+        and visual["visual_schema"] == "UsdGeomMesh"
+        and visual["visual_topology"] == "closed_non_subdivided_crossed_carrier_relief"
+        and axial_samples >= 7
+        and radial_samples >= 48
+        and float(visual["braid_pitch_m_seed"]) > 0.0
+        and 0.0 < float(visual["relief_depth_fraction"]) < 0.1
+        and float(visual["crossing_softmax_sharpness"]) > 0.0
+        and float(visual["maximum_visual_to_collision_radius_ratio"]) == 1.0
+        and visual["segment_boundary_policy"] == "shared_minimum_adjacent_collider_envelope_with_global_braid_phase"
+        and visual["collider_schema"] == "UsdGeomCapsule"
+        and visual["collider_axis"] == "X"
+        and visual["collider_cylinder_height_policy"] == "segment_spacing_with_adjacent_overlap_and_pair_filtering"
+        and visual["exact_visual_point_containment_required"] is True
+        and 0.0 < float(visual["binary_visual_point_containment_tolerance_m"]) <= 1.0e-9
+        and visual["collider_purpose"] == "guide"
+        and visual["collider_visibility"] == "invisible"
+        and visual["collider_physics_material_binding"] == "material:binding:physics"
+        and visual["reason"]
+        == "solver_efficient_primitive_collision_with_geometric_braid_detail_attached_to_each_rigid_segment"
+        and visual["calibration_status"] == "braid_pitch_relief_and_coating_response_pending_microscopy"
+        and layer_geometry_ownership
+        == [
+            "rigid_body_xforms",
+            "closed_braided_visual_mesh_topology",
+            "braided_visual_mesh_points_and_vertex_normals",
+            "visual_mesh_extents_and_display_colors",
+            "guide_purpose_invisible_capsule_colliders",
+        ]
+        and not topology_errors
+        and non_finite_value_count == 0
+        and maximum_normal_unit_error <= 1.0e-12
+        and minimum_normal_outward_dot > 0.9
+        and minimum_face_outward_dot > 0.0
+        and maximum_visual_to_collision_ratio <= float(visual["maximum_visual_to_collision_radius_ratio"]) + 1.0e-12
+        and minimum_visual_collision_margin_m >= -1.0e-15
+        and minimum_authored_visual_collision_margin_m >= -float(visual["binary_visual_point_containment_tolerance_m"])
+        and 0.8 < minimum_visual_to_collision_ratio < 1.0
+        and maximum_segment_boundary_gap_m <= 1.0e-15
+        and total_vertices == expected_vertices_per_segment * segment_count
+        and total_faces == expected_faces_per_segment * segment_count
+        and geometry_text.count('def Mesh "Visual"') == segment_count
+        and geometry_text.count('def Capsule "Collision"') == segment_count + 1
+        and len(authored_collider_heights) == segment_count + 1
+        and len(authored_mesh_point_payloads) == segment_count
+        and authored_visual_point_count == total_vertices
+        and all(
+            math.isclose(
+                height,
+                derived.segment_spacing_m,
+                rel_tol=0.0,
+                abs_tol=1.0e-15,
+            )
+            for height in authored_collider_heights
+        ),
+        {
+            "contract": visual,
+            "sampled_topology_segments": sampled_indices,
+            "topology_errors": topology_errors,
+            "vertices_per_segment": expected_vertices_per_segment,
+            "faces_per_segment": expected_faces_per_segment,
+            "total_vertices": total_vertices,
+            "total_faces": total_faces,
+            "maximum_normal_unit_error": maximum_normal_unit_error,
+            "minimum_normal_outward_dot": minimum_normal_outward_dot,
+            "minimum_face_outward_dot": minimum_face_outward_dot,
+            "minimum_visual_to_collision_radius_ratio": minimum_visual_to_collision_ratio,
+            "maximum_visual_to_collision_radius_ratio": maximum_visual_to_collision_ratio,
+            "minimum_visual_collision_margin_m": minimum_visual_collision_margin_m,
+            "minimum_authored_visual_collision_margin_m": minimum_authored_visual_collision_margin_m,
+            "authored_visual_point_count": authored_visual_point_count,
+            "authored_collider_height_range_m": [
+                min(authored_collider_heights, default=math.inf),
+                max(authored_collider_heights, default=-math.inf),
+            ],
+            "maximum_segment_boundary_gap_m": maximum_segment_boundary_gap_m,
+            "non_finite_value_count": non_finite_value_count,
+        },
+        "continuous closed braided render meshes are exactly capsule-contained inside overlapping hidden primitive"
+        " colliders on every rigid segment",
     )
 
 
@@ -663,7 +1011,7 @@ def validate(
         effective_failure_load(profile, knotted=True, grasp_count=1),
         f"less than {derived.knot_failure_load_n}",
     )
-    segment_defs = len(re.findall(r'def Capsule "S\d{4}"', asset_text))
+    segment_defs = len(re.findall(r'def Xform "S\d{4}"', asset_text))
     joint_defs = len(re.findall(r'def PhysicsJoint "J\d{4}"', asset_text))
     check(
         checks,
@@ -694,6 +1042,12 @@ def validate(
         physics_text=suture_physics_text,
         physx_text=suture_physx_text,
     )
+    add_suture_visual_mesh_checks(
+        checks,
+        profile,
+        segment_count=derived.segment_count,
+        geometry_text=suture_geometry_text,
+    )
     add_physics_variant_checks(
         checks,
         suture_variants=suture_variant_texts,
@@ -709,7 +1063,11 @@ def validate(
         "PhysicsDriveAPI:rotZ",
         "PhysicsFilteredPairsAPI",
         "physxRigidBody:enableCCD",
-        'def Capsule "NeedleInterface"',
+        'def Xform "NeedleInterface"',
+        'def Mesh "Visual"',
+        'def Capsule "Collision"',
+        'uniform token purpose = "guide"',
+        'token visibility = "invisible"',
         "drAnmar:swageFraction",
     ]
     missing_tokens = [token for token in required_asset_tokens if token not in asset_text]
@@ -1516,6 +1874,16 @@ def validate(
         "suture_hybrid_ccd_body_count",
         "suture_physx_contact_offsets_match_profile",
         "suture_material_bindings_valid",
+        "suture_visual_mesh_count",
+        "suture_visual_mesh_vertex_count",
+        "suture_visual_normals_valid_count",
+        "suture_collision_capsule_count",
+        "suture_collision_guide_purpose_count",
+        "suture_collision_invisible_count",
+        "suture_collision_physics_material_binding_count",
+        "suture_collider_cylinder_height_range_m",
+        "suture_minimum_visual_collision_margin_m",
+        "suture_render_collision_separation_valid",
     ]
     missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(

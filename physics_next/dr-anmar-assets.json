@@ -42,7 +42,7 @@
       "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
       "report": "assets/dr_anmar/suture/DrAnmarSuture4_0.report.json",
       "live_integration": "all_repository_local_rooms",
-      "live_behavior": "lightweight_interface_referenced_base_and_public_none_physics_physx_payload_variants_binary_capsule_geometry_visual_materials_neutral_mechanics_and_dedicated_physx_layers_with_inherited_purpose_specific_material_bindings_hybrid_ccd_scale_aware_contact_offsets_native_pose_and_filtered_contact_driven_strain_geometry_aware_edge_contact_knot_crush_abrasion_relaxation_and_failure",
+      "live_behavior": "lightweight_interface_referenced_base_and_public_none_physics_physx_payload_variants_closed_non_subdivided_crossed_carrier_braided_render_meshes_attached_to_rigid_segment_xforms_exactly_contained_by_adjacent_filtered_overlapping_guide_purpose_invisible_primitive_capsule_colliders_visual_materials_neutral_mechanics_and_dedicated_physx_layers_with_purpose_specific_material_bindings_hybrid_ccd_scale_aware_contact_offsets_native_pose_and_filtered_contact_driven_strain_geometry_aware_edge_contact_knot_crush_abrasion_relaxation_and_failure",
       "native_gpu_qualification": "blocked_pending_convergence_and_procedural_probe",
       "physical_qualification": "blocked_pending_straight_knotted_damage_and_swage_bench_data",
       "clinical_validation": false

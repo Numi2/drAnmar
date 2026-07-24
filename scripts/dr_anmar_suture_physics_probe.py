@@ -10,6 +10,7 @@ from pathlib import Path
 
 from dr_anmar_needle_model import build_needle_collision_capsules, build_needle_mesh, derive_needle, load_needle_profile
 from dr_anmar_suture_integration import DR_ANMAR_NEEDLE_ASSET_ID, DR_ANMAR_NEEDLE_ASSET_VERSION, DR_ANMAR_NEEDLE_NAME
+from dr_anmar_suture_model import derive as derive_suture
 from dr_anmar_suture_model import load_profile as load_suture_profile
 
 from isaaclab.app import AppLauncher
@@ -54,6 +55,7 @@ def main() -> int:
         raise FileNotFoundError(args.asset)
     needle_profile = load_needle_profile()
     suture_profile = load_suture_profile()
+    derived_suture = derive_suture(suture_profile)
     derived_needle = derive_needle(needle_profile)
     expected_collision_capsules = build_needle_collision_capsules(needle_profile)
     expected_needle_mesh = build_needle_mesh(needle_profile)
@@ -195,6 +197,16 @@ def main() -> int:
     suture_physx_rest_offset_range_m = None
     suture_physx_contact_offsets_match_profile = None
     suture_material_bindings_valid = None
+    suture_visual_mesh_count = None
+    suture_visual_mesh_vertex_count = None
+    suture_visual_normals_valid_count = None
+    suture_collision_capsule_count = None
+    suture_collision_guide_purpose_count = None
+    suture_collision_invisible_count = None
+    suture_collision_physics_material_binding_count = None
+    suture_collider_cylinder_height_range_m = None
+    suture_minimum_visual_collision_margin_m = None
+    suture_render_collision_separation_valid = None
     if assembly:
         layer_organization = needle_profile["construction"]["layer_organization"]
         needle_base_layer_name = str(layer_organization["base_layer"])
@@ -380,8 +392,13 @@ def main() -> int:
                 r'"((?:Physics|Physx|Newton)[A-Za-z0-9_]*API)"',
                 suture_base_text,
             )
-            and 'def Capsule "NeedleInterface"' in suture_geometry_text
-            and len(re.findall(r'def Capsule "S\d{4}"', suture_geometry_text)) == 360
+            and 'def Xform "NeedleInterface"' in suture_geometry_text
+            and len(re.findall(r'def Xform "S\d{4}"', suture_geometry_text)) == 360
+            and len(re.findall(r'def Mesh "Visual"', suture_geometry_text)) == 360
+            and len(re.findall(r'def Capsule "Collision"', suture_geometry_text)) == 361
+            and suture_geometry_text.count('uniform token purpose = "guide"') == 361
+            and suture_geometry_text.count('token visibility = "invisible"') == 361
+            and suture_geometry_text.count('uniform token subdivisionScheme = "none"') == 360
             and "apiSchemas" not in suture_geometry_text
             and "material:binding" not in suture_geometry_text
             and "physics:" not in suture_geometry_text
@@ -405,8 +422,11 @@ def main() -> int:
         ]
         suture_interface_prim = stage.GetPrimAtPath(f"{root_path}/Suture/NeedleInterface")
         suture_body_prims = [suture_interface_prim, *suture_segment_prims]
+        suture_collision_prims = [stage.GetPrimAtPath(f"{prim.GetPath()}/Collision") for prim in suture_body_prims]
+        suture_visual_prims = [stage.GetPrimAtPath(f"{prim.GetPath()}/Visual") for prim in suture_segment_prims]
+        suture_interface_visual_prim = stage.GetPrimAtPath(f"{root_path}/Suture/NeedleInterface/Visual")
         suture_physx_collision_api_count = sum(
-            "PhysxCollisionAPI" in prim.GetAppliedSchemas() for prim in suture_body_prims
+            "PhysxCollisionAPI" in prim.GetAppliedSchemas() for prim in suture_collision_prims
         )
         suture_hybrid_ccd_body_count = sum(
             bool(prim.GetAttribute("physxRigidBody:enableCCD").Get())
@@ -414,10 +434,10 @@ def main() -> int:
             for prim in suture_body_prims
         )
         suture_contact_offsets = [
-            float(prim.GetAttribute("physxCollision:contactOffset").Get()) for prim in suture_body_prims
+            float(prim.GetAttribute("physxCollision:contactOffset").Get()) for prim in suture_collision_prims
         ]
         suture_rest_offsets = [
-            float(prim.GetAttribute("physxCollision:restOffset").Get()) for prim in suture_body_prims
+            float(prim.GetAttribute("physxCollision:restOffset").Get()) for prim in suture_collision_prims
         ]
         suture_physx_contact_offset_range_m = [
             min(suture_contact_offsets),
@@ -437,7 +457,7 @@ def main() -> int:
                     * float(suture_offset_contract["collision_radius_fraction"]),
                 ),
             )
-            for prim in suture_body_prims
+            for prim in suture_collision_prims
         ]
         suture_physx_contact_offsets_match_profile = bool(
             np.allclose(
@@ -460,25 +480,126 @@ def main() -> int:
         swage_physics_material_path = f"{root_path}/Suture/Materials/SwageSteel"
         suture_physics_material_prim = stage.GetPrimAtPath(suture_physics_material_path)
         swage_physics_material_prim = stage.GetPrimAtPath(swage_physics_material_path)
+        suture_visual_mesh_count = sum(prim.IsValid() and prim.GetTypeName() == "Mesh" for prim in suture_visual_prims)
+        suture_visual_mesh_vertex_count = sum(
+            len(UsdGeom.Mesh(prim).GetPointsAttr().Get()) for prim in suture_visual_prims
+        )
+        suture_visual_normals_valid_count = 0
+        for prim in suture_visual_prims:
+            mesh = UsdGeom.Mesh(prim)
+            points = mesh.GetPointsAttr().Get()
+            normals = mesh.GetNormalsAttr().Get()
+            normal_array = np.asarray(normals, dtype=np.float64)
+            if (
+                len(points) == len(normals)
+                and mesh.GetNormalsAttr().GetMetadata("interpolation") == "vertex"
+                and mesh.GetSubdivisionSchemeAttr().Get() == "none"
+                and np.isfinite(normal_array).all()
+                and np.allclose(
+                    np.linalg.norm(normal_array, axis=1),
+                    1.0,
+                    rtol=0.0,
+                    atol=2.0e-5,
+                )
+            ):
+                suture_visual_normals_valid_count += 1
+        suture_collision_capsule_count = sum(
+            prim.IsValid() and prim.GetTypeName() == "Capsule" for prim in suture_collision_prims
+        )
+        suture_collision_guide_purpose_count = sum(
+            str(UsdGeom.Imageable(prim).GetPurposeAttr().Get()) == "guide" for prim in suture_collision_prims
+        )
+        suture_collision_invisible_count = sum(
+            str(UsdGeom.Imageable(prim).GetVisibilityAttr().Get()) == "invisible" for prim in suture_collision_prims
+        )
+        suture_collider_heights = [
+            float(UsdGeom.Capsule(prim).GetHeightAttr().Get()) for prim in suture_collision_prims
+        ]
+        suture_collider_cylinder_height_range_m = [
+            min(suture_collider_heights),
+            max(suture_collider_heights),
+        ]
+        suture_minimum_visual_collision_margin_m = np.inf
+        for visual_prim, collision_prim in zip(
+            suture_visual_prims,
+            suture_collision_prims[1:],
+            strict=True,
+        ):
+            points = np.asarray(
+                UsdGeom.Mesh(visual_prim).GetPointsAttr().Get(),
+                dtype=np.float64,
+            )
+            radius = float(UsdGeom.Capsule(collision_prim).GetRadiusAttr().Get())
+            cylinder_height = float(UsdGeom.Capsule(collision_prim).GetHeightAttr().Get())
+            axial_excess = np.maximum(np.abs(points[:, 0]) - cylinder_height / 2.0, 0.0)
+            radial_distance = np.linalg.norm(points[:, 1:3], axis=1)
+            distance_to_spine = np.hypot(axial_excess, radial_distance)
+            suture_minimum_visual_collision_margin_m = min(
+                suture_minimum_visual_collision_margin_m,
+                float(np.min(radius - distance_to_spine)),
+            )
+        expected_suture_physics_material_paths = [
+            swage_physics_material_path,
+            *([suture_physics_material_path] * len(suture_segment_prims)),
+        ]
+        suture_collision_physics_material_binding_count = sum(
+            [str(target) for target in prim.GetRelationship("material:binding:physics").GetTargets()] == [expected_path]
+            and not prim.GetRelationship("material:binding").HasAuthoredTargets()
+            for prim, expected_path in zip(
+                suture_collision_prims,
+                expected_suture_physics_material_paths,
+                strict=True,
+            )
+        )
         suture_material_bindings_valid = bool(
             [str(target) for target in suture_segments_scope.GetRelationship("material:binding").GetTargets()]
             == [suture_visual_material_path]
-            and [
-                str(target) for target in suture_segments_scope.GetRelationship("material:binding:physics").GetTargets()
-            ]
-            == [suture_physics_material_path]
             and [str(target) for target in suture_interface_prim.GetRelationship("material:binding").GetTargets()]
             == [swage_visual_material_path]
-            and [
-                str(target) for target in suture_interface_prim.GetRelationship("material:binding:physics").GetTargets()
-            ]
-            == [swage_physics_material_path]
+            and not suture_segments_scope.GetRelationship("material:binding:physics").HasAuthoredTargets()
+            and not suture_interface_prim.GetRelationship("material:binding:physics").HasAuthoredTargets()
+            and suture_collision_physics_material_binding_count == 361
             and "PhysicsMaterialAPI" in suture_physics_material_prim.GetAppliedSchemas()
             and "PhysxMaterialAPI" in suture_physics_material_prim.GetAppliedSchemas()
             and "PhysicsMaterialAPI" in swage_physics_material_prim.GetAppliedSchemas()
             and "PhysxMaterialAPI" in swage_physics_material_prim.GetAppliedSchemas()
             and str(suture_physics_material_prim.GetAttribute("physxMaterial:frictionCombineMode").Get()) == "max"
             and str(swage_physics_material_prim.GetAttribute("physxMaterial:frictionCombineMode").Get()) == "max"
+        )
+        expected_visual_vertices_per_segment = (
+            int(suture_profile["geometry"]["visual_representation"]["axial_samples_per_segment"])
+            * int(suture_profile["geometry"]["visual_representation"]["radial_samples"])
+            + 2
+        )
+        suture_render_collision_separation_valid = bool(
+            suture_visual_mesh_count == 360
+            and suture_visual_mesh_vertex_count == 360 * expected_visual_vertices_per_segment
+            and suture_visual_normals_valid_count == 360
+            and suture_collision_capsule_count == 361
+            and suture_collision_guide_purpose_count == 361
+            and suture_collision_invisible_count == 361
+            and suture_collision_physics_material_binding_count == 361
+            and np.allclose(
+                suture_collider_heights,
+                derived_suture.segment_spacing_m,
+                rtol=0.0,
+                atol=1.0e-12,
+            )
+            and suture_minimum_visual_collision_margin_m
+            >= -float(
+                suture_profile["geometry"]["visual_representation"]["binary_visual_point_containment_tolerance_m"]
+            )
+            and suture_interface_visual_prim.GetTypeName() == "Capsule"
+            and str(UsdGeom.Imageable(suture_interface_visual_prim).GetPurposeAttr().Get()) == "default"
+            and str(UsdGeom.Imageable(suture_interface_visual_prim).GetVisibilityAttr().Get()) == "inherited"
+            and all(
+                str(UsdGeom.Imageable(prim).GetPurposeAttr().Get()) == "default"
+                and str(UsdGeom.Imageable(prim).GetVisibilityAttr().Get()) == "inherited"
+                and "PhysicsCollisionAPI" not in prim.GetAppliedSchemas()
+                and "PhysxCollisionAPI" not in prim.GetAppliedSchemas()
+                and not prim.GetRelationship("material:binding:physics").HasAuthoredTargets()
+                for prim in suture_visual_prims
+            )
         )
         needle_collision_capsules = [
             prim
@@ -698,7 +819,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v10",
+        "schema": "dr.anmar.needle-native-physx-probe.v11",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -752,6 +873,16 @@ def main() -> int:
         "suture_physx_rest_offset_range_m": suture_physx_rest_offset_range_m,
         "suture_physx_contact_offsets_match_profile": suture_physx_contact_offsets_match_profile,
         "suture_material_bindings_valid": suture_material_bindings_valid,
+        "suture_visual_mesh_count": suture_visual_mesh_count,
+        "suture_visual_mesh_vertex_count": suture_visual_mesh_vertex_count,
+        "suture_visual_normals_valid_count": suture_visual_normals_valid_count,
+        "suture_collision_capsule_count": suture_collision_capsule_count,
+        "suture_collision_guide_purpose_count": suture_collision_guide_purpose_count,
+        "suture_collision_invisible_count": suture_collision_invisible_count,
+        "suture_collision_physics_material_binding_count": suture_collision_physics_material_binding_count,
+        "suture_collider_cylinder_height_range_m": suture_collider_cylinder_height_range_m,
+        "suture_minimum_visual_collision_margin_m": suture_minimum_visual_collision_margin_m,
+        "suture_render_collision_separation_valid": suture_render_collision_separation_valid,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -795,6 +926,18 @@ def main() -> int:
                 and report["suture_hybrid_ccd_body_count"] == 361
                 and report["suture_physx_contact_offsets_match_profile"]
                 and report["suture_material_bindings_valid"]
+                and report["suture_visual_mesh_count"] == 360
+                and report["suture_visual_normals_valid_count"] == 360
+                and report["suture_collision_capsule_count"] == 361
+                and report["suture_collision_guide_purpose_count"] == 361
+                and report["suture_collision_invisible_count"] == 361
+                and report["suture_collision_physics_material_binding_count"] == 361
+                and report["suture_minimum_visual_collision_margin_m"] is not None
+                and report["suture_minimum_visual_collision_margin_m"]
+                >= -float(
+                    suture_profile["geometry"]["visual_representation"]["binary_visual_point_containment_tolerance_m"]
+                )
+                and report["suture_render_collision_separation_valid"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None

@@ -160,7 +160,7 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.11.0\"",
+        "drAnmarAssetVersion = \"1.12.0\"",
         "@DrAnmarNeedle_base.usda@",
         "@DrAnmarNeedle_physx.usda@",
         "@DrAnmarNeedle_materials.usda@",
@@ -192,9 +192,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.11.0",
+        "integration_version": "1.12.0",
         "missing": [],
-        "profile_version": "1.11.0"
+        "profile_version": "1.12.0"
       },
       "passed": true
     },
@@ -591,8 +591,10 @@
           "physics_properties": 0,
           "physx_api_schemas": 0,
           "physx_properties": 0,
-          "suture_capsules": 360,
-          "suture_joints": 0
+          "suture_colliders": 361,
+          "suture_joints": 0,
+          "suture_segments": 360,
+          "suture_visual_meshes": 361
         },
         "physics": {
           "factory_swage_joints": 1,
@@ -601,8 +603,10 @@
           "physics_properties": 15907,
           "physx_api_schemas": 0,
           "physx_properties": 0,
-          "suture_capsules": 360,
-          "suture_joints": 360
+          "suture_colliders": 361,
+          "suture_joints": 360,
+          "suture_segments": 360,
+          "suture_visual_meshes": 361
         },
         "physx": {
           "factory_swage_joints": 1,
@@ -611,8 +615,10 @@
           "physics_properties": 15907,
           "physx_api_schemas": 766,
           "physx_properties": 3336,
-          "suture_capsules": 360,
-          "suture_joints": 360
+          "suture_colliders": 361,
+          "suture_joints": 360,
+          "suture_segments": 360,
+          "suture_visual_meshes": 361
         }
       },
       "passed": true
@@ -777,7 +783,11 @@
         "PhysicsDriveAPI:rotZ",
         "PhysicsFilteredPairsAPI",
         "physxRigidBody:enableCCD",
-        "def Capsule \"NeedleInterface\"",
+        "def Xform \"NeedleInterface\"",
+        "def Mesh \"Visual\"",
+        "def Capsule \"Collision\"",
+        "uniform token purpose = \"guide\"",
+        "token visibility = \"invisible\"",
         "drAnmar:swageFraction"
       ],
       "measured": {
@@ -844,7 +854,7 @@
       "passed": true
     },
     "suture_asset_structure_source_ownership": {
-      "expected": "lightweight entry, binary capsule geometry, visual look-development, neutral mechanics, and PhysX tuning have isolated deterministic source ownership",
+      "expected": "lightweight entry, binary braided render geometry with primitive colliders, visual look-development, neutral mechanics, and PhysX tuning have isolated deterministic source ownership",
       "measured": {
         "base_engine_schemas": [],
         "base_forbidden": [],
@@ -871,11 +881,11 @@
           "geometry_format": "usdc",
           "geometry_layer": "DrAnmarSuture4_0_geometry.usd",
           "geometry_layer_owns": [
-            "capsule_types",
-            "capsule_dimensions",
-            "capsule_extents",
-            "capsule_display_colors",
-            "capsule_transforms"
+            "rigid_body_xforms",
+            "closed_braided_visual_mesh_topology",
+            "braided_visual_mesh_points_and_vertex_normals",
+            "visual_mesh_extents_and_display_colors",
+            "guide_purpose_invisible_capsule_colliders"
           ],
           "materials_layer": "DrAnmarSuture4_0_materials.usda",
           "materials_layer_owns": [
@@ -886,8 +896,8 @@
           "physics_layer": "DrAnmarSuture4_0_physics.usda",
           "physics_layer_owns": [
             "physics_materials",
-            "inherited_physics_material_bindings",
-            "rigid_body_collision_and_mass_schemas",
+            "purpose_specific_collider_physics_material_bindings",
+            "rigid_body_mass_and_descendant_collision_schemas",
             "adjacent_collision_filtering",
             "breakable_cosserat_joints"
           ],
@@ -914,8 +924,65 @@
         "geometry_is_usdc": true,
         "materials_forbidden": [],
         "neutral_engine_specific": [],
-        "nvidia_reference_count": 5,
+        "nvidia_reference_count": 6,
         "physx_neutral_or_newton": []
+      },
+      "passed": true
+    },
+    "suture_braided_render_collision_separation": {
+      "expected": "continuous closed braided render meshes are exactly capsule-contained inside overlapping hidden primitive colliders on every rigid segment",
+      "measured": {
+        "authored_collider_height_range_m": [
+          0.0005,
+          0.0005
+        ],
+        "authored_visual_point_count": 121680,
+        "contract": {
+          "axial_samples_per_segment": 7,
+          "binary_visual_point_containment_tolerance_m": 1e-10,
+          "braid_pitch_m_seed": 0.0012,
+          "calibration_status": "braid_pitch_relief_and_coating_response_pending_microscopy",
+          "collider_axis": "X",
+          "collider_cylinder_height_policy": "segment_spacing_with_adjacent_overlap_and_pair_filtering",
+          "collider_physics_material_binding": "material:binding:physics",
+          "collider_prim_pattern": "Segments/S####/Collision",
+          "collider_purpose": "guide",
+          "collider_schema": "UsdGeomCapsule",
+          "collider_visibility": "invisible",
+          "crossing_softmax_sharpness": 4.0,
+          "exact_visual_point_containment_required": true,
+          "maximum_visual_to_collision_radius_ratio": 1.0,
+          "needle_interface_collider_prim": "NeedleInterface/Collision",
+          "needle_interface_visual_prim": "NeedleInterface/Visual",
+          "radial_samples": 48,
+          "reason": "solver_efficient_primitive_collision_with_geometric_braid_detail_attached_to_each_rigid_segment",
+          "relief_depth_fraction": 0.055,
+          "rigid_body_prim_pattern": "Segments/S####",
+          "segment_boundary_policy": "shared_minimum_adjacent_collider_envelope_with_global_braid_phase",
+          "visual_prim_pattern": "Segments/S####/Visual",
+          "visual_schema": "UsdGeomMesh",
+          "visual_topology": "closed_non_subdivided_crossed_carrier_relief"
+        },
+        "faces_per_segment": 384,
+        "maximum_normal_unit_error": 3.3306690738754696e-16,
+        "maximum_segment_boundary_gap_m": 2.775785275044444e-17,
+        "maximum_visual_to_collision_radius_ratio": 1.0,
+        "minimum_authored_visual_collision_margin_m": -3.0642818469282795e-12,
+        "minimum_face_outward_dot": 1.2538913791394034e-09,
+        "minimum_normal_outward_dot": 0.9845571292645261,
+        "minimum_visual_collision_margin_m": -1.3552527156068805e-20,
+        "minimum_visual_to_collision_radius_ratio": 0.8711775125589555,
+        "non_finite_value_count": 0,
+        "sampled_topology_segments": [
+          0,
+          5,
+          180,
+          359
+        ],
+        "topology_errors": [],
+        "total_faces": 138240,
+        "total_vertices": 121680,
+        "vertices_per_segment": 338
       },
       "passed": true
     },
@@ -923,6 +990,12 @@
       "expected": "hybrid linear and angular CCD with bounded radius-scaled PhysX contact offsets on every suture body",
       "measured": {
         "attribute_errors": [],
+        "body_attribute_counts": {
+          "position_iterations": 361,
+          "speculative_ccd": 361,
+          "sweep_ccd": 361,
+          "velocity_iterations": 361
+        },
         "body_count": 361,
         "contact_offset_range_m": [
           1.21211138858e-05,
@@ -955,8 +1028,10 @@
           "physics_properties": 0,
           "physx_api_schemas": 0,
           "physx_properties": 0,
-          "suture_capsules": 360,
-          "suture_joints": 0
+          "suture_colliders": 361,
+          "suture_joints": 0,
+          "suture_segments": 360,
+          "suture_visual_meshes": 360
         },
         "physics": {
           "factory_swage_joints": 0,
@@ -965,8 +1040,10 @@
           "physics_properties": 15851,
           "physx_api_schemas": 0,
           "physx_properties": 0,
-          "suture_capsules": 360,
-          "suture_joints": 360
+          "suture_colliders": 361,
+          "suture_joints": 360,
+          "suture_segments": 360,
+          "suture_visual_meshes": 360
         },
         "physx": {
           "factory_swage_joints": 0,
@@ -975,8 +1052,10 @@
           "physics_properties": 15851,
           "physx_api_schemas": 724,
           "physx_properties": 3251,
-          "suture_capsules": 360,
-          "suture_joints": 360
+          "suture_colliders": 361,
+          "suture_joints": 360,
+          "suture_segments": 360,
+          "suture_visual_meshes": 360
         }
       },
       "passed": true

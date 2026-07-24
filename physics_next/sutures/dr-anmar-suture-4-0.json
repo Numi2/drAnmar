@@ -2,7 +2,7 @@
   "schema": "dr.anmar.suture-profile.v1",
   "id": "dr-anmar-suture-4-0-braided-v1",
   "name": "Dr.Anmar 4-0 braided surgical suture",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "purpose": "Research-grade physical suture asset for operating-room simulation",
   "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
   "clinical_validation": false,
@@ -40,11 +40,11 @@
       "geometry_and_material_sublayer_composition"
     ],
     "geometry_layer_owns": [
-      "capsule_types",
-      "capsule_dimensions",
-      "capsule_extents",
-      "capsule_display_colors",
-      "capsule_transforms"
+      "rigid_body_xforms",
+      "closed_braided_visual_mesh_topology",
+      "braided_visual_mesh_points_and_vertex_normals",
+      "visual_mesh_extents_and_display_colors",
+      "guide_purpose_invisible_capsule_colliders"
     ],
     "materials_layer_owns": [
       "visual_materials",
@@ -53,8 +53,8 @@
     ],
     "physics_layer_owns": [
       "physics_materials",
-      "inherited_physics_material_bindings",
-      "rigid_body_collision_and_mass_schemas",
+      "purpose_specific_collider_physics_material_bindings",
+      "rigid_body_mass_and_descendant_collision_schemas",
       "adjacent_collision_filtering",
       "breakable_cosserat_joints"
     ],
@@ -81,6 +81,32 @@
     "carrier_count": 12,
     "surface_radius_modulation_fraction": 0.035,
     "surface_modulation_period_segments": 6,
+    "visual_representation": {
+      "rigid_body_prim_pattern": "Segments/S####",
+      "visual_prim_pattern": "Segments/S####/Visual",
+      "collider_prim_pattern": "Segments/S####/Collision",
+      "needle_interface_visual_prim": "NeedleInterface/Visual",
+      "needle_interface_collider_prim": "NeedleInterface/Collision",
+      "visual_schema": "UsdGeomMesh",
+      "visual_topology": "closed_non_subdivided_crossed_carrier_relief",
+      "axial_samples_per_segment": 7,
+      "radial_samples": 48,
+      "braid_pitch_m_seed": 0.0012,
+      "relief_depth_fraction": 0.055,
+      "crossing_softmax_sharpness": 4.0,
+      "maximum_visual_to_collision_radius_ratio": 1.0,
+      "segment_boundary_policy": "shared_minimum_adjacent_collider_envelope_with_global_braid_phase",
+      "collider_schema": "UsdGeomCapsule",
+      "collider_axis": "X",
+      "collider_cylinder_height_policy": "segment_spacing_with_adjacent_overlap_and_pair_filtering",
+      "exact_visual_point_containment_required": true,
+      "binary_visual_point_containment_tolerance_m": 1e-10,
+      "collider_purpose": "guide",
+      "collider_visibility": "invisible",
+      "collider_physics_material_binding": "material:binding:physics",
+      "reason": "solver_efficient_primitive_collision_with_geometric_braid_detail_attached_to_each_rigid_segment",
+      "calibration_status": "braid_pitch_relief_and_coating_response_pending_microscopy"
+    },
     "construction": "coated_braided_multifilament_equivalent_discrete_cosserat_rod",
     "color_rgb": [
       0.42,
@@ -411,7 +437,12 @@
     {
       "title": "Omni Physics colliders",
       "url": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/latest/dev_guide/rigid_bodies_articulations/collision.html",
-      "used_for": "primitive capsule colliders and explicit scale-aware contact configuration"
+      "used_for": "rigid-body parent with descendant guide-purpose primitive capsule colliders, pair filtering, and explicit scale-aware contact configuration"
+    },
+    {
+      "title": "NVIDIA geometry and rigid-body asset requirements",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.11.2/indexes/requirements_index.html",
+      "used_for": "closed non-subdivided visual meshes with explicit normals and Xformable rigid-body parents carrying descendant collision shapes"
     }
   ],
   "required_physical_calibration": [
