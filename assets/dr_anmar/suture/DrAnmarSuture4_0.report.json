@@ -5,9 +5,9 @@
   "asset_sha256": "7b33b49b6b2c7934af9569d789b45bf2bdf0df16e98cc7d9806f56440e831c90",
   "dr_anmar_needle_name": "DrAnmar Needle",
   "dr_anmar_needle_asset_id": "dr-anmar-needle",
-  "dr_anmar_needle_asset_version": "1.2.0",
+  "dr_anmar_needle_asset_version": "1.3.0",
   "dr_anmar_needle": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
-  "dr_anmar_needle_sha256": "86ffe340d6775a17264498dbcf518963236dc80875699bde67714c728128f2a9",
+  "dr_anmar_needle_sha256": "505ae7cecfb036fcc45a6dacea1ed5ad020db568d467bb36a6746a87113348c8",
   "needle_profile": "physics_next/needles/dr-anmar-needle-v1.json",
   "needle_profile_id": "dr-anmar-needle-v1",
   "needle_geometry_source": "independently_generated_parametric_geometry",
@@ -43,11 +43,57 @@
     "curvature_coverage": "maximum_segment_radius_plus_exact_arc_sagitta",
     "visual_face_coverage": "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face",
     "coverage_epsilon_m": 1e-09,
-    "extent_policy": "explicit_local_extent_on_every_capsule"
+    "extent_policy": "explicit_local_extent_on_every_capsule",
+    "contact_offsets": {
+      "policy": "clamped_fraction_of_final_collision_radius",
+      "basis": "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep",
+      "collision_radius_fraction": 0.1,
+      "minimum_m": 5e-06,
+      "maximum_m": 2.5e-05,
+      "rest_offset_m": 0.0,
+      "physx_authoring": [
+        "PhysxCollisionAPI",
+        "physxCollision:contactOffset",
+        "physxCollision:restOffset"
+      ],
+      "newton_authoring": [
+        "NewtonCollisionAPI",
+        "newton:contactGap",
+        "newton:contactMargin"
+      ],
+      "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset"
+    }
   },
   "needle_collision_max_curvature_sagitta_m": 5.398918502281386e-06,
   "needle_collision_visual_seam_margin_m": 8.494447366884953e-06,
   "needle_collision_max_chord_length_error_m": 0.0,
+  "needle_contact_offset_policy": {
+    "policy": "clamped_fraction_of_final_collision_radius",
+    "basis": "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep",
+    "collision_radius_fraction": 0.1,
+    "minimum_m": 5e-06,
+    "maximum_m": 2.5e-05,
+    "rest_offset_m": 0.0,
+    "physx_authoring": [
+      "PhysxCollisionAPI",
+      "physxCollision:contactOffset",
+      "physxCollision:restOffset"
+    ],
+    "newton_authoring": [
+      "NewtonCollisionAPI",
+      "newton:contactGap",
+      "newton:contactMargin"
+    ],
+    "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset"
+  },
+  "needle_contact_offset_range_m": [
+    5e-06,
+    2.5e-05
+  ],
+  "needle_rest_offset_range_m": [
+    0.0,
+    0.0
+  ],
   "needle_collision_visual_mesh_coverage": {
     "visual_vertex_count": 2049,
     "visual_face_count": 2049,

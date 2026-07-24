@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -35,7 +35,26 @@
       "curvature_coverage": "maximum_segment_radius_plus_exact_arc_sagitta",
       "visual_face_coverage": "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face",
       "coverage_epsilon_m": 1e-09,
-      "extent_policy": "explicit_local_extent_on_every_capsule"
+      "extent_policy": "explicit_local_extent_on_every_capsule",
+      "contact_offsets": {
+        "policy": "clamped_fraction_of_final_collision_radius",
+        "basis": "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep",
+        "collision_radius_fraction": 0.1,
+        "minimum_m": 0.000005,
+        "maximum_m": 0.000025,
+        "rest_offset_m": 0.0,
+        "physx_authoring": [
+          "PhysxCollisionAPI",
+          "physxCollision:contactOffset",
+          "physxCollision:restOffset"
+        ],
+        "newton_authoring": [
+          "NewtonCollisionAPI",
+          "newton:contactGap",
+          "newton:contactMargin"
+        ],
+        "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset"
+      }
     },
     "mass_properties": {
       "source": "numerical_volume_integration_of_tapered_curved_swept_solid",
@@ -121,6 +140,11 @@
       "title": "NVIDIA rigid-body mass properties requirements",
       "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.7.1/capabilities/physics_bodies/physics_rigid_bodies/requirements/rigid-body-mass.html",
       "used_for": "explicit mass, center of mass, diagonal inertia and principal-axis authoring"
+    },
+    {
+      "title": "NVIDIA Newton schema and PhysX migration mapping",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/latest/dev_guide/schemas/newtonSchema.html",
+      "used_for": "forward-compatible contact margin and gap authoring with explicit PhysX mapping"
     }
   ],
   "sim_to_real": {

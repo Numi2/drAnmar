@@ -244,6 +244,7 @@ def validate(
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         'drAnmarGeometrySource = "independently_generated_parametric_geometry"',
         f"drAnmarMassPropertyIntegrationSlices = {DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES}",
+        'drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"',
         'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
         'drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"',
         '"PhysicsMaterialAPI", "PhysxMaterialAPI"',
@@ -315,6 +316,22 @@ def validate(
         block = match.group(0)
         height_match = re.search(r"float height = ([0-9.eE+-]+)", block)
         radius_match = re.search(r"float radius = ([0-9.eE+-]+)", block)
+        physx_contact_match = re.search(
+            r"float physxCollision:contactOffset = ([0-9.eE+-]+)",
+            block,
+        )
+        physx_rest_match = re.search(
+            r"float physxCollision:restOffset = ([0-9.eE+-]+)",
+            block,
+        )
+        newton_gap_match = re.search(
+            r"float newton:contactGap = ([0-9.eE+-]+)",
+            block,
+        )
+        newton_margin_match = re.search(
+            r"float newton:contactMargin = ([0-9.eE+-]+)",
+            block,
+        )
         if height_match is None or not math.isclose(
             float(height_match.group(1)),
             capsule.cylinder_height_m,
@@ -331,6 +348,40 @@ def validate(
             collision_attribute_errors.append(f"C{index:03d}:radius")
         if "float3[] extent = [" not in block:
             collision_attribute_errors.append(f"C{index:03d}:extent")
+        expected_contact_attributes = (
+            (
+                "physx_contact_offset",
+                physx_contact_match,
+                capsule.contact_offset_m,
+            ),
+            (
+                "physx_rest_offset",
+                physx_rest_match,
+                capsule.rest_offset_m,
+            ),
+            (
+                "newton_contact_gap",
+                newton_gap_match,
+                capsule.contact_offset_m - capsule.rest_offset_m,
+            ),
+            (
+                "newton_contact_margin",
+                newton_margin_match,
+                capsule.rest_offset_m,
+            ),
+        )
+        for (
+            attribute_name,
+            attribute_match,
+            expected_value,
+        ) in expected_contact_attributes:
+            if attribute_match is None or not math.isclose(
+                float(attribute_match.group(1)),
+                expected_value,
+                rel_tol=0.0,
+                abs_tol=1.0e-12,
+            ):
+                collision_attribute_errors.append(f"C{index:03d}:{attribute_name}")
     maximum_chord_error = max(
         abs(capsule.cylinder_height_m - capsule.chord_length_m) for capsule in needle_collision_capsules
     )
@@ -381,6 +432,73 @@ def validate(
         [],
     )
     collision_contract = needle_profile["construction"]["collision_contract"]
+    contact_offset_contract = collision_contract["contact_offsets"]
+    contact_offsets = [capsule.contact_offset_m for capsule in needle_collision_capsules]
+    rest_offsets = [capsule.rest_offset_m for capsule in needle_collision_capsules]
+    radius_offset_pairs = sorted(
+        (
+            capsule.collision_radius_m,
+            capsule.contact_offset_m,
+        )
+        for capsule in needle_collision_capsules
+    )
+    contact_offsets_monotonic = all(
+        left[1] <= right[1] + 1.0e-15
+        for left, right in zip(
+            radius_offset_pairs,
+            radius_offset_pairs[1:],
+        )
+    )
+    contact_attribute_counts = {
+        "PhysxCollisionAPI": needle_text.count('"PhysxCollisionAPI"'),
+        "NewtonCollisionAPI": needle_text.count('"NewtonCollisionAPI"'),
+        "physx_contact_offset": needle_text.count("physxCollision:contactOffset"),
+        "physx_rest_offset": needle_text.count("physxCollision:restOffset"),
+        "newton_contact_gap": needle_text.count("newton:contactGap"),
+        "newton_contact_margin": needle_text.count("newton:contactMargin"),
+    }
+    check(
+        checks,
+        "needle_scale_aware_dual_stack_contact_offsets",
+        contact_offset_contract["policy"] == "clamped_fraction_of_final_collision_radius"
+        and contact_offset_contract["basis"]
+        == "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep"
+        and math.isclose(
+            float(contact_offset_contract["collision_radius_fraction"]),
+            0.1,
+        )
+        and all(math.isfinite(value) for value in contact_offsets + rest_offsets)
+        and all(
+            0.0 <= rest_offset < contact_offset
+            for rest_offset, contact_offset in zip(
+                rest_offsets,
+                contact_offsets,
+                strict=True,
+            )
+        )
+        and min(contact_offsets) >= float(contact_offset_contract["minimum_m"])
+        and max(contact_offsets) <= float(contact_offset_contract["maximum_m"])
+        and max(contact_offsets) < min(capsule.collision_radius_m for capsule in needle_collision_capsules)
+        and contact_offsets_monotonic
+        and all(count == derived_needle.collision_capsule_count for count in contact_attribute_counts.values())
+        and contact_offset_contract["mapping"]
+        == "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset",
+        {
+            "contact_offset_range_m": [
+                min(contact_offsets),
+                max(contact_offsets),
+            ],
+            "rest_offset_range_m": [
+                min(rest_offsets),
+                max(rest_offsets),
+            ],
+            "minimum_collision_radius_m": min(capsule.collision_radius_m for capsule in needle_collision_capsules),
+            "contact_offsets_monotonic_with_radius": contact_offsets_monotonic,
+            "authored_attribute_counts": contact_attribute_counts,
+            "contract": contact_offset_contract,
+        },
+        "bounded scale-aware PhysX offsets with equivalent Newton margin/gap mapping on every collider",
+    )
     native_probe_tokens = [
         "needle_collision_capsule_count",
         "needle_collision_explicit_extent_count",
@@ -390,12 +508,15 @@ def validate(
         "needle_diagonal_inertia_kg_m2",
         "needle_principal_axes_wxyz",
         "needle_mass_properties_match_geometry",
+        "needle_physx_contact_offset_range_m",
+        "needle_newton_contact_gap_range_m",
+        "needle_contact_offset_mapping_matches",
     ]
     missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(
         checks,
         "needle_nvidia_stack_collision_contract",
-        len(nvidia_stack_references) >= 4
+        len(nvidia_stack_references) >= 5
         and all(
             item.get("url", "").startswith("https://docs.omniverse.nvidia.com/") and item.get("used_for")
             for item in nvidia_stack_references
@@ -407,6 +528,12 @@ def validate(
         == "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face"
         and 0.0 < float(collision_contract["coverage_epsilon_m"]) <= 1.0e-8
         and collision_contract["extent_policy"] == "explicit_local_extent_on_every_capsule"
+        and contact_offset_contract["newton_authoring"]
+        == [
+            "NewtonCollisionAPI",
+            "newton:contactGap",
+            "newton:contactMargin",
+        ]
         and needle_profile["solver"]["ccd"] is True
         and needle_profile["contact"]["combine_mode"] == "max"
         and not missing_native_probe_tokens,

@@ -66,6 +66,8 @@ class NeedleCollisionCapsule:
     chord_length_m: float
     curvature_sagitta_m: float
     visual_seam_margin_m: float
+    contact_offset_m: float
+    rest_offset_m: float
 
     @property
     def total_length_m(self) -> float:
@@ -525,6 +527,8 @@ def build_needle_collision_capsules(
                 chord_length_m=chord_length,
                 curvature_sagitta_m=sagitta,
                 visual_seam_margin_m=0.0,
+                contact_offset_m=0.0,
+                rest_offset_m=0.0,
             )
         )
     raw_capsules = tuple(capsules)
@@ -536,11 +540,24 @@ def build_needle_collision_capsules(
     )
     coverage_epsilon = float(construction["collision_contract"]["coverage_epsilon_m"])
     seam_margin = max(0.0, -raw_face_margin) + coverage_epsilon
+    contact_offsets = construction["collision_contract"]["contact_offsets"]
+    contact_offset_fraction = float(contact_offsets["collision_radius_fraction"])
+    minimum_contact_offset = float(contact_offsets["minimum_m"])
+    maximum_contact_offset = float(contact_offsets["maximum_m"])
+    rest_offset = float(contact_offsets["rest_offset_m"])
     return tuple(
         replace(
             capsule,
             collision_radius_m=(capsule.collision_radius_m + seam_margin),
             visual_seam_margin_m=seam_margin,
+            contact_offset_m=max(
+                minimum_contact_offset,
+                min(
+                    maximum_contact_offset,
+                    (capsule.collision_radius_m + seam_margin) * contact_offset_fraction,
+                ),
+            ),
+            rest_offset_m=rest_offset,
         )
         for capsule in raw_capsules
     )

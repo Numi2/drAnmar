@@ -371,7 +371,7 @@ def author_dr_anmar_needle(
     collision_capsules = build_needle_collision_capsules(needle_profile)
     for index, capsule in enumerate(collision_capsules):
         collision_blocks.append(f"""def Capsule "C{index:03d}" (
-    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+    prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
 )
 {{
     uniform token axis = "X"
@@ -380,6 +380,10 @@ def author_dr_anmar_needle(
     float3[] extent = [{usd_vec(capsule.extent_min)}, {usd_vec(capsule.extent_max)}]
     rel material:binding = <{steel_material_path}>
     bool physics:collisionEnabled = true
+    float physxCollision:contactOffset = {usd_float(capsule.contact_offset_m)}
+    float physxCollision:restOffset = {usd_float(capsule.rest_offset_m)}
+    float newton:contactGap = {usd_float(capsule.contact_offset_m - capsule.rest_offset_m)}
+    float newton:contactMargin = {usd_float(capsule.rest_offset_m)}
     quatf xformOp:orient = {usd_quat(capsule.orientation_wxyz)}
     double3 xformOp:translate = {usd_vec(capsule.center_m)}
     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
@@ -405,6 +409,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         bool drAnmarClinicalValidation = false
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
         int drAnmarMassPropertyIntegrationSlices = {mass_properties.integration_slices}
+        string drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"
         string drAnmarNeedleProfileId = "{needle_profile["id"]}"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
@@ -605,6 +610,15 @@ def main() -> int:
         "needle_collision_max_chord_length_error_m": max(
             abs(capsule.cylinder_height_m - capsule.chord_length_m) for capsule in collision_capsules
         ),
+        "needle_contact_offset_policy": needle_profile["construction"]["collision_contract"]["contact_offsets"],
+        "needle_contact_offset_range_m": [
+            min(capsule.contact_offset_m for capsule in collision_capsules),
+            max(capsule.contact_offset_m for capsule in collision_capsules),
+        ],
+        "needle_rest_offset_range_m": [
+            min(capsule.rest_offset_m for capsule in collision_capsules),
+            max(capsule.rest_offset_m for capsule in collision_capsules),
+        ],
         "needle_collision_visual_mesh_coverage": needle_mesh_collision_coverage(
             needle_profile,
             needle_mesh,

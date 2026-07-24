@@ -7,7 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
-from dr_anmar_needle_model import derive_needle, load_needle_profile
+from dr_anmar_needle_model import build_needle_collision_capsules, derive_needle, load_needle_profile
 from dr_anmar_suture_integration import DR_ANMAR_NEEDLE_ASSET_ID, DR_ANMAR_NEEDLE_ASSET_VERSION, DR_ANMAR_NEEDLE_NAME
 
 from isaaclab.app import AppLauncher
@@ -52,6 +52,7 @@ def main() -> int:
         raise FileNotFoundError(args.asset)
     needle_profile = load_needle_profile()
     derived_needle = derive_needle(needle_profile)
+    expected_collision_capsules = build_needle_collision_capsules(needle_profile)
     sim = SimulationContext(
         SimulationCfg(
             dt=0.0005,
@@ -147,6 +148,13 @@ def main() -> int:
     needle_diagonal_inertia_kg_m2 = None
     needle_principal_axes_wxyz = None
     needle_mass_properties_match_geometry = None
+    needle_physx_collision_api_count = None
+    needle_newton_collision_api_count = None
+    needle_physx_contact_offset_range_m = None
+    needle_physx_rest_offset_range_m = None
+    needle_newton_contact_gap_range_m = None
+    needle_newton_contact_margin_range_m = None
+    needle_contact_offset_mapping_matches = None
     if assembly:
         needle_collision_capsules = [
             prim
@@ -155,6 +163,76 @@ def main() -> int:
         ]
         needle_collision_extent_count = sum(
             UsdGeom.Capsule(prim).GetExtentAttr().HasAuthoredValueOpinion() for prim in needle_collision_capsules
+        )
+        needle_physx_collision_api_count = sum(
+            "PhysxCollisionAPI" in prim.GetAppliedSchemas() for prim in needle_collision_capsules
+        )
+        needle_newton_collision_api_count = sum(
+            "NewtonCollisionAPI" in prim.GetAppliedSchemas() for prim in needle_collision_capsules
+        )
+        physx_contact_offsets = [
+            float(prim.GetAttribute("physxCollision:contactOffset").Get()) for prim in needle_collision_capsules
+        ]
+        physx_rest_offsets = [
+            float(prim.GetAttribute("physxCollision:restOffset").Get()) for prim in needle_collision_capsules
+        ]
+        newton_contact_gaps = [
+            float(prim.GetAttribute("newton:contactGap").Get()) for prim in needle_collision_capsules
+        ]
+        newton_contact_margins = [
+            float(prim.GetAttribute("newton:contactMargin").Get()) for prim in needle_collision_capsules
+        ]
+        needle_physx_contact_offset_range_m = [
+            min(physx_contact_offsets),
+            max(physx_contact_offsets),
+        ]
+        needle_physx_rest_offset_range_m = [
+            min(physx_rest_offsets),
+            max(physx_rest_offsets),
+        ]
+        needle_newton_contact_gap_range_m = [
+            min(newton_contact_gaps),
+            max(newton_contact_gaps),
+        ]
+        needle_newton_contact_margin_range_m = [
+            min(newton_contact_margins),
+            max(newton_contact_margins),
+        ]
+        expected_contact_offsets = [capsule.contact_offset_m for capsule in expected_collision_capsules]
+        expected_rest_offsets = [capsule.rest_offset_m for capsule in expected_collision_capsules]
+        needle_contact_offset_mapping_matches = bool(
+            np.isfinite(
+                [
+                    *physx_contact_offsets,
+                    *physx_rest_offsets,
+                    *newton_contact_gaps,
+                    *newton_contact_margins,
+                ]
+            ).all()
+            and np.allclose(
+                physx_contact_offsets,
+                expected_contact_offsets,
+                rtol=1.0e-6,
+                atol=1.0e-12,
+            )
+            and np.allclose(
+                physx_rest_offsets,
+                expected_rest_offsets,
+                rtol=0.0,
+                atol=1.0e-12,
+            )
+            and np.allclose(
+                newton_contact_margins,
+                physx_rest_offsets,
+                rtol=0.0,
+                atol=1.0e-12,
+            )
+            and np.allclose(
+                newton_contact_gaps,
+                np.asarray(physx_contact_offsets) - np.asarray(physx_rest_offsets),
+                rtol=1.0e-6,
+                atol=1.0e-12,
+            )
         )
         needle_material = stage.GetPrimAtPath(f"{root_path}/Materials/NeedleSteel")
         needle_friction_combine_mode = needle_material.GetAttribute("physxMaterial:frictionCombineMode").Get()
@@ -214,7 +292,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v2",
+        "schema": "dr.anmar.needle-native-physx-probe.v3",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -232,6 +310,13 @@ def main() -> int:
         "needle_diagonal_inertia_kg_m2": needle_diagonal_inertia_kg_m2,
         "needle_principal_axes_wxyz": needle_principal_axes_wxyz,
         "needle_mass_properties_match_geometry": needle_mass_properties_match_geometry,
+        "needle_physx_collision_api_count": needle_physx_collision_api_count,
+        "needle_newton_collision_api_count": needle_newton_collision_api_count,
+        "needle_physx_contact_offset_range_m": needle_physx_contact_offset_range_m,
+        "needle_physx_rest_offset_range_m": needle_physx_rest_offset_range_m,
+        "needle_newton_contact_gap_range_m": needle_newton_contact_gap_range_m,
+        "needle_newton_contact_margin_range_m": needle_newton_contact_margin_range_m,
+        "needle_contact_offset_mapping_matches": needle_contact_offset_mapping_matches,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -256,6 +341,9 @@ def main() -> int:
                 and report["needle_collision_explicit_extent_count"] == derived_needle.collision_capsule_count
                 and report["needle_friction_combine_mode"] == "max"
                 and report["needle_mass_properties_match_geometry"]
+                and report["needle_physx_collision_api_count"] == derived_needle.collision_capsule_count
+                and report["needle_newton_collision_api_count"] == derived_needle.collision_capsule_count
+                and report["needle_contact_offset_mapping_matches"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None
