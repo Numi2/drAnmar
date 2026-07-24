@@ -1,12 +1,12 @@
 {
-  "schema": "dr.anmar.suture-asset-report.v12",
+  "schema": "dr.anmar.suture-asset-report.v13",
   "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
   "asset": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
-  "asset_sha256": "443084f338132a8f16be37cbb58797772da2518551c7964ab6b6bb73005d96db",
-  "suture_asset_version": "2.4.0",
-  "suture_entry_bytes": 683,
+  "asset_sha256": "9306e69e540eecea5f2e5621cda7591eebe98f4705a1896a43d7b25dc5bf3787",
+  "suture_asset_version": "2.5.0",
+  "suture_entry_bytes": 689,
   "suture_base": "assets/dr_anmar/suture/DrAnmarSuture4_0_base.usda",
-  "suture_base_sha256": "30a0aa6529d04ed8a5b74c4471ac496d53af006f588b7c54cc3f3b9ea358da08",
+  "suture_base_sha256": "5c3f68045578fe1fd55a9c4240c91a403d329d8c6721bf07a417cb2f2a12a800",
   "suture_geometry": "assets/dr_anmar/suture/DrAnmarSuture4_0_geometry.usd",
   "suture_geometry_format": "usdc",
   "suture_geometry_sha256": "bc2c0ad26c79baf4262b7e199c4ab2865268ade914c985d5ba4067c35112d525",
@@ -99,7 +99,7 @@
   "suture_physics": "assets/dr_anmar/suture/DrAnmarSuture4_0_physics.usda",
   "suture_physics_sha256": "9bd9aa9746ff5d1b4ce9f70ddfd738928fd579b1ab8e2ab1970890efa57c8780",
   "suture_physx": "assets/dr_anmar/suture/DrAnmarSuture4_0_physx.usda",
-  "suture_physx_sha256": "a56201fed5aa2bcf1bf0bdeded2d21c896927220c4892fd6b962d8c8b0208a05",
+  "suture_physx_sha256": "3a3486f46ca81e93d6d88a2755732b66577e9066fd335e161a29df1d82d22641",
   "suture_layer_contract": {
     "entry_layer": "DrAnmarSuture4_0.usda",
     "base_layer": "DrAnmarSuture4_0_base.usda",
@@ -117,6 +117,18 @@
       "physics",
       "physx"
     ],
+    "model_identity": {
+      "kind": "component",
+      "asset_info_name": "DrAnmarSuture4_0",
+      "display_name": "DrAnmar 4-0 Braided Suture",
+      "semantic_schema_instance": "SemanticsLabelsAPI:wikidata_qcode",
+      "semantic_label_attribute": "semantics:labels:wikidata_qcode",
+      "wikidata_qcodes": [
+        "Q4948587"
+      ],
+      "semantic_label_inheritance": "root_label_inherited_by_all_descendant_geometry",
+      "composition_path_policy": "explicit_anchored_relative_asset_paths"
+    },
     "physics_payload_loading": "deferred_until_selected_variant_is_loaded",
     "entry_layer_owns": [
       "stage_metadata",
@@ -126,6 +138,7 @@
     ],
     "base_layer_owns": [
       "asset_identity",
+      "openusd_model_kind_asset_info_and_inherited_semantic_labels",
       "structural_scopes",
       "geometry_and_material_sublayer_composition"
     ],
@@ -160,14 +173,26 @@
     "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
     "content_isolation": "entry_contains_only_interface_composition_base_contains_identity_hierarchy_and_geometry_material_composition_geometry_contains_no_material_or_physics_payload_and_materials_contains_no_physics_payload"
   },
+  "suture_model_identity": {
+    "kind": "component",
+    "asset_info_name": "DrAnmarSuture4_0",
+    "display_name": "DrAnmar 4-0 Braided Suture",
+    "semantic_schema_instance": "SemanticsLabelsAPI:wikidata_qcode",
+    "semantic_label_attribute": "semantics:labels:wikidata_qcode",
+    "wikidata_qcodes": [
+      "Q4948587"
+    ],
+    "semantic_label_inheritance": "root_label_inherited_by_all_descendant_geometry",
+    "composition_path_policy": "explicit_anchored_relative_asset_paths"
+  },
   "dr_anmar_needle_name": "DrAnmar Needle",
   "dr_anmar_needle_asset_id": "dr-anmar-needle",
-  "dr_anmar_needle_asset_version": "1.14.0",
+  "dr_anmar_needle_asset_version": "1.15.0",
   "dr_anmar_needle": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
-  "dr_anmar_needle_sha256": "abc7896348e68675c4b12c7bd69c9d8fabf993dd4ca8751d3c5e34819f7ef022",
-  "dr_anmar_needle_entry_bytes": 1163,
+  "dr_anmar_needle_sha256": "626c4b8527ff6c483ab36c6da82d4f469eeaa5be156d2bda82aa7f082c0b7970",
+  "dr_anmar_needle_entry_bytes": 1169,
   "dr_anmar_needle_base": "assets/dr_anmar/needle/DrAnmarNeedle_base.usda",
-  "dr_anmar_needle_base_sha256": "e15bc0cb993c816ced5075c8dae7372675832b37a6f7d5a642cf8704df8c6e5b",
+  "dr_anmar_needle_base_sha256": "11a38d2751156fb57ba627635784420e9d544f30c20e6d7f64c5f0142a1b5d69",
   "dr_anmar_needle_geometry": "assets/dr_anmar/needle/DrAnmarNeedle_geometry.usd",
   "dr_anmar_needle_geometry_format": "usdc",
   "dr_anmar_needle_geometry_sha256": "25b800950d5f3c955eca7de299b8412ac5549a7f435e3b6eee9c0f0935f8665a",
@@ -177,7 +202,7 @@
   "dr_anmar_needle_physics": "assets/dr_anmar/needle/DrAnmarNeedle_physics.usda",
   "dr_anmar_needle_physics_sha256": "9496fbf6230616ca417d4e3e58f78e985c64d3ea0c8265db07abe3caa63409de",
   "dr_anmar_needle_physx": "assets/dr_anmar/needle/DrAnmarNeedle_physx.usda",
-  "dr_anmar_needle_physx_sha256": "aea8f12d309b5cd3c92dff6de93869fdc8356816cda0cbc85f01316e2da5a545",
+  "dr_anmar_needle_physx_sha256": "7ca145bb49852b13d14b4afa79e5ee54feeaca77f0dd0881142b71f5ee5cd42d",
   "dr_anmar_needle_layer_contract": {
     "entry_layer": "DrAnmarNeedle.usda",
     "base_layer": "DrAnmarNeedle_base.usda",
@@ -195,6 +220,25 @@
       "physics",
       "physx"
     ],
+    "model_identity": {
+      "kind": "component",
+      "asset_info_name": "DrAnmarNeedle",
+      "display_name": "DrAnmar Needle and 4-0 Braided Suture",
+      "semantic_schema_instance": "SemanticsLabelsAPI:wikidata_qcode",
+      "semantic_label_attribute": "semantics:labels:wikidata_qcode",
+      "assembly_wikidata_qcodes": [
+        "Q619800"
+      ],
+      "needle_wikidata_qcodes": [
+        "Q28790452"
+      ],
+      "referenced_suture_wikidata_qcodes": [
+        "Q4948587"
+      ],
+      "child_model_kind": "subcomponent",
+      "semantic_label_inheritance": "nearest_authored_subcomponent_label_inherited_by_descendant_geometry",
+      "composition_path_policy": "explicit_anchored_relative_asset_paths"
+    },
     "nested_suture_variant_policy": "assembly_Physics_selection_authors_the_same_selection_on_Suture",
     "physics_payload_loading": "deferred_until_selected_variant_is_loaded",
     "entry_layer_owns": [
@@ -206,6 +250,7 @@
     ],
     "base_layer_owns": [
       "asset_identity",
+      "openusd_model_kind_asset_info_and_inherited_semantic_labels",
       "structural_hierarchy",
       "suture_reference_and_transform",
       "geometry_and_material_sublayer_composition"
@@ -250,6 +295,25 @@
     ],
     "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
     "content_isolation": "entry_contains_only_interface_composition_base_contains_identity_hierarchy_suture_reference_and_geometry_material_composition_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
+  },
+  "dr_anmar_needle_model_identity": {
+    "kind": "component",
+    "asset_info_name": "DrAnmarNeedle",
+    "display_name": "DrAnmar Needle and 4-0 Braided Suture",
+    "semantic_schema_instance": "SemanticsLabelsAPI:wikidata_qcode",
+    "semantic_label_attribute": "semantics:labels:wikidata_qcode",
+    "assembly_wikidata_qcodes": [
+      "Q619800"
+    ],
+    "needle_wikidata_qcodes": [
+      "Q28790452"
+    ],
+    "referenced_suture_wikidata_qcodes": [
+      "Q4948587"
+    ],
+    "child_model_kind": "subcomponent",
+    "semantic_label_inheritance": "nearest_authored_subcomponent_label_inherited_by_descendant_geometry",
+    "composition_path_policy": "explicit_anchored_relative_asset_paths"
   },
   "needle_profile": "physics_next/needles/dr-anmar-needle-v1.json",
   "needle_profile_id": "dr-anmar-needle-v1",

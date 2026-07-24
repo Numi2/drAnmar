@@ -34,6 +34,9 @@ from pxr import Gf, Usd, UsdGeom, UsdPhysics  # noqa: E402
 
 from isaaclab.sim import PhysxCfg, SimulationCfg, SimulationContext  # noqa: E402
 
+SEMANTIC_SCHEMA = "SemanticsLabelsAPI:wikidata_qcode"
+SEMANTIC_LABEL_ATTRIBUTE = "semantics:labels:wikidata_qcode"
+
 
 def rotate_xyzw(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
     """Rotate one vector by the PhysX tensor API's XYZW quaternion."""
@@ -49,6 +52,41 @@ def rotate_xyzw(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
             doubled_cross,
         )
     )
+
+
+def unanchored_local_asset_paths(texts: tuple[str, ...]) -> list[str]:
+    """Return local USD asset paths that are not explicitly anchored."""
+
+    return sorted(
+        {
+            asset_path
+            for text in texts
+            for asset_path in re.findall(r"@([^@\r\n]+)@", text)
+            if not asset_path.startswith(("./", "../"))
+        }
+    )
+
+
+def authored_semantic_qcodes(prim: Usd.Prim) -> list[str] | None:
+    """Read the Q-code label authored directly on one prim."""
+
+    attribute = prim.GetAttribute(SEMANTIC_LABEL_ATTRIBUTE)
+    if not attribute.IsValid() or not attribute.HasAuthoredValueOpinion():
+        return None
+    value = attribute.Get()
+    return [str(item) for item in value] if value is not None else []
+
+
+def nearest_semantic_qcodes(prim: Usd.Prim) -> list[str] | None:
+    """Resolve NVIDIA's nearest-ancestor semantic-label inheritance contract."""
+
+    current = prim
+    while current.IsValid() and not current.IsPseudoRoot():
+        labels = authored_semantic_qcodes(current)
+        if labels is not None:
+            return labels
+        current = current.GetParent()
+    return None
 
 
 def main() -> int:
@@ -119,6 +157,64 @@ def main() -> int:
     sim.reset()
     physics_view = SimulationManager.get_physics_sim_view()
     assembly = stage.GetPrimAtPath(f"{root_path}/Suture/Segments/S0000").IsValid()
+    root_asset_info = dict(root.GetMetadata("assetInfo") or {})
+    root_model_identity_valid = bool(
+        root.GetMetadata("kind") == "component"
+        and SEMANTIC_SCHEMA in root.GetAppliedSchemas()
+        and (
+            (
+                assembly
+                and root_asset_info.get("name") == "DrAnmarNeedle"
+                and root_asset_info.get("version") == DR_ANMAR_NEEDLE_ASSET_VERSION
+                and authored_semantic_qcodes(root) == ["Q619800"]
+            )
+            or (
+                not assembly
+                and root_asset_info.get("name") == "DrAnmarSuture4_0"
+                and root_asset_info.get("version") == str(suture_profile["version"])
+                and authored_semantic_qcodes(root) == ["Q4948587"]
+            )
+        )
+    )
+    needle_subcomponent = stage.GetPrimAtPath(f"{root_path}/Needle")
+    needle_subcomponent_identity_valid = (
+        bool(
+            needle_subcomponent.IsValid()
+            and needle_subcomponent.GetMetadata("kind") == "subcomponent"
+            and SEMANTIC_SCHEMA in needle_subcomponent.GetAppliedSchemas()
+            and authored_semantic_qcodes(needle_subcomponent) == ["Q28790452"]
+        )
+        if assembly
+        else None
+    )
+    suture_subcomponent = stage.GetPrimAtPath(f"{root_path}/Suture") if assembly else root
+    suture_subcomponent_identity_valid = bool(
+        suture_subcomponent.IsValid()
+        and suture_subcomponent.GetMetadata("kind") == ("subcomponent" if assembly else "component")
+        and SEMANTIC_SCHEMA in suture_subcomponent.GetAppliedSchemas()
+        and authored_semantic_qcodes(suture_subcomponent) == ["Q4948587"]
+    )
+    semantic_visual_meshes = [
+        prim
+        for prim in stage.Traverse()
+        if prim.GetTypeName() == "Mesh" and str(prim.GetPath()).startswith(f"{root_path}/")
+    ]
+    semantic_visual_mesh_failures: list[dict[str, object]] = []
+    for visual_prim in semantic_visual_meshes:
+        visual_path = str(visual_prim.GetPath())
+        expected_qcodes = ["Q28790452"] if assembly and visual_path.startswith(f"{root_path}/Needle/") else ["Q4948587"]
+        measured_qcodes = nearest_semantic_qcodes(visual_prim)
+        if measured_qcodes != expected_qcodes:
+            semantic_visual_mesh_failures.append(
+                {
+                    "path": visual_path,
+                    "measured_qcodes": measured_qcodes,
+                    "expected_qcodes": expected_qcodes,
+                }
+            )
+    semantic_visual_mesh_labels_valid = bool(
+        len(semantic_visual_meshes) == (362 if assembly else 361) and not semantic_visual_mesh_failures
+    )
     segment_pattern = f"{root_path}/Suture/Segments/S*" if assembly else f"{root_path}/Segments/S*"
     joint_prefix = f"{root_path}/Suture/Joints/" if assembly else f"{root_path}/Joints/"
     segments = physics_view.create_rigid_body_view(segment_pattern)
@@ -190,12 +286,14 @@ def main() -> int:
     needle_neutral_physics_layer_name = None
     needle_physx_layer_name = None
     needle_asset_structure_source_ownership_valid = None
+    needle_source_model_identity_valid = None
     suture_geometry_layer_name = None
     suture_base_layer_name = None
     suture_materials_layer_name = None
     suture_neutral_physics_layer_name = None
     suture_physx_layer_name = None
     suture_asset_structure_source_ownership_valid = None
+    suture_source_model_identity_valid = None
     suture_physx_collision_api_count = None
     suture_hybrid_ccd_body_count = None
     suture_physx_contact_offset_range_m = None
@@ -281,6 +379,32 @@ def main() -> int:
             r'"(Newton[A-Za-z0-9_]*API)"',
             physx_layer_text,
         )
+        needle_model_identity = layer_organization["model_identity"]
+        needle_unanchored_asset_paths = unanchored_local_asset_paths(
+            (
+                entry_layer_text,
+                base_layer_text,
+                materials_layer_text,
+                physics_layer_text,
+                physx_layer_text,
+            )
+        )
+        needle_source_model_identity_valid = bool(
+            needle_model_identity["kind"] == "component"
+            and needle_model_identity["child_model_kind"] == "subcomponent"
+            and needle_model_identity["assembly_wikidata_qcodes"] == ["Q619800"]
+            and needle_model_identity["needle_wikidata_qcodes"] == ["Q28790452"]
+            and needle_model_identity["referenced_suture_wikidata_qcodes"] == ["Q4948587"]
+            and needle_model_identity["composition_path_policy"] == "explicit_anchored_relative_asset_paths"
+            and base_layer_text.count(f'prepend apiSchemas = ["{SEMANTIC_SCHEMA}"]') == 2
+            and 'string name = "DrAnmarNeedle"' in base_layer_text
+            and f'string version = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"' in base_layer_text
+            and base_layer_text.count('kind = "component"') == 1
+            and base_layer_text.count('kind = "subcomponent"') == 2
+            and 'token[] semantics:labels:wikidata_qcode = ["Q619800"]' in base_layer_text
+            and 'token[] semantics:labels:wikidata_qcode = ["Q28790452"]' in base_layer_text
+            and not needle_unanchored_asset_paths
+        )
         needle_asset_structure_source_ownership_valid = bool(
             layer_organization["entry_layer"] == args.asset.name
             and needle_base_layer_name.endswith("_base.usda")
@@ -290,14 +414,15 @@ def main() -> int:
             and needle_materials_layer_name.endswith("_materials.usda")
             and needle_neutral_physics_layer_name.endswith("_physics.usda")
             and needle_physx_layer_name.endswith("_physx.usda")
-            and f"@{needle_base_layer_name}@" in entry_layer_text
-            and f"@{needle_physx_layer_name}@" in entry_layer_text
-            and f"@{needle_neutral_physics_layer_name}@" in entry_layer_text
-            and f"@{needle_materials_layer_name}@" not in entry_layer_text
-            and f"@{needle_geometry_layer_name}@" not in entry_layer_text
-            and f"@{needle_materials_layer_name}@" in base_layer_text
-            and f"@{needle_geometry_layer_name}@" in base_layer_text
-            and f"@{needle_neutral_physics_layer_name}@" in physx_layer_text
+            and needle_source_model_identity_valid
+            and f"@./{needle_base_layer_name}@" in entry_layer_text
+            and f"@./{needle_physx_layer_name}@" in entry_layer_text
+            and f"@./{needle_neutral_physics_layer_name}@" in entry_layer_text
+            and f"@./{needle_materials_layer_name}@" not in entry_layer_text
+            and f"@./{needle_geometry_layer_name}@" not in entry_layer_text
+            and f"@./{needle_materials_layer_name}@" in base_layer_text
+            and f"@./{needle_geometry_layer_name}@" in base_layer_text
+            and f"@./{needle_neutral_physics_layer_name}@" in physx_layer_text
             and 'append variantSets = "Physics"' in entry_layer_text
             and entry_layer_text.count("prepend payload =") == 2
             and entry_layer_text.count('over "Suture" (') == 3
@@ -389,16 +514,38 @@ def main() -> int:
         suture_materials_text = suture_materials_path.read_text(encoding="utf-8")
         suture_physics_text = suture_physics_path.read_text(encoding="utf-8")
         suture_physx_text = suture_physx_path.read_text(encoding="utf-8")
+        suture_model_identity = suture_layer_organization["model_identity"]
+        suture_unanchored_asset_paths = unanchored_local_asset_paths(
+            (
+                suture_entry_text,
+                suture_base_text,
+                suture_materials_text,
+                suture_physics_text,
+                suture_physx_text,
+            )
+        )
+        suture_source_model_identity_valid = bool(
+            suture_model_identity["kind"] == "component"
+            and suture_model_identity["wikidata_qcodes"] == ["Q4948587"]
+            and suture_model_identity["composition_path_policy"] == "explicit_anchored_relative_asset_paths"
+            and f'prepend apiSchemas = ["{SEMANTIC_SCHEMA}"]' in suture_base_text
+            and 'string name = "DrAnmarSuture4_0"' in suture_base_text
+            and 'string version = "{}"'.format(suture_profile["version"]) in suture_base_text
+            and suture_base_text.count('kind = "component"') == 1
+            and 'token[] semantics:labels:wikidata_qcode = ["Q4948587"]' in suture_base_text
+            and not suture_unanchored_asset_paths
+        )
         suture_asset_structure_source_ownership_valid = bool(
             suture_geometry_path.read_bytes()[:8] == b"PXR-USDC"
-            and f"@{suture_base_layer_name}@" in suture_entry_text
-            and f"@{suture_physx_layer_name}@" in suture_entry_text
-            and f"@{suture_neutral_physics_layer_name}@" in suture_entry_text
-            and f"@{suture_geometry_layer_name}@" not in suture_entry_text
-            and f"@{suture_materials_layer_name}@" not in suture_entry_text
-            and f"@{suture_geometry_layer_name}@" in suture_base_text
-            and f"@{suture_materials_layer_name}@" in suture_base_text
-            and f"@{suture_neutral_physics_layer_name}@" in suture_physx_text
+            and suture_source_model_identity_valid
+            and f"@./{suture_base_layer_name}@" in suture_entry_text
+            and f"@./{suture_physx_layer_name}@" in suture_entry_text
+            and f"@./{suture_neutral_physics_layer_name}@" in suture_entry_text
+            and f"@./{suture_geometry_layer_name}@" not in suture_entry_text
+            and f"@./{suture_materials_layer_name}@" not in suture_entry_text
+            and f"@./{suture_geometry_layer_name}@" in suture_base_text
+            and f"@./{suture_materials_layer_name}@" in suture_base_text
+            and f"@./{suture_neutral_physics_layer_name}@" in suture_physx_text
             and 'append variantSets = "Physics"' in suture_entry_text
             and suture_entry_text.count("prepend payload =") == 2
             and suture_layer_organization["variant_choices"] == ["none", "physics", "physx"]
@@ -1057,7 +1204,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v13",
+        "schema": "dr.anmar.needle-native-physx-probe.v14",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -1093,17 +1240,27 @@ def main() -> int:
         "needle_physics_variant_selection": needle_physics_variant_selection,
         "suture_physics_variant_selection": suture_physics_variant_selection,
         "physics_variant_contract_valid": physics_variant_contract_valid,
+        "root_asset_info_name": str(root_asset_info.get("name", "")),
+        "root_asset_info_version": str(root_asset_info.get("version", "")),
+        "root_model_identity_valid": root_model_identity_valid,
+        "needle_subcomponent_identity_valid": needle_subcomponent_identity_valid,
+        "suture_subcomponent_identity_valid": suture_subcomponent_identity_valid,
+        "semantic_visual_mesh_count": len(semantic_visual_meshes),
+        "semantic_visual_mesh_labels_valid": semantic_visual_mesh_labels_valid,
+        "semantic_visual_mesh_failures": semantic_visual_mesh_failures,
         "needle_base_layer_name": needle_base_layer_name,
         "needle_geometry_layer_name": needle_geometry_layer_name,
         "needle_materials_layer_name": needle_materials_layer_name,
         "needle_neutral_physics_layer_name": needle_neutral_physics_layer_name,
         "needle_physx_layer_name": needle_physx_layer_name,
+        "needle_source_model_identity_valid": needle_source_model_identity_valid,
         "needle_asset_structure_source_ownership_valid": needle_asset_structure_source_ownership_valid,
         "suture_base_layer_name": suture_base_layer_name,
         "suture_geometry_layer_name": suture_geometry_layer_name,
         "suture_materials_layer_name": suture_materials_layer_name,
         "suture_neutral_physics_layer_name": suture_neutral_physics_layer_name,
         "suture_physx_layer_name": suture_physx_layer_name,
+        "suture_source_model_identity_valid": suture_source_model_identity_valid,
         "suture_asset_structure_source_ownership_valid": suture_asset_structure_source_ownership_valid,
         "suture_physx_collision_api_count": suture_physx_collision_api_count,
         "suture_hybrid_ccd_body_count": suture_hybrid_ccd_body_count,
@@ -1145,6 +1302,9 @@ def main() -> int:
         and report["joint_count"] == 360
         and free_end_drop > 0.0001
         and report["maximum_segment_displacement_m"] < 0.5
+        and report["root_model_identity_valid"]
+        and report["suture_subcomponent_identity_valid"]
+        and report["semantic_visual_mesh_labels_valid"]
         and (
             not assembly
             or (
@@ -1166,6 +1326,9 @@ def main() -> int:
                 and report["needle_render_collision_separation_valid"]
                 and report["needle_material_organization_valid"]
                 and report["physics_variant_contract_valid"]
+                and report["needle_subcomponent_identity_valid"]
+                and report["needle_source_model_identity_valid"]
+                and report["suture_source_model_identity_valid"]
                 and report["needle_asset_structure_source_ownership_valid"]
                 and report["suture_asset_structure_source_ownership_valid"]
                 and report["suture_physx_collision_api_count"] == 361

@@ -1,7 +1,7 @@
 #usda 1.0
 (
     subLayers = [
-        @DrAnmarSuture4_0_physics.usda@
+        @./DrAnmarSuture4_0_physics.usda@
     ]
     defaultPrim = "DrAnmarSuture4_0"
     doc = "Dr.Anmar 4-0 suture PhysX-specific CCD, damping, solver, contact-offset, and combine-mode layer."

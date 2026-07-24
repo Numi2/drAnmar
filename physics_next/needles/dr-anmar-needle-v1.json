@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -114,6 +114,25 @@
         "physics",
         "physx"
       ],
+      "model_identity": {
+        "kind": "component",
+        "asset_info_name": "DrAnmarNeedle",
+        "display_name": "DrAnmar Needle and 4-0 Braided Suture",
+        "semantic_schema_instance": "SemanticsLabelsAPI:wikidata_qcode",
+        "semantic_label_attribute": "semantics:labels:wikidata_qcode",
+        "assembly_wikidata_qcodes": [
+          "Q619800"
+        ],
+        "needle_wikidata_qcodes": [
+          "Q28790452"
+        ],
+        "referenced_suture_wikidata_qcodes": [
+          "Q4948587"
+        ],
+        "child_model_kind": "subcomponent",
+        "semantic_label_inheritance": "nearest_authored_subcomponent_label_inherited_by_descendant_geometry",
+        "composition_path_policy": "explicit_anchored_relative_asset_paths"
+      },
       "nested_suture_variant_policy": "assembly_Physics_selection_authors_the_same_selection_on_Suture",
       "physics_payload_loading": "deferred_until_selected_variant_is_loaded",
       "entry_layer_owns": [
@@ -125,6 +144,7 @@
       ],
       "base_layer_owns": [
         "asset_identity",
+        "openusd_model_kind_asset_info_and_inherited_semantic_labels",
         "structural_hierarchy",
         "suture_reference_and_transform",
         "geometry_and_material_sublayer_composition"
@@ -285,6 +305,21 @@
       "title": "Isaac Sim Asset Transformer",
       "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_transformer.html",
       "used_for": "routing geometry to a dedicated binary layer and materials to a dedicated look-development layer"
+    },
+    {
+      "title": "NVIDIA semantic labels requirement",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.18.0/capabilities/semantic_labels/capability-semantic_labels.html",
+      "used_for": "assembly, needle subcomponent and referenced suture Wikidata semantic labels inherited by geometry"
+    },
+    {
+      "title": "NVIDIA scalable OpenUSD asset structure",
+      "url": "https://docs.omniverse.nvidia.com/usd/latest/learn-openusd/independent/asset-structure-principles.html",
+      "used_for": "component and subcomponent model kinds, assetInfo name and stable referenceable entrypoint"
+    },
+    {
+      "title": "NVIDIA atomic asset requirements",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.18.0/capabilities/core/atomic_asset/capability-atomic_asset.html",
+      "used_for": "explicitly anchored local layer, payload and nested suture references"
     }
   ],
   "sim_to_real": {

@@ -101,6 +101,16 @@ def indent(text: str, spaces: int = 4) -> str:
     return "\n".join(prefix + line if line else "" for line in text.splitlines())
 
 
+def anchored_reference_path(path: str) -> str:
+    """Make a local USD dependency explicitly relative to its owning layer."""
+
+    if path.startswith(("./", "../")):
+        return path
+    if path.startswith("/") or "://" in path:
+        raise ValueError(f"asset dependency must be local and relative: {path}")
+    return f"./{path}"
+
+
 def swage_interface_geometry_block(
     *,
     name: str,
@@ -386,6 +396,7 @@ def author(
     visual_representation = geometry["visual_representation"]
     appearance = profile["appearance"]
     material_texture = appearance["normal_roughness_texture"]
+    model_identity = profile["asset_structure"]["model_identity"]
     color = (
         float(geometry["color_rgb"][0]),
         float(geometry["color_rgb"][1]),
@@ -561,11 +572,20 @@ def Xform "DrAnmarSuture4_0" (
 )
 
 def Xform "DrAnmarSuture4_0" (
+    prepend apiSchemas = ["{model_identity["semantic_schema_instance"]}"]
+    assetInfo = {{
+        string name = "{model_identity["asset_info_name"]}"
+        string version = "{profile["version"]}"
+    }}
     customData = {{
 {custom_lines}
     }}
+    displayName = "{model_identity["display_name"]}"
+    kind = "{model_identity["kind"]}"
 )
 {{
+    token[] {model_identity["semantic_label_attribute"]} = {json.dumps(model_identity["wikidata_qcodes"])}
+
     def Scope "Looks"
     {{
     }}
@@ -797,6 +817,7 @@ def author_dr_anmar_needle(
     contact = needle_profile["contact"]
     solver = needle_profile["solver"]
     render_collision = needle_profile["construction"]["collision_contract"]["render_collision_separation"]
+    model_identity = needle_profile["construction"]["layer_organization"]["model_identity"]
     swage_anchor = derived_needle.swage_anchor_m
     swage_tangent = derived_needle.swage_tangent
     swage_yaw = math.atan2(swage_tangent[1], swage_tangent[0])
@@ -923,6 +944,11 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
 )
 
 def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
+    prepend apiSchemas = ["{model_identity["semantic_schema_instance"]}"]
+    assetInfo = {{
+        string name = "{model_identity["asset_info_name"]}"
+        string version = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"
+    }}
     customData = {{
         string drAnmarAssetId = "{DR_ANMAR_NEEDLE_ASSET_ID}"
         string drAnmarAssetName = "{DR_ANMAR_NEEDLE_NAME}"
@@ -946,10 +972,19 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         string drAnmarSwageConnection = "fixed_needle_to_interface_then_breakable_pullout_joint"
         string drAnmarStatus = "{needle_profile["status"]}"
     }}
+    displayName = "{model_identity["display_name"]}"
+    kind = "{model_identity["kind"]}"
 )
 {{
-    def Xform "Needle"
+    token[] {model_identity["semantic_label_attribute"]} = {json.dumps(model_identity["assembly_wikidata_qcodes"])}
+
+    def Xform "Needle" (
+        prepend apiSchemas = ["{model_identity["semantic_schema_instance"]}"]
+        kind = "{model_identity["child_model_kind"]}"
+    )
     {{
+        token[] {model_identity["semantic_label_attribute"]} = {json.dumps(model_identity["needle_wikidata_qcodes"])}
+
         def Xform "SutureAnchor"
         {{
             quatf xformOp:orient = {usd_quat(swage_orientation)}
@@ -959,6 +994,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
     }}
 
     def Xform "Suture" (
+        kind = "{model_identity["child_model_kind"]}"
         prepend references = @{suture_reference}@
     )
     {{
@@ -1295,25 +1331,35 @@ def main() -> int:
         physx_output,
     ):
         layer_output.parent.mkdir(parents=True, exist_ok=True)
-    suture_base_reference = Path(os.path.relpath(base_output, start=output.parent)).as_posix()
-    suture_geometry_reference = Path(os.path.relpath(geometry_output, start=base_output.parent)).as_posix()
-    suture_materials_reference = Path(os.path.relpath(materials_output, start=base_output.parent)).as_posix()
-    texture_reference = Path(
-        os.path.relpath(
-            texture_output,
-            start=materials_output.parent,
-        )
-    ).as_posix()
-    if not texture_reference.startswith((".", "/")):
-        texture_reference = f"./{texture_reference}"
-    suture_physics_reference = Path(os.path.relpath(physics_output, start=output.parent)).as_posix()
-    suture_physx_reference = Path(os.path.relpath(physx_output, start=output.parent)).as_posix()
-    suture_neutral_physics_reference = Path(
-        os.path.relpath(
-            physics_output,
-            start=physx_output.parent,
-        )
-    ).as_posix()
+    suture_base_reference = anchored_reference_path(Path(os.path.relpath(base_output, start=output.parent)).as_posix())
+    suture_geometry_reference = anchored_reference_path(
+        Path(os.path.relpath(geometry_output, start=base_output.parent)).as_posix()
+    )
+    suture_materials_reference = anchored_reference_path(
+        Path(os.path.relpath(materials_output, start=base_output.parent)).as_posix()
+    )
+    texture_reference = anchored_reference_path(
+        Path(
+            os.path.relpath(
+                texture_output,
+                start=materials_output.parent,
+            )
+        ).as_posix()
+    )
+    suture_physics_reference = anchored_reference_path(
+        Path(os.path.relpath(physics_output, start=output.parent)).as_posix()
+    )
+    suture_physx_reference = anchored_reference_path(
+        Path(os.path.relpath(physx_output, start=output.parent)).as_posix()
+    )
+    suture_neutral_physics_reference = anchored_reference_path(
+        Path(
+            os.path.relpath(
+                physics_output,
+                start=physx_output.parent,
+            )
+        ).as_posix()
+    )
     (
         suture_entry_text,
         suture_base_text,
@@ -1361,38 +1407,50 @@ def main() -> int:
     needle_materials_temporary = needle_materials_output.with_suffix(needle_materials_output.suffix + ".tmp")
     needle_physics_temporary = needle_physics_output.with_suffix(needle_physics_output.suffix + ".tmp")
     needle_physx_temporary = needle_physx_output.with_suffix(needle_physx_output.suffix + ".tmp")
-    suture_reference = Path(os.path.relpath(output, start=needle_output.parent)).as_posix()
-    base_reference = Path(os.path.relpath(needle_base_output, start=needle_output.parent)).as_posix()
-    geometry_sublayer_reference = Path(
-        os.path.relpath(
-            needle_geometry_output,
-            start=needle_base_output.parent,
-        )
-    ).as_posix()
-    materials_sublayer_reference = Path(
-        os.path.relpath(
-            needle_materials_output,
-            start=needle_base_output.parent,
-        )
-    ).as_posix()
-    physics_payload_reference = Path(
-        os.path.relpath(
-            needle_physics_output,
-            start=needle_output.parent,
-        )
-    ).as_posix()
-    physx_payload_reference = Path(
-        os.path.relpath(
-            needle_physx_output,
-            start=needle_output.parent,
-        )
-    ).as_posix()
-    neutral_physics_sublayer_reference = Path(
-        os.path.relpath(
-            needle_physics_output,
-            start=needle_physx_output.parent,
-        )
-    ).as_posix()
+    suture_reference = anchored_reference_path(Path(os.path.relpath(output, start=needle_output.parent)).as_posix())
+    base_reference = anchored_reference_path(
+        Path(os.path.relpath(needle_base_output, start=needle_output.parent)).as_posix()
+    )
+    geometry_sublayer_reference = anchored_reference_path(
+        Path(
+            os.path.relpath(
+                needle_geometry_output,
+                start=needle_base_output.parent,
+            )
+        ).as_posix()
+    )
+    materials_sublayer_reference = anchored_reference_path(
+        Path(
+            os.path.relpath(
+                needle_materials_output,
+                start=needle_base_output.parent,
+            )
+        ).as_posix()
+    )
+    physics_payload_reference = anchored_reference_path(
+        Path(
+            os.path.relpath(
+                needle_physics_output,
+                start=needle_output.parent,
+            )
+        ).as_posix()
+    )
+    physx_payload_reference = anchored_reference_path(
+        Path(
+            os.path.relpath(
+                needle_physx_output,
+                start=needle_output.parent,
+            )
+        ).as_posix()
+    )
+    neutral_physics_sublayer_reference = anchored_reference_path(
+        Path(
+            os.path.relpath(
+                needle_physics_output,
+                start=needle_physx_output.parent,
+            )
+        ).as_posix()
+    )
     (
         needle_entry_text,
         needle_base_text,
@@ -1482,7 +1540,7 @@ def main() -> int:
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v12",
+        "schema": "dr.anmar.suture-asset-report.v13",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
@@ -1525,6 +1583,7 @@ def main() -> int:
         "suture_physx": portable_path(physx_output),
         "suture_physx_sha256": sha256(physx_output),
         "suture_layer_contract": profile["asset_structure"],
+        "suture_model_identity": profile["asset_structure"]["model_identity"],
         "dr_anmar_needle_name": DR_ANMAR_NEEDLE_NAME,
         "dr_anmar_needle_asset_id": DR_ANMAR_NEEDLE_ASSET_ID,
         "dr_anmar_needle_asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION,
@@ -1544,6 +1603,7 @@ def main() -> int:
         "dr_anmar_needle_physx": portable_path(needle_physx_output),
         "dr_anmar_needle_physx_sha256": sha256(needle_physx_output),
         "dr_anmar_needle_layer_contract": needle_profile["construction"]["layer_organization"],
+        "dr_anmar_needle_model_identity": needle_profile["construction"]["layer_organization"]["model_identity"],
         "needle_profile": portable_path(args.needle_profile),
         "needle_profile_id": needle_profile["id"],
         "needle_geometry_source": needle_profile["construction"]["geometry_source"],

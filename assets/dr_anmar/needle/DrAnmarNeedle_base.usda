@@ -1,8 +1,8 @@
 #usda 1.0
 (
     subLayers = [
-        @DrAnmarNeedle_materials.usda@,
-        @DrAnmarNeedle_geometry.usd@
+        @./DrAnmarNeedle_materials.usda@,
+        @./DrAnmarNeedle_geometry.usd@
     ]
     defaultPrim = "DrAnmarNeedle"
     doc = "DrAnmar Needle base identity, hierarchy, suture assembly, geometry, and visual materials."
@@ -12,10 +12,15 @@
 )
 
 def Xform "DrAnmarNeedle" (
+    prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]
+    assetInfo = {
+        string name = "DrAnmarNeedle"
+        string version = "1.15.0"
+    }
     customData = {
         string drAnmarAssetId = "dr-anmar-needle"
         string drAnmarAssetName = "DrAnmar Needle"
-        string drAnmarAssetVersion = "1.14.0"
+        string drAnmarAssetVersion = "1.15.0"
         string drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"
         bool drAnmarClinicalValidation = false
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
@@ -35,10 +40,19 @@ def Xform "DrAnmarNeedle" (
         string drAnmarSwageConnection = "fixed_needle_to_interface_then_breakable_pullout_joint"
         string drAnmarStatus = "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation"
     }
+    displayName = "DrAnmar Needle and 4-0 Braided Suture"
+    kind = "component"
 )
 {
-    def Xform "Needle"
+    token[] semantics:labels:wikidata_qcode = ["Q619800"]
+
+    def Xform "Needle" (
+        prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]
+        kind = "subcomponent"
+    )
     {
+        token[] semantics:labels:wikidata_qcode = ["Q28790452"]
+
         def Xform "SutureAnchor"
         {
             quatf xformOp:orient = (6.12323399574e-17, 0, 0, 1)
@@ -48,6 +62,7 @@ def Xform "DrAnmarNeedle" (
     }
 
     def Xform "Suture" (
+        kind = "subcomponent"
         prepend references = @../suture/DrAnmarSuture4_0.usda@
     )
     {

@@ -1,8 +1,8 @@
 #usda 1.0
 (
     subLayers = [
-        @DrAnmarSuture4_0_materials.usda@,
-        @DrAnmarSuture4_0_geometry.usd@
+        @./DrAnmarSuture4_0_materials.usda@,
+        @./DrAnmarSuture4_0_geometry.usd@
     ]
     defaultPrim = "DrAnmarSuture4_0"
     doc = "Dr.Anmar 4-0 suture base identity, hierarchy, geometry, and visual materials."
@@ -12,8 +12,13 @@
 )
 
 def Xform "DrAnmarSuture4_0" (
+    prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]
+    assetInfo = {
+        string name = "DrAnmarSuture4_0"
+        string version = "2.5.0"
+    }
     customData = {
-        string drAnmarAssetVersion = "2.4.0"
+        string drAnmarAssetVersion = "2.5.0"
         bool drAnmarClinicalValidation = false
         string drAnmarCanonicalAssetPackage = "assets/dr_anmar"
         bool drAnmarIndependentAsset = true
@@ -22,8 +27,12 @@ def Xform "DrAnmarSuture4_0" (
         string drAnmarRepresentation = "discrete_cosserat_rod_with_braided_render_mesh_and_capsule_colliders"
         string drAnmarStatus = "research_informed_engineering_model_pending_physical_and_clinical_validation"
     }
+    displayName = "DrAnmar 4-0 Braided Suture"
+    kind = "component"
 )
 {
+    token[] semantics:labels:wikidata_qcode = ["Q4948587"]
+
     def Scope "Looks"
     {
     }

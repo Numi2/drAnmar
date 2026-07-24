@@ -8,7 +8,7 @@
 )
 
 def Xform "DrAnmarNeedle" (
-    prepend references = @DrAnmarNeedle_base.usda@
+    prepend references = @./DrAnmarNeedle_base.usda@
     variants = {
         string Physics = "physx"
     }
@@ -26,7 +26,7 @@ def Xform "DrAnmarNeedle" (
             }
         }
         "physics" (
-            prepend payload = @DrAnmarNeedle_physics.usda@
+            prepend payload = @./DrAnmarNeedle_physics.usda@
         ) {
             over "Suture" (
                 variants = {
@@ -37,7 +37,7 @@ def Xform "DrAnmarNeedle" (
             }
         }
         "physx" (
-            prepend payload = @DrAnmarNeedle_physx.usda@
+            prepend payload = @./DrAnmarNeedle_physx.usda@
         ) {
             over "Suture" (
                 variants = {

@@ -1,7 +1,7 @@
 #usda 1.0
 (
     subLayers = [
-        @DrAnmarNeedle_physics.usda@
+        @./DrAnmarNeedle_physics.usda@
     ]
     defaultPrim = "DrAnmarNeedle"
     doc = "DrAnmar Needle PhysX-specific tuning layer. Composed by DrAnmarNeedle.usda."

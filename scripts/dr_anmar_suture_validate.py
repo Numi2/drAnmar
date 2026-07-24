@@ -112,6 +112,13 @@ def present_text_tokens(texts: tuple[str, ...], tokens: tuple[str, ...]) -> list
     return [token for token in tokens if any(token in text for text in texts)]
 
 
+def unanchored_local_asset_paths(texts: tuple[str, ...]) -> list[str]:
+    """Return local USD asset paths that are not explicitly anchored."""
+
+    asset_paths = {asset_path for text in texts for asset_path in re.findall(r"@([^@\r\n]+)@", text)}
+    return sorted(asset_path for asset_path in asset_paths if not asset_path.startswith(("./", "../")))
+
+
 def read_usd_as_text(path: Path, usdcat_command: str) -> str:
     usdcat_path = shutil.which(usdcat_command)
     if usdcat_path is None:
@@ -455,10 +462,38 @@ def add_suture_layer_checks(
     base_engine_schemas = sorted(set(re.findall(r'"((?:Physics|Physx|Newton)[A-Za-z0-9_]*API)"', base_text)))
     base_physics_typed_prims = sorted(set(re.findall(r"\bdef\s+(Physics[A-Za-z0-9_]+)\s+\"", base_text)))
     nvidia_references = profile.get("nvidia_stack_references", [])
+    model_identity = layer_contract["model_identity"]
+    unanchored_asset_paths = unanchored_local_asset_paths(
+        (
+            entry_text,
+            base_text,
+            materials_text,
+            physics_text,
+            physx_text,
+        )
+    )
+    model_identity_valid = bool(
+        model_identity["kind"] == "component"
+        and model_identity["asset_info_name"] == "DrAnmarSuture4_0"
+        and model_identity["display_name"] == "DrAnmar 4-0 Braided Suture"
+        and model_identity["semantic_schema_instance"] == "SemanticsLabelsAPI:wikidata_qcode"
+        and model_identity["semantic_label_attribute"] == "semantics:labels:wikidata_qcode"
+        and model_identity["wikidata_qcodes"] == ["Q4948587"]
+        and all(re.fullmatch(r"Q[1-9][0-9]*", qcode) for qcode in model_identity["wikidata_qcodes"])
+        and model_identity["semantic_label_inheritance"] == "root_label_inherited_by_all_descendant_geometry"
+        and model_identity["composition_path_policy"] == "explicit_anchored_relative_asset_paths"
+        and 'prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]' in base_text
+        and 'string name = "DrAnmarSuture4_0"' in base_text
+        and 'string version = "2.5.0"' in base_text
+        and 'displayName = "DrAnmar 4-0 Braided Suture"' in base_text
+        and 'kind = "component"' in base_text
+        and 'token[] semantics:labels:wikidata_qcode = ["Q4948587"]' in base_text
+        and not unanchored_asset_paths
+    )
     check(
         checks,
         "suture_asset_structure_source_ownership",
-        profile["version"] == "2.4.0"
+        profile["version"] == "2.5.0"
         and layer_contract["entry_layer"] == "DrAnmarSuture4_0.usda"
         and layer_contract["base_layer"] == "DrAnmarSuture4_0_base.usda"
         and layer_contract["geometry_layer"] == "DrAnmarSuture4_0_geometry.usd"
@@ -474,14 +509,22 @@ def add_suture_layer_checks(
         and layer_contract["physics_payload_loading"] == "deferred_until_selected_variant_is_loaded"
         and layer_contract["engine_isolation"]
         == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
-        and f'@{layer_contract["base_layer"]}@' in entry_text
-        and f'@{layer_contract["physx_layer"]}@' in entry_text
-        and f'@{layer_contract["physics_layer"]}@' in entry_text
-        and f'@{layer_contract["materials_layer"]}@' not in entry_text
-        and f'@{layer_contract["geometry_layer"]}@' not in entry_text
-        and f'@{layer_contract["materials_layer"]}@' in base_text
-        and f'@{layer_contract["geometry_layer"]}@' in base_text
-        and f'@{layer_contract["physics_layer"]}@' in physx_text
+        and layer_contract["base_layer_owns"]
+        == [
+            "asset_identity",
+            "openusd_model_kind_asset_info_and_inherited_semantic_labels",
+            "structural_scopes",
+            "geometry_and_material_sublayer_composition",
+        ]
+        and model_identity_valid
+        and f'@./{layer_contract["base_layer"]}@' in entry_text
+        and f'@./{layer_contract["physx_layer"]}@' in entry_text
+        and f'@./{layer_contract["physics_layer"]}@' in entry_text
+        and f'@./{layer_contract["materials_layer"]}@' not in entry_text
+        and f'@./{layer_contract["geometry_layer"]}@' not in entry_text
+        and f'@./{layer_contract["materials_layer"]}@' in base_text
+        and f'@./{layer_contract["geometry_layer"]}@' in base_text
+        and f'@./{layer_contract["physics_layer"]}@' in physx_text
         and 'append variantSets = "Physics"' in entry_text
         and 'string Physics = "physx"' in entry_text
         and entry_text.count('"none" {') == 1
@@ -533,7 +576,7 @@ def add_suture_layer_checks(
         and physx_text.count("physxCollision:contactOffset") == segment_count + 1
         and physx_text.count("physxCollision:restOffset") == segment_count + 1
         and physx_text.count('"PhysxMaterialAPI"') == 2
-        and len(nvidia_references) >= 8
+        and len(nvidia_references) >= 11
         and all(
             item.get("url", "").startswith(
                 (
@@ -558,6 +601,9 @@ def add_suture_layer_checks(
             "materials_forbidden": materials_forbidden,
             "neutral_engine_specific": neutral_engine_specific,
             "physx_neutral_or_newton": physx_neutral_or_newton,
+            "model_identity": model_identity,
+            "model_identity_valid": model_identity_valid,
+            "unanchored_asset_paths": unanchored_asset_paths,
             "nvidia_reference_count": len(nvidia_references),
         },
         "lightweight entry, binary braided render geometry with primitive colliders, visual look-development,"
@@ -1562,11 +1608,19 @@ def validate(
         f'drAnmarAssetId = "{DR_ANMAR_NEEDLE_ASSET_ID}"',
         f'drAnmarAssetName = "{DR_ANMAR_NEEDLE_NAME}"',
         f'drAnmarAssetVersion = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"',
-        "@DrAnmarNeedle_base.usda@",
-        "@DrAnmarNeedle_physx.usda@",
-        "@DrAnmarNeedle_materials.usda@",
-        "@DrAnmarNeedle_geometry.usd@",
+        "@./DrAnmarNeedle_base.usda@",
+        "@./DrAnmarNeedle_physx.usda@",
+        "@./DrAnmarNeedle_materials.usda@",
+        "@./DrAnmarNeedle_geometry.usd@",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
+        'prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]',
+        'string name = "DrAnmarNeedle"',
+        f'string version = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"',
+        'displayName = "DrAnmar Needle and 4-0 Braided Suture"',
+        'kind = "component"',
+        'kind = "subcomponent"',
+        'token[] semantics:labels:wikidata_qcode = ["Q619800"]',
+        'token[] semantics:labels:wikidata_qcode = ["Q28790452"]',
         'drAnmarGeometrySource = "independently_generated_parametric_geometry"',
         f"drAnmarMassPropertyIntegrationSlices = {DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES}",
         'drAnmarContactOffsetContract = "scale_aware_physx_engine_layer_authoring"',
@@ -1704,7 +1758,7 @@ def validate(
         'def PhysicsFixedJoint "FactorySwage"',
     ]
     physx_required_tokens = [
-        "@DrAnmarNeedle_physics.usda@",
+        "@./DrAnmarNeedle_physics.usda@",
         'defaultPrim = "DrAnmarNeedle"',
         'over "DrAnmarNeedle"',
         'over "Looks"',
@@ -1738,6 +1792,48 @@ def validate(
             "prepend references =",
         ),
     )
+    needle_model_identity = layer_organization["model_identity"]
+    needle_unanchored_asset_paths = unanchored_local_asset_paths(
+        (
+            needle_entry_text,
+            needle_base_text,
+            needle_materials_text,
+            needle_physics_text,
+            needle_physx_text,
+        )
+    )
+    needle_model_identity_valid = bool(
+        needle_model_identity["kind"] == "component"
+        and needle_model_identity["asset_info_name"] == "DrAnmarNeedle"
+        and needle_model_identity["display_name"] == "DrAnmar Needle and 4-0 Braided Suture"
+        and needle_model_identity["semantic_schema_instance"] == "SemanticsLabelsAPI:wikidata_qcode"
+        and needle_model_identity["semantic_label_attribute"] == "semantics:labels:wikidata_qcode"
+        and needle_model_identity["assembly_wikidata_qcodes"] == ["Q619800"]
+        and needle_model_identity["needle_wikidata_qcodes"] == ["Q28790452"]
+        and needle_model_identity["referenced_suture_wikidata_qcodes"] == ["Q4948587"]
+        and all(
+            re.fullmatch(r"Q[1-9][0-9]*", qcode)
+            for qcodes in (
+                needle_model_identity["assembly_wikidata_qcodes"],
+                needle_model_identity["needle_wikidata_qcodes"],
+                needle_model_identity["referenced_suture_wikidata_qcodes"],
+            )
+            for qcode in qcodes
+        )
+        and needle_model_identity["child_model_kind"] == "subcomponent"
+        and needle_model_identity["semantic_label_inheritance"]
+        == "nearest_authored_subcomponent_label_inherited_by_descendant_geometry"
+        and needle_model_identity["composition_path_policy"] == "explicit_anchored_relative_asset_paths"
+        and needle_base_text.count('prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]') == 2
+        and 'string name = "DrAnmarNeedle"' in needle_base_text
+        and f'string version = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"' in needle_base_text
+        and 'displayName = "DrAnmar Needle and 4-0 Braided Suture"' in needle_base_text
+        and needle_base_text.count('kind = "component"') == 1
+        and needle_base_text.count('kind = "subcomponent"') == 2
+        and 'token[] semantics:labels:wikidata_qcode = ["Q619800"]' in needle_base_text
+        and 'token[] semantics:labels:wikidata_qcode = ["Q28790452"]' in needle_base_text
+        and not needle_unanchored_asset_paths
+    )
     check(
         checks,
         "needle_asset_structure_source_ownership",
@@ -1768,6 +1864,7 @@ def validate(
         and layer_organization["base_layer_owns"]
         == [
             "asset_identity",
+            "openusd_model_kind_asset_info_and_inherited_semantic_labels",
             "structural_hierarchy",
             "suture_reference_and_transform",
             "geometry_and_material_sublayer_composition",
@@ -1808,15 +1905,16 @@ def validate(
         == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
         and layer_organization["content_isolation"]
         == "entry_contains_only_interface_composition_base_contains_identity_hierarchy_suture_reference_and_geometry_material_composition_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
-        and "@DrAnmarNeedle_base.usda@" in needle_entry_text
-        and "@DrAnmarNeedle_physx.usda@" in needle_entry_text
-        and "@DrAnmarNeedle_physics.usda@" in needle_entry_text
-        and "@DrAnmarNeedle_materials.usda@" not in needle_entry_text
-        and "@DrAnmarNeedle_geometry.usd@" not in needle_entry_text
-        and "@DrAnmarNeedle_materials.usda@" in needle_base_text
-        and "@DrAnmarNeedle_geometry.usd@" in needle_base_text
+        and needle_model_identity_valid
+        and "@./DrAnmarNeedle_base.usda@" in needle_entry_text
+        and "@./DrAnmarNeedle_physx.usda@" in needle_entry_text
+        and "@./DrAnmarNeedle_physics.usda@" in needle_entry_text
+        and "@./DrAnmarNeedle_materials.usda@" not in needle_entry_text
+        and "@./DrAnmarNeedle_geometry.usd@" not in needle_entry_text
+        and "@./DrAnmarNeedle_materials.usda@" in needle_base_text
+        and "@./DrAnmarNeedle_geometry.usd@" in needle_base_text
         and "prepend references = @../suture/DrAnmarSuture4_0.usda@" in needle_base_text
-        and "@DrAnmarNeedle_physics.usda@" in needle_physx_text
+        and "@./DrAnmarNeedle_physics.usda@" in needle_physx_text
         and 'append variantSets = "Physics"' in needle_entry_text
         and 'string Physics = "physx"' in needle_entry_text
         and needle_entry_text.count("prepend payload =") == 2
@@ -1872,6 +1970,9 @@ def validate(
             "physx_newton_properties": physx_newton_properties,
             "physx_newton_schemas": physx_newton_schemas,
             "physics_visual_payload_tokens": physics_visual_payload_tokens,
+            "model_identity": needle_model_identity,
+            "model_identity_valid": needle_model_identity_valid,
+            "unanchored_asset_paths": needle_unanchored_asset_paths,
         },
         "lightweight entry, binary mesh, visual look-development, neutral physics, and PhysX tuning each have"
         " isolated source ownership without unqualified cross-engine schemas",
@@ -2325,9 +2426,19 @@ def validate(
         "needle_physics_variant_selection",
         "suture_physics_variant_selection",
         "physics_variant_contract_valid",
+        "root_asset_info_name",
+        "root_asset_info_version",
+        "root_model_identity_valid",
+        "needle_subcomponent_identity_valid",
+        "suture_subcomponent_identity_valid",
+        "semantic_visual_mesh_count",
+        "semantic_visual_mesh_labels_valid",
+        "semantic_visual_mesh_failures",
         "needle_base_layer_name",
+        "needle_source_model_identity_valid",
         "needle_asset_structure_source_ownership_valid",
         "suture_base_layer_name",
+        "suture_source_model_identity_valid",
         "suture_asset_structure_source_ownership_valid",
         "suture_physx_collision_api_count",
         "suture_hybrid_ccd_body_count",

@@ -8,7 +8,7 @@
 )
 
 def Xform "DrAnmarSuture4_0" (
-    prepend references = @DrAnmarSuture4_0_base.usda@
+    prepend references = @./DrAnmarSuture4_0_base.usda@
     variants = {
         string Physics = "physx"
     }
@@ -19,11 +19,11 @@ def Xform "DrAnmarSuture4_0" (
         "none" {
         }
         "physics" (
-            prepend payload = @DrAnmarSuture4_0_physics.usda@
+            prepend payload = @./DrAnmarSuture4_0_physics.usda@
         ) {
         }
         "physx" (
-            prepend payload = @DrAnmarSuture4_0_physx.usda@
+            prepend payload = @./DrAnmarSuture4_0_physx.usda@
         ) {
         }
     }
