@@ -338,15 +338,16 @@ function createInterface() {
   style.textContent = `
     .hand-control-launch{background:#123440!important;border-color:#2cd2e8!important;color:#eaffff!important}
     .hand-control-launch.state-active{background:#2cd2e8!important;color:#031014!important}
-    .hand-panel{box-sizing:border-box;position:fixed;z-index:70;right:24px;bottom:24px;width:min(500px,calc(100vw - 32px));min-width:min(340px,calc(100vw - 16px));min-height:min(320px,calc(100vh - 16px));max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);resize:both;overflow:auto;border:1px solid #2f5968;border-radius:16px;background:#07151df2;color:#e9f8fa;box-shadow:0 24px 70px #000b;backdrop-filter:blur(16px);padding:15px}
+    .hand-panel{box-sizing:border-box;container-type:inline-size;position:fixed;z-index:70;right:18px;bottom:18px;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 12px));min-height:min(260px,calc(100vh - 12px));max-width:calc(100vw - 12px);max-height:min(560px,calc(100vh - 24px));resize:both;overflow:auto;border:1px solid #2f5968;border-radius:14px;background:#07151df2;color:#e9f8fa;box-shadow:0 18px 52px #000b;backdrop-filter:blur(16px);padding:12px}
     .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:12px;cursor:grab;touch-action:none;user-select:none}.hand-head.dragging{cursor:grabbing}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:12px}.hand-head .spacer{flex:1}.hand-head button{cursor:pointer;touch-action:auto}
     .hand-video-wrap{position:relative;margin-top:12px;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:#020608;border:1px solid #24404d}.hand-video-wrap video,.hand-video-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.hand-video-wrap canvas{transform:none;pointer-events:none}
     .hand-banner{box-sizing:border-box;position:absolute;left:10px;top:10px;max-width:62%;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px/1.35 ui-monospace,SFMono-Regular;white-space:normal}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
     .hand-metrics{position:absolute;right:10px;top:10px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:72%}.hand-metrics span{padding:5px 7px;border-radius:6px;background:#07151ddd;border:1px solid #264653;color:#9db6bf;font:700 9px ui-monospace,SFMono-Regular}
-    .hand-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:10px}.hand-actions button{min-height:40px}.hand-actions .engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
-    .hand-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.hand-card{padding:10px;border:1px solid #24404d;border-radius:10px;background:#091920}.hand-card.quality-hold{border-color:#82513d;background:#1b1412}.hand-card header{height:auto;padding:0;border:0;background:none}.hand-card b{font-size:12px}.hand-card .track{margin-left:auto;color:#ff8a90;font:800 9px ui-monospace}.hand-card.tracked .track{color:#42e49b}.hand-card dl{display:grid;grid-template-columns:auto 1fr;margin:8px 0 0;gap:4px 8px;font:10px ui-monospace,SFMono-Regular}.hand-card dt{color:#71929d}.hand-card dd{margin:0;text-align:right}.hand-card button{width:100%;margin-top:8px;min-height:32px}
+    .hand-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}.hand-actions button{min-width:0;min-height:36px;padding:6px;font-size:10px}.hand-actions .engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
+    .hand-cards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.hand-card{padding:8px;border:1px solid #24404d;border-radius:9px;background:#091920}.hand-card.inactive{opacity:.62}.hand-card.quality-hold{border-color:#82513d;background:#1b1412}.hand-card header{height:auto;padding:0;border:0;background:none}.hand-card b{font-size:11px}.hand-card .track{margin-left:auto;color:#ff8a90;font:800 8px ui-monospace}.hand-card.tracked .track{color:#42e49b}.hand-card dl{display:grid;grid-template-columns:auto 1fr;margin:7px 0 0;gap:3px 7px;font:9px ui-monospace,SFMono-Regular}.hand-card dt{color:#71929d}.hand-card dd{margin:0;text-align:right}.hand-card button{width:100%;margin-top:7px;min-height:30px}
     .hand-calibration{margin-top:10px;padding:10px;border:1px solid #7a693d;border-radius:10px;background:#241f12}.hand-calibration.hidden{display:none}.hand-calibration b{display:block;margin-bottom:4px}.hand-calibration p{margin:0 0 8px;color:#d8cda9;font-size:12px}.hand-calibration progress{width:100%;height:7px;margin:2px 0 8px;accent-color:#2cd2e8}.hand-privacy{margin:10px 2px 0;color:#6f909b;font-size:10px}
-    @media(max-width:640px){.hand-panel{right:8px;bottom:8px;width:calc(100vw - 16px);resize:vertical}.hand-cards{grid-template-columns:1fr}.hand-actions{grid-template-columns:1fr 1fr}.hand-actions button:first-child{grid-column:1/-1}.hand-metrics{top:auto;bottom:9px;left:9px;right:9px;max-width:none;justify-content:flex-start}}
+    @container(max-width:350px){.hand-cards{grid-template-columns:1fr}.hand-actions{grid-template-columns:1fr 1fr}.hand-head p{font-size:10px}.hand-metrics{top:auto;bottom:7px;left:7px;right:7px;max-width:none;justify-content:flex-start}}
+    @media(max-width:640px){.hand-panel{right:6px;bottom:6px;width:calc(100vw - 12px);resize:vertical}}
   `;
   document.head.append(style);
 
@@ -364,9 +365,9 @@ function createInterface() {
   panel.className = "hand-panel hidden";
   panel.setAttribute("aria-label", "Webcam hand control");
   panel.innerHTML = `
-    <div class="hand-head"><div><h2>Two-finger surgical control</h2><p>Left → Instrument 1 · Right → Instrument 2 · Drag bar · resize corner</p></div><div class="spacer"></div><button id="handClose" data-shortcut="CAM">Close</button></div>
+    <div class="hand-head"><div><h2>Two-finger surgical control</h2><p>One hand first · add the second when ready · drag · resize</p></div><div class="spacer"></div><button id="handClose" data-shortcut="CAM">Close</button></div>
     <div class="hand-video-wrap"><video id="handVideo" playsinline muted></video><canvas id="handOverlay"></canvas><div id="handBanner" class="hand-banner">Camera off</div><div class="hand-metrics"><span id="handRate">0 Hz</span><span id="handInference">— ms vision</span><span id="handLatency">— ms loop</span></div></div>
-    <div class="hand-actions"><button id="handStart" data-shortcut="CAM">Start camera</button><button id="handFreezeAll" data-shortcut="FREEZE">Freeze both</button><button id="handEngageAll" data-shortcut="ENGAGE">Engage tracked</button><button id="handPrecision" class="engaged" data-shortcut="PRECISION">Precision on</button><button id="handRecalibrate" data-shortcut="CAL">Recalibrate</button></div>
+    <div class="hand-actions"><button id="handStart" data-shortcut="CAM">Start camera</button><button id="handFreezeAll" data-shortcut="FREEZE">Freeze hand</button><button id="handEngageAll" data-shortcut="ENGAGE">Engage hand</button><button id="handPrecision" class="engaged" data-shortcut="PRECISION">Precision on</button><button id="handRecalibrate" data-shortcut="CAL">Recalibrate</button><button id="handMode">Try one hand first</button></div>
     <div class="hand-cards">
       <article id="handCard0" class="hand-card"><header><b>Left hand · Instrument 1</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Frozen</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="0" data-shortcut="L CAM">Engage left</button></article>
       <article id="handCard1" class="hand-card"><header><b>Right hand · Instrument 2</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Frozen</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="1" data-shortcut="R CAM">Engage right</button></article>
@@ -414,6 +415,9 @@ class HandController {
     this.poseDiagnostics = new Map();
     this.anchors = new Map();
     this.engaged = [false, false];
+    this.controlMode = "single";
+    this.primaryArm = null;
+    this.singleHandTried = false;
     this.provisionalCalibration = [null, null];
     this.autoEngagePending = false;
     this.autoEngageTimer = null;
@@ -439,7 +443,7 @@ class HandController {
     this.calibrationCapture = null;
     this.calibrationReadySince = null;
     this.calibrationStageStartedAt = 0;
-    this.panelGeometryKey = "drAnmar.handPanelGeometry.v1";
+    this.panelGeometryKey = "drAnmar.handPanelGeometry.v2";
     this.panelGeometryReady = false;
     this.panelDrag = null;
     this.panelResizeObserver = null;
@@ -497,7 +501,13 @@ class HandController {
       button.classList.toggle("engaged", this.precision);
       this.freezeAll();
     });
-    this.panel.querySelector("#handRecalibrate").addEventListener("click", () => this.beginCalibration());
+    this.panel.querySelector("#handRecalibrate").addEventListener("click", () => {
+      const targetArms = this.controlMode === "single" && this.primaryArm !== null
+        ? [this.primaryArm]
+        : [];
+      this.beginCalibration({ targetArms });
+    });
+    this.panel.querySelector("#handMode").addEventListener("click", () => this.toggleControlMode());
     this.panel.querySelectorAll("[data-hand-arm]").forEach(button => {
       button.addEventListener("click", () => {
         this.cancelAutomaticEngage();
@@ -509,6 +519,7 @@ class HandController {
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) this.freezeAll(false);
     });
+    this.renderModeControl();
   }
 
   preparePanelGeometry() {
@@ -523,21 +534,21 @@ class HandController {
     } catch (_error) {}
     const viewportWidth = Math.max(1, window.innerWidth);
     const viewportHeight = Math.max(1, window.innerHeight);
-    const maximumWidth = Math.max(1, viewportWidth - 16);
-    const maximumHeight = Math.max(1, viewportHeight - 16);
-    const minimumWidth = Math.min(340, maximumWidth);
-    const minimumHeight = Math.min(320, maximumHeight);
+    const maximumWidth = Math.max(1, viewportWidth - 12);
+    const maximumHeight = Math.max(1, Math.min(560, viewportHeight - 12));
+    const minimumWidth = Math.min(300, maximumWidth);
+    const minimumHeight = Math.min(260, maximumHeight);
     const width = clamp(Number(stored?.width) || rect.width, minimumWidth, maximumWidth);
     const height = clamp(Number(stored?.height) || rect.height, minimumHeight, maximumHeight);
     const left = clamp(
       Number.isFinite(Number(stored?.left)) ? Number(stored.left) : rect.left,
-      8,
-      Math.max(8, viewportWidth - width - 8),
+      6,
+      Math.max(6, viewportWidth - width - 6),
     );
     const top = clamp(
       Number.isFinite(Number(stored?.top)) ? Number(stored.top) : rect.top,
-      8,
-      Math.max(8, viewportHeight - height - 8),
+      6,
+      Math.max(6, viewportHeight - height - 6),
     );
     Object.assign(this.panel.style, {
       left: `${left}px`,
@@ -574,13 +585,13 @@ class HandController {
     if (!drag || drag.pointerId !== event.pointerId) return;
     const left = clamp(
       drag.left + event.clientX - drag.pointerX,
-      8,
-      Math.max(8, window.innerWidth - drag.width - 8),
+      6,
+      Math.max(6, window.innerWidth - drag.width - 6),
     );
     const top = clamp(
       drag.top + event.clientY - drag.pointerY,
-      8,
-      Math.max(8, window.innerHeight - drag.height - 8),
+      6,
+      Math.max(6, window.innerHeight - drag.height - 6),
     );
     this.panel.style.left = `${left}px`;
     this.panel.style.top = `${top}px`;
@@ -598,12 +609,12 @@ class HandController {
   constrainPanelToViewport(save = false) {
     if (!this.panelGeometryReady || this.panel.classList.contains("hidden")) return;
     const rect = this.panel.getBoundingClientRect();
-    const maximumWidth = Math.max(1, window.innerWidth - 16);
-    const maximumHeight = Math.max(1, window.innerHeight - 16);
+    const maximumWidth = Math.max(1, window.innerWidth - 12);
+    const maximumHeight = Math.max(1, Math.min(560, window.innerHeight - 12));
     const width = Math.min(rect.width, maximumWidth);
     const height = Math.min(rect.height, maximumHeight);
-    const left = clamp(rect.left, 8, Math.max(8, window.innerWidth - width - 8));
-    const top = clamp(rect.top, 8, Math.max(8, window.innerHeight - height - 8));
+    const left = clamp(rect.left, 6, Math.max(6, window.innerWidth - width - 6));
+    const top = clamp(rect.top, 6, Math.max(6, window.innerHeight - height - 6));
     if (width !== rect.width) this.panel.style.width = `${width}px`;
     if (height !== rect.height) this.panel.style.height = `${height}px`;
     this.panel.style.left = `${left}px`;
@@ -622,6 +633,81 @@ class HandController {
         height: Math.round(rect.height),
       }));
     } catch (_error) {}
+  }
+
+  isArmEnabled(arm) {
+    return this.controlMode === "dual" || this.primaryArm === arm;
+  }
+
+  bestTrackedArm() {
+    if (this.primaryArm !== null && this.poses.has(this.primaryArm)) return this.primaryArm;
+    const candidates = [0, 1].filter(arm => this.poses.has(arm));
+    candidates.sort(
+      (left, right) => (this.poses.get(right)?.quality || 0) - (this.poses.get(left)?.quality || 0),
+    );
+    return candidates[0] ?? null;
+  }
+
+  selectPrimaryArm(arm) {
+    if (arm !== 0 && arm !== 1) return;
+    this.primaryArm = arm;
+    for (const otherArm of [0, 1]) {
+      if (otherArm === arm) continue;
+      this.engaged[otherArm] = false;
+      this.anchors.delete(otherArm);
+      this.resetMotionFilter(otherArm);
+    }
+    this.renderModeControl();
+  }
+
+  renderModeControl() {
+    const button = this.panel.querySelector("#handMode");
+    if (!button) return;
+    const dual = this.controlMode === "dual";
+    button.textContent = dual
+      ? "Use one hand"
+      : this.singleHandTried
+        ? "Add second hand"
+        : "Try one hand first";
+    button.disabled = !dual && !this.singleHandTried;
+    button.classList.toggle("engaged", dual);
+    this.panel.querySelector("#handFreezeAll").textContent = dual ? "Freeze both" : "Freeze hand";
+    this.panel.querySelector("#handEngageAll").textContent = dual ? "Engage both" : "Engage hand";
+  }
+
+  toggleControlMode() {
+    this.cancelAutomaticEngage();
+    if (this.controlMode === "dual") {
+      this.controlMode = "single";
+      const selectedArm = this.bestTrackedArm() ?? this.primaryArm ?? 0;
+      this.selectPrimaryArm(selectedArm);
+      this.freezeAll(false);
+      this.autoEngagePending = true;
+      this.setBanner("One-hand mode · hold the selected hand steady", "good");
+      this.scheduleAutomaticEngage();
+      this.renderCards();
+      return;
+    }
+    if (!this.singleHandTried || this.primaryArm === null) {
+      this.setBanner("Try one-hand control first", "warn");
+      return;
+    }
+    this.controlMode = "dual";
+    this.freezeAll(false);
+    this.renderModeControl();
+    const secondArm = this.primaryArm === 0 ? 1 : 0;
+    if (!this.calibration?.hands?.[secondArm]) {
+      this.beginCalibration({ targetArms: [secondArm] });
+      this.setBanner(
+        `Add ${secondArm === 0 ? "left" : "right"} hand · calibration starts automatically`,
+        "warn",
+      );
+      return;
+    }
+    this.autoEngagePending = true;
+    this.setBanner("Two-hand mode · hold both hands steady", "good");
+    this.scheduleAutomaticEngage();
+    this.renderCards();
   }
 
   emptyCommand(arm) {
@@ -783,14 +869,14 @@ class HandController {
     }
   }
 
-  beginCalibration({ automatic = true } = {}) {
+  beginCalibration({ automatic = true, targetArms = [] } = {}) {
     this.cancelAutomaticEngage();
     this.freezeAll(false);
     this.calibrationActive = true;
     this.calibrationAutomatic = automatic;
     this.calibrationStep = 0;
     this.calibrationDraft = { hands: {} };
-    this.calibrationTargetArms = [];
+    this.calibrationTargetArms = [...targetArms].filter(arm => arm === 0 || arm === 1).slice(0, 1);
     this.calibrationCandidateSignature = "";
     this.calibrationCapture = null;
     this.calibrationReadySince = null;
@@ -800,9 +886,9 @@ class HandController {
 
   renderCalibration() {
     const instructions = [
-      ["1 · Neutral pose", "Show one hand or both comfortably in the center. The camera detects which hand is present."],
-      ["2 · Fully closed", "Touch thumb and index together on the detected hand or hands and hold."],
-      ["3 · Fully open", "Open thumb and index comfortably on the detected hand or hands and hold."],
+      ["1 · Neutral pose", "Show the one hand you want to use. The camera selects it automatically."],
+      ["2 · Fully closed", "Touch thumb and index together on that hand and hold."],
+      ["3 · Fully open", "Open thumb and index comfortably on that hand and hold."],
     ];
     const [title, text] = instructions[this.calibrationStep] || instructions[0];
     this.calibrationStageStartedAt = performance.now();
@@ -824,15 +910,13 @@ class HandController {
   }
 
   calibrationStagePrompt(arms = this.calibrationTargetArms) {
-    const subject = arms.length === 2
-      ? "Both hands"
-      : arms[0] === 0
+    const subject = arms[0] === 0
         ? "Left hand"
         : arms[0] === 1
           ? "Right hand"
           : null;
     return [
-      subject ? `1/3 · ${subject} detected · hold neutral` : "1/3 · Show one hand or both at neutral",
+      subject ? `1/3 · ${subject} selected · hold neutral` : "1/3 · Show one hand at neutral",
       subject ? `2/3 · ${subject}: touch thumb + index` : "2/3 · Touch thumb + index",
       subject ? `3/3 · ${subject}: open thumb + index` : "3/3 · Open thumb + index",
     ][this.calibrationStep] || "Calibration";
@@ -843,14 +927,20 @@ class HandController {
       this.setBanner("Show at least one hand before capturing", "warn");
       return;
     }
-    const visibleArms = (arms || [...this.poses.keys()])
+    const candidates = (arms || [...this.poses.keys()])
       .filter(arm => this.poses.get(arm)?.quality >= MIN_TRACKING_QUALITY);
+    candidates.sort(
+      (left, right) => (this.poses.get(right)?.quality || 0) - (this.poses.get(left)?.quality || 0),
+    );
+    const visibleArms = this.calibrationTargetArms.length
+      ? candidates
+      : candidates.slice(0, 1);
     if (!visibleArms.length) {
       this.setBanner("Hold one clearly tracked hand in view", "warn");
       return;
     }
     if (!this.calibrationTargetArms.length) {
-      this.calibrationTargetArms = [...visibleArms].sort();
+      this.calibrationTargetArms = [...visibleArms];
     }
     const captureArms = this.calibrationTargetArms.filter(arm => visibleArms.includes(arm));
     if (captureArms.length !== this.calibrationTargetArms.length) {
@@ -901,9 +991,12 @@ class HandController {
     if (!this.calibrationActive || !this.calibrationAutomatic || this.calibrationCapture) return;
     if (timestampMs - this.calibrationStageStartedAt < 900) return;
     const visibleArms = [0, 1].filter(arm => this.poses.get(arm)?.quality >= MIN_TRACKING_QUALITY);
+    visibleArms.sort(
+      (left, right) => (this.poses.get(right)?.quality || 0) - (this.poses.get(left)?.quality || 0),
+    );
     const targetArms = this.calibrationTargetArms.length
       ? this.calibrationTargetArms
-      : visibleArms;
+      : visibleArms.slice(0, 1);
     const signature = targetArms.join(",");
     if (signature !== this.calibrationCandidateSignature) {
       this.calibrationCandidateSignature = signature;
@@ -991,7 +1084,7 @@ class HandController {
     });
     if (!calibration) {
       this.setBanner("Calibration span is too small · try again", "warn");
-      this.beginCalibration();
+      this.beginCalibration({ targetArms: this.calibrationTargetArms });
       return;
     }
     this.calibration = calibration;
@@ -999,6 +1092,9 @@ class HandController {
     this.calibrationAutomatic = false;
     for (const arm of Object.keys(calibration.hands).map(Number)) {
       this.provisionalCalibration[arm] = null;
+    }
+    if (this.controlMode === "single" && this.calibrationTargetArms.length) {
+      this.selectPrimaryArm(this.calibrationTargetArms[0]);
     }
     localStorage.setItem(this.calibrationKey, JSON.stringify(calibration));
     this.panel.querySelector("#handCalibration").classList.add("hidden");
@@ -1139,7 +1235,7 @@ class HandController {
 
   buildCommandForArm(arm, timestampSeconds) {
     const pose = this.poses.get(arm);
-    if (!pose) {
+    if (!pose || !this.isArmEnabled(arm)) {
       return this.emptyCommand(arm);
     }
     const calibration = this.controlCalibration(arm, pose);
@@ -1302,6 +1398,13 @@ class HandController {
       this.setBanner("Track that hand first", "warn");
       return;
     }
+    if (this.controlMode === "single" && this.primaryArm !== arm) {
+      this.selectPrimaryArm(arm);
+      if (!this.calibration?.hands?.[arm]) {
+        this.beginCalibration({ targetArms: [arm] });
+        return;
+      }
+    }
     if (!this.serverEnabled && !(await this.setServerEnabled(true))) return;
     if (this.reacquire[arm]) {
       this.engaged[arm] = false;
@@ -1319,6 +1422,10 @@ class HandController {
     this.resetMotionFilter(arm);
     this.poseFilters[arm].reset([0, 0, 0, 0, 0, 0], pose.timestampSeconds);
     this.engaged[arm] = true;
+    if (this.controlMode === "single") {
+      this.singleHandTried = true;
+      this.renderModeControl();
+    }
     this.setBanner(`Instrument ${arm + 1} engaged`, "good");
     this.renderCards();
   }
@@ -1347,15 +1454,26 @@ class HandController {
       this.autoEngagePending = automatic;
       return;
     }
-    const trackedArms = [0, 1].filter(arm => this.poses.has(arm));
+    const visibleArms = [0, 1].filter(arm => this.poses.has(arm));
+    if (this.controlMode === "single" && this.primaryArm === null) {
+      const selectedArm = this.bestTrackedArm();
+      if (selectedArm !== null) this.selectPrimaryArm(selectedArm);
+    }
+    const trackedArms = visibleArms.filter(arm => this.isArmEnabled(arm));
     if (!trackedArms.length) {
-      this.setBanner("Show at least one hand before engaging", "warn");
+      this.autoEngagePending = automatic;
+      this.setBanner(
+        this.controlMode === "single" && this.primaryArm !== null
+          ? `Show your ${this.primaryArm === 0 ? "left" : "right"} hand to engage`
+          : "Show at least one hand before engaging",
+        "warn",
+      );
       return;
     }
     const needsReacquire = trackedArms.filter(arm => this.reacquire[arm]);
     if (needsReacquire.length) await this.sendFrozenFor(needsReacquire);
     let engagedCount = 0;
-    for (const arm of [0, 1]) {
+    for (const arm of trackedArms) {
       const pose = this.poses.get(arm);
       if (!pose || this.reacquire[arm]) continue;
       this.anchors.set(arm, {
@@ -1373,13 +1491,21 @@ class HandController {
       this.setBanner("Hold steady while the motion safety latch rearms", "warn");
       return;
     }
+    if (this.controlMode === "single") {
+      this.singleHandTried = true;
+      this.renderModeControl();
+    }
     const provisional = trackedArms.some(arm => !this.calibration?.hands?.[arm]);
     this.setBanner(
       provisional
         ? "Motion engaged · recalibrate for an exact personal jaw span"
         : automatic
-          ? "Stable tracking · instruments engaged"
-          : "Tracked instruments engaged",
+          ? this.controlMode === "dual"
+            ? "Stable tracking · both instruments engaged"
+            : "Stable tracking · one-hand control engaged"
+          : this.controlMode === "dual"
+            ? "Both tracked instruments engaged"
+            : "Selected instrument engaged",
       provisional ? "warn" : "good",
     );
     this.renderCards();
@@ -1429,19 +1555,24 @@ class HandController {
   }
 
   renderCards() {
+    this.renderModeControl();
     for (const arm of [0, 1]) {
       const card = this.panel.querySelector(`#handCard${arm}`);
       const pose = this.poses.get(arm);
       const diagnostic = this.poseDiagnostics.get(arm);
       const command = this.commandForArm(arm);
-      card.classList.toggle("tracked", Boolean(pose));
+      const enabled = this.isArmEnabled(arm);
+      card.classList.toggle("tracked", Boolean(pose) && enabled);
+      card.classList.toggle("inactive", !enabled);
       card.classList.toggle("quality-hold", !pose && Boolean(diagnostic));
       card.querySelector(".track").textContent = pose
-        ? "TRACKED"
+        ? enabled ? "TRACKED" : "AVAILABLE"
         : diagnostic
           ? "QUALITY HOLD"
           : "NOT TRACKED";
-      const safety = !pose && diagnostic
+      const safety = !enabled
+        ? "Single-hand mode"
+        : !pose && diagnostic
         ? "Vision quality hold"
         : this.reacquire[arm]
           ? "Recenter required"
@@ -1449,15 +1580,23 @@ class HandController {
             ? "Motion enabled"
             : this.serverSafety[arm]?.replaceAll("_", " ") || "Frozen";
       card.querySelector('[data-field="safety"]').textContent = safety;
-      card.querySelector('[data-field="clutch"]').textContent = this.engaged[arm] ? "Engaged" : "Frozen";
+      card.querySelector('[data-field="clutch"]').textContent = enabled && this.engaged[arm] ? "Engaged" : "Frozen";
       card.querySelector('[data-field="xyz"]').textContent = command.translation_offset_m.map(value => Math.round(value * 1000)).join(" · ");
       card.querySelector('[data-field="rpy"]').textContent = command.rotation_vector_rad.map(value => Math.round(value * 180 / Math.PI)).join(" · ");
-      card.querySelector('[data-field="gripper"]').textContent = pose ? `${Math.round(command.aperture_normalized * 100)}%` : "Held";
+      card.querySelector('[data-field="gripper"]').textContent = !enabled
+        ? "Not active"
+        : pose
+          ? `${Math.round(command.aperture_normalized * 100)}%`
+          : "Held";
       const quality = pose?.quality ?? diagnostic?.quality;
       card.querySelector('[data-field="confidence"]').textContent =
         Number.isFinite(quality) ? `${Math.round(quality * 100)}%` : "—";
       const button = card.querySelector("[data-hand-arm]");
-      button.textContent = this.engaged[arm] ? `Freeze ${arm ? "right" : "left"}` : `Engage ${arm ? "right" : "left"}`;
+      button.textContent = !enabled
+        ? `Use ${arm ? "right" : "left"} only`
+        : this.engaged[arm]
+          ? `Freeze ${arm ? "right" : "left"}`
+          : `Engage ${arm ? "right" : "left"}`;
       button.classList.toggle("engaged", this.engaged[arm]);
     }
   }
