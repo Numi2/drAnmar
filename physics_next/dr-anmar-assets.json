@@ -109,6 +109,34 @@
       "clinical_validation": false
     },
     {
+      "id": "dr-anmar-needle-system-v0.3.0",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/dranmar_needle.usda",
+      "profile": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/physics_profile.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/interaction_frames.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/integration_report.json",
+      "live_integration": "optional_standalone_rigid_prop_in_main_operating_room",
+      "live_behavior": "half_circle_taper_point_rigid_needle_with_explicit_swage_recess_compound_collision_mass_properties_and_robot_interaction_frames",
+      "deployment": "enabled_as_optional_bench_asset",
+      "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
+      "physical_qualification": "provisional_category_level_parameters_active",
+      "clinical_validation": false
+    },
+    {
+      "id": "dr-anmar-needle-thread-system-v0.3.0",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/dranmar_needle_thread.usda",
+      "extended_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/dranmar_needle_thread_extended.usda",
+      "rigid_proxy": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/dranmar_needle_thread_rigid_proxy.usda",
+      "profile": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/physics_profile.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/interaction_frames.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/integration_report.json",
+      "live_integration": "four_independently_selectable_main_operating_room_representations",
+      "live_behavior": "rigid_needle_with_180_mm_braided_4_0_thread_120_maximal_coordinate_segments_d6_constraints_explicit_swage_joint_coiled_extended_and_rigid_proxy_routes",
+      "deployment": "enabled_as_optional_bench_assets",
+      "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
+      "physical_qualification": "provisional_unmeasured_thread_joint_and_swage_parameters_active",
+      "clinical_validation": false
+    },
+    {
       "id": "dr-anmar-skin-stapler-v0.2.0",
       "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_rigid_proxy.usda",
       "articulated_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_articulated.usda",
@@ -119,8 +147,21 @@
       "live_integration": "optional_loaded_rigid_prop_in_main_operating_room",
       "live_behavior": "loaded_or_empty_rigid_perception_grasp_handover_positioning_and_contact_plus_separate_articulated_trigger_pusher_and_deterministic_simulated_staple_deployment_helpers",
       "deployment": "enabled_as_optional_rigid_operating_room_prop",
-      "native_gpu_qualification": "pending_isaac_sim_5_1_and_6_0_cuda_execution",
+      "native_gpu_qualification": "articulated_test_cell_qualified_on_rtx_4090_2026_07_24_rigid_operating_room_prop_pending",
       "physical_qualification": "provisional_unmeasured_parameters_active",
+      "clinical_validation": false
+    },
+    {
+      "id": "dr-anmar-stapler-test-cell-v0.1.0",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda",
+      "fixture_articulated_device": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_device.usda",
+      "mechanism_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_articulated.usda",
+      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/qualification_report.json",
+      "live_integration": "dedicated_doctor_selectable_stapler_test_cell_room",
+      "live_behavior": "six_dof_velocity_fixture_virtual_linear_actuator_bounded_press_hold_release_partial_stroke_rejection_trigger_pusher_and_fixture_error_telemetry_rearm_and_single_edge_logical_deployment",
+      "deployment": "enabled_as_research_room",
+      "native_gpu_qualification": "qualified_on_rtx_4090_2026_07_24_partial_18_7477_deg_no_deployment_full_event_24_6002_deg_max_pusher_8_9742_mm_max_fixture_error_0_1207_mm_0_0685_deg",
+      "physical_qualification": "blocked_pending_instrumented_physical_trigger_and_pusher_measurements",
       "clinical_validation": false
     }
   ],

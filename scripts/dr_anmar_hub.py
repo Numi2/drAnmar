@@ -159,6 +159,10 @@ def missing_required_bench_assets(
         (content_root, str(path))
         for path in procedure.get("required_nvidia_assets", ())
     ]
+    required.extend(
+        (args.root, str(path))
+        for path in procedure.get("required_repository_assets", ())
+    )
     selected = set(bench_assets or ())
     provider_roots = {
         "nvidia_i4h": content_root,

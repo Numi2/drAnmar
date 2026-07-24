@@ -211,6 +211,18 @@ COURSES = [
                 "concepts": ["native contact", "needle presentation", "dual custody", "instrument exchange"],
             },
             {
+                "id": "stapler-test-cell-live",
+                "title": "Dr.Anmar stapler mechanism test cell",
+                "eyebrow": "Runnable fixture-cell lab · 15 min",
+                "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
+                "procedure_id": "dr-anmar-stapler-test-cell",
+                "video": None,
+                "mode": "live",
+                "summary": "Test the articulated skin stapler in a six-DOF virtual fixture with a trigger actuator instead of requiring a robot hand that can grip its gun-shaped body.",
+                "goal": "Verify partial-stroke rejection, one logical deployment per full cycle, trigger-pusher tracking and rearm behavior.",
+                "concepts": ["fixture testing", "mechanism cycle", "threshold edge", "repeatability"],
+            },
+            {
                 "id": "dr-anmar-suturable-tissue-live",
                 "title": "DrAnmar wound-closure mechanics",
                 "eyebrow": "Runnable research asset lab · 30 min",
@@ -476,6 +488,13 @@ LESSON_GUIDES = {
         "steps": ["Acquire the needle on its curved body.", "Align tangent to the intended pad entry without forcing the rigid surface.", "Establish receiver custody before sender release.", "Pick up, present and return the scissors to their table landing area."],
         "success_checks": ["The needle moves only through physical jaw contact.", "Dual custody occurs before release.", "The scissors are physically retained and returned without a drop.", "No puncture or cut is claimed from rigid contact alone."],
         "reflection": "Which skills can be evaluated with rigid contact, and which require a future native deformable or topology-changing backend?",
+    },
+    "stapler-test-cell-live": {
+        "notice": "The stapler housing is fixed; judge the articulated trigger, pusher and logical deployment edge, not robot grasping or clinical closure.",
+        "practice": "Run a 20-degree partial stroke, release below 8 degrees, then run one complete 28-degree press-hold-release cycle.",
+        "steps": ["Inspect the cradle and rigid synthetic coupon.", "Command a partial stroke and confirm no magazine event.", "Release below the rearm threshold.", "Run a complete cycle and confirm exactly one deployment.", "Review target tracking, pusher travel and provisional effort telemetry."],
+        "success_checks": ["The partial-stroke pass count increases without consuming a staple.", "One complete cycle consumes exactly one logical staple.", "The trigger returns below 8 degrees before another event is possible.", "No tissue, forming or clinical claim is inferred from the rigid coupon."],
+        "reflection": "Which next measurement requires a real instrumented stapler rather than another simulation assertion?",
     },
     "dr-anmar-suturable-tissue-live": {
         "notice": "The live PhysX lane supports intact deformation and contact; arbitrary puncture, persistent tracts, thread passage, cutting, and clinical claims remain blocked.",

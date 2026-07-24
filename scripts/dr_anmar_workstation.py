@@ -203,6 +203,20 @@ if _softmimicgen_task:
     import softmimicgen_tasks  # noqa: F401
 
 from orbit.surgical.assets.psm import PSM_HIGH_PD_CFG as ORBIT_PSM_HIGH_PD_CFG
+from orbit.surgical.assets.needle_thread import (
+    make_needle_cfg as make_dranmar_v030_needle_cfg,
+    make_needle_thread_rigid_proxy_cfg,
+    make_segmented_needle_thread_cfg,
+)
+from orbit.surgical.assets.skin_stapler import (
+    FIRE_THRESHOLD_DEG,
+    REARM_THRESHOLD_DEG,
+    TRIGGER_LIMIT_DEG,
+    StapleMagazine,
+    TriggerEdgeDeploymentController,
+    make_articulated_skin_stapler_cfg,
+    synchronized_joint_targets_deg,
+)
 
 from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
@@ -394,6 +408,7 @@ APP_HTML = r"""<!doctype html>
     .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}
     .supervision{border-color:#356475;background:linear-gradient(135deg,#0d2731,#09171e)}.supervision-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.supervision-state b{color:var(--cyan)}.cue{min-height:32px;margin-top:9px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#9fc0c9;font-size:11px}
     .safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.safety-metric{padding:8px;background:#061219;border:1px solid #1c3742}.safety-metric b{display:block;color:var(--green);font:15px ui-monospace,monospace}.safety-metric span{color:var(--muted);font-size:9px}
+    .stapler-cell{padding:12px;border:1px solid #5d6140;border-radius:11px;background:linear-gradient(135deg,#252417,#151b1f)}#staplerCell.hidden{display:none!important}.stapler-cell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}.stapler-cell-head b{display:block;color:#f1e6c1;font-size:14px}.stapler-cell-head small{display:block;margin-top:2px;color:#aaa58d;font-size:9px}.stapler-phase{padding:4px 7px;border-radius:5px;background:#393622;color:#f0cf77;font:800 8px ui-monospace,monospace;text-transform:uppercase}.stapler-metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}.stapler-metric{padding:7px;border:1px solid #4c4930;border-radius:6px;background:#181b18}.stapler-metric b{display:block;color:#e9d98e;font:14px ui-monospace,monospace}.stapler-metric span{color:#928f7d;font-size:7px;letter-spacing:.05em}.stapler-controls{display:grid;grid-template-columns:1.4fr repeat(4,1fr);gap:6px;margin-top:8px}.stapler-target{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;padding:5px 8px;border:1px solid #4c4930;border-radius:7px;background:#181b18}.stapler-target input{grid-column:1/-1;width:100%;accent-color:#d8b750}.stapler-target b{font-size:9px}.stapler-target output{color:#e9d98e;font:12px ui-monospace,monospace}.stapler-controls button{min-height:42px;background:#29291d;border-color:#565135;font-size:9px}.stapler-controls button.primary{background:#d8b750;border-color:#d8b750;color:#221f10}.stapler-boundary{margin:7px 0 0;color:#8f8c7f;font-size:8px}
     .control-dock{position:relative;margin:0 0 10px;padding:34px 10px 8px;border:1px solid #294651;border-radius:9px;background:#0a171e;box-shadow:none}.control-dock:before{content:"Robot controls";position:absolute;left:12px;top:10px;color:#dffbff;font:800 12px/1 ui-sans-serif,system-ui}.control-dock:after{display:none}.control-dock .move-button{min-height:43px;padding:4px 2px;border:1px solid #31515d;background:#0d2028;font-size:10px;line-height:1.05}.control-dock .move-button small{font-size:8px;margin-top:2px}.control-dock .stop-center{width:100%;min-height:34px;padding:3px 8px;border:1px solid #68444b;background:#25181c;color:#ffc2c7;font-size:9px}.control-dock .hint{display:none}.instrument-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.instrument-grid.single{grid-template-columns:1fr}.instrument-card{min-width:0;padding:7px;border:1px solid #1d3540;border-radius:8px;background:#08131a}.instrument-head{display:flex;align-items:center;gap:7px;margin-bottom:5px}.instrument-head button{flex:1;min-height:30px;padding:3px 7px;text-align:left;font-size:10px}.instrument-head .arm.active{border-color:#426775;background:#132a33;color:#dffbff}.instrument-head span{color:#708b95;font:750 8px/1 ui-monospace,monospace;letter-spacing:.08em;white-space:nowrap}.hand-key-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.hand-key{display:flex;flex-direction:column;align-items:center;justify-content:center}.hand-key kbd{height:18px;min-width:22px;padding:0 4px;font-size:9px}.instrument-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:5px}.instrument-actions .modifier-chip,.instrument-actions button{min-height:29px;display:flex;align-items:center;justify-content:center;gap:3px;padding:2px;font-size:8px}.instrument-actions button,.instrument-actions .primary{border-color:#31515d;background:#0d2028;color:#dffbff}.direct-roll{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}.direct-roll .move-button{min-height:29px;font-size:8px}.direct-roll kbd{height:16px;min-width:18px;padding:0 3px;font-size:8px}.hand-speeds{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px}.hand-speeds button{min-height:29px;padding:2px;font-size:8px}.hand-speeds button.active{border-color:#527480;background:#132a33}.hand-speeds kbd{height:16px;min-width:17px;padding:0 3px;font-size:8px}.control-stop-row{margin-top:7px;padding-top:6px;border-top:1px solid #1d3540}.control-dock .control-readout{min-height:15px;margin-top:3px;font-size:8px}.control-dock .control-readout i{width:5px;height:5px}
     .expert-demo{margin:2px 0 14px;padding:13px;border:1px solid #557586;border-radius:12px;background:linear-gradient(145deg,#102a35,#07151d 72%);box-shadow:0 0 24px #2cd2e81c}.expert-head{display:flex;align-items:start;justify-content:space-between;gap:10px}.expert-head .eyebrow{color:var(--cyan);font:900 10px/1 ui-monospace,SFMono-Regular,Menlo;letter-spacing:.13em}.expert-head b{display:block;margin-top:5px;font-size:15px}.expert-status{padding:4px 7px;border:1px solid #365867;border-radius:99px;color:#a8c0c8;font:800 9px/1 ui-monospace,monospace;text-transform:uppercase}.expert-status.running{border-color:var(--green);color:var(--green)}.expert-status.paused{border-color:#ffd978;color:#ffd978}.expert-rail{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:11px 0}.expert-phase{min-width:0;padding:7px 3px;border:1px solid #203f4b;background:#071219;color:#6f8b95;text-align:center;font:800 8px/1 ui-monospace,monospace;text-transform:uppercase}.expert-phase.complete{border-color:#2d725c;color:var(--green);background:#0a251f}.expert-phase.active{border-color:var(--cyan);color:#eaffff;background:#103a48;box-shadow:0 0 12px #2cd2e82b}.expert-instruction{min-height:42px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#b7cbd1;font-size:10px}.expert-actions{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:6px;margin-top:9px}.expert-actions button{min-height:43px;font-size:10px}
     kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 6px;border:1px solid #4a6570;border-bottom-width:2px;border-radius:5px;background:#09141a;color:#dffbff;font:800 10px/1 ui-monospace,SFMono-Regular,Menlo;white-space:nowrap}button kbd{pointer-events:none}.header-keyboard{min-height:32px;margin-left:4px;padding:0 10px;background:#10252e;color:#cfe7eb;font-size:11px}.header-keyboard kbd{margin-right:5px}.keyboard-quick{display:grid;grid-template-columns:.9fr 1.1fr;gap:5px;margin:0;padding:0;border:0;background:transparent}.keyboard-quick-head{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 1px}.keyboard-quick-head b{color:#8eabb5;font-size:10px;font-weight:750;letter-spacing:.04em}.keyboard-quick-head span{display:none}.keyboard-input-display{display:flex;align-items:center;gap:6px;min-height:38px;margin:0;padding:5px 7px;border:1px solid #1d3540;border-radius:6px;background:#08131a;color:#a7bbc2;font-size:10px}.keyboard-input-display kbd{min-width:38px;height:18px;font-size:8px;color:var(--green);border-color:#3b7a67}.keyboard-input-display.active{border-color:var(--green);box-shadow:none}.keyboard-input-display.active span{color:#e5ffff}.smart-action{width:100%;min-height:38px;margin:0;background:#2fc5d8;border-color:#52d7e8;color:#031014;text-align:left;padding:5px 8px;box-shadow:none}.smart-action strong{display:block;font-size:11px}.smart-action strong kbd{height:17px;min-width:24px;padding:0 4px;font-size:8px}.smart-action small{display:block;overflow:hidden;color:#174851;font-size:8px;line-height:1.1;white-space:nowrap;text-overflow:ellipsis}.proximity{grid-column:1/-1;margin:0;padding:4px 7px;border:0;border-radius:5px;background:#071219;font-size:9px;line-height:1.2}.proximity b{font-size:9px;margin-right:5px}.control-feel{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:7px;min-height:23px;border:1px solid #1d3540;border-radius:5px;background:#071219;color:#86a5af;font:8px/1 ui-monospace,SFMono-Regular,Menlo}.control-feel b{color:#dffbff}.modifier-row{grid-column:1/-1;display:flex;gap:4px;margin:0}.modifier-chip{flex:1;padding:3px;border:0;border-radius:5px;background:#071219;color:#829aa3;font-size:9px;text-align:center}.modifier-chip kbd{height:16px;min-width:20px;padding:0 3px;font-size:8px}.modifier-chip.active{color:var(--green);background:#0b2b25}.keyboard-coverage{display:none}.keyboard-coverage.bad{color:var(--red)}button.key-active,button.state-active{border-color:var(--green)!important;box-shadow:0 0 0 1px #42e49b77!important;background:#174a42!important;color:#efffff!important}button.key-active kbd,button.state-active kbd{border-color:#9bffe0;background:#dcfff5;color:#09281f}.smart-action.key-active{background:#8bffe0!important;color:#041a13!important;transform:none}
@@ -423,6 +438,7 @@ APP_HTML = r"""<!doctype html>
     body.panel-open aside{max-height:min(50vh,500px);overflow:auto;display:grid;grid-template-columns:minmax(600px,1.45fr) minmax(280px,.75fr);gap:10px;align-items:start}
     body.panel-open aside>.workstation-dockbar{grid-column:1/-1}
     body.panel-open aside>.control-dock{display:block;grid-column:1}
+    body.panel-open aside>.stapler-cell{display:block;grid-column:1/-1}
     body.panel-open aside>.expert-demo{display:block;grid-column:2}
     body.panel-open aside>.session-details{display:block;grid-column:1/-1}
     .control-dock{margin:0;padding:36px 10px 9px;border-color:#354147;border-radius:12px;background:#1b2328}.control-dock:before{content:"Instrument controls";color:#dfe6e8;font-family:inherit;font-weight:720}
@@ -433,7 +449,7 @@ APP_HTML = r"""<!doctype html>
     .session-details{border:1px solid #354147;border-radius:12px;background:#1a2125}.session-details>summary{cursor:pointer;padding:10px 12px;color:#c9d2d5;font-size:11px;font-weight:700;list-style:none}.session-details>summary::-webkit-details-marker{display:none}.session-details>summary:after{content:"Show";float:right;color:#8bc6cd;font-weight:650}.session-details[open]>summary:after{content:"Hide"}.session-details-grid{display:grid;grid-template-columns:1.25fr .8fr .8fr 1fr;gap:8px;padding:0 10px 10px}.session-section h2{margin:0 0 6px;color:#9eaaae;font-size:9px;letter-spacing:.08em}.session-section .card{height:calc(100% - 18px);margin:0;padding:9px;border-color:#354147;background:#171e22}.procedure-title{font-size:13px}.procedure-objective{font-size:10px}.procedure-step{padding:4px 0}.safety-grid{grid-template-columns:1fr}.safety-metric{padding:5px 7px;background:#141a1e;border-color:#2f393e}.cue{background:#141a1e}
     button{border-radius:9px;font-family:inherit}button.primary{background:#8bc6cd;border-color:#8bc6cd;color:#142126}button:hover{border-color:#73999f;background:#2c373d}
     kbd{border-color:#526168;background:#141a1e;color:#e6edef}
-    @media(max-width:920px){header{height:40px;min-height:40px;flex-wrap:nowrap}.header-camera-toolbar{order:initial;flex-basis:auto;overflow-x:auto}.live{display:flex}.header-keyboard{display:flex}main{display:grid;grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;height:calc(100vh - 40px)}.view{height:auto}.workstation-dockbar{overflow-x:auto}.dock-hand span{display:none}body.panel-open aside{grid-template-columns:1fr}.control-dock,.expert-demo,.session-details{grid-column:1!important}.session-details-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:920px){header{height:40px;min-height:40px;flex-wrap:nowrap}.header-camera-toolbar{order:initial;flex-basis:auto;overflow-x:auto}.live{display:flex}.header-keyboard{display:flex}main{display:grid;grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto;height:calc(100vh - 40px)}.view{height:auto}.workstation-dockbar{overflow-x:auto}.dock-hand span{display:none}body.panel-open aside{grid-template-columns:1fr}.control-dock,.stapler-cell,.expert-demo,.session-details{grid-column:1!important}.stapler-metrics{grid-template-columns:repeat(2,1fr)}.stapler-controls{grid-template-columns:1fr 1fr}.stapler-target{grid-column:1/-1}.session-details-grid{grid-template-columns:1fr 1fr}}
   </style>
 </head>
 <body>
@@ -457,6 +473,12 @@ APP_HTML = r"""<!doctype html>
           <button class="move-button hand-key" data-arm="1" data-key="KeyJ" data-shortcut="J" data-axis="1" data-direction="1"><kbd>J</kbd><small>Left</small></button><button class="move-button hand-key" data-arm="1" data-key="KeyK" data-shortcut="K" data-axis="2" data-direction="-1"><kbd>K</kbd><small>Down</small></button><button class="move-button hand-key" data-arm="1" data-key="KeyL" data-shortcut="L" data-axis="1" data-direction="-1"><kbd>L</kbd><small>Right</small></button>
         </div><div class="instrument-actions"><div id="rightRotateModifier" class="modifier-chip"><kbd>R⇧</kbd> Angle</div><div id="rightPrecisionModifier" class="modifier-chip"><kbd>R⌥</kbd> Fine</div><button id="gripCloseButton" class="gripper-control primary" data-shortcut="Enter" onclick="toggleGrip(1)"><kbd>Enter</kbd> Grip</button></div><div class="direct-roll"><button class="move-button" data-arm="1" data-key="KeyN" data-shortcut="N" data-axis="3" data-direction="-1"><kbd>N</kbd> Roll ↶</button><button class="move-button" data-arm="1" data-key="KeyM" data-shortcut="M" data-axis="3" data-direction="1"><kbd>M</kbd> Roll ↷</button></div><div class="hand-speeds"><button data-hand-speed-arm="1" data-hand-speed=".35" data-shortcut="8" onclick="setHandSpeed(1,.35,'8')"><kbd>8</kbd> Fine</button><button class="active" data-hand-speed-arm="1" data-hand-speed="1" data-shortcut="9" onclick="setHandSpeed(1,1,'9')"><kbd>9</kbd> Normal</button><button data-hand-speed-arm="1" data-hand-speed="1.7" data-shortcut="0" onclick="setHandSpeed(1,1.7,'0')"><kbd>0</kbd> Fast</button></div></section>
       </div><div class="control-stop-row"><button class="stop-center" data-shortcut="Esc" onclick="emergencyStop()">Stop both robots <kbd>Esc / ⌫</kbd></button></div><div id="controlReadout" class="control-readout" aria-live="polite"><i></i><span>Ready · hold a key to move either instrument</span></div>
+    </section>
+    <section id="staplerCell" class="stapler-cell hidden" aria-label="Stapler test cell controls">
+      <div class="stapler-cell-head"><div><b>Fixed stapler test cell</b><small>Virtual linear actuator · articulated trigger and pusher · no robot grip required</small></div><span id="staplerPhase" class="stapler-phase">READY</span></div>
+      <div class="stapler-metrics"><div class="stapler-metric"><b id="staplerTrigger">0.0°</b><span>ACTUAL TRIGGER</span></div><div class="stapler-metric"><b id="staplerPusher">0.0 mm</b><span>PUSHER TRAVEL</span></div><div class="stapler-metric"><b id="staplerError">0.0°</b><span>TRACKING ERROR</span></div><div class="stapler-metric"><b id="staplerMagazine">35 / 35</b><span>MAGAZINE</span></div><div class="stapler-metric"><b id="staplerCycles">0 / 0</b><span>DEPLOYMENTS / CYCLES</span></div><div class="stapler-metric"><b id="staplerPartial">0 / 0</b><span>PARTIAL PASSES / TRIES</span></div></div>
+      <div class="stapler-controls"><label class="stapler-target"><b>Manual trigger target</b><output id="staplerTargetOutput">0°</output><input id="staplerTarget" type="range" min="0" max="28" step="1" value="0" onchange="setStaplerTarget(this.value)" oninput="document.getElementById('staplerTargetOutput').value=`${this.value}°`"></label><button data-shortcut="CELL-20" onclick="setStaplerTarget(20)">Partial stroke<br>20°</button><button class="primary" data-shortcut="CELL-FIRE" onclick="runStaplerCycle()">Full cycle<br>28°</button><button data-shortcut="CELL-RELEASE" onclick="staplerCommand('release')">Release<br>&lt; 8°</button><button data-shortcut="CELL-RESET" onclick="staplerCommand('reset')">Reset evidence</button></div>
+      <p class="stapler-boundary">Mechanism telemetry only. Drive efforts are provisional and the non-contact visual coupon does not validate staple forming, penetration, closure strength or clinical performance.</p>
     </section>
     <section id="expertDemo" class="expert-demo"><div class="expert-head"><div><div class="eyebrow">EXPERT DEMONSTRATION</div><b>Watch the procedure</b></div><span id="expertStatus" class="expert-status">READY</span></div><div id="expertRail" class="expert-rail"></div><div id="expertInstruction" class="expert-instruction">Runs the complete procedure live. Pause or take control at any phase.</div><div class="expert-actions"><button id="expertPause" data-shortcut="F10" onclick="toggleExpertPause()" disabled>Pause <kbd>F10</kbd></button><button id="expertTakeover" data-shortcut="Esc" onclick="takeControl()" disabled>Take control <kbd>Esc</kbd></button></div></section>
     <details class="session-details"><summary>Procedure details and session tools</summary><div class="session-details-grid">
@@ -494,6 +516,10 @@ const previousGamepadContacts=[false,false];
 async function requestJson(url,options={},timeoutMs=5000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);activeFetchControllers.add(controller);try{const r=await fetch(url,{...options,signal:controller.signal});let data={};try{data=await r.json()}catch(_error){}if(!r.ok)throw Error(data.detail||'Request failed');return data}catch(error){if(error.name==='AbortError')throw Error('Simulator request timed out');throw error}finally{clearTimeout(timer);activeFetchControllers.delete(controller)}}
 async function post(url,body={},timeoutMs=5000){return requestJson(url,{method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify(body)},timeoutMs)}
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toastTimer=null;e.classList.remove('show')},1600)}
+async function staplerCommand(action,targetDeg=null){try{const body={action};if(targetDeg!==null)body.target_deg=Number(targetDeg);await post('/api/stapler/command',body);toast(action==='fire'?'Stapler cycle started':action==='reset'?'Test-cell evidence reset':action==='release'?'Stapler released':`Trigger target ${Number(targetDeg).toFixed(0)}°`);await refresh()}catch(e){toast(e.message)}}
+function setStaplerTarget(value){const target=Math.max(0,Math.min(28,Number(value)||0));document.getElementById('staplerTarget').value=String(target);document.getElementById('staplerTargetOutput').value=`${target.toFixed(0)}°`;return staplerCommand('set_target',target)}
+function runStaplerCycle(){return staplerCommand('fire')}
+function renderStaplerCell(cell={}){const panel=document.getElementById('staplerCell'),enabled=!!cell.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;document.getElementById('staplerPhase').textContent=String(cell.cycle_phase||'ready').replaceAll('_',' ');document.getElementById('staplerTrigger').textContent=`${Number(cell.actual_trigger_deg||0).toFixed(1)}°`;document.getElementById('staplerPusher').textContent=`${Number(cell.pusher_travel_mm||0).toFixed(2)} mm`;document.getElementById('staplerError').textContent=`${Number(cell.tracking_error_deg||0).toFixed(1)}°`;document.getElementById('staplerMagazine').textContent=`${cell.magazine_remaining??0} / ${cell.magazine_capacity??35}`;document.getElementById('staplerCycles').textContent=`${cell.deployment_count??0} / ${cell.cycle_count??0}`;document.getElementById('staplerPartial').textContent=`${cell.partial_stroke_passes??0} / ${cell.partial_stroke_attempts??0}`;const target=Number(cell.target_trigger_deg||0),slider=document.getElementById('staplerTarget');if(document.activeElement!==slider)slider.value=String(Math.round(target));document.getElementById('staplerTargetOutput').value=`${target.toFixed(0)}°`}
 function showKeyAction(key,label,active=true){const display=document.getElementById('keyActionDisplay');display.classList.toggle('active',active);display.querySelector('kbd').textContent=key;display.querySelector('span').textContent=label}
 function flashShortcut(shortcut,label,duration=850){if(keyFlashTimer)clearTimeout(keyFlashTimer);document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));document.querySelectorAll('button[data-shortcut]').forEach(button=>{if(button.dataset.shortcut===shortcut)button.classList.add('key-active')});showKeyAction(shortcut,label,true);keyFlashTimer=setTimeout(()=>{document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));showKeyAction('READY','Keyboard control ready',false)},duration)}
 function runShortcut(shortcut,label,action){flashShortcut(shortcut,label);action()}
@@ -614,7 +640,7 @@ async function refresh(){if(refreshInFlight||pageDisposed||document.hidden)retur
   currentViewMode=s.camera_view_mode||currentViewMode;renderFreeCamera(selectedCameraAdjustment(s));document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',!cameraAdjustMode&&x.dataset.viewMode===currentViewMode));
   document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record')?.classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[0]===false);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[(s.arms||1)>1?1:0]===false);
 	  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m;proximity.className='proximity';let guidance='Move toward the target';if(s.native_grasp_contact_active?.[activeArm]){guidance='Native jaw contact detected · lift smoothly';proximity.classList.add('held')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){guidance=`Target ${Math.round(distance*1000)} mm · ${targetDirections(offset)||'hold course'}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Next</b><span>${guidance}</span>`;const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],contact=s.native_grasp_contact_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':contact?'Lift the physically held object':'Open jaws and retry';
-  const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderExpert(s.expert_demonstration);
+  const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderStaplerCell(s.stapler_test_cell);renderExpert(s.expert_demonstration);
 	  if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
 }catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}finally{refreshInFlight=false}}
 async function heartbeat(){if(heartbeatInFlight||pageDisposed||document.hidden)return;heartbeatInFlight=true;try{await post('/api/operator/heartbeat',{},3000)}catch(_error){}finally{heartbeatInFlight=false}}
@@ -694,6 +720,11 @@ class CameraAdjustRequest(BaseModel):
     pan_x_delta_m: float = 0.0
     pan_y_delta_m: float = 0.0
     reset: bool = False
+
+
+class StaplerCommandRequest(BaseModel):
+    action: str
+    target_deg: float | None = None
 
 
 class ScenarioRequest(BaseModel):
@@ -875,6 +906,9 @@ class SharedState:
     procedure_started_at: float = 0.0
     procedure_last_motion_at: float = 0.0
     native_telemetry: dict[str, Any] = field(default_factory=dict)
+    stapler_command_request: str | None = None
+    stapler_manual_target_deg: float = 0.0
+    stapler_test_cell: dict[str, Any] = field(default_factory=dict)
     dr_anmar_needle_domain: dict[str, float | int] = field(
         default_factory=dict
     )
@@ -984,6 +1018,9 @@ class SharedState:
                     {
                         "dr_anmar_needle_suture",
                         "nvidia_needle_dr_anmar_suture",
+                        "dr_anmar_needle_thread_coiled",
+                        "dr_anmar_needle_thread_extended",
+                        "dr_anmar_needle_thread_proxy",
                     }
                 )
             )
@@ -1003,10 +1040,27 @@ class SharedState:
                         "dr_anmar_needle",
                         "dr_anmar_needle_suture",
                         "nvidia_needle_dr_anmar_suture",
+                        "dr_anmar_needle_v030",
+                        "dr_anmar_needle_thread_coiled",
+                        "dr_anmar_needle_thread_extended",
+                        "dr_anmar_needle_thread_proxy",
                     }
                 )
             )
-            thread_geometry_ready = not thread_required or self.deformable_strand_ready
+            raw_thread_geometry_ready = bool(
+                active_bench_assets.intersection(
+                    {
+                        "dr_anmar_needle_thread_coiled",
+                        "dr_anmar_needle_thread_extended",
+                        "dr_anmar_needle_thread_proxy",
+                    }
+                )
+            )
+            thread_geometry_ready = (
+                not thread_required
+                or self.deformable_strand_ready
+                or raw_thread_geometry_ready
+            )
             needle_geometry_ready = not needle_required or self.needle_visual_ready
             camera_frame_ready = bool(self.frame_id > 0 and self.frame_jpeg and self.camera_nonblank_seen)
             render_contract = {
@@ -1104,6 +1158,7 @@ class SharedState:
                     "max_tissue_stress_pa": self.max_tissue_stress_pa,
                 },
                 "native_telemetry": self.native_telemetry,
+                "stapler_test_cell": dict(self.stapler_test_cell),
                 "dr_anmar_needle_domain": self.dr_anmar_needle_domain,
                 "sensor_quality": {
                     "valid_depth_fraction": self.camera_valid_depth_fraction,
@@ -1191,6 +1246,7 @@ class SharedState:
                     "max_tissue_displacement_m": self.max_tissue_displacement_m,
                     "max_tissue_stress_pa": self.max_tissue_stress_pa,
                 },
+                "stapler_test_cell": dict(self.stapler_test_cell),
             }
 
     def _procedure_status(self) -> dict[str, Any]:
@@ -1213,6 +1269,22 @@ class SharedState:
                 completed += int(self.procedure_motion_seen)
                 completed += int(self.procedure_grasp_seen)
                 completed = min(completed, max(0, step_count - 1))
+        elif kind == "stapler_test_cell":
+            cell = self.stapler_test_cell
+            completed = int(bool(cell.get("enabled")))
+            completed += int(
+                float(cell.get("max_trigger_deg", 0.0)) >= 1.0
+            )
+            completed += int(int(cell.get("deployment_count", 0)) >= 1)
+            completed += int(
+                int(cell.get("cycle_count", 0)) >= 1
+                and float(cell.get("actual_trigger_deg", 28.0))
+                <= REARM_THRESHOLD_DEG
+            )
+            completed += int(
+                int(cell.get("cycle_count", 0)) >= 1
+                and not bool(cell.get("cycle_running"))
+            )
         elif kind == "native_suturing_bench":
             # This dry-lab room deliberately avoids synthetic completion
             # predicates.  Only an observed physical grasp and subsequent
@@ -1935,6 +2007,54 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.gripper_apertures = [1.0] * state.arms
         state.wake_event.set()
         return {"ok": True}
+
+    @app.post("/api/stapler/command")
+    def stapler_command(request: StaplerCommandRequest) -> dict[str, Any]:
+        action = request.action.strip().lower()
+        with state.lock:
+            if not state.stapler_test_cell.get("enabled", False):
+                raise HTTPException(
+                    409,
+                    "Open the Dr.Anmar stapler test cell before commanding its fixture",
+                )
+            if action == "set_target":
+                if request.target_deg is None:
+                    raise HTTPException(
+                        400,
+                        "set_target requires target_deg",
+                    )
+                target = float(request.target_deg)
+                if not np.isfinite(target) or not 0.0 <= target <= 28.0:
+                    raise HTTPException(
+                        400,
+                        "target_deg must be between 0 and 28",
+                    )
+                state.stapler_manual_target_deg = target
+                state.stapler_command_request = "manual"
+                state.coaching_cue = (
+                    f"Fixture target set to {target:.1f}°. "
+                    "A partial stroke below 24° must not deploy."
+                )
+            elif action in {"fire", "release", "reset"}:
+                state.stapler_command_request = action
+                if action == "release":
+                    state.stapler_manual_target_deg = 0.0
+                state.coaching_cue = {
+                    "fire": (
+                        "Running one bounded press-hold-release cycle. "
+                        "The fixture must emit at most one deployment event."
+                    ),
+                    "release": "Returning the actuator below the 8° rearm threshold.",
+                    "reset": "Resetting fixture mechanism and logical magazine evidence.",
+                }[action]
+            else:
+                raise HTTPException(
+                    400,
+                    "action must be fire, release, reset, or set_target",
+                )
+            result = dict(state.stapler_test_cell)
+        state.wake_event.set()
+        return {"ok": True, "action": action, "test_cell": result}
 
     @app.get("/api/scenarios")
     def scenarios() -> dict[str, Any]:
@@ -3617,6 +3737,7 @@ def main() -> None:
         procedure.get("single_active_camera_renderer", True)
     )
     nvidia_native_bench = bool(procedure.get("nvidia_native_bench"))
+    stapler_test_cell_enabled = bool(procedure.get("stapler_test_cell"))
     selected_bench_assets: set[str] = set()
     bench_asset_paths: dict[str, Path] = {}
     if nvidia_native_bench:
@@ -3694,6 +3815,25 @@ def main() -> None:
         nvidia_native_bench
         and "dr_anmar_needle_suture" in selected_bench_assets
     )
+    stapler_test_cell_paths = {
+        "fixture": REPOSITORY_ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/"
+        "SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda",
+        "device": REPOSITORY_ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/"
+        "SurgicalClosure/StaplerTestCell/stapler_test_device.usda",
+    }
+    if stapler_test_cell_enabled:
+        missing_test_cell_assets = [
+            f"{name}: {path}"
+            for name, path in stapler_test_cell_paths.items()
+            if not path.is_file()
+        ]
+        if missing_test_cell_assets:
+            raise RuntimeError(
+                "The Dr.Anmar stapler test cell is incomplete: "
+                + "; ".join(missing_test_cell_assets)
+            )
     nvidia_needle_dr_anmar_suture_enabled = bool(
         nvidia_native_bench
         and "nvidia_needle_dr_anmar_suture" in selected_bench_assets
@@ -3746,6 +3886,10 @@ def main() -> None:
             "dr_anmar_needle",
             "dr_anmar_needle_suture",
             "nvidia_needle_dr_anmar_suture",
+            "dr_anmar_needle_v030",
+            "dr_anmar_needle_thread_coiled",
+            "dr_anmar_needle_thread_extended",
+            "dr_anmar_needle_thread_proxy",
         }
     )
     interactive_rendering_mode = procedure.get("interactive_rendering_mode")
@@ -3808,6 +3952,35 @@ def main() -> None:
             # The upstream handover randomizer targets a broad bare table.
             # This bench uses a fixed, visible sterile landing on the table.
             env_cfg.events.reset_object_position = None
+
+        if stapler_test_cell_enabled:
+            env_cfg.scene.stapler_test_fixture = AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/StaplerTestFixture",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    pos=(0.0, 0.0, 0.0),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(stapler_test_cell_paths["fixture"]),
+                ),
+            )
+            env_cfg.scene.stapler_test_device = (
+                make_articulated_skin_stapler_cfg(
+                    prim_path="{ENV_REGEX_NS}/StaplerTestDevice",
+                    state="loaded",
+                    usd_path=stapler_test_cell_paths["device"],
+                    disable_gravity=True,
+                )
+            )
+            # The fixture runtime holds this authored root datum while the
+            # trigger and pusher remain dynamic articulation coordinates.
+            env_cfg.scene.stapler_test_device.init_state.pos = (0.0, 0.0, 0.0)
+            env_cfg.scene.stapler_test_device.init_state.rot = (
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+            )
 
         # The pad is NVIDIA-authored static collision geometry. It intentionally
         # remains rigid: this room must never turn contact into a fake puncture.
@@ -3893,6 +4066,60 @@ def main() -> None:
                     variants={"Physics": "physx"},
                     activate_contact_sensors=True,
                 ),
+            )
+        if "dr_anmar_needle_v030" in selected_bench_assets:
+            env_cfg.scene.dr_anmar_needle_v030 = make_dranmar_v030_needle_cfg(
+                prim_path="{ENV_REGEX_NS}/DrAnmarNeedleV030",
+                usd_path=bench_asset_paths["dr_anmar_needle_v030"],
+            )
+            env_cfg.scene.dr_anmar_needle_v030.init_state.pos = (
+                -0.115,
+                0.090,
+                0.0012,
+            )
+        if "dr_anmar_needle_thread_coiled" in selected_bench_assets:
+            env_cfg.scene.dr_anmar_needle_thread_coiled = (
+                make_segmented_needle_thread_cfg(
+                    configuration="coiled",
+                    prim_path="{ENV_REGEX_NS}/DrAnmarNeedleThreadCoiled",
+                    usd_path=bench_asset_paths[
+                        "dr_anmar_needle_thread_coiled"
+                    ],
+                )
+            )
+            env_cfg.scene.dr_anmar_needle_thread_coiled.init_state.pos = (
+                -0.055,
+                -0.120,
+                0.0012,
+            )
+        if "dr_anmar_needle_thread_extended" in selected_bench_assets:
+            env_cfg.scene.dr_anmar_needle_thread_extended = (
+                make_segmented_needle_thread_cfg(
+                    configuration="extended",
+                    prim_path="{ENV_REGEX_NS}/DrAnmarNeedleThreadExtended",
+                    usd_path=bench_asset_paths[
+                        "dr_anmar_needle_thread_extended"
+                    ],
+                )
+            )
+            env_cfg.scene.dr_anmar_needle_thread_extended.init_state.pos = (
+                0.075,
+                -0.180,
+                0.0012,
+            )
+        if "dr_anmar_needle_thread_proxy" in selected_bench_assets:
+            env_cfg.scene.dr_anmar_needle_thread_proxy = (
+                make_needle_thread_rigid_proxy_cfg(
+                    prim_path="{ENV_REGEX_NS}/DrAnmarNeedleThreadProxy",
+                    usd_path=bench_asset_paths[
+                        "dr_anmar_needle_thread_proxy"
+                    ],
+                )
+            )
+            env_cfg.scene.dr_anmar_needle_thread_proxy.init_state.pos = (
+                0.035,
+                -0.105,
+                0.0012,
             )
         if "dr_anmar_tissue" in selected_bench_assets:
             env_cfg.scene.dr_anmar_tissue = AssetBaseCfg(
@@ -4985,6 +5212,40 @@ def main() -> None:
         robot_names = all_robot_names
     robots = {name: scene[name] for name in robot_names}
     robot_body_names = {name: list(getattr(robot, "body_names", [])) for name, robot in robots.items()}
+    stapler_articulation = (
+        scene.articulations.get("stapler_test_device")
+        if stapler_test_cell_enabled
+        else None
+    )
+    stapler_trigger_joint_index: int | None = None
+    stapler_pusher_joint_index: int | None = None
+    stapler_housing_body_index: int | None = None
+    stapler_fixture_position_w: torch.Tensor | None = None
+    stapler_fixture_quaternion_w: torch.Tensor | None = None
+    if stapler_test_cell_enabled:
+        if stapler_articulation is None:
+            raise RuntimeError(
+                "The stapler test cell did not create its articulated device"
+            )
+        stapler_joint_names = list(stapler_articulation.joint_names)
+        try:
+            stapler_trigger_joint_index = stapler_joint_names.index(
+                "trigger_joint"
+            )
+            stapler_pusher_joint_index = stapler_joint_names.index(
+                "pusher_joint"
+            )
+        except ValueError as exc:
+            raise RuntimeError(
+                "The stapler test cell requires trigger_joint and pusher_joint"
+            ) from exc
+        stapler_body_names = list(stapler_articulation.body_names)
+        try:
+            stapler_housing_body_index = stapler_body_names.index("Housing")
+        except ValueError as exc:
+            raise RuntimeError(
+                "The stapler test cell requires the authored Housing link"
+            ) from exc
     object_names = sorted(scene.rigid_objects.keys())
     objects = {name: scene[name] for name in object_names}
     deformable_names = sorted(getattr(scene, "deformable_objects", {}).keys())
@@ -5909,6 +6170,20 @@ def main() -> None:
     )
     update_wrist_camera_poses()
 
+    stapler_magazine = StapleMagazine(capacity=35, remaining=35)
+    stapler_deployment_controller = TriggerEdgeDeploymentController(
+        magazine=stapler_magazine,
+    )
+    stapler_cycle_started_at: float | None = None
+    stapler_cycle_threshold_at: float | None = None
+    stapler_cycle_release_started_at: float | None = None
+    stapler_cycle_count = 0
+    stapler_last_event: dict[str, Any] | None = None
+    stapler_partial_candidate = False
+    stapler_partial_start_deployments = 0
+    stapler_partial_peak_deg = 0.0
+    stapler_partial_stroke_attempts = 0
+    stapler_partial_stroke_passes = 0
     state = SharedState(
         task=args_cli.task,
         camera_width=interactive_camera_width,
@@ -5941,13 +6216,28 @@ def main() -> None:
         needle_visual_ready=bool(
             "suture_needle" in objects
             or "dr_anmar_standalone_needle" in objects
+            or "dr_anmar_needle_v030" in objects
             or "dr_anmar_threaded_needle" in objects
             or suture_body_position(suture_needle_view) is not None
             or "object" in objects
+            or selected_bench_assets.intersection(
+                {
+                    "dr_anmar_needle_thread_coiled",
+                    "dr_anmar_needle_thread_extended",
+                    "dr_anmar_needle_thread_proxy",
+                }
+            )
         ),
         deformable_strand_ready=bool(
             "object" in deformables
             or "dr_anmar_native_suture" in deformables
+            or selected_bench_assets.intersection(
+                {
+                    "dr_anmar_needle_thread_coiled",
+                    "dr_anmar_needle_thread_extended",
+                    "dr_anmar_needle_thread_proxy",
+                }
+            )
             or (
                 suture_segment_view is not None
                 and suture_segment_view._backend is not None
@@ -5964,6 +6254,32 @@ def main() -> None:
         gripper_profile=configured_psm_gripper_profile,
         ring_physics_ready=ring_physics_ready,
         strand_self_collision_ready=strand_self_collision_ready,
+        stapler_test_cell={
+            "enabled": stapler_test_cell_enabled,
+            "mode": "six_dof_velocity_fixture",
+            "cycle_phase": "ready" if stapler_test_cell_enabled else "disabled",
+            "cycle_running": False,
+            "target_trigger_deg": 0.0,
+            "actual_trigger_deg": 0.0,
+            "pusher_travel_mm": 0.0,
+            "max_pusher_travel_mm": 0.0,
+            "joint_limit_violation_deg": 0.0,
+            "fixture_translation_error_mm": 0.0,
+            "fixture_rotation_error_deg": 0.0,
+            "max_fixture_translation_error_mm": 0.0,
+            "max_fixture_rotation_error_deg": 0.0,
+            "fire_threshold_deg": FIRE_THRESHOLD_DEG,
+            "rearm_threshold_deg": REARM_THRESHOLD_DEG,
+            "magazine_capacity": stapler_magazine.capacity,
+            "magazine_remaining": stapler_magazine.remaining,
+            "deployment_count": 0,
+            "cycle_count": 0,
+            "partial_stroke_attempts": 0,
+            "partial_stroke_passes": 0,
+            "last_event": None,
+            "parameter_status": "provisional_unmeasured",
+            "clinical_validation": False,
+        },
     )
     state.simulation_profile = {
         "scene_authority": "OpenUSD",
@@ -6199,11 +6515,34 @@ def main() -> None:
     initial_native_centroid: list[np.ndarray | None] = [native_tissue_centroid()]
 
     def reset_environment(selected_scenario: str, selected_seed: int) -> None:
+        nonlocal stapler_cycle_started_at
+        nonlocal stapler_cycle_threshold_at
+        nonlocal stapler_cycle_release_started_at
+        nonlocal stapler_cycle_count
+        nonlocal stapler_last_event
+        nonlocal stapler_partial_candidate
+        nonlocal stapler_partial_start_deployments
+        nonlocal stapler_partial_peak_deg
+        nonlocal stapler_partial_stroke_attempts
+        nonlocal stapler_partial_stroke_passes
+
         native_grasp_arms.clear()
         update_procedure_waypoint_marker(0, force=True)
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
+        if stapler_test_cell_enabled:
+            stapler_deployment_controller.reset(reset_magazine=True)
+            stapler_cycle_started_at = None
+            stapler_cycle_threshold_at = None
+            stapler_cycle_release_started_at = None
+            stapler_cycle_count = 0
+            stapler_last_event = None
+            stapler_partial_candidate = False
+            stapler_partial_start_deployments = 0
+            stapler_partial_peak_deg = 0.0
+            stapler_partial_stroke_attempts = 0
+            stapler_partial_stroke_passes = 0
         dr_anmar_needle_domain: dict[str, Any] = {}
         if dr_anmar_parametric_needle_enabled:
             dr_anmar_needle_domain = (
@@ -6281,6 +6620,31 @@ def main() -> None:
             state.needle_entry_direction = None
             state.adaptive_precision_active = False
             state.native_telemetry = {}
+            if stapler_test_cell_enabled:
+                state.stapler_command_request = None
+                state.stapler_manual_target_deg = 0.0
+                state.stapler_test_cell.update(
+                    {
+                        "cycle_phase": "ready",
+                        "cycle_running": False,
+                        "target_trigger_deg": 0.0,
+                        "actual_trigger_deg": 0.0,
+                        "pusher_travel_mm": 0.0,
+                        "max_pusher_travel_mm": 0.0,
+                        "joint_limit_violation_deg": 0.0,
+                        "fixture_translation_error_mm": 0.0,
+                        "fixture_rotation_error_deg": 0.0,
+                        "max_fixture_translation_error_mm": 0.0,
+                        "max_fixture_rotation_error_deg": 0.0,
+                        "magazine_remaining": stapler_magazine.remaining,
+                        "deployment_count": 0,
+                        "cycle_count": 0,
+                        "partial_stroke_attempts": 0,
+                        "partial_stroke_passes": 0,
+                        "max_trigger_deg": 0.0,
+                        "last_event": None,
+                    }
+                )
             state.dr_anmar_needle_domain = dr_anmar_needle_domain
             state.upstream_task_success = False if _softmimicgen_task else None
         selected_active_camera = active_logical_camera_name()
@@ -6364,6 +6728,9 @@ def main() -> None:
             state.replay_request = None
             expert_request = state.expert_request
             state.expert_request = None
+            stapler_command_request = state.stapler_command_request
+            state.stapler_command_request = None
+            stapler_manual_target_deg = state.stapler_manual_target_deg
             scenario_id = state.scenario_id
             scenario_seed = state.scenario_seed
             camera_view_request = state.camera_view_request
@@ -6431,6 +6798,143 @@ def main() -> None:
         if reset_requested:
             with torch.inference_mode():
                 reset_environment(scenario_id, scenario_seed)
+
+        stapler_target_deg = 0.0
+        stapler_cycle_phase = "disabled"
+        if stapler_test_cell_enabled and stapler_articulation is not None:
+            if stapler_command_request == "reset":
+                stapler_deployment_controller.reset(reset_magazine=True)
+                stapler_cycle_started_at = None
+                stapler_cycle_threshold_at = None
+                stapler_cycle_release_started_at = None
+                stapler_cycle_count = 0
+                stapler_last_event = None
+                stapler_partial_candidate = False
+                stapler_partial_start_deployments = 0
+                stapler_partial_peak_deg = 0.0
+                stapler_partial_stroke_attempts = 0
+                stapler_partial_stroke_passes = 0
+                stapler_manual_target_deg = 0.0
+                with state.lock:
+                    state.stapler_manual_target_deg = 0.0
+                    state.stapler_test_cell["max_trigger_deg"] = 0.0
+                    state.stapler_test_cell["max_pusher_travel_mm"] = 0.0
+                    state.stapler_test_cell[
+                        "max_fixture_translation_error_mm"
+                    ] = 0.0
+                    state.stapler_test_cell[
+                        "max_fixture_rotation_error_deg"
+                    ] = 0.0
+            elif stapler_command_request == "fire":
+                if stapler_cycle_started_at is None:
+                    stapler_cycle_started_at = loop_started
+                    stapler_cycle_threshold_at = None
+                    stapler_cycle_release_started_at = None
+            elif stapler_command_request == "release":
+                stapler_cycle_started_at = None
+                stapler_cycle_threshold_at = None
+                stapler_cycle_release_started_at = None
+                stapler_manual_target_deg = 0.0
+            elif stapler_command_request == "manual":
+                stapler_cycle_started_at = None
+                stapler_cycle_threshold_at = None
+                stapler_cycle_release_started_at = None
+                stapler_partial_candidate = bool(
+                    REARM_THRESHOLD_DEG
+                    < stapler_manual_target_deg
+                    < FIRE_THRESHOLD_DEG
+                )
+                stapler_partial_start_deployments = (
+                    stapler_magazine.deployed
+                )
+                stapler_partial_peak_deg = 0.0
+
+            if stapler_cycle_started_at is not None:
+                cycle_elapsed_s = max(
+                    0.0,
+                    loop_started - stapler_cycle_started_at,
+                )
+                measured_trigger_deg = float(
+                    np.degrees(
+                        stapler_articulation.data.joint_pos[
+                            0,
+                            stapler_trigger_joint_index,
+                        ].item()
+                    )
+                )
+                if stapler_cycle_threshold_at is None:
+                    stapler_target_deg = min(
+                        TRIGGER_LIMIT_DEG,
+                        TRIGGER_LIMIT_DEG * cycle_elapsed_s,
+                    )
+                    stapler_cycle_phase = (
+                        "press"
+                        if stapler_target_deg < TRIGGER_LIMIT_DEG
+                        else "await_threshold"
+                    )
+                    if (
+                        stapler_target_deg >= FIRE_THRESHOLD_DEG
+                        and measured_trigger_deg >= FIRE_THRESHOLD_DEG
+                    ):
+                        stapler_cycle_threshold_at = loop_started
+                        stapler_cycle_phase = "hold"
+                        stapler_target_deg = TRIGGER_LIMIT_DEG
+                elif stapler_cycle_release_started_at is None:
+                    stapler_cycle_phase = "hold"
+                    stapler_target_deg = TRIGGER_LIMIT_DEG
+                    if (
+                        loop_started - stapler_cycle_threshold_at
+                        >= 0.50
+                    ):
+                        stapler_cycle_release_started_at = loop_started
+                else:
+                    stapler_cycle_phase = "release"
+                    release_elapsed_s = (
+                        loop_started - stapler_cycle_release_started_at
+                    )
+                    stapler_target_deg = TRIGGER_LIMIT_DEG * max(
+                        0.0,
+                        1.0 - release_elapsed_s,
+                    )
+                    if (
+                        stapler_target_deg <= 0.0
+                        and measured_trigger_deg <= REARM_THRESHOLD_DEG
+                    ):
+                        stapler_cycle_phase = "complete"
+                        stapler_cycle_started_at = None
+                        stapler_cycle_threshold_at = None
+                        stapler_cycle_release_started_at = None
+                        stapler_cycle_count += 1
+                        with state.lock:
+                            state.stapler_manual_target_deg = 0.0
+            else:
+                stapler_cycle_phase = (
+                    "ready"
+                    if stapler_manual_target_deg <= REARM_THRESHOLD_DEG
+                    else "manual"
+                )
+                stapler_target_deg = stapler_manual_target_deg
+
+            stapler_targets = synchronized_joint_targets_deg(
+                stapler_target_deg
+            )
+            stapler_device = stapler_articulation.data.joint_pos.device
+            stapler_articulation.set_joint_position_target(
+                torch.tensor(
+                    [[stapler_targets["trigger_joint"]]],
+                    dtype=torch.float32,
+                    device=stapler_device,
+                ),
+                joint_ids=[stapler_trigger_joint_index],
+            )
+            stapler_articulation.set_joint_position_target(
+                torch.tensor(
+                    [[stapler_targets["pusher_joint"]]],
+                    dtype=torch.float32,
+                    device=stapler_device,
+                ),
+                joint_ids=[stapler_pusher_joint_index],
+            )
 
         if expert_request == "start":
             expert_controller.start()
@@ -6869,8 +7373,41 @@ def main() -> None:
         actions = torch.from_numpy(action_np).to(device=env.unwrapped.device).reshape(1, -1)
         env_step_started = time.perf_counter()
         with torch.inference_mode():
+            if stapler_articulation is not None:
+                # The test cell replaces a robot grasp with an idealized
+                # six-DOF bench damper. It removes housing velocity without
+                # overwriting the root pose or either mechanism coordinate.
+                stapler_root_velocity = stapler_articulation.data.root_vel_w
+                stapler_articulation.write_root_velocity_to_sim(
+                    torch.zeros_like(stapler_root_velocity)
+                )
             write_native_attachment()
             _observations, reward, terminated, truncated, info = env.step(actions)
+            if (
+                stapler_articulation is not None
+                and stapler_housing_body_index is not None
+                and stapler_fixture_position_w is None
+                and stapler_fixture_quaternion_w is None
+            ):
+                # Isaac's articulation tensors become authoritative after the
+                # first PhysX advance. Capture the fixture datum here, then
+                # measure every later frame against it.
+                stapler_fixture_position_w = (
+                    stapler_articulation.data.body_pos_w[
+                        0,
+                        stapler_housing_body_index,
+                    ]
+                    .detach()
+                    .clone()
+                )
+                stapler_fixture_quaternion_w = (
+                    stapler_articulation.data.body_quat_w[
+                        0,
+                        stapler_housing_body_index,
+                    ]
+                    .detach()
+                    .clone()
+                )
             env_step_finished = time.perf_counter()
             with state.lock:
                 suture_visual_active = (
@@ -6902,6 +7439,267 @@ def main() -> None:
             else:
                 native_policy_action_np = None
                 native_joint_targets_np = None
+        if stapler_test_cell_enabled and stapler_articulation is not None:
+            actual_trigger_rad = float(
+                stapler_articulation.data.joint_pos[
+                    0,
+                    stapler_trigger_joint_index,
+                ].item()
+            )
+            actual_trigger_deg = float(np.degrees(actual_trigger_rad))
+            actual_pusher_mm = (
+                float(
+                    stapler_articulation.data.joint_pos[
+                        0,
+                        stapler_pusher_joint_index,
+                    ].item()
+                )
+                * 1000.0
+            )
+            actual_trigger_velocity_deg_s = float(
+                np.degrees(
+                    stapler_articulation.data.joint_vel[
+                        0,
+                        stapler_trigger_joint_index,
+                    ].item()
+                )
+            )
+            actual_pusher_velocity_mm_s = (
+                float(
+                    stapler_articulation.data.joint_vel[
+                        0,
+                        stapler_pusher_joint_index,
+                    ].item()
+                )
+                * 1000.0
+            )
+            fixture_translation_error_mm = 0.0
+            fixture_rotation_error_deg = 0.0
+            if (
+                stapler_housing_body_index is not None
+                and stapler_fixture_position_w is not None
+                and stapler_fixture_quaternion_w is not None
+            ):
+                current_fixture_position = (
+                    stapler_articulation.data.body_pos_w[
+                        0,
+                        stapler_housing_body_index,
+                    ]
+                )
+                current_fixture_quaternion = (
+                    stapler_articulation.data.body_quat_w[
+                        0,
+                        stapler_housing_body_index,
+                    ]
+                )
+                fixture_translation_error_mm = float(
+                    torch.linalg.vector_norm(
+                        current_fixture_position
+                        - stapler_fixture_position_w
+                    ).item()
+                    * 1000.0
+                )
+                quaternion_dot = torch.clamp(
+                    torch.abs(
+                        torch.dot(
+                            current_fixture_quaternion,
+                            stapler_fixture_quaternion_w,
+                        )
+                    ),
+                    0.0,
+                    1.0,
+                )
+                fixture_rotation_error_deg = float(
+                    np.degrees(
+                        2.0 * np.arccos(float(quaternion_dot.item()))
+                    )
+                )
+            applied_effort = getattr(
+                stapler_articulation.data,
+                "applied_torque",
+                None,
+            )
+            trigger_effort = (
+                float(
+                    applied_effort[
+                        0,
+                        stapler_trigger_joint_index,
+                    ].item()
+                )
+                if applied_effort is not None
+                else None
+            )
+            pusher_effort = (
+                float(
+                    applied_effort[
+                        0,
+                        stapler_pusher_joint_index,
+                    ].item()
+                )
+                if applied_effort is not None
+                else None
+            )
+            # A logical deployment requires both an explicit full-stroke
+            # command and a measured threshold crossing.  Physical overshoot
+            # from a partial command is therefore surfaced as a failed
+            # mechanism check rather than misreported as a valid firing edge.
+            deployment_event = None
+            if actual_trigger_deg <= REARM_THRESHOLD_DEG or (
+                stapler_target_deg >= FIRE_THRESHOLD_DEG
+                and actual_trigger_deg >= FIRE_THRESHOLD_DEG
+            ):
+                deployment_event = stapler_deployment_controller.update(
+                    actual_trigger_rad
+                )
+            if stapler_partial_candidate:
+                stapler_partial_peak_deg = max(
+                    stapler_partial_peak_deg,
+                    actual_trigger_deg,
+                )
+                if (
+                    stapler_partial_peak_deg > REARM_THRESHOLD_DEG
+                    and actual_trigger_deg <= REARM_THRESHOLD_DEG
+                ):
+                    stapler_partial_stroke_attempts += 1
+                    if (
+                        stapler_magazine.deployed
+                        == stapler_partial_start_deployments
+                        and stapler_partial_peak_deg
+                        < FIRE_THRESHOLD_DEG
+                    ):
+                        stapler_partial_stroke_passes += 1
+                    stapler_partial_candidate = False
+            if deployment_event is not None:
+                stapler_last_event = {
+                    "sequence_index": deployment_event.sequence_index,
+                    "trigger_deg": round(
+                        deployment_event.trigger_position_deg,
+                        4,
+                    ),
+                    "remaining": deployment_event.remaining,
+                    "state": deployment_event.state.value,
+                    "sim_step": fps_steps,
+                }
+            with state.lock:
+                previous_max_trigger = float(
+                    state.stapler_test_cell.get("max_trigger_deg", 0.0)
+                )
+                previous_max_pusher = float(
+                    state.stapler_test_cell.get(
+                        "max_pusher_travel_mm",
+                        0.0,
+                    )
+                )
+                previous_max_fixture_translation = float(
+                    state.stapler_test_cell.get(
+                        "max_fixture_translation_error_mm",
+                        0.0,
+                    )
+                )
+                previous_max_fixture_rotation = float(
+                    state.stapler_test_cell.get(
+                        "max_fixture_rotation_error_deg",
+                        0.0,
+                    )
+                )
+                state.stapler_test_cell.update(
+                    {
+                        "cycle_phase": stapler_cycle_phase,
+                        "cycle_running": stapler_cycle_started_at
+                        is not None,
+                        "target_trigger_deg": round(
+                            stapler_target_deg,
+                            4,
+                        ),
+                        "actual_trigger_deg": round(
+                            actual_trigger_deg,
+                            4,
+                        ),
+                        "trigger_velocity_deg_s": round(
+                            actual_trigger_velocity_deg_s,
+                            4,
+                        ),
+                        "pusher_travel_mm": round(
+                            actual_pusher_mm,
+                            4,
+                        ),
+                        "max_pusher_travel_mm": round(
+                            max(previous_max_pusher, actual_pusher_mm),
+                            4,
+                        ),
+                        "pusher_velocity_mm_s": round(
+                            actual_pusher_velocity_mm_s,
+                            4,
+                        ),
+                        "tracking_error_deg": round(
+                            stapler_target_deg - actual_trigger_deg,
+                            4,
+                        ),
+                        "joint_limit_violation_deg": round(
+                            max(
+                                0.0,
+                                -actual_trigger_deg,
+                                actual_trigger_deg - TRIGGER_LIMIT_DEG,
+                            ),
+                            4,
+                        ),
+                        "fixture_translation_error_mm": round(
+                            fixture_translation_error_mm,
+                            4,
+                        ),
+                        "fixture_rotation_error_deg": round(
+                            fixture_rotation_error_deg,
+                            4,
+                        ),
+                        "max_fixture_translation_error_mm": round(
+                            max(
+                                previous_max_fixture_translation,
+                                fixture_translation_error_mm,
+                            ),
+                            4,
+                        ),
+                        "max_fixture_rotation_error_deg": round(
+                            max(
+                                previous_max_fixture_rotation,
+                                fixture_rotation_error_deg,
+                            ),
+                            4,
+                        ),
+                        "trigger_drive_effort_provisional": (
+                            round(trigger_effort, 6)
+                            if trigger_effort is not None
+                            else None
+                        ),
+                        "pusher_drive_effort_provisional": (
+                            round(pusher_effort, 6)
+                            if pusher_effort is not None
+                            else None
+                        ),
+                        "magazine_remaining": stapler_magazine.remaining,
+                        "deployment_count": stapler_magazine.deployed,
+                        "cycle_count": stapler_cycle_count,
+                        "partial_stroke_attempts": (
+                            stapler_partial_stroke_attempts
+                        ),
+                        "partial_stroke_passes": (
+                            stapler_partial_stroke_passes
+                        ),
+                        "max_trigger_deg": round(
+                            max(previous_max_trigger, actual_trigger_deg),
+                            4,
+                        ),
+                        "last_event": stapler_last_event,
+                    }
+                )
+                if deployment_event is not None:
+                    state.procedure_event_code = PROCEDURE_EVENTS[
+                        "task_complete"
+                    ]
+                    state.procedure_event_sequence += 1
+                    state.coaching_cue = (
+                        "One simulated staple deployment recorded. "
+                        "Release below 8° before the next cycle."
+                    )
         if native_joint_targets_np is not None:
             close_rad = float(state.gripper_profile["close_rad"])
             open_rad = float(state.gripper_profile["open_rad"])

@@ -1,6 +1,20 @@
 Changelog
 ---------
 
+0.4.0 (2026-07-24)
+~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added the DrAnmar Needle System 0.3.0 under
+  ``Props/SurgicalClosure/Needle`` and
+  ``Props/SurgicalClosure/NeedleThread``.
+* Added standalone, coiled, extended and rigid-proxy Bench Setup routes.
+* Added a dedicated six-DOF fixture-held articulated stapler test cell with bounded
+  trigger control, pusher telemetry, rearm tracking and deterministic
+  deployment evidence.
+
 0.3.0 (2026-07-24)
 ~~~~~~~~~~~~~~~~~~
 

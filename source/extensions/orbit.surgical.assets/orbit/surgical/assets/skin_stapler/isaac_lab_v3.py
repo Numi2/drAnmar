@@ -18,6 +18,8 @@ def make_articulation_cfg(
     prim_path: str = "{ENV_REGEX_NS}/SkinStapler",
     state: str | StaplerState = StaplerState.LOADED,
     usd_path: str | Path | None = None,
+    disable_gravity: bool = False,
+    fix_root_link: bool | None = None,
 ):
     """Create an ``ArticulationCfg`` with state selected before view creation."""
 
@@ -33,7 +35,7 @@ def make_articulation_cfg(
             variants=variant_selection(selected),
             semantic_tags=semantic_tags(selected),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
-                disable_gravity=False,
+                disable_gravity=disable_gravity,
                 max_depenetration_velocity=2.0,
                 solver_position_iteration_count=8,
                 solver_velocity_iteration_count=2,
@@ -42,6 +44,7 @@ def make_articulation_cfg(
                 enabled_self_collisions=False,
                 solver_position_iteration_count=8,
                 solver_velocity_iteration_count=2,
+                fix_root_link=fix_root_link,
             ),
             activate_contact_sensors=True,
         ),
@@ -53,17 +56,19 @@ def make_articulation_cfg(
         actuators={
             "trigger": ImplicitActuatorCfg(
                 joint_names_expr=["trigger_joint"],
-                effort_limit_sim=18.0,
-                velocity_limit_sim=4.0,
+                effort_limit_sim=2.0,
+                velocity_limit_sim=1.0,
                 stiffness=3.2,
                 damping=0.24,
+                armature=0.015,
             ),
             "pusher": ImplicitActuatorCfg(
                 joint_names_expr=["pusher_joint"],
-                effort_limit_sim=45.0,
-                velocity_limit_sim=0.15,
-                stiffness=950.0,
-                damping=12.0,
+                effort_limit_sim=10.0,
+                velocity_limit_sim=0.03,
+                stiffness=300.0,
+                damping=25.0,
+                armature=0.5,
             ),
         },
     )

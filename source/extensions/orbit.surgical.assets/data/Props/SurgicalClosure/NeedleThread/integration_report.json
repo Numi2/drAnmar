@@ -1,0 +1,65 @@
+{
+  "schema": "dr.anmar.asset-integration-report.v1",
+  "asset_system": "DrAnmar Needle System",
+  "source_version": "0.3.0",
+  "source_root": "/Users/home/Props/SurgicalClosure",
+  "integrated_catalog_root": "Props/SurgicalClosure",
+  "license": "Apache-2.0",
+  "clinical_validation": false,
+  "source_preservation": {
+    "geometry_physics_profiles_frames_textures_glb_and_license_preserved": true,
+    "usda_shader_compliance_overlay_only": true
+  },
+  "corrections": [
+    {
+      "kind": "UsdPrimvarReader_float2_type",
+      "from": "token inputs:varname",
+      "to": "string inputs:varname",
+      "reason": "required by the UsdPrimvarReader_float2 shader definition"
+    },
+    {
+      "kind": "eight_bit_normal_map_interpretation",
+      "added": [
+        "float4 inputs:bias = (-1, -1, -1, 0)",
+        "float4 inputs:scale = (2, 2, 2, 1)"
+      ],
+      "reason": "required by the UsdPreviewSurface and UsdUVTexture normal-map contract"
+    }
+  ],
+  "layers": [
+    {
+      "path": "Needle/dranmar_needle.usda",
+      "source_sha256": "dc3abf929fa0c6a42e0316aeba810717faf1b47b580a7a00dee0303e8493f327",
+      "integrated_sha256": "cdd1735f44311b564ae972c62fa5b9c2fbd9d3c95af3e34064868a41b584451b",
+      "usdcat_parse": "passed",
+      "usdchecker": "passed"
+    },
+    {
+      "path": "NeedleThread/dranmar_needle_thread.usda",
+      "source_sha256": "85c39550933e3d83ac2dd75a1dd1cf14085bbae9875bcb635a0289e12f3721e4",
+      "integrated_sha256": "dfdd69d5956056cb15d8a05e134fbf814c74bf04eb2f5d15b5d811e2a9df4183",
+      "usdcat_parse": "passed",
+      "usdchecker": "passed"
+    },
+    {
+      "path": "NeedleThread/dranmar_needle_thread_extended.usda",
+      "source_sha256": "5fb4648c6df14f653823a7b34228a2e444bfd339127581b24977963280968bb6",
+      "integrated_sha256": "f65a5dd359d418dfe65b9a9b58aaa9ae645d627b5930e4827fb517df8b62524a",
+      "usdcat_parse": "passed",
+      "usdchecker": "passed"
+    },
+    {
+      "path": "NeedleThread/dranmar_needle_thread_rigid_proxy.usda",
+      "source_sha256": "2f34cee65cbaa35c67dabdd9e07ca9b622fc0d9eafa5aa288c066b3e3a5f775c",
+      "integrated_sha256": "33e7feb370e30a99ad9734a536ceec054f655bb6955cee68696fd2f6a635f860",
+      "usdcat_parse": "passed",
+      "usdchecker": "passed"
+    }
+  ],
+  "runtime_qualification": {
+    "repository_static_validation": "passed",
+    "native_isaac_sim_cuda": "pending",
+    "physical_metrology": "pending",
+    "clinical_use": "blocked"
+  }
+}

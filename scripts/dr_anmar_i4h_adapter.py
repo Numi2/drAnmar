@@ -368,6 +368,40 @@ def asset_catalog_payload() -> dict[str, Any]:
             "Props/SurgicalClosure/SkinStapler/skin_staple.usda",
             "standalone_formed_staple_rigid_body",
         ),
+        (
+            "dr_anmar_needle_v030",
+            "Props/SurgicalClosure/Needle/dranmar_needle.usda",
+            "rigid_half_circle_taper_point_needle",
+        ),
+        (
+            "dr_anmar_needle_thread_coiled_v030",
+            "Props/SurgicalClosure/NeedleThread/dranmar_needle_thread.usda",
+            "maximal_coordinate_d6_segment_chain_coiled",
+        ),
+        (
+            "dr_anmar_needle_thread_extended_v030",
+            "Props/SurgicalClosure/NeedleThread/"
+            "dranmar_needle_thread_extended.usda",
+            "maximal_coordinate_d6_segment_chain_extended",
+        ),
+        (
+            "dr_anmar_needle_thread_rigid_proxy_v030",
+            "Props/SurgicalClosure/NeedleThread/"
+            "dranmar_needle_thread_rigid_proxy.usda",
+            "single_rigid_body_perception_handover_proxy",
+        ),
+        (
+            "dr_anmar_stapler_test_fixture",
+            "Props/SurgicalClosure/StaplerTestCell/"
+            "stapler_test_fixture.usda",
+            "fixed_cradle_virtual_actuator_and_synthetic_coupon",
+        ),
+        (
+            "dr_anmar_stapler_test_device",
+            "Props/SurgicalClosure/StaplerTestCell/"
+            "stapler_test_device.usda",
+            "fixed_root_articulated_skin_stapler",
+        ),
     ):
         local_path = dr_anmar_asset_root / relative_path
         assets.append(
