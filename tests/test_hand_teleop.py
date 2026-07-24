@@ -105,6 +105,18 @@ class ResamplingAndSafetyTests(unittest.TestCase):
         self.assertAlmostEqual(runtime.arm_states[0].aperture_normalized, 0.27)
         self.assertEqual(runtime.arm_states[0].target_offset, [0.0] * 6)
 
+    def test_watchdog_can_expire_without_a_simulator_step(self) -> None:
+        runtime = self.armed_runtime()
+        runtime.submit(
+            2,
+            [hand(engaged=True, translation=[0.04, 0.0, 0.0], aperture=0.27)],
+            now=1.01,
+        )
+        self.assertTrue(runtime.expire_stale(now=1.27))
+        self.assertFalse(runtime.arm_states[0].motion_engaged)
+        self.assertEqual(runtime.arm_states[0].target_offset, [0.0] * 6)
+        self.assertAlmostEqual(runtime.arm_states[0].aperture_normalized, 0.27)
+
     def test_reacquisition_requires_frozen_frame(self) -> None:
         runtime = self.armed_runtime()
         runtime.consume([[0.01] * 6], now=1.30)

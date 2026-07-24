@@ -1235,6 +1235,32 @@ def process_rss_bytes() -> int | None:
 def build_web_app(state: SharedState) -> FastAPI:
     app = FastAPI(title="Dr.Anmar Surgical Workstation", docs_url=None, redoc_url=None)
     operator_lease = OperatorLease()
+    hand_watchdog_stop = threading.Event()
+    hand_watchdog_thread: threading.Thread | None = None
+
+    def run_hand_watchdog() -> None:
+        while not hand_watchdog_stop.wait(0.010):
+            with state.lock:
+                expired = state.hand_teleop.expire_stale()
+            if expired:
+                state.wake_event.set()
+
+    @app.on_event("startup")
+    def start_hand_watchdog() -> None:
+        nonlocal hand_watchdog_thread
+        hand_watchdog_stop.clear()
+        hand_watchdog_thread = threading.Thread(
+            target=run_hand_watchdog,
+            daemon=True,
+            name="dr-anmar-hand-watchdog",
+        )
+        hand_watchdog_thread.start()
+
+    @app.on_event("shutdown")
+    def stop_hand_watchdog() -> None:
+        hand_watchdog_stop.set()
+        if hand_watchdog_thread is not None:
+            hand_watchdog_thread.join(timeout=1.0)
 
     @app.middleware("http")
     async def protect_browser_requests(request: Request, call_next):

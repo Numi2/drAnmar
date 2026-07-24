@@ -226,16 +226,9 @@ class HandTeleopRuntime:
         ):
             raise ValueError("axis_scales must be finite positive values")
 
+        self.expire_stale(now=timestamp)
         commands = [[0.0] * 6 for _ in range(self.arms)]
         for arm, arm_state in enumerate(self.arm_states):
-            if (
-                arm_state.last_frame_at <= 0.0
-                or timestamp - arm_state.last_frame_at > self.timeout_s
-            ):
-                arm_state.tracked = False
-                arm_state.stale = True
-                arm_state.discard_motion(require_unclutched=True)
-                continue
             if not self.enabled or not arm_state.tracked or not arm_state.motion_engaged:
                 continue
             for axis, scale in enumerate(scales[arm]):
@@ -244,6 +237,30 @@ class HandTeleopRuntime:
                 commands[arm][axis] = command
                 arm_state.consumed_offset[axis] += command * scale
         return commands
+
+    def expire_stale(self, *, now: float | None = None) -> bool:
+        """Discard stale motion independently of the simulator step rate."""
+
+        timestamp = time.monotonic() if now is None else float(now)
+        expired = False
+        for arm_state in self.arm_states:
+            if (
+                arm_state.last_frame_at > 0.0
+                and timestamp - arm_state.last_frame_at > self.timeout_s
+            ):
+                changed = (
+                    arm_state.tracked
+                    or arm_state.motion_engaged
+                    or not arm_state.stale
+                    or any(arm_state.target_offset)
+                    or any(arm_state.consumed_offset)
+                    or not arm_state.reacquire_unclutched
+                )
+                arm_state.tracked = False
+                arm_state.stale = True
+                arm_state.discard_motion(require_unclutched=True)
+                expired = expired or changed
+        return expired
 
     def snapshot(self, *, now: float | None = None) -> dict[str, Any]:
         timestamp = time.monotonic() if now is None else float(now)
