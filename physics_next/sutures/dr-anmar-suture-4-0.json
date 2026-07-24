@@ -2,7 +2,7 @@
   "schema": "dr.anmar.suture-profile.v1",
   "id": "dr-anmar-suture-4-0-braided-v1",
   "name": "Dr.Anmar 4-0 braided surgical suture",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "purpose": "Research-grade physical suture asset for operating-room simulation",
   "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
   "clinical_validation": false,
@@ -12,18 +12,32 @@
   "units": "metres-kilograms-seconds",
   "asset_structure": {
     "entry_layer": "DrAnmarSuture4_0.usda",
+    "base_layer": "DrAnmarSuture4_0_base.usda",
     "geometry_layer": "DrAnmarSuture4_0_geometry.usd",
     "geometry_format": "usdc",
     "materials_layer": "DrAnmarSuture4_0_materials.usda",
     "physics_layer": "DrAnmarSuture4_0_physics.usda",
     "physx_layer": "DrAnmarSuture4_0_physx.usda",
     "entry_layer_max_bytes": 8192,
-    "composition": "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics",
+    "composition": "entry_references_base_and_public_Physics_variant_payloads_none_physics_or_physx",
     "default_runtime": "physx",
+    "variant_set": "Physics",
+    "variant_choices": [
+      "none",
+      "physics",
+      "physx"
+    ],
+    "physics_payload_loading": "deferred_until_selected_variant_is_loaded",
     "entry_layer_owns": [
       "stage_metadata",
+      "base_reference",
+      "public_physics_variant_contract",
+      "default_physics_selection"
+    ],
+    "base_layer_owns": [
       "asset_identity",
-      "structural_scopes"
+      "structural_scopes",
+      "geometry_and_material_sublayer_composition"
     ],
     "geometry_layer_owns": [
       "capsule_types",
@@ -51,7 +65,7 @@
       "scale_aware_contact_offsets"
     ],
     "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
-    "content_isolation": "entry_contains_no_geometry_material_or_physics_payload_geometry_contains_no_material_or_physics_payload_and_materials_contains_no_physics_payload"
+    "content_isolation": "entry_contains_only_interface_composition_base_contains_identity_hierarchy_and_geometry_material_composition_geometry_contains_no_material_or_physics_payload_and_materials_contains_no_physics_payload"
   },
   "geometry": {
     "usp_size": "4-0",
@@ -377,12 +391,12 @@
     {
       "title": "Isaac Sim USD Asset Structure 3.0",
       "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/openusd_tuning_tutorials/tutorial_02_asset_structure.html",
-      "used_for": "dedicated geometry, materials, neutral physics, and engine-specific source layers"
+      "used_for": "referenced base layer and public none, physics, and physx payload variants with dedicated geometry, materials, neutral physics, and engine-specific sources"
     },
     {
       "title": "Isaac Sim Asset Transformer",
       "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_transformer.html",
-      "used_for": "binary geometry routing, visual material routing, and PhysX schema isolation"
+      "used_for": "lightweight interface construction, binary geometry routing, visual material routing, and PhysX schema isolation"
     },
     {
       "title": "Isaac Sim Asset Transformer idempotency rules",

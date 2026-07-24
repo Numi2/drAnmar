@@ -1,0 +1,58 @@
+#usda 1.0
+(
+    subLayers = [
+        @DrAnmarNeedle_materials.usda@,
+        @DrAnmarNeedle_geometry.usd@
+    ]
+    defaultPrim = "DrAnmarNeedle"
+    doc = "DrAnmar Needle base identity, hierarchy, suture assembly, geometry, and visual materials."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarNeedle" (
+    customData = {
+        string drAnmarAssetId = "dr-anmar-needle"
+        string drAnmarAssetName = "DrAnmar Needle"
+        string drAnmarAssetVersion = "1.11.0"
+        string drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"
+        bool drAnmarClinicalValidation = false
+        string drAnmarGeometrySource = "independently_generated_parametric_geometry"
+        int drAnmarMassPropertyIntegrationSlices = 8192
+        string drAnmarContactOffsetContract = "scale_aware_physx_engine_layer_authoring"
+        string drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"
+        string drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"
+        string drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"
+        string drAnmarLayerContract = "interface_references_base_with_public_none_physics_physx_payload_variants"
+        string drAnmarNeedleProfileId = "dr-anmar-needle-v1"
+        string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
+        string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
+        int drAnmarResetRandomizationCount = 4
+        int drAnmarSimToRealGapCount = 7
+        string drAnmarSutureProfileId = "dr-anmar-suture-4-0-braided-v1"
+        string drAnmarSuturePhysicsProvenance = "Independent Dr.Anmar 4-0 discrete Cosserat rod"
+        string drAnmarSwageConnection = "fixed_needle_to_interface_then_breakable_pullout_joint"
+        string drAnmarStatus = "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation"
+    }
+)
+{
+    def Xform "Needle"
+    {
+        def Xform "SutureAnchor"
+        {
+            quatf xformOp:orient = (6.12323399574e-17, 0, 0, 1)
+            double3 xformOp:translate = (4.28798901577e-19, 0.00700281749604, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+        }
+    }
+
+    def Xform "Suture" (
+        prepend references = @../suture/DrAnmarSuture4_0.usda@
+    )
+    {
+        double3 xformOp:translate = (-0.00025, 0.00700281749604, 0)
+        quatf xformOp:orient = (6.12323399574e-17, 0, 0, 1)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }
+}

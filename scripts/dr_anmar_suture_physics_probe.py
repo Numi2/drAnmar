@@ -90,6 +90,16 @@ def main() -> int:
     root_path = "/World/DrAnmarNeedle"
     root = stage.DefinePrim(root_path, "Xform")
     root.GetReferences().AddReference(str(args.asset.resolve()))
+    needle_physics_variant_selection = root.GetVariantSets().GetVariantSet("Physics").GetVariantSelection()
+    suture_variant_prim = stage.GetPrimAtPath(f"{root_path}/Suture")
+    suture_physics_variant_selection = (
+        suture_variant_prim.GetVariantSets().GetVariantSet("Physics").GetVariantSelection()
+        if suture_variant_prim.IsValid()
+        else None
+    )
+    physics_variant_contract_valid = bool(
+        needle_physics_variant_selection == "physx" and suture_physics_variant_selection == "physx"
+    )
     xform = UsdGeom.Xformable(root)
     xform.AddTranslateOp().Set(Gf.Vec3d(-0.09, 0.0, 0.06))
 
@@ -167,12 +177,14 @@ def main() -> int:
     needle_collision_physics_material_binding_count = None
     needle_render_collision_separation_valid = None
     needle_material_organization_valid = None
+    needle_base_layer_name = None
     needle_geometry_layer_name = None
     needle_materials_layer_name = None
     needle_neutral_physics_layer_name = None
     needle_physx_layer_name = None
     needle_asset_structure_source_ownership_valid = None
     suture_geometry_layer_name = None
+    suture_base_layer_name = None
     suture_materials_layer_name = None
     suture_neutral_physics_layer_name = None
     suture_physx_layer_name = None
@@ -185,15 +197,18 @@ def main() -> int:
     suture_material_bindings_valid = None
     if assembly:
         layer_organization = needle_profile["construction"]["layer_organization"]
+        needle_base_layer_name = str(layer_organization["base_layer"])
         needle_geometry_layer_name = str(layer_organization["geometry_layer"])
         needle_materials_layer_name = str(layer_organization["materials_layer"])
         needle_neutral_physics_layer_name = str(layer_organization["physics_layer"])
         needle_physx_layer_name = str(layer_organization["physx_layer"])
+        local_base_path = args.asset.resolve().parent / needle_base_layer_name
         local_geometry_path = args.asset.resolve().parent / needle_geometry_layer_name
         local_materials_path = args.asset.resolve().parent / needle_materials_layer_name
         local_physics_path = args.asset.resolve().parent / needle_neutral_physics_layer_name
         local_physx_path = args.asset.resolve().parent / needle_physx_layer_name
         entry_layer_text = args.asset.read_text(encoding="utf-8")
+        base_layer_text = local_base_path.read_text(encoding="utf-8")
         geometry_stage = Usd.Stage.Open(str(local_geometry_path))
         if geometry_stage is None:
             raise RuntimeError(f"Could not open the needle geometry layer: {local_geometry_path}")
@@ -212,6 +227,14 @@ def main() -> int:
         entry_physics_typed_prims = re.findall(
             r"\bdef\s+(Physics[A-Za-z0-9_]+)\s+\"",
             entry_layer_text,
+        )
+        base_physics_properties = re.findall(
+            r"\b(?:physics:|physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*",
+            base_layer_text,
+        )
+        base_physics_schemas = re.findall(
+            r'"((?:Physics|Physx|Newton)[A-Za-z0-9_]*API)"',
+            base_layer_text,
         )
         neutral_engine_properties = re.findall(
             r"\b(?:physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*",
@@ -235,20 +258,32 @@ def main() -> int:
         )
         needle_asset_structure_source_ownership_valid = bool(
             layer_organization["entry_layer"] == args.asset.name
+            and needle_base_layer_name.endswith("_base.usda")
             and needle_geometry_layer_name.endswith("_geometry.usd")
             and layer_organization["geometry_format"] == "usdc"
             and local_geometry_path.read_bytes()[:8] == b"PXR-USDC"
             and needle_materials_layer_name.endswith("_materials.usda")
             and needle_neutral_physics_layer_name.endswith("_physics.usda")
             and needle_physx_layer_name.endswith("_physx.usda")
+            and f"@{needle_base_layer_name}@" in entry_layer_text
             and f"@{needle_physx_layer_name}@" in entry_layer_text
-            and f"@{needle_materials_layer_name}@" in entry_layer_text
-            and f"@{needle_geometry_layer_name}@" in entry_layer_text
+            and f"@{needle_neutral_physics_layer_name}@" in entry_layer_text
+            and f"@{needle_materials_layer_name}@" not in entry_layer_text
+            and f"@{needle_geometry_layer_name}@" not in entry_layer_text
+            and f"@{needle_materials_layer_name}@" in base_layer_text
+            and f"@{needle_geometry_layer_name}@" in base_layer_text
             and f"@{needle_neutral_physics_layer_name}@" in physx_layer_text
+            and 'append variantSets = "Physics"' in entry_layer_text
+            and entry_layer_text.count("prepend payload =") == 2
+            and entry_layer_text.count('over "Suture" (') == 3
+            and layer_organization["variant_choices"] == ["none", "physics", "physx"]
+            and layer_organization["default_runtime"] == "physx"
             and len(entry_layer_text.encode("utf-8")) <= int(layer_organization["entry_layer_max_bytes"])
             and not entry_physics_properties
             and not entry_physics_schemas
             and not entry_physics_typed_prims
+            and not base_physics_properties
+            and not base_physics_schemas
             and 'def Mesh "Visual"' not in entry_layer_text
             and "point3f[] points" not in entry_layer_text
             and 'def Material "NeedleSteelVisual"' not in entry_layer_text
@@ -297,17 +332,20 @@ def main() -> int:
             and "prepend references =" not in physx_layer_text
         )
         suture_layer_organization = suture_profile["asset_structure"]
+        suture_base_layer_name = str(suture_layer_organization["base_layer"])
         suture_geometry_layer_name = str(suture_layer_organization["geometry_layer"])
         suture_materials_layer_name = str(suture_layer_organization["materials_layer"])
         suture_neutral_physics_layer_name = str(suture_layer_organization["physics_layer"])
         suture_physx_layer_name = str(suture_layer_organization["physx_layer"])
         suture_directory = args.asset.resolve().parent.parent / "suture"
         suture_entry_path = suture_directory / str(suture_layer_organization["entry_layer"])
+        suture_base_path = suture_directory / suture_base_layer_name
         suture_geometry_path = suture_directory / suture_geometry_layer_name
         suture_materials_path = suture_directory / suture_materials_layer_name
         suture_physics_path = suture_directory / suture_neutral_physics_layer_name
         suture_physx_path = suture_directory / suture_physx_layer_name
         suture_entry_text = suture_entry_path.read_text(encoding="utf-8")
+        suture_base_text = suture_base_path.read_text(encoding="utf-8")
         suture_geometry_stage = Usd.Stage.Open(str(suture_geometry_path))
         if suture_geometry_stage is None:
             raise RuntimeError(f"Could not open the suture geometry layer: {suture_geometry_path}")
@@ -317,15 +355,30 @@ def main() -> int:
         suture_physx_text = suture_physx_path.read_text(encoding="utf-8")
         suture_asset_structure_source_ownership_valid = bool(
             suture_geometry_path.read_bytes()[:8] == b"PXR-USDC"
-            and f"@{suture_geometry_layer_name}@" in suture_entry_text
-            and f"@{suture_materials_layer_name}@" in suture_entry_text
+            and f"@{suture_base_layer_name}@" in suture_entry_text
             and f"@{suture_physx_layer_name}@" in suture_entry_text
-            and f"@{suture_neutral_physics_layer_name}@" not in suture_entry_text
+            and f"@{suture_neutral_physics_layer_name}@" in suture_entry_text
+            and f"@{suture_geometry_layer_name}@" not in suture_entry_text
+            and f"@{suture_materials_layer_name}@" not in suture_entry_text
+            and f"@{suture_geometry_layer_name}@" in suture_base_text
+            and f"@{suture_materials_layer_name}@" in suture_base_text
             and f"@{suture_neutral_physics_layer_name}@" in suture_physx_text
+            and 'append variantSets = "Physics"' in suture_entry_text
+            and suture_entry_text.count("prepend payload =") == 2
+            and suture_layer_organization["variant_choices"] == ["none", "physics", "physx"]
+            and suture_layer_organization["default_runtime"] == "physx"
             and len(suture_entry_text.encode("utf-8")) <= int(suture_layer_organization["entry_layer_max_bytes"])
             and not re.findall(
                 r"\b(?:physics:|physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*",
                 suture_entry_text,
+            )
+            and not re.findall(
+                r"\b(?:physics:|physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*",
+                suture_base_text,
+            )
+            and not re.findall(
+                r'"((?:Physics|Physx|Newton)[A-Za-z0-9_]*API)"',
+                suture_base_text,
             )
             and 'def Capsule "NeedleInterface"' in suture_geometry_text
             and len(re.findall(r'def Capsule "S\d{4}"', suture_geometry_text)) == 360
@@ -678,11 +731,16 @@ def main() -> int:
         "needle_collision_physics_material_binding_count": needle_collision_physics_material_binding_count,
         "needle_render_collision_separation_valid": needle_render_collision_separation_valid,
         "needle_material_organization_valid": needle_material_organization_valid,
+        "needle_physics_variant_selection": needle_physics_variant_selection,
+        "suture_physics_variant_selection": suture_physics_variant_selection,
+        "physics_variant_contract_valid": physics_variant_contract_valid,
+        "needle_base_layer_name": needle_base_layer_name,
         "needle_geometry_layer_name": needle_geometry_layer_name,
         "needle_materials_layer_name": needle_materials_layer_name,
         "needle_neutral_physics_layer_name": needle_neutral_physics_layer_name,
         "needle_physx_layer_name": needle_physx_layer_name,
         "needle_asset_structure_source_ownership_valid": needle_asset_structure_source_ownership_valid,
+        "suture_base_layer_name": suture_base_layer_name,
         "suture_geometry_layer_name": suture_geometry_layer_name,
         "suture_materials_layer_name": suture_materials_layer_name,
         "suture_neutral_physics_layer_name": suture_neutral_physics_layer_name,
@@ -730,6 +788,7 @@ def main() -> int:
                 and report["needle_collision_physics_material_binding_count"] == derived_needle.collision_capsule_count
                 and report["needle_render_collision_separation_valid"]
                 and report["needle_material_organization_valid"]
+                and report["physics_variant_contract_valid"]
                 and report["needle_asset_structure_source_ownership_valid"]
                 and report["suture_asset_structure_source_ownership_valid"]
                 and report["suture_physx_collision_api_count"] == 361

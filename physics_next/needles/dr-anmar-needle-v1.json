@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -99,19 +99,35 @@
     },
     "layer_organization": {
       "entry_layer": "DrAnmarNeedle.usda",
+      "base_layer": "DrAnmarNeedle_base.usda",
       "geometry_layer": "DrAnmarNeedle_geometry.usd",
       "geometry_format": "usdc",
       "materials_layer": "DrAnmarNeedle_materials.usda",
       "entry_layer_max_bytes": 8192,
       "physics_layer": "DrAnmarNeedle_physics.usda",
       "physx_layer": "DrAnmarNeedle_physx.usda",
-      "composition": "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics",
+      "composition": "entry_references_base_and_public_Physics_variant_payloads_none_physics_or_physx",
       "default_runtime": "physx",
+      "variant_set": "Physics",
+      "variant_choices": [
+        "none",
+        "physics",
+        "physx"
+      ],
+      "nested_suture_variant_policy": "assembly_Physics_selection_authors_the_same_selection_on_Suture",
+      "physics_payload_loading": "deferred_until_selected_variant_is_loaded",
       "entry_layer_owns": [
         "stage_metadata",
+        "base_reference",
+        "public_physics_variant_contract",
+        "default_physics_selection",
+        "nested_suture_physics_selection"
+      ],
+      "base_layer_owns": [
         "asset_identity",
         "structural_hierarchy",
-        "suture_reference_and_transform"
+        "suture_reference_and_transform",
+        "geometry_and_material_sublayer_composition"
       ],
       "geometry_layer_owns": [
         "visual_mesh_topology",
@@ -152,7 +168,7 @@
         "Newton"
       ],
       "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
-      "content_isolation": "entry_contains_no_mesh_shader_or_physics_payload_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
+      "content_isolation": "entry_contains_only_interface_composition_base_contains_identity_hierarchy_suture_reference_and_geometry_material_composition_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
     }
   },
   "material": {
@@ -258,7 +274,7 @@
     {
       "title": "Isaac Sim asset structure",
       "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_structure.html",
-      "used_for": "stable composed entry asset with neutral physics and PhysX-specific responsibilities isolated in separate lightweight layers"
+      "used_for": "referenced base interface with synchronized public none, physics, and physx payload variants and isolated engine responsibilities"
     },
     {
       "title": "Isaac Sim multiphysics robot assets",

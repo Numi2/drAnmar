@@ -33,6 +33,7 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ASSET_ID,
     DR_ANMAR_NEEDLE_ASSET_PATH,
     DR_ANMAR_NEEDLE_ASSET_VERSION,
+    DR_ANMAR_NEEDLE_BASE_ASSET_PATH,
     DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH,
     DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH,
     DR_ANMAR_NEEDLE_NAME,
@@ -40,6 +41,7 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH,
     DR_ANMAR_NEEDLE_ROOT_PRIM,
     SUTURE_ASSET_PATH,
+    SUTURE_BASE_ASSET_PATH,
     SUTURE_GEOMETRY_ASSET_PATH,
     SUTURE_MATERIALS_ASSET_PATH,
     SUTURE_NEEDLE_INTERFACE_CENTER_M,
@@ -50,11 +52,13 @@ from dr_anmar_suture_model import DEFAULT_PROFILE_PATH, derive, load_profile
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = SUTURE_ASSET_PATH
+DEFAULT_BASE_OUTPUT = SUTURE_BASE_ASSET_PATH
 DEFAULT_GEOMETRY_OUTPUT = SUTURE_GEOMETRY_ASSET_PATH
 DEFAULT_MATERIALS_OUTPUT = SUTURE_MATERIALS_ASSET_PATH
 DEFAULT_PHYSICS_OUTPUT = SUTURE_PHYSICS_ASSET_PATH
 DEFAULT_PHYSX_OUTPUT = SUTURE_PHYSX_ASSET_PATH
 DEFAULT_NEEDLE_OUTPUT = DR_ANMAR_NEEDLE_ASSET_PATH
+DEFAULT_NEEDLE_BASE_OUTPUT = DR_ANMAR_NEEDLE_BASE_ASSET_PATH
 DEFAULT_NEEDLE_GEOMETRY_OUTPUT = DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH
 DEFAULT_NEEDLE_MATERIALS_OUTPUT = DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH
 DEFAULT_NEEDLE_PHYSICS_OUTPUT = DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH
@@ -243,12 +247,14 @@ def joint_block(
 def author(
     profile: dict[str, Any],
     *,
+    base_reference: str,
     geometry_sublayer_reference: str,
     materials_sublayer_reference: str,
-    physx_sublayer_reference: str,
+    physics_payload_reference: str,
+    physx_payload_reference: str,
     neutral_physics_sublayer_reference: str,
-) -> tuple[str, str, str, str, str]:
-    """Author isolated entry, geometry, materials, neutral physics, and PhysX layers."""
+) -> tuple[str, str, str, str, str, str]:
+    """Author interface, base, geometry, materials, neutral physics, and PhysX layers."""
 
     derived = derive(profile)
     geometry = profile["geometry"]
@@ -356,7 +362,7 @@ def author(
         "drAnmarClinicalValidation": False,
         "drAnmarCanonicalAssetPackage": "assets/dr_anmar",
         "drAnmarIndependentAsset": True,
-        "drAnmarLayerContract": "entry_sublayers_physx_materials_geometry_with_neutral_physics_under_physx",
+        "drAnmarLayerContract": "interface_references_base_with_public_none_physics_physx_payload_variants",
         "drAnmarProfileId": profile["id"],
         "drAnmarRepresentation": "discrete_cosserat_rod",
         "drAnmarStatus": profile["status"],
@@ -373,13 +379,43 @@ def author(
     segment_physx_source = indent("\n\n".join(segment_physx_blocks), 8)
     entry_layer = f"""#usda 1.0
 (
+    defaultPrim = "DrAnmarSuture4_0"
+    doc = "Dr.Anmar 4-0 suture interface with public NVIDIA-style Physics payload variants; not clinically validated."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarSuture4_0" (
+    prepend references = @{base_reference}@
+    variants = {{
+        string Physics = "physx"
+    }}
+    append variantSets = "Physics"
+)
+{{
+    variantSet "Physics" = {{
+        "none" {{
+        }}
+        "physics" (
+            prepend payload = @{physics_payload_reference}@
+        ) {{
+        }}
+        "physx" (
+            prepend payload = @{physx_payload_reference}@
+        ) {{
+        }}
+    }}
+}}
+"""
+    base_layer = f"""#usda 1.0
+(
     subLayers = [
-        @{physx_sublayer_reference}@,
         @{materials_sublayer_reference}@,
         @{geometry_sublayer_reference}@
     ]
     defaultPrim = "DrAnmarSuture4_0"
-    doc = "Independent research-grade 4-0 braided surgical-suture asset; not clinically validated."
+    doc = "Dr.Anmar 4-0 suture base identity, hierarchy, geometry, and visual materials."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -582,20 +618,22 @@ over "DrAnmarSuture4_0"
     }}
 }}
 """
-    return entry_layer, geometry_layer, materials_layer, neutral_physics_layer, physx_layer
+    return entry_layer, base_layer, geometry_layer, materials_layer, neutral_physics_layer, physx_layer
 
 
 def author_dr_anmar_needle(
     suture_profile: dict[str, Any],
     needle_profile: dict[str, Any],
     *,
+    base_reference: str,
     suture_reference: str,
     geometry_sublayer_reference: str,
     materials_sublayer_reference: str,
-    physx_sublayer_reference: str,
+    physics_payload_reference: str,
+    physx_payload_reference: str,
     neutral_physics_sublayer_reference: str,
-) -> tuple[str, str, str, str, str]:
-    """Author entry, geometry, materials, neutral physics, and PhysX layers."""
+) -> tuple[str, str, str, str, str, str]:
+    """Author interface, base, geometry, materials, neutral physics, and PhysX layers."""
 
     derived_needle = derive_needle(needle_profile)
     mass_properties = derived_needle.mass_properties
@@ -664,13 +702,65 @@ def author_dr_anmar_needle(
     implemented_randomization_count = len(needle_profile["sim_to_real"]["implemented_randomization_on_episode_reset"])
     entry_layer = f"""#usda 1.0
 (
+    defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
+    doc = "{DR_ANMAR_NEEDLE_NAME} interface with synchronized public NVIDIA-style Physics payload variants; not clinically validated."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
+    prepend references = @{base_reference}@
+    variants = {{
+        string Physics = "physx"
+    }}
+    append variantSets = "Physics"
+)
+{{
+    variantSet "Physics" = {{
+        "none" {{
+            over "Suture" (
+                variants = {{
+                    string Physics = "none"
+                }}
+            )
+            {{
+            }}
+        }}
+        "physics" (
+            prepend payload = @{physics_payload_reference}@
+        ) {{
+            over "Suture" (
+                variants = {{
+                    string Physics = "physics"
+                }}
+            )
+            {{
+            }}
+        }}
+        "physx" (
+            prepend payload = @{physx_payload_reference}@
+        ) {{
+            over "Suture" (
+                variants = {{
+                    string Physics = "physx"
+                }}
+            )
+            {{
+            }}
+        }}
+    }}
+}}
+"""
+
+    base_layer = f"""#usda 1.0
+(
     subLayers = [
-        @{physx_sublayer_reference}@,
         @{materials_sublayer_reference}@,
         @{geometry_sublayer_reference}@
     ]
     defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
-    doc = "{DR_ANMAR_NEEDLE_NAME}: independently generated research-grade curved taper-point needle with factory-swaged Dr.Anmar 4-0 suture; not clinically validated."
+    doc = "{DR_ANMAR_NEEDLE_NAME} base identity, hierarchy, suture assembly, geometry, and visual materials."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -689,7 +779,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         string drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"
         string drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"
         string drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"
-        string drAnmarLayerContract = "entry_sublayers_physx_materials_geometry_with_neutral_physics_under_physx"
+        string drAnmarLayerContract = "interface_references_base_with_public_none_physics_physx_payload_variants"
         string drAnmarNeedleProfileId = "{needle_profile["id"]}"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
@@ -897,7 +987,7 @@ over "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
     }}
 }}
 """
-    return entry_layer, geometry_layer, materials_layer, physics_layer, physx_layer
+    return entry_layer, base_layer, geometry_layer, materials_layer, physics_layer, physx_layer
 
 
 def clamp01(value: float) -> float:
@@ -958,6 +1048,11 @@ def main() -> int:
     )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument(
+        "--base-output",
+        type=Path,
+        default=DEFAULT_BASE_OUTPUT,
+    )
+    parser.add_argument(
         "--geometry-output",
         type=Path,
         default=DEFAULT_GEOMETRY_OUTPUT,
@@ -983,6 +1078,11 @@ def main() -> int:
         dest="needle_output",
         type=Path,
         default=DEFAULT_NEEDLE_OUTPUT,
+    )
+    parser.add_argument(
+        "--needle-base-output",
+        type=Path,
+        default=DEFAULT_NEEDLE_BASE_OUTPUT,
     )
     parser.add_argument(
         "--needle-geometry-output",
@@ -1012,25 +1112,30 @@ def main() -> int:
     profile = load_profile(args.profile)
     needle_profile = load_needle_profile(args.needle_profile)
     output = args.output.expanduser().resolve()
+    base_output = args.base_output.expanduser().resolve()
     geometry_output = args.geometry_output.expanduser().resolve()
     materials_output = args.materials_output.expanduser().resolve()
     physics_output = args.physics_output.expanduser().resolve()
     physx_output = args.physx_output.expanduser().resolve()
     needle_output = args.needle_output.expanduser().resolve()
+    needle_base_output = args.needle_base_output.expanduser().resolve()
     needle_geometry_output = args.needle_geometry_output.expanduser().resolve()
     needle_materials_output = args.needle_materials_output.expanduser().resolve()
     needle_physics_output = args.needle_physics_output.expanduser().resolve()
     needle_physx_output = args.needle_physx_output.expanduser().resolve()
     for layer_output in (
         output,
+        base_output,
         geometry_output,
         materials_output,
         physics_output,
         physx_output,
     ):
         layer_output.parent.mkdir(parents=True, exist_ok=True)
-    suture_geometry_reference = Path(os.path.relpath(geometry_output, start=output.parent)).as_posix()
-    suture_materials_reference = Path(os.path.relpath(materials_output, start=output.parent)).as_posix()
+    suture_base_reference = Path(os.path.relpath(base_output, start=output.parent)).as_posix()
+    suture_geometry_reference = Path(os.path.relpath(geometry_output, start=base_output.parent)).as_posix()
+    suture_materials_reference = Path(os.path.relpath(materials_output, start=base_output.parent)).as_posix()
+    suture_physics_reference = Path(os.path.relpath(physics_output, start=output.parent)).as_posix()
     suture_physx_reference = Path(os.path.relpath(physx_output, start=output.parent)).as_posix()
     suture_neutral_physics_reference = Path(
         os.path.relpath(
@@ -1040,22 +1145,27 @@ def main() -> int:
     ).as_posix()
     (
         suture_entry_text,
+        suture_base_text,
         suture_geometry_text,
         suture_materials_text,
         suture_physics_text,
         suture_physx_text,
     ) = author(
         profile,
+        base_reference=suture_base_reference,
         geometry_sublayer_reference=suture_geometry_reference,
         materials_sublayer_reference=suture_materials_reference,
-        physx_sublayer_reference=suture_physx_reference,
+        physics_payload_reference=suture_physics_reference,
+        physx_payload_reference=suture_physx_reference,
         neutral_physics_sublayer_reference=suture_neutral_physics_reference,
     )
     suture_temporary = output.with_suffix(output.suffix + ".tmp")
+    suture_base_temporary = base_output.with_suffix(base_output.suffix + ".tmp")
     suture_materials_temporary = materials_output.with_suffix(materials_output.suffix + ".tmp")
     suture_physics_temporary = physics_output.with_suffix(physics_output.suffix + ".tmp")
     suture_physx_temporary = physx_output.with_suffix(physx_output.suffix + ".tmp")
     suture_temporary.write_text(suture_entry_text, encoding="utf-8")
+    suture_base_temporary.write_text(suture_base_text, encoding="utf-8")
     suture_materials_temporary.write_text(suture_materials_text, encoding="utf-8")
     suture_physics_temporary.write_text(suture_physics_text, encoding="utf-8")
     suture_physx_temporary.write_text(suture_physx_text, encoding="utf-8")
@@ -1063,30 +1173,40 @@ def main() -> int:
     suture_materials_temporary.replace(materials_output)
     suture_physics_temporary.replace(physics_output)
     suture_physx_temporary.replace(physx_output)
+    suture_base_temporary.replace(base_output)
     suture_temporary.replace(output)
     needle_output.parent.mkdir(parents=True, exist_ok=True)
+    needle_base_output.parent.mkdir(parents=True, exist_ok=True)
     needle_geometry_output.parent.mkdir(parents=True, exist_ok=True)
     needle_materials_output.parent.mkdir(parents=True, exist_ok=True)
     needle_physics_output.parent.mkdir(parents=True, exist_ok=True)
     needle_physx_output.parent.mkdir(parents=True, exist_ok=True)
     needle_temporary = needle_output.with_suffix(needle_output.suffix + ".tmp")
+    needle_base_temporary = needle_base_output.with_suffix(needle_base_output.suffix + ".tmp")
     needle_materials_temporary = needle_materials_output.with_suffix(needle_materials_output.suffix + ".tmp")
     needle_physics_temporary = needle_physics_output.with_suffix(needle_physics_output.suffix + ".tmp")
     needle_physx_temporary = needle_physx_output.with_suffix(needle_physx_output.suffix + ".tmp")
     suture_reference = Path(os.path.relpath(output, start=needle_output.parent)).as_posix()
+    base_reference = Path(os.path.relpath(needle_base_output, start=needle_output.parent)).as_posix()
     geometry_sublayer_reference = Path(
         os.path.relpath(
             needle_geometry_output,
-            start=needle_output.parent,
+            start=needle_base_output.parent,
         )
     ).as_posix()
     materials_sublayer_reference = Path(
         os.path.relpath(
             needle_materials_output,
+            start=needle_base_output.parent,
+        )
+    ).as_posix()
+    physics_payload_reference = Path(
+        os.path.relpath(
+            needle_physics_output,
             start=needle_output.parent,
         )
     ).as_posix()
-    physx_sublayer_reference = Path(
+    physx_payload_reference = Path(
         os.path.relpath(
             needle_physx_output,
             start=needle_output.parent,
@@ -1100,6 +1220,7 @@ def main() -> int:
     ).as_posix()
     (
         needle_entry_text,
+        needle_base_text,
         needle_geometry_text,
         needle_materials_text,
         needle_physics_text,
@@ -1107,13 +1228,16 @@ def main() -> int:
     ) = author_dr_anmar_needle(
         profile,
         needle_profile,
+        base_reference=base_reference,
         suture_reference=suture_reference,
         geometry_sublayer_reference=geometry_sublayer_reference,
         materials_sublayer_reference=materials_sublayer_reference,
-        physx_sublayer_reference=physx_sublayer_reference,
+        physics_payload_reference=physics_payload_reference,
+        physx_payload_reference=physx_payload_reference,
         neutral_physics_sublayer_reference=neutral_physics_sublayer_reference,
     )
     needle_temporary.write_text(needle_entry_text, encoding="utf-8")
+    needle_base_temporary.write_text(needle_base_text, encoding="utf-8")
     needle_materials_temporary.write_text(needle_materials_text, encoding="utf-8")
     needle_physics_temporary.write_text(needle_physics_text, encoding="utf-8")
     needle_physx_temporary.write_text(needle_physx_text, encoding="utf-8")
@@ -1121,18 +1245,21 @@ def main() -> int:
     needle_materials_temporary.replace(needle_materials_output)
     needle_physics_temporary.replace(needle_physics_output)
     needle_physx_temporary.replace(needle_physx_output)
+    needle_base_temporary.replace(needle_base_output)
     needle_temporary.replace(needle_output)
     derived = derive(profile)
     derived_needle = derive_needle(needle_profile)
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v7",
+        "schema": "dr.anmar.suture-asset-report.v8",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
         "suture_asset_version": profile["version"],
         "suture_entry_bytes": output.stat().st_size,
+        "suture_base": portable_path(base_output),
+        "suture_base_sha256": sha256(base_output),
         "suture_geometry": portable_path(geometry_output),
         "suture_geometry_format": "usdc",
         "suture_geometry_sha256": sha256(geometry_output),
@@ -1150,6 +1277,8 @@ def main() -> int:
         "dr_anmar_needle": portable_path(needle_output),
         "dr_anmar_needle_sha256": sha256(needle_output),
         "dr_anmar_needle_entry_bytes": needle_output.stat().st_size,
+        "dr_anmar_needle_base": portable_path(needle_base_output),
+        "dr_anmar_needle_base_sha256": sha256(needle_base_output),
         "dr_anmar_needle_geometry": portable_path(needle_geometry_output),
         "dr_anmar_needle_geometry_format": "usdc",
         "dr_anmar_needle_geometry_sha256": sha256(needle_geometry_output),

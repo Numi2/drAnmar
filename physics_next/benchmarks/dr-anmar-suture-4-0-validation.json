@@ -6,30 +6,135 @@
       "passed": true
     },
     "all_local_procedure_rooms_receive_instrument": {
-      "expected": [
-        "nvidia-native-surgical-bench",
-        "needle-pickup",
-        "needle-transfer",
-        "liver-retraction",
-        "synthetic-anatomy-navigation",
-        "dr-anmar-suturable-tissue",
-        "dr-anmar-hemostasis",
-        "nvidia-strand-ring-threading",
-        "needle-passing-regrasp",
-        "complication-recovery"
-      ],
-      "measured": [
-        "nvidia-native-surgical-bench",
-        "needle-pickup",
-        "needle-transfer",
-        "liver-retraction",
-        "synthetic-anatomy-navigation",
-        "dr-anmar-suturable-tissue",
-        "dr-anmar-hemostasis",
-        "nvidia-strand-ring-threading",
-        "needle-passing-regrasp",
-        "complication-recovery"
-      ],
+      "expected": {
+        "covered_rooms": [
+          "nvidia-native-surgical-bench",
+          "needle-pickup",
+          "needle-transfer",
+          "liver-retraction",
+          "synthetic-anatomy-navigation",
+          "dr-anmar-suturable-tissue",
+          "dr-anmar-hemostasis",
+          "nvidia-strand-ring-threading",
+          "needle-passing-regrasp",
+          "complication-recovery"
+        ],
+        "physics_variant": {
+          "choices": [
+            "none",
+            "physics",
+            "physx"
+          ],
+          "default": "physx",
+          "variant_set": "Physics"
+        }
+      },
+      "measured": {
+        "covered_rooms": [
+          "nvidia-native-surgical-bench",
+          "needle-pickup",
+          "needle-transfer",
+          "liver-retraction",
+          "synthetic-anatomy-navigation",
+          "dr-anmar-suturable-tissue",
+          "dr-anmar-hemostasis",
+          "nvidia-strand-ring-threading",
+          "needle-passing-regrasp",
+          "complication-recovery"
+        ],
+        "physics_variants": [
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          },
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          },
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          },
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          },
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          },
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          },
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          },
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          },
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          },
+          {
+            "choices": [
+              "none",
+              "physics",
+              "physx"
+            ],
+            "default": "physx",
+            "variant_set": "Physics"
+          }
+        ]
+      },
       "passed": true
     },
     "breakable_joint_resolution": {
@@ -55,7 +160,8 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.10.0\"",
+        "drAnmarAssetVersion = \"1.11.0\"",
+        "@DrAnmarNeedle_base.usda@",
         "@DrAnmarNeedle_physx.usda@",
         "@DrAnmarNeedle_materials.usda@",
         "@DrAnmarNeedle_geometry.usd@",
@@ -66,7 +172,7 @@
         "drAnmarNormalContract = \"analytic_taper_and_curvature_aware_indexed_face_varying_primvar\"",
         "drAnmarRenderCollisionContract = \"separate_visual_mesh_and_guide_purpose_invisible_compound_colliders\"",
         "drAnmarMaterialContract = \"top_level_looks_with_separate_visual_and_physics_materials\"",
-        "drAnmarLayerContract = \"entry_sublayers_physx_materials_geometry_with_neutral_physics_under_physx\"",
+        "drAnmarLayerContract = \"interface_references_base_with_public_none_physics_physx_payload_variants\"",
         "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
         "drAnmarCollisionContract = \"curvature_sagitta_bounded_capsules_with_explicit_extents\"",
         "\"PhysicsMaterialAPI\"",
@@ -86,9 +192,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.10.0",
+        "integration_version": "1.11.0",
         "missing": [],
-        "profile_version": "1.10.0"
+        "profile_version": "1.11.0"
       },
       "passed": true
     },
@@ -238,18 +344,30 @@
     "needle_asset_structure_source_ownership": {
       "expected": "lightweight entry, binary mesh, visual look-development, neutral physics, and PhysX tuning each have isolated source ownership without unqualified cross-engine schemas",
       "measured": {
+        "base_forbidden_content_tokens": [],
+        "base_physics_properties": [],
+        "base_physics_schemas": [],
+        "base_physics_typed_prims": [],
         "contract": {
-          "composition": "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics",
-          "content_isolation": "entry_contains_no_mesh_shader_or_physics_payload_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding",
+          "base_layer": "DrAnmarNeedle_base.usda",
+          "base_layer_owns": [
+            "asset_identity",
+            "structural_hierarchy",
+            "suture_reference_and_transform",
+            "geometry_and_material_sublayer_composition"
+          ],
+          "composition": "entry_references_base_and_public_Physics_variant_payloads_none_physics_or_physx",
+          "content_isolation": "entry_contains_only_interface_composition_base_contains_identity_hierarchy_suture_reference_and_geometry_material_composition_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding",
           "default_runtime": "physx",
           "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
           "entry_layer": "DrAnmarNeedle.usda",
           "entry_layer_max_bytes": 8192,
           "entry_layer_owns": [
             "stage_metadata",
-            "asset_identity",
-            "structural_hierarchy",
-            "suture_reference_and_transform"
+            "base_reference",
+            "public_physics_variant_contract",
+            "default_physics_selection",
+            "nested_suture_physics_selection"
           ],
           "forbidden_live_schema_prefixes": [
             "Newton"
@@ -268,6 +386,7 @@
             "visual_shader",
             "visual_material_binding"
           ],
+          "nested_suture_variant_policy": "assembly_Physics_selection_authors_the_same_selection_on_Suture",
           "physics_layer": "DrAnmarNeedle_physics.usda",
           "physics_layer_owns": [
             "physics_material",
@@ -276,6 +395,7 @@
             "suture_interface_override",
             "factory_swage_joint"
           ],
+          "physics_payload_loading": "deferred_until_selected_variant_is_loaded",
           "physics_property_prefixes": [
             "physics:"
           ],
@@ -293,9 +413,15 @@
           ],
           "physx_schema_prefixes": [
             "Physx"
-          ]
+          ],
+          "variant_choices": [
+            "none",
+            "physics",
+            "physx"
+          ],
+          "variant_set": "Physics"
         },
-        "entry_bytes": 2811,
+        "entry_bytes": 1163,
         "entry_forbidden_content_tokens": [],
         "entry_physics_properties": [],
         "entry_physics_schemas": [],
@@ -452,6 +578,42 @@
         "friction_combine_mode": "max",
         "missing_native_probe_tokens": [],
         "reference_count": 11
+      },
+      "passed": true
+    },
+    "needle_public_physics_variants_compose_and_synchronize_suture": {
+      "expected": "the assembly choice switches needle and nested suture together without mixed physics backends",
+      "measured": {
+        "none": {
+          "factory_swage_joints": 0,
+          "needle_colliders": 0,
+          "physics_api_schemas": 0,
+          "physics_properties": 0,
+          "physx_api_schemas": 0,
+          "physx_properties": 0,
+          "suture_capsules": 360,
+          "suture_joints": 0
+        },
+        "physics": {
+          "factory_swage_joints": 1,
+          "needle_colliders": 40,
+          "physics_api_schemas": 4009,
+          "physics_properties": 15907,
+          "physx_api_schemas": 0,
+          "physx_properties": 0,
+          "suture_capsules": 360,
+          "suture_joints": 360
+        },
+        "physx": {
+          "factory_swage_joints": 1,
+          "needle_colliders": 40,
+          "physics_api_schemas": 4009,
+          "physics_properties": 15907,
+          "physx_api_schemas": 766,
+          "physx_properties": 3336,
+          "suture_capsules": 360,
+          "suture_joints": 360
+        }
       },
       "passed": true
     },
@@ -684,17 +846,27 @@
     "suture_asset_structure_source_ownership": {
       "expected": "lightweight entry, binary capsule geometry, visual look-development, neutral mechanics, and PhysX tuning have isolated deterministic source ownership",
       "measured": {
+        "base_engine_schemas": [],
+        "base_forbidden": [],
+        "base_physics_typed_prims": [],
         "contract": {
-          "composition": "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics",
-          "content_isolation": "entry_contains_no_geometry_material_or_physics_payload_geometry_contains_no_material_or_physics_payload_and_materials_contains_no_physics_payload",
+          "base_layer": "DrAnmarSuture4_0_base.usda",
+          "base_layer_owns": [
+            "asset_identity",
+            "structural_scopes",
+            "geometry_and_material_sublayer_composition"
+          ],
+          "composition": "entry_references_base_and_public_Physics_variant_payloads_none_physics_or_physx",
+          "content_isolation": "entry_contains_only_interface_composition_base_contains_identity_hierarchy_and_geometry_material_composition_geometry_contains_no_material_or_physics_payload_and_materials_contains_no_physics_payload",
           "default_runtime": "physx",
           "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
           "entry_layer": "DrAnmarSuture4_0.usda",
           "entry_layer_max_bytes": 8192,
           "entry_layer_owns": [
             "stage_metadata",
-            "asset_identity",
-            "structural_scopes"
+            "base_reference",
+            "public_physics_variant_contract",
+            "default_physics_selection"
           ],
           "geometry_format": "usdc",
           "geometry_layer": "DrAnmarSuture4_0_geometry.usd",
@@ -719,15 +891,22 @@
             "adjacent_collision_filtering",
             "breakable_cosserat_joints"
           ],
+          "physics_payload_loading": "deferred_until_selected_variant_is_loaded",
           "physx_layer": "DrAnmarSuture4_0_physx.usda",
           "physx_layer_owns": [
             "physx_material_combine_modes",
             "hybrid_ccd",
             "rigid_body_damping_and_solver_iterations",
             "scale_aware_contact_offsets"
-          ]
+          ],
+          "variant_choices": [
+            "none",
+            "physics",
+            "physx"
+          ],
+          "variant_set": "Physics"
         },
-        "entry_bytes": 1125,
+        "entry_bytes": 683,
         "entry_engine_properties": [],
         "entry_engine_schemas": [],
         "entry_forbidden": [],
@@ -763,6 +942,42 @@
           0.0,
           0.0
         ]
+      },
+      "passed": true
+    },
+    "suture_public_physics_variants_compose": {
+      "expected": "none keeps renderable geometry only, physics adds engine-neutral mechanics, and physx adds PhysX tuning",
+      "measured": {
+        "none": {
+          "factory_swage_joints": 0,
+          "needle_colliders": 0,
+          "physics_api_schemas": 0,
+          "physics_properties": 0,
+          "physx_api_schemas": 0,
+          "physx_properties": 0,
+          "suture_capsules": 360,
+          "suture_joints": 0
+        },
+        "physics": {
+          "factory_swage_joints": 0,
+          "needle_colliders": 0,
+          "physics_api_schemas": 3966,
+          "physics_properties": 15851,
+          "physx_api_schemas": 0,
+          "physx_properties": 0,
+          "suture_capsules": 360,
+          "suture_joints": 360
+        },
+        "physx": {
+          "factory_swage_joints": 0,
+          "needle_colliders": 0,
+          "physics_api_schemas": 3966,
+          "physics_properties": 15851,
+          "physx_api_schemas": 724,
+          "physx_properties": 3251,
+          "suture_capsules": 360,
+          "suture_joints": 360
+        }
       },
       "passed": true
     },

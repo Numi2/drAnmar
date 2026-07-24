@@ -10,6 +10,7 @@ import math
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,7 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ASSET_ID,
     DR_ANMAR_NEEDLE_ASSET_PATH,
     DR_ANMAR_NEEDLE_ASSET_VERSION,
+    DR_ANMAR_NEEDLE_BASE_ASSET_PATH,
     DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH,
     DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH,
     DR_ANMAR_NEEDLE_NAME,
@@ -38,6 +40,7 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH,
     DR_ANMAR_NEEDLE_ROOT_PRIM,
     SUTURE_ASSET_PATH,
+    SUTURE_BASE_ASSET_PATH,
     SUTURE_GEOMETRY_ASSET_PATH,
     SUTURE_MATERIALS_ASSET_PATH,
     SUTURE_PHYSICS_ASSET_PATH,
@@ -61,11 +64,13 @@ from dr_anmar_suture_runtime import SutureRuntime
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ASSET = SUTURE_ASSET_PATH
+DEFAULT_SUTURE_BASE = SUTURE_BASE_ASSET_PATH
 DEFAULT_SUTURE_GEOMETRY = SUTURE_GEOMETRY_ASSET_PATH
 DEFAULT_SUTURE_MATERIALS = SUTURE_MATERIALS_ASSET_PATH
 DEFAULT_SUTURE_PHYSICS = SUTURE_PHYSICS_ASSET_PATH
 DEFAULT_SUTURE_PHYSX = SUTURE_PHYSX_ASSET_PATH
 DEFAULT_NEEDLE = DR_ANMAR_NEEDLE_ASSET_PATH
+DEFAULT_NEEDLE_BASE = DR_ANMAR_NEEDLE_BASE_ASSET_PATH
 DEFAULT_NEEDLE_GEOMETRY = DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH
 DEFAULT_NEEDLE_MATERIALS = DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH
 DEFAULT_NEEDLE_PHYSICS = DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH
@@ -109,12 +114,49 @@ def read_usd_as_text(path: Path, usdcat_command: str) -> str:
     ).stdout
 
 
+def compose_physics_variant(
+    asset_path: Path,
+    selection: str,
+    usdcat_command: str,
+) -> str:
+    """Flatten one public Physics selection through an external referencing stage."""
+
+    usdcat_path = shutil.which(usdcat_command)
+    if usdcat_path is None:
+        raise RuntimeError(f"OpenUSD usdcat is required to compose variants: {usdcat_command}")
+    asset_reference = asset_path.expanduser().resolve().as_posix()
+    wrapper_text = f"""#usda 1.0
+(
+    defaultPrim = "Probe"
+)
+
+def Xform "Probe" (
+    prepend references = @{asset_reference}@
+    variants = {{
+        string Physics = "{selection}"
+    }}
+)
+{{
+}}
+"""
+    with tempfile.TemporaryDirectory(prefix=".dr_anmar_variant_", dir=asset_path.parent) as temporary_directory:
+        wrapper = Path(temporary_directory) / f"{selection}.usda"
+        wrapper.write_text(wrapper_text, encoding="utf-8")
+        return subprocess.run(
+            [usdcat_path, "--flatten", str(wrapper)],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+
+
 def add_suture_layer_checks(
     checks: dict[str, dict[str, Any]],
     profile: dict[str, Any],
     *,
     segment_count: int,
     entry_text: str,
+    base_text: str,
     geometry_text: str,
     geometry_is_usdc: bool,
     materials_text: str,
@@ -187,31 +229,61 @@ def add_suture_layer_checks(
             "newton:",
         ),
     )
+    base_forbidden = present_text_tokens(
+        (base_text,),
+        (
+            'def Capsule "',
+            'def Material "',
+            'def Shader "',
+            "material:binding",
+            "physics:",
+            "newton:",
+        ),
+    )
+    base_engine_schemas = sorted(set(re.findall(r'"((?:Physics|Physx|Newton)[A-Za-z0-9_]*API)"', base_text)))
+    base_physics_typed_prims = sorted(set(re.findall(r"\bdef\s+(Physics[A-Za-z0-9_]+)\s+\"", base_text)))
     nvidia_references = profile.get("nvidia_stack_references", [])
     check(
         checks,
         "suture_asset_structure_source_ownership",
-        profile["version"] == "2.0.0"
+        profile["version"] == "2.1.0"
         and layer_contract["entry_layer"] == "DrAnmarSuture4_0.usda"
+        and layer_contract["base_layer"] == "DrAnmarSuture4_0_base.usda"
         and layer_contract["geometry_layer"] == "DrAnmarSuture4_0_geometry.usd"
         and layer_contract["geometry_format"] == "usdc"
         and layer_contract["materials_layer"] == "DrAnmarSuture4_0_materials.usda"
         and layer_contract["physics_layer"] == "DrAnmarSuture4_0_physics.usda"
         and layer_contract["physx_layer"] == "DrAnmarSuture4_0_physx.usda"
         and layer_contract["composition"]
-        == "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics"
+        == "entry_references_base_and_public_Physics_variant_payloads_none_physics_or_physx"
+        and layer_contract["variant_set"] == "Physics"
+        and layer_contract["variant_choices"] == ["none", "physics", "physx"]
+        and layer_contract["default_runtime"] == "physx"
+        and layer_contract["physics_payload_loading"] == "deferred_until_selected_variant_is_loaded"
         and layer_contract["engine_isolation"]
         == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
+        and f'@{layer_contract["base_layer"]}@' in entry_text
         and f'@{layer_contract["physx_layer"]}@' in entry_text
-        and f'@{layer_contract["materials_layer"]}@' in entry_text
-        and f'@{layer_contract["geometry_layer"]}@' in entry_text
-        and f'@{layer_contract["physics_layer"]}@' not in entry_text
+        and f'@{layer_contract["physics_layer"]}@' in entry_text
+        and f'@{layer_contract["materials_layer"]}@' not in entry_text
+        and f'@{layer_contract["geometry_layer"]}@' not in entry_text
+        and f'@{layer_contract["materials_layer"]}@' in base_text
+        and f'@{layer_contract["geometry_layer"]}@' in base_text
         and f'@{layer_contract["physics_layer"]}@' in physx_text
+        and 'append variantSets = "Physics"' in entry_text
+        and 'string Physics = "physx"' in entry_text
+        and entry_text.count('"none" {') == 1
+        and entry_text.count('"physics" (') == 1
+        and entry_text.count('"physx" (') == 1
+        and entry_text.count("prepend payload =") == 2
         and len(entry_text.encode("utf-8")) <= int(layer_contract["entry_layer_max_bytes"])
         and geometry_is_usdc
         and not entry_engine_properties
         and not entry_engine_schemas
         and not entry_forbidden
+        and not base_forbidden
+        and not base_engine_schemas
+        and not base_physics_typed_prims
         and not geometry_forbidden
         and not materials_forbidden
         and not neutral_engine_specific
@@ -248,6 +320,9 @@ def add_suture_layer_checks(
             "entry_engine_properties": entry_engine_properties,
             "entry_engine_schemas": entry_engine_schemas,
             "entry_forbidden": entry_forbidden,
+            "base_forbidden": base_forbidden,
+            "base_engine_schemas": base_engine_schemas,
+            "base_physics_typed_prims": base_physics_typed_prims,
             "geometry_forbidden": geometry_forbidden,
             "materials_forbidden": materials_forbidden,
             "neutral_engine_specific": neutral_engine_specific,
@@ -359,21 +434,107 @@ def add_suture_layer_checks(
     )
 
 
+def add_physics_variant_checks(
+    checks: dict[str, dict[str, Any]],
+    *,
+    suture_variants: dict[str, str],
+    needle_variants: dict[str, str],
+    segment_count: int,
+    needle_collision_count: int,
+) -> None:
+    """Validate all public Physics choices after full OpenUSD composition."""
+
+    def metrics(text: str) -> dict[str, int]:
+        return {
+            "physics_api_schemas": len(re.findall(r'"Physics[A-Za-z0-9_:]*API(?::[A-Za-z0-9_]+)?"', text)),
+            "physx_api_schemas": len(re.findall(r'"Physx[A-Za-z0-9_:]*API(?::[A-Za-z0-9_]+)?"', text)),
+            "physics_properties": len(re.findall(r"\bphysics:[A-Za-z][A-Za-z0-9_]*", text)),
+            "physx_properties": len(re.findall(r"\bphysx[A-Za-z]*:[A-Za-z][A-Za-z0-9_]*", text)),
+            "suture_capsules": len(re.findall(r'def Capsule "S\d{4}"', text)),
+            "suture_joints": len(re.findall(r'def PhysicsJoint "J\d{4}"', text)),
+            "needle_colliders": len(re.findall(r'def Capsule "C\d{3}"', text)),
+            "factory_swage_joints": text.count('def PhysicsFixedJoint "FactorySwage"'),
+        }
+
+    suture_metrics = {selection: metrics(text) for selection, text in suture_variants.items()}
+    needle_metrics = {selection: metrics(text) for selection, text in needle_variants.items()}
+    check(
+        checks,
+        "suture_public_physics_variants_compose",
+        set(suture_variants) == {"none", "physics", "physx"}
+        and suture_metrics["none"]["suture_capsules"] == segment_count
+        and suture_metrics["none"]["physics_api_schemas"] == 0
+        and suture_metrics["none"]["physics_properties"] == 0
+        and suture_metrics["none"]["physx_api_schemas"] == 0
+        and suture_metrics["none"]["physx_properties"] == 0
+        and suture_metrics["none"]["suture_joints"] == 0
+        and suture_metrics["physics"]["suture_capsules"] == segment_count
+        and suture_metrics["physics"]["physics_api_schemas"] > 0
+        and suture_metrics["physics"]["physics_properties"] > 0
+        and suture_metrics["physics"]["physx_api_schemas"] == 0
+        and suture_metrics["physics"]["physx_properties"] == 0
+        and suture_metrics["physics"]["suture_joints"] == segment_count
+        and suture_metrics["physx"]["suture_capsules"] == segment_count
+        and suture_metrics["physx"]["physics_api_schemas"] > 0
+        and suture_metrics["physx"]["physx_api_schemas"] > 0
+        and suture_metrics["physx"]["physics_properties"] > 0
+        and suture_metrics["physx"]["physx_properties"] > 0
+        and suture_metrics["physx"]["suture_joints"] == segment_count,
+        suture_metrics,
+        "none keeps renderable geometry only, physics adds engine-neutral mechanics, and physx adds PhysX tuning",
+    )
+    check(
+        checks,
+        "needle_public_physics_variants_compose_and_synchronize_suture",
+        set(needle_variants) == {"none", "physics", "physx"}
+        and needle_metrics["none"]["suture_capsules"] == segment_count
+        and needle_metrics["none"]["needle_colliders"] == 0
+        and needle_metrics["none"]["physics_api_schemas"] == 0
+        and needle_metrics["none"]["physics_properties"] == 0
+        and needle_metrics["none"]["physx_api_schemas"] == 0
+        and needle_metrics["none"]["physx_properties"] == 0
+        and needle_metrics["none"]["suture_joints"] == 0
+        and needle_metrics["none"]["factory_swage_joints"] == 0
+        and needle_metrics["physics"]["suture_capsules"] == segment_count
+        and needle_metrics["physics"]["needle_colliders"] == needle_collision_count
+        and needle_metrics["physics"]["physics_api_schemas"] > 0
+        and needle_metrics["physics"]["physics_properties"] > 0
+        and needle_metrics["physics"]["physx_api_schemas"] == 0
+        and needle_metrics["physics"]["physx_properties"] == 0
+        and needle_metrics["physics"]["suture_joints"] == segment_count
+        and needle_metrics["physics"]["factory_swage_joints"] == 1
+        and needle_metrics["physx"]["suture_capsules"] == segment_count
+        and needle_metrics["physx"]["needle_colliders"] == needle_collision_count
+        and needle_metrics["physx"]["physics_api_schemas"] > 0
+        and needle_metrics["physx"]["physics_properties"] > 0
+        and needle_metrics["physx"]["physx_api_schemas"] > 0
+        and needle_metrics["physx"]["physx_properties"] > 0
+        and needle_metrics["physx"]["suture_joints"] == segment_count
+        and needle_metrics["physx"]["factory_swage_joints"] == 1,
+        needle_metrics,
+        "the assembly choice switches needle and nested suture together without mixed physics backends",
+    )
+
+
 def validate(
     profile: dict[str, Any],
     needle_profile: dict[str, Any],
     suture_entry_text: str,
+    suture_base_text: str,
     suture_geometry_text: str,
     suture_geometry_is_usdc: bool,
     suture_materials_text: str,
     suture_physics_text: str,
     suture_physx_text: str,
+    suture_variant_texts: dict[str, str],
     needle_entry_text: str,
+    needle_base_text: str,
     needle_geometry_text: str,
     needle_geometry_is_usdc: bool,
     needle_materials_text: str,
     needle_physics_text: str,
     needle_physx_text: str,
+    needle_variant_texts: dict[str, str],
     workstation_text: str,
 ) -> dict[str, Any]:
     checks: dict[str, dict[str, Any]] = {}
@@ -389,6 +550,7 @@ def validate(
     asset_text = "\n".join(
         (
             suture_entry_text,
+            suture_base_text,
             suture_geometry_text,
             suture_materials_text,
             suture_physics_text,
@@ -398,6 +560,7 @@ def validate(
     needle_text = "\n".join(
         (
             needle_entry_text,
+            needle_base_text,
             needle_geometry_text,
             needle_materials_text,
             needle_physics_text,
@@ -524,11 +687,19 @@ def validate(
         profile,
         segment_count=derived.segment_count,
         entry_text=suture_entry_text,
+        base_text=suture_base_text,
         geometry_text=suture_geometry_text,
         geometry_is_usdc=suture_geometry_is_usdc,
         materials_text=suture_materials_text,
         physics_text=suture_physics_text,
         physx_text=suture_physx_text,
+    )
+    add_physics_variant_checks(
+        checks,
+        suture_variants=suture_variant_texts,
+        needle_variants=needle_variant_texts,
+        segment_count=derived.segment_count,
+        needle_collision_count=derived_needle.collision_capsule_count,
     )
     required_asset_tokens = [
         "PhysicsRigidBodyAPI",
@@ -574,6 +745,7 @@ def validate(
         f'drAnmarAssetId = "{DR_ANMAR_NEEDLE_ASSET_ID}"',
         f'drAnmarAssetName = "{DR_ANMAR_NEEDLE_NAME}"',
         f'drAnmarAssetVersion = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"',
+        "@DrAnmarNeedle_base.usda@",
         "@DrAnmarNeedle_physx.usda@",
         "@DrAnmarNeedle_materials.usda@",
         "@DrAnmarNeedle_geometry.usd@",
@@ -584,7 +756,7 @@ def validate(
         'drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"',
         'drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"',
         'drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"',
-        'drAnmarLayerContract = "entry_sublayers_physx_materials_geometry_with_neutral_physics_under_physx"',
+        'drAnmarLayerContract = "interface_references_base_with_public_none_physics_physx_payload_variants"',
         'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
         'drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"',
         '"PhysicsMaterialAPI"',
@@ -623,6 +795,21 @@ def validate(
     entry_physics_typed_prims = sorted(set(re.findall(r"\bdef\s+(Physics[A-Za-z0-9_]+)\s+\"", needle_entry_text)))
     entry_forbidden_content_tokens = present_text_tokens(
         (needle_entry_text,),
+        (
+            'def Mesh "Visual"',
+            "point3f[] points",
+            "faceVertexIndices",
+            "primvars:normals",
+            'def Material "NeedleSteelVisual"',
+            'def Shader "PreviewSurface"',
+            "material:binding",
+        ),
+    )
+    base_physics_properties = sorted(set(re.findall(engine_property_pattern, needle_base_text)))
+    base_physics_schemas = sorted(set(re.findall(engine_schema_pattern, needle_base_text)))
+    base_physics_typed_prims = sorted(set(re.findall(r"\bdef\s+(Physics[A-Za-z0-9_]+)\s+\"", needle_base_text)))
+    base_forbidden_content_tokens = present_text_tokens(
+        (needle_base_text,),
         (
             'def Mesh "Visual"',
             "point3f[] points",
@@ -738,6 +925,7 @@ def validate(
         checks,
         "needle_asset_structure_source_ownership",
         layer_organization["entry_layer"] == "DrAnmarNeedle.usda"
+        and layer_organization["base_layer"] == "DrAnmarNeedle_base.usda"
         and layer_organization["geometry_layer"] == "DrAnmarNeedle_geometry.usd"
         and layer_organization["geometry_format"] == "usdc"
         and layer_organization["materials_layer"] == "DrAnmarNeedle_materials.usda"
@@ -745,14 +933,27 @@ def validate(
         and layer_organization["physics_layer"] == "DrAnmarNeedle_physics.usda"
         and layer_organization["physx_layer"] == "DrAnmarNeedle_physx.usda"
         and layer_organization["composition"]
-        == "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics"
+        == "entry_references_base_and_public_Physics_variant_payloads_none_physics_or_physx"
         and layer_organization["default_runtime"] == "physx"
+        and layer_organization["variant_set"] == "Physics"
+        and layer_organization["variant_choices"] == ["none", "physics", "physx"]
+        and layer_organization["nested_suture_variant_policy"]
+        == "assembly_Physics_selection_authors_the_same_selection_on_Suture"
+        and layer_organization["physics_payload_loading"] == "deferred_until_selected_variant_is_loaded"
         and layer_organization["entry_layer_owns"]
         == [
             "stage_metadata",
+            "base_reference",
+            "public_physics_variant_contract",
+            "default_physics_selection",
+            "nested_suture_physics_selection",
+        ]
+        and layer_organization["base_layer_owns"]
+        == [
             "asset_identity",
             "structural_hierarchy",
             "suture_reference_and_transform",
+            "geometry_and_material_sublayer_composition",
         ]
         and layer_organization["geometry_layer_owns"]
         == [
@@ -789,18 +990,33 @@ def validate(
         and layer_organization["engine_isolation"]
         == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
         and layer_organization["content_isolation"]
-        == "entry_contains_no_mesh_shader_or_physics_payload_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
+        == "entry_contains_only_interface_composition_base_contains_identity_hierarchy_suture_reference_and_geometry_material_composition_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
+        and "@DrAnmarNeedle_base.usda@" in needle_entry_text
         and "@DrAnmarNeedle_physx.usda@" in needle_entry_text
-        and "@DrAnmarNeedle_materials.usda@" in needle_entry_text
-        and "@DrAnmarNeedle_geometry.usd@" in needle_entry_text
-        and "@DrAnmarNeedle_physics.usda@" not in needle_entry_text
+        and "@DrAnmarNeedle_physics.usda@" in needle_entry_text
+        and "@DrAnmarNeedle_materials.usda@" not in needle_entry_text
+        and "@DrAnmarNeedle_geometry.usd@" not in needle_entry_text
+        and "@DrAnmarNeedle_materials.usda@" in needle_base_text
+        and "@DrAnmarNeedle_geometry.usd@" in needle_base_text
+        and "prepend references = @../suture/DrAnmarSuture4_0.usda@" in needle_base_text
         and "@DrAnmarNeedle_physics.usda@" in needle_physx_text
+        and 'append variantSets = "Physics"' in needle_entry_text
+        and 'string Physics = "physx"' in needle_entry_text
+        and needle_entry_text.count("prepend payload =") == 2
+        and needle_entry_text.count('over "Suture" (') == 3
+        and needle_entry_text.count('string Physics = "none"') == 1
+        and needle_entry_text.count('string Physics = "physics"') == 1
+        and needle_entry_text.count('string Physics = "physx"') == 2
         and len(needle_entry_text.encode("utf-8")) <= int(layer_organization["entry_layer_max_bytes"])
         and needle_geometry_is_usdc
         and not entry_physics_properties
         and not entry_physics_schemas
         and not entry_physics_typed_prims
         and not entry_forbidden_content_tokens
+        and not base_physics_properties
+        and not base_physics_schemas
+        and not base_physics_typed_prims
+        and not base_forbidden_content_tokens
         and not missing_geometry_layer_tokens
         and not missing_materials_layer_tokens
         and not geometry_forbidden_content_tokens
@@ -822,6 +1038,10 @@ def validate(
             "entry_physics_typed_prims": entry_physics_typed_prims,
             "entry_bytes": len(needle_entry_text.encode("utf-8")),
             "entry_forbidden_content_tokens": entry_forbidden_content_tokens,
+            "base_physics_properties": base_physics_properties,
+            "base_physics_schemas": base_physics_schemas,
+            "base_physics_typed_prims": base_physics_typed_prims,
+            "base_forbidden_content_tokens": base_forbidden_content_tokens,
             "geometry_is_usdc": needle_geometry_is_usdc,
             "missing_geometry_layer_tokens": missing_geometry_layer_tokens,
             "geometry_forbidden_content_tokens": geometry_forbidden_content_tokens,
@@ -1285,7 +1505,12 @@ def validate(
         "needle_collision_physics_material_binding_count",
         "needle_render_collision_separation_valid",
         "needle_material_organization_valid",
+        "needle_physics_variant_selection",
+        "suture_physics_variant_selection",
+        "physics_variant_contract_valid",
+        "needle_base_layer_name",
         "needle_asset_structure_source_ownership_valid",
+        "suture_base_layer_name",
         "suture_asset_structure_source_ownership_valid",
         "suture_physx_collision_api_count",
         "suture_hybrid_ccd_body_count",
@@ -1325,11 +1550,11 @@ def validate(
         and layer_organization["physics_layer"].endswith("_physics.usda")
         and layer_organization["physx_layer"].endswith("_physx.usda")
         and layer_organization["composition"]
-        == "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics"
+        == "entry_references_base_and_public_Physics_variant_payloads_none_physics_or_physx"
         and layer_organization["engine_isolation"]
         == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
         and layer_organization["content_isolation"]
-        == "entry_contains_no_mesh_shader_or_physics_payload_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
+        == "entry_contains_only_interface_composition_base_contains_identity_hierarchy_suture_reference_and_geometry_material_composition_geometry_contains_only_mesh_data_and_materials_contains_only_visual_lookdev_and_binding"
         and contact_offset_contract["engine_layer"] == "DrAnmarNeedle_physx.usda"
         and contact_offset_contract["neutral_layer_policy"] == "no_engine_specific_contact_schema"
         and needle_profile["solver"]["ccd"] is True
@@ -1722,22 +1947,51 @@ def validate(
         pass
 
     covered_local_rooms: list[str] = []
+    room_physics_variant_contracts: list[dict[str, Any]] = []
     for room_id in local_room_ids(PROCEDURE_ROOMS):
         fake_scene = FakeScene()
-        configure_dr_anmar_needle(
+        configuration = configure_dr_anmar_needle(
             fake_scene,
             asset_base_cfg_type=FakeAssetBaseCfg,
             usd_file_cfg_type=FakeUsdFileCfg,
         )
         if getattr(fake_scene, "dr_anmar_needle", None) is not None:
             covered_local_rooms.append(room_id)
+            room_physics_variant_contracts.append(
+                {
+                    "variant_set": configuration["physics_variant_set"],
+                    "choices": configuration["physics_variant_choices"],
+                    "default": configuration["default_physics_variant"],
+                }
+            )
     expected_local_rooms = list(local_room_ids(PROCEDURE_ROOMS))
     check(
         checks,
         "all_local_procedure_rooms_receive_instrument",
-        covered_local_rooms == expected_local_rooms and bool(covered_local_rooms),
-        covered_local_rooms,
-        expected_local_rooms,
+        covered_local_rooms == expected_local_rooms
+        and bool(covered_local_rooms)
+        and len(room_physics_variant_contracts) == len(expected_local_rooms)
+        and all(
+            contract
+            == {
+                "variant_set": "Physics",
+                "choices": ["none", "physics", "physx"],
+                "default": "physx",
+            }
+            for contract in room_physics_variant_contracts
+        ),
+        {
+            "covered_rooms": covered_local_rooms,
+            "physics_variants": room_physics_variant_contracts,
+        },
+        {
+            "covered_rooms": expected_local_rooms,
+            "physics_variant": {
+                "variant_set": "Physics",
+                "choices": ["none", "physics", "physx"],
+                "default": "physx",
+            },
+        },
     )
 
     syntax_tree = ast.parse(workstation_text)
@@ -1918,6 +2172,11 @@ def main() -> int:
     )
     parser.add_argument("--asset", type=Path, default=DEFAULT_ASSET)
     parser.add_argument(
+        "--suture-base",
+        type=Path,
+        default=DEFAULT_SUTURE_BASE,
+    )
+    parser.add_argument(
         "--suture-geometry",
         type=Path,
         default=DEFAULT_SUTURE_GEOMETRY,
@@ -1943,6 +2202,11 @@ def main() -> int:
         dest="needle",
         type=Path,
         default=DEFAULT_NEEDLE,
+    )
+    parser.add_argument(
+        "--needle-base",
+        type=Path,
+        default=DEFAULT_NEEDLE_BASE,
     )
     parser.add_argument(
         "--needle-geometry",
@@ -1974,33 +2238,47 @@ def main() -> int:
     profile = load_profile(args.profile)
     needle_profile = load_needle_profile(args.needle_profile)
     suture_entry_text = args.asset.read_text(encoding="utf-8")
+    suture_base_text = args.suture_base.read_text(encoding="utf-8")
     suture_geometry_text = read_usd_as_text(args.suture_geometry, args.usdcat)
     suture_geometry_is_usdc = args.suture_geometry.read_bytes()[:8] == b"PXR-USDC"
     suture_materials_text = args.suture_materials.read_text(encoding="utf-8")
     suture_physics_text = args.suture_physics.read_text(encoding="utf-8")
     suture_physx_text = args.suture_physx.read_text(encoding="utf-8")
+    suture_variant_texts = {
+        selection: compose_physics_variant(args.asset, selection, args.usdcat)
+        for selection in ("none", "physics", "physx")
+    }
     needle_entry_text = args.needle.read_text(encoding="utf-8")
+    needle_base_text = args.needle_base.read_text(encoding="utf-8")
     needle_geometry_text = read_usd_as_text(args.needle_geometry, args.usdcat)
     needle_geometry_is_usdc = args.needle_geometry.read_bytes()[:8] == b"PXR-USDC"
     needle_materials_text = args.needle_materials.read_text(encoding="utf-8")
     needle_physics_text = args.needle_physics.read_text(encoding="utf-8")
     needle_physx_text = args.needle_physx.read_text(encoding="utf-8")
+    needle_variant_texts = {
+        selection: compose_physics_variant(args.needle, selection, args.usdcat)
+        for selection in ("none", "physics", "physx")
+    }
     workstation_text = args.workstation.read_text(encoding="utf-8")
     report = validate(
         profile,
         needle_profile,
         suture_entry_text,
+        suture_base_text,
         suture_geometry_text,
         suture_geometry_is_usdc,
         suture_materials_text,
         suture_physics_text,
         suture_physx_text,
+        suture_variant_texts,
         needle_entry_text,
+        needle_base_text,
         needle_geometry_text,
         needle_geometry_is_usdc,
         needle_materials_text,
         needle_physics_text,
         needle_physx_text,
+        needle_variant_texts,
         workstation_text,
     )
     encoded = json.dumps(report, indent=2, sort_keys=True)
