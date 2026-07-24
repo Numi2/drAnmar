@@ -430,9 +430,13 @@ class HandController {
     this.currentCommands = [this.emptyCommand(0), this.emptyCommand(1)];
     this.lastAperture = [1, 1];
     this.calibration = null;
+    this.calibrationActive = false;
+    this.calibrationAutomatic = false;
     this.calibrationStep = 0;
     this.calibrationDraft = { hands: {} };
     this.calibrationCapture = null;
+    this.calibrationReadySince = null;
+    this.calibrationStageStartedAt = 0;
     this.operatorId = this.resolveOperatorId();
     this.bind();
   }
@@ -553,9 +557,11 @@ class HandController {
       await this.video.play();
       if (generation !== this.startGeneration) return;
       const settings = this.stream.getVideoTracks()[0]?.getSettings?.() || {};
-      this.calibrationKey = `drAnmar.handCalibration.v2:${settings.deviceId || "default"}`;
-      const storedCalibration = localStorage.getItem(this.calibrationKey)
-        || localStorage.getItem(`drAnmar.handCalibration.v1:${settings.deviceId || "default"}`);
+      // v3 follows the corrected physical handedness convention. Older
+      // per-arm calibration cannot be reused because its left/right ownership
+      // was reversed by the previous client.
+      this.calibrationKey = `drAnmar.handCalibration.v3:${settings.deviceId || "default"}`;
+      const storedCalibration = localStorage.getItem(this.calibrationKey);
       this.calibration = numericCalibration(JSON.parse(storedCalibration || "null"));
       const visionModule = await import("./hand-control-assets/vision_bundle.mjs");
       if (generation !== this.startGeneration) return;
@@ -594,13 +600,12 @@ class HandController {
       this.panel.querySelector("#handStart").textContent = "Camera active";
       this.setBanner("Tracking hands · motion frozen", "good");
       await this.setServerEnabled(true);
-      this.autoEngagePending = true;
-      this.setBanner(
-        this.calibration
-          ? "Tracking hands · hold steady for safe engagement"
-          : "Tracking hands · provisional calibration · hold steady",
-        "good",
-      );
+      if (this.calibration) {
+        this.autoEngagePending = true;
+        this.setBanner("Tracking hands · hold steady for safe engagement", "good");
+      } else {
+        this.beginCalibration();
+      }
       this.scheduleFrame();
     } catch (error) {
       if (generation === this.startGeneration) {
@@ -638,30 +643,46 @@ class HandController {
     }
   }
 
-  beginCalibration() {
+  beginCalibration({ automatic = true } = {}) {
     this.cancelAutomaticEngage();
     this.freezeAll(false);
+    this.calibrationActive = true;
+    this.calibrationAutomatic = automatic;
     this.calibrationStep = 0;
     this.calibrationDraft = { hands: {} };
     this.calibrationCapture = null;
+    this.calibrationReadySince = null;
     this.panel.querySelector("#handCalibration").classList.remove("hidden");
     this.renderCalibration();
   }
 
   renderCalibration() {
     const instructions = [
-      ["1 · Neutral pose", "Hold both hands comfortably in the center with motion frozen."],
-      ["2 · Fully closed", "Touch only each thumb and index fingertip together."],
-      ["3 · Fully open", "Open each thumb and index finger to a comfortable maximum."],
+      ["1 · Neutral pose", "Show both hands comfortably in the center and hold still. Capture starts automatically."],
+      ["2 · Fully closed", "Touch each thumb and index fingertip together and hold. No button is needed."],
+      ["3 · Fully open", "Open each thumb and index finger comfortably and hold. Calibration will finish automatically."],
     ];
     const [title, text] = instructions[this.calibrationStep] || instructions[0];
+    this.calibrationStageStartedAt = performance.now();
     this.panel.querySelector("#handCalibrationTitle").textContent = title;
     this.panel.querySelector("#handCalibrationText").textContent = text;
     const progress = this.panel.querySelector("#handCalibrationProgress");
     progress.value = 0;
     const button = this.panel.querySelector("#handCalibrationCapture");
-    button.disabled = false;
-    button.textContent = this.calibrationStep === 2 ? "Sample open and finish" : "Capture stable sample";
+    button.disabled = this.calibrationAutomatic;
+    button.textContent = this.calibrationAutomatic
+      ? "Automatic capture armed"
+      : this.calibrationStep === 2
+        ? "Sample open and finish"
+        : "Capture stable sample";
+    if (this.calibrationAutomatic) {
+      const prompts = [
+        "Show both hands in a neutral pose",
+        "Touch thumb and index on both hands",
+        "Open thumb and index on both hands",
+      ];
+      this.setBanner(`${prompts[this.calibrationStep]} · waiting for stability`, "warn");
+    }
   }
 
   captureCalibration() {
@@ -682,7 +703,10 @@ class HandController {
 
   collectCalibrationSamples(timestampMs) {
     const capture = this.calibrationCapture;
-    if (!capture) return;
+    if (!capture) {
+      this.maybeStartAutomaticCalibrationCapture(timestampMs);
+      return;
+    }
     for (const [arm, pose] of this.poses) {
       if (pose.quality < MIN_TRACKING_QUALITY) continue;
       const value = capture.step === 0 ? pose.scale : pose.pinchRatio;
@@ -695,6 +719,39 @@ class HandController {
       `Hold steady · sampling ${Math.round(100 * progressCount / CALIBRATION_SAMPLE_COUNT)}%`;
     const complete = visibleCounts.length && visibleCounts.every(count => count >= CALIBRATION_SAMPLE_COUNT);
     if (complete || timestampMs - capture.startedAt > 1600) this.finishCalibrationCapture();
+  }
+
+  maybeStartAutomaticCalibrationCapture(timestampMs) {
+    if (!this.calibrationActive || !this.calibrationAutomatic || this.calibrationCapture) return;
+    if (timestampMs - this.calibrationStageStartedAt < 900) return;
+    const poses = [this.poses.get(0), this.poses.get(1)];
+    let ready = poses.every(pose => pose && pose.quality >= MIN_TRACKING_QUALITY);
+    if (ready && this.calibrationStep === 1) {
+      ready = poses.every(pose => pose.pinchRatio <= 0.24);
+    }
+    if (ready && this.calibrationStep === 2) {
+      ready = poses.every((pose, arm) => {
+        const closed = this.calibrationDraft.hands[arm]?.closeRatio;
+        return Number.isFinite(closed) && pose.pinchRatio >= closed + 0.18;
+      });
+    }
+    if (!ready) {
+      this.calibrationReadySince = null;
+      return;
+    }
+    if (this.calibrationReadySince === null) this.calibrationReadySince = timestampMs;
+    const stableForMs = timestampMs - this.calibrationReadySince;
+    const remainingMs = Math.max(0, 650 - stableForMs);
+    this.setBanner(
+      remainingMs
+        ? `Hold pose · automatic capture in ${(remainingMs / 1000).toFixed(1)} s`
+        : "Pose stable · capturing automatically",
+      remainingMs ? "warn" : "good",
+    );
+    if (stableForMs >= 650) {
+      this.calibrationReadySince = null;
+      this.captureCalibration();
+    }
   }
 
   finishCalibrationCapture() {
@@ -713,6 +770,9 @@ class HandController {
         this.calibrationDraft.hands[arm] = draft;
         accepted += 1;
       }
+      if (this.calibrationAutomatic && accepted !== 2) {
+        throw new Error("Keep both hands visible through the complete sample");
+      }
       if (!accepted) throw new Error("No stable hand sample was captured");
     } catch (error) {
       this.setBanner(`${error.message} · capture again`, "warn");
@@ -721,6 +781,7 @@ class HandController {
     }
     if (this.calibrationStep < 2) {
       this.calibrationStep += 1;
+      this.calibrationReadySince = null;
       this.renderCalibration();
       this.setBanner("Sample accepted · continue calibration", "good");
       return;
@@ -732,6 +793,8 @@ class HandController {
       return;
     }
     this.calibration = calibration;
+    this.calibrationActive = false;
+    this.calibrationAutomatic = false;
     for (const arm of Object.keys(calibration.hands).map(Number)) {
       this.provisionalCalibration[arm] = null;
     }
@@ -879,11 +942,13 @@ class HandController {
     }
     const calibration = this.controlCalibration(arm, pose);
     let aperture = this.lastAperture[arm];
-    try {
-      const rawAperture = normalizedAperture(pose.pinchRatio, calibration.closeRatio, calibration.openRatio);
-      aperture = clamp(this.apertureFilters[arm].filter(rawAperture, timestampSeconds), 0, 1);
-      this.lastAperture[arm] = aperture;
-    } catch (_error) {}
+    if (!this.calibrationActive) {
+      try {
+        const rawAperture = normalizedAperture(pose.pinchRatio, calibration.closeRatio, calibration.openRatio);
+        aperture = clamp(this.apertureFilters[arm].filter(rawAperture, timestampSeconds), 0, 1);
+        this.lastAperture[arm] = aperture;
+      } catch (_error) {}
+    }
     const speedButton = document.querySelector(
       `[data-hand-speed-arm="${arm}"].active`,
     );
