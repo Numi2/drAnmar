@@ -1,7 +1,7 @@
 # Dr.Anmar surgical control
 
-Dr.Anmar lets a doctor control one or two simulated surgical robots with the keyboard, an Xbox-style controller,
-or explicit voice commands. These inputs all reach the same Isaac Lab action boundary; they do not replace native
+Dr.Anmar lets a doctor control one or two simulated surgical robots with the keyboard, a webcam, an Xbox-style
+controller, or explicit voice commands. These inputs all reach the same Isaac Lab action boundary; they do not replace native
 contacts, constraints, tissue mechanics, or simulation stepping.
 
 This interface is for simulation, education, and preclinical robotics research. Movement is hold-to-move unless a
@@ -23,6 +23,32 @@ Each hand permanently owns one robot, so both instruments can move at the same t
 
 Releasing a movement key removes that axis immediately. Losing browser focus, hiding the page, or disconnecting an
 active controller sends a stop. A stopped gamepad cannot resume until its sticks and triggers return to neutral.
+
+## Bimanual webcam control
+
+Open **Hand control** in the live operating room and allow camera access. The physical left hand owns Instrument 1
+and the physical right hand owns Instrument 2. Thumb–index spacing is the only gesture:
+
+- touching thumb and index closes that instrument's jaws;
+- opening thumb and index opens the jaws by the same calibrated proportion;
+- no middle, ring, or little-finger gesture controls the robot.
+
+Use **Engage** and **Freeze** for motion. Engagement captures a fresh pose anchor. While engaged, hand translation
+controls depth, lateral movement, and height; palm orientation controls roll, pitch, and yaw. Freeze holds the robot
+where it is and lets the operator recenter the hand without a jump. Each arm can be engaged or frozen independently.
+
+The first use of each browser camera runs a numeric calibration for neutral palm scale, closed thumb–index spacing,
+and comfortable open spacing. Only those numbers are stored in that browser. Video frames and raw landmarks remain
+in the browser and are never uploaded or recorded.
+
+Webcam motion stops and pending displacement is discarded 250 ms after tracking or command frames go stale. The last
+jaw aperture is held. Reacquisition requires a tracked frozen frame before motion can be engaged again. Any keyboard,
+controller, voice, replay, expert, reset, or emergency-stop takeover disables webcam authority until the operator
+explicitly clicks Engage again.
+
+Remote camera use requires the secured tailnet HTTPS address. A plain `http://` Gilgamesh address cannot request a
+Mac webcam because browsers restrict `getUserMedia()` to secure contexts. Single-camera depth is calibrated and
+relative; it is not millimetre-accurate or clinical-grade tracking.
 
 ## One-key surgical combinations
 

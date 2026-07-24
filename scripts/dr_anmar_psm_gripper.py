@@ -169,9 +169,13 @@ def apply_psm_gripper_action_profile(
     actions: Any,
     profile: PsmGripperProfile | None = None,
 ) -> list[str]:
-    """Apply identical open/close commands to every recognized PSM action term."""
+    """Apply proportional close/open commands to every recognized PSM term."""
 
     profile = profile or CANONICAL_PSM_GRIPPER_PROFILE
+    # Imported lazily because this module is also used by the hub before the
+    # Isaac application has initialized its extension search paths.
+    from dr_anmar_proportional_gripper import ProportionalJointPositionAction
+
     applied: list[str] = []
     for term_name in PSM_GRIPPER_ACTION_TERMS:
         term = getattr(actions, term_name, None)
@@ -179,6 +183,7 @@ def apply_psm_gripper_action_profile(
             continue
         term.open_command_expr = psm_gripper_command_expr(profile.open_rad)
         term.close_command_expr = psm_gripper_command_expr(profile.close_rad)
+        term.class_type = ProportionalJointPositionAction
         applied.append(term_name)
     return applied
 

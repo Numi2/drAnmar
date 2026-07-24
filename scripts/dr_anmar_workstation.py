@@ -65,6 +65,23 @@ I4H_ASSET_CONTENT_ROOT = Path(
         DATA_ROOT / "assets/i4h-catalog" / I4H_ASSET_HASH,
     )
 ).expanduser()
+HAND_CONTROL_ASSET_ROOT = Path(
+    os.environ.get(
+        "DR_ANMAR_HAND_CONTROL_ASSET_ROOT",
+        DATA_ROOT / "assets/hand-control/mediapipe-tasks-vision-0.10.35",
+    )
+).expanduser()
+HAND_CONTROL_ASSET_FILES = {
+    "vision_bundle.mjs",
+    "hand_landmarker.task",
+    "wasm/vision_wasm_internal.js",
+    "wasm/vision_wasm_internal.wasm",
+    "wasm/vision_wasm_module_internal.js",
+    "wasm/vision_wasm_module_internal.wasm",
+    "wasm/vision_wasm_nosimd_internal.js",
+    "wasm/vision_wasm_nosimd_internal.wasm",
+}
+HAND_CONTROL_CLIENT_PATH = Path(__file__).resolve().parents[1] / "web/hand_control.mjs"
 
 
 def positive_environment_number(name: str, default: float, minimum: float) -> float:
@@ -89,7 +106,8 @@ ACTION_CONTRACT = {
     "id": "dr_anmar.nvidia_psm_policy_action.v1",
     "dimensions_per_psm": 7,
     "arm": "six raw NVIDIA JointPositionAction inputs",
-    "gripper": "one NVIDIA BinaryJointAction sign",
+    "gripper": "one canonical binary policy sign",
+    "runtime_gripper": "one proportional Cartesian slot; -1 closed, +1 open",
     "source": "NVIDIA DifferentialInverseKinematicsAction resolved joint targets",
     "doctor_intent_key": "cartesian_actions",
 }
@@ -191,6 +209,12 @@ from dr_anmar_psm_native_adapter import (
     CONTRACT_NAME as PSM_POLICY_CONTRACT_NAME,
     PSM_ARM_NAMES,
     canonical_policy_contract,
+    native_ik_action_scales,
+)
+from dr_anmar_hand_teleop import (
+    HandTeleopRuntime,
+    proportional_gripper_action,
+    validate_hand_frame,
 )
 
 
@@ -337,6 +361,7 @@ OPERATOR_INPUT_SOURCES = {
     "voice": 9,
     "gamepad_smart_action": 10,
     "voice_smart_action": 11,
+    "webcam_hands": 12,
 }
 NATIVE_NEEDLE_GUIDE_KINDS = {"pickup", "handover", "needle_pass", "recovery"}
 
@@ -593,7 +618,7 @@ async function refresh(){if(refreshInFlight||pageDisposed||document.hidden)retur
 async function heartbeat(){if(heartbeatInFlight||pageDisposed||document.hidden)return;heartbeatInFlight=true;try{await post('/api/operator/heartbeat',{},3000)}catch(_error){}finally{heartbeatInFlight=false}}
 function releasePageResources(){if(pageDisposed)return;pageDisposed=true;queuedDrive=null;queuedBimanual=null;clearInterval(driveInterval);clearInterval(refreshInterval);clearInterval(heartbeatInterval);if(gamepadAnimationFrame!==null)cancelAnimationFrame(gamepadAnimationFrame);if(macroPulseTimer)clearTimeout(macroPulseTimer);if(voicePulseTimer)clearTimeout(voicePulseTimer);if(keyFlashTimer)clearTimeout(keyFlashTimer);if(toastTimer)clearTimeout(toastTimer);if(cameraAdjustTimer)clearTimeout(cameraAdjustTimer);try{voiceRecognition?.abort()}catch(_error){}voiceRecognition=null;voiceListening=false;gamepadButtonStates.clear();gamepadKnownIndices.clear();latestGamepadCommands=new Map();activeFetchControllers.forEach(controller=>controller.abort());activeFetchControllers.clear();cameraFeedController=null;if(cameraObjectUrl){URL.revokeObjectURL(cameraObjectUrl);cameraObjectUrl=null}clearHeldControls();const image=document.getElementById('cameraImage');image.removeAttribute('src');const options={method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify({source:'keyboard_pointer'}),keepalive:true};fetch('/api/stop',options).catch(()=>{});fetch('/api/operator/release',{...options,body:'{}'}).catch(()=>{})}
 auditKeyboardCoverage();if(!(window.SpeechRecognition||window.webkitSpeechRecognition))setVoiceStatus('Microphone unavailable here · type commands instead');updateGamepadStatus();startCameraFeed(currentCamera);const driveInterval=setInterval(updateDrive,33),refreshInterval=setInterval(refresh,500),heartbeatInterval=setInterval(heartbeat,1000);gamepadAnimationFrame=requestAnimationFrame(pollGamepads);window.addEventListener('pagehide',releasePageResources,{once:true});window.addEventListener('pageshow',event=>{if(event.persisted&&pageDisposed)location.reload()});document.addEventListener('visibilitychange',()=>{if(!document.hidden){refresh();heartbeat()}});refresh();
-</script></body></html>"""
+</script><script type="module" src="./hand-control.mjs"></script></body></html>"""
 
 
 class JogRequest(BaseModel):
@@ -633,6 +658,25 @@ class GripperRequest(BaseModel):
 class GripperToggleRequest(BaseModel):
     arm: int = 0
     source: str = "keyboard_pointer"
+
+
+class HandTeleopInput(BaseModel):
+    arm: int
+    tracked: bool
+    motion_engaged: bool
+    translation_offset_m: list[float]
+    rotation_vector_rad: list[float]
+    aperture_normalized: float
+    confidence: float
+
+
+class HandTeleopRequest(BaseModel):
+    sequence: int
+    hands: list[HandTeleopInput]
+
+
+class HandTeleopControlRequest(BaseModel):
+    enabled: bool
 
 
 class CameraViewRequest(BaseModel):
@@ -731,6 +775,9 @@ class SharedState:
     control_last_nonzero_sequence: int = 0
     control_last_nonzero_action: list[float] = field(default_factory=list)
     grippers_open: list[bool] = field(init=False)
+    gripper_apertures: list[float] = field(init=False)
+    hand_teleop: HandTeleopRuntime = field(init=False)
+    native_ik_scales: list[list[float]] = field(default_factory=list)
     native_grasp_contact_active: list[bool] = field(init=False)
     tool_to_object_distance_m: list[float | None] = field(init=False)
     tool_to_object_offset_m: list[list[float] | None] = field(init=False)
@@ -834,6 +881,8 @@ class SharedState:
         self.pulse = np.zeros(self.action_dim, dtype=np.float32)
         self.drive = np.zeros(self.action_dim, dtype=np.float32)
         self.grippers_open = [True] * self.arms
+        self.gripper_apertures = [1.0] * self.arms
+        self.hand_teleop = HandTeleopRuntime(self.arms)
         self.native_grasp_contact_active = [False] * self.arms
         self.tool_to_object_distance_m = [None] * self.arms
         self.tool_to_object_offset_m = [None] * self.arms
@@ -859,6 +908,11 @@ class SharedState:
         if bool(np.any(action_array)):
             self.control_last_nonzero_sequence = self.control_sequence
             self.control_last_nonzero_action = action_array.tolist()
+
+    def disable_hand_motion(self, *, require_unclutched: bool = True) -> None:
+        """Freeze and invalidate all pending webcam pose displacement."""
+
+        self.hand_teleop.disable_motion(require_unclutched=require_unclutched)
 
     def camera_adjustment(self, camera_name: str = "endoscope_left") -> dict[str, float | bool | str]:
         """Return one camera's adjustment while the caller owns ``lock``."""
@@ -954,6 +1008,8 @@ class SharedState:
                 "performance_timings_ms": dict(self.performance_timings_ms),
                 "simulation_profile": dict(self.simulation_profile),
                 "grippers_open": self.grippers_open,
+                "gripper_apertures": self.gripper_apertures,
+                "hand_teleop": self.hand_teleop.snapshot(),
                 "native_grasp_contact_active": self.native_grasp_contact_active,
                 "tool_to_object_distance_m": self.tool_to_object_distance_m,
                 "tool_to_object_offset_m": self.tool_to_object_offset_m,
@@ -1069,6 +1125,8 @@ class SharedState:
                     "steps": steps,
                 },
                 "grippers_open": list(self.grippers_open),
+                "gripper_apertures": list(self.gripper_apertures),
+                "hand_teleop": self.hand_teleop.snapshot(),
                 "native_grasp_contact_active": list(self.native_grasp_contact_active),
                 "tool_to_object_distance_m": list(self.tool_to_object_distance_m),
                 "tool_to_object_offset_m": [list(value) if value is not None else None for value in self.tool_to_object_offset_m],
@@ -1199,7 +1257,38 @@ def build_web_app(state: SharedState) -> FastAPI:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+        response.headers["Permissions-Policy"] = "camera=(self), microphone=(self)"
         return response
+
+    @app.get("/hand-control-assets/{asset_path:path}")
+    def hand_control_asset(asset_path: str) -> FileResponse:
+        if asset_path not in HAND_CONTROL_ASSET_FILES:
+            raise HTTPException(404, "Unknown hand-control asset")
+        path = (HAND_CONTROL_ASSET_ROOT / asset_path).resolve()
+        if HAND_CONTROL_ASSET_ROOT.resolve() not in path.parents or not path.is_file():
+            raise HTTPException(
+                503,
+                "Pinned hand-control assets are not installed on this workstation",
+            )
+        return FileResponse(path)
+
+    @app.get("/hand-control.mjs")
+    def hand_control_client() -> FileResponse:
+        return FileResponse(HAND_CONTROL_CLIENT_PATH, media_type="text/javascript")
+
+    @app.get("/api/hand-control/assets")
+    def hand_control_asset_status() -> dict[str, Any]:
+        present = sorted(
+            asset
+            for asset in HAND_CONTROL_ASSET_FILES
+            if (HAND_CONTROL_ASSET_ROOT / asset).is_file()
+        )
+        return {
+            "ready": len(present) == len(HAND_CONTROL_ASSET_FILES),
+            "version": "0.10.35",
+            "present": present,
+            "required": sorted(HAND_CONTROL_ASSET_FILES),
+        }
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
@@ -1270,6 +1359,7 @@ def build_web_app(state: SharedState) -> FastAPI:
         body_slice = state.body_action_slice(request.arm)
         command[body_slice.start + request.axis] = 0.5 * request.direction
         with state.lock:
+            state.disable_hand_motion()
             state.pulse = command
             state.pulse_steps = 1
             state.note_control("jog", "keyboard_pointer", command)
@@ -1290,6 +1380,7 @@ def build_web_app(state: SharedState) -> FastAPI:
         if request.source not in OPERATOR_INPUT_SOURCES:
             raise HTTPException(400, "Unknown operator input source")
         with state.lock:
+            state.disable_hand_motion()
             scenario_id = state.scenario_id
         profile = SCENARIO_NATIVE_PROFILES.get(scenario_id, {})
         translation = values[:3].copy()
@@ -1409,6 +1500,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             seen_arms.add(arm_command.arm)
 
         with state.lock:
+            state.disable_hand_motion()
             hold_seconds = max(0.30, min(1.25, 1.4 / max(state.sim_fps, 1.0)))
             if active:
                 state.drive = command
@@ -1442,11 +1534,96 @@ def build_web_app(state: SharedState) -> FastAPI:
             "expires_ms": round(hold_seconds * 1000),
         }
 
+    @app.post("/api/teleop/hands")
+    def teleop_hands(request: HandTeleopRequest, http_request: Request) -> dict[str, Any]:
+        """Accept one complete, calibrated bimanual master-pose frame."""
+
+        claimed, detail = operator_lease.claim(http_request.headers.get(OPERATOR_HEADER))
+        if not claimed:
+            raise HTTPException(423, detail)
+        if not state.native_psm_policy_contract or len(state.native_ik_scales) != state.arms:
+            raise HTTPException(409, "Webcam hand control requires the native NVIDIA PSM IK room")
+        raw_hands = [
+            {
+                "arm": hand.arm,
+                "tracked": hand.tracked,
+                "motion_engaged": hand.motion_engaged,
+                "translation_offset_m": hand.translation_offset_m,
+                "rotation_vector_rad": hand.rotation_vector_rad,
+                "aperture_normalized": hand.aperture_normalized,
+                "confidence": hand.confidence,
+            }
+            for hand in request.hands
+        ]
+        try:
+            sequence, hands = validate_hand_frame(
+                request.sequence,
+                raw_hands,
+                arms=state.arms,
+            )
+        except (TypeError, ValueError) as error:
+            raise HTTPException(400, str(error)) from error
+        command = np.zeros(state.action_dim, dtype=np.float32)
+        now = time.monotonic()
+        with state.lock:
+            try:
+                state.hand_teleop.submit(sequence, hands, now=now)
+            except ValueError as error:
+                raise HTTPException(409, str(error)) from error
+            for hand in hands:
+                arm = hand["arm"]
+                if hand["tracked"] and state.has_grippers and state.hand_teleop.enabled:
+                    aperture = hand["aperture_normalized"]
+                    state.gripper_apertures[arm] = aperture
+                    state.grippers_open[arm] = aperture >= 0.5
+                    command[state.gripper_action_index(arm)] = proportional_gripper_action(aperture)
+                if hand["tracked"] and hand["motion_engaged"]:
+                    offsets = hand["translation_offset_m"] + hand["rotation_vector_rad"]
+                    scales = state.native_ik_scales[arm]
+                    command[state.body_action_slice(arm)] = np.clip(
+                        np.asarray(offsets, dtype=np.float32)
+                        / np.asarray(scales, dtype=np.float32),
+                        -1.0,
+                        1.0,
+                    )
+            state.operator_input_source = "webcam_hands"
+            state.note_control("webcam_hands", "webcam_hands", command)
+            snapshot = state.hand_teleop.snapshot(now=now)
+        state.wake_event.set()
+        return {"ok": True, "hand_teleop": snapshot}
+
+    @app.post("/api/teleop/hands/control")
+    def teleop_hands_control(
+        request: HandTeleopControlRequest,
+        http_request: Request,
+    ) -> dict[str, Any]:
+        claimed, detail = operator_lease.claim(http_request.headers.get(OPERATOR_HEADER))
+        if not claimed:
+            raise HTTPException(423, detail)
+        if not state.native_psm_policy_contract:
+            raise HTTPException(409, "Webcam hand control requires the native NVIDIA PSM IK room")
+        with state.lock:
+            if request.enabled:
+                state.hand_teleop.enable_motion()
+                message = "Hand control enabled; send an unclutched frame before engaging motion"
+            else:
+                state.hand_teleop.disable_motion()
+                message = "Hand control frozen"
+            state.note_control(
+                "webcam_hands_enable" if request.enabled else "webcam_hands_disable",
+                "webcam_hands",
+                np.zeros(state.action_dim, dtype=np.float32),
+            )
+            snapshot = state.hand_teleop.snapshot()
+        state.wake_event.set()
+        return {"ok": True, "message": message, "hand_teleop": snapshot}
+
     @app.post("/api/stop")
     def stop(request: StopRequest = StopRequest()) -> dict[str, bool]:
         if request.source not in OPERATOR_INPUT_SOURCES:
             raise HTTPException(400, "Unknown operator input source")
         with state.lock:
+            state.disable_hand_motion()
             state.pulse.fill(0.0)
             state.pulse_steps = 0
             if state.drive_min_steps_remaining > 0 and bool(np.any(state.drive)):
@@ -1604,10 +1781,12 @@ def build_web_app(state: SharedState) -> FastAPI:
         if request.source not in OPERATOR_INPUT_SOURCES:
             raise HTTPException(400, "Unknown operator input source")
         with state.lock:
+            state.disable_hand_motion()
             if state.expert_demonstration.get("status") in {"running", "paused"}:
                 state.expert_request = "take_over"
                 state.expert_clean_run = False
             state.grippers_open[request.arm] = request.open
+            state.gripper_apertures[request.arm] = 1.0 if request.open else 0.0
             gripper_action = np.zeros(state.action_dim, dtype=np.float32)
             gripper_action[state.gripper_action_index(request.arm)] = 1.0 if request.open else -1.0
             state.note_control("gripper", request.source, gripper_action)
@@ -1623,11 +1802,13 @@ def build_web_app(state: SharedState) -> FastAPI:
         if request.source not in OPERATOR_INPUT_SOURCES:
             raise HTTPException(400, "Unknown operator input source")
         with state.lock:
+            state.disable_hand_motion()
             if state.expert_demonstration.get("status") in {"running", "paused"}:
                 state.expert_request = "take_over"
                 state.expert_clean_run = False
             state.grippers_open[request.arm] = not state.grippers_open[request.arm]
             is_open = state.grippers_open[request.arm]
+            state.gripper_apertures[request.arm] = 1.0 if is_open else 0.0
             gripper_action = np.zeros(state.action_dim, dtype=np.float32)
             gripper_action[state.gripper_action_index(request.arm)] = 1.0 if is_open else -1.0
             state.note_control("gripper", request.source, gripper_action)
@@ -1637,6 +1818,7 @@ def build_web_app(state: SharedState) -> FastAPI:
     @app.post("/api/reset")
     def reset() -> dict[str, bool]:
         with state.lock:
+            state.disable_hand_motion()
             state.reset_requested = True
             state.drive.fill(0.0)
             state.drive_until = 0.0
@@ -1647,6 +1829,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.expert_request = "cancel"
             state.expert_clean_run = False
             state.grippers_open = [True] * state.arms
+            state.gripper_apertures = [1.0] * state.arms
         state.wake_event.set()
         return {"ok": True}
 
@@ -1731,6 +1914,7 @@ def build_web_app(state: SharedState) -> FastAPI:
     @app.post("/api/handoff")
     def handoff() -> dict[str, Any]:
         with state.lock:
+            state.disable_hand_motion()
             expert_active = state.expert_demonstration.get("status") in {"running", "paused"}
             was_automatic = state.replaying or state.autonomy_mode in {"supervised_replay", "expert_demonstration"}
             if was_automatic:
@@ -1764,6 +1948,7 @@ def build_web_app(state: SharedState) -> FastAPI:
                 raise HTTPException(409, "Stop replay or evaluation before starting the expert")
             if state.expert_demonstration.get("status") in {"running", "paused"}:
                 raise HTTPException(409, "The expert demonstration is already active")
+            state.disable_hand_motion()
             state.reset_requested = True
             state.record_request = "start"
             state.expert_request = "start"
@@ -1824,6 +2009,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             if not state.last_demo:
                 raise HTTPException(404, "Record a demonstration first")
             require_replayable_demo(state.demo_dir / state.last_demo)
+            state.disable_hand_motion()
             state.replay_request = state.last_demo
             state.autonomy_mode = "supervised_replay"
             state.coaching_cue = "The recorded behavior is running under supervision. Take control at any time."
@@ -1842,6 +2028,7 @@ def build_web_app(state: SharedState) -> FastAPI:
         with state.lock:
             if state.recording:
                 raise HTTPException(409, "Stop the recording before replaying")
+            state.disable_hand_motion()
             state.replay_request = name
             state.autonomy_mode = "supervised_replay"
             state.coaching_cue = "The selected behavior is running under supervision. Take control at any time."
@@ -5373,6 +5560,11 @@ def main() -> None:
             )
         if initial_joint_targets.shape[-1] != native_psm_policy_dim:
             raise RuntimeError("NVIDIA PSM policy action and resolved target dimensions disagree")
+    native_ik_scales = (
+        native_ik_action_scales(env, psm_scene_names)
+        if len(psm_scene_names) == arms
+        else []
+    )
     apply_endoscope_camera_view(
         "baseline",
         "free",
@@ -5428,6 +5620,7 @@ def main() -> None:
         native_psm_policy_contract=bool(psm_scene_names),
         native_psm_policy_dim=native_psm_policy_dim,
         native_psm_robot_names=psm_scene_names,
+        native_ik_scales=native_ik_scales,
         gripper_profile=configured_psm_gripper_profile,
         ring_physics_ready=ring_physics_ready,
         strand_self_collision_ready=strand_self_collision_ready,
@@ -5648,6 +5841,9 @@ def main() -> None:
             state.procedure_last_motion_at = time.monotonic()
             state.anatomy_collision_meshes = enabled_colliders
             state.native_grasp_contact_active = [False] * state.arms
+            state.gripper_apertures = [1.0] * state.arms
+            state.grippers_open = [True] * state.arms
+            state.disable_hand_motion()
             state.tool_to_object_distance_m = [None] * state.arms
             state.tool_to_object_offset_m = [None] * state.arms
             state.virtual_fixture_active = False
@@ -5770,7 +5966,19 @@ def main() -> None:
                 state.pulse_steps -= 1
             else:
                 manual_action = np.zeros(state.action_dim, dtype=np.float32)
+            if state.native_ik_scales:
+                hand_commands = state.hand_teleop.consume(
+                    state.native_ik_scales,
+                    now=loop_started,
+                )
+                for arm, hand_command in enumerate(hand_commands):
+                    if state.hand_teleop.arm_states[arm].motion_engaged:
+                        manual_action[state.body_action_slice(arm)] = np.asarray(
+                            hand_command,
+                            dtype=np.float32,
+                        )
             grippers_open = list(state.grippers_open)
+            gripper_apertures = list(state.gripper_apertures)
             virtual_fixture_enabled = state.virtual_fixture_enabled
 
         if ghost_update is not None:
@@ -5998,6 +6206,14 @@ def main() -> None:
                             bool(action_np[state.gripper_action_index(arm)] > 0.0)
                             for arm in range(state.arms)
                         ]
+                        state.gripper_apertures = [
+                            float(np.clip(
+                                (action_np[state.gripper_action_index(arm)] + 1.0) * 0.5,
+                                0.0,
+                                1.0,
+                            ))
+                            for arm in range(state.arms)
+                        ]
                         state.operator_input_source = "nvidia_softmimicgen_expert"
                         state.procedure_phase = expert_controller.phase or "manipulate"
                         state.expert_demonstration = expert_controller.snapshot(
@@ -6056,6 +6272,7 @@ def main() -> None:
                     action_np[state.gripper_action_index(arm)] = 1.0 if is_open else -1.0
             with state.lock:
                 state.grippers_open = list(grippers_open)
+                state.gripper_apertures = [1.0 if value else 0.0 for value in grippers_open]
                 state.operator_input_source = "automation_policy"
                 state.expert_demonstration = expert_controller.snapshot(state.expert_reference_demo)
                 state.expert_clean_run = state.expert_clean_run and not expert_controller.degraded_reasons
@@ -6128,8 +6345,8 @@ def main() -> None:
                         state.coaching_cue = "Supervised replay finished. Manual control is active."
             action_np = manual_action.copy()
             if state.has_grippers:
-                for arm, is_open in enumerate(grippers_open):
-                    action_np[state.gripper_action_index(arm)] = 1.0 if is_open else -1.0
+                for arm, aperture in enumerate(gripper_apertures):
+                    action_np[state.gripper_action_index(arm)] = proportional_gripper_action(aperture)
 
         if _softmimicgen_task and not action_uses_upstream_softmimicgen_units:
             # NVIDIA's released task accepts small metric deltas directly and
@@ -6229,6 +6446,21 @@ def main() -> None:
             else:
                 native_policy_action_np = None
                 native_joint_targets_np = None
+        if native_joint_targets_np is not None:
+            close_rad = float(state.gripper_profile["close_rad"])
+            open_rad = float(state.gripper_profile["open_rad"])
+            span_rad = open_rad - close_rad
+            resolved_apertures = [
+                float(np.clip(
+                    (native_joint_targets_np[arm * 7 + 6] - close_rad) / span_rad,
+                    0.0,
+                    1.0,
+                ))
+                for arm in range(state.arms)
+            ]
+            with state.lock:
+                state.gripper_apertures = resolved_apertures
+                state.grippers_open = [value >= 0.5 for value in resolved_apertures]
         with state.lock:
             state.performance_timings_ms.update(
                 {
@@ -6498,6 +6730,7 @@ def main() -> None:
                 native_grasp_contact_state = list(state.native_grasp_contact_active)
                 tool_object_distances = list(state.tool_to_object_distance_m)
                 gripper_state = list(state.grippers_open)
+                hand_teleop_frame = state.hand_teleop.snapshot()
                 camera_valid_depth_fraction = state.camera_valid_depth_fraction
                 camera_foreground_fraction = state.camera_foreground_fraction
                 camera_mean_luminance = state.camera_mean_luminance
@@ -6522,6 +6755,30 @@ def main() -> None:
                     dtype=np.int16,
                 ),
                 "operator_input_source_code": np.array(OPERATOR_INPUT_SOURCES.get(operator_source, 0), dtype=np.int16),
+                "webcam_hand_tracked": np.asarray(
+                    [item["tracked"] for item in hand_teleop_frame["arms"]],
+                    dtype=np.bool_,
+                ),
+                "webcam_motion_engaged": np.asarray(
+                    [item["motion_engaged"] for item in hand_teleop_frame["arms"]],
+                    dtype=np.bool_,
+                ),
+                "webcam_hand_confidence": np.asarray(
+                    [item["confidence"] for item in hand_teleop_frame["arms"]],
+                    dtype=np.float32,
+                ),
+                "webcam_hand_target_offsets": np.asarray(
+                    [item["target_offset"] for item in hand_teleop_frame["arms"]],
+                    dtype=np.float32,
+                ),
+                "webcam_hand_consumed_offsets": np.asarray(
+                    [item["consumed_offset"] for item in hand_teleop_frame["arms"]],
+                    dtype=np.float32,
+                ),
+                "webcam_gripper_aperture": np.asarray(
+                    [item["aperture_normalized"] for item in hand_teleop_frame["arms"]],
+                    dtype=np.float32,
+                ),
                 "procedure_phase_code": np.array(PROCEDURE_PHASES.get(procedure_phase, 0), dtype=np.int16),
                 "procedure_event_code": np.array(procedure_event_code, dtype=np.int16),
                 "procedure_event_sequence": np.array(procedure_event_sequence, dtype=np.int64),

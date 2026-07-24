@@ -12,12 +12,14 @@ The adapter accepts NVIDIA's seven-value relative-IK or eight-value absolute-IK
 Cartesian command and records the joint-space command produced by that native
 path in the seven-value action contract consumed by NVIDIA's PSM policy mode:
 
-    six normalized joint-position inputs + one binary gripper input
+    six normalized joint-position inputs + one canonical binary gripper input
 
 The native recorder also retains the original Cartesian action as
 ``cartesian_actions`` and the absolute joint targets, so the conversion is
 auditable in both directions while Isaac Lab's standard ``actions`` key remains
-directly replayable in joint-position mode.
+directly replayable in joint-position mode. The live Cartesian gripper slot may
+be proportional, but policy recordings deliberately keep the released binary
+contract.
 """
 
 from __future__ import annotations
@@ -191,11 +193,47 @@ def _native_terms_for_robot(base: Any, robot: Any) -> tuple[Any, Any | None]:
         class_name = term.__class__.__name__
         if class_name == "DifferentialInverseKinematicsAction":
             arm_term = term
-        elif class_name in {"BinaryJointAction", "BinaryJointPositionAction"}:
+        elif class_name in {
+            "BinaryJointAction",
+            "BinaryJointPositionAction",
+            "ProportionalJointPositionAction",
+        }:
             gripper_term = term
     if arm_term is None:
         raise RuntimeError("PSM articulation is not controlled by NVIDIA DifferentialInverseKinematicsAction")
     return arm_term, gripper_term
+
+
+def native_ik_action_scales(env: Any, robot_names: Sequence[str]) -> list[list[float]]:
+    """Read the six real per-axis scales from each active NVIDIA IK term."""
+
+    base = _base_env(env)
+    result: list[list[float]] = []
+    for robot_name in robot_names:
+        robot = base.scene[robot_name]
+        arm_term, _gripper_term = _native_terms_for_robot(base, robot)
+        scale = getattr(arm_term, "_scale", None)
+        if scale is None:
+            scale = getattr(arm_term.cfg, "scale", None)
+        if scale is None:
+            raise RuntimeError(f"NVIDIA IK term for {robot_name} does not expose its action scale")
+        if hasattr(scale, "detach"):
+            values = scale.detach().reshape(-1).cpu().tolist()
+        elif isinstance(scale, Sequence) and not isinstance(scale, (str, bytes)):
+            values = list(scale)
+        else:
+            values = [scale]
+        if len(values) == 1:
+            values *= PSM_ARM_DIM
+        if len(values) != PSM_ARM_DIM:
+            raise RuntimeError(
+                f"NVIDIA IK term for {robot_name} exposes {len(values)} scales; expected {PSM_ARM_DIM}"
+            )
+        numeric = [abs(float(value)) for value in values]
+        if any(not math.isfinite(value) or value <= 0.0 for value in numeric):
+            raise RuntimeError(f"NVIDIA IK term for {robot_name} exposes invalid scales: {numeric}")
+        result.append(numeric)
+    return result
 
 
 def resolved_joint_targets(env: Any, robot_name: str = "robot"):
@@ -244,8 +282,8 @@ def canonical_policy_actions(env: Any, robot_name: str = "robot"):
                 "NVIDIA PSM gripper action must expose one logical input; "
                 f"got shape {tuple(raw_gripper.shape)}"
             )
-        # Isaac Lab's BinaryJointAction uses only the sign.  Canonicalizing the
-        # magnitude prevents arbitrary input strength from becoming policy data.
+        # Keep the released policy channel binary even though the live Cartesian
+        # gripper term now preserves proportional aperture.
         gripper_action = torch.where(
             raw_gripper < 0,
             torch.full_like(raw_gripper, -1.0),

@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKSTATION = ROOT / "scripts" / "dr_anmar_workstation.py"
+HAND_CONTROL = ROOT / "web" / "hand_control.mjs"
 BUTTON_RE = re.compile(r"<button\b(?P<attrs>[^>]*)>(?P<label>.*?)</button>", re.IGNORECASE | re.DOTALL)
 ATTRIBUTE_RE = re.compile(r"([\w-]+)=(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))")
 TAG_RE = re.compile(r"<[^>]+>")
@@ -37,8 +38,13 @@ def attributes(source: str) -> dict[str, str]:
 def main() -> int:
     workstation_source = WORKSTATION.read_text()
     page = app_html()
+    hand_control_source = HAND_CONTROL.read_text(encoding="utf-8")
     buttons = []
     for match in BUTTON_RE.finditer(page):
+        attrs = attributes(match.group("attrs"))
+        label = html.unescape(TAG_RE.sub(" ", match.group("label")))
+        buttons.append((" ".join(label.split()), attrs))
+    for match in BUTTON_RE.finditer(hand_control_source):
         attrs = attributes(match.group("attrs"))
         label = html.unescape(TAG_RE.sub(" ", match.group("label")))
         buttons.append((" ".join(label.split()), attrs))
@@ -68,7 +74,7 @@ def main() -> int:
         "window.addEventListener('pagehide',releasePageResources": "page-exit resource release",
         "activeFetchControllers.forEach(controller=>controller.abort())": "in-flight request cancellation",
         "if(refreshInFlight||pageDisposed||document.hidden)return": "bounded status polling",
-        "heldKeys.forEach(code=>{if(comboMap[code])": "held combined-move control",
+        "heldKeys.forEach(code=>{const primaryMove=": "held combined-move control",
         "navigator.getGamepads": "browser gamepad polling",
         "gamepaddisconnected": "controller-disconnect emergency stop",
         "gamepadSafetyLatched": "controller neutral-before-resume safety latch",
@@ -85,6 +91,11 @@ def main() -> int:
         '"voice": 9': "voice input-source registration",
         '"gamepad_smart_action": 10': "gamepad smart-action registration",
         '"voice_smart_action": 11': "voice smart-action registration",
+        '"webcam_hands": 12': "webcam input-source registration",
+        '@app.post("/api/teleop/hands")': "bounded webcam hand-pose endpoint",
+        "state.hand_teleop.consume(": "simulator-rate webcam resampling",
+        "state.disable_hand_motion()": "manual webcam takeover latch",
+        "HAND_CONTROL_ASSET_FILES": "local pinned hand-control assets",
         "hold_seconds = max(0.30": "simulator-rate-aware command lifetime",
         "semantic_target_far": "far-target semantic travel scaling",
         "needle_entry_direction": "stable tissue entry vector",
@@ -94,6 +105,18 @@ def main() -> int:
     missing_backend = [
         label for source, label in required_backend.items() if source not in workstation_source
     ]
+    required_hand_control = {
+        "landmarks[4], landmarks[8]": "thumb-index-only aperture input",
+        "Engage tracked": "explicit webcam motion clutch",
+        "Freeze both": "explicit webcam recenter control",
+        "motion_engaged": "per-arm webcam clutch state",
+        "window.isSecureContext": "secure-context camera gate",
+    }
+    missing_backend.extend(
+        label
+        for source, label in required_hand_control.items()
+        if source not in hand_control_source
+    )
     for label in missing_backend:
         print(f"  missing backend behavior: {label}")
 

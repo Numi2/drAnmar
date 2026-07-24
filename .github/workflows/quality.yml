@@ -20,6 +20,10 @@ jobs:
         run: python scripts/check_public_release.py
       - name: Check web syntax
         run: python scripts/check_web_syntax.py
+      - name: Test webcam teleoperation contracts
+        run: |
+          python -m unittest tests/test_hand_teleop.py -v
+          node --test tests/hand_control.test.mjs
       - name: Check DrAnmar skin stapler asset
         run: python scripts/check_skin_stapler_asset.py
       - name: Compile Python source

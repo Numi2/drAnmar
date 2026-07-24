@@ -129,6 +129,9 @@ learn immediately:
   per-hand precision, explicit gripper controls, live mode feedback and supported-controller haptics.
 - Push-to-talk voice and the matching typed-command fallback provide bounded robot nudges, explicit gripper actions,
   camera selection, speed changes, smart assist and emergency stop without creating an always-listening control path.
+- A pinned, locally served MediaPipe Hand Landmarker provides two-hand webcam pose control: left/right hands own the
+  corresponding PSM, palm motion/orientation supplies six-axis targets, and only thumb–index spacing controls each
+  proportional jaw. Explicit Engage/Freeze controls provide jump-free recentering and a 250 ms loss watchdog.
 - `Enter` becomes a contextual approach → grasp → lift control, while six hold-to-move surgical combinations
   provide orbiting, curved needle driving, reversal, lift/retract, and lower/approach with one key each.
 - A quick tap performs a bounded precision nudge; holding the same combination key gives continuous motion.
@@ -137,8 +140,9 @@ learn immediately:
 - `Option` and `Shift` act as temporary precision and fast clutches; `Esc` always stops and restores manual control.
 - Gripper and demonstration controls sit beside movement so practice naturally becomes training data.
 
-The complete keyboard map and the rationale for each combined movement are documented in
-[`docs/KEYBOARD_CONTROLS.md`](docs/KEYBOARD_CONTROLS.md).
+The complete input map is documented in [`docs/KEYBOARD_CONTROLS.md`](docs/KEYBOARD_CONTROLS.md); the webcam API,
+privacy boundary, pinned assets, and safety behavior are in
+[`docs/WEBCAM_TELEOPERATION.md`](docs/WEBCAM_TELEOPERATION.md).
 
 <p align="center">
   <img src="docs/screenshots/keyboard-surgical-control-workflow.gif" width="960" alt="Live Dr.Anmar keyboard workflow grasping a curved needle, visibly entering and fully withdrawing from the anatomy surface while held, then presenting it to a second instrument before handoff">
