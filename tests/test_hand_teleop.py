@@ -181,6 +181,11 @@ class NativeScaleAndGripperTests(unittest.TestCase):
         self.assertIn("torch.full_like(raw_gripper, -1.0)", adapter)
         self.assertIn('frame["cartesian_actions"] = action_np.copy()', workstation)
         self.assertIn('frame["resolved_joint_targets"] = native_joint_targets_np.copy()', workstation)
+        self.assertNotIn("state.gripper_apertures = resolved_apertures", workstation)
+        self.assertIn(
+            'state.gripper_profile["resolved_aperture_normalized"]',
+            workstation,
+        )
 
 
 if __name__ == "__main__":

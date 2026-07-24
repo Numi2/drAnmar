@@ -6459,8 +6459,13 @@ def main() -> None:
                 for arm in range(state.arms)
             ]
             with state.lock:
-                state.gripper_apertures = resolved_apertures
-                state.grippers_open = [value >= 0.5 for value in resolved_apertures]
+                # Keep the operator's latest aperture as the command source.
+                # A slow PhysX step may finish after a newer API frame arrives;
+                # feeding that older resolved target back into command state
+                # would otherwise erase the newer proportional request.
+                state.gripper_profile["resolved_aperture_normalized"] = [
+                    round(value, 6) for value in resolved_apertures
+                ]
         with state.lock:
             state.performance_timings_ms.update(
                 {
