@@ -166,10 +166,10 @@ def Xform "StaplerTestFixture" (
         }
     }
 
-    def Xform "SyntheticCoupon"
+    def Xform "ClosureBed"
     {
-        custom string drAnmar:role = "replaceable_synthetic_closure_coupon"
-        custom string drAnmar:validationBoundary = "visual_alignment_target_not_tissue_contact_penetration_or_closure_strength"
+        custom string drAnmar:role = "dr_anmar_suturable_tissue_support"
+        custom string drAnmar:validationBoundary = "static_tissue_placement_proxy_not_penetration_deformation_or_closure_strength"
 
         def Cube "Pedestal" (
             prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
@@ -182,33 +182,13 @@ def Xform "StaplerTestFixture" (
             rel material:binding = </StaplerTestFixture/Looks/Base>
             bool physics:collisionEnabled = false
         }
-        def Cube "Coupon" (
-            prepend apiSchemas = ["MaterialBindingAPI"]
-        )
-        {
-            double size = 1
-            double3 xformOp:scale = (0.075, 0.080, 0.008)
-            double3 xformOp:translate = (0.095, 0.0, 0.054)
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
-            rel material:binding = </StaplerTestFixture/Looks/Coupon>
-        }
         def Cube "ClosureLine" (
             prepend apiSchemas = ["MaterialBindingAPI"]
         )
         {
             double size = 1
-            double3 xformOp:scale = (0.058, 0.0012, 0.0008)
-            double3 xformOp:translate = (0.095, 0.0, 0.0584)
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
-            rel material:binding = </StaplerTestFixture/Looks/Target>
-        }
-        def Cube "TargetCrossbar" (
-            prepend apiSchemas = ["MaterialBindingAPI"]
-        )
-        {
-            double size = 1
-            double3 xformOp:scale = (0.0012, 0.030, 0.0008)
-            double3 xformOp:translate = (0.096, 0.0, 0.0584)
+            double3 xformOp:scale = (0.045, 0.0006, 0.0004)
+            double3 xformOp:translate = (0.095, 0.0, 0.0504)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
             rel material:binding = </StaplerTestFixture/Looks/Target>
         }
@@ -226,9 +206,9 @@ def Xform "StaplerTestFixture" (
             double3 xformOp:translate = (0.0, 0.0, 0.0592)
             uniform token[] xformOpOrder = ["xformOp:translate"]
         }
-        def Xform "coupon_target"
+        def Xform "tissue_target"
         {
-            double3 xformOp:translate = (0.096, 0.0, 0.0584)
+            double3 xformOp:translate = (0.096, 0.0, 0.0602)
             uniform token[] xformOpOrder = ["xformOp:translate"]
         }
     }

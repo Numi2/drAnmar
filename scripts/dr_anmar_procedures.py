@@ -287,11 +287,11 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "difficulty": "Research bench",
         "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
         "anatomy_scene": "",
-        "anatomy_focus": "Instrumented synthetic closure coupon",
+        "anatomy_focus": "Dr.Anmar open-incision suturable tissue",
         "robot": "Six-DOF virtual fixture with optional dual PSM observation",
         "instrument": "Dr.Anmar articulated skin stapler",
-        "objective": "Cycle the fixture-held stapler through controlled trigger strokes, observe trigger and pusher response, and record deterministic simulated deployments without requiring a gun-gripping robot.",
-        "interaction": "A six-DOF velocity-damped virtual fixture holds the stapler housing in a purpose-built cradle. A bounded virtual linear actuator commands the authored trigger and synchronized pusher while the cell reports mechanism travel, housing error, cycle state and logical magazine events.",
+        "objective": "Close the Dr.Anmar suturable-tissue incision with seven guided staple placements while observing the articulated trigger, synchronized pusher, station spacing and deterministic simulated deployments without requiring a gun-gripping robot.",
+        "interaction": "A six-DOF proportional-velocity indexing fixture holds the stapler housing over the real Dr.Anmar open-incision tissue. One control runs a bounded press-hold-release cycle, records a formed-staple placement proxy and advances to the next 6 mm station.",
         "guide_kind": "stapler_test_cell",
         "nvidia_native_bench": True,
         "stapler_test_cell": True,
@@ -305,6 +305,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             "SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda",
             "source/extensions/orbit.surgical.assets/data/Props/"
             "SurgicalClosure/StaplerTestCell/stapler_test_device.usda",
+            "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
         ),
         "bench_core_assets": (
             {"id": "dual_psm", "title": "Dual dVRK PSM observers"},
@@ -323,11 +324,11 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "interactive_multiview": True,
         "single_active_camera_renderer": True,
         "steps": [
-            step("inspect", "Inspect fixture", "Confirm the housing is seated in the cradle and the synthetic coupon is aligned under the staple exit.", "fixture and target visibility"),
-            step("press", "Run controlled press", "Command one bounded press-hold-release cycle while observing actual trigger and pusher travel.", "joint travel"),
-            step("deploy", "Verify deployment event", "Confirm that one full threshold crossing consumes exactly one simulated staple and partial strokes consume none.", "deterministic deployment edge"),
-            step("rearm", "Verify rearm", "Return below the rearm threshold before allowing the next deployment.", "trigger rearm"),
-            step("review", "Review evidence", "Compare commanded and measured mechanism motion; treat every force and tissue result as provisional research telemetry.", "mechanism evidence"),
+            step("inspect", "Inspect tissue", "Confirm the open incision is centered under the formed-staple reference at closure station 1.", "tissue and target visibility"),
+            step("press", "Staple and advance", "Run one bounded press-hold-release cycle; the fixture records the placement and indexes to the next station.", "joint travel and station index"),
+            step("deploy", "Verify placement", "Confirm one threshold crossing consumes exactly one simulated staple and leaves one visible formed-staple proxy across the incision.", "deterministic placement edge"),
+            step("repeat", "Complete the closure line", "Repeat across all seven 6 mm-spaced stations; use Previous or Next to inspect or resume a station.", "guided spacing"),
+            step("review", "Review evidence", "Review mechanism and placement evidence; tissue penetration, deformation and closure strength remain outside this simulation boundary.", "research evidence"),
         ],
         "success_metrics": [
             "trigger target tracking",
@@ -336,6 +337,8 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             "partial-stroke rejection",
             "rearm behavior",
             "cycle repeatability",
+            "seven-station placement completion",
+            "6 mm simulated spacing",
         ],
     },
     {

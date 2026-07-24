@@ -1,0 +1,217 @@
+{
+  "schema": "dr.anmar.stapler-tissue-closure-qualification.v1",
+  "qualified_at": "2026-07-24T22:29:04.203841+00:00",
+  "hardware": "NVIDIA GeForce RTX 4090",
+  "runtime": "Isaac Sim 5.1 / Isaac Lab 2.3.2",
+  "procedure": "dr-anmar-stapler-test-cell",
+  "fixture_mode": "six_dof_proportional_velocity_fixture",
+  "tissue_asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+  "partial": {
+    "peak_trigger_deg": 18.7488,
+    "deployments": 0,
+    "closed": 0,
+    "attempts": 1,
+    "passes": 1
+  },
+  "cycles": [
+    {
+      "cycle": 1,
+      "station_after": 2,
+      "closed": 1,
+      "remaining": 34,
+      "peak_trigger_deg": 26.9193,
+      "peak_pusher_mm": 8.9729,
+      "max_spacing_error_mm": 0.0,
+      "max_fixture_translation_error_mm": 0.1722,
+      "max_fixture_rotation_error_deg": 0.0396,
+      "placement": {
+        "station_index": 1,
+        "prim_path": "/World/envs/env_0/StaplerClosurePlacements/Staple_01",
+        "position_m": [
+          0.078,
+          0.0,
+          0.0602
+        ],
+        "lateral_error_mm": 0.0,
+        "orientation_error_deg": 0.0,
+        "within_line_extent": true,
+        "representation": "formed_staple_visual_proxy"
+      }
+    },
+    {
+      "cycle": 2,
+      "station_after": 3,
+      "closed": 2,
+      "remaining": 33,
+      "peak_trigger_deg": 27.0043,
+      "peak_pusher_mm": 8.921,
+      "max_spacing_error_mm": 0.0,
+      "max_fixture_translation_error_mm": 0.1722,
+      "max_fixture_rotation_error_deg": 0.0396,
+      "placement": {
+        "station_index": 2,
+        "prim_path": "/World/envs/env_0/StaplerClosurePlacements/Staple_02",
+        "position_m": [
+          0.084,
+          0.0,
+          0.0602
+        ],
+        "lateral_error_mm": 0.0,
+        "orientation_error_deg": 0.0,
+        "within_line_extent": true,
+        "representation": "formed_staple_visual_proxy"
+      }
+    },
+    {
+      "cycle": 3,
+      "station_after": 4,
+      "closed": 3,
+      "remaining": 32,
+      "peak_trigger_deg": 27.0436,
+      "peak_pusher_mm": 8.921,
+      "max_spacing_error_mm": 0.0,
+      "max_fixture_translation_error_mm": 0.1722,
+      "max_fixture_rotation_error_deg": 0.0396,
+      "placement": {
+        "station_index": 3,
+        "prim_path": "/World/envs/env_0/StaplerClosurePlacements/Staple_03",
+        "position_m": [
+          0.09,
+          0.0,
+          0.0602
+        ],
+        "lateral_error_mm": 0.0,
+        "orientation_error_deg": 0.0,
+        "within_line_extent": true,
+        "representation": "formed_staple_visual_proxy"
+      }
+    },
+    {
+      "cycle": 4,
+      "station_after": 5,
+      "closed": 4,
+      "remaining": 31,
+      "peak_trigger_deg": 27.0614,
+      "peak_pusher_mm": 8.9209,
+      "max_spacing_error_mm": 0.0,
+      "max_fixture_translation_error_mm": 0.1722,
+      "max_fixture_rotation_error_deg": 0.0396,
+      "placement": {
+        "station_index": 4,
+        "prim_path": "/World/envs/env_0/StaplerClosurePlacements/Staple_04",
+        "position_m": [
+          0.096,
+          0.0,
+          0.0602
+        ],
+        "lateral_error_mm": 0.0,
+        "orientation_error_deg": 0.0,
+        "within_line_extent": true,
+        "representation": "formed_staple_visual_proxy"
+      }
+    },
+    {
+      "cycle": 5,
+      "station_after": 6,
+      "closed": 5,
+      "remaining": 30,
+      "peak_trigger_deg": 27.0696,
+      "peak_pusher_mm": 8.921,
+      "max_spacing_error_mm": 0.0,
+      "max_fixture_translation_error_mm": 0.1722,
+      "max_fixture_rotation_error_deg": 0.0396,
+      "placement": {
+        "station_index": 5,
+        "prim_path": "/World/envs/env_0/StaplerClosurePlacements/Staple_05",
+        "position_m": [
+          0.102,
+          0.0,
+          0.0602
+        ],
+        "lateral_error_mm": 0.0,
+        "orientation_error_deg": 0.0,
+        "within_line_extent": true,
+        "representation": "formed_staple_visual_proxy"
+      }
+    },
+    {
+      "cycle": 6,
+      "station_after": 7,
+      "closed": 6,
+      "remaining": 29,
+      "peak_trigger_deg": 27.0732,
+      "peak_pusher_mm": 8.9209,
+      "max_spacing_error_mm": 0.0,
+      "max_fixture_translation_error_mm": 0.1722,
+      "max_fixture_rotation_error_deg": 0.0685,
+      "placement": {
+        "station_index": 6,
+        "prim_path": "/World/envs/env_0/StaplerClosurePlacements/Staple_06",
+        "position_m": [
+          0.108,
+          0.0,
+          0.0602
+        ],
+        "lateral_error_mm": 0.0,
+        "orientation_error_deg": 0.0,
+        "within_line_extent": true,
+        "representation": "formed_staple_visual_proxy"
+      }
+    },
+    {
+      "cycle": 7,
+      "station_after": 7,
+      "closed": 7,
+      "remaining": 28,
+      "peak_trigger_deg": 27.0743,
+      "peak_pusher_mm": 8.9249,
+      "max_spacing_error_mm": 0.0,
+      "max_fixture_translation_error_mm": 1.2893,
+      "max_fixture_rotation_error_deg": 0.2203,
+      "placement": {
+        "station_index": 7,
+        "prim_path": "/World/envs/env_0/StaplerClosurePlacements/Staple_07",
+        "position_m": [
+          0.114,
+          0.0,
+          0.0602
+        ],
+        "lateral_error_mm": 0.0,
+        "orientation_error_deg": 0.0,
+        "within_line_extent": true,
+        "representation": "formed_staple_visual_proxy"
+      }
+    }
+  ],
+  "final": {
+    "closure_complete": true,
+    "closed_station_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "closure_progress_percent": 100.0,
+    "deployment_count": 7,
+    "cycle_count": 7,
+    "magazine_remaining": 28,
+    "joint_limit_violation_deg": 0.0,
+    "max_fixture_translation_error_mm": 1.2893,
+    "max_fixture_rotation_error_deg": 0.2203,
+    "max_spacing_error_mm": 0.0
+  },
+  "reset": {
+    "verified": true,
+    "station_index": 1,
+    "closed_station_count": 0,
+    "closure_progress_percent": 0.0,
+    "deployment_count": 0,
+    "cycle_count": 0,
+    "magazine_remaining": 35,
+    "last_placement": null
+  },
+  "validation_boundary": "formed-staple placement proxies on static OpenUSD tissue geometry with collisions disabled; no penetration, deformation, forming, closure-strength, or clinical validation"
+}

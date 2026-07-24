@@ -193,6 +193,7 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab.assets import AssetBaseCfg, DeformableObjectCfg, RigidObjectCfg
 from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
 from isaaclab.sensors import CameraCfg, ContactSensorCfg
+from isaaclab.utils.math import quat_apply, quat_conjugate, quat_mul
 from isaaclab_tasks.utils import parse_env_cfg
 
 import orbit.surgical.tasks  # noqa: F401
@@ -217,12 +218,16 @@ from orbit.surgical.assets.skin_adhesive import (
     set_activation_target as set_skin_adhesive_activation_target,
 )
 from orbit.surgical.assets.skin_stapler import (
+    ClosureLine,
     FIRE_THRESHOLD_DEG,
     REARM_THRESHOLD_DEG,
     TRIGGER_LIMIT_DEG,
     StapleMagazine,
     TriggerEdgeDeploymentController,
+    add_staple_reference,
+    assess_placement,
     make_articulated_skin_stapler_cfg,
+    spacing_errors_m,
     synchronized_joint_targets_deg,
 )
 
@@ -239,6 +244,27 @@ from dr_anmar_hand_teleop import (
     camera_pose_to_action_frame,
     proportional_gripper_action,
     validate_hand_frame,
+)
+
+
+STAPLER_CLOSURE_STATION_OFFSETS_M = (
+    -0.018,
+    -0.012,
+    -0.006,
+    0.0,
+    0.006,
+    0.012,
+    0.018,
+)
+STAPLER_CLOSURE_STATION_SPACING_M = 0.006
+STAPLER_TEST_DEVICE_MOUNT_Z_M = 0.0592
+STAPLER_CLOSURE_TARGET_CENTER_M = (0.096, 0.0, 0.0602)
+STAPLER_CLOSURE_TISSUE_CENTER_M = (0.095, 0.0, 0.055)
+STAPLER_CLOSURE_TISSUE_ROTATION_WXYZ = (
+    0.70710678,
+    0.0,
+    0.0,
+    0.70710678,
 )
 
 
@@ -416,7 +442,7 @@ APP_HTML = r"""<!doctype html>
     .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}
     .supervision{border-color:#356475;background:linear-gradient(135deg,#0d2731,#09171e)}.supervision-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.supervision-state b{color:var(--cyan)}.cue{min-height:32px;margin-top:9px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#9fc0c9;font-size:11px}
     .safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.safety-metric{padding:8px;background:#061219;border:1px solid #1c3742}.safety-metric b{display:block;color:var(--green);font:15px ui-monospace,monospace}.safety-metric span{color:var(--muted);font-size:9px}
-    .stapler-cell{padding:12px;border:1px solid #5d6140;border-radius:11px;background:linear-gradient(135deg,#252417,#151b1f)}#staplerCell.hidden{display:none!important}.stapler-cell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}.stapler-cell-head b{display:block;color:#f1e6c1;font-size:14px}.stapler-cell-head small{display:block;margin-top:2px;color:#aaa58d;font-size:9px}.stapler-phase{padding:4px 7px;border-radius:5px;background:#393622;color:#f0cf77;font:800 8px ui-monospace,monospace;text-transform:uppercase}.stapler-metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}.stapler-metric{padding:7px;border:1px solid #4c4930;border-radius:6px;background:#181b18}.stapler-metric b{display:block;color:#e9d98e;font:14px ui-monospace,monospace}.stapler-metric span{color:#928f7d;font-size:7px;letter-spacing:.05em}.stapler-controls{display:grid;grid-template-columns:1.4fr repeat(4,1fr);gap:6px;margin-top:8px}.stapler-target{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;padding:5px 8px;border:1px solid #4c4930;border-radius:7px;background:#181b18}.stapler-target input{grid-column:1/-1;width:100%;accent-color:#d8b750}.stapler-target b{font-size:9px}.stapler-target output{color:#e9d98e;font:12px ui-monospace,monospace}.stapler-controls button{min-height:42px;background:#29291d;border-color:#565135;font-size:9px}.stapler-controls button.primary{background:#d8b750;border-color:#d8b750;color:#221f10}.stapler-boundary{margin:7px 0 0;color:#8f8c7f;font-size:8px}
+    .stapler-cell{padding:12px;border:1px solid #5d6140;border-radius:11px;background:linear-gradient(135deg,#252417,#151b1f)}#staplerCell.hidden{display:none!important}.stapler-cell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}.stapler-cell-head b{display:block;color:#f1e6c1;font-size:14px}.stapler-cell-head small{display:block;margin-top:2px;color:#aaa58d;font-size:9px}.stapler-phase{padding:4px 7px;border-radius:5px;background:#393622;color:#f0cf77;font:800 8px ui-monospace,monospace;text-transform:uppercase}.stapler-metrics{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.stapler-metric{padding:7px;border:1px solid #4c4930;border-radius:6px;background:#181b18}.stapler-metric b{display:block;color:#e9d98e;font:14px ui-monospace,monospace}.stapler-metric span{color:#928f7d;font-size:7px;letter-spacing:.05em}.stapler-progress{height:5px;margin-top:7px;overflow:hidden;border-radius:4px;background:#111411}.stapler-progress i{display:block;width:0;height:100%;background:#d8b750;transition:width .25s ease}.stapler-controls{display:grid;grid-template-columns:.8fr 1.6fr .8fr repeat(3,1fr);gap:6px;margin-top:8px}.stapler-target{display:grid;grid-column:span 3;grid-template-columns:1fr auto;align-items:center;gap:4px 8px;padding:6px 8px;border:1px solid #4c4930;border-radius:7px;background:#181b18}.stapler-target b{color:#d9d3b6;font-size:9px}.stapler-target output{color:#e9d98e;font:12px ui-monospace,monospace}.stapler-target input{grid-column:1/-1;width:100%;accent-color:#d8b750}.stapler-controls button{min-height:42px;background:#29291d;border-color:#565135;font-size:9px}.stapler-controls button.primary{background:#d8b750;border-color:#d8b750;color:#221f10}.stapler-controls button:disabled{cursor:not-allowed;opacity:.45}.stapler-boundary{margin:7px 0 0;color:#8f8c7f;font-size:8px}
     .control-dock{position:relative;margin:0 0 10px;padding:34px 10px 8px;border:1px solid #294651;border-radius:9px;background:#0a171e;box-shadow:none}.control-dock:before{content:"Robot controls";position:absolute;left:12px;top:10px;color:#dffbff;font:800 12px/1 ui-sans-serif,system-ui}.control-dock:after{display:none}.control-dock .move-button{min-height:43px;padding:4px 2px;border:1px solid #31515d;background:#0d2028;font-size:10px;line-height:1.05}.control-dock .move-button small{font-size:8px;margin-top:2px}.control-dock .stop-center{width:100%;min-height:34px;padding:3px 8px;border:1px solid #68444b;background:#25181c;color:#ffc2c7;font-size:9px}.control-dock .hint{display:none}.instrument-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.instrument-grid.single{grid-template-columns:1fr}.instrument-card{min-width:0;padding:7px;border:1px solid #1d3540;border-radius:8px;background:#08131a}.instrument-head{display:flex;align-items:center;gap:7px;margin-bottom:5px}.instrument-head button{flex:1;min-height:30px;padding:3px 7px;text-align:left;font-size:10px}.instrument-head .arm.active{border-color:#426775;background:#132a33;color:#dffbff}.instrument-head span{color:#708b95;font:750 8px/1 ui-monospace,monospace;letter-spacing:.08em;white-space:nowrap}.hand-key-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.hand-key{display:flex;flex-direction:column;align-items:center;justify-content:center}.hand-key kbd{height:18px;min-width:22px;padding:0 4px;font-size:9px}.instrument-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:5px}.instrument-actions .modifier-chip,.instrument-actions button{min-height:29px;display:flex;align-items:center;justify-content:center;gap:3px;padding:2px;font-size:8px}.instrument-actions button,.instrument-actions .primary{border-color:#31515d;background:#0d2028;color:#dffbff}.direct-roll{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}.direct-roll .move-button{min-height:29px;font-size:8px}.direct-roll kbd{height:16px;min-width:18px;padding:0 3px;font-size:8px}.hand-speeds{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px}.hand-speeds button{min-height:29px;padding:2px;font-size:8px}.hand-speeds button.active{border-color:#527480;background:#132a33}.hand-speeds kbd{height:16px;min-width:17px;padding:0 3px;font-size:8px}.control-stop-row{margin-top:7px;padding-top:6px;border-top:1px solid #1d3540}.control-dock .control-readout{min-height:15px;margin-top:3px;font-size:8px}.control-dock .control-readout i{width:5px;height:5px}
     kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 6px;border:1px solid #4a6570;border-bottom-width:2px;border-radius:5px;background:#09141a;color:#dffbff;font:800 10px/1 ui-monospace,SFMono-Regular,Menlo;white-space:nowrap}button kbd{pointer-events:none}.header-keyboard{min-height:32px;margin-left:4px;padding:0 10px;background:#10252e;color:#cfe7eb;font-size:11px}.header-keyboard kbd{margin-right:5px}.keyboard-quick{display:grid;grid-template-columns:.9fr 1.1fr;gap:5px;margin:0;padding:0;border:0;background:transparent}.keyboard-quick-head{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 1px}.keyboard-quick-head b{color:#8eabb5;font-size:10px;font-weight:750;letter-spacing:.04em}.keyboard-quick-head span{display:none}.keyboard-input-display{display:flex;align-items:center;gap:6px;min-height:38px;margin:0;padding:5px 7px;border:1px solid #1d3540;border-radius:6px;background:#08131a;color:#a7bbc2;font-size:10px}.keyboard-input-display kbd{min-width:38px;height:18px;font-size:8px;color:var(--green);border-color:#3b7a67}.keyboard-input-display.active{border-color:var(--green);box-shadow:none}.keyboard-input-display.active span{color:#e5ffff}.smart-action{width:100%;min-height:38px;margin:0;background:#2fc5d8;border-color:#52d7e8;color:#031014;text-align:left;padding:5px 8px;box-shadow:none}.smart-action strong{display:block;font-size:11px}.smart-action strong kbd{height:17px;min-width:24px;padding:0 4px;font-size:8px}.smart-action small{display:block;overflow:hidden;color:#174851;font-size:8px;line-height:1.1;white-space:nowrap;text-overflow:ellipsis}.proximity{grid-column:1/-1;margin:0;padding:4px 7px;border:0;border-radius:5px;background:#071219;font-size:9px;line-height:1.2}.proximity b{font-size:9px;margin-right:5px}.control-feel{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:7px;min-height:23px;border:1px solid #1d3540;border-radius:5px;background:#071219;color:#86a5af;font:8px/1 ui-monospace,SFMono-Regular,Menlo}.control-feel b{color:#dffbff}.modifier-row{grid-column:1/-1;display:flex;gap:4px;margin:0}.modifier-chip{flex:1;padding:3px;border:0;border-radius:5px;background:#071219;color:#829aa3;font-size:9px;text-align:center}.modifier-chip kbd{height:16px;min-width:20px;padding:0 3px;font-size:8px}.modifier-chip.active{color:var(--green);background:#0b2b25}.keyboard-coverage{display:none}.keyboard-coverage.bad{color:var(--red)}button.key-active,button.state-active{border-color:var(--green)!important;box-shadow:0 0 0 1px #42e49b77!important;background:#174a42!important;color:#efffff!important}button.key-active kbd,button.state-active kbd{border-color:#9bffe0;background:#dcfff5;color:#09281f}.smart-action.key-active{background:#8bffe0!important;color:#041a13!important;transform:none}
     .teleop-strip{grid-column:1/-1;display:grid;grid-template-columns:1.05fr .95fr;gap:5px}.gamepad-status{min-width:0;min-height:42px;padding:4px 7px;display:grid;grid-template-columns:7px minmax(0,1fr) auto;align-items:center;gap:7px;text-align:left;border-color:#294b57;background:#081820;color:#a9c2ca;overflow:hidden}.gamepad-status.connected{border-color:#387c68;color:var(--green);background:linear-gradient(120deg,#0a241f,#081820)}.gamepad-status.mode{border-color:var(--cyan);box-shadow:inset 0 0 12px #2cd2e817}.gamepad-dot{width:7px;height:7px;border-radius:50%;background:#60767d}.gamepad-status.connected .gamepad-dot{background:var(--green);box-shadow:0 0 8px #42e49baa}.gamepad-copy{min-width:0}.gamepad-copy b,.gamepad-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gamepad-copy b{color:#dffbff;font:800 9px/1.1 ui-sans-serif,system-ui}.gamepad-copy small{margin-top:2px;color:#7f9ca5;font:8px/1.1 ui-monospace,SFMono-Regular,Menlo}.gamepad-status.connected .gamepad-copy small{color:#89bbae}.gamepad-sticks{display:flex;gap:4px}.stick-meter{position:relative;width:20px;height:20px;border:1px solid #3c5c66;border-radius:50%;background:#061219}.stick-meter:before,.stick-meter:after{content:"";position:absolute;background:#294550}.stick-meter:before{left:3px;right:3px;top:9px;height:1px}.stick-meter:after{top:3px;bottom:3px;left:9px;width:1px}.stick-meter i{position:absolute;left:7px;top:7px;width:5px;height:5px;border-radius:50%;background:#66828b;transition:transform 45ms linear}.gamepad-status.connected .stick-meter i{background:var(--cyan);box-shadow:0 0 5px #2cd2e899}.voice-form{display:grid;grid-template-columns:minmax(0,1fr) 36px 36px;gap:4px}.voice-form input{min-width:0;height:34px;padding:0 8px;border:1px solid #294b57;border-radius:6px;background:#061219;color:#ddf7fa;font:9px/1 ui-sans-serif,system-ui}.voice-form input:focus{outline:1px solid var(--cyan);border-color:var(--cyan)}.voice-form button{min-height:34px;padding:0;font-size:12px}.voice-mic.listening{border-color:#ff8b93;background:#4b1f28;color:#fff;box-shadow:0 0 12px #ff4f6670}.voice-status{grid-column:1/-1;min-height:8px;color:#718f99;font:8px/1.1 ui-monospace,SFMono-Regular,Menlo;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.voice-status.listening{color:#ff9da5}.voice-status.ok{color:var(--green)}.voice-status.error{color:#ffb1b6}
@@ -480,10 +506,11 @@ APP_HTML = r"""<!doctype html>
       </div><div class="control-stop-row"><button class="stop-center" data-shortcut="Esc" onclick="emergencyStop()">Stop both robots <kbd>Esc / ⌫</kbd></button></div><div id="controlReadout" class="control-readout" aria-live="polite"><i></i><span>Ready · hold a key to move either instrument</span></div>
     </section>
     <section id="staplerCell" class="stapler-cell hidden" aria-label="Stapler test cell controls">
-      <div class="stapler-cell-head"><div><b>Fixed stapler test cell</b><small>Virtual linear actuator · articulated trigger and pusher · no robot grip required</small></div><span id="staplerPhase" class="stapler-phase">READY</span></div>
-      <div class="stapler-metrics"><div class="stapler-metric"><b id="staplerTrigger">0.0°</b><span>ACTUAL TRIGGER</span></div><div class="stapler-metric"><b id="staplerPusher">0.0 mm</b><span>PUSHER TRAVEL</span></div><div class="stapler-metric"><b id="staplerError">0.0°</b><span>TRACKING ERROR</span></div><div class="stapler-metric"><b id="staplerMagazine">35 / 35</b><span>MAGAZINE</span></div><div class="stapler-metric"><b id="staplerCycles">0 / 0</b><span>DEPLOYMENTS / CYCLES</span></div><div class="stapler-metric"><b id="staplerPartial">0 / 0</b><span>PARTIAL PASSES / TRIES</span></div></div>
-      <div class="stapler-controls"><label class="stapler-target"><b>Manual trigger target</b><output id="staplerTargetOutput">0°</output><input id="staplerTarget" type="range" min="0" max="28" step="1" value="0" onchange="setStaplerTarget(this.value)" oninput="document.getElementById('staplerTargetOutput').value=`${this.value}°`"></label><button data-shortcut="CELL-20" onclick="setStaplerTarget(20)">Partial stroke<br>20°</button><button class="primary" data-shortcut="CELL-FIRE" onclick="runStaplerCycle()">Full cycle<br>28°</button><button data-shortcut="CELL-RELEASE" onclick="staplerCommand('release')">Release<br>&lt; 8°</button><button data-shortcut="CELL-RESET" onclick="staplerCommand('reset')">Reset evidence</button></div>
-      <p class="stapler-boundary">Mechanism telemetry only. Drive efforts are provisional and the non-contact visual coupon does not validate staple forming, penetration, closure strength or clinical performance.</p>
+      <div class="stapler-cell-head"><div><b>Dr.Anmar tissue closure bench</b><small>Real Dr.Anmar open-incision asset · guided indexing fixture · no robot grip required</small></div><span id="staplerPhase" class="stapler-phase">READY</span></div>
+      <div class="stapler-metrics"><div class="stapler-metric"><b id="staplerStation">1 / 7</b><span>CLOSURE STATION</span></div><div class="stapler-metric"><b id="staplerClosure">0 / 7</b><span>STAPLES PLACED</span></div><div class="stapler-metric"><b id="staplerSpacing">6.0 mm</b><span>GUIDED SPACING</span></div><div class="stapler-metric"><b id="staplerTrigger">0.0°</b><span>ACTUAL TRIGGER</span></div><div class="stapler-metric"><b id="staplerPusher">0.0 mm</b><span>PUSHER TRAVEL</span></div><div class="stapler-metric"><b id="staplerMagazine">35 / 35</b><span>MAGAZINE</span></div><div class="stapler-metric"><b id="staplerPartial">0 / 0</b><span>PARTIAL PASSES / TRIES</span></div></div>
+      <div class="stapler-progress" aria-label="Closure placement progress"><i id="staplerProgress"></i></div>
+      <div class="stapler-controls"><button id="staplerPrevious" data-shortcut="CELL-PREV" onclick="staplerCommand('previous_station')">← Previous<br>station</button><button id="staplerFire" class="primary" data-shortcut="CELL-FIRE" onclick="runStaplerCycle()">Staple &amp; advance<br>one full cycle</button><button id="staplerNext" data-shortcut="CELL-NEXT" onclick="staplerCommand('next_station')">Next<br>station →</button><button data-shortcut="CELL-20" onclick="setStaplerTarget(20)">Mechanism check<br>partial 20°</button><button data-shortcut="CELL-RELEASE" onclick="staplerCommand('release')">Release<br>&lt; 8°</button><button data-shortcut="CELL-RESET" onclick="staplerCommand('reset')">Reset closure</button></div>
+      <p class="stapler-boundary">This records guided formed-staple placement proxies on static OpenUSD tissue geometry. Tissue collisions are disabled because this room has no penetration or deformation backend; it does not validate staple forming, closure strength or clinical performance.</p>
     </section>
     <details class="session-details"><summary>Procedure details and session tools</summary><div class="session-details-grid">
       <section class="session-section"><h2>Procedure</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div></div></section>
@@ -494,7 +521,7 @@ APP_HTML = r"""<!doctype html>
     <section id="skinAdhesiveCell" class="stapler-cell hidden" aria-label="Topical skin adhesive controls">
       <div class="stapler-cell-head"><div><b>Dr.Anmar topical skin adhesive</b><small>Articulated dual paddles · metering piston · removable cap · deposit task state</small></div><span id="skinAdhesivePhase" class="stapler-phase">ACTIVATED</span></div>
       <div class="stapler-metrics"><div class="stapler-metric"><b id="skinAdhesiveActivation">0%</b><span>ACTUAL ACTIVATION</span></div><div class="stapler-metric"><b id="skinAdhesiveLeft">0.0°</b><span>LEFT PADDLE</span></div><div class="stapler-metric"><b id="skinAdhesiveRight">0.0°</b><span>RIGHT PADDLE</span></div><div class="stapler-metric"><b id="skinAdhesivePiston">0.00 mm</b><span>PISTON TRAVEL</span></div><div class="stapler-metric"><b id="skinAdhesiveCap">READY</b><span>REMOVABLE CAP</span></div><div class="stapler-metric"><b id="skinAdhesiveBead">FRESH</b><span>BEAD STATE</span></div></div>
-      <div class="stapler-controls"><label class="stapler-target"><b>Coordinated mechanism target</b><output id="skinAdhesiveTargetOutput">0%</output><input id="skinAdhesiveTarget" type="range" min="0" max="100" step="1" value="0" onchange="setSkinAdhesiveActivation(this.value)" oninput="document.getElementById('skinAdhesiveTargetOutput').value=`${this.value}%`"></label><button data-shortcut="ADH-0" onclick="setSkinAdhesiveActivation(0)">Release<br>0%</button><button data-shortcut="ADH-50" onclick="setSkinAdhesiveActivation(50)">Half squeeze<br>50%</button><button class="primary" data-shortcut="ADH-100" onclick="setSkinAdhesiveActivation(100)">Full squeeze<br>100%</button></div>
+      <div class="stapler-controls"><button id="skinAdhesiveUse" class="primary" style="grid-column:1/-1" onclick="useSkinAdhesive()">Use adhesive<br>auto-grip &amp; uncap</button><label class="stapler-target"><b>Coordinated mechanism target</b><output id="skinAdhesiveTargetOutput">0%</output><input id="skinAdhesiveTarget" type="range" min="0" max="100" step="1" value="0" onchange="setSkinAdhesiveActivation(this.value)" oninput="document.getElementById('skinAdhesiveTargetOutput').value=`${this.value}%`"></label><button data-shortcut="ADH-0" onclick="setSkinAdhesiveActivation(0)">Release<br>0%</button><button data-shortcut="ADH-50" onclick="setSkinAdhesiveActivation(50)">Half squeeze<br>50%</button><button class="primary" data-shortcut="ADH-100" onclick="setSkinAdhesiveActivation(100)">Full squeeze<br>100%</button></div>
       <p class="stapler-boundary">The bead is a kinematic fresh/cured workflow representation. This does not simulate liquid flow, wetting, polymerization, tissue bonding, dose, bond strength or clinical performance.</p>
     </section>
   </aside>
@@ -525,13 +552,14 @@ let latestGamepadCommands=new Map(),gamepadVisualState={mode:'BIMANUAL · NORMAL
 const previousGamepadContacts=[false,false];
 async function requestJson(url,options={},timeoutMs=5000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);activeFetchControllers.add(controller);try{const r=await fetch(url,{...options,signal:controller.signal});let data={};try{data=await r.json()}catch(_error){}if(!r.ok)throw Error(data.detail||'Request failed');return data}catch(error){if(error.name==='AbortError')throw Error('Simulator request timed out');throw error}finally{clearTimeout(timer);activeFetchControllers.delete(controller)}}
 async function post(url,body={},timeoutMs=5000){return requestJson(url,{method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify(body)},timeoutMs)}
+async function useSkinAdhesive(){const arm=Math.min(activeArm,(latestStatus?.arms||1)-1);try{await post('/api/skin-adhesive/use',{arm});toast(`Instrument ${arm+1} picked up and uncapped the adhesive`);await refresh()}catch(e){toast(e.message)}}
 async function setSkinAdhesiveActivation(percent){const activation=Math.max(0,Math.min(1,(Number(percent)||0)/100));try{await post('/api/skin-adhesive/activation',{activation});toast(`Skin adhesive activation ${Math.round(activation*100)}%`);await refresh()}catch(e){toast(e.message)}}
-function renderSkinAdhesive(system={}){const panel=document.getElementById('skinAdhesiveCell'),enabled=!!system.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const actual=Number(system.actual_activation||0),target=Number(system.target_activation||0),slider=document.getElementById('skinAdhesiveTarget');document.getElementById('skinAdhesivePhase').textContent=String(system.applicator_state||'activated').replaceAll('_',' ');document.getElementById('skinAdhesiveActivation').textContent=`${Math.round(actual*100)}%`;document.getElementById('skinAdhesiveLeft').textContent=`${Number(system.left_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesiveRight').textContent=`${Number(system.right_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesivePiston').textContent=`${Number(system.piston_travel_mm||0).toFixed(2)} mm`;document.getElementById('skinAdhesiveCap').textContent=system.cap_rigid_body_ready?'READY':'MISSING';document.getElementById('skinAdhesiveBead').textContent=String(system.bead_state||'fresh').toUpperCase();if(document.activeElement!==slider)slider.value=String(Math.round(target*100));document.getElementById('skinAdhesiveTargetOutput').value=`${Math.round(target*100)}%`}
+function renderSkinAdhesive(system={}){const panel=document.getElementById('skinAdhesiveCell'),enabled=!!system.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const actual=Number(system.actual_activation||0),target=Number(system.target_activation||0),slider=document.getElementById('skinAdhesiveTarget'),useButton=document.getElementById('skinAdhesiveUse'),holding=!!system.grasp_assist_active,arm=Number(system.holding_arm||1);document.getElementById('skinAdhesivePhase').textContent=String(system.workflow_state||system.applicator_state||'ready').replaceAll('_',' ');document.getElementById('skinAdhesiveActivation').textContent=`${Math.round(actual*100)}%`;document.getElementById('skinAdhesiveLeft').textContent=`${Number(system.left_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesiveRight').textContent=`${Number(system.right_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesivePiston').textContent=`${Number(system.piston_travel_mm||0).toFixed(2)} mm`;document.getElementById('skinAdhesiveCap').textContent=String(system.cap_state||'ready').toUpperCase();document.getElementById('skinAdhesiveBead').textContent=String(system.bead_state||'fresh').toUpperCase();useButton.disabled=holding;useButton.innerHTML=holding?`Instrument ${arm} holding adhesive<br>cap removed`:'Use adhesive<br>auto-grip &amp; uncap';if(document.activeElement!==slider)slider.value=String(Math.round(target*100));document.getElementById('skinAdhesiveTargetOutput').value=`${Math.round(target*100)}%`}
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toastTimer=null;e.classList.remove('show')},1600)}
-async function staplerCommand(action,targetDeg=null){try{const body={action};if(targetDeg!==null)body.target_deg=Number(targetDeg);await post('/api/stapler/command',body);toast(action==='fire'?'Stapler cycle started':action==='reset'?'Test-cell evidence reset':action==='release'?'Stapler released':`Trigger target ${Number(targetDeg).toFixed(0)}°`);await refresh()}catch(e){toast(e.message)}}
-function setStaplerTarget(value){const target=Math.max(0,Math.min(28,Number(value)||0));document.getElementById('staplerTarget').value=String(target);document.getElementById('staplerTargetOutput').value=`${target.toFixed(0)}°`;return staplerCommand('set_target',target)}
+async function staplerCommand(action,targetDeg=null){try{const body={action};if(targetDeg!==null)body.target_deg=Number(targetDeg);await post('/api/stapler/command',body);const message={fire:'Stapler cycle started',reset:'Tissue closure reset',release:'Stapler released',previous_station:'Fixture indexed to previous station',next_station:'Fixture indexed to next station'}[action]||`Trigger target ${Number(targetDeg).toFixed(0)}°`;toast(message);await refresh()}catch(e){toast(e.message)}}
+function setStaplerTarget(value){const target=Math.max(0,Math.min(28,Number(value)||0));return staplerCommand('set_target',target)}
 function runStaplerCycle(){return staplerCommand('fire')}
-function renderStaplerCell(cell={}){const panel=document.getElementById('staplerCell'),enabled=!!cell.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;document.getElementById('staplerPhase').textContent=String(cell.cycle_phase||'ready').replaceAll('_',' ');document.getElementById('staplerTrigger').textContent=`${Number(cell.actual_trigger_deg||0).toFixed(1)}°`;document.getElementById('staplerPusher').textContent=`${Number(cell.pusher_travel_mm||0).toFixed(2)} mm`;document.getElementById('staplerError').textContent=`${Number(cell.tracking_error_deg||0).toFixed(1)}°`;document.getElementById('staplerMagazine').textContent=`${cell.magazine_remaining??0} / ${cell.magazine_capacity??35}`;document.getElementById('staplerCycles').textContent=`${cell.deployment_count??0} / ${cell.cycle_count??0}`;document.getElementById('staplerPartial').textContent=`${cell.partial_stroke_passes??0} / ${cell.partial_stroke_attempts??0}`;const target=Number(cell.target_trigger_deg||0),slider=document.getElementById('staplerTarget');if(document.activeElement!==slider)slider.value=String(Math.round(target));document.getElementById('staplerTargetOutput').value=`${target.toFixed(0)}°`}
+function renderStaplerCell(cell={}){const panel=document.getElementById('staplerCell'),enabled=!!cell.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const station=Number(cell.station_index||1),stationCount=Number(cell.station_count||7),placed=Number(cell.closed_station_count||0),running=!!cell.cycle_running,stationPlaced=cell.station_state==='placed',stationReady=cell.station_ready!==false;document.getElementById('staplerPhase').textContent=cell.closure_complete?'closure complete':!stationReady?'indexing':String(cell.cycle_phase||'ready').replaceAll('_',' ');document.getElementById('staplerStation').textContent=`${station} / ${stationCount}`;document.getElementById('staplerClosure').textContent=`${placed} / ${stationCount}`;document.getElementById('staplerSpacing').textContent=`${Number(cell.station_spacing_mm||6).toFixed(1)} mm`;document.getElementById('staplerTrigger').textContent=`${Number(cell.actual_trigger_deg||0).toFixed(1)}°`;document.getElementById('staplerPusher').textContent=`${Number(cell.pusher_travel_mm||0).toFixed(2)} mm`;document.getElementById('staplerMagazine').textContent=`${cell.magazine_remaining??0} / ${cell.magazine_capacity??35}`;document.getElementById('staplerPartial').textContent=`${cell.partial_stroke_passes??0} / ${cell.partial_stroke_attempts??0}`;document.getElementById('staplerProgress').style.width=`${Number(cell.closure_progress_percent||0)}%`;document.getElementById('staplerPrevious').disabled=running||!stationReady||station<=1;document.getElementById('staplerNext').disabled=running||!stationReady||station>=stationCount;const fire=document.getElementById('staplerFire');fire.disabled=running||!stationReady||stationPlaced||!!cell.closure_complete;fire.innerHTML=cell.closure_complete?'Closure complete<br>reset to repeat':!stationReady?'Indexing fixture<br>hold position':stationPlaced?'Station placed<br>choose next':'Staple &amp; advance<br>one full cycle'}
 function showKeyAction(key,label,active=true){const display=document.getElementById('keyActionDisplay');display.classList.toggle('active',active);display.querySelector('kbd').textContent=key;display.querySelector('span').textContent=label}
 function flashShortcut(shortcut,label,duration=850){if(keyFlashTimer)clearTimeout(keyFlashTimer);document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));document.querySelectorAll('button[data-shortcut]').forEach(button=>{if(button.dataset.shortcut===shortcut)button.classList.add('key-active')});showKeyAction(shortcut,label,true);keyFlashTimer=setTimeout(()=>{document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));showKeyAction('READY','Keyboard control ready',false)},duration)}
 function runShortcut(shortcut,label,action){flashShortcut(shortcut,label);action()}
@@ -743,6 +771,10 @@ class SkinAdhesiveActivationRequest(BaseModel):
     activation: float
 
 
+class SkinAdhesiveUseRequest(BaseModel):
+    arm: int = 0
+
+
 class ScenarioRequest(BaseModel):
     scenario_id: str
     seed: int = 7777
@@ -923,9 +955,11 @@ class SharedState:
     procedure_last_motion_at: float = 0.0
     native_telemetry: dict[str, Any] = field(default_factory=dict)
     stapler_command_request: str | None = None
+    stapler_station_request: int | None = None
     stapler_manual_target_deg: float = 0.0
     stapler_test_cell: dict[str, Any] = field(default_factory=dict)
     skin_adhesive_target: float = 0.0
+    skin_adhesive_use_request: int | None = None
     skin_adhesive_system: dict[str, Any] = field(default_factory=dict)
     dr_anmar_needle_domain: dict[str, float | int] = field(
         default_factory=dict
@@ -2026,6 +2060,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.grippers_open = [True] * state.arms
             state.gripper_apertures = [1.0] * state.arms
             state.skin_adhesive_target = 0.0
+            state.skin_adhesive_use_request = None
         state.wake_event.set()
         return {"ok": True}
 
@@ -2045,10 +2080,15 @@ def build_web_app(state: SharedState) -> FastAPI:
                         "set_target requires target_deg",
                     )
                 target = float(request.target_deg)
-                if not np.isfinite(target) or not 0.0 <= target <= 28.0:
+                if (
+                    not np.isfinite(target)
+                    or not 0.0 <= target < FIRE_THRESHOLD_DEG
+                ):
                     raise HTTPException(
                         400,
-                        "target_deg must be between 0 and 28",
+                        f"manual target must stay below the "
+                        f"{FIRE_THRESHOLD_DEG:.0f} degree deployment threshold; "
+                        "use fire for a full cycle",
                     )
                 state.stapler_manual_target_deg = target
                 state.stapler_command_request = "manual"
@@ -2057,25 +2097,124 @@ def build_web_app(state: SharedState) -> FastAPI:
                     "A partial stroke below 24° must not deploy."
                 )
             elif action in {"fire", "release", "reset"}:
+                if (
+                    action == "fire"
+                    and state.stapler_test_cell.get("station_state")
+                    == "placed"
+                ):
+                    raise HTTPException(
+                        409,
+                        "This closure station already has a staple; choose an open station",
+                    )
+                if (
+                    action == "fire"
+                    and not state.stapler_test_cell.get(
+                        "station_ready",
+                        True,
+                    )
+                ):
+                    raise HTTPException(
+                        409,
+                        "The indexing fixture is still settling at this station",
+                    )
+                if (
+                    action == "fire"
+                    and state.stapler_test_cell.get("closure_complete", False)
+                ):
+                    raise HTTPException(
+                        409,
+                        "All closure stations are complete; reset the closure to run again",
+                    )
                 state.stapler_command_request = action
                 if action == "release":
                     state.stapler_manual_target_deg = 0.0
                 state.coaching_cue = {
                     "fire": (
-                        "Running one bounded press-hold-release cycle. "
-                        "The fixture must emit at most one deployment event."
+                        "Stapling the selected tissue station. The bounded "
+                        "cycle will release and advance automatically."
                     ),
                     "release": "Returning the actuator below the 8° rearm threshold.",
-                    "reset": "Resetting fixture mechanism and logical magazine evidence.",
+                    "reset": "Resetting the closure, fixture and magazine evidence.",
                 }[action]
+            elif action in {"previous_station", "next_station"}:
+                if state.stapler_test_cell.get("cycle_running", False):
+                    raise HTTPException(
+                        409,
+                        "Wait for the current staple cycle to release before indexing",
+                    )
+                if not state.stapler_test_cell.get("station_ready", True):
+                    raise HTTPException(
+                        409,
+                        "Wait for the indexing fixture to settle",
+                    )
+                current_index = int(
+                    state.stapler_test_cell.get("station_index", 1)
+                ) - 1
+                direction = -1 if action == "previous_station" else 1
+                station_count = int(
+                    state.stapler_test_cell.get("station_count", 1)
+                )
+                requested_index = max(
+                    0,
+                    min(station_count - 1, current_index + direction),
+                )
+                state.stapler_station_request = requested_index
+                state.coaching_cue = (
+                    f"Indexing the fixture to closure station "
+                    f"{requested_index + 1} of {station_count}."
+                )
             else:
                 raise HTTPException(
                     400,
-                    "action must be fire, release, reset, or set_target",
+                    "action must be fire, release, reset, set_target, "
+                    "previous_station, or next_station",
                 )
             result = dict(state.stapler_test_cell)
         state.wake_event.set()
         return {"ok": True, "action": action, "test_cell": result}
+
+    @app.post("/api/skin-adhesive/use")
+    def use_skin_adhesive(
+        request: SkinAdhesiveUseRequest,
+    ) -> dict[str, Any]:
+        with state.lock:
+            if not state.skin_adhesive_system.get("enabled", False):
+                raise HTTPException(
+                    409,
+                    "Add the Dr.Anmar topical skin adhesive system to this bench first",
+                )
+            if not state.has_grippers:
+                raise HTTPException(409, "This room has no gripper-equipped robot")
+            if request.arm < 0 or request.arm >= state.arms:
+                raise HTTPException(400, "arm is outside the active robot range")
+            state.skin_adhesive_use_request = request.arm
+            state.skin_adhesive_target = 0.0
+            state.grippers_open[request.arm] = False
+            state.gripper_apertures[request.arm] = 0.0
+            gripper_action = np.zeros(state.action_dim, dtype=np.float32)
+            gripper_action[state.gripper_action_index(request.arm)] = -1.0
+            state.note_control(
+                "skin_adhesive_auto_grip",
+                "guided_assist",
+                gripper_action,
+            )
+            state.skin_adhesive_system.update(
+                {
+                    "workflow_state": "acquiring",
+                    "holding_arm": request.arm + 1,
+                    "cap_state": "removing",
+                }
+            )
+            state.coaching_cue = (
+                f"Instrument {request.arm + 1} is automatically gripping "
+                "and uncapping the topical adhesive."
+            )
+        state.wake_event.set()
+        return {
+            "ok": True,
+            "arm": request.arm,
+            "workflow_state": "acquiring",
+        }
 
     @app.post("/api/skin-adhesive/activation")
     def skin_adhesive_activation(
@@ -3892,6 +4031,8 @@ def main() -> None:
         "device": REPOSITORY_ROOT
         / "source/extensions/orbit.surgical.assets/data/Props/"
         "SurgicalClosure/StaplerTestCell/stapler_test_device.usda",
+        "tissue": REPOSITORY_ROOT
+        / "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
     }
     if stapler_test_cell_enabled:
         missing_test_cell_assets = [
@@ -4044,12 +4185,33 @@ def main() -> None:
             )
             # The fixture runtime holds this authored root datum while the
             # trigger and pusher remain dynamic articulation coordinates.
-            env_cfg.scene.stapler_test_device.init_state.pos = (0.0, 0.0, 0.0)
+            env_cfg.scene.stapler_test_device.init_state.pos = (
+                STAPLER_CLOSURE_STATION_OFFSETS_M[0],
+                0.0,
+                STAPLER_TEST_DEVICE_MOUNT_Z_M,
+            )
             env_cfg.scene.stapler_test_device.init_state.rot = (
                 1.0,
                 0.0,
                 0.0,
                 0.0,
+            )
+            # Rotate the two-flap Dr.Anmar tissue so its incision follows the
+            # fixture's X indexing rail and every staple crown bridges the
+            # wound gap along Y. Its 6 mm thickness replaces the old visual
+            # coupon at the same top-surface datum.
+            env_cfg.scene.stapler_closure_tissue = AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/StaplerClosureTissue",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    pos=STAPLER_CLOSURE_TISSUE_CENTER_M,
+                    rot=STAPLER_CLOSURE_TISSUE_ROTATION_WXYZ,
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(stapler_test_cell_paths["tissue"]),
+                    collision_props=sim_utils.CollisionPropertiesCfg(
+                        collision_enabled=False,
+                    ),
+                ),
             )
 
         # The pad is NVIDIA-authored static collision geometry. It intentionally
@@ -4123,9 +4285,7 @@ def main() -> None:
                 )
             )
             env_cfg.scene.skin_adhesive_applicator.init_state.pos = (
-                -0.105,
-                0.135,
-                0.018,
+                dr_anmar_asset_landing("skin_adhesive_applicator")
             )
             env_cfg.scene.skin_adhesive_applicator.init_state.rot = (
                 0.70710678,
@@ -4139,10 +4299,8 @@ def main() -> None:
             )
             # Align the cap snap-axis frame with the applicator tip. It remains
             # a separate rigid object so a PSM can remove and place it.
-            env_cfg.scene.skin_adhesive_cap.init_state.pos = (
-                -0.006,
-                0.135,
-                0.018,
+            env_cfg.scene.skin_adhesive_cap.init_state.pos = dr_anmar_asset_landing(
+                "skin_adhesive_cap"
             )
             env_cfg.scene.skin_adhesive_cap.init_state.rot = (
                 0.70710678,
@@ -4157,10 +4315,8 @@ def main() -> None:
             )
             # This is the package's explicit kinematic deposit/task state, not
             # a liquid-flow simulation or an automatically generated dose.
-            env_cfg.scene.skin_adhesive_bead.init_state.pos = (
-                0.055,
-                -0.045,
-                0.001,
+            env_cfg.scene.skin_adhesive_bead.init_state.pos = dr_anmar_asset_landing(
+                "skin_adhesive_bead"
             )
         if "dr_anmar_needle" in selected_bench_assets:
             env_cfg.scene.dr_anmar_standalone_needle = RigidObjectCfg(
@@ -5981,6 +6137,34 @@ def main() -> None:
             return None
         return robots[robot_name].data.body_pos_w[0, tip_index, :3].detach().cpu().numpy().astype(np.float32)
 
+    def tool_pose_tensor_for_arm(
+        arm: int,
+    ) -> tuple[torch.Tensor, torch.Tensor] | None:
+        if arm < 0 or arm >= len(robot_names):
+            return None
+        robot_name = robot_names[arm]
+        names = robot_body_names.get(robot_name, [])
+        tip_index = next(
+            (
+                names.index(candidate)
+                for candidate in (
+                    wrist_tip_name,
+                    "psm_tool_tip_link",
+                    "endo360_needle",
+                    "ecm_end_link",
+                )
+                if candidate in names
+            ),
+            None,
+        )
+        if tip_index is None:
+            return None
+        robot = robots[robot_name]
+        return (
+            robot.data.body_pos_w[0, tip_index, :3].detach(),
+            robot.data.body_quat_w[0, tip_index, :4].detach(),
+        )
+
     def native_gripper_contact_force(arm: int) -> float:
         names = [
             f"gripper_contact_{arm + 1}_jaw_1",
@@ -6312,6 +6496,34 @@ def main() -> None:
     stapler_partial_peak_deg = 0.0
     stapler_partial_stroke_attempts = 0
     stapler_partial_stroke_passes = 0
+    stapler_closure_line = ClosureLine(
+        (
+            STAPLER_CLOSURE_TARGET_CENTER_M[0]
+            + STAPLER_CLOSURE_STATION_OFFSETS_M[0],
+            STAPLER_CLOSURE_TARGET_CENTER_M[1],
+            STAPLER_CLOSURE_TARGET_CENTER_M[2],
+        ),
+        (
+            STAPLER_CLOSURE_TARGET_CENTER_M[0]
+            + STAPLER_CLOSURE_STATION_OFFSETS_M[-1],
+            STAPLER_CLOSURE_TARGET_CENTER_M[1],
+            STAPLER_CLOSURE_TARGET_CENTER_M[2],
+        ),
+    )
+    stapler_closure_targets_m = tuple(
+        (
+            STAPLER_CLOSURE_TARGET_CENTER_M[0] + station_offset,
+            STAPLER_CLOSURE_TARGET_CENTER_M[1],
+            STAPLER_CLOSURE_TARGET_CENTER_M[2],
+        )
+        for station_offset in STAPLER_CLOSURE_STATION_OFFSETS_M
+    )
+    stapler_active_station_index = 0
+    stapler_station_settle_until = 0.0
+    stapler_closed_station_indices: set[int] = set()
+    stapler_pending_advance = False
+    stapler_last_placement: dict[str, Any] | None = None
+    stapler_visual_root_path = "/World/envs/env_0/StaplerClosurePlacements"
     state = SharedState(
         task=args_cli.task,
         camera_width=interactive_camera_width,
@@ -6384,7 +6596,7 @@ def main() -> None:
         strand_self_collision_ready=strand_self_collision_ready,
         stapler_test_cell={
             "enabled": stapler_test_cell_enabled,
-            "mode": "six_dof_velocity_fixture",
+            "mode": "six_dof_proportional_velocity_fixture",
             "cycle_phase": "ready" if stapler_test_cell_enabled else "disabled",
             "cycle_running": False,
             "target_trigger_deg": 0.0,
@@ -6404,6 +6616,22 @@ def main() -> None:
             "cycle_count": 0,
             "partial_stroke_attempts": 0,
             "partial_stroke_passes": 0,
+            "tissue_asset_id": "dr-anmar-suturable-tissue",
+            "tissue_runtime": "static_openusd_visual_surface",
+            "closure_model": "guided_formed_staple_placement_proxy",
+            "station_index": 1,
+            "station_count": len(STAPLER_CLOSURE_STATION_OFFSETS_M),
+            "station_spacing_mm": STAPLER_CLOSURE_STATION_SPACING_M
+            * 1000.0,
+            "station_state": "open",
+            "station_ready": True,
+            "closed_station_count": 0,
+            "closed_station_indices": [],
+            "closure_progress_percent": 0.0,
+            "closure_complete": False,
+            "current_target_m": list(stapler_closure_targets_m[0]),
+            "max_spacing_error_mm": 0.0,
+            "last_placement": None,
             "last_event": None,
             "parameter_status": "provisional_unmeasured",
             "clinical_validation": False,
@@ -6420,6 +6648,16 @@ def main() -> None:
             "left_paddle_deg": 0.0,
             "right_paddle_deg": 0.0,
             "piston_travel_mm": 0.0,
+            "workflow_state": (
+                "ready" if skin_adhesive_enabled else "disabled"
+            ),
+            "grasp_assist_active": False,
+            "grasp_mode": "guided_kinematic_grasp",
+            "holding_arm": None,
+            "grasp_error_mm": None,
+            "cap_state": (
+                "on_applicator" if skin_adhesive_enabled else "disabled"
+            ),
             "cap_rigid_body_ready": (
                 skin_adhesive_enabled
                 and "skin_adhesive_cap" in objects
@@ -6669,6 +6907,229 @@ def main() -> None:
 
     initial_native_centroid: list[np.ndarray | None] = [native_tissue_centroid()]
 
+    skin_adhesive_hold_arm: int | None = None
+    skin_adhesive_tool_to_applicator_quat: torch.Tensor | None = None
+    skin_adhesive_cap_parked = False
+
+    def park_skin_adhesive_cap() -> None:
+        nonlocal skin_adhesive_cap_parked
+
+        cap = objects.get("skin_adhesive_cap")
+        if cap is None:
+            return
+        pose = cap.data.root_pose_w.clone()
+        pose[0, :3] = torch.tensor(
+            (0.025, 0.065, 0.018),
+            dtype=pose.dtype,
+            device=pose.device,
+        )
+        cap.write_root_pose_to_sim(pose)
+        cap.write_root_velocity_to_sim(
+            torch.zeros_like(cap.data.root_vel_w)
+        )
+        skin_adhesive_cap_parked = True
+
+    def update_skin_adhesive_grasp_assist(
+        *,
+        initialize: bool = False,
+    ) -> float | None:
+        nonlocal skin_adhesive_tool_to_applicator_quat
+
+        if (
+            skin_adhesive_hold_arm is None
+            or skin_adhesive_articulation is None
+        ):
+            return None
+        tool_pose = tool_pose_tensor_for_arm(skin_adhesive_hold_arm)
+        if tool_pose is None:
+            return None
+        tool_position, tool_quaternion = tool_pose
+        root_pose = skin_adhesive_articulation.data.root_pose_w.clone()
+        if initialize or skin_adhesive_tool_to_applicator_quat is None:
+            skin_adhesive_tool_to_applicator_quat = quat_mul(
+                quat_conjugate(tool_quaternion.unsqueeze(0)),
+                root_pose[0, 3:7].unsqueeze(0),
+            )[0].detach().clone()
+        applicator_quaternion = quat_mul(
+            tool_quaternion.unsqueeze(0),
+            skin_adhesive_tool_to_applicator_quat.unsqueeze(0),
+        )[0]
+        body_grasp_local = torch.tensor(
+            (-0.041, 0.0, 0.0),
+            dtype=root_pose.dtype,
+            device=root_pose.device,
+        )
+        body_grasp_offset_world = quat_apply(
+            applicator_quaternion.unsqueeze(0),
+            body_grasp_local.unsqueeze(0),
+        )[0]
+        root_pose[0, :3] = tool_position - body_grasp_offset_world
+        root_pose[0, 3:7] = applicator_quaternion
+        skin_adhesive_articulation.write_root_pose_to_sim(root_pose)
+        skin_adhesive_articulation.write_root_velocity_to_sim(
+            torch.zeros_like(
+                skin_adhesive_articulation.data.root_vel_w
+            )
+        )
+        held_grasp_position = (
+            root_pose[0, :3] + body_grasp_offset_world
+        )
+        return float(
+            torch.linalg.vector_norm(
+                held_grasp_position - tool_position
+            ).item()
+            * 1000.0
+        )
+
+    stapler_placement_longitudinal_m: dict[int, float] = {}
+
+    def stapler_closure_payload() -> dict[str, Any]:
+        spacing_errors = spacing_errors_m(
+            tuple(stapler_placement_longitudinal_m.values()),
+            STAPLER_CLOSURE_STATION_SPACING_M,
+        )
+        station_count = len(STAPLER_CLOSURE_STATION_OFFSETS_M)
+        closed_count = len(stapler_closed_station_indices)
+        station_ready = (
+            time.monotonic() >= stapler_station_settle_until
+        )
+        return {
+            "station_index": stapler_active_station_index + 1,
+            "station_count": station_count,
+            "station_spacing_mm": STAPLER_CLOSURE_STATION_SPACING_M
+            * 1000.0,
+            "station_state": (
+                "placed"
+                if stapler_active_station_index
+                in stapler_closed_station_indices
+                else "open"
+                if station_ready
+                else "indexing"
+            ),
+            "station_ready": station_ready,
+            "closed_station_count": closed_count,
+            "closed_station_indices": [
+                index + 1
+                for index in sorted(stapler_closed_station_indices)
+            ],
+            "closure_progress_percent": round(
+                100.0 * closed_count / station_count,
+                2,
+            ),
+            "closure_complete": closed_count == station_count,
+            "current_target_m": list(
+                stapler_closure_targets_m[stapler_active_station_index]
+            ),
+            "max_spacing_error_mm": round(
+                max(spacing_errors, default=0.0) * 1000.0,
+                4,
+            ),
+            "last_placement": stapler_last_placement,
+        }
+
+    def move_stapler_to_station(station_index: int) -> None:
+        nonlocal stapler_active_station_index
+        nonlocal stapler_station_settle_until
+        nonlocal stapler_fixture_position_w
+        nonlocal stapler_fixture_quaternion_w
+
+        if stapler_articulation is None:
+            return
+        bounded_index = max(
+            0,
+            min(
+                len(STAPLER_CLOSURE_STATION_OFFSETS_M) - 1,
+                int(station_index),
+            ),
+        )
+        if bounded_index == stapler_active_station_index:
+            return
+        delta_x_m = (
+            STAPLER_CLOSURE_STATION_OFFSETS_M[bounded_index]
+            - STAPLER_CLOSURE_STATION_OFFSETS_M[
+                stapler_active_station_index
+            ]
+        )
+        root_pose = stapler_articulation.data.root_pose_w.clone()
+        root_pose[:, 0] += delta_x_m
+        stapler_articulation.write_root_pose_to_sim(root_pose)
+        stapler_articulation.write_root_velocity_to_sim(
+            torch.zeros_like(stapler_articulation.data.root_vel_w)
+        )
+        # Re-capture the ideal fixture datum after the explicit rail index.
+        # This keeps indexing motion separate from measured housing drift.
+        stapler_fixture_position_w = None
+        stapler_fixture_quaternion_w = None
+        stapler_active_station_index = bounded_index
+        stapler_station_settle_until = time.monotonic() + 0.75
+
+    def clear_stapler_closure() -> None:
+        nonlocal stapler_last_placement
+
+        if suture_stage.GetPrimAtPath(stapler_visual_root_path).IsValid():
+            suture_stage.RemovePrim(stapler_visual_root_path)
+        stapler_closed_station_indices.clear()
+        stapler_placement_longitudinal_m.clear()
+        stapler_last_placement = None
+        move_stapler_to_station(0)
+
+    def record_stapler_placement() -> dict[str, Any]:
+        nonlocal stapler_last_placement
+
+        station_index = stapler_active_station_index
+        if station_index in stapler_closed_station_indices:
+            return dict(stapler_last_placement or {})
+        output_path = (
+            f"{stapler_visual_root_path}/"
+            f"Staple_{station_index + 1:02d}"
+        )
+        target_position_m = stapler_closure_targets_m[station_index]
+        staple_prim = add_staple_reference(
+            suture_stage,
+            output_path,
+            translation_m=target_position_m,
+            orientation_wxyz=(1.0, 0.0, 0.0, 0.0),
+        )
+        # Placement staples are retained as non-dynamic evidence. They are
+        # visual OpenUSD proxies, not penetration or tissue-constraint bodies.
+        for descendant in Usd.PrimRange(staple_prim):
+            if descendant.HasAPI(UsdPhysics.RigidBodyAPI):
+                UsdPhysics.RigidBodyAPI(
+                    descendant
+                ).CreateRigidBodyEnabledAttr().Set(False)
+            if descendant.HasAPI(UsdPhysics.CollisionAPI):
+                UsdPhysics.CollisionAPI(
+                    descendant
+                ).CreateCollisionEnabledAttr().Set(False)
+        placement = assess_placement(
+            stapler_closure_line,
+            target_position_m,
+            (0.0, 1.0, 0.0),
+        )
+        stapler_closed_station_indices.add(station_index)
+        stapler_placement_longitudinal_m[
+            station_index
+        ] = placement.longitudinal_m
+        stapler_last_placement = {
+            "station_index": station_index + 1,
+            "prim_path": output_path,
+            "position_m": [
+                round(float(component), 6)
+                for component in target_position_m
+            ],
+            "lateral_error_mm": round(
+                placement.lateral_error_m * 1000.0,
+                4,
+            ),
+            "orientation_error_deg": round(
+                placement.orientation_error_deg,
+                4,
+            ),
+            "within_line_extent": placement.within_line_extent,
+            "representation": "formed_staple_visual_proxy",
+        }
+        return dict(stapler_last_placement)
+
     def reset_environment(selected_scenario: str, selected_seed: int) -> None:
         nonlocal stapler_cycle_started_at
         nonlocal stapler_cycle_threshold_at
@@ -6680,13 +7141,29 @@ def main() -> None:
         nonlocal stapler_partial_peak_deg
         nonlocal stapler_partial_stroke_attempts
         nonlocal stapler_partial_stroke_passes
+        nonlocal stapler_active_station_index
+        nonlocal stapler_station_settle_until
+        nonlocal stapler_pending_advance
+        nonlocal stapler_last_placement
+        nonlocal stapler_fixture_position_w
+        nonlocal stapler_fixture_quaternion_w
+        nonlocal skin_adhesive_hold_arm
+        nonlocal skin_adhesive_tool_to_applicator_quat
+        nonlocal skin_adhesive_cap_parked
 
         native_grasp_arms.clear()
         update_procedure_waypoint_marker(0, force=True)
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
+        skin_adhesive_hold_arm = None
+        skin_adhesive_tool_to_applicator_quat = None
+        skin_adhesive_cap_parked = False
         if stapler_test_cell_enabled:
+            if suture_stage.GetPrimAtPath(
+                stapler_visual_root_path
+            ).IsValid():
+                suture_stage.RemovePrim(stapler_visual_root_path)
             stapler_deployment_controller.reset(reset_magazine=True)
             stapler_cycle_started_at = None
             stapler_cycle_threshold_at = None
@@ -6698,6 +7175,14 @@ def main() -> None:
             stapler_partial_peak_deg = 0.0
             stapler_partial_stroke_attempts = 0
             stapler_partial_stroke_passes = 0
+            stapler_active_station_index = 0
+            stapler_station_settle_until = 0.0
+            stapler_closed_station_indices.clear()
+            stapler_placement_longitudinal_m.clear()
+            stapler_pending_advance = False
+            stapler_last_placement = None
+            stapler_fixture_position_w = None
+            stapler_fixture_quaternion_w = None
         dr_anmar_needle_domain: dict[str, Any] = {}
         if dr_anmar_parametric_needle_enabled:
             dr_anmar_needle_domain = (
@@ -6764,6 +7249,7 @@ def main() -> None:
             state.native_grasp_contact_active = [False] * state.arms
             state.gripper_apertures = [1.0] * state.arms
             state.grippers_open = [True] * state.arms
+            state.skin_adhesive_use_request = None
             state.disable_hand_motion()
             state.tool_to_object_distance_m = [None] * state.arms
             state.tool_to_object_offset_m = [None] * state.arms
@@ -6775,8 +7261,20 @@ def main() -> None:
             state.needle_entry_direction = None
             state.adaptive_precision_active = False
             state.native_telemetry = {}
+            if skin_adhesive_enabled:
+                state.skin_adhesive_target = 0.0
+                state.skin_adhesive_system.update(
+                    {
+                        "workflow_state": "ready",
+                        "grasp_assist_active": False,
+                        "holding_arm": None,
+                        "grasp_error_mm": None,
+                        "cap_state": "on_applicator",
+                    }
+                )
             if stapler_test_cell_enabled:
                 state.stapler_command_request = None
+                state.stapler_station_request = None
                 state.stapler_manual_target_deg = 0.0
                 state.stapler_test_cell.update(
                     {
@@ -6797,6 +7295,7 @@ def main() -> None:
                         "partial_stroke_attempts": 0,
                         "partial_stroke_passes": 0,
                         "max_trigger_deg": 0.0,
+                        **stapler_closure_payload(),
                         "last_event": None,
                     }
                 )
@@ -6885,8 +7384,12 @@ def main() -> None:
             state.expert_request = None
             stapler_command_request = state.stapler_command_request
             state.stapler_command_request = None
+            stapler_station_request = state.stapler_station_request
+            state.stapler_station_request = None
             stapler_manual_target_deg = state.stapler_manual_target_deg
             skin_adhesive_target = state.skin_adhesive_target
+            skin_adhesive_use_request = state.skin_adhesive_use_request
+            state.skin_adhesive_use_request = None
             scenario_id = state.scenario_id
             scenario_seed = state.scenario_seed
             camera_view_request = state.camera_view_request
@@ -6955,10 +7458,44 @@ def main() -> None:
             with torch.inference_mode():
                 reset_environment(scenario_id, scenario_seed)
 
+        if skin_adhesive_use_request is not None:
+            skin_adhesive_hold_arm = skin_adhesive_use_request
+            skin_adhesive_tool_to_applicator_quat = None
+            with torch.inference_mode():
+                grasp_error_mm = update_skin_adhesive_grasp_assist(
+                    initialize=True
+                )
+                park_skin_adhesive_cap()
+            with state.lock:
+                state.skin_adhesive_system.update(
+                    {
+                        "workflow_state": "held_uncapped",
+                        "grasp_assist_active": True,
+                        "holding_arm": skin_adhesive_hold_arm + 1,
+                        "grasp_error_mm": (
+                            round(grasp_error_mm, 4)
+                            if grasp_error_mm is not None
+                            else None
+                        ),
+                        "cap_state": "removed",
+                    }
+                )
+                state.coaching_cue = (
+                    f"Instrument {skin_adhesive_hold_arm + 1} is holding "
+                    "the uncapped adhesive. Move that instrument to guide "
+                    "the applicator tip."
+                )
+
         stapler_target_deg = 0.0
         stapler_cycle_phase = "disabled"
         if stapler_test_cell_enabled and stapler_articulation is not None:
+            if (
+                stapler_station_request is not None
+                and stapler_cycle_started_at is None
+            ):
+                move_stapler_to_station(stapler_station_request)
             if stapler_command_request == "reset":
+                clear_stapler_closure()
                 stapler_deployment_controller.reset(reset_magazine=True)
                 stapler_cycle_started_at = None
                 stapler_cycle_threshold_at = None
@@ -6971,6 +7508,7 @@ def main() -> None:
                 stapler_partial_stroke_attempts = 0
                 stapler_partial_stroke_passes = 0
                 stapler_manual_target_deg = 0.0
+                stapler_pending_advance = False
                 with state.lock:
                     state.stapler_manual_target_deg = 0.0
                     state.stapler_test_cell["max_trigger_deg"] = 0.0
@@ -7061,6 +7599,23 @@ def main() -> None:
                         stapler_cycle_threshold_at = None
                         stapler_cycle_release_started_at = None
                         stapler_cycle_count += 1
+                        if stapler_pending_advance:
+                            open_station_indices = [
+                                index
+                                for index in range(
+                                    len(
+                                        STAPLER_CLOSURE_STATION_OFFSETS_M
+                                    )
+                                )
+                                if index
+                                not in stapler_closed_station_indices
+                                and index > stapler_active_station_index
+                            ]
+                            if open_station_indices:
+                                move_stapler_to_station(
+                                    open_station_indices[0]
+                                )
+                            stapler_pending_advance = False
                         with state.lock:
                             state.stapler_manual_target_deg = 0.0
             else:
@@ -7455,9 +8010,24 @@ def main() -> None:
                     else:
                         state.coaching_cue = "Supervised replay finished. Manual control is active."
             action_np = manual_action.copy()
-            if state.has_grippers:
-                for arm, aperture in enumerate(gripper_apertures):
-                    action_np[state.gripper_action_index(arm)] = proportional_gripper_action(aperture)
+        if state.has_grippers:
+            for arm, aperture in enumerate(gripper_apertures):
+                action_np[state.gripper_action_index(arm)] = proportional_gripper_action(aperture)
+            if skin_adhesive_hold_arm is not None:
+                action_np[
+                    state.gripper_action_index(
+                        skin_adhesive_hold_arm
+                    )
+                ] = -1.0
+                grippers_open[skin_adhesive_hold_arm] = False
+                gripper_apertures[skin_adhesive_hold_arm] = 0.0
+                with state.lock:
+                    state.grippers_open[
+                        skin_adhesive_hold_arm
+                    ] = False
+                    state.gripper_apertures[
+                        skin_adhesive_hold_arm
+                    ] = 0.0
 
         if _softmimicgen_task and not action_uses_upstream_softmimicgen_units:
             # NVIDIA's released task accepts small metric deltas directly and
@@ -7473,7 +8043,25 @@ def main() -> None:
         grasp_distances: list[float | None] = [None] * state.arms
         grasp_offsets: list[list[float] | None] = [None] * state.arms
         grasp_target_position = None
-        if bimanual_softmimicgen and "suture_needle" in objects:
+        if (
+            skin_adhesive_hold_arm is not None
+            and skin_adhesive_articulation is not None
+        ):
+            adhesive_root_pose = (
+                skin_adhesive_articulation.data.root_pose_w[0]
+            )
+            adhesive_grasp_offset = quat_apply(
+                adhesive_root_pose[3:7].unsqueeze(0),
+                torch.tensor(
+                    [[-0.041, 0.0, 0.0]],
+                    dtype=adhesive_root_pose.dtype,
+                    device=adhesive_root_pose.device,
+                ),
+            )[0]
+            grasp_target_position = (
+                adhesive_root_pose[:3] + adhesive_grasp_offset
+            ).detach().cpu().numpy().astype(np.float32)
+        elif bimanual_softmimicgen and "suture_needle" in objects:
             grasp_target_position = (
                 objects["suture_needle"].data.root_pos_w[0, :3]
                 .detach().cpu().numpy().astype(np.float32)
@@ -7540,14 +8128,87 @@ def main() -> None:
         with torch.inference_mode():
             if stapler_articulation is not None:
                 # The test cell replaces a robot grasp with an idealized
-                # six-DOF bench damper. It removes housing velocity without
-                # overwriting the root pose or either mechanism coordinate.
+                # six-DOF proportional velocity fixture. It restores the
+                # captured housing datum without overwriting the root pose or
+                # either articulated mechanism coordinate.
                 stapler_root_velocity = stapler_articulation.data.root_vel_w
+                fixture_velocity = torch.zeros_like(
+                    stapler_root_velocity
+                )
+                if (
+                    stapler_housing_body_index is not None
+                    and stapler_fixture_position_w is not None
+                    and stapler_fixture_quaternion_w is not None
+                ):
+                    current_fixture_position = (
+                        stapler_articulation.data.body_pos_w[
+                            0,
+                            stapler_housing_body_index,
+                        ]
+                    )
+                    current_fixture_quaternion = (
+                        stapler_articulation.data.body_quat_w[
+                            0,
+                            stapler_housing_body_index,
+                        ]
+                    )
+                    fixture_velocity[0, :3] = torch.clamp(
+                        25.0
+                        * (
+                            stapler_fixture_position_w
+                            - current_fixture_position
+                        ),
+                        -0.05,
+                        0.05,
+                    )
+                    quaternion_error = quat_mul(
+                        stapler_fixture_quaternion_w.unsqueeze(0),
+                        quat_conjugate(
+                            current_fixture_quaternion.unsqueeze(0)
+                        ),
+                    )[0]
+                    quaternion_sign = torch.where(
+                        quaternion_error[0] >= 0.0,
+                        torch.ones_like(quaternion_error[0]),
+                        -torch.ones_like(quaternion_error[0]),
+                    )
+                    fixture_velocity[0, 3:] = torch.clamp(
+                        50.0
+                        * quaternion_sign
+                        * quaternion_error[1:],
+                        -0.5,
+                        0.5,
+                    )
                 stapler_articulation.write_root_velocity_to_sim(
-                    torch.zeros_like(stapler_root_velocity)
+                    fixture_velocity
                 )
             write_native_attachment()
             _observations, reward, terminated, truncated, info = env.step(actions)
+            skin_adhesive_grasp_error_mm = (
+                update_skin_adhesive_grasp_assist()
+            )
+            if skin_adhesive_grasp_error_mm is not None:
+                with state.lock:
+                    state.skin_adhesive_system.update(
+                        {
+                            "workflow_state": "held_uncapped",
+                            "grasp_assist_active": True,
+                            "holding_arm": (
+                                skin_adhesive_hold_arm + 1
+                                if skin_adhesive_hold_arm is not None
+                                else None
+                            ),
+                            "grasp_error_mm": round(
+                                skin_adhesive_grasp_error_mm,
+                                4,
+                            ),
+                            "cap_state": (
+                                "removed"
+                                if skin_adhesive_cap_parked
+                                else "removing"
+                            ),
+                        }
+                    )
             if (
                 stapler_articulation is not None
                 and stapler_housing_body_index is not None
@@ -7735,6 +8396,8 @@ def main() -> None:
                         stapler_partial_stroke_passes += 1
                     stapler_partial_candidate = False
             if deployment_event is not None:
+                placement_event = record_stapler_placement()
+                stapler_pending_advance = True
                 stapler_last_event = {
                     "sequence_index": deployment_event.sequence_index,
                     "trigger_deg": round(
@@ -7744,6 +8407,8 @@ def main() -> None:
                     "remaining": deployment_event.remaining,
                     "state": deployment_event.state.value,
                     "sim_step": fps_steps,
+                    "closure_station": stapler_active_station_index + 1,
+                    "placement": placement_event,
                 }
             with state.lock:
                 previous_max_trigger = float(
@@ -7853,6 +8518,7 @@ def main() -> None:
                             max(previous_max_trigger, actual_trigger_deg),
                             4,
                         ),
+                        **stapler_closure_payload(),
                         "last_event": stapler_last_event,
                     }
                 )
@@ -7861,9 +8527,16 @@ def main() -> None:
                         "task_complete"
                     ]
                     state.procedure_event_sequence += 1
+                    closure_complete = (
+                        len(stapler_closed_station_indices)
+                        == len(STAPLER_CLOSURE_STATION_OFFSETS_M)
+                    )
                     state.coaching_cue = (
-                        "One simulated staple deployment recorded. "
-                        "Release below 8° before the next cycle."
+                        "All seven guided placement stations are complete. "
+                        "Review the closure evidence or reset to repeat."
+                        if closure_complete
+                        else "Placement recorded on the Dr.Anmar tissue. "
+                        "The fixture will advance after release."
                     )
         if (
             skin_adhesive_enabled
