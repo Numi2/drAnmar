@@ -32,6 +32,7 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ASSET_VERSION,
     DR_ANMAR_NEEDLE_NAME,
     DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH,
+    DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH,
     DR_ANMAR_NEEDLE_ROOT_PRIM,
     SUTURE_NEEDLE_INTERFACE_CENTER_M,
 )
@@ -41,6 +42,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 DEFAULT_NEEDLE_OUTPUT = DR_ANMAR_NEEDLE_ASSET_PATH
 DEFAULT_NEEDLE_PHYSICS_OUTPUT = DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH
+DEFAULT_NEEDLE_PHYSX_OUTPUT = DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH
 
 
 def usd_float(value: float) -> str:
@@ -338,9 +340,10 @@ def author_dr_anmar_needle(
     needle_profile: dict[str, Any],
     *,
     suture_reference: str,
-    physics_sublayer_reference: str,
-) -> tuple[str, str]:
-    """Author the visual entry layer and dedicated local-physics layer."""
+    physx_sublayer_reference: str,
+    neutral_physics_sublayer_reference: str,
+) -> tuple[str, str, str]:
+    """Author visual entry, neutral physics, and PhysX-specific layers."""
 
     derived_needle = derive_needle(needle_profile)
     mass_properties = derived_needle.mass_properties
@@ -376,11 +379,12 @@ def author_dr_anmar_needle(
     face_counts = ", ".join(str(value) for value in mesh.face_vertex_counts)
     face_indices = ", ".join(str(value) for value in mesh.face_vertex_indices)
     normal_indices = ", ".join(str(value) for value in mesh.normal_indices)
-    collision_blocks: list[str] = []
+    neutral_collision_blocks: list[str] = []
+    physx_collision_blocks: list[str] = []
     collision_capsules = build_needle_collision_capsules(needle_profile)
     for index, capsule in enumerate(collision_capsules):
-        collision_blocks.append(f"""def Capsule "C{index:03d}" (
-    prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+        neutral_collision_blocks.append(f"""def Capsule "C{index:03d}" (
+    prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
 )
 {{
     uniform token axis = "X"
@@ -391,21 +395,25 @@ def author_dr_anmar_needle(
     token visibility = "{render_collision["collider_visibility"]}"
     rel {render_collision["collider_physics_material_binding"]} = <{physics_material_path}>
     bool physics:collisionEnabled = true
-    float physxCollision:contactOffset = {usd_float(capsule.contact_offset_m)}
-    float physxCollision:restOffset = {usd_float(capsule.rest_offset_m)}
-    float newton:contactGap = {usd_float(capsule.contact_offset_m - capsule.rest_offset_m)}
-    float newton:contactMargin = {usd_float(capsule.rest_offset_m)}
     quatf xformOp:orient = {usd_quat(capsule.orientation_wxyz)}
     double3 xformOp:translate = {usd_vec(capsule.center_m)}
     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
 }}""")
-    collisions = indent("\n\n".join(collision_blocks), 12)
+        physx_collision_blocks.append(f"""over "C{index:03d}" (
+    prepend apiSchemas = ["PhysxCollisionAPI"]
+)
+{{
+    float physxCollision:contactOffset = {usd_float(capsule.contact_offset_m)}
+    float physxCollision:restOffset = {usd_float(capsule.rest_offset_m)}
+}}""")
+    neutral_collisions = indent("\n\n".join(neutral_collision_blocks), 12)
+    physx_collisions = indent("\n\n".join(physx_collision_blocks), 12)
     sim_to_real_gap_count = len(needle_profile["sim_to_real"]["gaps"])
     implemented_randomization_count = len(needle_profile["sim_to_real"]["implemented_randomization_on_episode_reset"])
     entry_layer = f"""#usda 1.0
 (
     subLayers = [
-        @{physics_sublayer_reference}@
+        @{physx_sublayer_reference}@
     ]
     defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
     doc = "{DR_ANMAR_NEEDLE_NAME}: independently generated research-grade curved taper-point needle with factory-swaged Dr.Anmar 4-0 suture; not clinically validated."
@@ -423,11 +431,11 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         bool drAnmarClinicalValidation = false
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
         int drAnmarMassPropertyIntegrationSlices = {mass_properties.integration_slices}
-        string drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"
+        string drAnmarContactOffsetContract = "scale_aware_physx_engine_layer_authoring"
         string drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"
         string drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"
         string drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"
-        string drAnmarLayerContract = "entry_visual_composition_plus_dedicated_physics_sublayer"
+        string drAnmarLayerContract = "entry_sublayers_physx_which_sublayers_neutral_physics"
         string drAnmarNeedleProfileId = "{needle_profile["id"]}"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
@@ -502,7 +510,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
     physics_layer = f"""#usda 1.0
 (
     defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
-    doc = "{DR_ANMAR_NEEDLE_NAME} local physics layer. Composed by DrAnmarNeedle.usda."
+    doc = "{DR_ANMAR_NEEDLE_NAME} engine-neutral local physics layer. Composed by DrAnmarNeedle_physx.usda."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -513,18 +521,17 @@ over "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
     over "{material_organization["scope"]}"
     {{
         def Material "{material_organization["physics_material"]}" (
-            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
         )
         {{
             float physics:staticFriction = {usd_float(float(contact["static_friction_seed"]))}
             float physics:dynamicFriction = {usd_float(float(contact["dynamic_friction_seed"]))}
             float physics:restitution = {usd_float(float(contact["restitution_seed"]))}
-            uniform token physxMaterial:frictionCombineMode = "{contact["combine_mode"]}"
         }}
     }}
 
     over "Needle" (
-        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
     )
     {{
         bool physics:rigidBodyEnabled = true
@@ -533,14 +540,10 @@ over "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
         point3f physics:centerOfMass = {usd_vec(mass_properties.center_of_mass_m)}
         float3 physics:diagonalInertia = {usd_vec(mass_properties.diagonal_inertia_kg_m2)}
         quatf physics:principalAxes = {usd_quat(mass_properties.principal_axes_wxyz)}
-        bool physxRigidBody:enableCCD = {"true" if solver["ccd"] else "false"}
-        int physxRigidBody:solverPositionIterationCount = {int(solver["position_iterations"])}
-        int physxRigidBody:solverVelocityIterationCount = {int(solver["velocity_iterations"])}
-        float physxRigidBody:maxDepenetrationVelocity = {usd_float(float(solver["max_depenetration_velocity_m_s"]))}
 
         def Scope "Collision"
         {{
-{collisions}
+{neutral_collisions}
         }}
     }}
 
@@ -564,7 +567,48 @@ over "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
     }}
 }}
 """
-    return entry_layer, physics_layer
+
+    physx_layer = f"""#usda 1.0
+(
+    subLayers = [
+        @{neutral_physics_sublayer_reference}@
+    ]
+    defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
+    doc = "{DR_ANMAR_NEEDLE_NAME} PhysX-specific tuning layer. Composed by DrAnmarNeedle.usda."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
+{{
+    over "{material_organization["scope"]}"
+    {{
+        over "{material_organization["physics_material"]}" (
+            prepend apiSchemas = ["PhysxMaterialAPI"]
+        )
+        {{
+            uniform token physxMaterial:frictionCombineMode = "{contact["combine_mode"]}"
+        }}
+    }}
+
+    over "Needle" (
+        prepend apiSchemas = ["PhysxRigidBodyAPI"]
+    )
+    {{
+        bool physxRigidBody:enableCCD = {"true" if solver["ccd"] else "false"}
+        int physxRigidBody:solverPositionIterationCount = {int(solver["position_iterations"])}
+        int physxRigidBody:solverVelocityIterationCount = {int(solver["velocity_iterations"])}
+        float physxRigidBody:maxDepenetrationVelocity = {usd_float(float(solver["max_depenetration_velocity_m_s"]))}
+
+        over "Collision"
+        {{
+{physx_collisions}
+        }}
+    }}
+}}
+"""
+    return entry_layer, physics_layer, physx_layer
 
 
 def clamp01(value: float) -> float:
@@ -612,43 +656,60 @@ def main() -> int:
         type=Path,
         default=DEFAULT_NEEDLE_PHYSICS_OUTPUT,
     )
+    parser.add_argument(
+        "--needle-physx-output",
+        type=Path,
+        default=DEFAULT_NEEDLE_PHYSX_OUTPUT,
+    )
     args = parser.parse_args()
     profile = load_profile(args.profile)
     needle_profile = load_needle_profile(args.needle_profile)
     output = args.output.expanduser().resolve()
     needle_output = args.needle_output.expanduser().resolve()
     needle_physics_output = args.needle_physics_output.expanduser().resolve()
+    needle_physx_output = args.needle_physx_output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
     temporary.write_text(author(profile), encoding="utf-8")
     temporary.replace(output)
     needle_output.parent.mkdir(parents=True, exist_ok=True)
     needle_physics_output.parent.mkdir(parents=True, exist_ok=True)
+    needle_physx_output.parent.mkdir(parents=True, exist_ok=True)
     needle_temporary = needle_output.with_suffix(needle_output.suffix + ".tmp")
     needle_physics_temporary = needle_physics_output.with_suffix(needle_physics_output.suffix + ".tmp")
+    needle_physx_temporary = needle_physx_output.with_suffix(needle_physx_output.suffix + ".tmp")
     suture_reference = Path(os.path.relpath(output, start=needle_output.parent)).as_posix()
-    physics_sublayer_reference = Path(
+    physx_sublayer_reference = Path(
         os.path.relpath(
-            needle_physics_output,
+            needle_physx_output,
             start=needle_output.parent,
         )
     ).as_posix()
-    needle_entry_text, needle_physics_text = author_dr_anmar_needle(
+    neutral_physics_sublayer_reference = Path(
+        os.path.relpath(
+            needle_physics_output,
+            start=needle_physx_output.parent,
+        )
+    ).as_posix()
+    needle_entry_text, needle_physics_text, needle_physx_text = author_dr_anmar_needle(
         profile,
         needle_profile,
         suture_reference=suture_reference,
-        physics_sublayer_reference=physics_sublayer_reference,
+        physx_sublayer_reference=physx_sublayer_reference,
+        neutral_physics_sublayer_reference=neutral_physics_sublayer_reference,
     )
     needle_temporary.write_text(needle_entry_text, encoding="utf-8")
     needle_physics_temporary.write_text(needle_physics_text, encoding="utf-8")
+    needle_physx_temporary.write_text(needle_physx_text, encoding="utf-8")
     needle_physics_temporary.replace(needle_physics_output)
+    needle_physx_temporary.replace(needle_physx_output)
     needle_temporary.replace(needle_output)
     derived = derive(profile)
     derived_needle = derive_needle(needle_profile)
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v4",
+        "schema": "dr.anmar.suture-asset-report.v5",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
@@ -659,6 +720,8 @@ def main() -> int:
         "dr_anmar_needle_sha256": sha256(needle_output),
         "dr_anmar_needle_physics": portable_path(needle_physics_output),
         "dr_anmar_needle_physics_sha256": sha256(needle_physics_output),
+        "dr_anmar_needle_physx": portable_path(needle_physx_output),
+        "dr_anmar_needle_physx_sha256": sha256(needle_physx_output),
         "dr_anmar_needle_layer_contract": needle_profile["construction"]["layer_organization"],
         "needle_profile": portable_path(args.needle_profile),
         "needle_profile_id": needle_profile["id"],

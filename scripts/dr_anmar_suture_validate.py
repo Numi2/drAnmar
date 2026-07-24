@@ -31,6 +31,7 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ASSET_VERSION,
     DR_ANMAR_NEEDLE_NAME,
     DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH,
+    DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH,
     DR_ANMAR_NEEDLE_ROOT_PRIM,
     configure_dr_anmar_needle,
     local_room_ids,
@@ -53,6 +54,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ASSET = REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 DEFAULT_NEEDLE = DR_ANMAR_NEEDLE_ASSET_PATH
 DEFAULT_NEEDLE_PHYSICS = DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH
+DEFAULT_NEEDLE_PHYSX = DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH
 DEFAULT_WORKSTATION = REPOSITORY_ROOT / "scripts/dr_anmar_workstation.py"
 DEFAULT_NATIVE_PROBE = REPOSITORY_ROOT / "scripts/dr_anmar_suture_physics_probe.py"
 DEFAULT_INTEGRATION = REPOSITORY_ROOT / "scripts/dr_anmar_suture_integration.py"
@@ -72,12 +74,21 @@ def check(
     }
 
 
+def missing_text_tokens(text: str, tokens: list[str]) -> list[str]:
+    return [token for token in tokens if token not in text]
+
+
+def present_text_tokens(texts: tuple[str, ...], tokens: tuple[str, ...]) -> list[str]:
+    return [token for token in tokens if any(token in text for text in texts)]
+
+
 def validate(
     profile: dict[str, Any],
     needle_profile: dict[str, Any],
     asset_text: str,
     needle_entry_text: str,
     needle_physics_text: str,
+    needle_physx_text: str,
     workstation_text: str,
 ) -> dict[str, Any]:
     checks: dict[str, dict[str, Any]] = {}
@@ -90,7 +101,7 @@ def validate(
     )
     native_probe_text = DEFAULT_NATIVE_PROBE.read_text(encoding="utf-8")
     integration_text = DEFAULT_INTEGRATION.read_text(encoding="utf-8")
-    needle_text = needle_entry_text + "\n" + needle_physics_text
+    needle_text = needle_entry_text + "\n" + needle_physics_text + "\n" + needle_physx_text
     geometry = profile["geometry"]
     material = profile["material"]
     tension = profile["tension"]
@@ -250,18 +261,19 @@ def validate(
         f'drAnmarAssetId = "{DR_ANMAR_NEEDLE_ASSET_ID}"',
         f'drAnmarAssetName = "{DR_ANMAR_NEEDLE_NAME}"',
         f'drAnmarAssetVersion = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"',
-        "@DrAnmarNeedle_physics.usda@",
+        "@DrAnmarNeedle_physx.usda@",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         'drAnmarGeometrySource = "independently_generated_parametric_geometry"',
         f"drAnmarMassPropertyIntegrationSlices = {DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES}",
-        'drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"',
+        'drAnmarContactOffsetContract = "scale_aware_physx_engine_layer_authoring"',
         'drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"',
         'drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"',
         'drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"',
-        'drAnmarLayerContract = "entry_visual_composition_plus_dedicated_physics_sublayer"',
+        'drAnmarLayerContract = "entry_sublayers_physx_which_sublayers_neutral_physics"',
         'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
         'drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"',
-        '"PhysicsMaterialAPI", "PhysxMaterialAPI"',
+        '"PhysicsMaterialAPI"',
+        '"PhysxMaterialAPI"',
         'physxMaterial:frictionCombineMode = "max"',
         "drAnmarResetRandomizationCount = 4",
         "drAnmarSimToRealGapCount = 7",
@@ -289,52 +301,68 @@ def validate(
         needle_identity_tokens,
     )
     layer_organization = needle_profile["construction"]["layer_organization"]
-    entry_physics_properties = sorted(
-        set(
-            re.findall(
-                r"\b(?:physics:|physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*",
-                needle_entry_text,
-            )
-        )
-    )
-    entry_physics_schemas = sorted(
-        set(
-            re.findall(
-                r'"((?:Physics|Physx|Newton)[A-Za-z0-9_]*API)"',
-                needle_entry_text,
-            )
-        )
-    )
+    engine_property_pattern = r"\b(?:physics:|physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*"
+    engine_schema_pattern = r'"((?:Physics|Physx|Newton)[A-Za-z0-9_]*API)"'
+    entry_physics_properties = sorted(set(re.findall(engine_property_pattern, needle_entry_text)))
+    entry_physics_schemas = sorted(set(re.findall(engine_schema_pattern, needle_entry_text)))
     entry_physics_typed_prims = sorted(set(re.findall(r"\bdef\s+(Physics[A-Za-z0-9_]+)\s+\"", needle_entry_text)))
-    physics_required_tokens = [
+    neutral_required_tokens = [
         'defaultPrim = "DrAnmarNeedle"',
         'over "DrAnmarNeedle"',
         'over "Looks"',
         'def Material "NeedleSteelPhysics"',
-        '"PhysicsMaterialAPI", "PhysxMaterialAPI"',
+        '"PhysicsMaterialAPI"',
         'over "Needle" (',
-        '"PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"',
+        '"PhysicsRigidBodyAPI", "PhysicsMassAPI"',
         'def Scope "Collision"',
+        '"PhysicsCollisionAPI", "MaterialBindingAPI"',
         'over "NeedleInterface"',
         'def PhysicsFixedJoint "FactorySwage"',
     ]
-    missing_physics_layer_tokens = [token for token in physics_required_tokens if token not in needle_physics_text]
-    physics_layer_visual_payload_tokens = [
-        token
-        for token in (
+    physx_required_tokens = [
+        "@DrAnmarNeedle_physics.usda@",
+        'defaultPrim = "DrAnmarNeedle"',
+        'over "DrAnmarNeedle"',
+        'over "Looks"',
+        'over "NeedleSteelPhysics" (',
+        '"PhysxMaterialAPI"',
+        'over "Needle" (',
+        '"PhysxRigidBodyAPI"',
+        'over "Collision"',
+        'over "C000" (',
+        '"PhysxCollisionAPI"',
+        "physxCollision:contactOffset",
+        "physxCollision:restOffset",
+    ]
+    missing_neutral_layer_tokens = missing_text_tokens(needle_physics_text, neutral_required_tokens)
+    missing_physx_layer_tokens = missing_text_tokens(needle_physx_text, physx_required_tokens)
+    neutral_engine_specific_properties = sorted(
+        set(re.findall(r"\b(?:physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*", needle_physics_text))
+    )
+    neutral_engine_specific_schemas = sorted(
+        set(re.findall(r'"((?:Physx|Newton)[A-Za-z0-9_]*API)"', needle_physics_text))
+    )
+    physx_neutral_properties = sorted(set(re.findall(r"\bphysics:[A-Za-z][A-Za-z0-9_]*", needle_physx_text)))
+    physx_newton_properties = sorted(set(re.findall(r"\bnewton:[A-Za-z][A-Za-z0-9_]*", needle_physx_text)))
+    physx_newton_schemas = sorted(set(re.findall(r'"(Newton[A-Za-z0-9_]*API)"', needle_physx_text)))
+    non_entry_visual_payload_tokens = present_text_tokens(
+        (needle_physics_text, needle_physx_text),
+        (
             'def Mesh "Visual"',
             "point3f[] points",
             'def Shader "PreviewSurface"',
             "prepend references =",
-        )
-        if token in needle_physics_text
-    ]
+        ),
+    )
     check(
         checks,
-        "needle_dedicated_physics_layer_source_ownership",
+        "needle_engine_layer_source_ownership",
         layer_organization["entry_layer"] == "DrAnmarNeedle.usda"
         and layer_organization["physics_layer"] == "DrAnmarNeedle_physics.usda"
-        and layer_organization["composition"] == "entry_layer_sublayers_physics_layer"
+        and layer_organization["physx_layer"] == "DrAnmarNeedle_physx.usda"
+        and layer_organization["composition"]
+        == "entry_layer_sublayers_physx_layer_which_sublayers_neutral_physics_layer"
+        and layer_organization["default_runtime"] == "physx"
         and layer_organization["entry_layer_owns"]
         == [
             "stage_metadata",
@@ -351,24 +379,51 @@ def validate(
             "suture_interface_override",
             "factory_swage_joint",
         ]
-        and layer_organization["physics_property_prefixes"] == ["physics:", "physx", "newton:"]
-        and layer_organization["physics_schema_prefixes"] == ["Physics", "Physx", "Newton"]
-        and "@DrAnmarNeedle_physics.usda@" in needle_entry_text
+        and layer_organization["physx_layer_owns"]
+        == [
+            "physx_material_schema_and_combine_mode",
+            "physx_rigid_body_schema_and_solver_tuning",
+            "physx_collision_schemas_and_contact_offsets",
+        ]
+        and layer_organization["physics_property_prefixes"] == ["physics:"]
+        and layer_organization["physics_schema_prefixes"] == ["Physics"]
+        and layer_organization["physx_property_prefixes"] == ["physx"]
+        and layer_organization["physx_schema_prefixes"] == ["Physx"]
+        and layer_organization["forbidden_live_schema_prefixes"] == ["Newton"]
+        and layer_organization["engine_isolation"]
+        == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
+        and "@DrAnmarNeedle_physx.usda@" in needle_entry_text
+        and "@DrAnmarNeedle_physics.usda@" not in needle_entry_text
+        and "@DrAnmarNeedle_physics.usda@" in needle_physx_text
         and not entry_physics_properties
         and not entry_physics_schemas
         and not entry_physics_typed_prims
-        and not missing_physics_layer_tokens
-        and not physics_layer_visual_payload_tokens,
+        and not missing_neutral_layer_tokens
+        and not missing_physx_layer_tokens
+        and not neutral_engine_specific_properties
+        and not neutral_engine_specific_schemas
+        and not physx_neutral_properties
+        and not physx_newton_properties
+        and not physx_newton_schemas
+        and not non_entry_visual_payload_tokens
+        and "Newton" not in needle_text
+        and "newton:" not in needle_text,
         {
             "contract": layer_organization,
             "entry_physics_properties": entry_physics_properties,
             "entry_physics_schemas": entry_physics_schemas,
             "entry_physics_typed_prims": entry_physics_typed_prims,
-            "missing_physics_layer_tokens": missing_physics_layer_tokens,
-            "physics_layer_visual_payload_tokens": physics_layer_visual_payload_tokens,
+            "missing_neutral_layer_tokens": missing_neutral_layer_tokens,
+            "missing_physx_layer_tokens": missing_physx_layer_tokens,
+            "neutral_engine_specific_properties": neutral_engine_specific_properties,
+            "neutral_engine_specific_schemas": neutral_engine_specific_schemas,
+            "physx_neutral_properties": physx_neutral_properties,
+            "physx_newton_properties": physx_newton_properties,
+            "physx_newton_schemas": physx_newton_schemas,
+            "non_entry_visual_payload_tokens": non_entry_visual_payload_tokens,
         },
-        "stable entry layer owns identity and visuals while all local simulation schemas and properties are"
-        " isolated in DrAnmarNeedle_physics.usda",
+        "stable entry owns visuals, neutral USD physics stays engine-clean, and PhysX tuning is isolated without"
+        " unqualified Newton schemas",
     )
     forbidden_needle_tokens = [
         "../Surgical_needle",
@@ -497,32 +552,30 @@ def validate(
     )
     collision_attribute_errors: list[str] = []
     for index, capsule in enumerate(needle_collision_capsules):
-        match = re.search(
-            rf'def Capsule "C{index:03d}".*?\n        \}}',
-            needle_text,
+        neutral_match = re.search(
+            rf'def Capsule "C{index:03d}".*?\n            \}}',
+            needle_physics_text,
             flags=re.DOTALL,
         )
-        if match is None:
-            collision_attribute_errors.append(f"C{index:03d}:missing_block")
+        physx_match = re.search(
+            rf'over "C{index:03d}".*?\n            \}}',
+            needle_physx_text,
+            flags=re.DOTALL,
+        )
+        if neutral_match is None or physx_match is None:
+            collision_attribute_errors.append(f"C{index:03d}:missing_neutral_or_physx_block")
             continue
-        block = match.group(0)
-        height_match = re.search(r"float height = ([0-9.eE+-]+)", block)
-        radius_match = re.search(r"float radius = ([0-9.eE+-]+)", block)
+        neutral_block = neutral_match.group(0)
+        physx_block = physx_match.group(0)
+        height_match = re.search(r"float height = ([0-9.eE+-]+)", neutral_block)
+        radius_match = re.search(r"float radius = ([0-9.eE+-]+)", neutral_block)
         physx_contact_match = re.search(
             r"float physxCollision:contactOffset = ([0-9.eE+-]+)",
-            block,
+            physx_block,
         )
         physx_rest_match = re.search(
             r"float physxCollision:restOffset = ([0-9.eE+-]+)",
-            block,
-        )
-        newton_gap_match = re.search(
-            r"float newton:contactGap = ([0-9.eE+-]+)",
-            block,
-        )
-        newton_margin_match = re.search(
-            r"float newton:contactMargin = ([0-9.eE+-]+)",
-            block,
+            physx_block,
         )
         if height_match is None or not math.isclose(
             float(height_match.group(1)),
@@ -538,15 +591,15 @@ def validate(
             abs_tol=1.0e-12,
         ):
             collision_attribute_errors.append(f"C{index:03d}:radius")
-        if "float3[] extent = [" not in block:
+        if "float3[] extent = [" not in neutral_block:
             collision_attribute_errors.append(f"C{index:03d}:extent")
-        if f'uniform token purpose = "{render_collision_contract["collider_purpose"]}"' not in block:
+        if f'uniform token purpose = "{render_collision_contract["collider_purpose"]}"' not in neutral_block:
             collision_attribute_errors.append(f"C{index:03d}:purpose")
-        if f'token visibility = "{render_collision_contract["collider_visibility"]}"' not in block:
+        if f'token visibility = "{render_collision_contract["collider_visibility"]}"' not in neutral_block:
             collision_attribute_errors.append(f"C{index:03d}:visibility")
-        if expected_physics_material_binding not in block:
+        if expected_physics_material_binding not in neutral_block:
             collision_attribute_errors.append(f"C{index:03d}:physics_material_binding")
-        if "rel material:binding = " in block:
+        if "rel material:binding = " in neutral_block:
             collision_attribute_errors.append(f"C{index:03d}:visual_material_binding")
         expected_contact_attributes = (
             (
@@ -557,16 +610,6 @@ def validate(
             (
                 "physx_rest_offset",
                 physx_rest_match,
-                capsule.rest_offset_m,
-            ),
-            (
-                "newton_contact_gap",
-                newton_gap_match,
-                capsule.contact_offset_m - capsule.rest_offset_m,
-            ),
-            (
-                "newton_contact_margin",
-                newton_margin_match,
                 capsule.rest_offset_m,
             ),
         )
@@ -666,16 +709,24 @@ def validate(
     )
     visual_material_match = re.search(
         rf'def Material "{re.escape(str(material_organization["visual_material"]))}"\s*' r"\{(.*?)\n        \}",
-        needle_text,
+        needle_entry_text,
         flags=re.DOTALL,
     )
-    physics_material_match = re.search(
+    neutral_physics_material_match = re.search(
         rf'def Material "{re.escape(str(material_organization["physics_material"]))}".*?' r"\{(.*?)\n        \}",
-        needle_text,
+        needle_physics_text,
+        flags=re.DOTALL,
+    )
+    physx_material_match = re.search(
+        rf'over "{re.escape(str(material_organization["physics_material"]))}".*?' r"\{(.*?)\n        \}",
+        needle_physx_text,
         flags=re.DOTALL,
     )
     visual_material_block = visual_material_match.group(1) if visual_material_match is not None else ""
-    physics_material_block = physics_material_match.group(1) if physics_material_match is not None else ""
+    neutral_physics_material_block = (
+        neutral_physics_material_match.group(1) if neutral_physics_material_match is not None else ""
+    )
+    physx_material_block = physx_material_match.group(1) if physx_material_match is not None else ""
     check(
         checks,
         "needle_top_level_looks_and_separate_materials",
@@ -698,13 +749,19 @@ def validate(
         and "PhysicsMaterialAPI" not in visual_material_block
         and "PhysxMaterialAPI" not in visual_material_block
         and "physics:staticFriction" not in visual_material_block
-        and physics_material_match is not None
-        and '"PhysicsMaterialAPI", "PhysxMaterialAPI"' in physics_material_match.group(0)
-        and "physics:staticFriction" in physics_material_block
-        and "physics:dynamicFriction" in physics_material_block
-        and "physics:restitution" in physics_material_block
-        and "physxMaterial:frictionCombineMode" in physics_material_block
-        and 'def Shader "PreviewSurface"' not in physics_material_block
+        and neutral_physics_material_match is not None
+        and '"PhysicsMaterialAPI"' in neutral_physics_material_match.group(0)
+        and "PhysxMaterialAPI" not in neutral_physics_material_match.group(0)
+        and "physics:staticFriction" in neutral_physics_material_block
+        and "physics:dynamicFriction" in neutral_physics_material_block
+        and "physics:restitution" in neutral_physics_material_block
+        and "physxMaterial:frictionCombineMode" not in neutral_physics_material_block
+        and 'def Shader "PreviewSurface"' not in neutral_physics_material_block
+        and physx_material_match is not None
+        and '"PhysxMaterialAPI"' in physx_material_match.group(0)
+        and "PhysicsMaterialAPI" not in physx_material_match.group(0)
+        and "physxMaterial:frictionCombineMode" in physx_material_block
+        and "physics:staticFriction" not in physx_material_block
         and needle_text.count(visual_material_path) == 2
         and needle_text.count(physics_material_path) == derived_needle.collision_capsule_count,
         {
@@ -712,12 +769,14 @@ def validate(
             "visual_material_path": visual_material_path,
             "physics_material_path": physics_material_path,
             "visual_material_found": visual_material_match is not None,
-            "physics_material_found": physics_material_match is not None,
+            "neutral_physics_material_found": neutral_physics_material_match is not None,
+            "physx_material_overlay_found": physx_material_match is not None,
             "authored_material_count": len(re.findall(r'def Material "[^"]+"', needle_text)),
             "visual_path_reference_count": needle_text.count(visual_material_path),
             "physics_path_reference_count": needle_text.count(physics_material_path),
         },
-        "two direct children of top-level Looks with disjoint visual shader and physics schema responsibilities",
+        "two direct children of top-level Looks with visual, neutral physics, and PhysX material responsibilities"
+        " isolated by source layer",
     )
     contact_offset_contract = collision_contract["contact_offsets"]
     contact_offsets = [capsule.contact_offset_m for capsule in needle_collision_capsules]
@@ -738,15 +797,16 @@ def validate(
     )
     contact_attribute_counts = {
         "PhysxCollisionAPI": needle_text.count('"PhysxCollisionAPI"'),
-        "NewtonCollisionAPI": needle_text.count('"NewtonCollisionAPI"'),
         "physx_contact_offset": needle_text.count("physxCollision:contactOffset"),
         "physx_rest_offset": needle_text.count("physxCollision:restOffset"),
-        "newton_contact_gap": needle_text.count("newton:contactGap"),
-        "newton_contact_margin": needle_text.count("newton:contactMargin"),
+    }
+    forbidden_engine_attribute_counts = {
+        "NewtonCollisionAPI": needle_text.count('"NewtonCollisionAPI"'),
+        "newton_properties": needle_text.count("newton:"),
     }
     check(
         checks,
-        "needle_scale_aware_dual_stack_contact_offsets",
+        "needle_scale_aware_physx_contact_offsets",
         contact_offset_contract["policy"] == "clamped_fraction_of_final_collision_radius"
         and contact_offset_contract["basis"]
         == "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep"
@@ -768,8 +828,11 @@ def validate(
         and max(contact_offsets) < min(capsule.collision_radius_m for capsule in needle_collision_capsules)
         and contact_offsets_monotonic
         and all(count == derived_needle.collision_capsule_count for count in contact_attribute_counts.values())
-        and contact_offset_contract["mapping"]
-        == "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset",
+        and all(count == 0 for count in forbidden_engine_attribute_counts.values())
+        and contact_offset_contract["engine_layer"] == "DrAnmarNeedle_physx.usda"
+        and contact_offset_contract["neutral_layer_policy"] == "no_engine_specific_contact_schema"
+        and contact_offset_contract["unsupported_engine_schema_policy"]
+        == "do_not_author_until_the_complete_needle_suture_assembly_is_qualified_on_that_backend",
         {
             "contact_offset_range_m": [
                 min(contact_offsets),
@@ -782,9 +845,10 @@ def validate(
             "minimum_collision_radius_m": min(capsule.collision_radius_m for capsule in needle_collision_capsules),
             "contact_offsets_monotonic_with_radius": contact_offsets_monotonic,
             "authored_attribute_counts": contact_attribute_counts,
+            "forbidden_engine_attribute_counts": forbidden_engine_attribute_counts,
             "contract": contact_offset_contract,
         },
-        "bounded scale-aware PhysX offsets with equivalent Newton margin/gap mapping on every collider",
+        "bounded scale-aware PhysX offsets on every collider with no unqualified cross-engine schema authoring",
     )
     native_probe_tokens = [
         "needle_collision_capsule_count",
@@ -796,8 +860,9 @@ def validate(
         "needle_principal_axes_wxyz",
         "needle_mass_properties_match_geometry",
         "needle_physx_contact_offset_range_m",
-        "needle_newton_contact_gap_range_m",
-        "needle_contact_offset_mapping_matches",
+        "needle_physx_contact_offsets_match_profile",
+        "needle_newton_collision_api_count",
+        "needle_engine_schema_isolation_valid",
         "needle_visual_normal_value_count",
         "needle_visual_normal_index_count",
         "needle_visual_normals_valid",
@@ -806,7 +871,7 @@ def validate(
         "needle_collision_physics_material_binding_count",
         "needle_render_collision_separation_valid",
         "needle_material_organization_valid",
-        "needle_local_physics_layer_source_ownership_valid",
+        "needle_engine_layer_source_ownership_valid",
     ]
     missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(
@@ -836,13 +901,13 @@ def validate(
         and material_organization["scope"] == "Looks"
         and material_organization["separate_by_purpose"] is True
         and layer_organization["physics_layer"].endswith("_physics.usda")
-        and layer_organization["composition"] == "entry_layer_sublayers_physics_layer"
-        and contact_offset_contract["newton_authoring"]
-        == [
-            "NewtonCollisionAPI",
-            "newton:contactGap",
-            "newton:contactMargin",
-        ]
+        and layer_organization["physx_layer"].endswith("_physx.usda")
+        and layer_organization["composition"]
+        == "entry_layer_sublayers_physx_layer_which_sublayers_neutral_physics_layer"
+        and layer_organization["engine_isolation"]
+        == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
+        and contact_offset_contract["engine_layer"] == "DrAnmarNeedle_physx.usda"
+        and contact_offset_contract["neutral_layer_policy"] == "no_engine_specific_contact_schema"
         and needle_profile["solver"]["ccd"] is True
         and needle_profile["contact"]["combine_mode"] == "max"
         and not missing_native_probe_tokens,
@@ -853,7 +918,8 @@ def validate(
             "friction_combine_mode": needle_profile["contact"]["combine_mode"],
             "missing_native_probe_tokens": missing_native_probe_tokens,
         },
-        "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, material, and source-layer contract",
+        "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, material, and engine-isolated"
+        " source-layer contract",
     )
     construction = needle_profile["construction"]
     arc_range = [float(value) for value in construction["centerline_arc_length_range_m"]]
@@ -1439,6 +1505,11 @@ def main() -> int:
         type=Path,
         default=DEFAULT_NEEDLE_PHYSICS,
     )
+    parser.add_argument(
+        "--needle-physx",
+        type=Path,
+        default=DEFAULT_NEEDLE_PHYSX,
+    )
     parser.add_argument("--workstation", type=Path, default=DEFAULT_WORKSTATION)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -1447,6 +1518,7 @@ def main() -> int:
     asset_text = args.asset.read_text(encoding="utf-8")
     needle_entry_text = args.needle.read_text(encoding="utf-8")
     needle_physics_text = args.needle_physics.read_text(encoding="utf-8")
+    needle_physx_text = args.needle_physx.read_text(encoding="utf-8")
     workstation_text = args.workstation.read_text(encoding="utf-8")
     report = validate(
         profile,
@@ -1454,6 +1526,7 @@ def main() -> int:
         asset_text,
         needle_entry_text,
         needle_physics_text,
+        needle_physx_text,
         workstation_text,
     )
     encoded = json.dumps(report, indent=2, sort_keys=True)

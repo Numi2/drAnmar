@@ -19,10 +19,11 @@
       "id": "dr-anmar-needle",
       "asset": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
       "physics_layer": "assets/dr_anmar/needle/DrAnmarNeedle_physics.usda",
+      "physx_layer": "assets/dr_anmar/needle/DrAnmarNeedle_physx.usda",
       "profile": "physics_next/needles/dr-anmar-needle-v1.json",
       "report": "assets/dr_anmar/suture/DrAnmarSuture4_0.report.json",
       "live_integration": "all_repository_local_rooms",
-      "live_behavior": "modular_entry_and_dedicated_physics_layers_rigid_needle_geometry_integrated_explicit_mass_center_inertia_principal_axes_analytic_indexed_face_varying_normals_top_level_looks_separate_visual_physics_materials_guide_purpose_nonrendering_collision_density_scaled_episode_dynamics_scale_aware_dual_physx_newton_contact_offsets_curvature_bounded_explicit_extent_compound_collision_swage_and_setup_domain",
+      "live_behavior": "modular_entry_neutral_physics_and_dedicated_physx_layers_without_cross_engine_schema_contamination_rigid_needle_geometry_integrated_explicit_mass_center_inertia_principal_axes_analytic_indexed_face_varying_normals_top_level_looks_separate_visual_physics_materials_guide_purpose_nonrendering_collision_density_scaled_episode_dynamics_scale_aware_physx_contact_offsets_curvature_bounded_explicit_extent_compound_collision_swage_and_setup_domain",
       "native_gpu_qualification": "blocked_pending_native_probe",
       "physical_qualification": "blocked_pending_metrology_and_bench_data",
       "clinical_validation": false

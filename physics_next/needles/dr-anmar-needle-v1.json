@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -59,12 +59,9 @@
           "physxCollision:contactOffset",
           "physxCollision:restOffset"
         ],
-        "newton_authoring": [
-          "NewtonCollisionAPI",
-          "newton:contactGap",
-          "newton:contactMargin"
-        ],
-        "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset"
+        "engine_layer": "DrAnmarNeedle_physx.usda",
+        "neutral_layer_policy": "no_engine_specific_contact_schema",
+        "unsupported_engine_schema_policy": "do_not_author_until_the_complete_needle_suture_assembly_is_qualified_on_that_backend"
       }
     },
     "mass_properties": {
@@ -102,7 +99,9 @@
     "layer_organization": {
       "entry_layer": "DrAnmarNeedle.usda",
       "physics_layer": "DrAnmarNeedle_physics.usda",
-      "composition": "entry_layer_sublayers_physics_layer",
+      "physx_layer": "DrAnmarNeedle_physx.usda",
+      "composition": "entry_layer_sublayers_physx_layer_which_sublayers_neutral_physics_layer",
+      "default_runtime": "physx",
       "entry_layer_owns": [
         "stage_metadata",
         "asset_identity",
@@ -117,16 +116,27 @@
         "suture_interface_override",
         "factory_swage_joint"
       ],
+      "physx_layer_owns": [
+        "physx_material_schema_and_combine_mode",
+        "physx_rigid_body_schema_and_solver_tuning",
+        "physx_collision_schemas_and_contact_offsets"
+      ],
       "physics_property_prefixes": [
-        "physics:",
-        "physx",
-        "newton:"
+        "physics:"
       ],
       "physics_schema_prefixes": [
-        "Physics",
-        "Physx",
+        "Physics"
+      ],
+      "physx_property_prefixes": [
+        "physx"
+      ],
+      "physx_schema_prefixes": [
+        "Physx"
+      ],
+      "forbidden_live_schema_prefixes": [
         "Newton"
-      ]
+      ],
+      "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
     }
   },
   "material": {
@@ -210,11 +220,6 @@
       "used_for": "explicit mass, center of mass, diagonal inertia and principal-axis authoring"
     },
     {
-      "title": "NVIDIA Newton schema and PhysX migration mapping",
-      "url": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/latest/dev_guide/schemas/newtonSchema.html",
-      "used_for": "forward-compatible contact margin and gap authoring with explicit PhysX mapping"
-    },
-    {
       "title": "NVIDIA mesh normals existence requirement",
       "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/latest/capabilities/geometry/requirements/usdgeom-mesh-normals-exist.html",
       "used_for": "preferred indexed primvars normals representation on non-subdivided visual meshes"
@@ -237,7 +242,12 @@
     {
       "title": "Isaac Sim asset structure",
       "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_structure.html",
-      "used_for": "stable composed entry asset with visual and physics responsibilities isolated in separate lightweight layers"
+      "used_for": "stable composed entry asset with neutral physics and PhysX-specific responsibilities isolated in separate lightweight layers"
+    },
+    {
+      "title": "Isaac Sim multiphysics robot assets",
+      "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/assets/usd_assets_robots.html",
+      "used_for": "preventing engine-specific schema contamination in neutral physics layers"
     }
   ],
   "sim_to_real": {

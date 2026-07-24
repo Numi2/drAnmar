@@ -154,9 +154,8 @@ def main() -> int:
     needle_newton_collision_api_count = None
     needle_physx_contact_offset_range_m = None
     needle_physx_rest_offset_range_m = None
-    needle_newton_contact_gap_range_m = None
-    needle_newton_contact_margin_range_m = None
-    needle_contact_offset_mapping_matches = None
+    needle_physx_contact_offsets_match_profile = None
+    needle_engine_schema_isolation_valid = None
     needle_visual_normal_value_count = None
     needle_visual_normal_index_count = None
     needle_visual_normal_interpolation = None
@@ -166,14 +165,18 @@ def main() -> int:
     needle_collision_physics_material_binding_count = None
     needle_render_collision_separation_valid = None
     needle_material_organization_valid = None
-    needle_local_physics_layer_name = None
-    needle_local_physics_layer_source_ownership_valid = None
+    needle_neutral_physics_layer_name = None
+    needle_physx_layer_name = None
+    needle_engine_layer_source_ownership_valid = None
     if assembly:
         layer_organization = needle_profile["construction"]["layer_organization"]
-        needle_local_physics_layer_name = str(layer_organization["physics_layer"])
-        local_physics_path = args.asset.resolve().parent / needle_local_physics_layer_name
+        needle_neutral_physics_layer_name = str(layer_organization["physics_layer"])
+        needle_physx_layer_name = str(layer_organization["physx_layer"])
+        local_physics_path = args.asset.resolve().parent / needle_neutral_physics_layer_name
+        local_physx_path = args.asset.resolve().parent / needle_physx_layer_name
         entry_layer_text = args.asset.read_text(encoding="utf-8")
         physics_layer_text = local_physics_path.read_text(encoding="utf-8")
+        physx_layer_text = local_physx_path.read_text(encoding="utf-8")
         entry_physics_properties = re.findall(
             r"\b(?:physics:|physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*",
             entry_layer_text,
@@ -186,23 +189,59 @@ def main() -> int:
             r"\bdef\s+(Physics[A-Za-z0-9_]+)\s+\"",
             entry_layer_text,
         )
-        needle_local_physics_layer_source_ownership_valid = bool(
+        neutral_engine_properties = re.findall(
+            r"\b(?:physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*",
+            physics_layer_text,
+        )
+        neutral_engine_schemas = re.findall(
+            r'"((?:Physx|Newton)[A-Za-z0-9_]*API)"',
+            physics_layer_text,
+        )
+        physx_neutral_properties = re.findall(
+            r"\bphysics:[A-Za-z][A-Za-z0-9_]*",
+            physx_layer_text,
+        )
+        physx_newton_properties = re.findall(
+            r"\bnewton:[A-Za-z][A-Za-z0-9_]*",
+            physx_layer_text,
+        )
+        physx_newton_schemas = re.findall(
+            r'"(Newton[A-Za-z0-9_]*API)"',
+            physx_layer_text,
+        )
+        needle_engine_layer_source_ownership_valid = bool(
             layer_organization["entry_layer"] == args.asset.name
-            and needle_local_physics_layer_name.endswith("_physics.usda")
-            and f"@{needle_local_physics_layer_name}@" in entry_layer_text
+            and needle_neutral_physics_layer_name.endswith("_physics.usda")
+            and needle_physx_layer_name.endswith("_physx.usda")
+            and f"@{needle_physx_layer_name}@" in entry_layer_text
+            and f"@{needle_neutral_physics_layer_name}@" in physx_layer_text
             and not entry_physics_properties
             and not entry_physics_schemas
             and not entry_physics_typed_prims
+            and not neutral_engine_properties
+            and not neutral_engine_schemas
+            and not physx_neutral_properties
+            and not physx_newton_properties
+            and not physx_newton_schemas
             and 'def Material "NeedleSteelPhysics"' in physics_layer_text
-            and '"PhysicsMaterialAPI", "PhysxMaterialAPI"' in physics_layer_text
-            and '"PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"' in physics_layer_text
+            and '"PhysicsMaterialAPI"' in physics_layer_text
+            and '"PhysicsRigidBodyAPI", "PhysicsMassAPI"' in physics_layer_text
             and 'def Scope "Collision"' in physics_layer_text
             and 'over "NeedleInterface"' in physics_layer_text
             and 'def PhysicsFixedJoint "FactorySwage"' in physics_layer_text
+            and '"PhysxMaterialAPI"' in physx_layer_text
+            and '"PhysxRigidBodyAPI"' in physx_layer_text
+            and '"PhysxCollisionAPI"' in physx_layer_text
+            and "physxCollision:contactOffset" in physx_layer_text
+            and "physxCollision:restOffset" in physx_layer_text
             and 'def Mesh "Visual"' not in physics_layer_text
+            and 'def Mesh "Visual"' not in physx_layer_text
             and "point3f[] points" not in physics_layer_text
+            and "point3f[] points" not in physx_layer_text
             and 'def Shader "PreviewSurface"' not in physics_layer_text
+            and 'def Shader "PreviewSurface"' not in physx_layer_text
             and "prepend references =" not in physics_layer_text
+            and "prepend references =" not in physx_layer_text
         )
         needle_collision_capsules = [
             prim
@@ -238,12 +277,6 @@ def main() -> int:
         physx_rest_offsets = [
             float(prim.GetAttribute("physxCollision:restOffset").Get()) for prim in needle_collision_capsules
         ]
-        newton_contact_gaps = [
-            float(prim.GetAttribute("newton:contactGap").Get()) for prim in needle_collision_capsules
-        ]
-        newton_contact_margins = [
-            float(prim.GetAttribute("newton:contactMargin").Get()) for prim in needle_collision_capsules
-        ]
         needle_physx_contact_offset_range_m = [
             min(physx_contact_offsets),
             max(physx_contact_offsets),
@@ -252,23 +285,13 @@ def main() -> int:
             min(physx_rest_offsets),
             max(physx_rest_offsets),
         ]
-        needle_newton_contact_gap_range_m = [
-            min(newton_contact_gaps),
-            max(newton_contact_gaps),
-        ]
-        needle_newton_contact_margin_range_m = [
-            min(newton_contact_margins),
-            max(newton_contact_margins),
-        ]
         expected_contact_offsets = [capsule.contact_offset_m for capsule in expected_collision_capsules]
         expected_rest_offsets = [capsule.rest_offset_m for capsule in expected_collision_capsules]
-        needle_contact_offset_mapping_matches = bool(
+        needle_physx_contact_offsets_match_profile = bool(
             np.isfinite(
                 [
                     *physx_contact_offsets,
                     *physx_rest_offsets,
-                    *newton_contact_gaps,
-                    *newton_contact_margins,
                 ]
             ).all()
             and np.allclose(
@@ -281,18 +304,6 @@ def main() -> int:
                 physx_rest_offsets,
                 expected_rest_offsets,
                 rtol=0.0,
-                atol=1.0e-12,
-            )
-            and np.allclose(
-                newton_contact_margins,
-                physx_rest_offsets,
-                rtol=0.0,
-                atol=1.0e-12,
-            )
-            and np.allclose(
-                newton_contact_gaps,
-                np.asarray(physx_contact_offsets) - np.asarray(physx_rest_offsets),
-                rtol=1.0e-6,
                 atol=1.0e-12,
             )
         )
@@ -383,6 +394,24 @@ def main() -> int:
             and str(visual_shader_prim.GetAttribute("info:id").Get()) == "UsdPreviewSurface"
             and not stage.GetPrimAtPath(f"{expected_physics_material_path}/PreviewSurface").IsValid()
         )
+        needle_prim = stage.GetPrimAtPath(f"{root_path}/Needle")
+        needle_engine_schema_isolation_valid = bool(
+            "PhysicsRigidBodyAPI" in needle_prim.GetAppliedSchemas()
+            and "PhysicsMassAPI" in needle_prim.GetAppliedSchemas()
+            and "PhysxRigidBodyAPI" in needle_prim.GetAppliedSchemas()
+            and all("Newton" not in schema for schema in needle_prim.GetAppliedSchemas())
+            and needle_physx_collision_api_count == derived_needle.collision_capsule_count
+            and needle_newton_collision_api_count == 0
+            and all("PhysicsCollisionAPI" in prim.GetAppliedSchemas() for prim in needle_collision_capsules)
+            and all(
+                not prim.GetAttribute("newton:contactGap").IsValid()
+                and not prim.GetAttribute("newton:contactMargin").IsValid()
+                for prim in needle_collision_capsules
+            )
+            and "PhysicsMaterialAPI" in physics_material_prim.GetAppliedSchemas()
+            and "PhysxMaterialAPI" in physics_material_prim.GetAppliedSchemas()
+            and all("Newton" not in schema for schema in physics_material_prim.GetAppliedSchemas())
+        )
         normal_attribute = visual_prim.GetAttribute("primvars:normals")
         normal_index_attribute = visual_prim.GetAttribute("primvars:normals:indices")
         authored_normals = normal_attribute.Get()
@@ -432,7 +461,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v7",
+        "schema": "dr.anmar.needle-native-physx-probe.v8",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -454,9 +483,8 @@ def main() -> int:
         "needle_newton_collision_api_count": needle_newton_collision_api_count,
         "needle_physx_contact_offset_range_m": needle_physx_contact_offset_range_m,
         "needle_physx_rest_offset_range_m": needle_physx_rest_offset_range_m,
-        "needle_newton_contact_gap_range_m": needle_newton_contact_gap_range_m,
-        "needle_newton_contact_margin_range_m": needle_newton_contact_margin_range_m,
-        "needle_contact_offset_mapping_matches": needle_contact_offset_mapping_matches,
+        "needle_physx_contact_offsets_match_profile": needle_physx_contact_offsets_match_profile,
+        "needle_engine_schema_isolation_valid": needle_engine_schema_isolation_valid,
         "needle_visual_normal_value_count": needle_visual_normal_value_count,
         "needle_visual_normal_index_count": needle_visual_normal_index_count,
         "needle_visual_normal_interpolation": needle_visual_normal_interpolation,
@@ -466,8 +494,9 @@ def main() -> int:
         "needle_collision_physics_material_binding_count": needle_collision_physics_material_binding_count,
         "needle_render_collision_separation_valid": needle_render_collision_separation_valid,
         "needle_material_organization_valid": needle_material_organization_valid,
-        "needle_local_physics_layer_name": needle_local_physics_layer_name,
-        "needle_local_physics_layer_source_ownership_valid": needle_local_physics_layer_source_ownership_valid,
+        "needle_neutral_physics_layer_name": needle_neutral_physics_layer_name,
+        "needle_physx_layer_name": needle_physx_layer_name,
+        "needle_engine_layer_source_ownership_valid": needle_engine_layer_source_ownership_valid,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -493,8 +522,9 @@ def main() -> int:
                 and report["needle_friction_combine_mode"] == "max"
                 and report["needle_mass_properties_match_geometry"]
                 and report["needle_physx_collision_api_count"] == derived_needle.collision_capsule_count
-                and report["needle_newton_collision_api_count"] == derived_needle.collision_capsule_count
-                and report["needle_contact_offset_mapping_matches"]
+                and report["needle_newton_collision_api_count"] == 0
+                and report["needle_physx_contact_offsets_match_profile"]
+                and report["needle_engine_schema_isolation_valid"]
                 and report["needle_visual_normal_value_count"] == len(expected_needle_mesh.normals)
                 and report["needle_visual_normal_index_count"] == len(expected_needle_mesh.normal_indices)
                 and report["needle_visual_normals_valid"]
@@ -503,7 +533,7 @@ def main() -> int:
                 and report["needle_collision_physics_material_binding_count"] == derived_needle.collision_capsule_count
                 and report["needle_render_collision_separation_valid"]
                 and report["needle_material_organization_valid"]
-                and report["needle_local_physics_layer_source_ownership_valid"]
+                and report["needle_engine_layer_source_ownership_valid"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None

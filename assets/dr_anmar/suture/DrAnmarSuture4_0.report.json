@@ -1,19 +1,23 @@
 {
-  "schema": "dr.anmar.suture-asset-report.v4",
+  "schema": "dr.anmar.suture-asset-report.v5",
   "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
   "asset": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
   "asset_sha256": "7b33b49b6b2c7934af9569d789b45bf2bdf0df16e98cc7d9806f56440e831c90",
   "dr_anmar_needle_name": "DrAnmar Needle",
   "dr_anmar_needle_asset_id": "dr-anmar-needle",
-  "dr_anmar_needle_asset_version": "1.7.0",
+  "dr_anmar_needle_asset_version": "1.8.0",
   "dr_anmar_needle": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
-  "dr_anmar_needle_sha256": "7109a7a4de2f704616e69dec461c4895b21bcc4be4e7af33bf316b8f916c29f0",
+  "dr_anmar_needle_sha256": "009cd6a8483f325abb8cc527392e18e7150bec13000eecdd6e2a5e646465edbe",
   "dr_anmar_needle_physics": "assets/dr_anmar/needle/DrAnmarNeedle_physics.usda",
-  "dr_anmar_needle_physics_sha256": "1e6ee3170b422e11c20be9604809e6e6f1cec9fcd9eb9e1f1eb20e93d1e6f398",
+  "dr_anmar_needle_physics_sha256": "9496fbf6230616ca417d4e3e58f78e985c64d3ea0c8265db07abe3caa63409de",
+  "dr_anmar_needle_physx": "assets/dr_anmar/needle/DrAnmarNeedle_physx.usda",
+  "dr_anmar_needle_physx_sha256": "aea8f12d309b5cd3c92dff6de93869fdc8356816cda0cbc85f01316e2da5a545",
   "dr_anmar_needle_layer_contract": {
     "entry_layer": "DrAnmarNeedle.usda",
     "physics_layer": "DrAnmarNeedle_physics.usda",
-    "composition": "entry_layer_sublayers_physics_layer",
+    "physx_layer": "DrAnmarNeedle_physx.usda",
+    "composition": "entry_layer_sublayers_physx_layer_which_sublayers_neutral_physics_layer",
+    "default_runtime": "physx",
     "entry_layer_owns": [
       "stage_metadata",
       "asset_identity",
@@ -28,16 +32,27 @@
       "suture_interface_override",
       "factory_swage_joint"
     ],
+    "physx_layer_owns": [
+      "physx_material_schema_and_combine_mode",
+      "physx_rigid_body_schema_and_solver_tuning",
+      "physx_collision_schemas_and_contact_offsets"
+    ],
     "physics_property_prefixes": [
-      "physics:",
-      "physx",
-      "newton:"
+      "physics:"
     ],
     "physics_schema_prefixes": [
-      "Physics",
-      "Physx",
+      "Physics"
+    ],
+    "physx_property_prefixes": [
+      "physx"
+    ],
+    "physx_schema_prefixes": [
+      "Physx"
+    ],
+    "forbidden_live_schema_prefixes": [
       "Newton"
-    ]
+    ],
+    "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
   },
   "needle_profile": "physics_next/needles/dr-anmar-needle-v1.json",
   "needle_profile_id": "dr-anmar-needle-v1",
@@ -114,12 +129,9 @@
         "physxCollision:contactOffset",
         "physxCollision:restOffset"
       ],
-      "newton_authoring": [
-        "NewtonCollisionAPI",
-        "newton:contactGap",
-        "newton:contactMargin"
-      ],
-      "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset"
+      "engine_layer": "DrAnmarNeedle_physx.usda",
+      "neutral_layer_policy": "no_engine_specific_contact_schema",
+      "unsupported_engine_schema_policy": "do_not_author_until_the_complete_needle_suture_assembly_is_qualified_on_that_backend"
     }
   },
   "needle_material_organization": {
@@ -162,12 +174,9 @@
       "physxCollision:contactOffset",
       "physxCollision:restOffset"
     ],
-    "newton_authoring": [
-      "NewtonCollisionAPI",
-      "newton:contactGap",
-      "newton:contactMargin"
-    ],
-    "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset"
+    "engine_layer": "DrAnmarNeedle_physx.usda",
+    "neutral_layer_policy": "no_engine_specific_contact_schema",
+    "unsupported_engine_schema_policy": "do_not_author_until_the_complete_needle_suture_assembly_is_qualified_on_that_backend"
   },
   "needle_contact_offset_range_m": [
     5e-06,

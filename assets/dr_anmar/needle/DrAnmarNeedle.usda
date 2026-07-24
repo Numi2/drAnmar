@@ -1,7 +1,7 @@
 #usda 1.0
 (
     subLayers = [
-        @DrAnmarNeedle_physics.usda@
+        @DrAnmarNeedle_physx.usda@
     ]
     defaultPrim = "DrAnmarNeedle"
     doc = "DrAnmar Needle: independently generated research-grade curved taper-point needle with factory-swaged Dr.Anmar 4-0 suture; not clinically validated."
@@ -14,16 +14,16 @@ def Xform "DrAnmarNeedle" (
     customData = {
         string drAnmarAssetId = "dr-anmar-needle"
         string drAnmarAssetName = "DrAnmar Needle"
-        string drAnmarAssetVersion = "1.7.0"
+        string drAnmarAssetVersion = "1.8.0"
         string drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"
         bool drAnmarClinicalValidation = false
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
         int drAnmarMassPropertyIntegrationSlices = 8192
-        string drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"
+        string drAnmarContactOffsetContract = "scale_aware_physx_engine_layer_authoring"
         string drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"
         string drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"
         string drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"
-        string drAnmarLayerContract = "entry_visual_composition_plus_dedicated_physics_sublayer"
+        string drAnmarLayerContract = "entry_sublayers_physx_which_sublayers_neutral_physics"
         string drAnmarNeedleProfileId = "dr-anmar-needle-v1"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"

@@ -12,12 +12,13 @@ from dr_anmar_needle_model import derive_needle, load_needle_profile, sample_epi
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DR_ANMAR_NEEDLE_NAME = "DrAnmar Needle"
 DR_ANMAR_NEEDLE_ASSET_ID = "dr-anmar-needle"
-DR_ANMAR_NEEDLE_ASSET_VERSION = "1.7.0"
+DR_ANMAR_NEEDLE_ASSET_VERSION = "1.8.0"
 DR_ANMAR_NEEDLE_ROOT_PRIM = "DrAnmarNeedle"
 DR_ANMAR_ASSET_ROOT = REPOSITORY_ROOT / "assets/dr_anmar"
 SUTURE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0.usda"
 DR_ANMAR_NEEDLE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle.usda"
 DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_physics.usda"
+DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_physx.usda"
 SUTURE_NEEDLE_INTERFACE_CENTER_M = (-0.00025, 0.0, 0.0)
 
 # A 90-degree yaw keeps the 180 mm strand inside the shared PSM workspace.
@@ -50,6 +51,7 @@ def validate_source_assets() -> None:
             SUTURE_ASSET_PATH,
             DR_ANMAR_NEEDLE_ASSET_PATH,
             DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH,
+            DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH,
         )
         if not path.is_file()
     ]
@@ -82,6 +84,7 @@ def configure_dr_anmar_needle(
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION,
         "asset": str(DR_ANMAR_NEEDLE_ASSET_PATH),
         "physics_layer": str(DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH),
+        "physx_layer": str(DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH),
         "prim_path": f"/World/envs/env_0/{DR_ANMAR_NEEDLE_ROOT_PRIM}",
         "landing_position_m": list(SUTURE_LANDING_POSITION_M),
         "landing_rotation_wxyz": list(SUTURE_LANDING_ROTATION_WXYZ),

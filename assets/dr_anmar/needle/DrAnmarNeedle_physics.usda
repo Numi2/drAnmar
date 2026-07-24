@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "DrAnmarNeedle"
-    doc = "DrAnmar Needle local physics layer. Composed by DrAnmarNeedle.usda."
+    doc = "DrAnmar Needle engine-neutral local physics layer. Composed by DrAnmarNeedle_physx.usda."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -12,18 +12,17 @@ over "DrAnmarNeedle"
     over "Looks"
     {
         def Material "NeedleSteelPhysics" (
-            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
         )
         {
             float physics:staticFriction = 0.32
             float physics:dynamicFriction = 0.24
             float physics:restitution = 0.02
-            uniform token physxMaterial:frictionCombineMode = "max"
         }
     }
 
     over "Needle" (
-        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
     )
     {
         bool physics:rigidBodyEnabled = true
@@ -32,15 +31,11 @@ over "DrAnmarNeedle"
         point3f physics:centerOfMass = (0.00501937942857, 0.00061954163063, 0)
         float3 physics:diagonalInertia = (9.42851455126e-11, 6.56599429871e-10, 7.49855912494e-10)
         quatf physics:principalAxes = (0.749196290374, 0, 0, -0.662348034262)
-        bool physxRigidBody:enableCCD = true
-        int physxRigidBody:solverPositionIterationCount = 24
-        int physxRigidBody:solverVelocityIterationCount = 8
-        float physxRigidBody:maxDepenetrationVelocity = 0.5
 
         def Scope "Collision"
         {
             def Capsule "C000" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -51,17 +46,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 5e-06
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 5e-06
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.999807240482, 0, 0, 0.0196336924606)
                 double3 xformOp:translate = (0.000274929324689, -0.00699741857754, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C001" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -72,17 +63,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 7.02136783692e-06
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 7.02136783692e-06
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.998265610185, 0, 0, 0.0588708036512)
                 double3 xformOp:translate = (0.000823092943357, -0.00695427716513, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C002" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -93,17 +80,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 1.16415826807e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 1.16415826807e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.995184726672, 0, 0, 0.0980171403296)
                 double3 xformOp:translate = (0.00136618192032, -0.00686826032147, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C003" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -114,17 +97,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 1.67580865869e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 1.67580865869e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.990569340444, 0, 0, 0.137012341682)
                 double3 xformOp:translate = (0.00190084793145, -0.006739898369, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C004" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -135,17 +114,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.15909967432e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.15909967432e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.98442656809, 0, 0, 0.175796279934)
                 double3 xformOp:translate = (0.00242379458298, -0.00656998270183, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C005" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -156,17 +131,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.976765881321, 0, 0, 0.214309153065)
                 double3 xformOp:translate = (0.00293179773492, -0.00635956090657, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C006" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -177,17 +148,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.96759909236, 0, 0, 0.252491577015)
                 double3 xformOp:translate = (0.00342172537889, -0.00610993030356, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C007" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -198,17 +165,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.956940335732, 0, 0, 0.290284677254)
                 double3 xformOp:translate = (0.00389055694807, -0.00582262994846, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C008" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -219,17 +182,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.944806046467, 0, 0, 0.327630179562)
                 double3 xformOp:translate = (0.00433540193992, -0.00549943114351, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C009" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -240,17 +199,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.931214934759, 0, 0, 0.364470499879)
                 double3 xformOp:translate = (0.00475351773715, -0.00514232651681, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C010" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -261,17 +216,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.916187957117, 0, 0, 0.400748833103)
                 double3 xformOp:translate = (0.00514232651681, -0.00475351773715, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C011" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -282,17 +233,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.899748284052, 0, 0, 0.436409240673)
                 double3 xformOp:translate = (0.00549943114351, -0.00433540193992, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C012" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -303,17 +250,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.881921264348, 0, 0, 0.471396736826)
                 double3 xformOp:translate = (0.00582262994846, -0.00389055694807, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C013" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -324,17 +267,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.862734385978, 0, 0, 0.505657373378)
                 double3 xformOp:translate = (0.00610993030356, -0.00342172537889, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C014" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -345,17 +284,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.842217233716, 0, 0, 0.539138322911)
                 double3 xformOp:translate = (0.00635956090657, -0.00293179773492, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C015" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -366,17 +301,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.820401443526, 0, 0, 0.571787960228)
                 double3 xformOp:translate = (0.00656998270183, -0.00242379458298, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C016" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -387,17 +318,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.797320653773, 0, 0, 0.603555941954)
                 double3 xformOp:translate = (0.006739898369, -0.00190084793145, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C017" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -408,17 +335,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.773010453363, 0, 0, 0.634393284164)
                 double3 xformOp:translate = (0.00686826032147, -0.00136618192032, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C018" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -429,17 +352,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.747508326863, 0, 0, 0.664252437911)
                 double3 xformOp:translate = (0.00695427716513, -0.000823092943357, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C019" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -450,17 +369,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.720853596703, 0, 0, 0.693087362546)
                 double3 xformOp:translate = (0.00699741857754, -0.000274929324689, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C020" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -471,17 +386,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.693087362546, 0, 0, 0.720853596703)
                 double3 xformOp:translate = (0.00699741857754, 0.000274929324689, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C021" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -492,17 +403,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.664252437911, 0, 0, 0.747508326863)
                 double3 xformOp:translate = (0.00695427716513, 0.000823092943357, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C022" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -513,17 +420,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.634393284164, 0, 0, 0.773010453363)
                 double3 xformOp:translate = (0.00686826032147, 0.00136618192032, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C023" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -534,17 +437,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.603555941954, 0, 0, 0.797320653773)
                 double3 xformOp:translate = (0.006739898369, 0.00190084793145, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C024" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -555,17 +454,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.571787960228, 0, 0, 0.820401443526)
                 double3 xformOp:translate = (0.00656998270183, 0.00242379458298, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C025" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -576,17 +471,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.539138322911, 0, 0, 0.842217233716)
                 double3 xformOp:translate = (0.00635956090657, 0.00293179773492, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C026" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -597,17 +488,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.505657373378, 0, 0, 0.862734385978)
                 double3 xformOp:translate = (0.00610993030356, 0.00342172537889, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C027" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -618,17 +505,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.471396736826, 0, 0, 0.881921264348)
                 double3 xformOp:translate = (0.00582262994846, 0.00389055694807, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C028" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -639,17 +522,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.436409240673, 0, 0, 0.899748284052)
                 double3 xformOp:translate = (0.00549943114351, 0.00433540193992, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C029" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -660,17 +539,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.400748833103, 0, 0, 0.916187957117)
                 double3 xformOp:translate = (0.00514232651681, 0.00475351773715, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C030" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -681,17 +556,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.364470499879, 0, 0, 0.931214934759)
                 double3 xformOp:translate = (0.00475351773715, 0.00514232651681, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C031" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -702,17 +573,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.327630179562, 0, 0, 0.944806046467)
                 double3 xformOp:translate = (0.00433540193992, 0.00549943114351, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C032" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -723,17 +590,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.290284677254, 0, 0, 0.956940335732)
                 double3 xformOp:translate = (0.00389055694807, 0.00582262994846, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C033" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -744,17 +607,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.252491577015, 0, 0, 0.96759909236)
                 double3 xformOp:translate = (0.00342172537889, 0.00610993030356, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C034" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -765,17 +624,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.214309153065, 0, 0, 0.976765881321)
                 double3 xformOp:translate = (0.00293179773492, 0.00635956090657, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C035" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -786,17 +641,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.175796279934, 0, 0, 0.98442656809)
                 double3 xformOp:translate = (0.00242379458298, 0.00656998270183, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C036" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -807,17 +658,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.5e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.5e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.137012341682, 0, 0, 0.990569340444)
                 double3 xformOp:translate = (0.00190084793145, 0.006739898369, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C037" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -828,17 +675,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.49756085869e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.49756085869e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.0980171403296, 0, 0, 0.995184726672)
                 double3 xformOp:translate = (0.00136618192032, 0.00686826032147, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C038" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -849,17 +692,13 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 2.20832245869e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 2.20832245869e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.0588708036512, 0, 0, 0.998265610185)
                 double3 xformOp:translate = (0.000823092943357, 0.00695427716513, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
             }
 
             def Capsule "C039" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "NewtonCollisionAPI", "MaterialBindingAPI"]
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
             )
             {
                 uniform token axis = "X"
@@ -870,10 +709,6 @@ over "DrAnmarNeedle"
                 token visibility = "invisible"
                 rel material:binding:physics = </DrAnmarNeedle/Looks/NeedleSteelPhysics>
                 bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 1.95044725869e-05
-                float physxCollision:restOffset = 0
-                float newton:contactGap = 1.95044725869e-05
-                float newton:contactMargin = 0
                 quatf xformOp:orient = (0.0196336924606, 0, 0, 0.999807240482)
                 double3 xformOp:translate = (0.000274929324689, 0.00699741857754, 0)
                 uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]

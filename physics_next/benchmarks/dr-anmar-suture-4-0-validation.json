@@ -55,19 +55,20 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.7.0\"",
-        "@DrAnmarNeedle_physics.usda@",
+        "drAnmarAssetVersion = \"1.8.0\"",
+        "@DrAnmarNeedle_physx.usda@",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "drAnmarGeometrySource = \"independently_generated_parametric_geometry\"",
         "drAnmarMassPropertyIntegrationSlices = 8192",
-        "drAnmarContactOffsetContract = \"scale_aware_dual_physx_newton_authoring\"",
+        "drAnmarContactOffsetContract = \"scale_aware_physx_engine_layer_authoring\"",
         "drAnmarNormalContract = \"analytic_taper_and_curvature_aware_indexed_face_varying_primvar\"",
         "drAnmarRenderCollisionContract = \"separate_visual_mesh_and_guide_purpose_invisible_compound_colliders\"",
         "drAnmarMaterialContract = \"top_level_looks_with_separate_visual_and_physics_materials\"",
-        "drAnmarLayerContract = \"entry_visual_composition_plus_dedicated_physics_sublayer\"",
+        "drAnmarLayerContract = \"entry_sublayers_physx_which_sublayers_neutral_physics\"",
         "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
         "drAnmarCollisionContract = \"curvature_sagitta_bounded_capsules_with_explicit_extents\"",
-        "\"PhysicsMaterialAPI\", \"PhysxMaterialAPI\"",
+        "\"PhysicsMaterialAPI\"",
+        "\"PhysxMaterialAPI\"",
         "physxMaterial:frictionCombineMode = \"max\"",
         "drAnmarResetRandomizationCount = 4",
         "drAnmarSimToRealGapCount = 7",
@@ -83,9 +84,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.7.0",
+        "integration_version": "1.8.0",
         "missing": [],
-        "profile_version": "1.7.0"
+        "profile_version": "1.8.0"
       },
       "passed": true
     },
@@ -252,11 +253,13 @@
       },
       "passed": true
     },
-    "needle_dedicated_physics_layer_source_ownership": {
-      "expected": "stable entry layer owns identity and visuals while all local simulation schemas and properties are isolated in DrAnmarNeedle_physics.usda",
+    "needle_engine_layer_source_ownership": {
+      "expected": "stable entry owns visuals, neutral USD physics stays engine-clean, and PhysX tuning is isolated without unqualified Newton schemas",
       "measured": {
         "contract": {
-          "composition": "entry_layer_sublayers_physics_layer",
+          "composition": "entry_layer_sublayers_physx_layer_which_sublayers_neutral_physics_layer",
+          "default_runtime": "physx",
+          "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
           "entry_layer": "DrAnmarNeedle.usda",
           "entry_layer_owns": [
             "stage_metadata",
@@ -264,6 +267,9 @@
             "visual_geometry",
             "visual_material",
             "suture_reference_and_transform"
+          ],
+          "forbidden_live_schema_prefixes": [
+            "Newton"
           ],
           "physics_layer": "DrAnmarNeedle_physics.usda",
           "physics_layer_owns": [
@@ -274,21 +280,35 @@
             "factory_swage_joint"
           ],
           "physics_property_prefixes": [
-            "physics:",
-            "physx",
-            "newton:"
+            "physics:"
           ],
           "physics_schema_prefixes": [
-            "Physics",
-            "Physx",
-            "Newton"
+            "Physics"
+          ],
+          "physx_layer": "DrAnmarNeedle_physx.usda",
+          "physx_layer_owns": [
+            "physx_material_schema_and_combine_mode",
+            "physx_rigid_body_schema_and_solver_tuning",
+            "physx_collision_schemas_and_contact_offsets"
+          ],
+          "physx_property_prefixes": [
+            "physx"
+          ],
+          "physx_schema_prefixes": [
+            "Physx"
           ]
         },
         "entry_physics_properties": [],
         "entry_physics_schemas": [],
         "entry_physics_typed_prims": [],
-        "missing_physics_layer_tokens": [],
-        "physics_layer_visual_payload_tokens": []
+        "missing_neutral_layer_tokens": [],
+        "missing_physx_layer_tokens": [],
+        "neutral_engine_specific_properties": [],
+        "neutral_engine_specific_schemas": [],
+        "non_entry_visual_payload_tokens": [],
+        "physx_neutral_properties": [],
+        "physx_newton_properties": [],
+        "physx_newton_schemas": []
       },
       "passed": true
     },
@@ -363,28 +383,25 @@
       "passed": true
     },
     "needle_nvidia_stack_collision_contract": {
-      "expected": "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, material, and source-layer contract",
+      "expected": "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, material, and engine-isolated source-layer contract",
       "measured": {
         "ccd": true,
         "collision_contract": {
           "contact_offsets": {
             "basis": "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep",
             "collision_radius_fraction": 0.1,
-            "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset",
+            "engine_layer": "DrAnmarNeedle_physx.usda",
             "maximum_m": 2.5e-05,
             "minimum_m": 5e-06,
-            "newton_authoring": [
-              "NewtonCollisionAPI",
-              "newton:contactGap",
-              "newton:contactMargin"
-            ],
+            "neutral_layer_policy": "no_engine_specific_contact_schema",
             "physx_authoring": [
               "PhysxCollisionAPI",
               "physxCollision:contactOffset",
               "physxCollision:restOffset"
             ],
             "policy": "clamped_fraction_of_final_collision_radius",
-            "rest_offset_m": 0.0
+            "rest_offset_m": 0.0,
+            "unsupported_engine_schema_policy": "do_not_author_until_the_complete_needle_suture_assembly_is_qualified_on_that_backend"
           },
           "coverage_epsilon_m": 1e-09,
           "curvature_coverage": "maximum_segment_radius_plus_exact_arc_sagitta",
@@ -461,14 +478,11 @@
       },
       "passed": true
     },
-    "needle_scale_aware_dual_stack_contact_offsets": {
-      "expected": "bounded scale-aware PhysX offsets with equivalent Newton margin/gap mapping on every collider",
+    "needle_scale_aware_physx_contact_offsets": {
+      "expected": "bounded scale-aware PhysX offsets on every collider with no unqualified cross-engine schema authoring",
       "measured": {
         "authored_attribute_counts": {
-          "NewtonCollisionAPI": 40,
           "PhysxCollisionAPI": 40,
-          "newton_contact_gap": 40,
-          "newton_contact_margin": 40,
           "physx_contact_offset": 40,
           "physx_rest_offset": 40
         },
@@ -480,21 +494,22 @@
         "contract": {
           "basis": "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep",
           "collision_radius_fraction": 0.1,
-          "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset",
+          "engine_layer": "DrAnmarNeedle_physx.usda",
           "maximum_m": 2.5e-05,
           "minimum_m": 5e-06,
-          "newton_authoring": [
-            "NewtonCollisionAPI",
-            "newton:contactGap",
-            "newton:contactMargin"
-          ],
+          "neutral_layer_policy": "no_engine_specific_contact_schema",
           "physx_authoring": [
             "PhysxCollisionAPI",
             "physxCollision:contactOffset",
             "physxCollision:restOffset"
           ],
           "policy": "clamped_fraction_of_final_collision_radius",
-          "rest_offset_m": 0.0
+          "rest_offset_m": 0.0,
+          "unsupported_engine_schema_policy": "do_not_author_until_the_complete_needle_suture_assembly_is_qualified_on_that_backend"
+        },
+        "forbidden_engine_attribute_counts": {
+          "NewtonCollisionAPI": 0,
+          "newton_properties": 0
         },
         "minimum_collision_radius_m": 3.677324868166634e-05,
         "rest_offset_range_m": [
@@ -505,7 +520,7 @@
       "passed": true
     },
     "needle_top_level_looks_and_separate_materials": {
-      "expected": "two direct children of top-level Looks with disjoint visual shader and physics schema responsibilities",
+      "expected": "two direct children of top-level Looks with visual, neutral physics, and PhysX material responsibilities isolated by source layer",
       "measured": {
         "authored_material_count": 2,
         "contract": {
@@ -519,9 +534,10 @@
           "visual_material": "NeedleSteelVisual",
           "visual_shader": "UsdPreviewSurface"
         },
-        "physics_material_found": true,
+        "neutral_physics_material_found": true,
         "physics_material_path": "/DrAnmarNeedle/Looks/NeedleSteelPhysics",
         "physics_path_reference_count": 40,
+        "physx_material_overlay_found": true,
         "visual_material_found": true,
         "visual_material_path": "/DrAnmarNeedle/Looks/NeedleSteelVisual",
         "visual_path_reference_count": 2
