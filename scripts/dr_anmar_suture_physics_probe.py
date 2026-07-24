@@ -171,6 +171,28 @@ def main() -> int:
     factory_swage = stage.GetPrimAtPath(
         f"{root_path}/FactorySwage"
     )
+    needle_collision_capsules = []
+    needle_collision_extent_count = None
+    needle_friction_combine_mode = None
+    if assembly:
+        needle_collision_capsules = [
+            prim
+            for prim in stage.Traverse()
+            if prim.GetTypeName() == "Capsule"
+            and str(prim.GetPath()).startswith(
+                f"{root_path}/Needle/Collision/C"
+            )
+        ]
+        needle_collision_extent_count = sum(
+            UsdGeom.Capsule(prim).GetExtentAttr().HasAuthoredValueOpinion()
+            for prim in needle_collision_capsules
+        )
+        needle_material = stage.GetPrimAtPath(
+            f"{root_path}/Materials/NeedleSteel"
+        )
+        needle_friction_combine_mode = needle_material.GetAttribute(
+            "physxMaterial:frictionCombineMode"
+        ).Get()
     report = {
         "schema": "dr.anmar.needle-native-physx-probe.v1",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
@@ -182,6 +204,13 @@ def main() -> int:
         "segment_count": int(segments.count),
         "joint_count": int(joint_count),
         "factory_swage": bool(factory_swage.IsValid()) if assembly else None,
+        "needle_collision_capsule_count": (
+            len(needle_collision_capsules) if assembly else None
+        ),
+        "needle_collision_explicit_extent_count": (
+            needle_collision_extent_count
+        ),
+        "needle_friction_combine_mode": needle_friction_combine_mode,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -202,6 +231,11 @@ def main() -> int:
             not assembly
             or (
                 report["factory_swage"]
+                and report["needle_collision_capsule_count"]
+                == derived_needle.collision_capsule_count
+                and report["needle_collision_explicit_extent_count"]
+                == derived_needle.collision_capsule_count
+                and report["needle_friction_combine_mode"] == "max"
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None

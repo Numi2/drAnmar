@@ -55,10 +55,13 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.0.0\"",
+        "drAnmarAssetVersion = \"1.1.0\"",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "drAnmarGeometrySource = \"independently_generated_parametric_geometry\"",
         "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
+        "drAnmarCollisionContract = \"curvature_sagitta_bounded_capsules_with_explicit_extents\"",
+        "\"PhysicsMaterialAPI\", \"PhysxMaterialAPI\"",
+        "physxMaterial:frictionCombineMode = \"max\"",
         "drAnmarResetRandomizationCount = 4",
         "drAnmarSimToRealGapCount = 7",
         "def PhysicsFixedJoint \"FactorySwage\"",
@@ -70,7 +73,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "missing": []
+        "integration_version": "1.1.0",
+        "missing": [],
+        "profile_version": "1.1.0"
       },
       "passed": true
     },
@@ -171,6 +176,48 @@
       "measured": {
         "mu_at_0_01_n": 0.45142857142857146,
         "mu_at_2_n": 0.2963636363636364
+      },
+      "passed": true
+    },
+    "needle_collision_envelope_matches_centerline_partition": {
+      "expected": "capsule spine equals each assigned chord with curvature-bounded radius, explicit extents, and complete visual-mesh coverage",
+      "measured": {
+        "attribute_errors": [],
+        "authored_extent_count": 41,
+        "capsule_count": 40,
+        "maximum_chord_length_error_m": 0.0,
+        "maximum_curvature_sagitta_m": 5.398918502281386e-06,
+        "maximum_visual_seam_margin_m": 8.494447366884953e-06,
+        "visual_mesh_collision_coverage": {
+          "maximum_visual_vertex_containment_margin_m": 6.326416503478705e-05,
+          "minimum_visual_face_containment_margin_m": 1.0000000000157452e-09,
+          "minimum_visual_vertex_containment_margin_m": 8.694897944296997e-06,
+          "uncovered_visual_face_count": 0,
+          "uncovered_visual_vertex_count": 0,
+          "visual_face_count": 2049,
+          "visual_vertex_count": 2049
+        }
+      },
+      "passed": true
+    },
+    "needle_nvidia_stack_collision_contract": {
+      "expected": "NVIDIA Omni Physics primitive-collider, CCD, extent, and material schema contract",
+      "measured": {
+        "ccd": true,
+        "collision_contract": {
+          "coverage_epsilon_m": 1e-09,
+          "curvature_coverage": "maximum_segment_radius_plus_exact_arc_sagitta",
+          "endcap_overlap": "intentional_at_adjacent_partition_boundaries",
+          "extent_policy": "explicit_local_extent_on_every_capsule",
+          "height_semantics": "cylinder_spine_excluding_spherical_caps",
+          "partition": "equal_centerline_arc_segments",
+          "primitive": "UsdGeomCapsule",
+          "spine_length": "assigned_centerline_chord",
+          "visual_face_coverage": "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face"
+        },
+        "friction_combine_mode": "max",
+        "missing_native_probe_tokens": [],
+        "reference_count": 3
       },
       "passed": true
     },

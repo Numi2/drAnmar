@@ -14,9 +14,11 @@ from typing import Any
 from dr_anmar_procedures import PROCEDURE_ROOMS
 from dr_anmar_needle_model import (
     DEFAULT_NEEDLE_PROFILE_PATH,
+    build_needle_collision_capsules,
     build_needle_mesh,
     derive_needle,
     load_needle_profile,
+    needle_mesh_collision_coverage,
     sample_episode_parameters,
 )
 from dr_anmar_suture_integration import (
@@ -48,6 +50,9 @@ DEFAULT_ASSET = (
 )
 DEFAULT_NEEDLE = DR_ANMAR_NEEDLE_ASSET_PATH
 DEFAULT_WORKSTATION = REPOSITORY_ROOT / "scripts/dr_anmar_workstation.py"
+DEFAULT_NATIVE_PROBE = (
+    REPOSITORY_ROOT / "scripts/dr_anmar_suture_physics_probe.py"
+)
 
 
 def check(
@@ -75,6 +80,7 @@ def validate(
     derived = derive(profile)
     derived_needle = derive_needle(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
+    native_probe_text = DEFAULT_NATIVE_PROBE.read_text(encoding="utf-8")
     geometry = profile["geometry"]
     material = profile["material"]
     tension = profile["tension"]
@@ -252,6 +258,9 @@ def validate(
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         'drAnmarGeometrySource = "independently_generated_parametric_geometry"',
         'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
+        'drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"',
+        '"PhysicsMaterialAPI", "PhysxMaterialAPI"',
+        'physxMaterial:frictionCombineMode = "max"',
         "drAnmarResetRandomizationCount = 4",
         "drAnmarSimToRealGapCount = 7",
         'def PhysicsFixedJoint "FactorySwage"',
@@ -268,8 +277,13 @@ def validate(
     check(
         checks,
         "dr_anmar_needle_identity_and_provenance",
-        not missing_identity_tokens,
-        {"missing": missing_identity_tokens},
+        not missing_identity_tokens
+        and needle_profile["version"] == DR_ANMAR_NEEDLE_ASSET_VERSION,
+        {
+            "missing": missing_identity_tokens,
+            "profile_version": needle_profile["version"],
+            "integration_version": DR_ANMAR_NEEDLE_ASSET_VERSION,
+        },
         needle_identity_tokens,
     )
     forbidden_needle_tokens = [
@@ -304,6 +318,161 @@ def validate(
             "visual_vertices": derived_needle.visual_vertex_count,
             "collision_capsules": derived_needle.collision_capsule_count,
         },
+    )
+    needle_collision_capsules = build_needle_collision_capsules(
+        needle_profile
+    )
+    collision_attribute_errors: list[str] = []
+    for index, capsule in enumerate(needle_collision_capsules):
+        match = re.search(
+            rf'def Capsule "C{index:03d}".*?\n        \}}',
+            needle_text,
+            flags=re.DOTALL,
+        )
+        if match is None:
+            collision_attribute_errors.append(
+                f"C{index:03d}:missing_block"
+            )
+            continue
+        block = match.group(0)
+        height_match = re.search(r"float height = ([0-9.eE+-]+)", block)
+        radius_match = re.search(r"float radius = ([0-9.eE+-]+)", block)
+        if height_match is None or not math.isclose(
+            float(height_match.group(1)),
+            capsule.cylinder_height_m,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
+            collision_attribute_errors.append(
+                f"C{index:03d}:height"
+            )
+        if radius_match is None or not math.isclose(
+            float(radius_match.group(1)),
+            capsule.collision_radius_m,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
+            collision_attribute_errors.append(
+                f"C{index:03d}:radius"
+            )
+        if "float3[] extent = [" not in block:
+            collision_attribute_errors.append(
+                f"C{index:03d}:extent"
+            )
+    maximum_chord_error = max(
+        abs(capsule.cylinder_height_m - capsule.chord_length_m)
+        for capsule in needle_collision_capsules
+    )
+    maximum_sagitta = max(
+        capsule.curvature_sagitta_m
+        for capsule in needle_collision_capsules
+    )
+    maximum_seam_margin = max(
+        capsule.visual_seam_margin_m
+        for capsule in needle_collision_capsules
+    )
+    collision_coverage = needle_mesh_collision_coverage(
+        needle_profile,
+        needle_mesh,
+    )
+    check(
+        checks,
+        "needle_collision_envelope_matches_centerline_partition",
+        not collision_attribute_errors
+        and len(needle_collision_capsules)
+        == derived_needle.collision_capsule_count
+        and all(
+            capsule.collision_radius_m >= capsule.physical_radius_m
+            and capsule.cylinder_height_m > 0.0
+            and math.isclose(
+                capsule.collision_radius_m,
+                capsule.physical_radius_m
+                + capsule.curvature_sagitta_m
+                + capsule.visual_seam_margin_m,
+                rel_tol=0.0,
+                abs_tol=1.0e-15,
+            )
+            for capsule in needle_collision_capsules
+        )
+        and maximum_chord_error <= 1.0e-12
+        and 0.0 < maximum_sagitta < 1.0e-5
+        and 0.0 < maximum_seam_margin < 1.0e-5
+        and collision_coverage["uncovered_visual_vertex_count"] == 0
+        and collision_coverage["uncovered_visual_face_count"] == 0
+        and collision_coverage[
+            "minimum_visual_vertex_containment_margin_m"
+        ]
+        >= -1.0e-12
+        and collision_coverage[
+            "minimum_visual_face_containment_margin_m"
+        ]
+        >= -1.0e-12
+        and needle_text.count("float3[] extent = [")
+        == derived_needle.collision_capsule_count + 1,
+        {
+            "capsule_count": len(needle_collision_capsules),
+            "attribute_errors": collision_attribute_errors,
+            "maximum_chord_length_error_m": maximum_chord_error,
+            "maximum_curvature_sagitta_m": maximum_sagitta,
+            "maximum_visual_seam_margin_m": maximum_seam_margin,
+            "visual_mesh_collision_coverage": collision_coverage,
+            "authored_extent_count": needle_text.count(
+                "float3[] extent = ["
+            ),
+        },
+        "capsule spine equals each assigned chord with curvature-bounded radius, explicit extents, and complete visual-mesh coverage",
+    )
+    nvidia_stack_references = needle_profile.get(
+        "nvidia_stack_references",
+        [],
+    )
+    collision_contract = needle_profile["construction"][
+        "collision_contract"
+    ]
+    native_probe_tokens = [
+        "needle_collision_capsule_count",
+        "needle_collision_explicit_extent_count",
+        "needle_friction_combine_mode",
+    ]
+    missing_native_probe_tokens = [
+        token
+        for token in native_probe_tokens
+        if token not in native_probe_text
+    ]
+    check(
+        checks,
+        "needle_nvidia_stack_collision_contract",
+        len(nvidia_stack_references) >= 3
+        and all(
+            item.get("url", "").startswith(
+                "https://docs.omniverse.nvidia.com/"
+            )
+            and item.get("used_for")
+            for item in nvidia_stack_references
+        )
+        and collision_contract["primitive"] == "UsdGeomCapsule"
+        and collision_contract["height_semantics"]
+        == "cylinder_spine_excluding_spherical_caps"
+        and collision_contract["spine_length"]
+        == "assigned_centerline_chord"
+        and collision_contract["visual_face_coverage"]
+        == "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face"
+        and 0.0 < float(collision_contract["coverage_epsilon_m"]) <= 1.0e-8
+        and collision_contract["extent_policy"]
+        == "explicit_local_extent_on_every_capsule"
+        and needle_profile["solver"]["ccd"] is True
+        and needle_profile["contact"]["combine_mode"] == "max"
+        and not missing_native_probe_tokens,
+        {
+            "reference_count": len(nvidia_stack_references),
+            "collision_contract": collision_contract,
+            "ccd": needle_profile["solver"]["ccd"],
+            "friction_combine_mode": needle_profile["contact"][
+                "combine_mode"
+            ],
+            "missing_native_probe_tokens": missing_native_probe_tokens,
+        },
+        "NVIDIA Omni Physics primitive-collider, CCD, extent, and material schema contract",
     )
     construction = needle_profile["construction"]
     arc_range = [

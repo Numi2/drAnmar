@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import math
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +40,41 @@ class NeedleMesh:
     face_vertex_indices: tuple[int, ...]
     extent_min: tuple[float, float, float]
     extent_max: tuple[float, float, float]
+
+
+@dataclass(frozen=True)
+class NeedleCollisionCapsule:
+    center_m: tuple[float, float, float]
+    axis_direction: tuple[float, float, float]
+    orientation_wxyz: tuple[float, float, float, float]
+    physical_radius_m: float
+    collision_radius_m: float
+    cylinder_height_m: float
+    chord_length_m: float
+    curvature_sagitta_m: float
+    visual_seam_margin_m: float
+
+    @property
+    def total_length_m(self) -> float:
+        return self.cylinder_height_m + 2.0 * self.collision_radius_m
+
+    @property
+    def extent_min(self) -> tuple[float, float, float]:
+        half_length = self.total_length_m / 2.0
+        return (
+            -half_length,
+            -self.collision_radius_m,
+            -self.collision_radius_m,
+        )
+
+    @property
+    def extent_max(self) -> tuple[float, float, float]:
+        half_length = self.total_length_m / 2.0
+        return (
+            half_length,
+            self.collision_radius_m,
+            self.collision_radius_m,
+        )
 
 
 @dataclass(frozen=True)
@@ -212,6 +247,213 @@ def build_needle_mesh(profile: dict[str, Any]) -> NeedleMesh:
         extent_min=extent_min,
         extent_max=extent_max,
     )
+
+
+def build_needle_collision_capsules(
+    profile: dict[str, Any],
+) -> tuple[NeedleCollisionCapsule, ...]:
+    """Partition the curved needle into bounded compound colliders.
+
+    OpenUSD capsule ``height`` is the cylinder-spine length and excludes both
+    spherical caps. Each collider's spine spans its assigned centerline chord;
+    adjacent spherical endcaps intentionally overlap at partition boundaries.
+    The base radius includes the exact circular-arc sagitta. A final minimal
+    uniform seam margin is derived from the authored faces so every polygon is
+    contained by at least one convex primitive.
+    """
+
+    construction = profile["construction"]
+    count = int(construction["collision_capsule_count"])
+    arc_length = float(construction["centerline_arc_length_m"])
+    curvature_radius = arc_length / math.pi
+    capsules: list[NeedleCollisionCapsule] = []
+    for index in range(count):
+        left_fraction = index / count
+        right_fraction = (index + 1) / count
+        middle_fraction = (index + 0.5) / count
+        left, _ = centerline_at(profile, left_fraction)
+        right, _ = centerline_at(profile, right_fraction)
+        middle, tangent = centerline_at(profile, middle_fraction)
+        chord_length = math.dist(left, right)
+        half_chord = chord_length / 2.0
+        sagitta = curvature_radius - math.sqrt(
+            max(curvature_radius * curvature_radius - half_chord * half_chord, 0.0)
+        )
+        physical_radius = max(
+            radius_at_distance(
+                profile,
+                fraction * arc_length,
+            )
+            for fraction in (
+                left_fraction,
+                middle_fraction,
+                right_fraction,
+            )
+        )
+        collision_radius = physical_radius + sagitta
+        cylinder_height = chord_length
+        yaw = math.atan2(tangent[1], tangent[0])
+        capsules.append(
+            NeedleCollisionCapsule(
+                center_m=middle,
+                axis_direction=tangent,
+                orientation_wxyz=(
+                    math.cos(yaw / 2.0),
+                    0.0,
+                    0.0,
+                    math.sin(yaw / 2.0),
+                ),
+                physical_radius_m=physical_radius,
+                collision_radius_m=collision_radius,
+                cylinder_height_m=cylinder_height,
+                chord_length_m=chord_length,
+                curvature_sagitta_m=sagitta,
+                visual_seam_margin_m=0.0,
+            )
+        )
+    raw_capsules = tuple(capsules)
+    raw_face_margin = min(
+        _face_containment_margins(
+            build_needle_mesh(profile),
+            raw_capsules,
+        )
+    )
+    coverage_epsilon = float(
+        construction["collision_contract"]["coverage_epsilon_m"]
+    )
+    seam_margin = max(0.0, -raw_face_margin) + coverage_epsilon
+    return tuple(
+        replace(
+            capsule,
+            collision_radius_m=(
+                capsule.collision_radius_m + seam_margin
+            ),
+            visual_seam_margin_m=seam_margin,
+        )
+        for capsule in raw_capsules
+    )
+
+
+def point_collision_margin_m(
+    point: tuple[float, float, float],
+    capsule: NeedleCollisionCapsule,
+) -> float:
+    """Return positive distance inside one capsule and negative outside."""
+
+    half_spine = capsule.cylinder_height_m / 2.0
+    start = tuple(
+        capsule.center_m[axis]
+        - capsule.axis_direction[axis] * half_spine
+        for axis in range(3)
+    )
+    end = tuple(
+        capsule.center_m[axis]
+        + capsule.axis_direction[axis] * half_spine
+        for axis in range(3)
+    )
+    edge = tuple(end[axis] - start[axis] for axis in range(3))
+    relative = tuple(point[axis] - start[axis] for axis in range(3))
+    edge_squared = sum(value * value for value in edge)
+    amount = (
+        0.0
+        if edge_squared <= 1.0e-24
+        else max(
+            0.0,
+            min(
+                1.0,
+                sum(
+                    relative[axis] * edge[axis]
+                    for axis in range(3)
+                )
+                / edge_squared,
+            ),
+        )
+    )
+    closest = tuple(
+        start[axis] + amount * edge[axis] for axis in range(3)
+    )
+    distance = math.dist(point, closest)
+    return capsule.collision_radius_m - distance
+
+
+def _face_containment_margins(
+    visual: NeedleMesh,
+    capsules: tuple[NeedleCollisionCapsule, ...],
+) -> list[float]:
+    point_capsule_margins = [
+        [
+            point_collision_margin_m(point, capsule)
+            for capsule in capsules
+        ]
+        for point in visual.points
+    ]
+    face_margins: list[float] = []
+    cursor = 0
+    for face_count in visual.face_vertex_counts:
+        face_indices = visual.face_vertex_indices[
+            cursor : cursor + face_count
+        ]
+        cursor += face_count
+        face_margins.append(
+            max(
+                min(
+                    point_capsule_margins[point_index][capsule_index]
+                    for point_index in face_indices
+                )
+                for capsule_index in range(len(capsules))
+            )
+        )
+    return face_margins
+
+
+def needle_mesh_collision_coverage(
+    profile: dict[str, Any],
+    mesh: NeedleMesh | None = None,
+) -> dict[str, float | int]:
+    """Measure whether the compound primitive collision covers the render mesh.
+
+    A capsule is convex. A polygon is therefore fully covered when all of its
+    vertices are inside the same capsule. Checking that condition for every
+    authored face is stronger than sampling vertices or face centroids alone.
+    """
+
+    visual = mesh if mesh is not None else build_needle_mesh(profile)
+    capsules = build_needle_collision_capsules(profile)
+    point_capsule_margins = [
+        [
+            point_collision_margin_m(point, capsule)
+            for capsule in capsules
+        ]
+        for point in visual.points
+    ]
+    point_margins = [
+        max(capsule_margins)
+        for capsule_margins in point_capsule_margins
+    ]
+    face_margins = _face_containment_margins(
+        visual,
+        capsules,
+    )
+    tolerance = 1.0e-12
+    return {
+        "visual_vertex_count": len(visual.points),
+        "visual_face_count": len(visual.face_vertex_counts),
+        "uncovered_visual_vertex_count": sum(
+            margin < -tolerance for margin in point_margins
+        ),
+        "uncovered_visual_face_count": sum(
+            margin < -tolerance for margin in face_margins
+        ),
+        "minimum_visual_vertex_containment_margin_m": min(
+            point_margins
+        ),
+        "minimum_visual_face_containment_margin_m": (
+            min(face_margins)
+        ),
+        "maximum_visual_vertex_containment_margin_m": max(
+            point_margins
+        ),
+    }
 
 
 def sample_episode_parameters(

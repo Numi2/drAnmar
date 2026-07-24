@@ -11,12 +11,13 @@ def Xform "DrAnmarNeedle" (
     customData = {
         string drAnmarAssetId = "dr-anmar-needle"
         string drAnmarAssetName = "DrAnmar Needle"
-        string drAnmarAssetVersion = "1.0.0"
+        string drAnmarAssetVersion = "1.1.0"
         string drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"
         bool drAnmarClinicalValidation = false
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
         string drAnmarNeedleProfileId = "dr-anmar-needle-v1"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
+        string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
         int drAnmarResetRandomizationCount = 4
         int drAnmarSimToRealGapCount = 7
         string drAnmarSutureProfileId = "dr-anmar-suture-4-0-braided-v1"
@@ -29,12 +30,13 @@ def Xform "DrAnmarNeedle" (
     def Scope "Materials"
     {
         def Material "NeedleSteel" (
-            prepend apiSchemas = ["PhysicsMaterialAPI"]
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
         )
         {
             float physics:staticFriction = 0.32
             float physics:dynamicFriction = 0.24
             float physics:restitution = 0.02
+            uniform token physxMaterial:frictionCombineMode = "max"
 
             def Shader "PreviewSurface"
             {
@@ -2131,7 +2133,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 1.33824462891e-05
+            float radius = 3.67732486817e-05
+            float3[] extent = [(-0.000311702573371, -3.67732486817e-05, -3.67732486817e-05), (0.000311702573371, 3.67732486817e-05, 3.67732486817e-05)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.999807240482, 0, 0, 0.0196336924606)
@@ -2145,7 +2148,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 3.75174560547e-05
+            float radius = 7.02136783692e-05
+            float3[] extent = [(-0.000345143003058, -7.02136783692e-05, -7.02136783692e-05), (0.000345143003058, 7.02136783692e-05, 7.02136783692e-05)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.998265610185, 0, 0, 0.0588708036512)
@@ -2159,7 +2163,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 7.83135986328e-05
+            float radius = 0.000116415826807
+            float3[] extent = [(-0.000391345151496, -0.000116415826807, -0.000116415826807), (0.000391345151496, 0.000116415826807, 0.000116415826807)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.995184726672, 0, 0, 0.0980171403296)
@@ -2173,7 +2178,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.000127972045898
+            float radius = 0.000167580865869
+            float3[] extent = [(-0.000442510190558, -0.000167580865869, -0.000167580865869), (0.000442510190558, 0.000167580865869, 0.000167580865869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.990569340444, 0, 0, 0.137012341682)
@@ -2187,7 +2193,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.000178693969727
+            float radius = 0.000215909967432
+            float3[] extent = [(-0.000490839292121, -0.000215909967432, -0.000215909967432), (0.000490839292121, 0.000215909967432, 0.000215909967432)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.98442656809, 0, 0, 0.175796279934)
@@ -2201,7 +2208,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.000222680541992
+            float radius = 0.000253604303369
+            float3[] extent = [(-0.000528533628058, -0.000253604303369, -0.000253604303369), (0.000528533628058, 0.000253604303369, 0.000253604303369)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.976765881321, 0, 0, 0.214309153065)
@@ -2215,7 +2223,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00025213293457
+            float radius = 0.000272865045557
+            float3[] extent = [(-0.000547794370246, -0.000272865045557, -0.000272865045557), (0.000547794370246, 0.000272865045557, 0.000272865045557)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.96759909236, 0, 0, 0.252491577015)
@@ -2229,7 +2238,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.956940335732, 0, 0, 0.290284677254)
@@ -2243,7 +2253,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.944806046467, 0, 0, 0.327630179562)
@@ -2257,7 +2268,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.931214934759, 0, 0, 0.364470499879)
@@ -2271,7 +2283,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.916187957117, 0, 0, 0.400748833103)
@@ -2285,7 +2298,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.899748284052, 0, 0, 0.436409240673)
@@ -2299,7 +2313,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.881921264348, 0, 0, 0.471396736826)
@@ -2313,7 +2328,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.862734385978, 0, 0, 0.505657373378)
@@ -2327,7 +2343,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.842217233716, 0, 0, 0.539138322911)
@@ -2341,7 +2358,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.820401443526, 0, 0, 0.571787960228)
@@ -2355,7 +2373,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.797320653773, 0, 0, 0.603555941954)
@@ -2369,7 +2388,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.773010453363, 0, 0, 0.634393284164)
@@ -2383,7 +2403,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.747508326863, 0, 0, 0.664252437911)
@@ -2397,7 +2418,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.720853596703, 0, 0, 0.693087362546)
@@ -2411,7 +2433,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.693087362546, 0, 0, 0.720853596703)
@@ -2425,7 +2448,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.664252437911, 0, 0, 0.747508326863)
@@ -2439,7 +2463,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.634393284164, 0, 0, 0.773010453363)
@@ -2453,7 +2478,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.603555941954, 0, 0, 0.797320653773)
@@ -2467,7 +2493,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.571787960228, 0, 0, 0.820401443526)
@@ -2481,7 +2508,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.539138322911, 0, 0, 0.842217233716)
@@ -2495,7 +2523,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.505657373378, 0, 0, 0.862734385978)
@@ -2509,7 +2538,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.471396736826, 0, 0, 0.881921264348)
@@ -2523,7 +2553,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.436409240673, 0, 0, 0.899748284052)
@@ -2537,7 +2568,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.400748833103, 0, 0, 0.916187957117)
@@ -2551,7 +2583,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.364470499879, 0, 0, 0.931214934759)
@@ -2565,7 +2598,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.327630179562, 0, 0, 0.944806046467)
@@ -2579,7 +2613,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.290284677254, 0, 0, 0.956940335732)
@@ -2593,7 +2628,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.252491577015, 0, 0, 0.96759909236)
@@ -2607,7 +2643,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00026
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.214309153065, 0, 0, 0.976765881321)
@@ -2621,7 +2658,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00025997318
+            float radius = 0.000273893365869
+            float3[] extent = [(-0.000548822690558, -0.000273893365869, -0.000273893365869), (0.000548822690558, 0.000273893365869, 0.000273893365869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.175796279934, 0, 0, 0.98442656809)
@@ -2635,7 +2673,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00024790706
+            float radius = 0.000270316405869
+            float3[] extent = [(-0.000545245730558, -0.000270316405869, -0.000270316405869), (0.000545245730558, 0.000270316405869, 0.000270316405869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.137012341682, 0, 0, 0.990569340444)
@@ -2649,7 +2688,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.0002217275
+            float radius = 0.000249756085869
+            float3[] extent = [(-0.000524685410558, -0.000249756085869, -0.000249756085869), (0.000524685410558, 0.000249756085869, 0.000249756085869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.0980171403296, 0, 0, 0.995184726672)
@@ -2663,7 +2703,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00019293434
+            float radius = 0.000220832245869
+            float3[] extent = [(-0.000495761570558, -0.000220832245869, -0.000220832245869), (0.000495761570558, 0.000220832245869, 0.000220832245869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.0588708036512, 0, 0, 0.998265610185)
@@ -2677,7 +2718,8 @@ def Xform "DrAnmarNeedle" (
         {
             uniform token axis = "X"
             float height = 0.000549858649378
-            float radius = 0.00017302742
+            float radius = 0.000195044725869
+            float3[] extent = [(-0.000469974050558, -0.000195044725869, -0.000195044725869), (0.000469974050558, 0.000195044725869, 0.000195044725869)]
             rel material:binding = </DrAnmarNeedle/Materials/NeedleSteel>
             bool physics:collisionEnabled = true
             quatf xformOp:orient = (0.0196336924606, 0, 0, 0.999807240482)

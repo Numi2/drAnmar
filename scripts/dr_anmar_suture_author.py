@@ -19,11 +19,11 @@ from typing import Any
 
 from dr_anmar_needle_model import (
     DEFAULT_NEEDLE_PROFILE_PATH,
+    build_needle_collision_capsules,
     build_needle_mesh,
-    centerline_at,
     derive_needle,
     load_needle_profile,
-    radius_at_distance,
+    needle_mesh_collision_coverage,
 )
 from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ASSET_ID,
@@ -406,33 +406,21 @@ def author_dr_anmar_needle(
     face_counts = ", ".join(str(value) for value in mesh.face_vertex_counts)
     face_indices = ", ".join(str(value) for value in mesh.face_vertex_indices)
     collision_blocks: list[str] = []
-    collision_count = derived_needle.collision_capsule_count
-    for index in range(collision_count):
-        left_fraction = index / collision_count
-        right_fraction = (index + 1) / collision_count
-        middle_fraction = (index + 0.5) / collision_count
-        left, _left_tangent = centerline_at(needle_profile, left_fraction)
-        right, _right_tangent = centerline_at(needle_profile, right_fraction)
-        middle, tangent = centerline_at(needle_profile, middle_fraction)
-        chord_length = math.dist(left, right)
-        radius = radius_at_distance(
-            needle_profile,
-            middle_fraction * derived_needle.arc_length_m,
-        )
-        yaw = math.atan2(tangent[1], tangent[0])
-        orientation = (math.cos(yaw / 2.0), 0.0, 0.0, math.sin(yaw / 2.0))
+    collision_capsules = build_needle_collision_capsules(needle_profile)
+    for index, capsule in enumerate(collision_capsules):
         collision_blocks.append(
             f'''def Capsule "C{index:03d}" (
     prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
 )
 {{
     uniform token axis = "X"
-    float height = {usd_float(chord_length)}
-    float radius = {usd_float(radius)}
+    float height = {usd_float(capsule.cylinder_height_m)}
+    float radius = {usd_float(capsule.collision_radius_m)}
+    float3[] extent = [{usd_vec(capsule.extent_min)}, {usd_vec(capsule.extent_max)}]
     rel material:binding = <{steel_material_path}>
     bool physics:collisionEnabled = true
-    quatf xformOp:orient = {usd_quat(orientation)}
-    double3 xformOp:translate = {usd_vec(middle)}
+    quatf xformOp:orient = {usd_quat(capsule.orientation_wxyz)}
+    double3 xformOp:translate = {usd_vec(capsule.center_m)}
     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
 }}'''
         )
@@ -462,6 +450,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
         string drAnmarNeedleProfileId = "{needle_profile["id"]}"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
+        string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
         int drAnmarResetRandomizationCount = {implemented_randomization_count}
         int drAnmarSimToRealGapCount = {sim_to_real_gap_count}
         string drAnmarSutureProfileId = "{suture_profile["id"]}"
@@ -474,12 +463,13 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
     def Scope "Materials"
     {{
         def Material "NeedleSteel" (
-            prepend apiSchemas = ["PhysicsMaterialAPI"]
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
         )
         {{
             float physics:staticFriction = {usd_float(float(contact["static_friction_seed"]))}
             float physics:dynamicFriction = {usd_float(float(contact["dynamic_friction_seed"]))}
             float physics:restitution = {usd_float(float(contact["restitution_seed"]))}
+            uniform token physxMaterial:frictionCombineMode = "{contact["combine_mode"]}"
 
             def Shader "PreviewSurface"
             {{
@@ -626,6 +616,8 @@ def main() -> int:
     needle_temporary.replace(needle_output)
     derived = derive(profile)
     derived_needle = derive_needle(needle_profile)
+    collision_capsules = build_needle_collision_capsules(needle_profile)
+    needle_mesh = build_needle_mesh(needle_profile)
     report = {
         "schema": "dr.anmar.suture-asset-report.v3",
         "profile": portable_path(args.profile),
@@ -645,6 +637,27 @@ def main() -> int:
         "needle_mass_kg": derived_needle.mass_kg,
         "needle_visual_vertex_count": derived_needle.visual_vertex_count,
         "needle_collision_capsule_count": derived_needle.collision_capsule_count,
+        "needle_collision_contract": needle_profile["construction"][
+            "collision_contract"
+        ],
+        "needle_collision_max_curvature_sagitta_m": max(
+            capsule.curvature_sagitta_m
+            for capsule in collision_capsules
+        ),
+        "needle_collision_visual_seam_margin_m": max(
+            capsule.visual_seam_margin_m
+            for capsule in collision_capsules
+        ),
+        "needle_collision_max_chord_length_error_m": max(
+            abs(capsule.cylinder_height_m - capsule.chord_length_m)
+            for capsule in collision_capsules
+        ),
+        "needle_collision_visual_mesh_coverage": (
+            needle_mesh_collision_coverage(
+                needle_profile,
+                needle_mesh,
+            )
+        ),
         "needle_swage_anchor_m": list(derived_needle.swage_anchor_m),
         "needle_sim_to_real_gap_count": len(
             needle_profile["sim_to_real"]["gaps"]
