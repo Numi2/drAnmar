@@ -3699,13 +3699,19 @@ def main() -> None:
         # Compose the room exclusively from the pinned Isaac for Healthcare
         # catalog. The existing handover task continues to own both PSMs,
         # relative IK actions, jaw contacts, needle state, resets and stepping.
-        # Coordinates retain NVIDIA/ORBIT's proven opposed PSM roots and use
-        # the table top (z=0) as the single setup datum. The remaining assets
-        # form a non-overlapping dry-lab field: separate needle and scissors
-        # landings around a central suturing pad.
+        # Coordinates retain NVIDIA/ORBIT's opposed PSM roots, but this
+        # clinician-facing bench narrows their separation so both neutral
+        # tools begin inside a practical shared handoff workspace. The table
+        # top (z=0) remains the single setup datum.
+        psm_root_spacing_m = float(procedure.get("psm_root_spacing_m", 0.40))
+        if not 0.20 <= psm_root_spacing_m <= 0.40:
+            raise ValueError(
+                "NVIDIA bench psm_root_spacing_m must be between 0.20 and 0.40 m"
+            )
+        psm_root_half_spacing_m = psm_root_spacing_m / 2.0
         psm_root_positions = {
-            "robot_1": (0.20, 0.0, 0.15),
-            "robot_2": (-0.20, 0.0, 0.15),
+            "robot_1": (psm_root_half_spacing_m, 0.0, 0.15),
+            "robot_2": (-psm_root_half_spacing_m, 0.0, 0.15),
         }
         for robot_name, root_position in psm_root_positions.items():
             robot_cfg = getattr(env_cfg.scene, robot_name)
