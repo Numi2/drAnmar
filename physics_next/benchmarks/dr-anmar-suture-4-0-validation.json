@@ -55,13 +55,14 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.5.0\"",
+        "drAnmarAssetVersion = \"1.6.0\"",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "drAnmarGeometrySource = \"independently_generated_parametric_geometry\"",
         "drAnmarMassPropertyIntegrationSlices = 8192",
         "drAnmarContactOffsetContract = \"scale_aware_dual_physx_newton_authoring\"",
         "drAnmarNormalContract = \"analytic_taper_and_curvature_aware_indexed_face_varying_primvar\"",
         "drAnmarRenderCollisionContract = \"separate_visual_mesh_and_guide_purpose_invisible_compound_colliders\"",
+        "drAnmarMaterialContract = \"top_level_looks_with_separate_visual_and_physics_materials\"",
         "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
         "drAnmarCollisionContract = \"curvature_sagitta_bounded_capsules_with_explicit_extents\"",
         "\"PhysicsMaterialAPI\", \"PhysxMaterialAPI\"",
@@ -80,9 +81,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.5.0",
+        "integration_version": "1.6.0",
         "missing": [],
-        "profile_version": "1.5.0"
+        "profile_version": "1.6.0"
       },
       "passed": true
     },
@@ -352,11 +353,13 @@
           "primitive": "UsdGeomCapsule",
           "render_collision_separation": {
             "collider_physics_material_binding": "material:binding:physics",
+            "collider_physics_material_path": "Looks/NeedleSteelPhysics",
             "collider_prim_pattern": "Needle/Collision/C###",
             "collider_purpose": "guide",
             "collider_visibility": "invisible",
             "reason": "nonrendering_debuggable_collision_geometry",
             "visual_material_binding": "material:binding",
+            "visual_material_path": "Looks/NeedleSteelVisual",
             "visual_prim": "Needle/Visual"
           },
           "spine_length": "assigned_centerline_chord",
@@ -380,11 +383,13 @@
         "collision_capsule_count": 40,
         "contract": {
           "collider_physics_material_binding": "material:binding:physics",
+          "collider_physics_material_path": "Looks/NeedleSteelPhysics",
           "collider_prim_pattern": "Needle/Collision/C###",
           "collider_purpose": "guide",
           "collider_visibility": "invisible",
           "reason": "nonrendering_debuggable_collision_geometry",
           "visual_material_binding": "material:binding",
+          "visual_material_path": "Looks/NeedleSteelVisual",
           "visual_prim": "Needle/Visual"
         }
       },
@@ -454,6 +459,30 @@
           0.0,
           0.0
         ]
+      },
+      "passed": true
+    },
+    "needle_top_level_looks_and_separate_materials": {
+      "expected": "two direct children of top-level Looks with disjoint visual shader and physics schema responsibilities",
+      "measured": {
+        "authored_material_count": 2,
+        "contract": {
+          "physics_api_schemas": [
+            "PhysicsMaterialAPI",
+            "PhysxMaterialAPI"
+          ],
+          "physics_material": "NeedleSteelPhysics",
+          "scope": "Looks",
+          "separate_by_purpose": true,
+          "visual_material": "NeedleSteelVisual",
+          "visual_shader": "UsdPreviewSurface"
+        },
+        "physics_material_found": true,
+        "physics_material_path": "/DrAnmarNeedle/Looks/NeedleSteelPhysics",
+        "physics_path_reference_count": 40,
+        "visual_material_found": true,
+        "visual_material_path": "/DrAnmarNeedle/Looks/NeedleSteelVisual",
+        "visual_path_reference_count": 2
       },
       "passed": true
     },

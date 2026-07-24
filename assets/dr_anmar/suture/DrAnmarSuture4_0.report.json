@@ -5,9 +5,9 @@
   "asset_sha256": "7b33b49b6b2c7934af9569d789b45bf2bdf0df16e98cc7d9806f56440e831c90",
   "dr_anmar_needle_name": "DrAnmar Needle",
   "dr_anmar_needle_asset_id": "dr-anmar-needle",
-  "dr_anmar_needle_asset_version": "1.5.0",
+  "dr_anmar_needle_asset_version": "1.6.0",
   "dr_anmar_needle": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
-  "dr_anmar_needle_sha256": "1de1dd7d742b020f14e60d2c0705b52bbc0bbff7e05b3687393bf47c96c0d2ea",
+  "dr_anmar_needle_sha256": "a99f9c54e1977ea686ee9325dc7d3cfb4457dfef3baa0ddf4ec131a952c7265c",
   "needle_profile": "physics_next/needles/dr-anmar-needle-v1.json",
   "needle_profile_id": "dr-anmar-needle-v1",
   "needle_geometry_source": "independently_generated_parametric_geometry",
@@ -66,7 +66,9 @@
       "collider_purpose": "guide",
       "collider_visibility": "invisible",
       "collider_physics_material_binding": "material:binding:physics",
+      "collider_physics_material_path": "Looks/NeedleSteelPhysics",
       "visual_material_binding": "material:binding",
+      "visual_material_path": "Looks/NeedleSteelVisual",
       "reason": "nonrendering_debuggable_collision_geometry"
     },
     "contact_offsets": {
@@ -89,13 +91,26 @@
       "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset"
     }
   },
+  "needle_material_organization": {
+    "scope": "Looks",
+    "visual_material": "NeedleSteelVisual",
+    "physics_material": "NeedleSteelPhysics",
+    "separate_by_purpose": true,
+    "visual_shader": "UsdPreviewSurface",
+    "physics_api_schemas": [
+      "PhysicsMaterialAPI",
+      "PhysxMaterialAPI"
+    ]
+  },
   "needle_render_collision_separation": {
     "visual_prim": "Needle/Visual",
     "collider_prim_pattern": "Needle/Collision/C###",
     "collider_purpose": "guide",
     "collider_visibility": "invisible",
     "collider_physics_material_binding": "material:binding:physics",
+    "collider_physics_material_path": "Looks/NeedleSteelPhysics",
     "visual_material_binding": "material:binding",
+    "visual_material_path": "Looks/NeedleSteelVisual",
     "reason": "nonrendering_debuggable_collision_geometry"
   },
   "needle_collision_guide_purpose_count": 40,

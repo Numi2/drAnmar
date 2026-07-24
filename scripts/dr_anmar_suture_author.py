@@ -365,7 +365,9 @@ def author_dr_anmar_needle(
         swage_anchor[2] - rotated_interface_center[2],
     )
     root = f"/{DR_ANMAR_NEEDLE_ROOT_PRIM}"
-    steel_material_path = f"{root}/Materials/NeedleSteel"
+    material_organization = needle_profile["material"]["usd_organization"]
+    visual_material_path = f"{root}/{material_organization['scope']}/{material_organization['visual_material']}"
+    physics_material_path = f"{root}/{material_organization['scope']}/{material_organization['physics_material']}"
     mesh_points = ",\n            ".join(usd_vec(point) for point in mesh.points)
     mesh_normals = ",\n            ".join(usd_vec(normal) for normal in mesh.normals)
     face_counts = ", ".join(str(value) for value in mesh.face_vertex_counts)
@@ -384,7 +386,7 @@ def author_dr_anmar_needle(
     float3[] extent = [{usd_vec(capsule.extent_min)}, {usd_vec(capsule.extent_max)}]
     uniform token purpose = "{render_collision["collider_purpose"]}"
     token visibility = "{render_collision["collider_visibility"]}"
-    rel {render_collision["collider_physics_material_binding"]} = <{steel_material_path}>
+    rel {render_collision["collider_physics_material_binding"]} = <{physics_material_path}>
     bool physics:collisionEnabled = true
     float physxCollision:contactOffset = {usd_float(capsule.contact_offset_m)}
     float physxCollision:restOffset = {usd_float(capsule.rest_offset_m)}
@@ -418,6 +420,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         string drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"
         string drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"
         string drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"
+        string drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"
         string drAnmarNeedleProfileId = "{needle_profile["id"]}"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
@@ -430,9 +433,22 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
     }}
 )
 {{
-    def Scope "Materials"
+    def Scope "{material_organization["scope"]}"
     {{
-        def Material "NeedleSteel" (
+        def Material "{material_organization["visual_material"]}"
+        {{
+            def Shader "PreviewSurface"
+            {{
+                uniform token info:id = "{material_organization["visual_shader"]}"
+                color3f inputs:diffuseColor = (0.53, 0.58, 0.64)
+                float inputs:metallic = {usd_float(float(needle_profile["appearance"]["metallic_seed"]))}
+                float inputs:roughness = {usd_float(float(needle_profile["appearance"]["roughness_seed"]))}
+                token outputs:surface
+            }}
+            token outputs:surface.connect = <{visual_material_path}/PreviewSurface.outputs:surface>
+        }}
+
+        def Material "{material_organization["physics_material"]}" (
             prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
         )
         {{
@@ -440,16 +456,6 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
             float physics:dynamicFriction = {usd_float(float(contact["dynamic_friction_seed"]))}
             float physics:restitution = {usd_float(float(contact["restitution_seed"]))}
             uniform token physxMaterial:frictionCombineMode = "{contact["combine_mode"]}"
-
-            def Shader "PreviewSurface"
-            {{
-                uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.53, 0.58, 0.64)
-                float inputs:metallic = {usd_float(float(needle_profile["appearance"]["metallic_seed"]))}
-                float inputs:roughness = {usd_float(float(needle_profile["appearance"]["roughness_seed"]))}
-                token outputs:surface
-            }}
-            token outputs:surface.connect = </{DR_ANMAR_NEEDLE_ROOT_PRIM}/Materials/NeedleSteel/PreviewSurface.outputs:surface>
         }}
     }}
 
@@ -486,7 +492,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
             )
             int[] primvars:normals:indices = [{normal_indices}]
             uniform token subdivisionScheme = "none"
-            rel material:binding = <{steel_material_path}>
+            rel material:binding = <{visual_material_path}>
         }}
 
         def Scope "Collision"
@@ -623,6 +629,7 @@ def main() -> int:
         ),
         "needle_collision_capsule_count": derived_needle.collision_capsule_count,
         "needle_collision_contract": needle_profile["construction"]["collision_contract"],
+        "needle_material_organization": needle_profile["material"]["usd_organization"],
         "needle_render_collision_separation": needle_profile["construction"]["collision_contract"][
             "render_collision_separation"
         ],

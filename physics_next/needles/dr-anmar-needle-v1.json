@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -42,7 +42,9 @@
         "collider_purpose": "guide",
         "collider_visibility": "invisible",
         "collider_physics_material_binding": "material:binding:physics",
+        "collider_physics_material_path": "Looks/NeedleSteelPhysics",
         "visual_material_binding": "material:binding",
+        "visual_material_path": "Looks/NeedleSteelVisual",
         "reason": "nonrendering_debuggable_collision_geometry"
       },
       "contact_offsets": {
@@ -100,6 +102,17 @@
   },
   "material": {
     "class": "surgical_stainless_steel_engineering_proxy",
+    "usd_organization": {
+      "scope": "Looks",
+      "visual_material": "NeedleSteelVisual",
+      "physics_material": "NeedleSteelPhysics",
+      "separate_by_purpose": true,
+      "visual_shader": "UsdPreviewSurface",
+      "physics_api_schemas": [
+        "PhysicsMaterialAPI",
+        "PhysxMaterialAPI"
+      ]
+    },
     "density_kg_m3": 8000.0,
     "density_range_kg_m3": [
       7700.0,
@@ -184,8 +197,8 @@
     },
     {
       "title": "Isaac Sim asset validation",
-      "url": "https://docs.isaacsim.omniverse.nvidia.com/5.0.0/robot_setup/asset_validation.html",
-      "used_for": "guide-purpose and invisible collision representation validation"
+      "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_validation.html",
+      "used_for": "top-level Looks organization plus guide-purpose and invisible collision representation validation"
     },
     {
       "title": "OpenUSD Exchange SDK physics material binding",

@@ -252,6 +252,7 @@ def validate(
         'drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"',
         'drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"',
         'drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"',
+        'drAnmarMaterialContract = "top_level_looks_with_separate_visual_and_physics_materials"',
         'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
         'drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"',
         '"PhysicsMaterialAPI", "PhysxMaterialAPI"',
@@ -396,9 +397,15 @@ def validate(
     needle_collision_capsules = build_needle_collision_capsules(needle_profile)
     collision_contract = needle_profile["construction"]["collision_contract"]
     render_collision_contract = collision_contract["render_collision_separation"]
+    material_organization = needle_profile["material"]["usd_organization"]
+    visual_material_path = (
+        f"/{DR_ANMAR_NEEDLE_ROOT_PRIM}/{material_organization['scope']}/{material_organization['visual_material']}"
+    )
+    physics_material_path = (
+        f"/{DR_ANMAR_NEEDLE_ROOT_PRIM}/{material_organization['scope']}/{material_organization['physics_material']}"
+    )
     expected_physics_material_binding = (
-        f'rel {render_collision_contract["collider_physics_material_binding"]} = '
-        f"</{DR_ANMAR_NEEDLE_ROOT_PRIM}/Materials/NeedleSteel>"
+        f'rel {render_collision_contract["collider_physics_material_binding"]} = <{physics_material_path}>'
     )
     collision_attribute_errors: list[str] = []
     for index, capsule in enumerate(needle_collision_capsules):
@@ -543,8 +550,7 @@ def validate(
         "invisible": needle_text.count(f'token visibility = "{render_collision_contract["collider_visibility"]}"'),
         "physics_material_binding": needle_text.count(expected_physics_material_binding),
         "visual_material_binding": needle_text.count(
-            f'rel {render_collision_contract["visual_material_binding"]} = '
-            f"</{DR_ANMAR_NEEDLE_ROOT_PRIM}/Materials/NeedleSteel>"
+            f'rel {render_collision_contract["visual_material_binding"]} = <{visual_material_path}>'
         ),
     }
     check(
@@ -555,7 +561,9 @@ def validate(
         and render_collision_contract["collider_purpose"] == "guide"
         and render_collision_contract["collider_visibility"] == "invisible"
         and render_collision_contract["collider_physics_material_binding"] == "material:binding:physics"
+        and render_collision_contract["collider_physics_material_path"] == "Looks/NeedleSteelPhysics"
         and render_collision_contract["visual_material_binding"] == "material:binding"
+        and render_collision_contract["visual_material_path"] == "Looks/NeedleSteelVisual"
         and render_collision_contract["reason"] == "nonrendering_debuggable_collision_geometry"
         and render_collision_counts["guide_purpose"] == derived_needle.collision_capsule_count
         and render_collision_counts["invisible"] == derived_needle.collision_capsule_count
@@ -567,6 +575,61 @@ def validate(
             "collision_capsule_count": derived_needle.collision_capsule_count,
         },
         "one render mesh plus guide-purpose invisible compound colliders with physics-only material bindings",
+    )
+    visual_material_match = re.search(
+        rf'def Material "{re.escape(str(material_organization["visual_material"]))}"\s*' r"\{(.*?)\n        \}",
+        needle_text,
+        flags=re.DOTALL,
+    )
+    physics_material_match = re.search(
+        rf'def Material "{re.escape(str(material_organization["physics_material"]))}".*?' r"\{(.*?)\n        \}",
+        needle_text,
+        flags=re.DOTALL,
+    )
+    visual_material_block = visual_material_match.group(1) if visual_material_match is not None else ""
+    physics_material_block = physics_material_match.group(1) if physics_material_match is not None else ""
+    check(
+        checks,
+        "needle_top_level_looks_and_separate_materials",
+        material_organization["scope"] == "Looks"
+        and material_organization["visual_material"] == "NeedleSteelVisual"
+        and material_organization["physics_material"] == "NeedleSteelPhysics"
+        and material_organization["separate_by_purpose"] is True
+        and material_organization["visual_shader"] == "UsdPreviewSurface"
+        and material_organization["physics_api_schemas"]
+        == [
+            "PhysicsMaterialAPI",
+            "PhysxMaterialAPI",
+        ]
+        and needle_text.count('def Scope "Looks"') == 1
+        and 'def Scope "Materials"' not in needle_text
+        and len(re.findall(r'def Material "[^"]+"', needle_text)) == 2
+        and visual_material_match is not None
+        and 'uniform token info:id = "UsdPreviewSurface"' in visual_material_block
+        and 'def Shader "PreviewSurface"' in visual_material_block
+        and "PhysicsMaterialAPI" not in visual_material_block
+        and "PhysxMaterialAPI" not in visual_material_block
+        and "physics:staticFriction" not in visual_material_block
+        and physics_material_match is not None
+        and '"PhysicsMaterialAPI", "PhysxMaterialAPI"' in physics_material_match.group(0)
+        and "physics:staticFriction" in physics_material_block
+        and "physics:dynamicFriction" in physics_material_block
+        and "physics:restitution" in physics_material_block
+        and "physxMaterial:frictionCombineMode" in physics_material_block
+        and 'def Shader "PreviewSurface"' not in physics_material_block
+        and needle_text.count(visual_material_path) == 2
+        and needle_text.count(physics_material_path) == derived_needle.collision_capsule_count,
+        {
+            "contract": material_organization,
+            "visual_material_path": visual_material_path,
+            "physics_material_path": physics_material_path,
+            "visual_material_found": visual_material_match is not None,
+            "physics_material_found": physics_material_match is not None,
+            "authored_material_count": len(re.findall(r'def Material "[^"]+"', needle_text)),
+            "visual_path_reference_count": needle_text.count(visual_material_path),
+            "physics_path_reference_count": needle_text.count(physics_material_path),
+        },
+        "two direct children of top-level Looks with disjoint visual shader and physics schema responsibilities",
     )
     contact_offset_contract = collision_contract["contact_offsets"]
     contact_offsets = [capsule.contact_offset_m for capsule in needle_collision_capsules]
@@ -654,6 +717,7 @@ def validate(
         "needle_collision_invisible_count",
         "needle_collision_physics_material_binding_count",
         "needle_render_collision_separation_valid",
+        "needle_material_organization_valid",
     ]
     missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(
@@ -680,6 +744,8 @@ def validate(
         and render_collision_contract["collider_purpose"] == "guide"
         and render_collision_contract["collider_visibility"] == "invisible"
         and render_collision_contract["collider_physics_material_binding"] == "material:binding:physics"
+        and material_organization["scope"] == "Looks"
+        and material_organization["separate_by_purpose"] is True
         and contact_offset_contract["newton_authoring"]
         == [
             "NewtonCollisionAPI",

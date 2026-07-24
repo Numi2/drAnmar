@@ -164,6 +164,7 @@ def main() -> int:
     needle_collision_invisible_count = None
     needle_collision_physics_material_binding_count = None
     needle_render_collision_separation_valid = None
+    needle_material_organization_valid = None
     if assembly:
         needle_collision_capsules = [
             prim
@@ -179,7 +180,8 @@ def main() -> int:
         needle_newton_collision_api_count = sum(
             "NewtonCollisionAPI" in prim.GetAppliedSchemas() for prim in needle_collision_capsules
         )
-        expected_needle_material_path = f"{root_path}/Materials/NeedleSteel"
+        expected_visual_material_path = f"{root_path}/Looks/NeedleSteelVisual"
+        expected_physics_material_path = f"{root_path}/Looks/NeedleSteelPhysics"
         needle_collision_guide_purpose_count = sum(
             str(UsdGeom.Imageable(prim).GetPurposeAttr().Get()) == "guide" for prim in needle_collision_capsules
         )
@@ -188,7 +190,7 @@ def main() -> int:
         )
         needle_collision_physics_material_binding_count = sum(
             [str(target) for target in prim.GetRelationship("material:binding:physics").GetTargets()]
-            == [expected_needle_material_path]
+            == [expected_physics_material_path]
             and not prim.GetRelationship("material:binding").HasAuthoredTargets()
             for prim in needle_collision_capsules
         )
@@ -256,8 +258,8 @@ def main() -> int:
                 atol=1.0e-12,
             )
         )
-        needle_material = stage.GetPrimAtPath(f"{root_path}/Materials/NeedleSteel")
-        needle_friction_combine_mode = needle_material.GetAttribute("physxMaterial:frictionCombineMode").Get()
+        needle_physics_material = stage.GetPrimAtPath(expected_physics_material_path)
+        needle_friction_combine_mode = needle_physics_material.GetAttribute("physxMaterial:frictionCombineMode").Get()
         mass_api = UsdPhysics.MassAPI(stage.GetPrimAtPath(f"{root_path}/Needle"))
         needle_authored_mass_kg = float(mass_api.GetMassAttr().Get())
         center_of_mass = mass_api.GetCenterOfMassAttr().Get()
@@ -321,8 +323,27 @@ def main() -> int:
             and str(UsdGeom.Imageable(visual_prim).GetPurposeAttr().Get()) == "default"
             and str(UsdGeom.Imageable(visual_prim).GetVisibilityAttr().Get()) == "inherited"
             and [str(target) for target in visual_prim.GetRelationship("material:binding").GetTargets()]
-            == [expected_needle_material_path]
+            == [expected_visual_material_path]
             and not visual_prim.GetRelationship("material:binding:physics").HasAuthoredTargets()
+        )
+        looks_prim = stage.GetPrimAtPath(f"{root_path}/Looks")
+        visual_material_prim = stage.GetPrimAtPath(expected_visual_material_path)
+        physics_material_prim = stage.GetPrimAtPath(expected_physics_material_path)
+        visual_shader_prim = stage.GetPrimAtPath(f"{expected_visual_material_path}/PreviewSurface")
+        needle_material_organization_valid = bool(
+            looks_prim.IsValid()
+            and looks_prim.GetTypeName() == "Scope"
+            and not stage.GetPrimAtPath(f"{root_path}/Materials").IsValid()
+            and len([child for child in looks_prim.GetChildren() if child.GetTypeName() == "Material"]) == 2
+            and visual_material_prim.GetTypeName() == "Material"
+            and physics_material_prim.GetTypeName() == "Material"
+            and "PhysicsMaterialAPI" not in visual_material_prim.GetAppliedSchemas()
+            and "PhysxMaterialAPI" not in visual_material_prim.GetAppliedSchemas()
+            and "PhysicsMaterialAPI" in physics_material_prim.GetAppliedSchemas()
+            and "PhysxMaterialAPI" in physics_material_prim.GetAppliedSchemas()
+            and visual_shader_prim.GetTypeName() == "Shader"
+            and str(visual_shader_prim.GetAttribute("info:id").Get()) == "UsdPreviewSurface"
+            and not stage.GetPrimAtPath(f"{expected_physics_material_path}/PreviewSurface").IsValid()
         )
         normal_attribute = visual_prim.GetAttribute("primvars:normals")
         normal_index_attribute = visual_prim.GetAttribute("primvars:normals:indices")
@@ -373,7 +394,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v5",
+        "schema": "dr.anmar.needle-native-physx-probe.v6",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -406,6 +427,7 @@ def main() -> int:
         "needle_collision_invisible_count": needle_collision_invisible_count,
         "needle_collision_physics_material_binding_count": needle_collision_physics_material_binding_count,
         "needle_render_collision_separation_valid": needle_render_collision_separation_valid,
+        "needle_material_organization_valid": needle_material_organization_valid,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -440,6 +462,7 @@ def main() -> int:
                 and report["needle_collision_invisible_count"] == derived_needle.collision_capsule_count
                 and report["needle_collision_physics_material_binding_count"] == derived_needle.collision_capsule_count
                 and report["needle_render_collision_separation_valid"]
+                and report["needle_material_organization_valid"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None
