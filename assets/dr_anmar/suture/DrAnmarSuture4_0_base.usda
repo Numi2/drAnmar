@@ -15,14 +15,15 @@ def Xform "DrAnmarSuture4_0" (
     prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]
     assetInfo = {
         string name = "DrAnmarSuture4_0"
-        string version = "2.6.0"
+        string version = "2.7.0"
     }
     customData = {
-        string drAnmarAssetVersion = "2.6.0"
+        string drAnmarAssetVersion = "2.7.0"
         bool drAnmarClinicalValidation = false
         string drAnmarCanonicalAssetPackage = "assets/dr_anmar"
         bool drAnmarIndependentAsset = true
         string drAnmarLayerContract = "interface_references_base_with_public_none_physics_physx_payload_variants"
+        string drAnmarMassPropertyContract = "explicit_physical_envelope_decoupled_mass_center_inertia_principal_axes"
         string drAnmarProfileId = "dr-anmar-suture-4-0-braided-v1"
         string drAnmarRepresentation = "discrete_cosserat_rod_with_braided_render_mesh_and_capsule_colliders"
         string drAnmarStatus = "research_informed_engineering_model_pending_physical_and_clinical_validation"

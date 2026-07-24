@@ -15,12 +15,12 @@ def Xform "DrAnmarNeedle" (
     prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]
     assetInfo = {
         string name = "DrAnmarNeedle"
-        string version = "1.16.0"
+        string version = "1.17.0"
     }
     customData = {
         string drAnmarAssetId = "dr-anmar-needle"
         string drAnmarAssetName = "DrAnmar Needle"
-        string drAnmarAssetVersion = "1.16.0"
+        string drAnmarAssetVersion = "1.17.0"
         string drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"
         bool drAnmarClinicalValidation = false
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"

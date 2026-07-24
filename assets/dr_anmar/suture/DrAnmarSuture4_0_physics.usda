@@ -37,6 +37,9 @@ over "DrAnmarSuture4_0"
         bool physics:rigidBodyEnabled = true
         bool physics:kinematicEnabled = true
         float physics:mass = 2.55254403104e-07
+        point3f physics:centerOfMass = (0, 0, 0)
+        float3 physics:diagonalInertia = (3.4583224767e-15, 1.33626031293e-14, 1.33626031293e-14)
+        quatf physics:principalAxes = (1, 0, 0, 0)
         rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0000>
 
         over "Collision" (
@@ -57,6 +60,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/NeedleInterface>
 
             over "Collision" (
@@ -75,6 +81,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0000>
 
             over "Collision" (
@@ -93,6 +102,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0001>
 
             over "Collision" (
@@ -111,6 +123,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0002>
 
             over "Collision" (
@@ -129,6 +144,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0003>
 
             over "Collision" (
@@ -147,6 +165,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0004>
 
             over "Collision" (
@@ -165,6 +186,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0005>
 
             over "Collision" (
@@ -183,6 +207,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0006>
 
             over "Collision" (
@@ -201,6 +228,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0007>
 
             over "Collision" (
@@ -219,6 +249,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0008>
 
             over "Collision" (
@@ -237,6 +270,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0009>
 
             over "Collision" (
@@ -255,6 +291,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0010>
 
             over "Collision" (
@@ -273,6 +312,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0011>
 
             over "Collision" (
@@ -291,6 +333,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0012>
 
             over "Collision" (
@@ -309,6 +354,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0013>
 
             over "Collision" (
@@ -327,6 +375,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0014>
 
             over "Collision" (
@@ -345,6 +396,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0015>
 
             over "Collision" (
@@ -363,6 +417,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0016>
 
             over "Collision" (
@@ -381,6 +438,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0017>
 
             over "Collision" (
@@ -399,6 +459,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0018>
 
             over "Collision" (
@@ -417,6 +480,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0019>
 
             over "Collision" (
@@ -435,6 +501,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0020>
 
             over "Collision" (
@@ -453,6 +522,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0021>
 
             over "Collision" (
@@ -471,6 +543,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0022>
 
             over "Collision" (
@@ -489,6 +564,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0023>
 
             over "Collision" (
@@ -507,6 +585,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0024>
 
             over "Collision" (
@@ -525,6 +606,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0025>
 
             over "Collision" (
@@ -543,6 +627,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0026>
 
             over "Collision" (
@@ -561,6 +648,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0027>
 
             over "Collision" (
@@ -579,6 +669,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0028>
 
             over "Collision" (
@@ -597,6 +690,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0029>
 
             over "Collision" (
@@ -615,6 +711,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0030>
 
             over "Collision" (
@@ -633,6 +732,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0031>
 
             over "Collision" (
@@ -651,6 +753,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0032>
 
             over "Collision" (
@@ -669,6 +774,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0033>
 
             over "Collision" (
@@ -687,6 +795,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0034>
 
             over "Collision" (
@@ -705,6 +816,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0035>
 
             over "Collision" (
@@ -723,6 +837,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0036>
 
             over "Collision" (
@@ -741,6 +858,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0037>
 
             over "Collision" (
@@ -759,6 +879,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0038>
 
             over "Collision" (
@@ -777,6 +900,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0039>
 
             over "Collision" (
@@ -795,6 +921,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0040>
 
             over "Collision" (
@@ -813,6 +942,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0041>
 
             over "Collision" (
@@ -831,6 +963,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0042>
 
             over "Collision" (
@@ -849,6 +984,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0043>
 
             over "Collision" (
@@ -867,6 +1005,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0044>
 
             over "Collision" (
@@ -885,6 +1026,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0045>
 
             over "Collision" (
@@ -903,6 +1047,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0046>
 
             over "Collision" (
@@ -921,6 +1068,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0047>
 
             over "Collision" (
@@ -939,6 +1089,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0048>
 
             over "Collision" (
@@ -957,6 +1110,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0049>
 
             over "Collision" (
@@ -975,6 +1131,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0050>
 
             over "Collision" (
@@ -993,6 +1152,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0051>
 
             over "Collision" (
@@ -1011,6 +1173,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0052>
 
             over "Collision" (
@@ -1029,6 +1194,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0053>
 
             over "Collision" (
@@ -1047,6 +1215,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0054>
 
             over "Collision" (
@@ -1065,6 +1236,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0055>
 
             over "Collision" (
@@ -1083,6 +1257,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0056>
 
             over "Collision" (
@@ -1101,6 +1278,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0057>
 
             over "Collision" (
@@ -1119,6 +1299,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0058>
 
             over "Collision" (
@@ -1137,6 +1320,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0059>
 
             over "Collision" (
@@ -1155,6 +1341,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0060>
 
             over "Collision" (
@@ -1173,6 +1362,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0061>
 
             over "Collision" (
@@ -1191,6 +1383,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0062>
 
             over "Collision" (
@@ -1209,6 +1404,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0063>
 
             over "Collision" (
@@ -1227,6 +1425,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0064>
 
             over "Collision" (
@@ -1245,6 +1446,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0065>
 
             over "Collision" (
@@ -1263,6 +1467,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0066>
 
             over "Collision" (
@@ -1281,6 +1488,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0067>
 
             over "Collision" (
@@ -1299,6 +1509,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0068>
 
             over "Collision" (
@@ -1317,6 +1530,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0069>
 
             over "Collision" (
@@ -1335,6 +1551,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0070>
 
             over "Collision" (
@@ -1353,6 +1572,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0071>
 
             over "Collision" (
@@ -1371,6 +1593,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0072>
 
             over "Collision" (
@@ -1389,6 +1614,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0073>
 
             over "Collision" (
@@ -1407,6 +1635,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0074>
 
             over "Collision" (
@@ -1425,6 +1656,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0075>
 
             over "Collision" (
@@ -1443,6 +1677,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0076>
 
             over "Collision" (
@@ -1461,6 +1698,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0077>
 
             over "Collision" (
@@ -1479,6 +1719,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0078>
 
             over "Collision" (
@@ -1497,6 +1740,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0079>
 
             over "Collision" (
@@ -1515,6 +1761,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0080>
 
             over "Collision" (
@@ -1533,6 +1782,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0081>
 
             over "Collision" (
@@ -1551,6 +1803,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0082>
 
             over "Collision" (
@@ -1569,6 +1824,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0083>
 
             over "Collision" (
@@ -1587,6 +1845,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0084>
 
             over "Collision" (
@@ -1605,6 +1866,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0085>
 
             over "Collision" (
@@ -1623,6 +1887,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0086>
 
             over "Collision" (
@@ -1641,6 +1908,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0087>
 
             over "Collision" (
@@ -1659,6 +1929,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0088>
 
             over "Collision" (
@@ -1677,6 +1950,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0089>
 
             over "Collision" (
@@ -1695,6 +1971,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0090>
 
             over "Collision" (
@@ -1713,6 +1992,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0091>
 
             over "Collision" (
@@ -1731,6 +2013,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0092>
 
             over "Collision" (
@@ -1749,6 +2034,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0093>
 
             over "Collision" (
@@ -1767,6 +2055,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0094>
 
             over "Collision" (
@@ -1785,6 +2076,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0095>
 
             over "Collision" (
@@ -1803,6 +2097,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0096>
 
             over "Collision" (
@@ -1821,6 +2118,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0097>
 
             over "Collision" (
@@ -1839,6 +2139,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0098>
 
             over "Collision" (
@@ -1857,6 +2160,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0099>
 
             over "Collision" (
@@ -1875,6 +2181,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0100>
 
             over "Collision" (
@@ -1893,6 +2202,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0101>
 
             over "Collision" (
@@ -1911,6 +2223,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0102>
 
             over "Collision" (
@@ -1929,6 +2244,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0103>
 
             over "Collision" (
@@ -1947,6 +2265,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0104>
 
             over "Collision" (
@@ -1965,6 +2286,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0105>
 
             over "Collision" (
@@ -1983,6 +2307,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0106>
 
             over "Collision" (
@@ -2001,6 +2328,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0107>
 
             over "Collision" (
@@ -2019,6 +2349,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0108>
 
             over "Collision" (
@@ -2037,6 +2370,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0109>
 
             over "Collision" (
@@ -2055,6 +2391,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0110>
 
             over "Collision" (
@@ -2073,6 +2412,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0111>
 
             over "Collision" (
@@ -2091,6 +2433,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0112>
 
             over "Collision" (
@@ -2109,6 +2454,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0113>
 
             over "Collision" (
@@ -2127,6 +2475,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0114>
 
             over "Collision" (
@@ -2145,6 +2496,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0115>
 
             over "Collision" (
@@ -2163,6 +2517,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0116>
 
             over "Collision" (
@@ -2181,6 +2538,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0117>
 
             over "Collision" (
@@ -2199,6 +2559,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0118>
 
             over "Collision" (
@@ -2217,6 +2580,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0119>
 
             over "Collision" (
@@ -2235,6 +2601,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0120>
 
             over "Collision" (
@@ -2253,6 +2622,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0121>
 
             over "Collision" (
@@ -2271,6 +2643,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0122>
 
             over "Collision" (
@@ -2289,6 +2664,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0123>
 
             over "Collision" (
@@ -2307,6 +2685,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0124>
 
             over "Collision" (
@@ -2325,6 +2706,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0125>
 
             over "Collision" (
@@ -2343,6 +2727,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0126>
 
             over "Collision" (
@@ -2361,6 +2748,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0127>
 
             over "Collision" (
@@ -2379,6 +2769,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0128>
 
             over "Collision" (
@@ -2397,6 +2790,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0129>
 
             over "Collision" (
@@ -2415,6 +2811,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0130>
 
             over "Collision" (
@@ -2433,6 +2832,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0131>
 
             over "Collision" (
@@ -2451,6 +2853,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0132>
 
             over "Collision" (
@@ -2469,6 +2874,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0133>
 
             over "Collision" (
@@ -2487,6 +2895,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0134>
 
             over "Collision" (
@@ -2505,6 +2916,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0135>
 
             over "Collision" (
@@ -2523,6 +2937,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0136>
 
             over "Collision" (
@@ -2541,6 +2958,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0137>
 
             over "Collision" (
@@ -2559,6 +2979,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0138>
 
             over "Collision" (
@@ -2577,6 +3000,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0139>
 
             over "Collision" (
@@ -2595,6 +3021,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0140>
 
             over "Collision" (
@@ -2613,6 +3042,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0141>
 
             over "Collision" (
@@ -2631,6 +3063,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0142>
 
             over "Collision" (
@@ -2649,6 +3084,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0143>
 
             over "Collision" (
@@ -2667,6 +3105,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0144>
 
             over "Collision" (
@@ -2685,6 +3126,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0145>
 
             over "Collision" (
@@ -2703,6 +3147,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0146>
 
             over "Collision" (
@@ -2721,6 +3168,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0147>
 
             over "Collision" (
@@ -2739,6 +3189,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0148>
 
             over "Collision" (
@@ -2757,6 +3210,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0149>
 
             over "Collision" (
@@ -2775,6 +3231,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0150>
 
             over "Collision" (
@@ -2793,6 +3252,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0151>
 
             over "Collision" (
@@ -2811,6 +3273,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0152>
 
             over "Collision" (
@@ -2829,6 +3294,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0153>
 
             over "Collision" (
@@ -2847,6 +3315,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0154>
 
             over "Collision" (
@@ -2865,6 +3336,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0155>
 
             over "Collision" (
@@ -2883,6 +3357,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0156>
 
             over "Collision" (
@@ -2901,6 +3378,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0157>
 
             over "Collision" (
@@ -2919,6 +3399,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0158>
 
             over "Collision" (
@@ -2937,6 +3420,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0159>
 
             over "Collision" (
@@ -2955,6 +3441,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0160>
 
             over "Collision" (
@@ -2973,6 +3462,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0161>
 
             over "Collision" (
@@ -2991,6 +3483,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0162>
 
             over "Collision" (
@@ -3009,6 +3504,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0163>
 
             over "Collision" (
@@ -3027,6 +3525,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0164>
 
             over "Collision" (
@@ -3045,6 +3546,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0165>
 
             over "Collision" (
@@ -3063,6 +3567,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0166>
 
             over "Collision" (
@@ -3081,6 +3588,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0167>
 
             over "Collision" (
@@ -3099,6 +3609,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0168>
 
             over "Collision" (
@@ -3117,6 +3630,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0169>
 
             over "Collision" (
@@ -3135,6 +3651,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0170>
 
             over "Collision" (
@@ -3153,6 +3672,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0171>
 
             over "Collision" (
@@ -3171,6 +3693,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0172>
 
             over "Collision" (
@@ -3189,6 +3714,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0173>
 
             over "Collision" (
@@ -3207,6 +3735,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0174>
 
             over "Collision" (
@@ -3225,6 +3756,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0175>
 
             over "Collision" (
@@ -3243,6 +3777,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0176>
 
             over "Collision" (
@@ -3261,6 +3798,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0177>
 
             over "Collision" (
@@ -3279,6 +3819,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0178>
 
             over "Collision" (
@@ -3297,6 +3840,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0179>
 
             over "Collision" (
@@ -3315,6 +3861,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0180>
 
             over "Collision" (
@@ -3333,6 +3882,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0181>
 
             over "Collision" (
@@ -3351,6 +3903,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0182>
 
             over "Collision" (
@@ -3369,6 +3924,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0183>
 
             over "Collision" (
@@ -3387,6 +3945,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0184>
 
             over "Collision" (
@@ -3405,6 +3966,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0185>
 
             over "Collision" (
@@ -3423,6 +3987,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0186>
 
             over "Collision" (
@@ -3441,6 +4008,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0187>
 
             over "Collision" (
@@ -3459,6 +4029,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0188>
 
             over "Collision" (
@@ -3477,6 +4050,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0189>
 
             over "Collision" (
@@ -3495,6 +4071,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0190>
 
             over "Collision" (
@@ -3513,6 +4092,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0191>
 
             over "Collision" (
@@ -3531,6 +4113,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0192>
 
             over "Collision" (
@@ -3549,6 +4134,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0193>
 
             over "Collision" (
@@ -3567,6 +4155,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0194>
 
             over "Collision" (
@@ -3585,6 +4176,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0195>
 
             over "Collision" (
@@ -3603,6 +4197,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0196>
 
             over "Collision" (
@@ -3621,6 +4218,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0197>
 
             over "Collision" (
@@ -3639,6 +4239,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0198>
 
             over "Collision" (
@@ -3657,6 +4260,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0199>
 
             over "Collision" (
@@ -3675,6 +4281,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0200>
 
             over "Collision" (
@@ -3693,6 +4302,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0201>
 
             over "Collision" (
@@ -3711,6 +4323,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0202>
 
             over "Collision" (
@@ -3729,6 +4344,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0203>
 
             over "Collision" (
@@ -3747,6 +4365,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0204>
 
             over "Collision" (
@@ -3765,6 +4386,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0205>
 
             over "Collision" (
@@ -3783,6 +4407,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0206>
 
             over "Collision" (
@@ -3801,6 +4428,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0207>
 
             over "Collision" (
@@ -3819,6 +4449,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0208>
 
             over "Collision" (
@@ -3837,6 +4470,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0209>
 
             over "Collision" (
@@ -3855,6 +4491,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0210>
 
             over "Collision" (
@@ -3873,6 +4512,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0211>
 
             over "Collision" (
@@ -3891,6 +4533,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0212>
 
             over "Collision" (
@@ -3909,6 +4554,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0213>
 
             over "Collision" (
@@ -3927,6 +4575,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0214>
 
             over "Collision" (
@@ -3945,6 +4596,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0215>
 
             over "Collision" (
@@ -3963,6 +4617,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0216>
 
             over "Collision" (
@@ -3981,6 +4638,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0217>
 
             over "Collision" (
@@ -3999,6 +4659,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0218>
 
             over "Collision" (
@@ -4017,6 +4680,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0219>
 
             over "Collision" (
@@ -4035,6 +4701,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0220>
 
             over "Collision" (
@@ -4053,6 +4722,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0221>
 
             over "Collision" (
@@ -4071,6 +4743,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0222>
 
             over "Collision" (
@@ -4089,6 +4764,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0223>
 
             over "Collision" (
@@ -4107,6 +4785,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0224>
 
             over "Collision" (
@@ -4125,6 +4806,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0225>
 
             over "Collision" (
@@ -4143,6 +4827,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0226>
 
             over "Collision" (
@@ -4161,6 +4848,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0227>
 
             over "Collision" (
@@ -4179,6 +4869,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0228>
 
             over "Collision" (
@@ -4197,6 +4890,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0229>
 
             over "Collision" (
@@ -4215,6 +4911,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0230>
 
             over "Collision" (
@@ -4233,6 +4932,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0231>
 
             over "Collision" (
@@ -4251,6 +4953,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0232>
 
             over "Collision" (
@@ -4269,6 +4974,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0233>
 
             over "Collision" (
@@ -4287,6 +4995,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0234>
 
             over "Collision" (
@@ -4305,6 +5016,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0235>
 
             over "Collision" (
@@ -4323,6 +5037,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0236>
 
             over "Collision" (
@@ -4341,6 +5058,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0237>
 
             over "Collision" (
@@ -4359,6 +5079,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0238>
 
             over "Collision" (
@@ -4377,6 +5100,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0239>
 
             over "Collision" (
@@ -4395,6 +5121,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0240>
 
             over "Collision" (
@@ -4413,6 +5142,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0241>
 
             over "Collision" (
@@ -4431,6 +5163,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0242>
 
             over "Collision" (
@@ -4449,6 +5184,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0243>
 
             over "Collision" (
@@ -4467,6 +5205,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0244>
 
             over "Collision" (
@@ -4485,6 +5226,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0245>
 
             over "Collision" (
@@ -4503,6 +5247,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0246>
 
             over "Collision" (
@@ -4521,6 +5268,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0247>
 
             over "Collision" (
@@ -4539,6 +5289,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0248>
 
             over "Collision" (
@@ -4557,6 +5310,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0249>
 
             over "Collision" (
@@ -4575,6 +5331,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0250>
 
             over "Collision" (
@@ -4593,6 +5352,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0251>
 
             over "Collision" (
@@ -4611,6 +5373,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0252>
 
             over "Collision" (
@@ -4629,6 +5394,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0253>
 
             over "Collision" (
@@ -4647,6 +5415,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0254>
 
             over "Collision" (
@@ -4665,6 +5436,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0255>
 
             over "Collision" (
@@ -4683,6 +5457,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0256>
 
             over "Collision" (
@@ -4701,6 +5478,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0257>
 
             over "Collision" (
@@ -4719,6 +5499,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0258>
 
             over "Collision" (
@@ -4737,6 +5520,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0259>
 
             over "Collision" (
@@ -4755,6 +5541,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0260>
 
             over "Collision" (
@@ -4773,6 +5562,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0261>
 
             over "Collision" (
@@ -4791,6 +5583,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0262>
 
             over "Collision" (
@@ -4809,6 +5604,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0263>
 
             over "Collision" (
@@ -4827,6 +5625,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0264>
 
             over "Collision" (
@@ -4845,6 +5646,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0265>
 
             over "Collision" (
@@ -4863,6 +5667,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0266>
 
             over "Collision" (
@@ -4881,6 +5688,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0267>
 
             over "Collision" (
@@ -4899,6 +5709,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0268>
 
             over "Collision" (
@@ -4917,6 +5730,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0269>
 
             over "Collision" (
@@ -4935,6 +5751,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0270>
 
             over "Collision" (
@@ -4953,6 +5772,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0271>
 
             over "Collision" (
@@ -4971,6 +5793,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0272>
 
             over "Collision" (
@@ -4989,6 +5814,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0273>
 
             over "Collision" (
@@ -5007,6 +5835,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0274>
 
             over "Collision" (
@@ -5025,6 +5856,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0275>
 
             over "Collision" (
@@ -5043,6 +5877,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0276>
 
             over "Collision" (
@@ -5061,6 +5898,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0277>
 
             over "Collision" (
@@ -5079,6 +5919,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0278>
 
             over "Collision" (
@@ -5097,6 +5940,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0279>
 
             over "Collision" (
@@ -5115,6 +5961,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0280>
 
             over "Collision" (
@@ -5133,6 +5982,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0281>
 
             over "Collision" (
@@ -5151,6 +6003,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0282>
 
             over "Collision" (
@@ -5169,6 +6024,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0283>
 
             over "Collision" (
@@ -5187,6 +6045,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0284>
 
             over "Collision" (
@@ -5205,6 +6066,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0285>
 
             over "Collision" (
@@ -5223,6 +6087,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0286>
 
             over "Collision" (
@@ -5241,6 +6108,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0287>
 
             over "Collision" (
@@ -5259,6 +6129,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0288>
 
             over "Collision" (
@@ -5277,6 +6150,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0289>
 
             over "Collision" (
@@ -5295,6 +6171,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0290>
 
             over "Collision" (
@@ -5313,6 +6192,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0291>
 
             over "Collision" (
@@ -5331,6 +6213,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0292>
 
             over "Collision" (
@@ -5349,6 +6234,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0293>
 
             over "Collision" (
@@ -5367,6 +6255,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0294>
 
             over "Collision" (
@@ -5385,6 +6276,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0295>
 
             over "Collision" (
@@ -5403,6 +6297,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0296>
 
             over "Collision" (
@@ -5421,6 +6318,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0297>
 
             over "Collision" (
@@ -5439,6 +6339,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0298>
 
             over "Collision" (
@@ -5457,6 +6360,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0299>
 
             over "Collision" (
@@ -5475,6 +6381,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0300>
 
             over "Collision" (
@@ -5493,6 +6402,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0301>
 
             over "Collision" (
@@ -5511,6 +6423,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0302>
 
             over "Collision" (
@@ -5529,6 +6444,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0303>
 
             over "Collision" (
@@ -5547,6 +6465,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0304>
 
             over "Collision" (
@@ -5565,6 +6486,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0305>
 
             over "Collision" (
@@ -5583,6 +6507,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0306>
 
             over "Collision" (
@@ -5601,6 +6528,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0307>
 
             over "Collision" (
@@ -5619,6 +6549,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0308>
 
             over "Collision" (
@@ -5637,6 +6570,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0309>
 
             over "Collision" (
@@ -5655,6 +6591,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0310>
 
             over "Collision" (
@@ -5673,6 +6612,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0311>
 
             over "Collision" (
@@ -5691,6 +6633,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0312>
 
             over "Collision" (
@@ -5709,6 +6654,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0313>
 
             over "Collision" (
@@ -5727,6 +6675,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0314>
 
             over "Collision" (
@@ -5745,6 +6696,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0315>
 
             over "Collision" (
@@ -5763,6 +6717,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0316>
 
             over "Collision" (
@@ -5781,6 +6738,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0317>
 
             over "Collision" (
@@ -5799,6 +6759,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0318>
 
             over "Collision" (
@@ -5817,6 +6780,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0319>
 
             over "Collision" (
@@ -5835,6 +6801,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0320>
 
             over "Collision" (
@@ -5853,6 +6822,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0321>
 
             over "Collision" (
@@ -5871,6 +6843,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0322>
 
             over "Collision" (
@@ -5889,6 +6864,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0323>
 
             over "Collision" (
@@ -5907,6 +6885,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0324>
 
             over "Collision" (
@@ -5925,6 +6906,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0325>
 
             over "Collision" (
@@ -5943,6 +6927,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0326>
 
             over "Collision" (
@@ -5961,6 +6948,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0327>
 
             over "Collision" (
@@ -5979,6 +6969,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0328>
 
             over "Collision" (
@@ -5997,6 +6990,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0329>
 
             over "Collision" (
@@ -6015,6 +7011,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0330>
 
             over "Collision" (
@@ -6033,6 +7032,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0331>
 
             over "Collision" (
@@ -6051,6 +7053,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0332>
 
             over "Collision" (
@@ -6069,6 +7074,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0333>
 
             over "Collision" (
@@ -6087,6 +7095,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0334>
 
             over "Collision" (
@@ -6105,6 +7116,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0335>
 
             over "Collision" (
@@ -6123,6 +7137,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0336>
 
             over "Collision" (
@@ -6141,6 +7158,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0337>
 
             over "Collision" (
@@ -6159,6 +7179,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0338>
 
             over "Collision" (
@@ -6177,6 +7200,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0339>
 
             over "Collision" (
@@ -6195,6 +7221,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0340>
 
             over "Collision" (
@@ -6213,6 +7242,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0341>
 
             over "Collision" (
@@ -6231,6 +7263,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0342>
 
             over "Collision" (
@@ -6249,6 +7284,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0343>
 
             over "Collision" (
@@ -6267,6 +7305,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0344>
 
             over "Collision" (
@@ -6285,6 +7326,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0345>
 
             over "Collision" (
@@ -6303,6 +7347,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0346>
 
             over "Collision" (
@@ -6321,6 +7368,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0347>
 
             over "Collision" (
@@ -6339,6 +7389,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0348>
 
             over "Collision" (
@@ -6357,6 +7410,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0349>
 
             over "Collision" (
@@ -6375,6 +7431,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0350>
 
             over "Collision" (
@@ -6393,6 +7452,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0351>
 
             over "Collision" (
@@ -6411,6 +7473,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0352>
 
             over "Collision" (
@@ -6429,6 +7494,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0353>
 
             over "Collision" (
@@ -6447,6 +7515,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0354>
 
             over "Collision" (
@@ -6465,6 +7536,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0355>
 
             over "Collision" (
@@ -6483,6 +7557,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0356>
 
             over "Collision" (
@@ -6501,6 +7578,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0357>
 
             over "Collision" (
@@ -6519,6 +7599,9 @@ over "DrAnmarSuture4_0"
             bool physics:rigidBodyEnabled = true
             bool physics:kinematicEnabled = false
             float physics:mass = 3.1906800388e-08
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.49271878031e-16, 7.89360947099e-16, 7.89360947099e-16)
+            quatf physics:principalAxes = (1, 0, 0, 0)
             rel physics:filteredPairs = </DrAnmarSuture4_0/Segments/S0358>
 
             over "Collision" (

@@ -13,6 +13,7 @@ from dr_anmar_suture_integration import DR_ANMAR_NEEDLE_ASSET_ID, DR_ANMAR_NEEDL
 from dr_anmar_suture_model import build_suture_interface_visual_mesh, build_suture_visual_mesh
 from dr_anmar_suture_model import derive as derive_suture
 from dr_anmar_suture_model import load_profile as load_suture_profile
+from dr_anmar_suture_model import suture_interface_mass_properties, suture_segment_mass_properties
 
 from isaaclab.app import AppLauncher
 
@@ -299,6 +300,9 @@ def main() -> int:
     suture_physx_contact_offset_range_m = None
     suture_physx_rest_offset_range_m = None
     suture_physx_contact_offsets_match_profile = None
+    suture_explicit_mass_properties_valid_count = None
+    suture_mass_property_maximum_relative_error = None
+    suture_mass_property_minimum_inertia_kg_m2 = None
     suture_material_bindings_valid = None
     suture_visual_mesh_count = None
     suture_visual_mesh_vertex_count = None
@@ -539,6 +543,11 @@ def main() -> int:
             and 'string version = "{}"'.format(suture_profile["version"]) in suture_base_text
             and suture_base_text.count('kind = "component"') == 1
             and 'token[] semantics:labels:wikidata_qcode = ["Q4948587"]' in suture_base_text
+            and (
+                "drAnmarMassPropertyContract = "
+                '"explicit_physical_envelope_decoupled_mass_center_inertia_principal_axes"'
+            )
+            in suture_base_text
             and not suture_unanchored_asset_paths
         )
         suture_asset_structure_source_ownership_valid = bool(
@@ -609,6 +618,10 @@ def main() -> int:
             and "physx" not in suture_physics_text
             and '"Newton' not in suture_physics_text
             and "newton:" not in suture_physics_text
+            and suture_physics_text.count("float physics:mass") == 361
+            and suture_physics_text.count("point3f physics:centerOfMass") == 361
+            and suture_physics_text.count("float3 physics:diagonalInertia") == 361
+            and suture_physics_text.count("quatf physics:principalAxes") == 361
             and "physics:rigidBodyEnabled" not in suture_physx_text
             and "physics:mass" not in suture_physx_text
             and '"PhysicsRigidBodyAPI"' not in suture_physx_text
@@ -620,6 +633,106 @@ def main() -> int:
         ]
         suture_interface_prim = stage.GetPrimAtPath(f"{root_path}/Suture/NeedleInterface")
         suture_body_prims = [suture_interface_prim, *suture_segment_prims]
+        expected_segment_mass_properties = suture_segment_mass_properties(
+            suture_profile,
+            derived=derived_suture,
+        )
+        expected_interface_mass_properties = suture_interface_mass_properties(
+            suture_profile,
+            derived=derived_suture,
+        )
+        expected_suture_mass_properties = [
+            expected_interface_mass_properties,
+            *(expected_segment_mass_properties for _ in range(360)),
+        ]
+        suture_explicit_mass_properties_valid_count = 0
+        suture_mass_property_maximum_relative_error = 0.0
+        suture_mass_property_minimum_inertia_kg_m2 = np.inf
+        for prim, expected in zip(
+            suture_body_prims,
+            expected_suture_mass_properties,
+            strict=True,
+        ):
+            mass_attribute = prim.GetAttribute("physics:mass")
+            center_attribute = prim.GetAttribute("physics:centerOfMass")
+            inertia_attribute = prim.GetAttribute("physics:diagonalInertia")
+            axes_attribute = prim.GetAttribute("physics:principalAxes")
+            mass = mass_attribute.Get()
+            center = center_attribute.Get()
+            inertia = inertia_attribute.Get()
+            axes = axes_attribute.Get()
+            if any(value is None for value in (mass, center, inertia, axes)):
+                continue
+            center_array = np.asarray(center, dtype=np.float64)
+            inertia_array = np.asarray(inertia, dtype=np.float64)
+            axes_imaginary = axes.GetImaginary()
+            axes_array = np.asarray(
+                [
+                    axes.GetReal(),
+                    axes_imaginary[0],
+                    axes_imaginary[1],
+                    axes_imaginary[2],
+                ],
+                dtype=np.float64,
+            )
+            expected_center = np.asarray(
+                expected.center_of_mass_m,
+                dtype=np.float64,
+            )
+            expected_inertia = np.asarray(
+                expected.diagonal_inertia_kg_m2,
+                dtype=np.float64,
+            )
+            expected_axes = np.asarray(
+                expected.principal_axes_wxyz,
+                dtype=np.float64,
+            )
+            relative_errors = np.concatenate(
+                (
+                    np.asarray(
+                        [
+                            abs(float(mass) - expected.mass_kg) / expected.mass_kg,
+                        ]
+                    ),
+                    np.abs(inertia_array - expected_inertia) / expected_inertia,
+                    np.abs(center_array - expected_center),
+                    np.abs(axes_array - expected_axes),
+                )
+            )
+            maximum_relative_error = float(relative_errors.max())
+            suture_mass_property_maximum_relative_error = max(
+                suture_mass_property_maximum_relative_error,
+                maximum_relative_error,
+            )
+            suture_mass_property_minimum_inertia_kg_m2 = min(
+                suture_mass_property_minimum_inertia_kg_m2,
+                float(inertia_array.min()),
+            )
+            if (
+                mass_attribute.HasAuthoredValueOpinion()
+                and center_attribute.HasAuthoredValueOpinion()
+                and inertia_attribute.HasAuthoredValueOpinion()
+                and axes_attribute.HasAuthoredValueOpinion()
+                and float(mass) > 0.0
+                and center_array.shape == (3,)
+                and inertia_array.shape == (3,)
+                and axes_array.shape == (4,)
+                and np.isfinite(center_array).all()
+                and np.isfinite(inertia_array).all()
+                and np.isfinite(axes_array).all()
+                and np.all(inertia_array > 0.0)
+                and all(
+                    inertia_array[index] <= inertia_array.sum() - inertia_array[index] + 1.0e-30 for index in range(3)
+                )
+                and np.isclose(
+                    np.linalg.norm(axes_array),
+                    1.0,
+                    rtol=0.0,
+                    atol=1.0e-6,
+                )
+                and maximum_relative_error <= 1.0e-6
+            ):
+                suture_explicit_mass_properties_valid_count += 1
         suture_collision_prims = [stage.GetPrimAtPath(f"{prim.GetPath()}/Collision") for prim in suture_body_prims]
         suture_visual_prims = [stage.GetPrimAtPath(f"{prim.GetPath()}/Visual") for prim in suture_segment_prims]
         suture_interface_visual_prim = stage.GetPrimAtPath(f"{root_path}/Suture/NeedleInterface/Visual")
@@ -1342,7 +1455,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v15",
+        "schema": "dr.anmar.needle-native-physx-probe.v16",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -1405,6 +1518,9 @@ def main() -> int:
         "suture_physx_contact_offset_range_m": suture_physx_contact_offset_range_m,
         "suture_physx_rest_offset_range_m": suture_physx_rest_offset_range_m,
         "suture_physx_contact_offsets_match_profile": suture_physx_contact_offsets_match_profile,
+        "suture_explicit_mass_properties_valid_count": suture_explicit_mass_properties_valid_count,
+        "suture_mass_property_maximum_relative_error": suture_mass_property_maximum_relative_error,
+        "suture_mass_property_minimum_inertia_kg_m2": suture_mass_property_minimum_inertia_kg_m2,
         "suture_material_bindings_valid": suture_material_bindings_valid,
         "suture_visual_mesh_count": suture_visual_mesh_count,
         "suture_visual_mesh_vertex_count": suture_visual_mesh_vertex_count,
@@ -1480,6 +1596,9 @@ def main() -> int:
                 and report["suture_physx_collision_api_count"] == 361
                 and report["suture_hybrid_ccd_body_count"] == 361
                 and report["suture_physx_contact_offsets_match_profile"]
+                and report["suture_explicit_mass_properties_valid_count"] == 361
+                and report["suture_mass_property_maximum_relative_error"] <= 1.0e-6
+                and report["suture_mass_property_minimum_inertia_kg_m2"] > 0.0
                 and report["suture_material_bindings_valid"]
                 and report["suture_visual_mesh_count"] == 360
                 and report["suture_visual_normals_valid_count"] == 360

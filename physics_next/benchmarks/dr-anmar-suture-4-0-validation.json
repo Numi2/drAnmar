@@ -160,7 +160,7 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.16.0\"",
+        "drAnmarAssetVersion = \"1.17.0\"",
         "@./DrAnmarNeedle_base.usda@",
         "@./DrAnmarNeedle_physx.usda@",
         "@./DrAnmarNeedle_materials.usda@",
@@ -168,7 +168,7 @@
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "prepend apiSchemas = [\"SemanticsLabelsAPI:wikidata_qcode\"]",
         "string name = \"DrAnmarNeedle\"",
-        "string version = \"1.16.0\"",
+        "string version = \"1.17.0\"",
         "displayName = \"DrAnmar Needle and 4-0 Braided Suture\"",
         "kind = \"component\"",
         "kind = \"subcomponent\"",
@@ -200,9 +200,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.16.0",
+        "integration_version": "1.17.0",
         "missing": [],
-        "profile_version": "1.16.0"
+        "profile_version": "1.17.0"
       },
       "passed": true
     },
@@ -634,6 +634,10 @@
       "expected": "the assembly choice switches needle and nested suture together without mixed physics backends",
       "measured": {
         "none": {
+          "explicit_centers_of_mass": 0,
+          "explicit_diagonal_inertias": 0,
+          "explicit_masses": 0,
+          "explicit_principal_axes": 0,
           "factory_swage_joints": 0,
           "needle_colliders": 0,
           "physics_api_schemas": 0,
@@ -646,10 +650,14 @@
           "suture_visual_meshes": 362
         },
         "physics": {
+          "explicit_centers_of_mass": 362,
+          "explicit_diagonal_inertias": 362,
+          "explicit_masses": 362,
+          "explicit_principal_axes": 362,
           "factory_swage_joints": 1,
           "needle_colliders": 40,
           "physics_api_schemas": 4009,
-          "physics_properties": 15907,
+          "physics_properties": 16990,
           "physx_api_schemas": 0,
           "physx_properties": 0,
           "suture_colliders": 361,
@@ -658,10 +666,14 @@
           "suture_visual_meshes": 362
         },
         "physx": {
+          "explicit_centers_of_mass": 362,
+          "explicit_diagonal_inertias": 362,
+          "explicit_masses": 362,
+          "explicit_principal_axes": 362,
           "factory_swage_joints": 1,
           "needle_colliders": 40,
           "physics_api_schemas": 4009,
-          "physics_properties": 15907,
+          "physics_properties": 16990,
           "physx_api_schemas": 766,
           "physx_properties": 3336,
           "suture_colliders": 361,
@@ -831,6 +843,9 @@
         "PhysicsDriveAPI:rotY",
         "PhysicsDriveAPI:rotZ",
         "PhysicsFilteredPairsAPI",
+        "physics:centerOfMass",
+        "physics:diagonalInertia",
+        "physics:principalAxes",
         "physxRigidBody:enableCCD",
         "def Xform \"NeedleInterface\"",
         "def Mesh \"Visual\"",
@@ -966,7 +981,7 @@
           "physics_layer_owns": [
             "physics_materials",
             "purpose_specific_collider_physics_material_bindings",
-            "rigid_body_mass_and_descendant_collision_schemas",
+            "explicit_rigid_body_mass_center_inertia_principal_axes_and_descendant_collision_schemas",
             "adjacent_collision_filtering",
             "breakable_cosserat_joints"
           ],
@@ -1006,7 +1021,7 @@
         },
         "model_identity_valid": true,
         "neutral_engine_specific": [],
-        "nvidia_reference_count": 11,
+        "nvidia_reference_count": 12,
         "physx_neutral_or_newton": [],
         "unanchored_asset_paths": []
       },
@@ -1120,6 +1135,85 @@
       },
       "passed": true
     },
+    "suture_explicit_analytical_mass_properties": {
+      "expected": "all movable suture bodies explicitly author finite physical-envelope mass center inertia and principal axes",
+      "measured": {
+        "authored_attribute_counts": {
+          "center_of_mass": 361,
+          "diagonal_inertia": 361,
+          "mass": 361,
+          "principal_axes": 361
+        },
+        "body_count": 361,
+        "collision_envelope_decoupled": true,
+        "contract": {
+          "calibration_status": "analytical_effective_solids_pending_mass_distribution_metrology",
+          "center_of_mass": "local_origin",
+          "collision_envelope_decoupled": true,
+          "interface_axis": "X",
+          "interface_cylinder_height_policy": "centerline_partition_spacing",
+          "interface_mass_policy": {
+            "minimum_kg": 1e-07,
+            "policy": "stabilized_swage_bridge_body",
+            "segment_mass_multiplier": 8.0
+          },
+          "interface_model": "mass_conserving_uniform_solid_capsule",
+          "interface_radius_policy": "needle_end_radius",
+          "principal_axes": "body_local_xyz_identity",
+          "segment_axis": "X",
+          "segment_length_policy": "centerline_partition_spacing",
+          "segment_model": "mass_conserving_uniform_solid_cylinder",
+          "segment_radius_policy": "nominal_physical_radius_not_collision_radius",
+          "usd_authoring": [
+            "physics:mass",
+            "physics:centerOfMass",
+            "physics:diagonalInertia",
+            "physics:principalAxes"
+          ]
+        },
+        "errors": [],
+        "interface": {
+          "center_of_mass_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "diagonal_inertia_kg_m2": [
+            3.458322476699159e-15,
+            1.3362603129256056e-14,
+            1.3362603129256056e-14
+          ],
+          "mass_kg": 2.552544031041707e-07,
+          "principal_axes_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "segment": {
+          "center_of_mass_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "diagonal_inertia_kg_m2": [
+            2.492718780314167e-16,
+            7.893609470994862e-16,
+            7.893609470994862e-16
+          ],
+          "mass_kg": 3.190680038802134e-08,
+          "principal_axes_wxyz": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "segment_mass_sum_kg": 1.1486448139687682e-05
+      },
+      "passed": true
+    },
     "suture_hybrid_ccd_and_scale_aware_contact": {
       "expected": "hybrid linear and angular CCD with bounded radius-scaled PhysX contact offsets on every suture body",
       "measured": {
@@ -1219,6 +1313,10 @@
       "expected": "none keeps renderable geometry only, physics adds engine-neutral mechanics, and physx adds PhysX tuning",
       "measured": {
         "none": {
+          "explicit_centers_of_mass": 0,
+          "explicit_diagonal_inertias": 0,
+          "explicit_masses": 0,
+          "explicit_principal_axes": 0,
           "factory_swage_joints": 0,
           "needle_colliders": 0,
           "physics_api_schemas": 0,
@@ -1231,10 +1329,14 @@
           "suture_visual_meshes": 361
         },
         "physics": {
+          "explicit_centers_of_mass": 361,
+          "explicit_diagonal_inertias": 361,
+          "explicit_masses": 361,
+          "explicit_principal_axes": 361,
           "factory_swage_joints": 0,
           "needle_colliders": 0,
           "physics_api_schemas": 3966,
-          "physics_properties": 15851,
+          "physics_properties": 16934,
           "physx_api_schemas": 0,
           "physx_properties": 0,
           "suture_colliders": 361,
@@ -1243,10 +1345,14 @@
           "suture_visual_meshes": 361
         },
         "physx": {
+          "explicit_centers_of_mass": 361,
+          "explicit_diagonal_inertias": 361,
+          "explicit_masses": 361,
+          "explicit_principal_axes": 361,
           "factory_swage_joints": 0,
           "needle_colliders": 0,
           "physics_api_schemas": 3966,
-          "physics_properties": 15851,
+          "physics_properties": 16934,
           "physx_api_schemas": 724,
           "physx_properties": 3251,
           "suture_colliders": 361,

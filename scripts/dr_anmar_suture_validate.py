@@ -68,7 +68,9 @@ from dr_anmar_suture_model import (
     sample_suture_runtime_profile,
     self_friction_coefficient,
     stress_retention,
+    suture_interface_mass_properties,
     suture_segment_collision_radius,
+    suture_segment_mass_properties,
 )
 from dr_anmar_suture_runtime import SutureRuntime
 
@@ -507,16 +509,18 @@ def add_suture_layer_checks(
         and model_identity["composition_path_policy"] == "explicit_anchored_relative_asset_paths"
         and 'prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_qcode"]' in base_text
         and 'string name = "DrAnmarSuture4_0"' in base_text
-        and 'string version = "2.6.0"' in base_text
+        and 'string version = "2.7.0"' in base_text
         and 'displayName = "DrAnmar 4-0 Braided Suture"' in base_text
         and 'kind = "component"' in base_text
         and 'token[] semantics:labels:wikidata_qcode = ["Q4948587"]' in base_text
+        and ('drAnmarMassPropertyContract = "explicit_physical_envelope_decoupled_mass_center_inertia_principal_axes"')
+        in base_text
         and not unanchored_asset_paths
     )
     check(
         checks,
         "suture_asset_structure_source_ownership",
-        profile["version"] == "2.6.0"
+        profile["version"] == "2.7.0"
         and layer_contract["entry_layer"] == "DrAnmarSuture4_0.usda"
         and layer_contract["base_layer"] == "DrAnmarSuture4_0_base.usda"
         and layer_contract["geometry_layer"] == "DrAnmarSuture4_0_geometry.usd"
@@ -597,6 +601,9 @@ def add_suture_layer_checks(
         and materials_text.count("rel material:binding =") == 2
         and physics_text.count('"PhysicsRigidBodyAPI"') == segment_count + 1
         and physics_text.count('"PhysicsMassAPI"') == segment_count + 1
+        and physics_text.count("point3f physics:centerOfMass") == segment_count + 1
+        and physics_text.count("float3 physics:diagonalInertia") == segment_count + 1
+        and physics_text.count("quatf physics:principalAxes") == segment_count + 1
         and physics_text.count('"PhysicsCollisionAPI"') == segment_count + 1
         and physics_text.count("rel material:binding:physics =") == segment_count + 1
         and len(re.findall(r'def PhysicsJoint "J\d{4}"', physics_text)) == segment_count
@@ -755,6 +762,231 @@ def add_suture_layer_checks(
     )
 
 
+def add_suture_mass_property_checks(
+    checks: dict[str, dict[str, Any]],
+    profile: dict[str, Any],
+    *,
+    segment_count: int,
+    physics_text: str,
+) -> None:
+    """Validate explicit analytical mass distribution on every rigid body."""
+
+    derived = derive(profile)
+    segment_properties = suture_segment_mass_properties(
+        profile,
+        derived=derived,
+    )
+    interface_properties = suture_interface_mass_properties(
+        profile,
+        derived=derived,
+    )
+    contract = profile["geometry"]["mass_properties"]
+
+    def authored_tuples(
+        type_name: str,
+        attribute_name: str,
+        component_count: int,
+    ) -> list[tuple[float, ...]]:
+        payloads = re.findall(
+            rf"{re.escape(type_name)} {re.escape(attribute_name)} = \(([^)]+)\)",
+            physics_text,
+        )
+        values = [tuple(float(value.strip()) for value in payload.split(",")) for payload in payloads]
+        return [value for value in values if len(value) == component_count]
+
+    masses = [
+        float(value)
+        for value in re.findall(
+            r"float physics:mass = ([0-9.eE+-]+)",
+            physics_text,
+        )
+    ]
+    centers = authored_tuples(
+        "point3f",
+        "physics:centerOfMass",
+        3,
+    )
+    inertias = authored_tuples(
+        "float3",
+        "physics:diagonalInertia",
+        3,
+    )
+    principal_axes = authored_tuples(
+        "quatf",
+        "physics:principalAxes",
+        4,
+    )
+    body_count = segment_count + 1
+    expected_records = [interface_properties, *(segment_properties for _ in range(segment_count))]
+    errors: list[str] = []
+    if not (len(masses) == len(centers) == len(inertias) == len(principal_axes) == body_count):
+        errors.append("attribute_count")
+    else:
+        for body_index, (mass, center, inertia, axes, expected) in enumerate(
+            zip(
+                masses,
+                centers,
+                inertias,
+                principal_axes,
+                expected_records,
+                strict=True,
+            )
+        ):
+            authored_expected_pairs = (
+                (mass, expected.mass_kg),
+                *zip(center, expected.center_of_mass_m, strict=True),
+                *zip(inertia, expected.diagonal_inertia_kg_m2, strict=True),
+                *zip(axes, expected.principal_axes_wxyz, strict=True),
+            )
+            if not all(
+                math.isclose(authored, target, rel_tol=1.0e-10, abs_tol=1.0e-30)
+                for authored, target in authored_expected_pairs
+            ):
+                errors.append(f"{body_index}:authored_value")
+            if (
+                not all(math.isfinite(value) and value > 0.0 for value in (mass, *inertia))
+                or any(inertia[index] > sum(inertia) - inertia[index] + 1.0e-30 for index in range(3))
+                or not math.isclose(
+                    math.sqrt(sum(value * value for value in axes)),
+                    1.0,
+                    rel_tol=0.0,
+                    abs_tol=1.0e-12,
+                )
+            ):
+                errors.append(f"{body_index}:physical_validity")
+
+    expected_segment_axial_inertia = 0.5 * derived.segment_mass_kg * derived.radius_m**2
+    expected_segment_transverse_inertia = (
+        derived.segment_mass_kg * (3.0 * derived.radius_m**2 + derived.segment_spacing_m**2) / 12.0
+    )
+    interface_mass_policy = contract["interface_mass_policy"]
+    interface_mass = max(
+        derived.segment_mass_kg * float(interface_mass_policy["segment_mass_multiplier"]),
+        float(interface_mass_policy["minimum_kg"]),
+    )
+    interface_radius = float(profile["swage"]["needle_end_diameter_m"]) / 2.0
+    interface_height = derived.segment_spacing_m
+    cylinder_volume = math.pi * interface_radius**2 * interface_height
+    cap_volume = 4.0 * math.pi * interface_radius**3 / 3.0
+    cylinder_mass = interface_mass * cylinder_volume / (cylinder_volume + cap_volume)
+    cap_mass = interface_mass - cylinder_mass
+    expected_interface_axial_inertia = interface_radius**2 * (0.5 * cylinder_mass + 0.4 * cap_mass)
+    cap_centroid_offset = interface_height / 2.0 + 3.0 * interface_radius / 8.0
+    expected_interface_transverse_inertia = cylinder_mass * (
+        3.0 * interface_radius**2 + interface_height**2
+    ) / 12.0 + cap_mass * (83.0 * interface_radius**2 / 320.0 + cap_centroid_offset**2)
+    nvidia_mass_requirement = (
+        "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.11.2/"
+        "capabilities/physics_bodies/physics_rigid_bodies/requirements/rigid-body-mass.html"
+    )
+    check(
+        checks,
+        "suture_explicit_analytical_mass_properties",
+        contract
+        == {
+            "segment_model": "mass_conserving_uniform_solid_cylinder",
+            "segment_axis": "X",
+            "segment_radius_policy": "nominal_physical_radius_not_collision_radius",
+            "segment_length_policy": "centerline_partition_spacing",
+            "interface_model": "mass_conserving_uniform_solid_capsule",
+            "interface_axis": "X",
+            "interface_radius_policy": "needle_end_radius",
+            "interface_cylinder_height_policy": "centerline_partition_spacing",
+            "interface_mass_policy": {
+                "policy": "stabilized_swage_bridge_body",
+                "segment_mass_multiplier": 8.0,
+                "minimum_kg": 1.0e-7,
+            },
+            "center_of_mass": "local_origin",
+            "principal_axes": "body_local_xyz_identity",
+            "collision_envelope_decoupled": True,
+            "usd_authoring": [
+                "physics:mass",
+                "physics:centerOfMass",
+                "physics:diagonalInertia",
+                "physics:principalAxes",
+            ],
+            "calibration_status": "analytical_effective_solids_pending_mass_distribution_metrology",
+        }
+        and profile["asset_structure"]["physics_layer_owns"]
+        == [
+            "physics_materials",
+            "purpose_specific_collider_physics_material_bindings",
+            "explicit_rigid_body_mass_center_inertia_principal_axes_and_descendant_collision_schemas",
+            "adjacent_collision_filtering",
+            "breakable_cosserat_joints",
+        ]
+        and any(item.get("url") == nvidia_mass_requirement for item in profile["nvidia_stack_references"])
+        and not errors
+        and math.isclose(
+            segment_properties.mass_kg * segment_count,
+            derived.mass_kg,
+            rel_tol=0.0,
+            abs_tol=1.0e-18,
+        )
+        and segment_properties.center_of_mass_m == (0.0, 0.0, 0.0)
+        and segment_properties.principal_axes_wxyz == (1.0, 0.0, 0.0, 0.0)
+        and math.isclose(
+            segment_properties.diagonal_inertia_kg_m2[0],
+            expected_segment_axial_inertia,
+            rel_tol=1.0e-14,
+            abs_tol=1.0e-28,
+        )
+        and all(
+            math.isclose(
+                value,
+                expected_segment_transverse_inertia,
+                rel_tol=1.0e-14,
+                abs_tol=1.0e-28,
+            )
+            for value in segment_properties.diagonal_inertia_kg_m2[1:]
+        )
+        and interface_properties.center_of_mass_m == (0.0, 0.0, 0.0)
+        and interface_properties.principal_axes_wxyz == (1.0, 0.0, 0.0, 0.0)
+        and math.isclose(
+            interface_properties.diagonal_inertia_kg_m2[0],
+            expected_interface_axial_inertia,
+            rel_tol=1.0e-14,
+            abs_tol=1.0e-28,
+        )
+        and all(
+            math.isclose(
+                value,
+                expected_interface_transverse_inertia,
+                rel_tol=1.0e-14,
+                abs_tol=1.0e-28,
+            )
+            for value in interface_properties.diagonal_inertia_kg_m2[1:]
+        ),
+        {
+            "contract": contract,
+            "body_count": body_count,
+            "authored_attribute_counts": {
+                "mass": len(masses),
+                "center_of_mass": len(centers),
+                "diagonal_inertia": len(inertias),
+                "principal_axes": len(principal_axes),
+            },
+            "errors": errors,
+            "segment": {
+                "mass_kg": segment_properties.mass_kg,
+                "center_of_mass_m": segment_properties.center_of_mass_m,
+                "diagonal_inertia_kg_m2": segment_properties.diagonal_inertia_kg_m2,
+                "principal_axes_wxyz": segment_properties.principal_axes_wxyz,
+            },
+            "interface": {
+                "mass_kg": interface_properties.mass_kg,
+                "center_of_mass_m": interface_properties.center_of_mass_m,
+                "diagonal_inertia_kg_m2": interface_properties.diagonal_inertia_kg_m2,
+                "principal_axes_wxyz": interface_properties.principal_axes_wxyz,
+            },
+            "segment_mass_sum_kg": segment_properties.mass_kg * segment_count,
+            "collision_envelope_decoupled": contract["collision_envelope_decoupled"],
+        },
+        "all movable suture bodies explicitly author finite physical-envelope mass center inertia and principal axes",
+    )
+
+
 def add_physics_variant_checks(
     checks: dict[str, dict[str, Any]],
     *,
@@ -771,6 +1003,10 @@ def add_physics_variant_checks(
             "physx_api_schemas": len(re.findall(r'"Physx[A-Za-z0-9_:]*API(?::[A-Za-z0-9_]+)?"', text)),
             "physics_properties": len(re.findall(r"\bphysics:[A-Za-z][A-Za-z0-9_]*", text)),
             "physx_properties": len(re.findall(r"\bphysx[A-Za-z]*:[A-Za-z][A-Za-z0-9_]*", text)),
+            "explicit_masses": text.count("physics:mass"),
+            "explicit_centers_of_mass": text.count("physics:centerOfMass"),
+            "explicit_diagonal_inertias": text.count("physics:diagonalInertia"),
+            "explicit_principal_axes": text.count("physics:principalAxes"),
             "suture_segments": len(re.findall(r'def Xform "S\d{4}"', text)),
             "suture_visual_meshes": text.count('def Mesh "Visual"'),
             "suture_colliders": text.count('def Capsule "Collision"'),
@@ -790,6 +1026,10 @@ def add_physics_variant_checks(
         and suture_metrics["none"]["suture_colliders"] == segment_count + 1
         and suture_metrics["none"]["physics_api_schemas"] == 0
         and suture_metrics["none"]["physics_properties"] == 0
+        and suture_metrics["none"]["explicit_masses"] == 0
+        and suture_metrics["none"]["explicit_centers_of_mass"] == 0
+        and suture_metrics["none"]["explicit_diagonal_inertias"] == 0
+        and suture_metrics["none"]["explicit_principal_axes"] == 0
         and suture_metrics["none"]["physx_api_schemas"] == 0
         and suture_metrics["none"]["physx_properties"] == 0
         and suture_metrics["none"]["suture_joints"] == 0
@@ -798,6 +1038,10 @@ def add_physics_variant_checks(
         and suture_metrics["physics"]["suture_colliders"] == segment_count + 1
         and suture_metrics["physics"]["physics_api_schemas"] > 0
         and suture_metrics["physics"]["physics_properties"] > 0
+        and suture_metrics["physics"]["explicit_masses"] == segment_count + 1
+        and suture_metrics["physics"]["explicit_centers_of_mass"] == segment_count + 1
+        and suture_metrics["physics"]["explicit_diagonal_inertias"] == segment_count + 1
+        and suture_metrics["physics"]["explicit_principal_axes"] == segment_count + 1
         and suture_metrics["physics"]["physx_api_schemas"] == 0
         and suture_metrics["physics"]["physx_properties"] == 0
         and suture_metrics["physics"]["suture_joints"] == segment_count
@@ -807,6 +1051,10 @@ def add_physics_variant_checks(
         and suture_metrics["physx"]["physics_api_schemas"] > 0
         and suture_metrics["physx"]["physx_api_schemas"] > 0
         and suture_metrics["physx"]["physics_properties"] > 0
+        and suture_metrics["physx"]["explicit_masses"] == segment_count + 1
+        and suture_metrics["physx"]["explicit_centers_of_mass"] == segment_count + 1
+        and suture_metrics["physx"]["explicit_diagonal_inertias"] == segment_count + 1
+        and suture_metrics["physx"]["explicit_principal_axes"] == segment_count + 1
         and suture_metrics["physx"]["physx_properties"] > 0
         and suture_metrics["physx"]["suture_joints"] == segment_count,
         suture_metrics,
@@ -822,6 +1070,10 @@ def add_physics_variant_checks(
         and needle_metrics["none"]["needle_colliders"] == 0
         and needle_metrics["none"]["physics_api_schemas"] == 0
         and needle_metrics["none"]["physics_properties"] == 0
+        and needle_metrics["none"]["explicit_masses"] == 0
+        and needle_metrics["none"]["explicit_centers_of_mass"] == 0
+        and needle_metrics["none"]["explicit_diagonal_inertias"] == 0
+        and needle_metrics["none"]["explicit_principal_axes"] == 0
         and needle_metrics["none"]["physx_api_schemas"] == 0
         and needle_metrics["none"]["physx_properties"] == 0
         and needle_metrics["none"]["suture_joints"] == 0
@@ -832,6 +1084,10 @@ def add_physics_variant_checks(
         and needle_metrics["physics"]["needle_colliders"] == needle_collision_count
         and needle_metrics["physics"]["physics_api_schemas"] > 0
         and needle_metrics["physics"]["physics_properties"] > 0
+        and needle_metrics["physics"]["explicit_masses"] == segment_count + 2
+        and needle_metrics["physics"]["explicit_centers_of_mass"] == segment_count + 2
+        and needle_metrics["physics"]["explicit_diagonal_inertias"] == segment_count + 2
+        and needle_metrics["physics"]["explicit_principal_axes"] == segment_count + 2
         and needle_metrics["physics"]["physx_api_schemas"] == 0
         and needle_metrics["physics"]["physx_properties"] == 0
         and needle_metrics["physics"]["suture_joints"] == segment_count
@@ -842,6 +1098,10 @@ def add_physics_variant_checks(
         and needle_metrics["physx"]["needle_colliders"] == needle_collision_count
         and needle_metrics["physx"]["physics_api_schemas"] > 0
         and needle_metrics["physx"]["physics_properties"] > 0
+        and needle_metrics["physx"]["explicit_masses"] == segment_count + 2
+        and needle_metrics["physx"]["explicit_centers_of_mass"] == segment_count + 2
+        and needle_metrics["physx"]["explicit_diagonal_inertias"] == segment_count + 2
+        and needle_metrics["physx"]["explicit_principal_axes"] == segment_count + 2
         and needle_metrics["physx"]["physx_api_schemas"] > 0
         and needle_metrics["physx"]["physx_properties"] > 0
         and needle_metrics["physx"]["suture_joints"] == segment_count
@@ -1802,6 +2062,12 @@ def validate(
         physics_text=suture_physics_text,
         physx_text=suture_physx_text,
     )
+    add_suture_mass_property_checks(
+        checks,
+        profile,
+        segment_count=derived.segment_count,
+        physics_text=suture_physics_text,
+    )
     add_suture_visual_mesh_checks(
         checks,
         profile,
@@ -1830,6 +2096,9 @@ def validate(
         "PhysicsDriveAPI:rotY",
         "PhysicsDriveAPI:rotZ",
         "PhysicsFilteredPairsAPI",
+        "physics:centerOfMass",
+        "physics:diagonalInertia",
+        "physics:principalAxes",
         "physxRigidBody:enableCCD",
         'def Xform "NeedleInterface"',
         'def Mesh "Visual"',
@@ -2710,6 +2979,9 @@ def validate(
         "suture_physx_collision_api_count",
         "suture_hybrid_ccd_body_count",
         "suture_physx_contact_offsets_match_profile",
+        "suture_explicit_mass_properties_valid_count",
+        "suture_mass_property_maximum_relative_error",
+        "suture_mass_property_minimum_inertia_kg_m2",
         "suture_material_bindings_valid",
         "suture_visual_mesh_count",
         "suture_visual_mesh_vertex_count",

@@ -53,6 +53,7 @@ from dr_anmar_suture_integration import (
 from dr_anmar_suture_model import (
     DEFAULT_PROFILE_PATH,
     SutureInterfaceVisualMesh,
+    SutureRigidBodyMassProperties,
     SutureVisualMesh,
     build_suture_interface_visual_mesh,
     build_suture_material_texture,
@@ -61,7 +62,9 @@ from dr_anmar_suture_model import (
     derive,
     encode_suture_material_texture_png,
     load_profile,
+    suture_interface_mass_properties,
     suture_segment_collision_radius,
+    suture_segment_mass_properties,
 )
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -244,7 +247,7 @@ def braided_segment_geometry_block(
 def capsule_physics_block(
     *,
     name: str,
-    mass_kg: float,
+    mass_properties: SutureRigidBodyMassProperties,
     kinematic: bool,
     filtered_pair: str | None,
     physics_material_path: str | None = None,
@@ -263,7 +266,10 @@ def capsule_physics_block(
 {{
     bool physics:rigidBodyEnabled = true
     bool physics:kinematicEnabled = {"true" if kinematic else "false"}
-    float physics:mass = {usd_float(mass_kg)}
+    float physics:mass = {usd_float(mass_properties.mass_kg)}
+    point3f physics:centerOfMass = {usd_vec(mass_properties.center_of_mass_m)}
+    float3 physics:diagonalInertia = {usd_vec(mass_properties.diagonal_inertia_kg_m2)}
+    quatf physics:principalAxes = {usd_quat(mass_properties.principal_axes_wxyz)}
     {filtered.lstrip()}
 
     over "Collision" (
@@ -426,6 +432,14 @@ def author(
     swage_physics_path = f"{root}/Materials/SwageSteel"
     swage_radius = float(swage["needle_end_diameter_m"]) / 2.0
     interface_height = spacing
+    segment_mass_properties = suture_segment_mass_properties(
+        profile,
+        derived=derived,
+    )
+    interface_mass_properties = suture_interface_mass_properties(
+        profile,
+        derived=derived,
+    )
     geometry_blocks: list[str] = [
         swage_interface_geometry_block(
             name="NeedleInterface",
@@ -479,7 +493,7 @@ def author(
         segment_physics_blocks.append(
             capsule_physics_block(
                 name=f"S{index:04d}",
-                mass_kg=derived.segment_mass_kg,
+                mass_properties=segment_mass_properties,
                 kinematic=False,
                 filtered_pair=previous_path,
                 physics_material_path=suture_physics_path,
@@ -529,6 +543,7 @@ def author(
         "drAnmarCanonicalAssetPackage": "assets/dr_anmar",
         "drAnmarIndependentAsset": True,
         "drAnmarLayerContract": "interface_references_base_with_public_none_physics_physx_payload_variants",
+        "drAnmarMassPropertyContract": "explicit_physical_envelope_decoupled_mass_center_inertia_principal_axes",
         "drAnmarProfileId": profile["id"],
         "drAnmarRepresentation": "discrete_cosserat_rod_with_braided_render_mesh_and_capsule_colliders",
         "drAnmarStatus": profile["status"],
@@ -720,7 +735,7 @@ over "DrAnmarSuture4_0"
 """
     interface_physics = capsule_physics_block(
         name="NeedleInterface",
-        mass_kg=max(derived.segment_mass_kg * 8.0, 1e-7),
+        mass_properties=interface_mass_properties,
         kinematic=True,
         filtered_pair=f"{root}/Segments/S0000",
         physics_material_path=swage_physics_path,
@@ -1501,6 +1516,14 @@ def main() -> int:
     needle_base_temporary.replace(needle_base_output)
     needle_temporary.replace(needle_output)
     derived = derive(profile)
+    segment_mass_properties = suture_segment_mass_properties(
+        profile,
+        derived=derived,
+    )
+    interface_mass_properties = suture_interface_mass_properties(
+        profile,
+        derived=derived,
+    )
     suture_visual_vertex_count = 0
     suture_visual_face_count = 0
     suture_visual_texcoord_count = 0
@@ -1564,7 +1587,7 @@ def main() -> int:
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v14",
+        "schema": "dr.anmar.suture-asset-report.v15",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
@@ -1603,6 +1626,19 @@ def main() -> int:
         "suture_visual_maximum_radius_ratio": suture_visual_maximum_radius_ratio,
         "suture_collider_cylinder_height_m": derived.segment_spacing_m,
         "suture_minimum_visual_collision_margin_m": suture_minimum_visual_collision_margin_m,
+        "suture_mass_property_contract": profile["geometry"]["mass_properties"],
+        "suture_segment_mass_properties": {
+            "mass_kg": segment_mass_properties.mass_kg,
+            "center_of_mass_m": segment_mass_properties.center_of_mass_m,
+            "diagonal_inertia_kg_m2": segment_mass_properties.diagonal_inertia_kg_m2,
+            "principal_axes_wxyz": segment_mass_properties.principal_axes_wxyz,
+        },
+        "suture_interface_mass_properties": {
+            "mass_kg": interface_mass_properties.mass_kg,
+            "center_of_mass_m": interface_mass_properties.center_of_mass_m,
+            "diagonal_inertia_kg_m2": interface_mass_properties.diagonal_inertia_kg_m2,
+            "principal_axes_wxyz": interface_mass_properties.principal_axes_wxyz,
+        },
         "suture_render_collision_separation": profile["geometry"]["visual_representation"],
         "suture_appearance": profile["appearance"],
         "suture_normal_roughness_texture": portable_path(texture_output),

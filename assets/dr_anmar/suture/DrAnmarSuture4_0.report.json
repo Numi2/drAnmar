@@ -1,12 +1,12 @@
 {
-  "schema": "dr.anmar.suture-asset-report.v14",
+  "schema": "dr.anmar.suture-asset-report.v15",
   "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
   "asset": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
   "asset_sha256": "9306e69e540eecea5f2e5621cda7591eebe98f4705a1896a43d7b25dc5bf3787",
-  "suture_asset_version": "2.6.0",
+  "suture_asset_version": "2.7.0",
   "suture_entry_bytes": 689,
   "suture_base": "assets/dr_anmar/suture/DrAnmarSuture4_0_base.usda",
-  "suture_base_sha256": "3f2aedcd3d7640f55cc36cff819f7c4dbc06f1142291d60cc832a038d1a06db2",
+  "suture_base_sha256": "c728d2c1b41b3bffef4110b6c19ce94324d31da46d8e1f5bee1f7dab4771ea4d",
   "suture_geometry": "assets/dr_anmar/suture/DrAnmarSuture4_0_geometry.usd",
   "suture_geometry_format": "usdc",
   "suture_geometry_sha256": "4c2d6d913e642a3e1d4337cea34e355c9145b68ead12478281639d221600d4d2",
@@ -32,6 +32,69 @@
   "suture_visual_maximum_radius_ratio": 1.0,
   "suture_collider_cylinder_height_m": 0.0005,
   "suture_minimum_visual_collision_margin_m": 0.0,
+  "suture_mass_property_contract": {
+    "segment_model": "mass_conserving_uniform_solid_cylinder",
+    "segment_axis": "X",
+    "segment_radius_policy": "nominal_physical_radius_not_collision_radius",
+    "segment_length_policy": "centerline_partition_spacing",
+    "interface_model": "mass_conserving_uniform_solid_capsule",
+    "interface_axis": "X",
+    "interface_radius_policy": "needle_end_radius",
+    "interface_cylinder_height_policy": "centerline_partition_spacing",
+    "interface_mass_policy": {
+      "policy": "stabilized_swage_bridge_body",
+      "segment_mass_multiplier": 8.0,
+      "minimum_kg": 1e-07
+    },
+    "center_of_mass": "local_origin",
+    "principal_axes": "body_local_xyz_identity",
+    "collision_envelope_decoupled": true,
+    "usd_authoring": [
+      "physics:mass",
+      "physics:centerOfMass",
+      "physics:diagonalInertia",
+      "physics:principalAxes"
+    ],
+    "calibration_status": "analytical_effective_solids_pending_mass_distribution_metrology"
+  },
+  "suture_segment_mass_properties": {
+    "mass_kg": 3.190680038802134e-08,
+    "center_of_mass_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "diagonal_inertia_kg_m2": [
+      2.492718780314167e-16,
+      7.893609470994862e-16,
+      7.893609470994862e-16
+    ],
+    "principal_axes_wxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "suture_interface_mass_properties": {
+    "mass_kg": 2.552544031041707e-07,
+    "center_of_mass_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "diagonal_inertia_kg_m2": [
+      3.458322476699159e-15,
+      1.3362603129256056e-14,
+      1.3362603129256056e-14
+    ],
+    "principal_axes_wxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
   "suture_render_collision_separation": {
     "rigid_body_prim_pattern": "Segments/S####",
     "visual_prim_pattern": "Segments/S####/Visual",
@@ -112,7 +175,7 @@
   "suture_materials": "assets/dr_anmar/suture/DrAnmarSuture4_0_materials.usda",
   "suture_materials_sha256": "a6e69d382187bb1a772e2e5b51075141e3f2aa7abadf5e906db3312849b1757b",
   "suture_physics": "assets/dr_anmar/suture/DrAnmarSuture4_0_physics.usda",
-  "suture_physics_sha256": "9bd9aa9746ff5d1b4ce9f70ddfd738928fd579b1ab8e2ab1970890efa57c8780",
+  "suture_physics_sha256": "f878f23893690b2851673b11eba311ad1ef81cf46cdbd83c85fdd7fe809a6df8",
   "suture_physx": "assets/dr_anmar/suture/DrAnmarSuture4_0_physx.usda",
   "suture_physx_sha256": "3a3486f46ca81e93d6d88a2755732b66577e9066fd335e161a29df1d82d22641",
   "suture_layer_contract": {
@@ -175,7 +238,7 @@
     "physics_layer_owns": [
       "physics_materials",
       "purpose_specific_collider_physics_material_bindings",
-      "rigid_body_mass_and_descendant_collision_schemas",
+      "explicit_rigid_body_mass_center_inertia_principal_axes_and_descendant_collision_schemas",
       "adjacent_collision_filtering",
       "breakable_cosserat_joints"
     ],
@@ -202,12 +265,12 @@
   },
   "dr_anmar_needle_name": "DrAnmar Needle",
   "dr_anmar_needle_asset_id": "dr-anmar-needle",
-  "dr_anmar_needle_asset_version": "1.16.0",
+  "dr_anmar_needle_asset_version": "1.17.0",
   "dr_anmar_needle": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
   "dr_anmar_needle_sha256": "626c4b8527ff6c483ab36c6da82d4f469eeaa5be156d2bda82aa7f082c0b7970",
   "dr_anmar_needle_entry_bytes": 1169,
   "dr_anmar_needle_base": "assets/dr_anmar/needle/DrAnmarNeedle_base.usda",
-  "dr_anmar_needle_base_sha256": "52bf3d3e8dbf7d20494f5a5dc4d3fb8504b0f1e88d4fec4fa5e47aaa5286e4ac",
+  "dr_anmar_needle_base_sha256": "5285f826d880f88da9b33278b834cfe3c89673056dbde1f46c4e1e554cc57367",
   "dr_anmar_needle_geometry": "assets/dr_anmar/needle/DrAnmarNeedle_geometry.usd",
   "dr_anmar_needle_geometry_format": "usdc",
   "dr_anmar_needle_geometry_sha256": "25b800950d5f3c955eca7de299b8412ac5549a7f435e3b6eee9c0f0935f8665a",

@@ -224,6 +224,14 @@ class DerivedSuture:
 
 
 @dataclass(frozen=True)
+class SutureRigidBodyMassProperties:
+    mass_kg: float
+    center_of_mass_m: tuple[float, float, float]
+    diagonal_inertia_kg_m2: tuple[float, float, float]
+    principal_axes_wxyz: tuple[float, float, float, float]
+
+
+@dataclass(frozen=True)
 class SutureVisualMesh:
     points: tuple[tuple[float, float, float], ...]
     normals: tuple[tuple[float, float, float], ...]
@@ -300,6 +308,110 @@ def derive(profile: dict[str, Any]) -> DerivedSuture:
         straight_failure_load_n=straight_failure,
         knot_failure_load_n=knot_failure,
         swage_segment_count=swage_segments,
+    )
+
+
+def _validated_rigid_body_mass_properties(
+    *,
+    mass_kg: float,
+    axial_inertia_kg_m2: float,
+    transverse_inertia_kg_m2: float,
+) -> SutureRigidBodyMassProperties:
+    values = (
+        mass_kg,
+        axial_inertia_kg_m2,
+        transverse_inertia_kg_m2,
+    )
+    if not all(math.isfinite(value) and value > 0.0 for value in values):
+        raise ValueError("suture rigid-body mass properties must be finite and positive")
+    if axial_inertia_kg_m2 > 2.0 * transverse_inertia_kg_m2:
+        raise ValueError("suture rigid-body inertia violates the triangle inequality")
+    return SutureRigidBodyMassProperties(
+        mass_kg=mass_kg,
+        center_of_mass_m=(0.0, 0.0, 0.0),
+        diagonal_inertia_kg_m2=(
+            axial_inertia_kg_m2,
+            transverse_inertia_kg_m2,
+            transverse_inertia_kg_m2,
+        ),
+        principal_axes_wxyz=(1.0, 0.0, 0.0, 0.0),
+    )
+
+
+def suture_segment_mass_properties(
+    profile: dict[str, Any],
+    *,
+    derived: DerivedSuture | None = None,
+) -> SutureRigidBodyMassProperties:
+    """Return mass-conserving analytical properties for one strand partition.
+
+    The effective solid cylinder follows the physical strand diameter and
+    centerline partition length. Collision capsules intentionally overlap and
+    enlarge near the swage, so deriving inertia from them would couple
+    rotational mechanics to a solver envelope rather than to the strand.
+    """
+
+    model = derived or derive(profile)
+    contract = profile["geometry"]["mass_properties"]
+    if (
+        contract["segment_model"] != "mass_conserving_uniform_solid_cylinder"
+        or contract["segment_axis"] != "X"
+        or contract["segment_radius_policy"] != "nominal_physical_radius_not_collision_radius"
+        or contract["segment_length_policy"] != "centerline_partition_spacing"
+        or contract["collision_envelope_decoupled"] is not True
+    ):
+        raise ValueError("unsupported suture segment mass-property contract")
+    mass = model.segment_mass_kg
+    radius = model.radius_m
+    length = model.segment_spacing_m
+    axial_inertia = 0.5 * mass * radius * radius
+    transverse_inertia = mass * (3.0 * radius * radius + length * length) / 12.0
+    return _validated_rigid_body_mass_properties(
+        mass_kg=mass,
+        axial_inertia_kg_m2=axial_inertia,
+        transverse_inertia_kg_m2=transverse_inertia,
+    )
+
+
+def suture_interface_mass_properties(
+    profile: dict[str, Any],
+    *,
+    derived: DerivedSuture | None = None,
+) -> SutureRigidBodyMassProperties:
+    """Return analytical properties for the swage bridge capsule body."""
+
+    model = derived or derive(profile)
+    contract = profile["geometry"]["mass_properties"]
+    interface_mass = contract["interface_mass_policy"]
+    if (
+        contract["interface_model"] != "mass_conserving_uniform_solid_capsule"
+        or contract["interface_axis"] != "X"
+        or contract["interface_radius_policy"] != "needle_end_radius"
+        or contract["interface_cylinder_height_policy"] != "centerline_partition_spacing"
+        or interface_mass["policy"] != "stabilized_swage_bridge_body"
+    ):
+        raise ValueError("unsupported suture interface mass-property contract")
+    mass = max(
+        model.segment_mass_kg * float(interface_mass["segment_mass_multiplier"]),
+        float(interface_mass["minimum_kg"]),
+    )
+    radius = float(profile["swage"]["needle_end_diameter_m"]) / 2.0
+    cylinder_height = model.segment_spacing_m
+    cylinder_volume = math.pi * radius * radius * cylinder_height
+    cap_volume = 4.0 * math.pi * radius**3 / 3.0
+    total_volume = cylinder_volume + cap_volume
+    cylinder_mass = mass * cylinder_volume / total_volume
+    cap_mass = mass - cylinder_mass
+
+    axial_inertia = radius * radius * (0.5 * cylinder_mass + 0.4 * cap_mass)
+    cap_centroid_offset = cylinder_height / 2.0 + 3.0 * radius / 8.0
+    transverse_inertia = cylinder_mass * (
+        3.0 * radius * radius + cylinder_height * cylinder_height
+    ) / 12.0 + cap_mass * (83.0 * radius * radius / 320.0 + cap_centroid_offset * cap_centroid_offset)
+    return _validated_rigid_body_mass_properties(
+        mass_kg=mass,
+        axial_inertia_kg_m2=axial_inertia,
+        transverse_inertia_kg_m2=transverse_inertia,
     )
 
 

@@ -2,7 +2,7 @@
   "schema": "dr.anmar.suture-profile.v1",
   "id": "dr-anmar-suture-4-0-braided-v1",
   "name": "Dr.Anmar 4-0 braided surgical suture",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "purpose": "Research-grade physical suture asset for operating-room simulation",
   "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
   "clinical_validation": false,
@@ -70,7 +70,7 @@
     "physics_layer_owns": [
       "physics_materials",
       "purpose_specific_collider_physics_material_bindings",
-      "rigid_body_mass_and_descendant_collision_schemas",
+      "explicit_rigid_body_mass_center_inertia_principal_axes_and_descendant_collision_schemas",
       "adjacent_collision_filtering",
       "breakable_cosserat_joints"
     ],
@@ -96,6 +96,31 @@
     "segment_count": 360,
     "carrier_count": 12,
     "collision_radius_policy": "nominal_constant_radius_after_swage_transition",
+    "mass_properties": {
+      "segment_model": "mass_conserving_uniform_solid_cylinder",
+      "segment_axis": "X",
+      "segment_radius_policy": "nominal_physical_radius_not_collision_radius",
+      "segment_length_policy": "centerline_partition_spacing",
+      "interface_model": "mass_conserving_uniform_solid_capsule",
+      "interface_axis": "X",
+      "interface_radius_policy": "needle_end_radius",
+      "interface_cylinder_height_policy": "centerline_partition_spacing",
+      "interface_mass_policy": {
+        "policy": "stabilized_swage_bridge_body",
+        "segment_mass_multiplier": 8.0,
+        "minimum_kg": 1e-7
+      },
+      "center_of_mass": "local_origin",
+      "principal_axes": "body_local_xyz_identity",
+      "collision_envelope_decoupled": true,
+      "usd_authoring": [
+        "physics:mass",
+        "physics:centerOfMass",
+        "physics:diagonalInertia",
+        "physics:principalAxes"
+      ],
+      "calibration_status": "analytical_effective_solids_pending_mass_distribution_metrology"
+    },
     "visual_representation": {
       "rigid_body_prim_pattern": "Segments/S####",
       "visual_prim_pattern": "Segments/S####/Visual",
@@ -494,8 +519,13 @@
     },
     {
       "title": "Omni Physics rigid bodies",
-      "url": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/107.0/dev_guide/rigid_bodies_articulations/rigid_bodies.html",
-      "used_for": "hybrid sweep and speculative CCD on thin fast-moving bodies"
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/107.3/dev_guide/rigid_bodies_articulations/rigid_bodies.html",
+      "used_for": "explicit mass center of mass diagonal inertia and principal axes plus hybrid sweep and speculative CCD on thin fast-moving bodies"
+    },
+    {
+      "title": "NVIDIA rigid-body mass asset requirement",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.11.2/capabilities/physics_bodies/physics_rigid_bodies/requirements/rigid-body-mass.html",
+      "used_for": "explicit mass and inertial properties on every movable suture and swage-interface rigid body"
     },
     {
       "title": "Omni Physics colliders",
