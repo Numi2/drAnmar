@@ -13,8 +13,22 @@ const CALIBRATION_SAMPLE_COUNT = 24;
 const MIN_TRACKING_QUALITY = 0.60;
 const MIN_INFERENCE_INTERVAL_MS = 24;
 const PREDICTION_HORIZON_S = 0.025;
+const LOCAL_WEBCAM_ORIGIN = "http://127.0.0.1:12360";
 
 export const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
+
+export function isLoopbackHostname(hostname) {
+  const normalized = String(hostname || "").toLowerCase().replace(/^\[|\]$/g, "");
+  return normalized === "localhost"
+    || normalized === "::1"
+    || normalized.startsWith("127.");
+}
+
+export function localWebcamTarget() {
+  const target = new URL("/workstation/", LOCAL_WEBCAM_ORIGIN);
+  target.searchParams.set("webcam", "1");
+  return target.href;
+}
 
 export function handednessToArm(label, inputMirrored = false) {
   // MediaPipe handedness assumes selfie-mirrored input. detectForVideo receives
@@ -480,7 +494,19 @@ class HandController {
   async start() {
     if (this.running || this.starting) return;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      this.setBanner("HTTPS is required for webcam access", "warn");
+      if (!isLoopbackHostname(location.hostname)) {
+        this.setBanner("Switching to the private local camera connection…", "warn");
+        const target = localWebcamTarget();
+        window.setTimeout(() => {
+          try {
+            window.top.location.assign(target);
+          } catch (_error) {
+            window.location.assign(target);
+          }
+        }, 120);
+      } else {
+        this.setBanner("Camera access is blocked in this browser. Allow camera access and reload.", "warn");
+      }
       return;
     }
     const generation = ++this.startGeneration;
@@ -1136,7 +1162,17 @@ class HandController {
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   const initialize = () => {
-    if (!document.getElementById("handControlLaunch")) window.drAnmarHandController = new HandController();
+    if (!document.getElementById("handControlLaunch")) {
+      window.drAnmarHandController = new HandController();
+      const query = new URLSearchParams(location.search);
+      if (query.get("webcam") === "1") {
+        query.delete("webcam");
+        const remainingQuery = query.toString();
+        const cleanUrl = `${location.pathname}${remainingQuery ? `?${remainingQuery}` : ""}${location.hash}`;
+        history.replaceState(null, "", cleanUrl);
+        window.drAnmarHandController.open();
+      }
+    }
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initialize, { once: true });
   else initialize();
