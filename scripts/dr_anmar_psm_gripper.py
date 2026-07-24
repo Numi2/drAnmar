@@ -11,6 +11,7 @@ for contact and object retention.
 
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -72,6 +73,57 @@ PSM_GRIPPER_ACTION_TERMS = (
     "finger_joint_pos",
     "finger_joint_pos_2",
 )
+
+NVIDIA_ORBIT_GRIPPER_TERM_MAP = (
+    ("gripper_action", "robot_1_gripper_action", "robot"),
+    ("gripper_1_action", "robot_1_gripper_action", "robot_1"),
+    ("gripper_2_action", "robot_2_gripper_action", "robot_2"),
+    ("robot_1_gripper_action", "robot_1_gripper_action", "robot_1"),
+    ("robot_2_gripper_action", "robot_2_gripper_action", "robot_2"),
+)
+
+
+def complete_psm_actions_from_nvidia_orbit(
+    actions: Any,
+    scene: Any,
+    reference_actions: Any,
+) -> list[str]:
+    """Fill optional PSM jaw slots from ORBIT's working handover config.
+
+    Reach environments intentionally leave their gripper slots empty.  Rather
+    than recreating those actions per room, copy the corresponding native
+    action term from the released ORBIT needle-handover configuration and only
+    retarget its articulation name.  Existing task-owned terms are preserved.
+    """
+
+    active: list[str] = []
+    for target_name, source_name, asset_name in NVIDIA_ORBIT_GRIPPER_TERM_MAP:
+        if not hasattr(actions, target_name) or getattr(scene, asset_name, None) is None:
+            continue
+        term = getattr(actions, target_name)
+        if term is None:
+            source = getattr(reference_actions, source_name, None)
+            if source is None:
+                raise RuntimeError(
+                    f"NVIDIA/ORBIT PSM reference is missing {source_name}"
+                )
+            term = copy.deepcopy(source)
+            term.asset_name = asset_name
+            setattr(actions, target_name, term)
+        active.append(target_name)
+    return active
+
+
+def psm_articulation_names(scene: Any) -> list[str]:
+    """Return PSM articulation slots without changing their native config."""
+
+    names: list[str] = []
+    for name in ("robot", "robot_1", "robot_2"):
+        robot_cfg = getattr(scene, name, None)
+        actuators = getattr(robot_cfg, "actuators", None)
+        if isinstance(actuators, dict) and "psm" in actuators and "psm_tool" in actuators:
+            names.append(name)
+    return names
 
 
 def psm_gripper_command_expr(aperture_rad: float) -> dict[str, float]:

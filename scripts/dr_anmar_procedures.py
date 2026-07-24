@@ -178,7 +178,6 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "single_active_camera_renderer": True,
         "suture_physics_lod": "interactive_90",
         "suture_native_segment_rendering": True,
-        "interactive_camera_update_period_s": 0.04,
         "suture_telemetry_period_s": 1.0,
         "waypoints": (),
         "steps": [
