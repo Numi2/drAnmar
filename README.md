@@ -383,6 +383,17 @@ Open [http://localhost:2360](http://localhost:2360). Useful service commands are
 ./dr_anmar_suite.sh stop
 ```
 
+For Mac webcam control of the Gilgamesh room, use the private loopback launcher:
+
+```bash
+./dr_anmar_webcam.sh start
+```
+
+It opens [http://127.0.0.1:12360](http://127.0.0.1:12360) through an authenticated SSH tunnel. Browsers treat the
+loopback origin as trustworthy, so **Hand control** can request the webcam without requiring Tailscale Serve or a
+tailnet HTTPS administrator. Use `./dr_anmar_webcam.sh status` or `./dr_anmar_webcam.sh stop` to inspect or close the
+exact tunnel.
+
 The hub and worker listen on all network interfaces by default so another trusted device can reach the
 workstation. Optional token authentication and a single-operator browser lease are built in, but authentication
 is disabled until `DR_ANMAR_ACCESS_TOKEN` is configured. Keep the service on a trusted LAN or private VPN,

@@ -46,9 +46,11 @@ jaw aperture is held. Reacquisition requires a tracked frozen frame before motio
 controller, voice, replay, expert, reset, or emergency-stop takeover disables webcam authority until the operator
 explicitly clicks Engage again.
 
-Remote camera use requires the secured tailnet HTTPS address. A plain `http://` Gilgamesh address cannot request a
-Mac webcam because browsers restrict `getUserMedia()` to secure contexts. Single-camera depth is calibrated and
-relative; it is not millimetre-accurate or clinical-grade tracking.
+For Mac camera access to Gilgamesh, run `./dr_anmar_webcam.sh start` and use the opened
+`http://127.0.0.1:12360/` room. The authenticated SSH tunnel keeps the remote ports private, while the loopback URL is
+a browser-trusted context that can request `getUserMedia()` without tailnet HTTPS. A direct plain-HTTP Gilgamesh URL
+still cannot request the Mac webcam. Single-camera depth is calibrated and relative; it is not millimetre-accurate or
+clinical-grade tracking.
 
 ## One-key surgical combinations
 

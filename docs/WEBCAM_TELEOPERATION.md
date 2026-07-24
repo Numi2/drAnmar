@@ -79,7 +79,31 @@ The installer verifies the pinned package and model SHA-256 hashes before atomic
 `~/.local/share/dr-anmar/assets/hand-control/mediapipe-tasks-vision-0.10.35`. The workstation serves only an explicit
 allow-list of required files; operation never depends on a live CDN.
 
-For remote use, terminate HTTPS on the tailnet and keep ports 2360/2361 private. For example, on Gilgamesh:
+### Mac-to-Gilgamesh camera access
+
+The browser's secure-context rule cannot be disabled by Dr.Anmar. The included launcher satisfies it without
+requiring HTTPS administration by forwarding the remote hub to the Mac's browser-trusted loopback origin:
+
+```bash
+./dr_anmar_webcam.sh start
+```
+
+This opens `http://127.0.0.1:12360/`. The page is local from the browser's perspective, while all workstation traffic
+travels through the authenticated SSH connection over Tailscale. The remote hub and worker remain private. Useful
+commands are:
+
+```bash
+./dr_anmar_webcam.sh status
+./dr_anmar_webcam.sh stop
+```
+
+The SSH destination defaults to the current Gilgamesh deployment and can be changed without editing the script:
+
+```bash
+DR_ANMAR_SSH_TARGET=user@host ./dr_anmar_webcam.sh start
+```
+
+Tailnet administrators may instead publish the hub using Tailscale Serve:
 
 ```bash
 tailscale serve --bg http://127.0.0.1:2360
