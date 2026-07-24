@@ -80,7 +80,7 @@ case "${command}" in
         [[ -n "${openusd_environment}" ]] && workstation_args+=(--openusd_environment "${openusd_environment}")
         exec "${PYTHON}" scripts/dr_anmar_workstation.py \
             "${workstation_args[@]}" \
-            --kit_args "--portable-root ${PORTABLE_ROOT} --/app/useFabricSceneDelegate=true --/rtx/post/dlss/execMode=0 --/renderer/raytracingMotion/enabled=false --/renderer/raytracingMotion/enableHydraEngineMasking=false --/renderer/raytracingMotion/enabledForHydraEngines=''"
+            --kit_args "--portable-root ${PORTABLE_ROOT}"
         ;;
     anatomy-viewer)
         port="${2:-2361}"

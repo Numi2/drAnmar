@@ -3256,6 +3256,9 @@ def main() -> None:
         "DR_ANMAR_SUTURE_PHYSICS_LOD",
         str(procedure.get("suture_physics_lod", "full_360")),
     )
+    suture_native_segment_rendering = bool(
+        procedure.get("suture_native_segment_rendering")
+    )
     single_active_camera_renderer = bool(
         procedure.get("single_active_camera_renderer", True)
     )
@@ -3297,7 +3300,13 @@ def main() -> None:
         # every PhysX articulation update. The needle-to-strand attachment is
         # authored before simulation starts and remains owned by PhysX; it does
         # not require freezing the renderer on stale OpenUSD transforms.
-        use_fabric=not args_cli.disable_fabric,
+        use_fabric=(
+            not args_cli.disable_fabric
+            and not (
+                dr_anmar_needle_enabled
+                and suture_native_segment_rendering
+            )
+        ),
     )
     interactive_rendering_mode = procedure.get("interactive_rendering_mode")
     if interactive_rendering_mode:
@@ -3702,21 +3711,27 @@ def main() -> None:
         articulations=configured_psm_articulations,
     )
     camera_target = np.asarray(
-        (-0.070, -0.020, 0.055)
-        if nvidia_native_bench
-        else env_cfg.viewer.lookat,
+        procedure.get(
+            "interactive_camera_target_m",
+            (-0.070, -0.020, 0.055)
+            if nvidia_native_bench
+            else env_cfg.viewer.lookat,
+        ),
         dtype=np.float32,
     )
     # Start from the room-facing side used by the official OR scene so the
     # doctor sees the instrument, liver, table, and surrounding environment.
     camera_eye = np.asarray(
-        (0.38, -0.44, 0.32)
-        if nvidia_native_bench
-        else (0.36, 0.36, 0.21)
-        if bimanual_softmimicgen
-        else (0.20, 0.20, 0.11)
-        if _softmimicgen_task
-        else (0.45, 0.25, 0.28),
+        procedure.get(
+            "interactive_camera_eye_m",
+            (0.38, -0.44, 0.32)
+            if nvidia_native_bench
+            else (0.36, 0.36, 0.21)
+            if bimanual_softmimicgen
+            else (0.20, 0.20, 0.11)
+            if _softmimicgen_task
+            else (0.45, 0.25, 0.28),
+        ),
         dtype=np.float32,
     )
     interactive_camera_width = int(
@@ -4946,7 +4961,7 @@ def main() -> None:
         return
 
     update_realtime_suture_curve = disabled_suture_curve_update
-    if dr_anmar_needle_enabled:
+    if dr_anmar_needle_enabled and not suture_native_segment_rendering:
         # Present the native PhysX strand to RTX as one dynamic curve. Drawing
         # one detailed mesh per physical segment forces Hydra to synchronize
         # every moving visual prim on every camera frame. The curve is visual
@@ -5053,65 +5068,18 @@ def main() -> None:
             )
         )
 
-        # USDRT writes dynamic point data to NVIDIA Fabric. OpenUSD remains
-        # the asset authority while Hydra avoids a full stage invalidation.
-        from usdrt import Gf as RtGf
-        from usdrt import Rt as Rt
-        from usdrt import Sdf as RtSdf
-        from usdrt import Usd as RtUsd
-        from usdrt import Vt as RtVt
+        realtime_suture_points = realtime_suture_curve.GetPointsAttr()
 
-        realtime_fabric_stage = RtUsd.Stage.Attach(
-            omni.usd.get_context().get_stage_id()
-        )
-        realtime_fabric_prim = realtime_fabric_stage.GetPrimAtPath(
-            RtSdf.Path(str(realtime_suture_curve.GetPath()))
-        )
-        if not realtime_fabric_prim:
-            raise RuntimeError(
-                "The real-time suture visual did not populate into Fabric"
-            )
-        initial_suture_world_array = np.asarray(
-            initial_suture_world_positions,
-            dtype=np.float32,
-        )
-        realtime_fabric_boundable = Rt.Boundable(
-            realtime_fabric_prim
-        )
-        realtime_fabric_boundable.CreateWorldExtentAttr().Set(
-            RtGf.Range3d(
-                RtGf.Vec3d(
-                    *(
-                        initial_suture_world_array.min(axis=0)
-                        - suture_extent_padding_m
-                    ).tolist()
-                ),
-                RtGf.Vec3d(
-                    *(
-                        initial_suture_world_array.max(axis=0)
-                        + suture_extent_padding_m
-                    ).tolist()
-                ),
-            )
-        )
-        realtime_fabric_points = realtime_fabric_prim.GetAttribute(
-            "points"
-        )
-        if not realtime_fabric_points:
-            raise RuntimeError(
-                "The real-time suture visual exposes no Fabric points"
-            )
-
-        def fabric_suture_curve_update(
+        def usd_suture_curve_update(
             world_positions: np.ndarray,
         ) -> None:
             local_points = realtime_suture_local_points(
                 world_positions
             )
-            realtime_fabric_points.Set(
-                RtVt.Vec3fArray(
+            realtime_suture_points.Set(
+                Vt.Vec3fArray(
                     [
-                        RtGf.Vec3f(
+                        Gf.Vec3f(
                             float(point[0]),
                             float(point[1]),
                             float(point[2]),
@@ -5121,7 +5089,7 @@ def main() -> None:
                 )
             )
 
-        update_realtime_suture_curve = fabric_suture_curve_update
+        update_realtime_suture_curve = usd_suture_curve_update
         update_realtime_suture_curve(
             initial_suture_world_positions
         )
@@ -5273,6 +5241,7 @@ def main() -> None:
         "action_decimation": int(env_cfg.decimation),
         "render_interval_physics_steps": int(env_cfg.sim.render_interval),
         "single_active_camera_renderer": shared_camera_renderer,
+        "native_segment_rendering": suture_native_segment_rendering,
         "suture_physics_lod": (
             suture_physics_lod if dr_anmar_needle_enabled else None
         ),
