@@ -16,6 +16,23 @@ repository, rename physical assets, or replace their authored OpenUSD physics.
 The upstream helper retrieves public assets from NVIDIA's production object store. No asset payload is
 committed to Dr.Anmar.
 
+## DrAnmar-authored surgical-count extension
+
+DrAnmar also ships its own Apache-2.0 catalog content under the same relative
+addressing convention:
+
+```text
+Props/SurgicalCount/LaparotomySponge
+```
+
+This local extension is not represented as NVIDIA-authored catalog content.
+`SurgicalCountAssets` exposes the unfolded and folded paths in the form
+expected by `BaseI4HAssets`, while DrAnmar's capability payload identifies
+`provider: dr_anmar`, the local path, licence, representation, and readiness.
+The package keeps both dry/wet representations runnable and records provisional
+physics and nonclinical provenance in
+[`LAPAROTOMY_SPONGE.md`](LAPAROTOMY_SPONGE.md).
+
 ## Useful Dr.Anmar bundles
 
 | Bundle | Upstream content | Approximate size |

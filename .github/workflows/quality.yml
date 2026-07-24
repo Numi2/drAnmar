@@ -31,6 +31,7 @@ jobs:
           python scripts/dr_anmar_suture_runtime.py --self-test
           python scripts/dr_anmar_tissue_validate.py --output /tmp/dr-anmar-tissue-validation.json
           python scripts/dr_anmar_hemostasis_validate.py --output /tmp/dr-anmar-hemostasis-validation.json
+          python scripts/dr_anmar_laparotomy_sponge_validate.py --output /tmp/dr-anmar-laparotomy-sponge-validation.json
           python scripts/dr_anmar_asset_portfolio_validate.py
           python - <<'PY'
           import json

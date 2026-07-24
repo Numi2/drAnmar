@@ -91,3 +91,32 @@ benchmark remains pending that explicit activation.
   conditions, failure modes and clinician review.
 
 All entries remain simulation/research-only and not clinically validated.
+
+## 2026-07-24 — laparotomy sponge integration
+
+- Added the independently authored Apache-2.0 asset at
+  `Props/SurgicalCount/LaparotomySponge`, with coordinated unfolded
+  surface-deformable and folded rigid representations.
+- Corrected invalid quaternion syntax in all 32 loop-collider declarations and
+  invalid one-line variant overrides before integration.
+- Corrected semantic fallback behavior for Isaac Sim 5.1 when optional
+  Replicator modules are absent.
+- Replaced the old bend-stiffness override, which omitted thickness, with the
+  selected runtime's thickness-aware derivation.
+- Recomputed dry and wet effective densities from the exact connected
+  0.210219025612 m² simulation surface so the integrated masses are 0.022 kg
+  and 0.120 kg.
+- Added distinct dry/wet rigid contact materials and extended body collision to
+  full visual thickness while retaining a deliberate 1 mm lateral inset.
+- Repository validation passes all 13 geometry, topology, collision, texture,
+  reference, semantic, physics and licensing checks.
+- On the RTX 4090 / driver 580.159.03, the folded dry and wet variants each
+  completed 240 CUDA steps in Isaac Sim 5.1.0.0 / Isaac Lab 2.3.2 with finite
+  state.
+- The Isaac Sim 6.0.1.0 / Isaac Lab 3.0.0 beta 2 surface route is delivered and
+  enabled. Native surface-cooking and self-collision execution evidence awaits
+  explicit operator activation of the installed Omniverse Kit licence; the
+  agent did not accept legal terms on the operator's behalf.
+
+These values are active provisional research parameters. They are not
+manufacturer measurements, clinical validation, or patient-care approval.

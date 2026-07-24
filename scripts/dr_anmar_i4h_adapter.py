@@ -326,6 +326,7 @@ def asset_catalog_payload() -> dict[str, Any]:
         assets.append(
             {
                 "id": asset_id,
+                "provider": "nvidia_i4h_asset_catalog",
                 "bundle": bundle,
                 "relative_path": relative_path,
                 "catalog_entry_present": Path(relative_path).name in catalog_text,
@@ -334,6 +335,41 @@ def asset_catalog_payload() -> dict[str, Any]:
                 "remote_url": f"{remote_root}/{relative_path}",
                 "license_review_required": True,
                 "noncommercial_research_only": research_only,
+            }
+        )
+
+    dr_anmar_asset_root = (
+        Path(__file__).resolve().parents[1]
+        / "source/extensions/orbit.surgical.assets/data"
+    )
+    for asset_id, relative_path, representation in (
+        (
+            "laparotomy_sponge_unfolded",
+            "Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
+            "connected_triangular_surface_deformable",
+        ),
+        (
+            "laparotomy_sponge_folded_proxy",
+            "Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
+            "rigid_body_compound_collision_proxy",
+        ),
+    ):
+        local_path = dr_anmar_asset_root / relative_path
+        assets.append(
+            {
+                "id": asset_id,
+                "provider": "dr_anmar",
+                "bundle": "surgical_count",
+                "relative_path": relative_path,
+                "catalog_entry_present": True,
+                "local_path": str(local_path),
+                "local_ready": local_path.is_file(),
+                "remote_url": None,
+                "representation": representation,
+                "license": "Apache-2.0",
+                "license_review_required": False,
+                "noncommercial_research_only": False,
+                "clinical_validation": False,
             }
         )
 
@@ -366,6 +402,9 @@ def asset_catalog_payload() -> dict[str, Any]:
         "remote_root": remote_root,
         "assets": assets,
         "ready_assets": sum(asset["local_ready"] for asset in assets),
+        "dr_anmar_authored_assets": sum(
+            asset.get("provider") == "dr_anmar" for asset in assets
+        ),
         "arena_asset_root": arena_asset_root,
         "arena_asset_contract_discovered": bool(arena_asset_root),
         "arena_uses_installed_catalog_version": bool(

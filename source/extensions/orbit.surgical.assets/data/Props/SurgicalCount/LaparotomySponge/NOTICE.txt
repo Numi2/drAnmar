@@ -1,0 +1,9 @@
+Radiopaque Laparotomy Sponge Asset
+Version 0.1.0
+
+Copyright 2026 i4h Laparotomy Sponge contributors.
+
+This package contains original procedural geometry, textures, code, and documentation.
+Public manufacturer specifications are referenced only to establish generic category-level dimensions and features. No manufacturer mesh, image, texture, logo, packaging artwork, or proprietary CAD is included.
+
+NVIDIA, Isaac, Isaac Sim, and Isaac Lab are trademarks or product names of their respective owner. Their names are used only to describe intended interoperability. This project is not an NVIDIA release and does not imply endorsement.

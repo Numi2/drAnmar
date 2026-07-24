@@ -1,0 +1,208 @@
+{
+  "schema": "dr.anmar.laparotomy-sponge-profile.v1",
+  "id": "dr-anmar-laparotomy-sponge-v1",
+  "name": "DrAnmar Radiopaque Laparotomy Sponge",
+  "version": "0.1.0",
+  "status": "deployment_enabled_with_category_grounded_provisional_physics",
+  "purpose": "Surgical-count, perception, grasping, handover, tray-placement, retrieval-loop and surface-deformable research.",
+  "catalog_subpath": "Props/SurgicalCount/LaparotomySponge",
+  "representations": {
+    "unfolded_surface": {
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
+      "point_count": 1027,
+      "triangle_count": 1868,
+      "connected_components": 1,
+      "physics": "runtime_authored_triangular_surface_deformable",
+      "states": [
+        "dry",
+        "wet"
+      ]
+    },
+    "folded_rigid_proxy": {
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
+      "body_point_count": 1026,
+      "body_triangle_count": 2048,
+      "physics": "rigid_body_with_compound_collision",
+      "body_colliders": 1,
+      "loop_capsule_colliders": 32,
+      "states": [
+        "dry",
+        "wet"
+      ]
+    }
+  },
+  "selected_physical_reference": {
+    "model_scope": "category_level_reference_envelope_not_a_manufacturer_exact_digital_twin",
+    "primary_geometry_reference": {
+      "manufacturer": "McKesson",
+      "catalog_number": "16-2118181",
+      "used_for": [
+        "18_x_18_inch_nominal_size",
+        "100_percent_cotton",
+        "four_ply_category",
+        "x_ray_detectable",
+        "prewashed_single_use_category"
+      ],
+      "url": "https://mms.mckesson.com/product/291446/McKesson-Brand-16-2118181"
+    },
+    "loop_reference": {
+      "manufacturer": "Medline",
+      "catalog_number": "MDS251518LF",
+      "used_for": [
+        "18_x_18_inch_nominal_size",
+        "seven_inch_loop",
+        "heavy_weight_absorbent_category",
+        "barium_sulfate_edge_feature"
+      ],
+      "url": "https://athome.medline.com/en/medline-sterile-x-ray-detectable-lap-sponge-18in-x-18in-200ct-mds251518lf"
+    },
+    "unsupported_by_public_product_specs": [
+      "mass",
+      "compressed_thickness",
+      "youngs_modulus",
+      "poissons_ratio",
+      "damping",
+      "friction"
+    ]
+  },
+  "geometry": {
+    "nominal_unfolded_size_m": [
+      0.4572,
+      0.4572
+    ],
+    "reference_loop_length_m": 0.1778,
+    "connected_simulation_surface_area_m2": 0.21021902561187744,
+    "individual_ply_layers_simulated": false,
+    "coordinate_system": "right_handed_z_up",
+    "units": "SI"
+  },
+  "surface_parameters": {
+    "parameter_status": "provisional_category_grounded_solver_baseline",
+    "dry": {
+      "mass_kg": 0.022,
+      "effective_density_kg_m3": 26.163188531539117,
+      "effective_surface_thickness_m": 0.004,
+      "youngs_modulus_pa": 100000.0,
+      "poissons_ratio": 0.35,
+      "dynamic_friction": 0.65,
+      "elasticity_damping": 0.1,
+      "bend_damping": 0.1
+    },
+    "wet": {
+      "mass_kg": 0.12,
+      "effective_density_kg_m3": 142.70830108112247,
+      "effective_surface_thickness_m": 0.004,
+      "youngs_modulus_pa": 60000.0,
+      "poissons_ratio": 0.35,
+      "dynamic_friction": 0.55,
+      "elasticity_damping": 0.18,
+      "bend_damping": 0.18
+    },
+    "surface_bend_stiffness_override": 0.0,
+    "bend_model": "selected_runtime_thickness_aware_derivation_from_modulus_poissons_ratio_and_surface_thickness",
+    "mass_derivation": "effective_density_times_connected_simulation_surface_area_times_effective_surface_thickness",
+    "wet_model": "higher_absorbed_mass_lower_modulus_lower_friction_and_higher_damping"
+  },
+  "rigid_proxy_parameters": {
+    "dry": {
+      "mass_kg": 0.022,
+      "static_friction": 0.75,
+      "dynamic_friction": 0.65,
+      "restitution": 0.0
+    },
+    "wet": {
+      "mass_kg": 0.12,
+      "static_friction": 0.65,
+      "dynamic_friction": 0.55,
+      "restitution": 0.0
+    }
+  },
+  "collision_coverage": {
+    "body_visual_envelope_m": [
+      0.14,
+      0.114,
+      0.02496
+    ],
+    "body_collider_envelope_m": [
+      0.138,
+      0.112,
+      0.02496
+    ],
+    "body_collider_translation_m": [
+      0.0,
+      0.0,
+      0.00048
+    ],
+    "body_axis_coverage_ratio": [
+      0.9857142857142858,
+      0.9824561403508772,
+      1.0
+    ],
+    "body_lateral_inset_reason": "avoid corner ghost contacts while preserving full thickness coverage",
+    "visual_loop_radius_m": 0.003,
+    "loop_collider_radius_m": 0.0032,
+    "loop_radial_coverage_ratio": 1.0666666666666667,
+    "loop_segment_count": 32,
+    "loop_centerline_continuity": "one_capsule_per_consecutive_centerline_segment"
+  },
+  "runtime_selection": {
+    "folded_rigid": {
+      "isaac_sim": "5.1.0.0",
+      "isaac_lab": "2.3.2",
+      "torch": "2.7.0+cu128",
+      "cuda": "12.8",
+      "gpu": "NVIDIA GeForce RTX 4090"
+    },
+    "unfolded_surface": {
+      "isaac_sim": "6.0.1.0",
+      "isaac_lab": "3.0.0-beta2",
+      "isaac_lab_revision": "51b4fb54184fa7c0a406643129953a8b26136230",
+      "omni_physics": "110.1.13",
+      "torch": "2.10.0+cu128",
+      "cuda": "12.8",
+      "gpu": "NVIDIA GeForce RTX 4090"
+    }
+  },
+  "solver": {
+    "surface_self_collision": true,
+    "recommended_dt_s": 0.008333333333333333,
+    "qualification_steps_per_state": 240,
+    "non_finite_state_tolerance": 0,
+    "runtime_disable_on_missing_physical_metrology": false,
+    "representation_fallback_required": false
+  },
+  "semantics": {
+    "class": [
+      "surgical_sponge",
+      "laparotomy_sponge",
+      "radiopaque_sponge"
+    ],
+    "workflow": [
+      "surgical_count",
+      "handover",
+      "retrieval",
+      "disposal"
+    ],
+    "xray_marker_region_visible": true,
+    "radiography_behavior_simulated": false
+  },
+  "qualification": {
+    "policy": "keep_both_representations_runnable_and_record_evidence_without_metrology_based_feature_disable",
+    "engineering_checks": [
+      "openusd_parse",
+      "relative_reference_resolution",
+      "single_connected_surface",
+      "surface_cooking",
+      "self_collision_enabled",
+      "finite_state_dry",
+      "finite_state_wet",
+      "rigid_collision_coverage",
+      "loop_collision_continuity",
+      "deterministic_asset_hashes"
+    ],
+    "physical_calibration_state": "provisional_until_measurements_for_the_selected_sku_are_available",
+    "clinical_use_claim": false
+  },
+  "license": "Apache-2.0",
+  "clinical_validation": false
+}

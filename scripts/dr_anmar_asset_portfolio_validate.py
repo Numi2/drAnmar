@@ -29,8 +29,15 @@ def main() -> int:
         errors.append("unsupported portfolio schema")
     assets = manifest.get("assets", [])
     ids = [asset.get("id") for asset in assets]
-    if len(assets) != 4 or len(ids) != len(set(ids)):
-        errors.append("portfolio must contain four uniquely identified systems")
+    required_ids = {
+        "dr-anmar-needle",
+        "dr-anmar-suture-4-0-braided-v1",
+        "dr-anmar-suturable-tissue-v1",
+        "dr-anmar-hemostasis-v1",
+        "dr-anmar-laparotomy-sponge-v1",
+    }
+    if len(ids) != len(set(ids)) or not required_ids.issubset(ids):
+        errors.append("portfolio must contain every uniquely identified DrAnmar system")
     for asset in assets:
         if asset.get("clinical_validation") is not False:
             errors.append(f"{asset.get('id')}: clinical validation must remain false")
@@ -46,10 +53,23 @@ def main() -> int:
             relative = asset.get(key)
             if relative and not (REPOSITORY_ROOT / relative).is_file():
                 errors.append(f"{asset.get('id')}: missing {key} {relative!r}")
-        if not str(asset.get("native_gpu_qualification", "")).startswith("blocked_pending"):
-            errors.append(f"{asset.get('id')}: native qualification promoted without evidence")
-        if not str(asset.get("physical_qualification", "")).startswith("blocked_pending"):
-            errors.append(f"{asset.get('id')}: physical qualification promoted without evidence")
+        native_qualification = str(asset.get("native_gpu_qualification", ""))
+        physical_qualification = str(asset.get("physical_qualification", ""))
+        if asset.get("id") == "dr-anmar-laparotomy-sponge-v1":
+            if asset.get("deployment") != "enabled":
+                errors.append("laparotomy sponge must remain enabled")
+            if not native_qualification.startswith("rigid_cuda_qualified"):
+                errors.append("laparotomy sponge rigid CUDA qualification is missing")
+            if not physical_qualification.startswith("provisional_category_grounded"):
+                errors.append("laparotomy sponge provisional calibration is not explicit")
+            gpu_report = asset.get("gpu_report")
+            if not gpu_report or not (REPOSITORY_ROOT / gpu_report).is_file():
+                errors.append(f"laparotomy sponge missing GPU report {gpu_report!r}")
+        else:
+            if not native_qualification.startswith("blocked_pending"):
+                errors.append(f"{asset.get('id')}: native qualification promoted without evidence")
+            if not physical_qualification.startswith("blocked_pending"):
+                errors.append(f"{asset.get('id')}: physical qualification promoted without evidence")
     if manifest.get("validation", {}).get("clinical_use") != "blocked":
         errors.append("portfolio clinical-use boundary must remain blocked")
     if manifest.get("ownership", {}).get("external_geometry_dependencies") != []:

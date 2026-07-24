@@ -1,7 +1,7 @@
 {
   "schema": "dr.anmar.asset-portfolio.v1",
   "name": "DrAnmar Surgical Asset Portfolio",
-  "status": "research_assets_pending_native_physical_and_clinical_qualification",
+  "status": "research_assets_enabled_with_per_asset_qualification_evidence",
   "units": "metres-kilograms-seconds",
   "ownership": {
     "geometry": "independently_authored_dr_anmar",
@@ -92,6 +92,20 @@
       ],
       "native_gpu_qualification": "blocked_pending_native_probe",
       "physical_qualification": "blocked_pending_closure_leak_retention_and_damage_data",
+      "clinical_validation": false
+    },
+    {
+      "id": "dr-anmar-laparotomy-sponge-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
+      "profile": "physics_next/surgical-count/dr-anmar-laparotomy-sponge-v1.json",
+      "report": "physics_next/benchmarks/dr-anmar-laparotomy-sponge-validation.json",
+      "gpu_report": "physics_next/benchmarks/dr-anmar-laparotomy-sponge-validation.json",
+      "live_integration": "i4h_compatible_surgical_count_catalog_and_repository_local_rooms",
+      "live_behavior": "dry_and_wet_rigid_perception_grasp_handover_tray_placement_counting_and_loop_retrieval_plus_runtime_cooked_connected_surface_deformation_with_self_collision",
+      "deployment": "enabled",
+      "native_gpu_qualification": "rigid_cuda_qualified_surface_route_enabled_execution_evidence_pending_explicit_kit_activation",
+      "physical_qualification": "provisional_category_grounded_parameters_active",
       "clinical_validation": false
     }
   ],

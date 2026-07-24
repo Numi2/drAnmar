@@ -1,6 +1,18 @@
 Changelog
 ---------
 
+0.2.0 (2026-07-24)
+~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added the Apache-2.0 DrAnmar laparotomy-sponge component under
+  ``Props/SurgicalCount/LaparotomySponge``.
+* Added dry/wet folded-rigid and unfolded surface-deformable runtime helpers,
+  I4H-compatible catalog paths, collision coverage, semantic labels and
+  provisional physics presets.
+
 0.1.1 (2024-08-24)
 ~~~~~~~~~~~~~~~~~~
 

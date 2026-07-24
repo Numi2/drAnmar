@@ -1,0 +1,131 @@
+{
+  "schema": "dr.anmar.laparotomy-sponge-validation.v1",
+  "asset_id": "dr-anmar-laparotomy-sponge-v1",
+  "asset_version": "0.1.0",
+  "profile": "physics_next/surgical-count/dr-anmar-laparotomy-sponge-v1.json",
+  "execution_date": "2026-07-24",
+  "status": "rigid_cuda_qualified_surface_route_enabled_execution_pending_explicit_kit_activation",
+  "deployment": "enabled",
+  "platform": {
+    "host": "gilgamesh",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "580.159.03",
+    "cuda": "12.8"
+  },
+  "assets": {
+    "unfolded_surface": {
+      "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
+      "sha256": "1e445d1ea97ca0bf408b8825ca6805832ea32a1466c1bafa260a404013f8adbd"
+    },
+    "folded_rigid_proxy": {
+      "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
+      "sha256": "2df31e4d445b91532a942e114517aaa74bee51aa24a2338920732d56bf612ab1"
+    }
+  },
+  "static_validation": {
+    "status": "pass",
+    "checks": 13,
+    "passed": 13,
+    "failed": 0,
+    "connected_surface_points": 1027,
+    "connected_surface_triangles": 1868,
+    "connected_surface_components": 1,
+    "relative_asset_references": true,
+    "texture_dimensions": [
+      512,
+      512
+    ],
+    "collision_coverage": {
+      "body_axis_ratio": [
+        0.9857142857142857,
+        0.9824561403508771,
+        1.0
+      ],
+      "body_lateral_inset_m_per_side": 0.001,
+      "body_full_thickness_coverage": true,
+      "loop_capsule_count": 32,
+      "loop_radial_coverage_ratio": 1.0666666666666667
+    }
+  },
+  "rigid_cuda": {
+    "runtime": {
+      "isaac_sim": "5.1.0.0",
+      "isaac_lab": "2.3.2",
+      "torch": "2.7.0+cu128",
+      "device": "cuda:0"
+    },
+    "dry": {
+      "status": "pass",
+      "steps": 240,
+      "selected_mass_kg": 0.02199999988079071,
+      "physics_material_target": "/World/LaparotomySponge/Looks/DryPhysics",
+      "finite_state": true,
+      "settled_position_m": [
+        -1.955777406692505e-08,
+        1.7345882952213287e-08,
+        0.01199998240917921
+      ],
+      "semantic_backend": "isaacsim.core.utils.semantics.add_update_semantics"
+    },
+    "wet": {
+      "status": "pass",
+      "steps": 240,
+      "selected_mass_kg": 0.11999999731779099,
+      "physics_material_target": "/World/LaparotomySponge/Looks/WetPhysics",
+      "finite_state": true,
+      "settled_position_m": [
+        -2.0838342607021332e-08,
+        1.641456037759781e-08,
+        0.011999983340501785
+      ],
+      "semantic_backend": "isaacsim.core.utils.semantics.add_update_semantics"
+    },
+    "variant_assertions": {
+      "spawn_time_variant_selection": true,
+      "dry_and_wet_mass_distinct": true,
+      "dry_and_wet_physics_material_distinct": true
+    }
+  },
+  "surface_cuda": {
+    "runtime": {
+      "isaac_sim": "6.0.1.0",
+      "isaac_lab": "3.0.0-beta2",
+      "isaac_lab_revision": "51b4fb54184fa7c0a406643129953a8b26136230",
+      "omni_physics": "110.1.13",
+      "torch": "2.10.0+cu128",
+      "device": "cuda:0"
+    },
+    "route_enabled": true,
+    "dry": {
+      "execution_status": "pending_explicit_operator_kit_eula_activation",
+      "surface_cooking_confirmed": false,
+      "self_collision_stability_confirmed": false
+    },
+    "wet": {
+      "execution_status": "pending_explicit_operator_kit_eula_activation",
+      "surface_cooking_confirmed": false,
+      "self_collision_stability_confirmed": false
+    },
+    "delivered_runtime_assertions": [
+      "OmniPhysicsDeformableBodyAPI_applied",
+      "PhysxSurfaceDeformableBodyAPI_applied",
+      "PhysxSurfaceDeformableMaterialAPI_applied",
+      "self_collision_attribute_true",
+      "surface_deformable_view_created",
+      "node_count_1027",
+      "all_nodal_positions_finite_after_240_steps"
+    ],
+    "activation_boundary": "The installed Isaac Sim 6 runtime requests acceptance of the NVIDIA Omniverse Kit licence. No agent accepted legal terms on the operator's behalf.",
+    "legacy_runtime_observation": "Isaac Lab 2.3.2 DeformableObject is volume-only and does not create a surface-deformable view; the selected surface route is Isaac Lab 3.0.0 beta 2."
+  },
+  "calibration": {
+    "status": "active_provisional_category_grounded_solver_baseline",
+    "integrated_dry_mass_kg": 0.022,
+    "integrated_wet_mass_kg": 0.12,
+    "surface_thickness_m": 0.004,
+    "surface_bend_stiffness_override": 0.0,
+    "missing_public_product_measurements_do_not_disable_the_asset": true,
+    "manufacturer_exact_digital_twin": false
+  },
+  "clinical_validation": false
+}

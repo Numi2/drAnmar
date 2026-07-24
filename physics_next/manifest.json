@@ -11,6 +11,8 @@
     "benchmarks/liver-retraction.json",
     "benchmarks/needle-puncture.json",
     "benchmarks/dr-anmar-suturable-tissue.json",
+    "surgical-count/dr-anmar-laparotomy-sponge-v1.json",
+    "benchmarks/dr-anmar-laparotomy-sponge-validation.json",
     "benchmarks/softmimicgen-threading-replay.json"
   ],
   "backends": {
@@ -26,10 +28,10 @@
     },
     "physx_fem": {
       "id": "physx_fem",
-      "runtime": "Isaac Lab native PhysX volume deformables",
+      "runtime": "Isaac Lab native PhysX volume and triangular surface deformables",
       "maturity": "doctor-facing-native-first-room",
-      "authority_scope": ["intact tissue deformation", "grasping", "palpation", "retraction", "native stress telemetry", "deformable strand", "rigid-deformable attachment"],
-      "capabilities": ["rigid_body", "articulation", "contact", "volume_deformable", "two_way_robot_tissue", "stress_telemetry", "deformable_strand", "native_attachment"],
+      "authority_scope": ["intact tissue deformation", "surface deformable surgical textiles", "grasping", "palpation", "retraction", "native stress telemetry", "deformable strand", "rigid-deformable attachment"],
+      "capabilities": ["rigid_body", "articulation", "contact", "volume_deformable", "surface_deformable", "self_collision", "two_way_robot_tissue", "stress_telemetry", "deformable_strand", "native_attachment"],
       "topology_change": false,
       "two_way_robot_tissue": true,
       "clinical_validation": false
@@ -73,6 +75,8 @@
   },
   "routing": {
     "rigid_manipulation": ["physx_rigid"],
+    "surgical_count_rigid": ["physx_rigid"],
+    "surgical_count_surface": ["physx_fem"],
     "palpation": ["physx_fem", "newton_vbd"],
     "organ_retraction": ["physx_fem", "newton_vbd"],
     "threaded_needle_core": ["physx_fem"],
@@ -90,6 +94,14 @@
       "explicit_tetmesh": "../assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
       "current_capability": "intact_deformation_and_wound_edge_approximation",
       "blocked_capability": "puncture_thread_passage_and_cutting"
+    },
+    "dr_anmar_laparotomy_sponge": {
+      "profile": "surgical-count/dr-anmar-laparotomy-sponge-v1.json",
+      "validation": "benchmarks/dr-anmar-laparotomy-sponge-validation.json",
+      "unfolded_surface": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
+      "folded_rigid_proxy": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
+      "current_capability": "dry_wet_rigid_manipulation_and_surface_deformable_surgical_count_research",
+      "deployment": "enabled"
     }
   },
   "promotion_rule": "A procedure becomes runnable only when its active native backend owns every required physical capability and its calibration and replay evidence are recorded.",
