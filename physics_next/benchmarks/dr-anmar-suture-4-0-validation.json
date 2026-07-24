@@ -160,7 +160,7 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.12.0\"",
+        "drAnmarAssetVersion = \"1.13.0\"",
         "@DrAnmarNeedle_base.usda@",
         "@DrAnmarNeedle_physx.usda@",
         "@DrAnmarNeedle_materials.usda@",
@@ -192,9 +192,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.12.0",
+        "integration_version": "1.13.0",
         "missing": [],
-        "profile_version": "1.12.0"
+        "profile_version": "1.13.0"
       },
       "passed": true
     },
@@ -884,6 +884,7 @@
             "rigid_body_xforms",
             "closed_braided_visual_mesh_topology",
             "braided_visual_mesh_points_and_vertex_normals",
+            "continuous_face_varying_texture_coordinates",
             "visual_mesh_extents_and_display_colors",
             "guide_purpose_invisible_capsule_colliders"
           ],
@@ -891,6 +892,7 @@
           "materials_layer_owns": [
             "visual_materials",
             "visual_shaders",
+            "relative_raw_normal_roughness_texture_network",
             "inherited_visual_material_bindings"
           ],
           "physics_layer": "DrAnmarSuture4_0_physics.usda",
@@ -924,7 +926,7 @@
         "geometry_is_usdc": true,
         "materials_forbidden": [],
         "neutral_engine_specific": [],
-        "nvidia_reference_count": 6,
+        "nvidia_reference_count": 8,
         "physx_neutral_or_newton": []
       },
       "passed": true
@@ -942,6 +944,7 @@
           "binary_visual_point_containment_tolerance_m": 1e-10,
           "braid_pitch_m_seed": 0.0012,
           "calibration_status": "braid_pitch_relief_and_coating_response_pending_microscopy",
+          "carrier_profile_exponent": 2.4,
           "collider_axis": "X",
           "collider_cylinder_height_policy": "segment_spacing_with_adjacent_overlap_and_pair_filtering",
           "collider_physics_material_binding": "material:binding:physics",
@@ -956,22 +959,27 @@
           "needle_interface_visual_prim": "NeedleInterface/Visual",
           "radial_samples": 48,
           "reason": "solver_efficient_primitive_collision_with_geometric_braid_detail_attached_to_each_rigid_segment",
-          "relief_depth_fraction": 0.055,
+          "relief_depth_fraction": 0.11,
           "rigid_body_prim_pattern": "Segments/S####",
           "segment_boundary_policy": "shared_minimum_adjacent_collider_envelope_with_global_braid_phase",
+          "texture_coordinate_interpolation": "faceVarying",
+          "texture_coordinate_policy": "continuous_global_axial_pitch_and_wrapped_circumference",
+          "texture_coordinate_schema": "primvars:st",
           "visual_prim_pattern": "Segments/S####/Visual",
           "visual_schema": "UsdGeomMesh",
           "visual_topology": "closed_non_subdivided_crossed_carrier_relief"
         },
         "faces_per_segment": 384,
         "maximum_normal_unit_error": 3.3306690738754696e-16,
-        "maximum_segment_boundary_gap_m": 2.775785275044444e-17,
+        "maximum_segment_boundary_gap_m": 2.7776743367531704e-17,
+        "maximum_uv_seam_u_error": 0.0,
+        "maximum_uv_segment_boundary_gap": 2.842170943040401e-14,
         "maximum_visual_to_collision_radius_ratio": 1.0,
-        "minimum_authored_visual_collision_margin_m": -3.0642818469282795e-12,
-        "minimum_face_outward_dot": 1.2538913791394034e-09,
-        "minimum_normal_outward_dot": 0.9845571292645261,
-        "minimum_visual_collision_margin_m": -1.3552527156068805e-20,
-        "minimum_visual_to_collision_radius_ratio": 0.8711775125589555,
+        "minimum_authored_visual_collision_margin_m": -1.1748893958413165e-12,
+        "minimum_face_outward_dot": 1.2134272797754365e-09,
+        "minimum_normal_outward_dot": 0.9083124467131933,
+        "minimum_visual_collision_margin_m": 0.0,
+        "minimum_visual_to_collision_radius_ratio": 0.8303800441950067,
         "non_finite_value_count": 0,
         "sampled_topology_segments": [
           0,
@@ -979,8 +987,12 @@
           180,
           359
         ],
+        "texcoord_indices_per_segment": 1440,
+        "texcoords_per_segment": 441,
         "topology_errors": [],
         "total_faces": 138240,
+        "total_texcoord_indices": 518400,
+        "total_texcoords": 158760,
         "total_vertices": 121680,
         "vertices_per_segment": 338
       },
@@ -998,7 +1010,7 @@
         },
         "body_count": 361,
         "contact_offset_range_m": [
-          1.21211138858e-05,
+          1.25e-05,
           1.7e-05
         ],
         "contract": {
@@ -1015,6 +1027,58 @@
           0.0,
           0.0
         ]
+      },
+      "passed": true
+    },
+    "suture_indexed_uv_pbr_material": {
+      "expected": "compact indexed UVs drive one relative-path raw normal and roughness texture through portable UsdPreviewSurface",
+      "measured": {
+        "chunks": [
+          "IHDR",
+          "IDAT",
+          "IEND"
+        ],
+        "contract": {
+          "ior_seed": 1.46,
+          "material_model": "UsdPreviewSurface",
+          "metallic_seed": 0.0,
+          "normal_roughness_texture": {
+            "calibration_status": "pending_cross_polarized_macro_capture",
+            "content": "braid_normal_rgb_and_roughness_alpha",
+            "format": "RGBA8_PNG",
+            "normal_convention": "DirectX_tangent_space",
+            "normal_strength_seed": 0.035,
+            "relative_path": "./textures/DrAnmarSuture4_0_braid_normal_roughness.png",
+            "resolution": [
+              256,
+              256
+            ],
+            "roughness_base_seed": 0.4,
+            "roughness_variation_seed": 0.1,
+            "source_color_space": "raw",
+            "wrap_s": "repeat",
+            "wrap_t": "repeat"
+          },
+          "workflow": "metal_rough"
+        },
+        "decode_error": null,
+        "maximum_tangent_normal_magnitude": 0.1944243961763222,
+        "maximum_wrap_edge_channel_error": 9,
+        "missing_material_tokens": [],
+        "normal_length_range": [
+          0.9955765294105272,
+          1.0044346115546243
+        ],
+        "resolution": [
+          256,
+          256
+        ],
+        "roughness_range": [
+          0.4,
+          0.4980392156862745
+        ],
+        "texture_bytes": 51778,
+        "unique_rgba_values": 4344
       },
       "passed": true
     },

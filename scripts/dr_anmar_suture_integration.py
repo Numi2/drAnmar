@@ -12,13 +12,16 @@ from dr_anmar_needle_model import derive_needle, load_needle_profile, sample_epi
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DR_ANMAR_NEEDLE_NAME = "DrAnmar Needle"
 DR_ANMAR_NEEDLE_ASSET_ID = "dr-anmar-needle"
-DR_ANMAR_NEEDLE_ASSET_VERSION = "1.12.0"
+DR_ANMAR_NEEDLE_ASSET_VERSION = "1.13.0"
 DR_ANMAR_NEEDLE_ROOT_PRIM = "DrAnmarNeedle"
 DR_ANMAR_ASSET_ROOT = REPOSITORY_ROOT / "assets/dr_anmar"
 SUTURE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0.usda"
 SUTURE_BASE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_base.usda"
 SUTURE_GEOMETRY_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_geometry.usd"
 SUTURE_MATERIALS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_materials.usda"
+SUTURE_NORMAL_ROUGHNESS_TEXTURE_PATH = (
+    DR_ANMAR_ASSET_ROOT / "suture/textures/DrAnmarSuture4_0_braid_normal_roughness.png"
+)
 SUTURE_PHYSICS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_physics.usda"
 SUTURE_PHYSX_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_physx.usda"
 DR_ANMAR_NEEDLE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle.usda"
@@ -60,6 +63,7 @@ def validate_source_assets() -> None:
             SUTURE_BASE_ASSET_PATH,
             SUTURE_GEOMETRY_ASSET_PATH,
             SUTURE_MATERIALS_ASSET_PATH,
+            SUTURE_NORMAL_ROUGHNESS_TEXTURE_PATH,
             SUTURE_PHYSICS_ASSET_PATH,
             SUTURE_PHYSX_ASSET_PATH,
             DR_ANMAR_NEEDLE_ASSET_PATH,
@@ -103,6 +107,7 @@ def configure_dr_anmar_needle(
         "suture_base_layer": str(SUTURE_BASE_ASSET_PATH),
         "suture_geometry_layer": str(SUTURE_GEOMETRY_ASSET_PATH),
         "suture_materials_layer": str(SUTURE_MATERIALS_ASSET_PATH),
+        "suture_normal_roughness_texture": str(SUTURE_NORMAL_ROUGHNESS_TEXTURE_PATH),
         "suture_physics_layer": str(SUTURE_PHYSICS_ASSET_PATH),
         "suture_physx_layer": str(SUTURE_PHYSX_ASSET_PATH),
         "geometry_layer": str(DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH),

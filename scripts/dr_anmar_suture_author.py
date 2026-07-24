@@ -46,15 +46,18 @@ from dr_anmar_suture_integration import (
     SUTURE_GEOMETRY_ASSET_PATH,
     SUTURE_MATERIALS_ASSET_PATH,
     SUTURE_NEEDLE_INTERFACE_CENTER_M,
+    SUTURE_NORMAL_ROUGHNESS_TEXTURE_PATH,
     SUTURE_PHYSICS_ASSET_PATH,
     SUTURE_PHYSX_ASSET_PATH,
 )
 from dr_anmar_suture_model import (
     DEFAULT_PROFILE_PATH,
     SutureVisualMesh,
+    build_suture_material_texture,
     build_suture_visual_mesh,
     capsule_point_containment_margin,
     derive,
+    encode_suture_material_texture_png,
     load_profile,
     suture_segment_collision_radius,
 )
@@ -64,6 +67,7 @@ DEFAULT_OUTPUT = SUTURE_ASSET_PATH
 DEFAULT_BASE_OUTPUT = SUTURE_BASE_ASSET_PATH
 DEFAULT_GEOMETRY_OUTPUT = SUTURE_GEOMETRY_ASSET_PATH
 DEFAULT_MATERIALS_OUTPUT = SUTURE_MATERIALS_ASSET_PATH
+DEFAULT_TEXTURE_OUTPUT = SUTURE_NORMAL_ROUGHNESS_TEXTURE_PATH
 DEFAULT_PHYSICS_OUTPUT = SUTURE_PHYSICS_ASSET_PATH
 DEFAULT_PHYSX_OUTPUT = SUTURE_PHYSX_ASSET_PATH
 DEFAULT_NEEDLE_OUTPUT = DR_ANMAR_NEEDLE_ASSET_PATH
@@ -79,6 +83,10 @@ def usd_float(value: float) -> str:
 
 
 def usd_vec(values: tuple[float, float, float]) -> str:
+    return "(" + ", ".join(usd_float(value) for value in values) + ")"
+
+
+def usd_vec2(values: tuple[float, float]) -> str:
     return "(" + ", ".join(usd_float(value) for value in values) + ")"
 
 
@@ -144,6 +152,8 @@ def braided_segment_geometry_block(
     total_half_length = cylinder_height_m / 2.0 + collision_radius_m
     points = ",\n            ".join(usd_vec(point) for point in mesh.points)
     normals = ",\n            ".join(usd_vec(normal) for normal in mesh.normals)
+    texcoords = ",\n            ".join(usd_vec2(texcoord) for texcoord in mesh.texcoords)
+    texcoord_indices = ", ".join(str(value) for value in mesh.texcoord_indices)
     face_counts = ", ".join(str(value) for value in mesh.face_vertex_counts)
     face_indices = ", ".join(str(value) for value in mesh.face_vertex_indices)
     return f"""def Xform "{name}"
@@ -165,6 +175,12 @@ def braided_segment_geometry_block(
         ] (
             interpolation = "vertex"
         )
+        texCoord2f[] primvars:st = [
+            {texcoords}
+        ] (
+            interpolation = "faceVarying"
+        )
+        int[] primvars:st:indices = [{texcoord_indices}]
         color3f[] primvars:displayColor = [{usd_vec(color)}]
         uniform token subdivisionScheme = "none"
     }}
@@ -340,6 +356,7 @@ def author(
     physics_payload_reference: str,
     physx_payload_reference: str,
     neutral_physics_sublayer_reference: str,
+    texture_reference: str,
 ) -> tuple[str, str, str, str, str, str]:
     """Author interface, base, geometry, materials, neutral physics, and PhysX layers."""
 
@@ -349,6 +366,8 @@ def author(
     contact = profile["contact"]
     swage = profile["swage"]
     visual_representation = geometry["visual_representation"]
+    appearance = profile["appearance"]
+    material_texture = appearance["normal_roughness_texture"]
     color = (
         float(geometry["color_rgb"][0]),
         float(geometry["color_rgb"][1]),
@@ -580,9 +599,30 @@ over "DrAnmarSuture4_0"
             {{
                 uniform token info:id = "UsdPreviewSurface"
                 color3f inputs:diffuseColor = {usd_vec(color)}
-                float inputs:metallic = 0
-                float inputs:roughness = 0.48
+                float inputs:ior = {usd_float(float(appearance["ior_seed"]))}
+                float inputs:metallic = {usd_float(float(appearance["metallic_seed"]))}
+                normal3f inputs:normal.connect = <{suture_visual_path}/BraidNormalRoughness.outputs:rgb>
+                float inputs:roughness.connect = <{suture_visual_path}/BraidNormalRoughness.outputs:a>
                 token outputs:surface
+            }}
+            def Shader "PrimvarReader_st"
+            {{
+                uniform token info:id = "UsdPrimvarReader_float2"
+                string inputs:varname = "st"
+                float2 outputs:result
+            }}
+            def Shader "BraidNormalRoughness"
+            {{
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @{texture_reference}@
+                float4 inputs:bias = (-1, -1, -1, 0)
+                float4 inputs:scale = (2, 2, 2, 1)
+                token inputs:sourceColorSpace = "{material_texture["source_color_space"]}"
+                float2 inputs:st.connect = <{suture_visual_path}/PrimvarReader_st.outputs:result>
+                token inputs:wrapS = "{material_texture["wrap_s"]}"
+                token inputs:wrapT = "{material_texture["wrap_t"]}"
+                float outputs:a
+                float3 outputs:rgb
             }}
             token outputs:surface.connect = <{suture_visual_path}/PreviewSurface.outputs:surface>
         }}
@@ -1157,6 +1197,11 @@ def main() -> int:
         default=DEFAULT_MATERIALS_OUTPUT,
     )
     parser.add_argument(
+        "--texture-output",
+        type=Path,
+        default=DEFAULT_TEXTURE_OUTPUT,
+    )
+    parser.add_argument(
         "--physics-output",
         type=Path,
         default=DEFAULT_PHYSICS_OUTPUT,
@@ -1209,6 +1254,7 @@ def main() -> int:
     base_output = args.base_output.expanduser().resolve()
     geometry_output = args.geometry_output.expanduser().resolve()
     materials_output = args.materials_output.expanduser().resolve()
+    texture_output = args.texture_output.expanduser().resolve()
     physics_output = args.physics_output.expanduser().resolve()
     physx_output = args.physx_output.expanduser().resolve()
     needle_output = args.needle_output.expanduser().resolve()
@@ -1222,6 +1268,7 @@ def main() -> int:
         base_output,
         geometry_output,
         materials_output,
+        texture_output,
         physics_output,
         physx_output,
     ):
@@ -1229,6 +1276,14 @@ def main() -> int:
     suture_base_reference = Path(os.path.relpath(base_output, start=output.parent)).as_posix()
     suture_geometry_reference = Path(os.path.relpath(geometry_output, start=base_output.parent)).as_posix()
     suture_materials_reference = Path(os.path.relpath(materials_output, start=base_output.parent)).as_posix()
+    texture_reference = Path(
+        os.path.relpath(
+            texture_output,
+            start=materials_output.parent,
+        )
+    ).as_posix()
+    if not texture_reference.startswith((".", "/")):
+        texture_reference = f"./{texture_reference}"
     suture_physics_reference = Path(os.path.relpath(physics_output, start=output.parent)).as_posix()
     suture_physx_reference = Path(os.path.relpath(physx_output, start=output.parent)).as_posix()
     suture_neutral_physics_reference = Path(
@@ -1252,18 +1307,22 @@ def main() -> int:
         physics_payload_reference=suture_physics_reference,
         physx_payload_reference=suture_physx_reference,
         neutral_physics_sublayer_reference=suture_neutral_physics_reference,
+        texture_reference=texture_reference,
     )
     suture_temporary = output.with_suffix(output.suffix + ".tmp")
     suture_base_temporary = base_output.with_suffix(base_output.suffix + ".tmp")
     suture_materials_temporary = materials_output.with_suffix(materials_output.suffix + ".tmp")
+    suture_texture_temporary = texture_output.with_suffix(texture_output.suffix + ".tmp")
     suture_physics_temporary = physics_output.with_suffix(physics_output.suffix + ".tmp")
     suture_physx_temporary = physx_output.with_suffix(physx_output.suffix + ".tmp")
     suture_temporary.write_text(suture_entry_text, encoding="utf-8")
     suture_base_temporary.write_text(suture_base_text, encoding="utf-8")
     suture_materials_temporary.write_text(suture_materials_text, encoding="utf-8")
+    suture_texture_temporary.write_bytes(encode_suture_material_texture_png(build_suture_material_texture(profile)))
     suture_physics_temporary.write_text(suture_physics_text, encoding="utf-8")
     suture_physx_temporary.write_text(suture_physx_text, encoding="utf-8")
     write_usdc(suture_geometry_text, geometry_output, args.usdcat)
+    suture_texture_temporary.replace(texture_output)
     suture_materials_temporary.replace(materials_output)
     suture_physics_temporary.replace(physics_output)
     suture_physx_temporary.replace(physx_output)
@@ -1344,6 +1403,8 @@ def main() -> int:
     derived = derive(profile)
     suture_visual_vertex_count = 0
     suture_visual_face_count = 0
+    suture_visual_texcoord_count = 0
+    suture_visual_texcoord_index_count = 0
     suture_visual_minimum_radius_ratio = math.inf
     suture_visual_maximum_radius_ratio = 0.0
     suture_minimum_visual_collision_margin_m = math.inf
@@ -1361,6 +1422,8 @@ def main() -> int:
         )
         suture_visual_vertex_count += len(suture_visual_mesh.points)
         suture_visual_face_count += len(suture_visual_mesh.face_vertex_counts)
+        suture_visual_texcoord_count += len(suture_visual_mesh.texcoords)
+        suture_visual_texcoord_index_count += len(suture_visual_mesh.texcoord_indices)
         suture_visual_minimum_radius_ratio = min(
             suture_visual_minimum_radius_ratio,
             suture_visual_mesh.minimum_radius_m / collision_radius,
@@ -1384,7 +1447,7 @@ def main() -> int:
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v10",
+        "schema": "dr.anmar.suture-asset-report.v11",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
@@ -1401,11 +1464,19 @@ def main() -> int:
         "suture_visual_faces_per_segment": suture_visual_face_count // derived.segment_count,
         "suture_visual_total_vertices": suture_visual_vertex_count,
         "suture_visual_total_faces": suture_visual_face_count,
+        "suture_visual_texcoords_per_segment": suture_visual_texcoord_count // derived.segment_count,
+        "suture_visual_total_texcoords": suture_visual_texcoord_count,
+        "suture_visual_texcoord_indices_per_segment": suture_visual_texcoord_index_count // derived.segment_count,
+        "suture_visual_total_texcoord_indices": suture_visual_texcoord_index_count,
         "suture_visual_minimum_radius_ratio": suture_visual_minimum_radius_ratio,
         "suture_visual_maximum_radius_ratio": suture_visual_maximum_radius_ratio,
         "suture_collider_cylinder_height_m": derived.segment_spacing_m,
         "suture_minimum_visual_collision_margin_m": suture_minimum_visual_collision_margin_m,
         "suture_render_collision_separation": profile["geometry"]["visual_representation"],
+        "suture_appearance": profile["appearance"],
+        "suture_normal_roughness_texture": portable_path(texture_output),
+        "suture_normal_roughness_texture_sha256": sha256(texture_output),
+        "suture_normal_roughness_texture_bytes": texture_output.stat().st_size,
         "suture_materials": portable_path(materials_output),
         "suture_materials_sha256": sha256(materials_output),
         "suture_physics": portable_path(physics_output),

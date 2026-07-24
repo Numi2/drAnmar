@@ -200,6 +200,12 @@ def main() -> int:
     suture_visual_mesh_count = None
     suture_visual_mesh_vertex_count = None
     suture_visual_normals_valid_count = None
+    suture_visual_uv_value_count = None
+    suture_visual_uv_index_count = None
+    suture_visual_uv_valid_count = None
+    suture_material_texture_path = None
+    suture_material_texture_exists = None
+    suture_pbr_material_graph_valid = None
     suture_collision_capsule_count = None
     suture_collision_guide_purpose_count = None
     suture_collision_invisible_count = None
@@ -356,6 +362,17 @@ def main() -> int:
         suture_materials_path = suture_directory / suture_materials_layer_name
         suture_physics_path = suture_directory / suture_neutral_physics_layer_name
         suture_physx_path = suture_directory / suture_physx_layer_name
+        suture_material_texture_path = str(
+            (
+                suture_materials_path.parent
+                / str(suture_profile["appearance"]["normal_roughness_texture"]["relative_path"])
+            ).resolve()
+        )
+        suture_material_texture_file = Path(suture_material_texture_path)
+        suture_material_texture_exists = bool(
+            suture_material_texture_file.is_file()
+            and suture_material_texture_file.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+        )
         suture_entry_text = suture_entry_path.read_text(encoding="utf-8")
         suture_base_text = suture_base_path.read_text(encoding="utf-8")
         suture_geometry_stage = Usd.Stage.Open(str(suture_geometry_path))
@@ -399,12 +416,22 @@ def main() -> int:
             and suture_geometry_text.count('uniform token purpose = "guide"') == 361
             and suture_geometry_text.count('token visibility = "invisible"') == 361
             and suture_geometry_text.count('uniform token subdivisionScheme = "none"') == 360
+            and suture_geometry_text.count("texCoord2f[] primvars:st") == 360
+            and suture_geometry_text.count("int[] primvars:st:indices") == 360
+            and suture_geometry_text.count('interpolation = "faceVarying"') == 360
             and "apiSchemas" not in suture_geometry_text
             and "material:binding" not in suture_geometry_text
             and "physics:" not in suture_geometry_text
             and "physx" not in suture_geometry_text
             and suture_materials_text.count('def Material "') == 2
             and suture_materials_text.count('def Shader "PreviewSurface"') == 2
+            and suture_materials_text.count('uniform token info:id = "UsdPrimvarReader_float2"') == 1
+            and suture_materials_text.count('string inputs:varname = "st"') == 1
+            and suture_materials_text.count('uniform token info:id = "UsdUVTexture"') == 1
+            and ("asset inputs:file = @./textures/DrAnmarSuture4_0_braid_normal_roughness.png@")
+            in suture_materials_text
+            and 'token inputs:sourceColorSpace = "raw"' in suture_materials_text
+            and suture_material_texture_exists
             and "physics:" not in suture_materials_text
             and "physx" not in suture_materials_text
             and '"Physx' not in suture_physics_text
@@ -480,11 +507,42 @@ def main() -> int:
         swage_physics_material_path = f"{root_path}/Suture/Materials/SwageSteel"
         suture_physics_material_prim = stage.GetPrimAtPath(suture_physics_material_path)
         swage_physics_material_prim = stage.GetPrimAtPath(swage_physics_material_path)
+        suture_preview_shader_path = f"{suture_visual_material_path}/PreviewSurface"
+        suture_primvar_reader_path = f"{suture_visual_material_path}/PrimvarReader_st"
+        suture_texture_shader_path = f"{suture_visual_material_path}/BraidNormalRoughness"
+        suture_preview_shader = stage.GetPrimAtPath(suture_preview_shader_path)
+        suture_primvar_reader = stage.GetPrimAtPath(suture_primvar_reader_path)
+        suture_texture_shader = stage.GetPrimAtPath(suture_texture_shader_path)
+        suture_texture_asset = suture_texture_shader.GetAttribute("inputs:file").Get()
+        suture_pbr_material_graph_valid = bool(
+            suture_preview_shader.GetTypeName() == "Shader"
+            and str(suture_preview_shader.GetAttribute("info:id").Get()) == "UsdPreviewSurface"
+            and suture_primvar_reader.GetTypeName() == "Shader"
+            and str(suture_primvar_reader.GetAttribute("info:id").Get()) == "UsdPrimvarReader_float2"
+            and str(suture_primvar_reader.GetAttribute("inputs:varname").GetTypeName()) == "string"
+            and str(suture_primvar_reader.GetAttribute("inputs:varname").Get()) == "st"
+            and suture_texture_shader.GetTypeName() == "Shader"
+            and str(suture_texture_shader.GetAttribute("info:id").Get()) == "UsdUVTexture"
+            and getattr(suture_texture_asset, "path", "") == "./textures/DrAnmarSuture4_0_braid_normal_roughness.png"
+            and str(suture_texture_shader.GetAttribute("inputs:sourceColorSpace").Get()) == "raw"
+            and str(suture_texture_shader.GetAttribute("inputs:wrapS").Get()) == "repeat"
+            and str(suture_texture_shader.GetAttribute("inputs:wrapT").Get()) == "repeat"
+            and [str(path) for path in suture_preview_shader.GetAttribute("inputs:normal").GetConnections()]
+            == [f"{suture_texture_shader_path}.outputs:rgb"]
+            and [str(path) for path in suture_preview_shader.GetAttribute("inputs:roughness").GetConnections()]
+            == [f"{suture_texture_shader_path}.outputs:a"]
+            and [str(path) for path in suture_texture_shader.GetAttribute("inputs:st").GetConnections()]
+            == [f"{suture_primvar_reader_path}.outputs:result"]
+            and suture_material_texture_exists
+        )
         suture_visual_mesh_count = sum(prim.IsValid() and prim.GetTypeName() == "Mesh" for prim in suture_visual_prims)
         suture_visual_mesh_vertex_count = sum(
             len(UsdGeom.Mesh(prim).GetPointsAttr().Get()) for prim in suture_visual_prims
         )
         suture_visual_normals_valid_count = 0
+        suture_visual_uv_value_count = 0
+        suture_visual_uv_index_count = 0
+        suture_visual_uv_valid_count = 0
         for prim in suture_visual_prims:
             mesh = UsdGeom.Mesh(prim)
             points = mesh.GetPointsAttr().Get()
@@ -503,6 +561,44 @@ def main() -> int:
                 )
             ):
                 suture_visual_normals_valid_count += 1
+            st_attribute = prim.GetAttribute("primvars:st")
+            st_index_attribute = prim.GetAttribute("primvars:st:indices")
+            texture_coordinates = st_attribute.Get()
+            texture_coordinate_indices = st_index_attribute.Get()
+            if texture_coordinates is not None and texture_coordinate_indices is not None:
+                texture_coordinate_array = np.asarray(
+                    texture_coordinates,
+                    dtype=np.float64,
+                )
+                texture_coordinate_index_array = np.asarray(
+                    texture_coordinate_indices,
+                    dtype=np.int64,
+                )
+                suture_visual_uv_value_count += len(texture_coordinates)
+                suture_visual_uv_index_count += len(texture_coordinate_indices)
+                if (
+                    str(st_attribute.GetTypeName()) == "texCoord2f[]"
+                    and st_attribute.GetMetadata("interpolation") == "faceVarying"
+                    and len(texture_coordinates) == 441
+                    and len(texture_coordinate_indices) == 1440
+                    and len(texture_coordinate_indices) == len(mesh.GetFaceVertexIndicesAttr().Get())
+                    and np.isfinite(texture_coordinate_array).all()
+                    and np.all(texture_coordinate_index_array >= 0)
+                    and np.all(texture_coordinate_index_array < len(texture_coordinates))
+                    and np.isclose(
+                        texture_coordinate_array[:, 1].min(),
+                        0.0,
+                        rtol=0.0,
+                        atol=1.0e-7,
+                    )
+                    and np.isclose(
+                        texture_coordinate_array[:, 1].max(),
+                        1.0,
+                        rtol=0.0,
+                        atol=1.0e-7,
+                    )
+                ):
+                    suture_visual_uv_valid_count += 1
         suture_collision_capsule_count = sum(
             prim.IsValid() and prim.GetTypeName() == "Capsule" for prim in suture_collision_prims
         )
@@ -575,6 +671,10 @@ def main() -> int:
             suture_visual_mesh_count == 360
             and suture_visual_mesh_vertex_count == 360 * expected_visual_vertices_per_segment
             and suture_visual_normals_valid_count == 360
+            and suture_visual_uv_value_count == 360 * 441
+            and suture_visual_uv_index_count == 360 * 1440
+            and suture_visual_uv_valid_count == 360
+            and suture_pbr_material_graph_valid
             and suture_collision_capsule_count == 361
             and suture_collision_guide_purpose_count == 361
             and suture_collision_invisible_count == 361
@@ -819,7 +919,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v11",
+        "schema": "dr.anmar.needle-native-physx-probe.v12",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -876,6 +976,12 @@ def main() -> int:
         "suture_visual_mesh_count": suture_visual_mesh_count,
         "suture_visual_mesh_vertex_count": suture_visual_mesh_vertex_count,
         "suture_visual_normals_valid_count": suture_visual_normals_valid_count,
+        "suture_visual_uv_value_count": suture_visual_uv_value_count,
+        "suture_visual_uv_index_count": suture_visual_uv_index_count,
+        "suture_visual_uv_valid_count": suture_visual_uv_valid_count,
+        "suture_material_texture_path": suture_material_texture_path,
+        "suture_material_texture_exists": suture_material_texture_exists,
+        "suture_pbr_material_graph_valid": suture_pbr_material_graph_valid,
         "suture_collision_capsule_count": suture_collision_capsule_count,
         "suture_collision_guide_purpose_count": suture_collision_guide_purpose_count,
         "suture_collision_invisible_count": suture_collision_invisible_count,
@@ -928,6 +1034,11 @@ def main() -> int:
                 and report["suture_material_bindings_valid"]
                 and report["suture_visual_mesh_count"] == 360
                 and report["suture_visual_normals_valid_count"] == 360
+                and report["suture_visual_uv_value_count"] == 360 * 441
+                and report["suture_visual_uv_index_count"] == 360 * 1440
+                and report["suture_visual_uv_valid_count"] == 360
+                and report["suture_material_texture_exists"]
+                and report["suture_pbr_material_graph_valid"]
                 and report["suture_collision_capsule_count"] == 361
                 and report["suture_collision_guide_purpose_count"] == 361
                 and report["suture_collision_invisible_count"] == 361

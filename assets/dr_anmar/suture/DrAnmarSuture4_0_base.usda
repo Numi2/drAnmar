@@ -13,7 +13,7 @@
 
 def Xform "DrAnmarSuture4_0" (
     customData = {
-        string drAnmarAssetVersion = "2.2.0"
+        string drAnmarAssetVersion = "2.3.0"
         bool drAnmarClinicalValidation = false
         string drAnmarCanonicalAssetPackage = "assets/dr_anmar"
         bool drAnmarIndependentAsset = true

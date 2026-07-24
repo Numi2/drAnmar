@@ -8,6 +8,7 @@ ASSET="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 SUTURE_BASE="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0_base.usda"
 SUTURE_GEOMETRY="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0_geometry.usd"
 SUTURE_MATERIALS="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0_materials.usda"
+SUTURE_TEXTURE="${REPOSITORY_ROOT}/assets/dr_anmar/suture/textures/DrAnmarSuture4_0_braid_normal_roughness.png"
 SUTURE_PHYSICS="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0_physics.usda"
 SUTURE_PHYSX="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0_physx.usda"
 DR_ANMAR_NEEDLE="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle.usda"
@@ -28,6 +29,7 @@ case "${1:-validate}" in
             --base-output "${SUTURE_BASE}" \
             --geometry-output "${SUTURE_GEOMETRY}" \
             --materials-output "${SUTURE_MATERIALS}" \
+            --texture-output "${SUTURE_TEXTURE}" \
             --physics-output "${SUTURE_PHYSICS}" \
             --physx-output "${SUTURE_PHYSX}" \
             --needle-output "${DR_ANMAR_NEEDLE}" \
@@ -45,6 +47,7 @@ case "${1:-validate}" in
             --suture-base "${SUTURE_BASE}" \
             --suture-geometry "${SUTURE_GEOMETRY}" \
             --suture-materials "${SUTURE_MATERIALS}" \
+            --suture-texture "${SUTURE_TEXTURE}" \
             --suture-physics "${SUTURE_PHYSICS}" \
             --suture-physx "${SUTURE_PHYSX}" \
             --needle "${DR_ANMAR_NEEDLE}" \

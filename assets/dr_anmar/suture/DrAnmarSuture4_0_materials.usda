@@ -17,9 +17,30 @@ over "DrAnmarSuture4_0"
             {
                 uniform token info:id = "UsdPreviewSurface"
                 color3f inputs:diffuseColor = (0.42, 0.08, 0.55)
+                float inputs:ior = 1.46
                 float inputs:metallic = 0
-                float inputs:roughness = 0.48
+                normal3f inputs:normal.connect = </DrAnmarSuture4_0/Looks/SutureVisual/BraidNormalRoughness.outputs:rgb>
+                float inputs:roughness.connect = </DrAnmarSuture4_0/Looks/SutureVisual/BraidNormalRoughness.outputs:a>
                 token outputs:surface
+            }
+            def Shader "PrimvarReader_st"
+            {
+                uniform token info:id = "UsdPrimvarReader_float2"
+                string inputs:varname = "st"
+                float2 outputs:result
+            }
+            def Shader "BraidNormalRoughness"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @./textures/DrAnmarSuture4_0_braid_normal_roughness.png@
+                float4 inputs:bias = (-1, -1, -1, 0)
+                float4 inputs:scale = (2, 2, 2, 1)
+                token inputs:sourceColorSpace = "raw"
+                float2 inputs:st.connect = </DrAnmarSuture4_0/Looks/SutureVisual/PrimvarReader_st.outputs:result>
+                token inputs:wrapS = "repeat"
+                token inputs:wrapT = "repeat"
+                float outputs:a
+                float3 outputs:rgb
             }
             token outputs:surface.connect = </DrAnmarSuture4_0/Looks/SutureVisual/PreviewSurface.outputs:surface>
         }

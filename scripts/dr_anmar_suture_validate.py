@@ -9,8 +9,10 @@ import json
 import math
 import re
 import shutil
+import struct
 import subprocess
 import tempfile
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +45,7 @@ from dr_anmar_suture_integration import (
     SUTURE_BASE_ASSET_PATH,
     SUTURE_GEOMETRY_ASSET_PATH,
     SUTURE_MATERIALS_ASSET_PATH,
+    SUTURE_NORMAL_ROUGHNESS_TEXTURE_PATH,
     SUTURE_PHYSICS_ASSET_PATH,
     SUTURE_PHYSX_ASSET_PATH,
     configure_dr_anmar_needle,
@@ -51,11 +54,13 @@ from dr_anmar_suture_integration import (
 )
 from dr_anmar_suture_model import (
     DEFAULT_PROFILE_PATH,
+    build_suture_material_texture,
     build_suture_visual_mesh,
     capsule_point_containment_margin,
     crush_strength_fraction,
     derive,
     effective_failure_load,
+    encode_suture_material_texture_png,
     load_profile,
     monotonic_tension_force,
     sample_suture_runtime_profile,
@@ -70,6 +75,7 @@ DEFAULT_ASSET = SUTURE_ASSET_PATH
 DEFAULT_SUTURE_BASE = SUTURE_BASE_ASSET_PATH
 DEFAULT_SUTURE_GEOMETRY = SUTURE_GEOMETRY_ASSET_PATH
 DEFAULT_SUTURE_MATERIALS = SUTURE_MATERIALS_ASSET_PATH
+DEFAULT_SUTURE_TEXTURE = SUTURE_NORMAL_ROUGHNESS_TEXTURE_PATH
 DEFAULT_SUTURE_PHYSICS = SUTURE_PHYSICS_ASSET_PATH
 DEFAULT_SUTURE_PHYSX = SUTURE_PHYSX_ASSET_PATH
 DEFAULT_NEEDLE = DR_ANMAR_NEEDLE_ASSET_PATH
@@ -115,6 +121,208 @@ def read_usd_as_text(path: Path, usdcat_command: str) -> str:
         capture_output=True,
         text=True,
     ).stdout
+
+
+def decode_filterless_rgba8_png(
+    payload: bytes,
+) -> tuple[int, int, bytes, tuple[str, ...]]:
+    """Decode the deterministic RGBA8 PNG subset used by the suture texture."""
+
+    if not payload.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise ValueError("suture texture is not a PNG")
+    cursor = 8
+    width = 0
+    height = 0
+    compressed = bytearray()
+    chunk_names: list[str] = []
+    while cursor < len(payload):
+        if cursor + 12 > len(payload):
+            raise ValueError("truncated PNG chunk")
+        length = struct.unpack(">I", payload[cursor : cursor + 4])[0]
+        kind = payload[cursor + 4 : cursor + 8]
+        data_start = cursor + 8
+        data_end = data_start + length
+        crc_end = data_end + 4
+        if crc_end > len(payload):
+            raise ValueError("truncated PNG payload")
+        data = payload[data_start:data_end]
+        expected_crc = struct.unpack(">I", payload[data_end:crc_end])[0]
+        measured_crc = zlib.crc32(kind + data) & 0xFFFFFFFF
+        if measured_crc != expected_crc:
+            raise ValueError("invalid PNG chunk checksum")
+        chunk_names.append(kind.decode("ascii"))
+        if kind == b"IHDR":
+            (
+                width,
+                height,
+                bit_depth,
+                color_type,
+                compression,
+                filtering,
+                interlace,
+            ) = struct.unpack(">IIBBBBB", data)
+            if (
+                bit_depth,
+                color_type,
+                compression,
+                filtering,
+                interlace,
+            ) != (8, 6, 0, 0, 0):
+                raise ValueError("unsupported suture PNG encoding")
+        elif kind == b"IDAT":
+            compressed.extend(data)
+        elif kind == b"IEND":
+            cursor = crc_end
+            break
+        cursor = crc_end
+    if width <= 0 or height <= 0 or not compressed:
+        raise ValueError("incomplete suture PNG")
+    scanlines = zlib.decompress(bytes(compressed))
+    stride = width * 4
+    if len(scanlines) != height * (stride + 1):
+        raise ValueError("unexpected suture PNG scanline size")
+    rgba = bytearray()
+    for row in range(height):
+        offset = row * (stride + 1)
+        if scanlines[offset] != 0:
+            raise ValueError("suture PNG must use deterministic filter type zero")
+        rgba.extend(scanlines[offset + 1 : offset + 1 + stride])
+    return width, height, bytes(rgba), tuple(chunk_names)
+
+
+def add_suture_texture_checks(
+    checks: dict[str, dict[str, Any]],
+    profile: dict[str, Any],
+    *,
+    geometry_text: str,
+    materials_text: str,
+    texture_bytes: bytes,
+    segment_count: int,
+) -> None:
+    """Validate indexed UVs and the compact raw normal/roughness material map."""
+
+    appearance = profile["appearance"]
+    texture_contract = appearance["normal_roughness_texture"]
+    expected_texture = build_suture_material_texture(profile)
+    expected_png = encode_suture_material_texture_png(expected_texture)
+    decode_error: str | None = None
+    try:
+        width, height, rgba, chunk_names = decode_filterless_rgba8_png(texture_bytes)
+    except ValueError as error:
+        decode_error = str(error)
+        width = 0
+        height = 0
+        rgba = b""
+        chunk_names = ()
+    normal_lengths: list[float] = []
+    tangent_magnitudes: list[float] = []
+    roughness_values: list[float] = []
+    if rgba:
+        for offset in range(0, len(rgba), 4):
+            normal = tuple(2.0 * rgba[offset + axis] / 255.0 - 1.0 for axis in range(3))
+            normal_lengths.append(math.sqrt(sum(component * component for component in normal)))
+            tangent_magnitudes.append(math.hypot(normal[0], normal[1]))
+            roughness_values.append(rgba[offset + 3] / 255.0)
+    edge_channel_error = math.inf
+    if rgba and width > 1 and height > 1:
+        edge_channel_error = 0.0
+        for row in range(height):
+            left = (row * width) * 4
+            right = (row * width + width - 1) * 4
+            edge_channel_error = max(
+                edge_channel_error,
+                *(abs(rgba[left + channel] - rgba[right + channel]) for channel in range(4)),
+            )
+        for column in range(width):
+            bottom = column * 4
+            top = ((height - 1) * width + column) * 4
+            edge_channel_error = max(
+                edge_channel_error,
+                *(abs(rgba[bottom + channel] - rgba[top + channel]) for channel in range(4)),
+            )
+    required_material_tokens = [
+        'uniform token info:id = "UsdPreviewSurface"',
+        'uniform token info:id = "UsdPrimvarReader_float2"',
+        'string inputs:varname = "st"',
+        'uniform token info:id = "UsdUVTexture"',
+        f'asset inputs:file = @{texture_contract["relative_path"]}@',
+        f'token inputs:sourceColorSpace = "{texture_contract["source_color_space"]}"',
+        f'token inputs:wrapS = "{texture_contract["wrap_s"]}"',
+        f'token inputs:wrapT = "{texture_contract["wrap_t"]}"',
+        "float4 inputs:bias = (-1, -1, -1, 0)",
+        "float4 inputs:scale = (2, 2, 2, 1)",
+        "normal3f inputs:normal.connect",
+        "float inputs:roughness.connect",
+        "inputs:st.connect",
+    ]
+    missing_material_tokens = missing_text_tokens(
+        materials_text,
+        required_material_tokens,
+    )
+    check(
+        checks,
+        "suture_indexed_uv_pbr_material",
+        appearance["material_model"] == "UsdPreviewSurface"
+        and appearance["workflow"] == "metal_rough"
+        and float(appearance["metallic_seed"]) == 0.0
+        and 1.0 < float(appearance["ior_seed"]) < 2.0
+        and texture_contract["relative_path"] == "./textures/DrAnmarSuture4_0_braid_normal_roughness.png"
+        and texture_contract["format"] == "RGBA8_PNG"
+        and texture_contract["resolution"] == [256, 256]
+        and texture_contract["source_color_space"] == "raw"
+        and texture_contract["wrap_s"] == "repeat"
+        and texture_contract["wrap_t"] == "repeat"
+        and texture_contract["normal_convention"] == "DirectX_tangent_space"
+        and texture_contract["content"] == "braid_normal_rgb_and_roughness_alpha"
+        and texture_contract["calibration_status"] == "pending_cross_polarized_macro_capture"
+        and not missing_material_tokens
+        and geometry_text.count("texCoord2f[] primvars:st") == segment_count
+        and geometry_text.count("int[] primvars:st:indices") == segment_count
+        and geometry_text.count('interpolation = "faceVarying"') == segment_count
+        and decode_error is None
+        and (width, height) == tuple(texture_contract["resolution"])
+        and chunk_names == ("IHDR", "IDAT", "IEND")
+        and texture_bytes == expected_png
+        and rgba == expected_texture.rgba
+        and len(rgba) == width * height * 4
+        and len({rgba[index : index + 4] for index in range(0, len(rgba), 4)}) >= 128
+        and bool(normal_lengths)
+        and min(normal_lengths) >= 0.99
+        and max(normal_lengths) <= 1.01
+        and max(tangent_magnitudes) >= 0.1
+        and bool(roughness_values)
+        and min(roughness_values) >= float(texture_contract["roughness_base_seed"]) - 1.0 / 255.0
+        and max(roughness_values)
+        <= float(texture_contract["roughness_base_seed"])
+        + float(texture_contract["roughness_variation_seed"])
+        + 1.0 / 255.0
+        and max(roughness_values) - min(roughness_values) >= 0.05
+        and edge_channel_error <= 24.0,
+        {
+            "contract": appearance,
+            "missing_material_tokens": missing_material_tokens,
+            "decode_error": decode_error,
+            "texture_bytes": len(texture_bytes),
+            "resolution": [width, height],
+            "chunks": chunk_names,
+            "unique_rgba_values": len({rgba[index : index + 4] for index in range(0, len(rgba), 4)}) if rgba else 0,
+            "normal_length_range": [
+                min(normal_lengths, default=math.inf),
+                max(normal_lengths, default=-math.inf),
+            ],
+            "maximum_tangent_normal_magnitude": max(
+                tangent_magnitudes,
+                default=-math.inf,
+            ),
+            "roughness_range": [
+                min(roughness_values, default=math.inf),
+                max(roughness_values, default=-math.inf),
+            ],
+            "maximum_wrap_edge_channel_error": edge_channel_error,
+        },
+        "compact indexed UVs drive one relative-path raw normal and roughness texture through portable"
+        " UsdPreviewSurface",
+    )
 
 
 def compose_physics_variant(
@@ -249,7 +457,7 @@ def add_suture_layer_checks(
     check(
         checks,
         "suture_asset_structure_source_ownership",
-        profile["version"] == "2.2.0"
+        profile["version"] == "2.3.0"
         and layer_contract["entry_layer"] == "DrAnmarSuture4_0.usda"
         and layer_contract["base_layer"] == "DrAnmarSuture4_0_base.usda"
         and layer_contract["geometry_layer"] == "DrAnmarSuture4_0_geometry.usd"
@@ -301,8 +509,16 @@ def add_suture_layer_checks(
         and geometry_text.count('uniform token subdivisionScheme = "none"') == segment_count
         and geometry_text.count("normal3f[] primvars:normals") == segment_count
         and geometry_text.count('interpolation = "vertex"') == segment_count
+        and geometry_text.count("texCoord2f[] primvars:st") == segment_count
+        and geometry_text.count("int[] primvars:st:indices") == segment_count
+        and geometry_text.count('interpolation = "faceVarying"') == segment_count
         and materials_text.count('def Material "') == 2
         and materials_text.count('def Shader "PreviewSurface"') == 2
+        and materials_text.count('uniform token info:id = "UsdPrimvarReader_float2"') == 1
+        and materials_text.count('string inputs:varname = "st"') == 1
+        and materials_text.count('uniform token info:id = "UsdUVTexture"') == 1
+        and "asset inputs:file = @./textures/DrAnmarSuture4_0_braid_normal_roughness.png@" in materials_text
+        and 'token inputs:sourceColorSpace = "raw"' in materials_text
         and materials_text.count("rel material:binding =") == 2
         and physics_text.count('"PhysicsRigidBodyAPI"') == segment_count + 1
         and physics_text.count('"PhysicsMassAPI"') == segment_count + 1
@@ -316,7 +532,7 @@ def add_suture_layer_checks(
         and physx_text.count("physxCollision:contactOffset") == segment_count + 1
         and physx_text.count("physxCollision:restOffset") == segment_count + 1
         and physx_text.count('"PhysxMaterialAPI"') == 2
-        and len(nvidia_references) >= 6
+        and len(nvidia_references) >= 8
         and all(
             item.get("url", "").startswith(
                 (
@@ -589,6 +805,11 @@ def add_suture_visual_mesh_checks(
     non_finite_value_count = 0
     total_vertices = 0
     total_faces = 0
+    total_texcoords = 0
+    total_texcoord_indices = 0
+    maximum_uv_segment_boundary_gap = 0.0
+    maximum_uv_seam_u_error = 0.0
+    previous_right_u: float | None = None
     previous_right_ring: tuple[tuple[float, float, float], ...] | None = None
     for segment_index in range(segment_count):
         collision_radius = suture_segment_collision_radius(
@@ -604,6 +825,8 @@ def add_suture_visual_mesh_checks(
         )
         total_vertices += len(mesh.points)
         total_faces += len(mesh.face_vertex_counts)
+        total_texcoords += len(mesh.texcoords)
+        total_texcoord_indices += len(mesh.texcoord_indices)
         maximum_visual_to_collision_ratio = max(
             maximum_visual_to_collision_ratio,
             mesh.maximum_radius_m / collision_radius,
@@ -650,6 +873,26 @@ def add_suture_visual_mesh_checks(
                             )
                         ),
                     )
+        non_finite_value_count += sum(not math.isfinite(value) for texcoord in mesh.texcoords for value in texcoord)
+        side_uv_stride = radial_samples + 1
+        for axial_index in range(axial_samples):
+            row_start = axial_index * side_uv_stride
+            first_uv = mesh.texcoords[row_start]
+            last_uv = mesh.texcoords[row_start + radial_samples]
+            maximum_uv_seam_u_error = max(
+                maximum_uv_seam_u_error,
+                abs(first_uv[0] - last_uv[0]),
+                abs(first_uv[1]),
+                abs(last_uv[1] - 1.0),
+            )
+        left_u = mesh.texcoords[0][0]
+        right_u = mesh.texcoords[(axial_samples - 1) * side_uv_stride][0]
+        if previous_right_u is not None:
+            maximum_uv_segment_boundary_gap = max(
+                maximum_uv_segment_boundary_gap,
+                abs(previous_right_u - left_u),
+            )
+        previous_right_u = right_u
         left_ring = mesh.points[:radial_samples]
         right_start = (axial_samples - 1) * radial_samples
         right_ring = mesh.points[right_start : right_start + radial_samples]
@@ -674,6 +917,8 @@ def add_suture_visual_mesh_checks(
         if (
             len(mesh.points) != len(mesh.normals)
             or sum(mesh.face_vertex_counts) != len(mesh.face_vertex_indices)
+            or len(mesh.texcoord_indices) != len(mesh.face_vertex_indices)
+            or any(index < 0 or index >= len(mesh.texcoords) for index in mesh.texcoord_indices)
             or any(index < 0 or index >= len(mesh.points) for index in mesh.face_vertex_indices)
         ):
             topology_errors.append(f"S{segment_index:04d}:array_contract")
@@ -738,6 +983,8 @@ def add_suture_visual_mesh_checks(
             topology_errors.append(f"S{segment_index:04d}:nonmanifold_edges={nonmanifold_edges}")
     expected_vertices_per_segment = axial_samples * radial_samples + 2
     expected_faces_per_segment = (axial_samples - 1) * radial_samples + 2 * radial_samples
+    expected_texcoords_per_segment = (axial_samples + 2) * (radial_samples + 1)
+    expected_texcoord_indices_per_segment = 4 * (axial_samples - 1) * radial_samples + 6 * radial_samples
     authored_collider_records = [
         (float(height), float(radius))
         for height, radius in re.findall(
@@ -784,10 +1031,14 @@ def add_suture_visual_mesh_checks(
         and visual["needle_interface_collider_prim"] == "NeedleInterface/Collision"
         and visual["visual_schema"] == "UsdGeomMesh"
         and visual["visual_topology"] == "closed_non_subdivided_crossed_carrier_relief"
+        and visual["texture_coordinate_schema"] == "primvars:st"
+        and visual["texture_coordinate_interpolation"] == "faceVarying"
+        and visual["texture_coordinate_policy"] == "continuous_global_axial_pitch_and_wrapped_circumference"
         and axial_samples >= 7
         and radial_samples >= 48
         and float(visual["braid_pitch_m_seed"]) > 0.0
-        and 0.0 < float(visual["relief_depth_fraction"]) < 0.1
+        and 0.05 < float(visual["relief_depth_fraction"]) < 0.2
+        and 1.0 < float(visual["carrier_profile_exponent"]) <= 8.0
         and float(visual["crossing_softmax_sharpness"]) > 0.0
         and float(visual["maximum_visual_to_collision_radius_ratio"]) == 1.0
         and visual["segment_boundary_policy"] == "shared_minimum_adjacent_collider_envelope_with_global_braid_phase"
@@ -807,6 +1058,7 @@ def add_suture_visual_mesh_checks(
             "rigid_body_xforms",
             "closed_braided_visual_mesh_topology",
             "braided_visual_mesh_points_and_vertex_normals",
+            "continuous_face_varying_texture_coordinates",
             "visual_mesh_extents_and_display_colors",
             "guide_purpose_invisible_capsule_colliders",
         ]
@@ -820,8 +1072,12 @@ def add_suture_visual_mesh_checks(
         and minimum_authored_visual_collision_margin_m >= -float(visual["binary_visual_point_containment_tolerance_m"])
         and 0.8 < minimum_visual_to_collision_ratio < 1.0
         and maximum_segment_boundary_gap_m <= 1.0e-15
+        and maximum_uv_segment_boundary_gap <= 1.0e-12
+        and maximum_uv_seam_u_error <= 1.0e-12
         and total_vertices == expected_vertices_per_segment * segment_count
         and total_faces == expected_faces_per_segment * segment_count
+        and total_texcoords == expected_texcoords_per_segment * segment_count
+        and total_texcoord_indices == expected_texcoord_indices_per_segment * segment_count
         and geometry_text.count('def Mesh "Visual"') == segment_count
         and geometry_text.count('def Capsule "Collision"') == segment_count + 1
         and len(authored_collider_heights) == segment_count + 1
@@ -842,8 +1098,12 @@ def add_suture_visual_mesh_checks(
             "topology_errors": topology_errors,
             "vertices_per_segment": expected_vertices_per_segment,
             "faces_per_segment": expected_faces_per_segment,
+            "texcoords_per_segment": expected_texcoords_per_segment,
+            "texcoord_indices_per_segment": expected_texcoord_indices_per_segment,
             "total_vertices": total_vertices,
             "total_faces": total_faces,
+            "total_texcoords": total_texcoords,
+            "total_texcoord_indices": total_texcoord_indices,
             "maximum_normal_unit_error": maximum_normal_unit_error,
             "minimum_normal_outward_dot": minimum_normal_outward_dot,
             "minimum_face_outward_dot": minimum_face_outward_dot,
@@ -857,6 +1117,8 @@ def add_suture_visual_mesh_checks(
                 max(authored_collider_heights, default=-math.inf),
             ],
             "maximum_segment_boundary_gap_m": maximum_segment_boundary_gap_m,
+            "maximum_uv_segment_boundary_gap": maximum_uv_segment_boundary_gap,
+            "maximum_uv_seam_u_error": maximum_uv_seam_u_error,
             "non_finite_value_count": non_finite_value_count,
         },
         "continuous closed braided render meshes are exactly capsule-contained inside overlapping hidden primitive"
@@ -872,6 +1134,7 @@ def validate(
     suture_geometry_text: str,
     suture_geometry_is_usdc: bool,
     suture_materials_text: str,
+    suture_texture_bytes: bytes,
     suture_physics_text: str,
     suture_physx_text: str,
     suture_variant_texts: dict[str, str],
@@ -1047,6 +1310,14 @@ def validate(
         profile,
         segment_count=derived.segment_count,
         geometry_text=suture_geometry_text,
+    )
+    add_suture_texture_checks(
+        checks,
+        profile,
+        geometry_text=suture_geometry_text,
+        materials_text=suture_materials_text,
+        texture_bytes=suture_texture_bytes,
+        segment_count=derived.segment_count,
     )
     add_physics_variant_checks(
         checks,
@@ -1877,6 +2148,12 @@ def validate(
         "suture_visual_mesh_count",
         "suture_visual_mesh_vertex_count",
         "suture_visual_normals_valid_count",
+        "suture_visual_uv_value_count",
+        "suture_visual_uv_index_count",
+        "suture_visual_uv_valid_count",
+        "suture_material_texture_path",
+        "suture_material_texture_exists",
+        "suture_pbr_material_graph_valid",
         "suture_collision_capsule_count",
         "suture_collision_guide_purpose_count",
         "suture_collision_invisible_count",
@@ -2555,6 +2832,11 @@ def main() -> int:
         default=DEFAULT_SUTURE_MATERIALS,
     )
     parser.add_argument(
+        "--suture-texture",
+        type=Path,
+        default=DEFAULT_SUTURE_TEXTURE,
+    )
+    parser.add_argument(
         "--suture-physics",
         type=Path,
         default=DEFAULT_SUTURE_PHYSICS,
@@ -2610,6 +2892,7 @@ def main() -> int:
     suture_geometry_text = read_usd_as_text(args.suture_geometry, args.usdcat)
     suture_geometry_is_usdc = args.suture_geometry.read_bytes()[:8] == b"PXR-USDC"
     suture_materials_text = args.suture_materials.read_text(encoding="utf-8")
+    suture_texture_bytes = args.suture_texture.read_bytes()
     suture_physics_text = args.suture_physics.read_text(encoding="utf-8")
     suture_physx_text = args.suture_physx.read_text(encoding="utf-8")
     suture_variant_texts = {
@@ -2636,6 +2919,7 @@ def main() -> int:
         suture_geometry_text,
         suture_geometry_is_usdc,
         suture_materials_text,
+        suture_texture_bytes,
         suture_physics_text,
         suture_physx_text,
         suture_variant_texts,

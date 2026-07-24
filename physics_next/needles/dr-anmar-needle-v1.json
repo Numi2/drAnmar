@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",

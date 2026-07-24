@@ -2,7 +2,7 @@
   "schema": "dr.anmar.suture-profile.v1",
   "id": "dr-anmar-suture-4-0-braided-v1",
   "name": "Dr.Anmar 4-0 braided surgical suture",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "purpose": "Research-grade physical suture asset for operating-room simulation",
   "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
   "clinical_validation": false,
@@ -43,12 +43,14 @@
       "rigid_body_xforms",
       "closed_braided_visual_mesh_topology",
       "braided_visual_mesh_points_and_vertex_normals",
+      "continuous_face_varying_texture_coordinates",
       "visual_mesh_extents_and_display_colors",
       "guide_purpose_invisible_capsule_colliders"
     ],
     "materials_layer_owns": [
       "visual_materials",
       "visual_shaders",
+      "relative_raw_normal_roughness_texture_network",
       "inherited_visual_material_bindings"
     ],
     "physics_layer_owns": [
@@ -79,8 +81,7 @@
     "segment_spacing_m": 0.0005,
     "segment_count": 360,
     "carrier_count": 12,
-    "surface_radius_modulation_fraction": 0.035,
-    "surface_modulation_period_segments": 6,
+    "collision_radius_policy": "nominal_constant_radius_after_swage_transition",
     "visual_representation": {
       "rigid_body_prim_pattern": "Segments/S####",
       "visual_prim_pattern": "Segments/S####/Visual",
@@ -89,10 +90,14 @@
       "needle_interface_collider_prim": "NeedleInterface/Collision",
       "visual_schema": "UsdGeomMesh",
       "visual_topology": "closed_non_subdivided_crossed_carrier_relief",
+      "texture_coordinate_schema": "primvars:st",
+      "texture_coordinate_interpolation": "faceVarying",
+      "texture_coordinate_policy": "continuous_global_axial_pitch_and_wrapped_circumference",
       "axial_samples_per_segment": 7,
       "radial_samples": 48,
       "braid_pitch_m_seed": 0.0012,
-      "relief_depth_fraction": 0.055,
+      "relief_depth_fraction": 0.11,
+      "carrier_profile_exponent": 2.4,
       "crossing_softmax_sharpness": 4.0,
       "maximum_visual_to_collision_radius_ratio": 1.0,
       "segment_boundary_policy": "shared_minimum_adjacent_collider_envelope_with_global_braid_phase",
@@ -113,6 +118,29 @@
       0.08,
       0.55
     ]
+  },
+  "appearance": {
+    "material_model": "UsdPreviewSurface",
+    "workflow": "metal_rough",
+    "metallic_seed": 0.0,
+    "ior_seed": 1.46,
+    "normal_roughness_texture": {
+      "relative_path": "./textures/DrAnmarSuture4_0_braid_normal_roughness.png",
+      "format": "RGBA8_PNG",
+      "resolution": [
+        256,
+        256
+      ],
+      "source_color_space": "raw",
+      "wrap_s": "repeat",
+      "wrap_t": "repeat",
+      "normal_convention": "DirectX_tangent_space",
+      "normal_strength_seed": 0.035,
+      "roughness_base_seed": 0.4,
+      "roughness_variation_seed": 0.1,
+      "content": "braid_normal_rgb_and_roughness_alpha",
+      "calibration_status": "pending_cross_polarized_macro_capture"
+    }
   },
   "material": {
     "polymer_family": "polyglactin_910_equivalent",
@@ -443,6 +471,16 @@
       "title": "NVIDIA geometry and rigid-body asset requirements",
       "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.11.2/indexes/requirements_index.html",
       "used_for": "closed non-subdivided visual meshes with explicit normals and Xformable rigid-body parents carrying descendant collision shapes"
+    },
+    {
+      "title": "NVIDIA Omniverse materials",
+      "url": "https://docs.omniverse.nvidia.com/materials-and-rendering/latest/materials.html",
+      "used_for": "raw color-space normal and roughness data, correctly scaled UsdUVTexture normal input, and portable material validation"
+    },
+    {
+      "title": "NVIDIA SimReady material best practices",
+      "url": "https://docs.omniverse.nvidia.com/simready/latest/simready-asset-creation/material-best-practices.html",
+      "used_for": "compact PNG texture, relative asset-local texture path, one material per render mesh, and texture-memory discipline"
     }
   ],
   "required_physical_calibration": [

@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import math
 import random
+import struct
+import zlib
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -227,10 +229,19 @@ class SutureVisualMesh:
     normals: tuple[tuple[float, float, float], ...]
     face_vertex_counts: tuple[int, ...]
     face_vertex_indices: tuple[int, ...]
+    texcoords: tuple[tuple[float, float], ...]
+    texcoord_indices: tuple[int, ...]
     extent_min: tuple[float, float, float]
     extent_max: tuple[float, float, float]
     minimum_radius_m: float
     maximum_radius_m: float
+
+
+@dataclass(frozen=True)
+class SutureMaterialTexture:
+    width: int
+    height: int
+    rgba: bytes
 
 
 def derive(profile: dict[str, Any]) -> DerivedSuture:
@@ -291,7 +302,6 @@ def suture_segment_collision_radius(
     index = int(segment_index)
     if index < 0 or index >= model.segment_count:
         raise IndexError(f"suture segment index out of range: {index}")
-    geometry = profile["geometry"]
     swage = profile["swage"]
     swage_fraction = clamp(
         1.0 - index / max(1, model.swage_segment_count - 1),
@@ -299,11 +309,139 @@ def suture_segment_collision_radius(
         1.0,
     )
     swage_radius = float(swage["needle_end_diameter_m"]) / 2.0
-    taper_radius = model.radius_m + (swage_radius - model.radius_m) * swage_fraction
-    modulation = float(geometry["surface_radius_modulation_fraction"])
-    modulation_period = int(geometry["surface_modulation_period_segments"])
-    roughness = 1.0 + modulation * math.sin(2.0 * math.pi * index / modulation_period)
-    return taper_radius * roughness
+    if profile["geometry"]["collision_radius_policy"] != "nominal_constant_radius_after_swage_transition":
+        raise ValueError("unsupported suture collision radius policy")
+    return model.radius_m + (swage_radius - model.radius_m) * swage_fraction
+
+
+def braid_weave_value(
+    *,
+    carrier_count: int,
+    carrier_profile_exponent: float,
+    sharpness: float,
+    axial_phase: float,
+    theta: float,
+) -> float:
+    """Evaluate the normalized crossed-carrier surface envelope.
+
+    The carrier exponent narrows each helical tow before the two braid
+    directions are joined.  This preserves the same pitch and carrier count
+    while avoiding the inflated, hose-like highlights produced by broad
+    sinusoidal lobes.
+    """
+
+    half_carriers = int(carrier_count) // 2
+    carrier_phase = float(half_carriers) * float(theta)
+    first = (0.5 + 0.5 * math.cos(carrier_phase + float(axial_phase))) ** float(carrier_profile_exponent)
+    second = (0.5 + 0.5 * math.cos(carrier_phase - float(axial_phase))) ** float(carrier_profile_exponent)
+    raw = math.log(math.exp(sharpness * first) + math.exp(sharpness * second)) / sharpness
+    minimum = math.log(2.0) / sharpness
+    return clamp(raw - minimum, 0.0, 1.0)
+
+
+def build_suture_material_texture(
+    profile: dict[str, Any],
+) -> SutureMaterialTexture:
+    """Build the periodic tangent-space braid normal and roughness texture."""
+
+    geometry = profile["geometry"]
+    visual = geometry["visual_representation"]
+    texture = profile["appearance"]["normal_roughness_texture"]
+    width, height = (int(value) for value in texture["resolution"])
+    if width < 32 or height < 32 or width > 2048 or height > 2048:
+        raise ValueError("suture material texture resolution is outside the supported range")
+    if texture["format"] != "RGBA8_PNG" or texture["source_color_space"] != "raw":
+        raise ValueError("suture material texture must be raw RGBA8 PNG")
+    carrier_count = int(geometry["carrier_count"])
+    carrier_profile_exponent = float(visual["carrier_profile_exponent"])
+    sharpness = float(visual["crossing_softmax_sharpness"])
+    normal_strength = float(texture["normal_strength_seed"])
+    roughness_base = float(texture["roughness_base_seed"])
+    roughness_variation = float(texture["roughness_variation_seed"])
+    if not 0.0 < normal_strength < 0.25:
+        raise ValueError("suture normal strength seed is outside the supported range")
+    if not 1.0 <= carrier_profile_exponent <= 8.0:
+        raise ValueError("suture carrier profile exponent is outside the supported range")
+    if not 0.0 <= roughness_base <= 1.0 or not 0.0 <= roughness_variation <= 1.0 - roughness_base:
+        raise ValueError("suture roughness seeds are outside the supported range")
+
+    def height_value(u: float, v: float) -> float:
+        return braid_weave_value(
+            carrier_count=carrier_count,
+            carrier_profile_exponent=carrier_profile_exponent,
+            sharpness=sharpness,
+            axial_phase=2.0 * math.pi * u,
+            theta=2.0 * math.pi * v,
+        )
+
+    epsilon_u = 0.5 / width
+    epsilon_v = 0.5 / height
+    half_carriers = carrier_count // 2
+    pixels = bytearray()
+    for row in range(height):
+        v = (row + 0.5) / height
+        for column in range(width):
+            u = (column + 0.5) / width
+            height_value_center = height_value(u, v)
+            gradient_u = (height_value(u + epsilon_u, v) - height_value(u - epsilon_u, v)) / (2.0 * epsilon_u)
+            gradient_v = (height_value(u, v + epsilon_v) - height_value(u, v - epsilon_v)) / (
+                2.0 * epsilon_v * half_carriers
+            )
+            normal = (
+                -normal_strength * gradient_u,
+                normal_strength * gradient_v,
+                1.0,
+            )
+            normal_length = math.sqrt(sum(component * component for component in normal))
+            normalized = tuple(component / normal_length for component in normal)
+            roughness = clamp(
+                roughness_base + roughness_variation * (1.0 - height_value_center),
+                0.0,
+                1.0,
+            )
+            pixels.extend(
+                (
+                    round(255.0 * (0.5 + 0.5 * normalized[0])),
+                    round(255.0 * (0.5 + 0.5 * normalized[1])),
+                    round(255.0 * (0.5 + 0.5 * normalized[2])),
+                    round(255.0 * roughness),
+                )
+            )
+    return SutureMaterialTexture(
+        width=width,
+        height=height,
+        rgba=bytes(pixels),
+    )
+
+
+def encode_suture_material_texture_png(texture: SutureMaterialTexture) -> bytes:
+    """Encode one deterministic, filter-free RGBA8 PNG."""
+
+    width = int(texture.width)
+    height = int(texture.height)
+    expected_bytes = width * height * 4
+    if width <= 0 or height <= 0 or len(texture.rgba) != expected_bytes:
+        raise ValueError("invalid suture material texture payload")
+
+    def chunk(kind: bytes, payload: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(payload))
+            + kind
+            + payload
+            + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF)
+        )
+
+    stride = width * 4
+    scanlines = b"".join(b"\x00" + texture.rgba[row * stride : (row + 1) * stride] for row in range(height))
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(
+            b"IHDR",
+            struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0),
+        )
+        + chunk(b"IDAT", zlib.compress(scanlines, level=9))
+        + chunk(b"IEND", b"")
+    )
 
 
 def capsule_point_containment_margin(
@@ -352,10 +490,10 @@ def build_suture_visual_mesh(
         raise ValueError("suture carrier count must be even and at least four")
     pitch = float(visual["braid_pitch_m_seed"])
     relief_depth = float(visual["relief_depth_fraction"])
+    carrier_profile_exponent = float(visual["carrier_profile_exponent"])
     sharpness = float(visual["crossing_softmax_sharpness"])
-    if pitch <= 0.0 or not 0.0 < relief_depth < 0.25 or sharpness <= 0.0:
+    if pitch <= 0.0 or not 0.0 < relief_depth < 0.25 or not 1.0 <= carrier_profile_exponent <= 8.0 or sharpness <= 0.0:
         raise ValueError("invalid suture braid visual parameters")
-    half_carriers = carrier_count // 2
     spacing = model.segment_spacing_m
     left_boundary_radius = (
         collision_radius
@@ -403,13 +541,13 @@ def build_suture_visual_mesh(
         )
 
     def weave(global_x: float, theta: float) -> float:
-        axial_phase = 2.0 * math.pi * global_x / pitch
-        carrier_phase = float(half_carriers) * theta
-        first = 0.5 + 0.5 * math.cos(carrier_phase + axial_phase)
-        second = 0.5 + 0.5 * math.cos(carrier_phase - axial_phase)
-        raw = math.log(math.exp(sharpness * first) + math.exp(sharpness * second)) / sharpness
-        minimum = math.log(2.0) / sharpness
-        return clamp(raw - minimum, 0.0, 1.0)
+        return braid_weave_value(
+            carrier_count=carrier_count,
+            carrier_profile_exponent=carrier_profile_exponent,
+            sharpness=sharpness,
+            axial_phase=2.0 * math.pi * global_x / pitch,
+            theta=theta,
+        )
 
     def surface_radius(global_x: float, theta: float) -> float:
         return envelope_radius(global_x) * (1.0 - relief_depth * (1.0 - weave(global_x, theta)))
@@ -469,9 +607,37 @@ def build_suture_visual_mesh(
     normals.append((1.0, 0.0, 0.0))
     face_counts: list[int] = []
     face_indices: list[int] = []
+    texcoords: list[tuple[float, float]] = []
+    texcoord_indices: list[int] = []
+    for axial_index in range(axial_samples):
+        u = (segment_start_x + spacing * axial_index / (axial_samples - 1)) / pitch
+        for radial_index in range(radial_samples + 1):
+            texcoords.append(
+                (
+                    u,
+                    radial_index / radial_samples,
+                )
+            )
+    left_cap_center_uv = len(texcoords)
+    texcoords.append((0.5, 0.5))
+    left_cap_ring_uv = len(texcoords)
+    for radial_index in range(radial_samples):
+        theta = 2.0 * math.pi * radial_index / radial_samples
+        texcoords.append(
+            (
+                0.5 + 0.5 * math.cos(theta),
+                0.5 + 0.5 * math.sin(theta),
+            )
+        )
+    right_cap_center_uv = len(texcoords)
+    texcoords.append((0.5, 0.5))
+    right_cap_ring_uv = len(texcoords)
+    texcoords.extend(texcoords[left_cap_ring_uv : left_cap_ring_uv + radial_samples])
     for axial_index in range(axial_samples - 1):
         left_ring = axial_index * radial_samples
         right_ring = (axial_index + 1) * radial_samples
+        left_uv_ring = axial_index * (radial_samples + 1)
+        right_uv_ring = (axial_index + 1) * (radial_samples + 1)
         for radial_index in range(radial_samples):
             next_radial = (radial_index + 1) % radial_samples
             face_counts.append(4)
@@ -481,6 +647,14 @@ def build_suture_visual_mesh(
                     left_ring + next_radial,
                     right_ring + next_radial,
                     right_ring + radial_index,
+                )
+            )
+            texcoord_indices.extend(
+                (
+                    left_uv_ring + radial_index,
+                    left_uv_ring + radial_index + 1,
+                    right_uv_ring + radial_index + 1,
+                    right_uv_ring + radial_index,
                 )
             )
     last_ring = (axial_samples - 1) * radial_samples
@@ -494,12 +668,26 @@ def build_suture_visual_mesh(
                 radial_index,
             )
         )
+        texcoord_indices.extend(
+            (
+                left_cap_center_uv,
+                left_cap_ring_uv + next_radial,
+                left_cap_ring_uv + radial_index,
+            )
+        )
         face_counts.append(3)
         face_indices.extend(
             (
                 right_center,
                 last_ring + radial_index,
                 last_ring + next_radial,
+            )
+        )
+        texcoord_indices.extend(
+            (
+                right_cap_center_uv,
+                right_cap_ring_uv + radial_index,
+                right_cap_ring_uv + next_radial,
             )
         )
     extent_min = (
@@ -517,6 +705,8 @@ def build_suture_visual_mesh(
         normals=tuple(normals),
         face_vertex_counts=tuple(face_counts),
         face_vertex_indices=tuple(face_indices),
+        texcoords=tuple(texcoords),
+        texcoord_indices=tuple(texcoord_indices),
         extent_min=extent_min,
         extent_max=extent_max,
         minimum_radius_m=minimum_radius,

@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPOSITORY_ROOT / "physics_next/dr-anmar-assets.json"
 
@@ -39,29 +38,23 @@ def main() -> int:
             relative = asset.get(key)
             if not relative or not (REPOSITORY_ROOT / relative).is_file():
                 errors.append(f"{asset.get('id')}: missing {key} {relative!r}")
-        for key in ("explicit_tetmesh", "auxiliary_asset"):
+        for key in (
+            "explicit_tetmesh",
+            "auxiliary_asset",
+            "material_texture",
+        ):
             relative = asset.get(key)
             if relative and not (REPOSITORY_ROOT / relative).is_file():
                 errors.append(f"{asset.get('id')}: missing {key} {relative!r}")
-        if not str(asset.get("native_gpu_qualification", "")).startswith(
-            "blocked_pending"
-        ):
-            errors.append(
-                f"{asset.get('id')}: native qualification promoted without evidence"
-            )
-        if not str(asset.get("physical_qualification", "")).startswith(
-            "blocked_pending"
-        ):
-            errors.append(
-                f"{asset.get('id')}: physical qualification promoted without evidence"
-            )
+        if not str(asset.get("native_gpu_qualification", "")).startswith("blocked_pending"):
+            errors.append(f"{asset.get('id')}: native qualification promoted without evidence")
+        if not str(asset.get("physical_qualification", "")).startswith("blocked_pending"):
+            errors.append(f"{asset.get('id')}: physical qualification promoted without evidence")
     if manifest.get("validation", {}).get("clinical_use") != "blocked":
         errors.append("portfolio clinical-use boundary must remain blocked")
     if manifest.get("ownership", {}).get("external_geometry_dependencies") != []:
         errors.append("DrAnmar portfolio declares an external geometry dependency")
-    absolute_strings = [
-        value for value in iter_strings(manifest) if value.startswith("/")
-    ]
+    absolute_strings = [value for value in iter_strings(manifest) if value.startswith("/")]
     if absolute_strings:
         errors.append(f"portfolio contains absolute paths: {absolute_strings}")
     report = {

@@ -15,7 +15,7 @@ def Xform "DrAnmarNeedle" (
     customData = {
         string drAnmarAssetId = "dr-anmar-needle"
         string drAnmarAssetName = "DrAnmar Needle"
-        string drAnmarAssetVersion = "1.12.0"
+        string drAnmarAssetVersion = "1.13.0"
         string drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"
         bool drAnmarClinicalValidation = false
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
