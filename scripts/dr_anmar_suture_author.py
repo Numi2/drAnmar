@@ -344,6 +344,7 @@ def author_dr_anmar_needle(
     mesh = build_needle_mesh(needle_profile)
     contact = needle_profile["contact"]
     solver = needle_profile["solver"]
+    render_collision = needle_profile["construction"]["collision_contract"]["render_collision_separation"]
     swage_anchor = derived_needle.swage_anchor_m
     swage_tangent = derived_needle.swage_tangent
     swage_yaw = math.atan2(swage_tangent[1], swage_tangent[0])
@@ -381,7 +382,9 @@ def author_dr_anmar_needle(
     float height = {usd_float(capsule.cylinder_height_m)}
     float radius = {usd_float(capsule.collision_radius_m)}
     float3[] extent = [{usd_vec(capsule.extent_min)}, {usd_vec(capsule.extent_max)}]
-    rel material:binding = <{steel_material_path}>
+    uniform token purpose = "{render_collision["collider_purpose"]}"
+    token visibility = "{render_collision["collider_visibility"]}"
+    rel {render_collision["collider_physics_material_binding"]} = <{steel_material_path}>
     bool physics:collisionEnabled = true
     float physxCollision:contactOffset = {usd_float(capsule.contact_offset_m)}
     float physxCollision:restOffset = {usd_float(capsule.rest_offset_m)}
@@ -414,6 +417,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         int drAnmarMassPropertyIntegrationSlices = {mass_properties.integration_slices}
         string drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"
         string drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"
+        string drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"
         string drAnmarNeedleProfileId = "{needle_profile["id"]}"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
@@ -619,6 +623,12 @@ def main() -> int:
         ),
         "needle_collision_capsule_count": derived_needle.collision_capsule_count,
         "needle_collision_contract": needle_profile["construction"]["collision_contract"],
+        "needle_render_collision_separation": needle_profile["construction"]["collision_contract"][
+            "render_collision_separation"
+        ],
+        "needle_collision_guide_purpose_count": derived_needle.collision_capsule_count,
+        "needle_collision_invisible_count": derived_needle.collision_capsule_count,
+        "needle_collision_physics_material_binding_count": derived_needle.collision_capsule_count,
         "needle_collision_max_curvature_sagitta_m": max(capsule.curvature_sagitta_m for capsule in collision_capsules),
         "needle_collision_visual_seam_margin_m": max(capsule.visual_seam_margin_m for capsule in collision_capsules),
         "needle_collision_max_chord_length_error_m": max(

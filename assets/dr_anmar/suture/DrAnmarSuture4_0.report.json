@@ -5,9 +5,9 @@
   "asset_sha256": "7b33b49b6b2c7934af9569d789b45bf2bdf0df16e98cc7d9806f56440e831c90",
   "dr_anmar_needle_name": "DrAnmar Needle",
   "dr_anmar_needle_asset_id": "dr-anmar-needle",
-  "dr_anmar_needle_asset_version": "1.4.0",
+  "dr_anmar_needle_asset_version": "1.5.0",
   "dr_anmar_needle": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
-  "dr_anmar_needle_sha256": "944ee02dbaba24e04df7068d9da8b96a2836aeaa9bf0ab518cbd65112d5023d5",
+  "dr_anmar_needle_sha256": "1de1dd7d742b020f14e60d2c0705b52bbc0bbff7e05b3687393bf47c96c0d2ea",
   "needle_profile": "physics_next/needles/dr-anmar-needle-v1.json",
   "needle_profile_id": "dr-anmar-needle-v1",
   "needle_geometry_source": "independently_generated_parametric_geometry",
@@ -60,6 +60,15 @@
     "visual_face_coverage": "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face",
     "coverage_epsilon_m": 1e-09,
     "extent_policy": "explicit_local_extent_on_every_capsule",
+    "render_collision_separation": {
+      "visual_prim": "Needle/Visual",
+      "collider_prim_pattern": "Needle/Collision/C###",
+      "collider_purpose": "guide",
+      "collider_visibility": "invisible",
+      "collider_physics_material_binding": "material:binding:physics",
+      "visual_material_binding": "material:binding",
+      "reason": "nonrendering_debuggable_collision_geometry"
+    },
     "contact_offsets": {
       "policy": "clamped_fraction_of_final_collision_radius",
       "basis": "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep",
@@ -80,6 +89,18 @@
       "mapping": "newton_contact_margin_equals_physx_rest_offset_and_newton_contact_gap_equals_physx_contact_offset_minus_physx_rest_offset"
     }
   },
+  "needle_render_collision_separation": {
+    "visual_prim": "Needle/Visual",
+    "collider_prim_pattern": "Needle/Collision/C###",
+    "collider_purpose": "guide",
+    "collider_visibility": "invisible",
+    "collider_physics_material_binding": "material:binding:physics",
+    "visual_material_binding": "material:binding",
+    "reason": "nonrendering_debuggable_collision_geometry"
+  },
+  "needle_collision_guide_purpose_count": 40,
+  "needle_collision_invisible_count": 40,
+  "needle_collision_physics_material_binding_count": 40,
   "needle_collision_max_curvature_sagitta_m": 5.398918502281386e-06,
   "needle_collision_visual_seam_margin_m": 8.494447366884953e-06,
   "needle_collision_max_chord_length_error_m": 0.0,

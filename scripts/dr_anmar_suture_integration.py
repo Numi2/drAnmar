@@ -12,7 +12,7 @@ from dr_anmar_needle_model import derive_needle, load_needle_profile, sample_epi
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DR_ANMAR_NEEDLE_NAME = "DrAnmar Needle"
 DR_ANMAR_NEEDLE_ASSET_ID = "dr-anmar-needle"
-DR_ANMAR_NEEDLE_ASSET_VERSION = "1.4.0"
+DR_ANMAR_NEEDLE_ASSET_VERSION = "1.5.0"
 DR_ANMAR_NEEDLE_ROOT_PRIM = "DrAnmarNeedle"
 DR_ANMAR_ASSET_ROOT = REPOSITORY_ROOT / "assets/dr_anmar"
 SUTURE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0.usda"

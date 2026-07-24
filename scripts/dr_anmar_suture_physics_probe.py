@@ -160,6 +160,10 @@ def main() -> int:
     needle_visual_normal_index_count = None
     needle_visual_normal_interpolation = None
     needle_visual_normals_valid = None
+    needle_collision_guide_purpose_count = None
+    needle_collision_invisible_count = None
+    needle_collision_physics_material_binding_count = None
+    needle_render_collision_separation_valid = None
     if assembly:
         needle_collision_capsules = [
             prim
@@ -174,6 +178,19 @@ def main() -> int:
         )
         needle_newton_collision_api_count = sum(
             "NewtonCollisionAPI" in prim.GetAppliedSchemas() for prim in needle_collision_capsules
+        )
+        expected_needle_material_path = f"{root_path}/Materials/NeedleSteel"
+        needle_collision_guide_purpose_count = sum(
+            str(UsdGeom.Imageable(prim).GetPurposeAttr().Get()) == "guide" for prim in needle_collision_capsules
+        )
+        needle_collision_invisible_count = sum(
+            str(UsdGeom.Imageable(prim).GetVisibilityAttr().Get()) == "invisible" for prim in needle_collision_capsules
+        )
+        needle_collision_physics_material_binding_count = sum(
+            [str(target) for target in prim.GetRelationship("material:binding:physics").GetTargets()]
+            == [expected_needle_material_path]
+            and not prim.GetRelationship("material:binding").HasAuthoredTargets()
+            for prim in needle_collision_capsules
         )
         physx_contact_offsets = [
             float(prim.GetAttribute("physxCollision:contactOffset").Get()) for prim in needle_collision_capsules
@@ -297,6 +314,16 @@ def main() -> int:
             )
         )
         visual_prim = stage.GetPrimAtPath(f"{root_path}/Needle/Visual")
+        needle_render_collision_separation_valid = bool(
+            needle_collision_guide_purpose_count == derived_needle.collision_capsule_count
+            and needle_collision_invisible_count == derived_needle.collision_capsule_count
+            and needle_collision_physics_material_binding_count == derived_needle.collision_capsule_count
+            and str(UsdGeom.Imageable(visual_prim).GetPurposeAttr().Get()) == "default"
+            and str(UsdGeom.Imageable(visual_prim).GetVisibilityAttr().Get()) == "inherited"
+            and [str(target) for target in visual_prim.GetRelationship("material:binding").GetTargets()]
+            == [expected_needle_material_path]
+            and not visual_prim.GetRelationship("material:binding:physics").HasAuthoredTargets()
+        )
         normal_attribute = visual_prim.GetAttribute("primvars:normals")
         normal_index_attribute = visual_prim.GetAttribute("primvars:normals:indices")
         authored_normals = normal_attribute.Get()
@@ -346,7 +373,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v4",
+        "schema": "dr.anmar.needle-native-physx-probe.v5",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -375,6 +402,10 @@ def main() -> int:
         "needle_visual_normal_index_count": needle_visual_normal_index_count,
         "needle_visual_normal_interpolation": needle_visual_normal_interpolation,
         "needle_visual_normals_valid": needle_visual_normals_valid,
+        "needle_collision_guide_purpose_count": needle_collision_guide_purpose_count,
+        "needle_collision_invisible_count": needle_collision_invisible_count,
+        "needle_collision_physics_material_binding_count": needle_collision_physics_material_binding_count,
+        "needle_render_collision_separation_valid": needle_render_collision_separation_valid,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -405,6 +436,10 @@ def main() -> int:
                 and report["needle_visual_normal_value_count"] == len(expected_needle_mesh.normals)
                 and report["needle_visual_normal_index_count"] == len(expected_needle_mesh.normal_indices)
                 and report["needle_visual_normals_valid"]
+                and report["needle_collision_guide_purpose_count"] == derived_needle.collision_capsule_count
+                and report["needle_collision_invisible_count"] == derived_needle.collision_capsule_count
+                and report["needle_collision_physics_material_binding_count"] == derived_needle.collision_capsule_count
+                and report["needle_render_collision_separation_valid"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None

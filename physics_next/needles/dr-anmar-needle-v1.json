@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -36,6 +36,15 @@
       "visual_face_coverage": "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face",
       "coverage_epsilon_m": 1e-09,
       "extent_policy": "explicit_local_extent_on_every_capsule",
+      "render_collision_separation": {
+        "visual_prim": "Needle/Visual",
+        "collider_prim_pattern": "Needle/Collision/C###",
+        "collider_purpose": "guide",
+        "collider_visibility": "invisible",
+        "collider_physics_material_binding": "material:binding:physics",
+        "visual_material_binding": "material:binding",
+        "reason": "nonrendering_debuggable_collision_geometry"
+      },
       "contact_offsets": {
         "policy": "clamped_fraction_of_final_collision_radius",
         "basis": "engineering_seed_for_thin_ccd_enabled_colliders_pending_native_velocity_and_timestep_sweep",
@@ -172,6 +181,16 @@
       "title": "NVIDIA mesh normals validity requirement",
       "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.7.1/capabilities/geometry/requirements/usdgeom-mesh-normals-must-be-valid.html",
       "used_for": "normal count, unit length, finite value, interpolation and outward winding checks"
+    },
+    {
+      "title": "Isaac Sim asset validation",
+      "url": "https://docs.isaacsim.omniverse.nvidia.com/5.0.0/robot_setup/asset_validation.html",
+      "used_for": "guide-purpose and invisible collision representation validation"
+    },
+    {
+      "title": "OpenUSD Exchange SDK physics material binding",
+      "url": "https://docs.omniverse.nvidia.com/usd/code-docs/usd-exchange-sdk/2.2.0/api/group__physicsmaterials.html",
+      "used_for": "purpose-specific physics material binding on nonrendering colliders"
     }
   ],
   "sim_to_real": {

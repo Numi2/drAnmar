@@ -251,6 +251,7 @@ def validate(
         f"drAnmarMassPropertyIntegrationSlices = {DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES}",
         'drAnmarContactOffsetContract = "scale_aware_dual_physx_newton_authoring"',
         'drAnmarNormalContract = "analytic_taper_and_curvature_aware_indexed_face_varying_primvar"',
+        'drAnmarRenderCollisionContract = "separate_visual_mesh_and_guide_purpose_invisible_compound_colliders"',
         'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
         'drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"',
         '"PhysicsMaterialAPI", "PhysxMaterialAPI"',
@@ -393,6 +394,12 @@ def validate(
         " swage cap",
     )
     needle_collision_capsules = build_needle_collision_capsules(needle_profile)
+    collision_contract = needle_profile["construction"]["collision_contract"]
+    render_collision_contract = collision_contract["render_collision_separation"]
+    expected_physics_material_binding = (
+        f'rel {render_collision_contract["collider_physics_material_binding"]} = '
+        f"</{DR_ANMAR_NEEDLE_ROOT_PRIM}/Materials/NeedleSteel>"
+    )
     collision_attribute_errors: list[str] = []
     for index, capsule in enumerate(needle_collision_capsules):
         match = re.search(
@@ -438,6 +445,14 @@ def validate(
             collision_attribute_errors.append(f"C{index:03d}:radius")
         if "float3[] extent = [" not in block:
             collision_attribute_errors.append(f"C{index:03d}:extent")
+        if f'uniform token purpose = "{render_collision_contract["collider_purpose"]}"' not in block:
+            collision_attribute_errors.append(f"C{index:03d}:purpose")
+        if f'token visibility = "{render_collision_contract["collider_visibility"]}"' not in block:
+            collision_attribute_errors.append(f"C{index:03d}:visibility")
+        if expected_physics_material_binding not in block:
+            collision_attribute_errors.append(f"C{index:03d}:physics_material_binding")
+        if "rel material:binding = " in block:
+            collision_attribute_errors.append(f"C{index:03d}:visual_material_binding")
         expected_contact_attributes = (
             (
                 "physx_contact_offset",
@@ -521,7 +536,38 @@ def validate(
         "nvidia_stack_references",
         [],
     )
-    collision_contract = needle_profile["construction"]["collision_contract"]
+    render_collision_counts = {
+        "guide_purpose": needle_text.count(
+            f'uniform token purpose = "{render_collision_contract["collider_purpose"]}"'
+        ),
+        "invisible": needle_text.count(f'token visibility = "{render_collision_contract["collider_visibility"]}"'),
+        "physics_material_binding": needle_text.count(expected_physics_material_binding),
+        "visual_material_binding": needle_text.count(
+            f'rel {render_collision_contract["visual_material_binding"]} = '
+            f"</{DR_ANMAR_NEEDLE_ROOT_PRIM}/Materials/NeedleSteel>"
+        ),
+    }
+    check(
+        checks,
+        "needle_render_collision_separation",
+        render_collision_contract["visual_prim"] == "Needle/Visual"
+        and render_collision_contract["collider_prim_pattern"] == "Needle/Collision/C###"
+        and render_collision_contract["collider_purpose"] == "guide"
+        and render_collision_contract["collider_visibility"] == "invisible"
+        and render_collision_contract["collider_physics_material_binding"] == "material:binding:physics"
+        and render_collision_contract["visual_material_binding"] == "material:binding"
+        and render_collision_contract["reason"] == "nonrendering_debuggable_collision_geometry"
+        and render_collision_counts["guide_purpose"] == derived_needle.collision_capsule_count
+        and render_collision_counts["invisible"] == derived_needle.collision_capsule_count
+        and render_collision_counts["physics_material_binding"] == derived_needle.collision_capsule_count
+        and render_collision_counts["visual_material_binding"] == 1,
+        {
+            "contract": render_collision_contract,
+            "authored_counts": render_collision_counts,
+            "collision_capsule_count": derived_needle.collision_capsule_count,
+        },
+        "one render mesh plus guide-purpose invisible compound colliders with physics-only material bindings",
+    )
     contact_offset_contract = collision_contract["contact_offsets"]
     contact_offsets = [capsule.contact_offset_m for capsule in needle_collision_capsules]
     rest_offsets = [capsule.rest_offset_m for capsule in needle_collision_capsules]
@@ -604,14 +650,24 @@ def validate(
         "needle_visual_normal_value_count",
         "needle_visual_normal_index_count",
         "needle_visual_normals_valid",
+        "needle_collision_guide_purpose_count",
+        "needle_collision_invisible_count",
+        "needle_collision_physics_material_binding_count",
+        "needle_render_collision_separation_valid",
     ]
     missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(
         checks,
         "needle_nvidia_stack_collision_contract",
-        len(nvidia_stack_references) >= 7
+        len(nvidia_stack_references) >= 9
         and all(
-            item.get("url", "").startswith("https://docs.omniverse.nvidia.com/") and item.get("used_for")
+            item.get("url", "").startswith(
+                (
+                    "https://docs.omniverse.nvidia.com/",
+                    "https://docs.isaacsim.omniverse.nvidia.com/",
+                )
+            )
+            and item.get("used_for")
             for item in nvidia_stack_references
         )
         and collision_contract["primitive"] == "UsdGeomCapsule"
@@ -621,6 +677,9 @@ def validate(
         == "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face"
         and 0.0 < float(collision_contract["coverage_epsilon_m"]) <= 1.0e-8
         and collision_contract["extent_policy"] == "explicit_local_extent_on_every_capsule"
+        and render_collision_contract["collider_purpose"] == "guide"
+        and render_collision_contract["collider_visibility"] == "invisible"
+        and render_collision_contract["collider_physics_material_binding"] == "material:binding:physics"
         and contact_offset_contract["newton_authoring"]
         == [
             "NewtonCollisionAPI",
@@ -637,7 +696,7 @@ def validate(
             "friction_combine_mode": needle_profile["contact"]["combine_mode"],
             "missing_native_probe_tokens": missing_native_probe_tokens,
         },
-        "NVIDIA Omni Physics primitive-collider, CCD, extent, and material schema contract",
+        "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, and material schema contract",
     )
     construction = needle_profile["construction"]
     arc_range = [float(value) for value in construction["centerline_arc_length_range_m"]]

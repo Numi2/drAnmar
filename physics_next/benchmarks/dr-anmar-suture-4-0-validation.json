@@ -55,12 +55,13 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.4.0\"",
+        "drAnmarAssetVersion = \"1.5.0\"",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "drAnmarGeometrySource = \"independently_generated_parametric_geometry\"",
         "drAnmarMassPropertyIntegrationSlices = 8192",
         "drAnmarContactOffsetContract = \"scale_aware_dual_physx_newton_authoring\"",
         "drAnmarNormalContract = \"analytic_taper_and_curvature_aware_indexed_face_varying_primvar\"",
+        "drAnmarRenderCollisionContract = \"separate_visual_mesh_and_guide_purpose_invisible_compound_colliders\"",
         "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
         "drAnmarCollisionContract = \"curvature_sagitta_bounded_capsules_with_explicit_extents\"",
         "\"PhysicsMaterialAPI\", \"PhysxMaterialAPI\"",
@@ -79,9 +80,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.4.0",
+        "integration_version": "1.5.0",
         "missing": [],
-        "profile_version": "1.4.0"
+        "profile_version": "1.5.0"
       },
       "passed": true
     },
@@ -319,7 +320,7 @@
       "passed": true
     },
     "needle_nvidia_stack_collision_contract": {
-      "expected": "NVIDIA Omni Physics primitive-collider, CCD, extent, and material schema contract",
+      "expected": "NVIDIA Omni Physics primitive-collider, render separation, CCD, extent, and material schema contract",
       "measured": {
         "ccd": true,
         "collision_contract": {
@@ -349,12 +350,43 @@
           "height_semantics": "cylinder_spine_excluding_spherical_caps",
           "partition": "equal_centerline_arc_segments",
           "primitive": "UsdGeomCapsule",
+          "render_collision_separation": {
+            "collider_physics_material_binding": "material:binding:physics",
+            "collider_prim_pattern": "Needle/Collision/C###",
+            "collider_purpose": "guide",
+            "collider_visibility": "invisible",
+            "reason": "nonrendering_debuggable_collision_geometry",
+            "visual_material_binding": "material:binding",
+            "visual_prim": "Needle/Visual"
+          },
           "spine_length": "assigned_centerline_chord",
           "visual_face_coverage": "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face"
         },
         "friction_combine_mode": "max",
         "missing_native_probe_tokens": [],
-        "reference_count": 7
+        "reference_count": 9
+      },
+      "passed": true
+    },
+    "needle_render_collision_separation": {
+      "expected": "one render mesh plus guide-purpose invisible compound colliders with physics-only material bindings",
+      "measured": {
+        "authored_counts": {
+          "guide_purpose": 40,
+          "invisible": 40,
+          "physics_material_binding": 40,
+          "visual_material_binding": 1
+        },
+        "collision_capsule_count": 40,
+        "contract": {
+          "collider_physics_material_binding": "material:binding:physics",
+          "collider_prim_pattern": "Needle/Collision/C###",
+          "collider_purpose": "guide",
+          "collider_visibility": "invisible",
+          "reason": "nonrendering_debuggable_collision_geometry",
+          "visual_material_binding": "material:binding",
+          "visual_prim": "Needle/Visual"
+        }
       },
       "passed": true
     },
