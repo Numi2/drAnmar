@@ -30,6 +30,16 @@ export function localWebcamTarget() {
   return target.href;
 }
 
+export function monotonicMediaPipeTimestamp(candidateMs, previousMs = -1) {
+  const candidate = Number.isFinite(Number(candidateMs))
+    ? Math.floor(Number(candidateMs))
+    : 0;
+  const previous = Number.isFinite(Number(previousMs))
+    ? Math.floor(Number(previousMs))
+    : -1;
+  return Math.max(0, candidate, previous + 1);
+}
+
 export function handednessToArm(label, inputMirrored = false) {
   // MediaPipe handedness assumes selfie-mirrored input. detectForVideo receives
   // the raw camera frame here, while only the preview is CSS-mirrored.
@@ -391,6 +401,8 @@ class HandController {
     this.sequenceBase = Date.now() * 1000;
     this.sequenceCounter = 0;
     this.lastInferenceAt = 0;
+    this.lastMediaPipeTimestampMs = -1;
+    this.visionRecoveryAttempted = false;
     this.lastStatusAt = 0;
     this.lastFrameAt = null;
     this.frameRate = 0;
@@ -563,6 +575,9 @@ class HandController {
         return;
       }
       this.running = true;
+      this.lastInferenceAt = 0;
+      this.lastMediaPipeTimestampMs = -1;
+      this.lastFrameAt = null;
       this.launch.classList.add("state-active");
       this.panel.querySelector("#handStart").textContent = "Camera active";
       this.setBanner("Tracking hands · motion frozen", "good");
@@ -719,14 +734,20 @@ class HandController {
 
   frame(time, metadata = null) {
     if (!this.running) return;
-    const frameTimestampMs = Number.isFinite(metadata?.mediaTime)
+    const frameTimestampCandidateMs = Number.isFinite(metadata?.mediaTime)
       ? metadata.mediaTime * 1000
       : time;
     if (time - this.lastInferenceAt >= MIN_INFERENCE_INTERVAL_MS && this.video.readyState >= 2) {
       const inferenceStarted = performance.now();
       this.lastInferenceAt = time;
+      const frameTimestampMs = monotonicMediaPipeTimestamp(
+        frameTimestampCandidateMs,
+        this.lastMediaPipeTimestampMs,
+      );
+      this.lastMediaPipeTimestampMs = frameTimestampMs;
       try {
         const result = this.landmarker.detectForVideo(this.video, frameTimestampMs);
+        this.visionRecoveryAttempted = false;
         this.inferenceMs = this.ewma(this.inferenceMs, performance.now() - inferenceStarted, 0.18);
         if (this.lastFrameAt !== null && time > this.lastFrameAt) {
           this.frameRate = this.ewma(this.frameRate, 1000 / (time - this.lastFrameAt), 0.15);
@@ -738,8 +759,7 @@ class HandController {
         this.transmit();
         this.renderMetrics();
       } catch (error) {
-        this.freezeAll();
-        this.setBanner(`Vision safety hold · ${error.message}`, "warn");
+        this.handleVisionError(error);
       }
     }
     if (time - this.lastStatusAt > 800) {
@@ -747,6 +767,25 @@ class HandController {
       this.pollStatus();
     }
     this.scheduleFrame();
+  }
+
+  handleVisionError(error) {
+    this.freezeAll();
+    const message = String(error?.message || error || "Unknown vision error");
+    const graphTimingFailure = /Packet timestamp mismatch|CalculatorGraph::Run|WaitUntilIdle/i.test(message);
+    if (graphTimingFailure && !this.visionRecoveryAttempted) {
+      this.visionRecoveryAttempted = true;
+      this.setBanner("Vision timing reset · restarting safely…", "warn");
+      this.stopMedia();
+      window.setTimeout(() => this.start(), 150);
+      return;
+    }
+    if (graphTimingFailure) {
+      this.stopMedia();
+      this.setBanner("Vision safety hold · camera stopped; press Start camera to retry.", "warn");
+      return;
+    }
+    this.setBanner(`Vision safety hold · ${message}`, "warn");
   }
 
   ewma(previous, current, alpha) {
@@ -1134,6 +1173,8 @@ class HandController {
     this.video.srcObject = null;
     this.landmarker?.close?.();
     this.landmarker = null;
+    this.lastMediaPipeTimestampMs = -1;
+    this.panel.querySelector("#handStart").textContent = "Start camera";
     this.launch.classList.remove("state-active");
   }
 
