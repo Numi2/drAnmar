@@ -1,0 +1,83 @@
+#usda 1.0
+(
+    defaultPrim = "psm"
+    metersPerUnit = 1
+    kilogramsPerUnit = 1
+    upAxis = "Z"
+    subLayers = [
+        @psm.usd@
+    ]
+)
+
+over "psm"
+{
+    custom string dranmar:mountedTool = "topical_skin_adhesive"
+    custom string dranmar:mountedToolControl = "native_psm_gripper_aperture"
+    custom string dranmar:mountedToolPhysics = "fixed_joint_inside_psm_articulation"
+
+    # The adhesive instrument replaces the first PSM's forceps visually and
+    # physically. The jaw links remain in the articulation so the released
+    # NVIDIA seven-value control contract is unchanged, but their geometry no
+    # longer renders or collides.
+    over "psm_tool_gripper1_link"
+    {
+        token visibility = "invisible"
+
+        over "collisions_xform"
+        {
+            over "collisions"
+            {
+                bool physics:collisionEnabled = 0
+            }
+        }
+    }
+
+    over "psm_tool_gripper2_link"
+    {
+        token visibility = "invisible"
+
+        over "collisions_xform"
+        {
+            over "collisions"
+            {
+                bool physics:collisionEnabled = 0
+            }
+        }
+    }
+
+    def Xform "MountedSkinAdhesive" (
+        delete apiSchemas = ["PhysicsArticulationRootAPI"]
+        prepend references = @../../../Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_articulated.usda@</DrAnmarSkinAdhesiveApplicator>
+        variants = {
+            string state = "activated"
+        }
+    )
+    {
+        bool physics:articulationEnabled = 0
+        custom token dranmar:mountKind = "permanent_robot_end_effector"
+        custom token dranmar:mountState = "fixed"
+        custom int dranmar:controlArmIndex = 0
+        custom string dranmar:dispenseMapping = "activation_equals_one_minus_aperture"
+    }
+
+    # A real unbreakable PhysX joint makes the applicator part of the robot
+    # mechanism. No runtime pose writes, following transforms, or grasp
+    # substitution are used. The applicator's own paddle and piston joints
+    # remain articulated downstream of this mount.
+    def PhysicsFixedJoint "skin_adhesive_mount_joint"
+    {
+        rel physics:body0 = </psm/psm_tool_tip_link>
+        rel physics:body1 = </psm/MountedSkinAdhesive/Links/Body>
+        float physics:breakForce = 3.4028235e38
+        float physics:breakTorque = 3.4028235e38
+        bool physics:collisionEnabled = 0
+        point3f physics:localPos0 = (0, 0, 0)
+        # Seat the socket on the asset's authored body_grasp mount frame.
+        point3f physics:localPos1 = (-0.041, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        # The authored adhesive outlet is at +X and its rear mount is at -X.
+        # Point +X away from the PSM shaft so dispense_exit remains exposed
+        # toward the patient instead of being buried inside the tool slot.
+        quatf physics:localRot1 = (0.70710678, 0, 0.70710678, 0)
+    }
+}

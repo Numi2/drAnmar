@@ -193,7 +193,7 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab.assets import AssetBaseCfg, DeformableObjectCfg, RigidObjectCfg
 from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
 from isaaclab.sensors import CameraCfg, ContactSensorCfg
-from isaaclab.utils.math import quat_apply, quat_conjugate, quat_mul
+from isaaclab.utils.math import quat_conjugate, quat_mul
 from isaaclab_tasks.utils import parse_env_cfg
 
 import orbit.surgical.tasks  # noqa: F401
@@ -213,8 +213,6 @@ from orbit.surgical.assets.needle_thread import (
 from orbit.surgical.assets.skin_adhesive import (
     activation_targets as skin_adhesive_activation_targets,
     make_articulated_cfg as make_articulated_skin_adhesive_cfg,
-    make_bead_cfg as make_skin_adhesive_bead_cfg,
-    make_cap_cfg as make_skin_adhesive_cap_cfg,
     set_activation_target as set_skin_adhesive_activation_target,
 )
 from orbit.surgical.assets.skin_stapler import (
@@ -519,10 +517,10 @@ APP_HTML = r"""<!doctype html>
       <section class="session-section"><h2>Session</h2><div class="card"><div class="grid two"><button data-shortcut="T" onclick="recording(false)">Stop & save <kbd>T</kbd></button><button data-shortcut="R" onclick="replay()">Replay last <kbd>R</kbd></button><button data-shortcut="Delete" onclick="resetScene()">Reset scene <kbd>Delete</kbd></button></div><div class="hint" id="lastDemo">Robot state and camera observations are saved together.</div></div></section>
     </div></details>
     <section id="skinAdhesiveCell" class="stapler-cell hidden" aria-label="Topical skin adhesive controls">
-      <div class="stapler-cell-head"><div><b>Dr.Anmar topical skin adhesive</b><small>Articulated dual paddles · metering piston · removable cap · deposit task state</small></div><span id="skinAdhesivePhase" class="stapler-phase">ACTIVATED</span></div>
-      <div class="stapler-metrics"><div class="stapler-metric"><b id="skinAdhesiveActivation">0%</b><span>ACTUAL ACTIVATION</span></div><div class="stapler-metric"><b id="skinAdhesiveLeft">0.0°</b><span>LEFT PADDLE</span></div><div class="stapler-metric"><b id="skinAdhesiveRight">0.0°</b><span>RIGHT PADDLE</span></div><div class="stapler-metric"><b id="skinAdhesivePiston">0.00 mm</b><span>PISTON TRAVEL</span></div><div class="stapler-metric"><b id="skinAdhesiveCap">READY</b><span>REMOVABLE CAP</span></div><div class="stapler-metric"><b id="skinAdhesiveBead">FRESH</b><span>BEAD STATE</span></div></div>
-      <div class="stapler-controls"><button id="skinAdhesiveUse" class="primary" style="grid-column:1/-1" onclick="useSkinAdhesive()">Use adhesive<br>auto-grip &amp; uncap</button><label class="stapler-target"><b>Coordinated mechanism target</b><output id="skinAdhesiveTargetOutput">0%</output><input id="skinAdhesiveTarget" type="range" min="0" max="100" step="1" value="0" onchange="setSkinAdhesiveActivation(this.value)" oninput="document.getElementById('skinAdhesiveTargetOutput').value=`${this.value}%`"></label><button data-shortcut="ADH-0" onclick="setSkinAdhesiveActivation(0)">Release<br>0%</button><button data-shortcut="ADH-50" onclick="setSkinAdhesiveActivation(50)">Half squeeze<br>50%</button><button class="primary" data-shortcut="ADH-100" onclick="setSkinAdhesiveActivation(100)">Full squeeze<br>100%</button></div>
-      <p class="stapler-boundary">The bead is a kinematic fresh/cured workflow representation. This does not simulate liquid flow, wetting, polymerization, tissue bonding, dose, bond strength or clinical performance.</p>
+      <div class="stapler-cell-head"><div><b>Dr.Anmar topical skin adhesive tool</b><small>Instrument 1 fixed-joint end effector · native IK · proportional dispense</small></div><span id="skinAdhesivePhase" class="stapler-phase">MOUNTED</span></div>
+      <div class="stapler-metrics"><div class="stapler-metric"><b id="skinAdhesiveActivation">0%</b><span>ACTUAL DISPENSE</span></div><div class="stapler-metric"><b id="skinAdhesiveLeft">0.0°</b><span>LEFT PADDLE</span></div><div class="stapler-metric"><b id="skinAdhesiveRight">0.0°</b><span>RIGHT PADDLE</span></div><div class="stapler-metric"><b id="skinAdhesivePiston">0.00 mm</b><span>PISTON TRAVEL</span></div><div class="stapler-metric"><b id="skinAdhesiveMount">INSTRUMENT 1</b><span>FIXED PHYSX MOUNT</span></div><div class="stapler-metric"><b id="skinAdhesiveOutlet">EXPOSED</b><span>DISPENSE OUTLET</span></div></div>
+      <div class="stapler-controls"><label class="stapler-target"><b>Instrument 1 dispense command</b><output id="skinAdhesiveTargetOutput">0%</output><input id="skinAdhesiveTarget" type="range" min="0" max="100" step="1" value="0" onchange="setSkinAdhesiveActivation(this.value)" oninput="document.getElementById('skinAdhesiveTargetOutput').value=`${this.value}%`"></label><button data-shortcut="ADH-0" onclick="setSkinAdhesiveActivation(0)">Release<br>0%</button><button data-shortcut="ADH-50" onclick="setSkinAdhesiveActivation(50)">Half squeeze<br>50%</button><button class="primary" data-shortcut="ADH-100" onclick="setSkinAdhesiveActivation(100)">Full squeeze<br>100%</button></div>
+      <p class="stapler-boundary">Only the physical end-effector mechanism is simulated here. No bead is fabricated: liquid flow, wetting, polymerization, tissue bonding, dose, bond strength and clinical performance remain outside this room.</p>
     </section>
   </aside>
 </main>
@@ -552,9 +550,8 @@ let latestGamepadCommands=new Map(),gamepadVisualState={mode:'BIMANUAL · NORMAL
 const previousGamepadContacts=[false,false];
 async function requestJson(url,options={},timeoutMs=5000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);activeFetchControllers.add(controller);try{const r=await fetch(url,{...options,signal:controller.signal});let data={};try{data=await r.json()}catch(_error){}if(!r.ok)throw Error(data.detail||'Request failed');return data}catch(error){if(error.name==='AbortError')throw Error('Simulator request timed out');throw error}finally{clearTimeout(timer);activeFetchControllers.delete(controller)}}
 async function post(url,body={},timeoutMs=5000){return requestJson(url,{method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify(body)},timeoutMs)}
-async function useSkinAdhesive(){const arm=Math.min(activeArm,(latestStatus?.arms||1)-1);try{await post('/api/skin-adhesive/use',{arm});toast(`Instrument ${arm+1} picked up and uncapped the adhesive`);await refresh()}catch(e){toast(e.message)}}
 async function setSkinAdhesiveActivation(percent){const activation=Math.max(0,Math.min(1,(Number(percent)||0)/100));try{await post('/api/skin-adhesive/activation',{activation});toast(`Skin adhesive activation ${Math.round(activation*100)}%`);await refresh()}catch(e){toast(e.message)}}
-function renderSkinAdhesive(system={}){const panel=document.getElementById('skinAdhesiveCell'),enabled=!!system.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const actual=Number(system.actual_activation||0),target=Number(system.target_activation||0),slider=document.getElementById('skinAdhesiveTarget'),useButton=document.getElementById('skinAdhesiveUse'),holding=!!system.grasp_assist_active,arm=Number(system.holding_arm||1);document.getElementById('skinAdhesivePhase').textContent=String(system.workflow_state||system.applicator_state||'ready').replaceAll('_',' ');document.getElementById('skinAdhesiveActivation').textContent=`${Math.round(actual*100)}%`;document.getElementById('skinAdhesiveLeft').textContent=`${Number(system.left_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesiveRight').textContent=`${Number(system.right_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesivePiston').textContent=`${Number(system.piston_travel_mm||0).toFixed(2)} mm`;document.getElementById('skinAdhesiveCap').textContent=String(system.cap_state||'ready').toUpperCase();document.getElementById('skinAdhesiveBead').textContent=String(system.bead_state||'fresh').toUpperCase();useButton.disabled=holding;useButton.innerHTML=holding?`Instrument ${arm} holding adhesive<br>cap removed`:'Use adhesive<br>auto-grip &amp; uncap';if(document.activeElement!==slider)slider.value=String(Math.round(target*100));document.getElementById('skinAdhesiveTargetOutput').value=`${Math.round(target*100)}%`}
+function renderSkinAdhesive(system={}){const panel=document.getElementById('skinAdhesiveCell'),enabled=!!system.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const actual=Number(system.actual_activation||0),target=Number(system.target_activation||0),slider=document.getElementById('skinAdhesiveTarget'),arm=Number(system.mounted_arm||1);document.getElementById('skinAdhesivePhase').textContent=String(system.workflow_state||system.applicator_state||'mounted').replaceAll('_',' ');document.getElementById('skinAdhesiveActivation').textContent=`${Math.round(actual*100)}%`;document.getElementById('skinAdhesiveLeft').textContent=`${Number(system.left_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesiveRight').textContent=`${Number(system.right_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesivePiston').textContent=`${Number(system.piston_travel_mm||0).toFixed(2)} mm`;document.getElementById('skinAdhesiveMount').textContent=`INSTRUMENT ${arm}`;document.getElementById('skinAdhesiveOutlet').textContent=String(system.outlet_state||'exposed').toUpperCase();const gripButton=document.getElementById(arm===1?'gripOpenButton':'gripCloseButton');if(gripButton)gripButton.innerHTML=`<kbd>${arm===1?'Space':'Enter'}</kbd> Dispense`;if(document.activeElement!==slider)slider.value=String(Math.round(target*100));document.getElementById('skinAdhesiveTargetOutput').value=`${Math.round(target*100)}%`}
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toastTimer=null;e.classList.remove('show')},1600)}
 async function staplerCommand(action,targetDeg=null){try{const body={action};if(targetDeg!==null)body.target_deg=Number(targetDeg);await post('/api/stapler/command',body);const message={fire:'Stapler cycle started',reset:'Tissue closure reset',release:'Stapler released',previous_station:'Fixture indexed to previous station',next_station:'Fixture indexed to next station'}[action]||`Trigger target ${Number(targetDeg).toFixed(0)}°`;toast(message);await refresh()}catch(e){toast(e.message)}}
 function setStaplerTarget(value){const target=Math.max(0,Math.min(28,Number(value)||0));return staplerCommand('set_target',target)}
@@ -604,7 +601,7 @@ function stopDrive(showToast=true,source='keyboard_pointer'){if(macroPulseTimer)
 async function stopTool(){stopDrive();try{await post('/api/stop')}catch(e){toast(e.message)}}
 async function emergencyStop(source='keyboard_pointer'){gamepadSafetyLatched=true;flashShortcut('Esc','Emergency stop · manual control');stopDrive(false,source);try{await post('/api/stop',{source});if(latestStatus?.autonomy_mode&&latestStatus.autonomy_mode!=='manual')await post('/api/handoff');toast('Stopped · manual control')}catch(e){toast(e.message)}}
 async function grip(open,arm=activeArm,source='keyboard_pointer'){try{await post('/api/gripper',{open,arm,source});toast(`Instrument ${arm+1} · ${open?'gripper open':'gripper closed'}`)}catch(e){toast(e.message)}}
-async function toggleGrip(arm=activeArm,source='keyboard_pointer'){if(arm>=(latestStatus?.arms||1)){toast(`Instrument ${arm+1} is not available in this room`);return}try{const result=await post('/api/gripper/toggle',{arm,source});toast(`Instrument ${arm+1} · ${result.open?'gripper open':'gripper closed'}`)}catch(e){toast(e.message)}}
+async function toggleGrip(arm=activeArm,source='keyboard_pointer'){if(arm>=(latestStatus?.arms||1)){toast(`Instrument ${arm+1} is not available in this room`);return}try{const result=await post('/api/gripper/toggle',{arm,source}),adhesiveArm=Number(latestStatus?.skin_adhesive_system?.mounted_arm||0)-1;toast(arm===adhesiveArm?`Adhesive tool · ${result.open?'dispense released':'full dispense'}`:`Instrument ${arm+1} · ${result.open?'gripper open':'gripper closed'}`)}catch(e){toast(e.message)}}
 async function recording(start){try{await post(start?'/api/record/start':'/api/record/stop');toast(start?'Recording started':'Saving demonstration…')}catch(e){toast(e.message)}}
 async function replay(){try{const x=await post('/api/replay-last');toast(x.message)}catch(e){toast(e.message)}}
 async function referenceGhost(enabled){try{const x=await post('/api/reference-ghost',{enabled});toast(x.message)}catch(e){toast(e.message)}}
@@ -769,10 +766,6 @@ class StaplerCommandRequest(BaseModel):
 
 class SkinAdhesiveActivationRequest(BaseModel):
     activation: float
-
-
-class SkinAdhesiveUseRequest(BaseModel):
-    arm: int = 0
 
 
 class ScenarioRequest(BaseModel):
@@ -959,7 +952,6 @@ class SharedState:
     stapler_manual_target_deg: float = 0.0
     stapler_test_cell: dict[str, Any] = field(default_factory=dict)
     skin_adhesive_target: float = 0.0
-    skin_adhesive_use_request: int | None = None
     skin_adhesive_system: dict[str, Any] = field(default_factory=dict)
     dr_anmar_needle_domain: dict[str, float | int] = field(
         default_factory=dict
@@ -2060,7 +2052,6 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.grippers_open = [True] * state.arms
             state.gripper_apertures = [1.0] * state.arms
             state.skin_adhesive_target = 0.0
-            state.skin_adhesive_use_request = None
         state.wake_event.set()
         return {"ok": True}
 
@@ -2173,49 +2164,6 @@ def build_web_app(state: SharedState) -> FastAPI:
         state.wake_event.set()
         return {"ok": True, "action": action, "test_cell": result}
 
-    @app.post("/api/skin-adhesive/use")
-    def use_skin_adhesive(
-        request: SkinAdhesiveUseRequest,
-    ) -> dict[str, Any]:
-        with state.lock:
-            if not state.skin_adhesive_system.get("enabled", False):
-                raise HTTPException(
-                    409,
-                    "Add the Dr.Anmar topical skin adhesive system to this bench first",
-                )
-            if not state.has_grippers:
-                raise HTTPException(409, "This room has no gripper-equipped robot")
-            if request.arm < 0 or request.arm >= state.arms:
-                raise HTTPException(400, "arm is outside the active robot range")
-            state.skin_adhesive_use_request = request.arm
-            state.skin_adhesive_target = 0.0
-            state.grippers_open[request.arm] = False
-            state.gripper_apertures[request.arm] = 0.0
-            gripper_action = np.zeros(state.action_dim, dtype=np.float32)
-            gripper_action[state.gripper_action_index(request.arm)] = -1.0
-            state.note_control(
-                "skin_adhesive_auto_grip",
-                "guided_assist",
-                gripper_action,
-            )
-            state.skin_adhesive_system.update(
-                {
-                    "workflow_state": "acquiring",
-                    "holding_arm": request.arm + 1,
-                    "cap_state": "removing",
-                }
-            )
-            state.coaching_cue = (
-                f"Instrument {request.arm + 1} is automatically gripping "
-                "and uncapping the topical adhesive."
-            )
-        state.wake_event.set()
-        return {
-            "ok": True,
-            "arm": request.arm,
-            "workflow_state": "acquiring",
-        }
-
     @app.post("/api/skin-adhesive/activation")
     def skin_adhesive_activation(
         request: SkinAdhesiveActivationRequest,
@@ -2229,10 +2177,34 @@ def build_web_app(state: SharedState) -> FastAPI:
                     409,
                     "Add the Dr.Anmar topical skin adhesive system to this bench first",
                 )
+            mounted_arm = (
+                int(state.skin_adhesive_system.get("mounted_arm", 1)) - 1
+            )
+            if mounted_arm not in range(state.arms):
+                raise HTTPException(
+                    409,
+                    "The mounted adhesive end effector has no active robot arm",
+                )
             state.skin_adhesive_target = target
+            aperture = 1.0 - target
+            state.gripper_apertures[mounted_arm] = aperture
+            state.grippers_open[mounted_arm] = aperture >= 0.5
+            gripper_action = np.zeros(
+                state.action_dim,
+                dtype=np.float32,
+            )
+            gripper_action[
+                state.gripper_action_index(mounted_arm)
+            ] = proportional_gripper_action(aperture)
+            state.note_control(
+                "skin_adhesive_dispense",
+                "keyboard_pointer",
+                gripper_action,
+            )
             state.coaching_cue = (
-                f"Skin-adhesive applicator target set to {target * 100.0:.0f}%. "
-                "Both paddles and the metering piston move together."
+                f"Instrument {mounted_arm + 1} adhesive dispense set to "
+                f"{target * 100.0:.0f}%. Both paddles and the metering "
+                "piston move together."
             )
             result = dict(state.skin_adhesive_system)
         state.wake_event.set()
@@ -4008,11 +3980,11 @@ def main() -> None:
     )
     skin_adhesive_paths: dict[str, Path] = {}
     if skin_adhesive_enabled:
-        skin_adhesive_root = bench_asset_paths["skin_adhesive_system"].parent
         skin_adhesive_paths = {
             "applicator": bench_asset_paths["skin_adhesive_system"],
-            "cap": skin_adhesive_root / "skin_adhesive_cap.usda",
-            "bead": skin_adhesive_root / "skin_adhesive_bead.usda",
+            "mounted_psm": REPOSITORY_ROOT
+            / "source/extensions/orbit.surgical.assets/data/Robots/dVRK/PSM"
+            / "psm_skin_adhesive.usda",
         }
         missing_skin_adhesive_assets = [
             f"{name}: {path}"
@@ -4146,7 +4118,50 @@ def main() -> None:
         }
         for robot_name, root_position in psm_root_positions.items():
             robot_cfg = getattr(env_cfg.scene, robot_name)
-            robot_cfg.spawn.usd_path = str(bench_asset_paths["psm"])
+            mounted_adhesive_arm = bool(
+                skin_adhesive_enabled and robot_name == "robot_1"
+            )
+            robot_cfg.spawn.usd_path = str(
+                skin_adhesive_paths["mounted_psm"]
+                if mounted_adhesive_arm
+                else bench_asset_paths["psm"]
+            )
+            if mounted_adhesive_arm:
+                adhesive_mechanism_cfg = (
+                    make_articulated_skin_adhesive_cfg(
+                        state="activated",
+                        usd_path=skin_adhesive_paths["applicator"],
+                    )
+                )
+                # The standalone hand-held asset uses intentionally compliant
+                # paddle drives. Once mounted sideways on the PSM, that
+                # compliance lets gravity bias the two paddle angles away from
+                # the proportional dispense command. Keep the authored effort
+                # limit, but make the mounted drives stiff enough to hold the
+                # requested physical angle without turning them kinematic.
+                mounted_paddle_actuator = (
+                    adhesive_mechanism_cfg.actuators["paddles"]
+                )
+                mounted_paddle_actuator.stiffness = 8.0
+                mounted_paddle_actuator.damping = 0.18
+                robot_cfg.actuators = {
+                    **robot_cfg.actuators,
+                    "skin_adhesive_paddles": (
+                        mounted_paddle_actuator
+                    ),
+                    "skin_adhesive_metering_piston": (
+                        adhesive_mechanism_cfg.actuators[
+                            "metering_piston"
+                        ]
+                    ),
+                }
+                robot_cfg.init_state.joint_pos.update(
+                    {
+                        "left_paddle_joint": 0.0,
+                        "right_paddle_joint": 0.0,
+                        "metering_piston_joint": 0.0,
+                    }
+                )
             robot_cfg.init_state.pos = root_position
             robot_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
         env_cfg.scene.table.spawn.usd_path = str(bench_asset_paths["table"])
@@ -4275,48 +4290,6 @@ def main() -> None:
                     ],
                     activate_contact_sensors=True,
                 ),
-            )
-        if skin_adhesive_enabled:
-            env_cfg.scene.skin_adhesive_applicator = (
-                make_articulated_skin_adhesive_cfg(
-                    prim_path="{ENV_REGEX_NS}/SkinAdhesiveApplicator",
-                    state="activated",
-                    usd_path=skin_adhesive_paths["applicator"],
-                )
-            )
-            env_cfg.scene.skin_adhesive_applicator.init_state.pos = (
-                dr_anmar_asset_landing("skin_adhesive_applicator")
-            )
-            env_cfg.scene.skin_adhesive_applicator.init_state.rot = (
-                0.70710678,
-                0.70710678,
-                0.0,
-                0.0,
-            )
-            env_cfg.scene.skin_adhesive_cap = make_skin_adhesive_cap_cfg(
-                prim_path="{ENV_REGEX_NS}/SkinAdhesiveCap",
-                usd_path=skin_adhesive_paths["cap"],
-            )
-            # Align the cap snap-axis frame with the applicator tip. It remains
-            # a separate rigid object so a PSM can remove and place it.
-            env_cfg.scene.skin_adhesive_cap.init_state.pos = dr_anmar_asset_landing(
-                "skin_adhesive_cap"
-            )
-            env_cfg.scene.skin_adhesive_cap.init_state.rot = (
-                0.70710678,
-                0.70710678,
-                0.0,
-                0.0,
-            )
-            env_cfg.scene.skin_adhesive_bead = make_skin_adhesive_bead_cfg(
-                prim_path="{ENV_REGEX_NS}/SkinAdhesiveBead",
-                state="fresh",
-                usd_path=skin_adhesive_paths["bead"],
-            )
-            # This is the package's explicit kinematic deposit/task state, not
-            # a liquid-flow simulation or an automatically generated dose.
-            env_cfg.scene.skin_adhesive_bead.init_state.pos = dr_anmar_asset_landing(
-                "skin_adhesive_bead"
             )
         if "dr_anmar_needle" in selected_bench_assets:
             env_cfg.scene.dr_anmar_standalone_needle = RigidObjectCfg(
@@ -5502,16 +5475,18 @@ def main() -> None:
             raise RuntimeError(
                 "The stapler test cell requires the authored Housing link"
             ) from exc
+    skin_adhesive_mounted_arm = 0
     skin_adhesive_articulation = (
-        scene.articulations.get("skin_adhesive_applicator")
+        robots[robot_names[skin_adhesive_mounted_arm]]
         if skin_adhesive_enabled
+        and len(robot_names) > skin_adhesive_mounted_arm
         else None
     )
     skin_adhesive_joint_indices: dict[str, int] = {}
     if skin_adhesive_enabled:
         if skin_adhesive_articulation is None:
             raise RuntimeError(
-                "The topical skin-adhesive system did not create its articulated applicator"
+                "The topical skin-adhesive end effector has no mounted PSM"
             )
         skin_adhesive_joint_names = list(
             skin_adhesive_articulation.joint_names
@@ -6031,16 +6006,29 @@ def main() -> None:
             if adjustable
             else np.zeros(3, dtype=np.float32)
         )
+        adhesive_tool_camera = bool(
+            skin_adhesive_enabled
+            and arm == skin_adhesive_mounted_arm
+        )
         eye = (
             tip
             - shaft
             * CANONICAL_PSM_GRIPPER_PROFILE.camera_backoff_m
             * zoom
             + lateral
-            * CANONICAL_PSM_GRIPPER_PROFILE.camera_lateral_offset_m
+            * (
+                CANONICAL_PSM_GRIPPER_PROFILE.camera_lateral_offset_m
+                + (0.035 if adhesive_tool_camera else 0.0)
+            )
             + mount_offset
         )
         aim = shaft
+        if adhesive_tool_camera:
+            # The applicator is wider and longer than the replaced forceps.
+            # Put its wrist camera outside the housing and converge on the
+            # dispensing end instead of looking through the mounted body.
+            aim = tip + shaft * 0.10 - eye
+            aim /= max(float(np.linalg.norm(aim)), 1e-6)
         if adjustable:
             aim = rotate_camera_vector(
                 aim,
@@ -6136,34 +6124,6 @@ def main() -> None:
         if tip_index is None:
             return None
         return robots[robot_name].data.body_pos_w[0, tip_index, :3].detach().cpu().numpy().astype(np.float32)
-
-    def tool_pose_tensor_for_arm(
-        arm: int,
-    ) -> tuple[torch.Tensor, torch.Tensor] | None:
-        if arm < 0 or arm >= len(robot_names):
-            return None
-        robot_name = robot_names[arm]
-        names = robot_body_names.get(robot_name, [])
-        tip_index = next(
-            (
-                names.index(candidate)
-                for candidate in (
-                    wrist_tip_name,
-                    "psm_tool_tip_link",
-                    "endo360_needle",
-                    "ecm_end_link",
-                )
-                if candidate in names
-            ),
-            None,
-        )
-        if tip_index is None:
-            return None
-        robot = robots[robot_name]
-        return (
-            robot.data.body_pos_w[0, tip_index, :3].detach(),
-            robot.data.body_quat_w[0, tip_index, :4].detach(),
-        )
 
     def native_gripper_contact_force(arm: int) -> float:
         names = [
@@ -6649,26 +6609,23 @@ def main() -> None:
             "right_paddle_deg": 0.0,
             "piston_travel_mm": 0.0,
             "workflow_state": (
-                "ready" if skin_adhesive_enabled else "disabled"
+                "mounted_ready" if skin_adhesive_enabled else "disabled"
             ),
-            "grasp_assist_active": False,
-            "grasp_mode": "guided_kinematic_grasp",
-            "holding_arm": None,
-            "grasp_error_mm": None,
-            "cap_state": (
-                "on_applicator" if skin_adhesive_enabled else "disabled"
+            "mounted_arm": (
+                skin_adhesive_mounted_arm + 1
+                if skin_adhesive_enabled
+                else None
             ),
-            "cap_rigid_body_ready": (
-                skin_adhesive_enabled
-                and "skin_adhesive_cap" in objects
-            ),
-            "bead_ready": (
-                skin_adhesive_enabled
-                and "skin_adhesive_bead" in objects
-            ),
-            "bead_state": "fresh" if skin_adhesive_enabled else "disabled",
+            "tool_type": "topical_skin_adhesive_end_effector",
+            "mount_type": "physx_fixed_joint",
+            "mount_joint": "skin_adhesive_mount_joint",
+            "pose_write_attachment": False,
+            "jaw_geometry_replaced": skin_adhesive_enabled,
+            "control_mapping": "activation_equals_one_minus_aperture",
+            "outlet_state": "exposed" if skin_adhesive_enabled else "disabled",
             "mechanism": "coordinated_dual_paddle_and_metering_piston",
-            "deposit_representation": "kinematic_task_state",
+            "deposit_representation": "none",
+            "material_release_model": "not_simulated",
             "fluid_solver": False,
             "curing_solver": False,
             "clinical_validation": False,
@@ -6907,80 +6864,6 @@ def main() -> None:
 
     initial_native_centroid: list[np.ndarray | None] = [native_tissue_centroid()]
 
-    skin_adhesive_hold_arm: int | None = None
-    skin_adhesive_tool_to_applicator_quat: torch.Tensor | None = None
-    skin_adhesive_cap_parked = False
-
-    def park_skin_adhesive_cap() -> None:
-        nonlocal skin_adhesive_cap_parked
-
-        cap = objects.get("skin_adhesive_cap")
-        if cap is None:
-            return
-        pose = cap.data.root_pose_w.clone()
-        pose[0, :3] = torch.tensor(
-            (0.025, 0.065, 0.018),
-            dtype=pose.dtype,
-            device=pose.device,
-        )
-        cap.write_root_pose_to_sim(pose)
-        cap.write_root_velocity_to_sim(
-            torch.zeros_like(cap.data.root_vel_w)
-        )
-        skin_adhesive_cap_parked = True
-
-    def update_skin_adhesive_grasp_assist(
-        *,
-        initialize: bool = False,
-    ) -> float | None:
-        nonlocal skin_adhesive_tool_to_applicator_quat
-
-        if (
-            skin_adhesive_hold_arm is None
-            or skin_adhesive_articulation is None
-        ):
-            return None
-        tool_pose = tool_pose_tensor_for_arm(skin_adhesive_hold_arm)
-        if tool_pose is None:
-            return None
-        tool_position, tool_quaternion = tool_pose
-        root_pose = skin_adhesive_articulation.data.root_pose_w.clone()
-        if initialize or skin_adhesive_tool_to_applicator_quat is None:
-            skin_adhesive_tool_to_applicator_quat = quat_mul(
-                quat_conjugate(tool_quaternion.unsqueeze(0)),
-                root_pose[0, 3:7].unsqueeze(0),
-            )[0].detach().clone()
-        applicator_quaternion = quat_mul(
-            tool_quaternion.unsqueeze(0),
-            skin_adhesive_tool_to_applicator_quat.unsqueeze(0),
-        )[0]
-        body_grasp_local = torch.tensor(
-            (-0.041, 0.0, 0.0),
-            dtype=root_pose.dtype,
-            device=root_pose.device,
-        )
-        body_grasp_offset_world = quat_apply(
-            applicator_quaternion.unsqueeze(0),
-            body_grasp_local.unsqueeze(0),
-        )[0]
-        root_pose[0, :3] = tool_position - body_grasp_offset_world
-        root_pose[0, 3:7] = applicator_quaternion
-        skin_adhesive_articulation.write_root_pose_to_sim(root_pose)
-        skin_adhesive_articulation.write_root_velocity_to_sim(
-            torch.zeros_like(
-                skin_adhesive_articulation.data.root_vel_w
-            )
-        )
-        held_grasp_position = (
-            root_pose[0, :3] + body_grasp_offset_world
-        )
-        return float(
-            torch.linalg.vector_norm(
-                held_grasp_position - tool_position
-            ).item()
-            * 1000.0
-        )
-
     stapler_placement_longitudinal_m: dict[int, float] = {}
 
     def stapler_closure_payload() -> dict[str, Any]:
@@ -7147,18 +7030,11 @@ def main() -> None:
         nonlocal stapler_last_placement
         nonlocal stapler_fixture_position_w
         nonlocal stapler_fixture_quaternion_w
-        nonlocal skin_adhesive_hold_arm
-        nonlocal skin_adhesive_tool_to_applicator_quat
-        nonlocal skin_adhesive_cap_parked
-
         native_grasp_arms.clear()
         update_procedure_waypoint_marker(0, force=True)
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
-        skin_adhesive_hold_arm = None
-        skin_adhesive_tool_to_applicator_quat = None
-        skin_adhesive_cap_parked = False
         if stapler_test_cell_enabled:
             if suture_stage.GetPrimAtPath(
                 stapler_visual_root_path
@@ -7249,7 +7125,6 @@ def main() -> None:
             state.native_grasp_contact_active = [False] * state.arms
             state.gripper_apertures = [1.0] * state.arms
             state.grippers_open = [True] * state.arms
-            state.skin_adhesive_use_request = None
             state.disable_hand_motion()
             state.tool_to_object_distance_m = [None] * state.arms
             state.tool_to_object_offset_m = [None] * state.arms
@@ -7265,11 +7140,10 @@ def main() -> None:
                 state.skin_adhesive_target = 0.0
                 state.skin_adhesive_system.update(
                     {
-                        "workflow_state": "ready",
-                        "grasp_assist_active": False,
-                        "holding_arm": None,
-                        "grasp_error_mm": None,
-                        "cap_state": "on_applicator",
+                        "workflow_state": "mounted_ready",
+                        "mounted_arm": skin_adhesive_mounted_arm + 1,
+                        "target_activation": 0.0,
+                        "actual_activation": 0.0,
                     }
                 )
             if stapler_test_cell_enabled:
@@ -7387,9 +7261,6 @@ def main() -> None:
             stapler_station_request = state.stapler_station_request
             state.stapler_station_request = None
             stapler_manual_target_deg = state.stapler_manual_target_deg
-            skin_adhesive_target = state.skin_adhesive_target
-            skin_adhesive_use_request = state.skin_adhesive_use_request
-            state.skin_adhesive_use_request = None
             scenario_id = state.scenario_id
             scenario_seed = state.scenario_seed
             camera_view_request = state.camera_view_request
@@ -7457,34 +7328,6 @@ def main() -> None:
         if reset_requested:
             with torch.inference_mode():
                 reset_environment(scenario_id, scenario_seed)
-
-        if skin_adhesive_use_request is not None:
-            skin_adhesive_hold_arm = skin_adhesive_use_request
-            skin_adhesive_tool_to_applicator_quat = None
-            with torch.inference_mode():
-                grasp_error_mm = update_skin_adhesive_grasp_assist(
-                    initialize=True
-                )
-                park_skin_adhesive_cap()
-            with state.lock:
-                state.skin_adhesive_system.update(
-                    {
-                        "workflow_state": "held_uncapped",
-                        "grasp_assist_active": True,
-                        "holding_arm": skin_adhesive_hold_arm + 1,
-                        "grasp_error_mm": (
-                            round(grasp_error_mm, 4)
-                            if grasp_error_mm is not None
-                            else None
-                        ),
-                        "cap_state": "removed",
-                    }
-                )
-                state.coaching_cue = (
-                    f"Instrument {skin_adhesive_hold_arm + 1} is holding "
-                    "the uncapped adhesive. Move that instrument to guide "
-                    "the applicator tip."
-                )
 
         stapler_target_deg = 0.0
         stapler_cycle_phase = "disabled"
@@ -7645,15 +7488,6 @@ def main() -> None:
                     device=stapler_device,
                 ),
                 joint_ids=[stapler_pusher_joint_index],
-            )
-
-        if (
-            skin_adhesive_enabled
-            and skin_adhesive_articulation is not None
-        ):
-            set_skin_adhesive_activation_target(
-                skin_adhesive_articulation,
-                skin_adhesive_target,
             )
 
         if expert_request == "start":
@@ -8013,21 +7847,33 @@ def main() -> None:
         if state.has_grippers:
             for arm, aperture in enumerate(gripper_apertures):
                 action_np[state.gripper_action_index(arm)] = proportional_gripper_action(aperture)
-            if skin_adhesive_hold_arm is not None:
+
+        skin_adhesive_target = 0.0
+        if (
+            skin_adhesive_enabled
+            and skin_adhesive_articulation is not None
+            and state.has_grippers
+        ):
+            adhesive_gripper_action = float(
                 action_np[
                     state.gripper_action_index(
-                        skin_adhesive_hold_arm
+                        skin_adhesive_mounted_arm
                     )
-                ] = -1.0
-                grippers_open[skin_adhesive_hold_arm] = False
-                gripper_apertures[skin_adhesive_hold_arm] = 0.0
-                with state.lock:
-                    state.grippers_open[
-                        skin_adhesive_hold_arm
-                    ] = False
-                    state.gripper_apertures[
-                        skin_adhesive_hold_arm
-                    ] = 0.0
+                ]
+            )
+            skin_adhesive_target = float(
+                np.clip(
+                    (1.0 - adhesive_gripper_action) * 0.5,
+                    0.0,
+                    1.0,
+                )
+            )
+            set_skin_adhesive_activation_target(
+                skin_adhesive_articulation,
+                skin_adhesive_target,
+            )
+            with state.lock:
+                state.skin_adhesive_target = skin_adhesive_target
 
         if _softmimicgen_task and not action_uses_upstream_softmimicgen_units:
             # NVIDIA's released task accepts small metric deltas directly and
@@ -8043,25 +7889,7 @@ def main() -> None:
         grasp_distances: list[float | None] = [None] * state.arms
         grasp_offsets: list[list[float] | None] = [None] * state.arms
         grasp_target_position = None
-        if (
-            skin_adhesive_hold_arm is not None
-            and skin_adhesive_articulation is not None
-        ):
-            adhesive_root_pose = (
-                skin_adhesive_articulation.data.root_pose_w[0]
-            )
-            adhesive_grasp_offset = quat_apply(
-                adhesive_root_pose[3:7].unsqueeze(0),
-                torch.tensor(
-                    [[-0.041, 0.0, 0.0]],
-                    dtype=adhesive_root_pose.dtype,
-                    device=adhesive_root_pose.device,
-                ),
-            )[0]
-            grasp_target_position = (
-                adhesive_root_pose[:3] + adhesive_grasp_offset
-            ).detach().cpu().numpy().astype(np.float32)
-        elif bimanual_softmimicgen and "suture_needle" in objects:
+        if bimanual_softmimicgen and "suture_needle" in objects:
             grasp_target_position = (
                 objects["suture_needle"].data.root_pos_w[0, :3]
                 .detach().cpu().numpy().astype(np.float32)
@@ -8184,31 +8012,6 @@ def main() -> None:
                 )
             write_native_attachment()
             _observations, reward, terminated, truncated, info = env.step(actions)
-            skin_adhesive_grasp_error_mm = (
-                update_skin_adhesive_grasp_assist()
-            )
-            if skin_adhesive_grasp_error_mm is not None:
-                with state.lock:
-                    state.skin_adhesive_system.update(
-                        {
-                            "workflow_state": "held_uncapped",
-                            "grasp_assist_active": True,
-                            "holding_arm": (
-                                skin_adhesive_hold_arm + 1
-                                if skin_adhesive_hold_arm is not None
-                                else None
-                            ),
-                            "grasp_error_mm": round(
-                                skin_adhesive_grasp_error_mm,
-                                4,
-                            ),
-                            "cap_state": (
-                                "removed"
-                                if skin_adhesive_cap_parked
-                                else "removing"
-                            ),
-                        }
-                    )
             if (
                 stapler_articulation is not None
                 and stapler_housing_body_index is not None
@@ -8581,6 +8384,11 @@ def main() -> None:
             with state.lock:
                 state.skin_adhesive_system.update(
                     {
+                        "workflow_state": (
+                            "dispensing"
+                            if skin_adhesive_target > 0.001
+                            else "mounted_ready"
+                        ),
                         "target_activation": round(
                             skin_adhesive_target,
                             6,
