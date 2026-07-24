@@ -26,16 +26,20 @@ active controller sends a stop. A stopped gamepad cannot resume until its sticks
 
 ## Bimanual webcam control
 
-Open **Hand control** in the live operating room and allow camera access. The physical left hand owns Instrument 1
-and the physical right hand owns Instrument 2. Thumb–index spacing is the only gesture:
+Open **Webcam view** in the live operating room and allow camera access. The physical left hand owns Instrument 1
+and the physical right hand owns Instrument 2:
 
 - touching thumb and index closes that instrument's jaws;
 - opening thumb and index opens the jaws by the same calibrated proportion;
-- no middle, ring, or little-finger gesture controls the robot.
+- pointing the index finger down with the other fingers tucked engages that
+  instrument's motion clutch after a short stable hold;
+- relaxing the point freezes immediately so the hand can be recentered.
 
-Use **Engage** and **Freeze** for motion. Engagement captures a fresh pose anchor. While engaged, hand translation
-controls depth, lateral movement, and height; palm orientation controls roll, pitch, and yaw. Freeze holds the robot
-where it is and lets the operator recenter the hand without a jump. Each arm can be engaged or frozen independently.
+Engagement captures a fresh pose anchor. While engaged, hand translation controls depth, lateral movement, and
+height; palm orientation controls roll, pitch, and yaw. Deliberate movement expands to the full bounded workspace.
+Moving the index fingertip to the bottom **TABLE REACH** line requests the safe downward endpoint so native contact can
+settle the instrument onto the table. **Engage** and **Freeze** remain available as explicit controls, and each arm can
+be engaged or frozen independently.
 
 The first use of each browser camera runs a numeric calibration for neutral palm scale, closed thumb–index spacing,
 and comfortable open spacing. Only those numbers are stored in that browser. Video frames and raw landmarks remain

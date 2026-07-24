@@ -14,9 +14,12 @@ const MIN_TRACKING_QUALITY = 0.60;
 const MIN_INFERENCE_INTERVAL_MS = 24;
 const PREDICTION_HORIZON_S = 0.025;
 const LOCAL_WEBCAM_ORIGIN = "http://127.0.0.1:12360";
-const CLUTCH_ENGAGE_SCORE = 0.34;
-const CLUTCH_RELEASE_SCORE = 0.18;
-const CLUTCH_ENGAGE_HOLD_S = 0.25;
+const CLUTCH_ENGAGE_SCORE = 0.72;
+const CLUTCH_RELEASE_SCORE = 0.48;
+const CLUTCH_ENGAGE_HOLD_S = 0.18;
+const TABLE_CONTACT_LINE_Y = 0.92;
+const MAX_TRANSLATION_M = 0.12;
+const MAX_ROTATION_RAD = 0.80;
 
 export const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 
@@ -201,14 +204,76 @@ export function fingerFlexionScore(landmarks, indices) {
   return clamp((1 - meanDirectionCosine) / 0.70, 0, 1);
 }
 
-export function naturalClutchScore(landmarks) {
-  const scores = [
-    fingerFlexionScore(landmarks, [9, 10, 11, 12]),
-    fingerFlexionScore(landmarks, [13, 14, 15, 16]),
-    fingerFlexionScore(landmarks, [17, 18, 19, 20]),
-  ].sort((left, right) => right - left);
-  // Two-of-three consensus tolerates one partially occluded finger.
-  return scores[1] || 0;
+export function downwardPointingClutchScore(imageLandmarks, worldLandmarks = null) {
+  if (!imageLandmarks || imageLandmarks.length < 21) return 0;
+  const geometryLandmarks = worldLandmarks?.length === 21 ? worldLandmarks : imageLandmarks;
+  const indexMcp = imageLandmarks[5];
+  const indexTip = imageLandmarks[8];
+  const indexDirection = subtract(indexTip, indexMcp);
+  const indexLength = Math.hypot(indexDirection[0], indexDirection[1]);
+  if (!Number.isFinite(indexLength) || indexLength < 1e-6) return 0;
+
+  let imageScale = 0;
+  try {
+    imageScale = palmFrame(imageLandmarks).scale;
+  } catch (_error) {
+    return 0;
+  }
+  const indexFlexion = fingerFlexionScore(geometryLandmarks, [5, 6, 7, 8]);
+  const restingFingerCurl = [
+    fingerFlexionScore(geometryLandmarks, [9, 10, 11, 12]),
+    fingerFlexionScore(geometryLandmarks, [13, 14, 15, 16]),
+    fingerFlexionScore(geometryLandmarks, [17, 18, 19, 20]),
+  ].sort((left, right) => right - left)[1] || 0;
+  const restingTipY = median([12, 16, 20].map(index => imageLandmarks[index].y));
+  const directionScore = clamp((indexDirection[1] / indexLength - 0.42) / 0.46, 0, 1);
+  const extensionScore = clamp((0.40 - indexFlexion) / 0.30, 0, 1);
+  const lengthScore = clamp((indexLength / Math.max(imageScale, 1e-6) - 0.65) / 0.70, 0, 1);
+  const tipLeadScore = clamp(
+    ((indexTip.y - restingTipY) / Math.max(imageScale, 1e-6) - 0.10) / 0.75,
+    0,
+    1,
+  );
+  const restingFingerScore = clamp((restingFingerCurl - 0.16) / 0.38, 0, 1);
+  const pointingCore = (
+    0.36 * directionScore
+    + 0.25 * extensionScore
+    + 0.18 * lengthScore
+    + 0.21 * tipLeadScore
+  );
+  // Tucked resting fingers distinguish an intentional one-finger point from
+  // an open palm, while retaining tolerance for one partially occluded finger.
+  return clamp(pointingCore * (0.48 + 0.52 * restingFingerScore), 0, 1);
+}
+
+function smoothStep01(value) {
+  const bounded = clamp(Number(value) || 0, 0, 1);
+  return bounded * bounded * (3 - 2 * bounded);
+}
+
+export function tableReachProgress(
+  indexTipY,
+  anchorIndexTipY,
+  contactLineY = TABLE_CONTACT_LINE_Y,
+) {
+  const tip = Number(indexTipY);
+  const anchor = Number(anchorIndexTipY);
+  const contact = Number(contactLineY);
+  if (![tip, anchor, contact].every(Number.isFinite) || contact <= anchor + 1e-4) return 0;
+  return smoothStep01((tip - anchor) / (contact - anchor));
+}
+
+export function longRangeTranslation(
+  translation,
+  motionGain,
+  tableProgress = 0,
+  takeUp = 1,
+) {
+  const gain = Math.max(0, Number(motionGain) || 0) * clamp(Number(takeUp) || 0, 0, 1);
+  const axisReach = [0.92, 1.08, 1.18];
+  const mapped = translation.map((value, index) => Number(value) * gain * axisReach[index]);
+  mapped[2] = Math.min(mapped[2], -MAX_TRANSLATION_M * smoothStep01(tableProgress) * takeUp);
+  return mapped.map(value => clamp(value, -MAX_TRANSLATION_M, MAX_TRANSLATION_M));
 }
 
 export function orientationCompensatedPalmScale(imageLandmarks, worldLandmarks) {
@@ -247,8 +312,8 @@ export function adaptiveMotionGain(offsetMagnitudeM, precision = true) {
   const normalized = clamp((Number(offsetMagnitudeM) - 0.0015) / 0.028, 0, 1);
   const smooth = normalized * normalized * (3 - 2 * normalized);
   return precision
-    ? 0.22 + 0.50 * smooth
-    : 0.36 + 0.78 * smooth;
+    ? 0.26 + 0.86 * smooth
+    : 0.42 + 1.18 * smooth;
 }
 
 export function smoothVector(previous, current, alpha = 0.35) {
@@ -432,9 +497,10 @@ function createInterface() {
     .hand-control-launch kbd{height:18px;min-width:30px;padding:0 4px;font-size:8px}
     .hand-panel{box-sizing:border-box;container-type:inline-size;position:fixed;z-index:70;right:18px;bottom:18px;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 12px));min-height:min(260px,calc(100vh - 12px));max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);resize:none;overflow:auto;border:1px solid #2f5968;border-radius:14px;background:#07151df2;color:#e9f8fa;box-shadow:0 18px 52px #000b;backdrop-filter:blur(16px);padding:12px}
     .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:8px;cursor:grab;touch-action:none;user-select:none}.hand-head.dragging{cursor:grabbing}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:11px}.hand-head .spacer{flex:1}.hand-head-actions{display:flex;gap:5px}.hand-head button{min-height:32px;padding:5px 8px;cursor:pointer;touch-action:auto;font-size:10px}.hand-head button.engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
-    .hand-video-wrap{position:relative;margin-top:12px;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:#020608;border:1px solid #24404d}.hand-video-wrap video,.hand-video-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.hand-video-wrap canvas{transform:none;pointer-events:none}
-    .hand-banner{box-sizing:border-box;position:absolute;left:10px;top:10px;max-width:62%;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px/1.35 ui-monospace,SFMono-Regular;white-space:normal}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
-    .hand-metrics{position:absolute;right:10px;top:10px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:72%}.hand-metrics span{padding:5px 7px;border-radius:6px;background:#07151ddd;border:1px solid #264653;color:#9db6bf;font:700 9px ui-monospace,SFMono-Regular}
+    .hand-video-wrap{position:relative;margin-top:12px;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:#020608;border:1px solid #24404d}.hand-video-wrap video,.hand-video-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.hand-video-wrap canvas{z-index:1;transform:none;pointer-events:none}
+    .hand-banner{box-sizing:border-box;position:absolute;z-index:3;left:10px;top:10px;max-width:62%;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px/1.35 ui-monospace,SFMono-Regular;white-space:normal}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
+    .hand-metrics{position:absolute;z-index:3;right:10px;top:10px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:72%}.hand-metrics span{padding:5px 7px;border-radius:6px;background:#07151ddd;border:1px solid #264653;color:#9db6bf;font:700 9px ui-monospace,SFMono-Regular}
+    .hand-surface-guide{position:absolute;z-index:2;left:0;right:0;bottom:0;height:8%;display:flex;align-items:flex-end;justify-content:space-between;padding:0 10px 7px;box-sizing:border-box;border-top:1px dashed #66828b99;background:linear-gradient(180deg,transparent,#07151d99);color:#91aab2;pointer-events:none;transition:border-color 140ms ease,background 140ms ease,color 140ms ease,box-shadow 140ms ease}.hand-surface-guide span,.hand-surface-guide b{padding:3px 6px;border-radius:5px;background:#07151ddd;font:800 8px/1 ui-monospace,SFMono-Regular;letter-spacing:.04em}.hand-surface-guide b{color:#c5d6da}.hand-surface-guide.pointing{border-color:#2cd2e8cc;color:#7fefff;background:linear-gradient(180deg,transparent,#08313a99);box-shadow:0 -14px 28px #2cd2e811}.hand-surface-guide.engaged{border-color:#42e49b;color:#8ef0bd;background:linear-gradient(180deg,transparent,#0a352799);box-shadow:0 -22px 38px #42e49b16}.hand-surface-guide.contact{border-top-style:solid;border-color:#f4d27a;color:#ffe8a8;background:linear-gradient(180deg,transparent,#4b371699);box-shadow:0 -32px 48px #e5b83b24}.hand-surface-guide.contact b{color:#ffe8a8}
     .hand-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}.hand-actions button{min-width:0;min-height:36px;padding:6px;font-size:10px}.hand-actions .engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
     .hand-cards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.hand-card{padding:8px;border:1px solid #24404d;border-radius:9px;background:#091920}.hand-card.inactive{opacity:.62}.hand-card.quality-hold{border-color:#82513d;background:#1b1412}.hand-card header{height:auto;padding:0;border:0;background:none}.hand-card b{font-size:11px}.hand-card .track{margin-left:auto;color:#ff8a90;font:800 8px ui-monospace}.hand-card.tracked .track{color:#42e49b}.hand-card dl{display:grid;grid-template-columns:auto 1fr;margin:7px 0 0;gap:3px 7px;font:9px ui-monospace,SFMono-Regular}.hand-card dt{color:#71929d}.hand-card dd{margin:0;text-align:right}.hand-card button{width:100%;margin-top:7px;min-height:30px}
     .hand-advanced.hidden{display:none}
@@ -466,13 +532,13 @@ function createInterface() {
   panel.className = "hand-panel hidden";
   panel.setAttribute("aria-label", "Webcam hand control");
   panel.innerHTML = `
-    <div class="hand-head"><div><h2>Two-finger surgical control</h2><p>Drag this bar · resize from the corner</p></div><div class="spacer"></div><div class="hand-head-actions"><button id="handPanelReset" aria-label="Reset webcam window position and size">Fit</button><button id="handControlsToggle" aria-controls="handAdvanced" aria-expanded="false">Controls</button><button id="handClose" data-shortcut="CAM">Close</button></div></div>
-    <div class="hand-video-wrap"><video id="handVideo" playsinline muted></video><canvas id="handOverlay"></canvas><div id="handBanner" class="hand-banner">Camera off</div><div class="hand-metrics"><span id="handRate">0 Hz</span><span id="handInference">— ms vision</span><span id="handLatency">— ms loop</span></div></div>
+    <div class="hand-head"><div><h2>Point-down surgical control</h2><p>Index ↓ to move · fingertip to table line</p></div><div class="spacer"></div><div class="hand-head-actions"><button id="handPanelReset" aria-label="Reset webcam window position and size">Fit</button><button id="handControlsToggle" aria-controls="handAdvanced" aria-expanded="false">Controls</button><button id="handClose" data-shortcut="CAM">Close</button></div></div>
+    <div class="hand-video-wrap"><video id="handVideo" playsinline muted></video><canvas id="handOverlay"></canvas><div id="handBanner" class="hand-banner">Camera off</div><div class="hand-metrics"><span id="handRate">0 Hz</span><span id="handInference">— ms vision</span><span id="handLatency">— ms loop</span></div><div id="handSurfaceGuide" class="hand-surface-guide"><span>POINT INDEX ↓</span><b>TABLE REACH</b></div></div>
     <div id="handAdvanced" class="hand-advanced hidden">
       <div class="hand-actions"><button id="handStart" data-shortcut="CAM">Start camera</button><button id="handFreezeAll" data-shortcut="FREEZE">Freeze hand</button><button id="handEngageAll" data-shortcut="ENGAGE">Engage hand</button><button id="handPrecision" class="engaged" data-shortcut="PRECISION">Precision on</button><button id="handRecalibrate" data-shortcut="CAL">Recalibrate</button><button id="handMode">One hand ready</button></div>
       <div class="hand-cards">
-        <article id="handCard0" class="hand-card"><header><b>Left hand · Instrument 1</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Frozen</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="0" data-shortcut="L CAM">Engage left</button></article>
-        <article id="handCard1" class="hand-card"><header><b>Right hand · Instrument 2</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Frozen</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="1" data-shortcut="R CAM">Engage right</button></article>
+        <article id="handCard0" class="hand-card"><header><b>Left hand · Instrument 1</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Point index ↓</dd><dt>Table reach</dt><dd data-field="table">0%</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="0" data-shortcut="L CAM">Engage left</button></article>
+        <article id="handCard1" class="hand-card"><header><b>Right hand · Instrument 2</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Point index ↓</dd><dt>Table reach</dt><dd data-field="table">0%</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="1" data-shortcut="R CAM">Engage right</button></article>
       </div>
       <div id="handCalibration" class="hand-calibration hidden"><b id="handCalibrationTitle">Camera calibration</b><p id="handCalibrationText"></p><progress id="handCalibrationProgress" max="${CALIBRATION_SAMPLE_COUNT}" value="0"></progress><button id="handCalibrationCapture" data-shortcut="CAL">Capture stable sample</button></div>
       <p class="hand-privacy">Only calibrated numeric pose commands leave this browser. Webcam frames and raw landmarks are never uploaded or recorded. Single-camera depth is relative, not metric or clinical-grade.</p>
@@ -527,7 +593,7 @@ class HandController {
     this.automaticSecondHandSuppressed = false;
     this.automaticSecondHandStarting = false;
     this.secondHandAdmissionArmed = false;
-    this.secondHandCurlSince = null;
+    this.secondHandPointSince = null;
     this.provisionalCalibration = [null, null];
     this.autoEngagePending = false;
     this.autoEngageTimer = null;
@@ -544,6 +610,7 @@ class HandController {
       new OneEuroFilter({ minCutoff: 2.4, beta: 0.18 }),
     ];
     this.rawOffsets = [null, null];
+    this.tableReach = [0, 0];
     this.currentCommands = [this.emptyCommand(0), this.emptyCommand(1)];
     this.lastAperture = [1, 1];
     this.calibration = null;
@@ -911,13 +978,13 @@ class HandController {
       this.automaticSecondHandSuppressed = !automatic;
       this.secondHandVisibleSince = null;
       this.secondHandAdmissionArmed = false;
-      this.secondHandCurlSince = null;
+      this.secondHandPointSince = null;
       this.singleHandTriedAt = performance.now() / 1000;
       const selectedArm = this.bestTrackedArm() ?? this.primaryArm ?? 0;
       this.selectPrimaryArm(selectedArm);
       this.freezeAll(false);
       this.autoEngagePending = false;
-      this.setBanner("One-hand mode · curl the resting fingers to move", "good");
+      this.setBanner("One-hand mode · point the index finger down to move", "good");
       this.renderCards();
       return;
     }
@@ -939,7 +1006,7 @@ class HandController {
       return;
     }
     this.autoEngagePending = false;
-    this.setBanner("Two-hand mode · curl each hand to move it", "good");
+    this.setBanner("Two-hand mode · point each index finger down to move", "good");
     this.renderCards();
   }
 
@@ -954,7 +1021,7 @@ class HandController {
     ) {
       this.secondHandVisibleSince = null;
       this.secondHandAdmissionArmed = false;
-      this.secondHandCurlSince = null;
+      this.secondHandPointSince = null;
       return;
     }
     const secondArm = this.primaryArm === 0 ? 1 : 0;
@@ -964,7 +1031,7 @@ class HandController {
     if (!secondPose) {
       this.secondHandVisibleSince = null;
       this.secondHandAdmissionArmed = false;
-      this.secondHandCurlSince = null;
+      this.secondHandPointSince = null;
       if (timestampSeconds >= eligibleAt) {
         this.setBanner(
           `One-hand active · show an open ${secondArm === 0 ? "left" : "right"} hand to add it`,
@@ -993,7 +1060,7 @@ class HandController {
       if (this.secondHandVisibleSince === null) this.secondHandVisibleSince = timestampSeconds;
       if (timestampSeconds - this.secondHandVisibleSince >= 0.45) {
         this.secondHandAdmissionArmed = true;
-        this.secondHandCurlSince = null;
+        this.secondHandPointSince = null;
       }
     }
     if (!this.secondHandAdmissionArmed) {
@@ -1004,20 +1071,20 @@ class HandController {
       return;
     }
     if (secondPose.clutchScore < CLUTCH_ENGAGE_SCORE) {
-      this.secondHandCurlSince = null;
+      this.secondHandPointSince = null;
       this.setBanner(
-        `Instrument ${secondArm + 1} ready · curl the resting fingers to add it`,
+        `Instrument ${secondArm + 1} ready · point its index finger down to add it`,
         "good",
       );
       return;
     }
-    if (this.secondHandCurlSince === null) this.secondHandCurlSince = timestampSeconds;
-    const curlHoldSeconds = timestampSeconds - this.secondHandCurlSince;
-    if (curlHoldSeconds >= CLUTCH_ENGAGE_HOLD_S) {
+    if (this.secondHandPointSince === null) this.secondHandPointSince = timestampSeconds;
+    const pointHoldSeconds = timestampSeconds - this.secondHandPointSince;
+    if (pointHoldSeconds >= CLUTCH_ENGAGE_HOLD_S) {
       this.automaticSecondHandStarting = true;
       this.secondHandVisibleSince = null;
       this.secondHandAdmissionArmed = false;
-      this.secondHandCurlSince = null;
+      this.secondHandPointSince = null;
       this.toggleControlMode({ automatic: true });
     }
   }
@@ -1141,7 +1208,7 @@ class HandController {
       await this.setServerEnabled(true);
       if (this.calibration) {
         this.autoEngagePending = false;
-        this.setBanner("Open hand freezes · curl the resting fingers to move", "good");
+        this.setBanner("Point index down to move · relax the point to freeze", "good");
       } else {
         this.beginCalibration();
       }
@@ -1412,7 +1479,7 @@ class HandController {
     localStorage.setItem(this.calibrationKey, JSON.stringify(calibration));
     this.panel.querySelector("#handCalibration").classList.add("hidden");
     this.autoEngagePending = false;
-    this.setBanner("Calibration saved · curl the resting fingers to move", "good");
+    this.setBanner("Calibration saved · point the index finger down to move", "good");
   }
 
   poseFromLandmarks(landmarks, worldLandmarks, confidence) {
@@ -1429,9 +1496,11 @@ class HandController {
       hasWorldLandmarks ? worldLandmarks : null,
     );
     pose.pinchRatio = distance3(landmarks[4], landmarks[8]) / Math.max(imagePose.scale, 1e-6);
-    pose.clutchScore = naturalClutchScore(
-      hasWorldLandmarks ? worldLandmarks : landmarks,
+    pose.clutchScore = downwardPointingClutchScore(
+      landmarks,
+      hasWorldLandmarks ? worldLandmarks : null,
     );
+    pose.indexTipY = landmarks[8].y;
     pose.landmarks = landmarks;
     pose.confidence = confidence;
     return pose;
@@ -1545,13 +1614,13 @@ class HandController {
     this.lastPoseTimestamp = timestampSeconds;
     this.poses = next;
     this.poseDiagnostics = diagnostics;
-    this.updateNaturalClutch(timestampSeconds);
+    this.updatePointDownClutch(timestampSeconds);
     this.updateCommands(timestampSeconds);
     this.renderCards();
     this.maybeAddSecondHandAutomatically(timestampSeconds);
   }
 
-  updateNaturalClutch(timestampSeconds) {
+  updatePointDownClutch(timestampSeconds) {
     if (this.calibrationActive) return;
     if (this.controlMode === "single" && this.primaryArm === null) {
       const arm = this.bestTrackedArm();
@@ -1622,6 +1691,8 @@ class HandController {
         1.3,
       );
       const rawOffset = poseOffset(anchor, pose, 1);
+      const surfaceProgress = tableReachProgress(pose.indexTipY, anchor.indexTipY);
+      this.tableReach[arm] = surfaceProgress;
       const translationMagnitude = Math.hypot(...rawOffset.translation);
       const rotationMagnitude = Math.hypot(...rawOffset.rotation);
       const translationGain = (
@@ -1640,8 +1711,11 @@ class HandController {
       );
       const takeUp = takeUpProgress * takeUpProgress * (3 - 2 * takeUpProgress);
       offset = {
-        translation: rawOffset.translation.map(
-          (value, index) => value * translationGain * takeUp * (index === 0 ? 0.72 : 1),
+        translation: longRangeTranslation(
+          rawOffset.translation,
+          translationGain,
+          surfaceProgress,
+          takeUp,
         ),
         rotation: rawOffset.rotation.map(value => value * rotationGain * takeUp),
       };
@@ -1656,9 +1730,15 @@ class HandController {
       const conditioned = conditionPoseVector(predicted);
       const filtered = this.poseFilters[arm].filter(conditioned, timestampSeconds);
       offset = {
-        translation: filtered.slice(0, 3),
-        rotation: filtered.slice(3, 6),
+        translation: filtered.slice(0, 3).map(
+          value => clamp(value, -MAX_TRANSLATION_M, MAX_TRANSLATION_M),
+        ),
+        rotation: filtered.slice(3, 6).map(
+          value => clamp(value, -MAX_ROTATION_RAD, MAX_ROTATION_RAD),
+        ),
       };
+    } else {
+      this.tableReach[arm] = 0;
     }
     return {
       arm,
@@ -1753,7 +1833,7 @@ class HandController {
       && this.engaged.some(Boolean)
     ) {
       this.freezeAll(false);
-      this.setBanner("Operative view changed · open then curl to re-anchor", "warn");
+      this.setBanner("Operative view changed · relax, then point down to re-anchor", "warn");
     }
     if (Number.isInteger(controlFrameRevision)) {
       this.cameraControlFrameRevision = controlFrameRevision;
@@ -1814,7 +1894,7 @@ class HandController {
       if (this.reacquire[arm]) {
         this.setBanner(
           automatic
-            ? "Open the resting fingers once, then curl again"
+            ? "Relax the pointing finger once, then point down again"
             : "Hold that hand still and click Engage again",
           "warn",
         );
@@ -1826,6 +1906,7 @@ class HandController {
       scale: pose.scale,
       depthScale: pose.depthScale,
       basis: pose.basis.map(axis => [...axis]),
+      indexTipY: pose.indexTipY,
       engagedAt: pose.timestampSeconds,
     });
     this.resetMotionFilter(arm);
@@ -1836,13 +1917,14 @@ class HandController {
       this.singleHandTried = true;
       this.renderModeControl();
     }
-    this.setBanner(`Instrument ${arm + 1} engaged`, "good");
+    this.setBanner(`Instrument ${arm + 1} long-range clutch engaged`, "good");
     this.renderCards();
   }
 
   freezeArm(arm, { automatic = false } = {}) {
     this.engaged[arm] = false;
     this.anchors.delete(arm);
+    this.tableReach[arm] = 0;
     this.clutchReadySince[arm] = null;
     this.resetMotionFilter(arm);
     this.currentCommands[arm] = {
@@ -1893,6 +1975,7 @@ class HandController {
         scale: pose.scale,
         depthScale: pose.depthScale,
         basis: pose.basis.map(axis => [...axis]),
+        indexTipY: pose.indexTipY,
         engagedAt: pose.timestampSeconds,
       });
       this.resetMotionFilter(arm);
@@ -1960,6 +2043,7 @@ class HandController {
     this.anchors.clear();
     for (const arm of [0, 1]) {
       this.clutchReadySince[arm] = null;
+      this.tableReach[arm] = 0;
       this.resetMotionFilter(arm);
       this.currentCommands[arm] = {
         ...this.commandForArm(arm),
@@ -1999,7 +2083,16 @@ class HandController {
             ? "Motion enabled"
             : this.serverSafety[arm]?.replaceAll("_", " ") || "Frozen";
       card.querySelector('[data-field="safety"]').textContent = safety;
-      card.querySelector('[data-field="clutch"]').textContent = enabled && this.engaged[arm] ? "Engaged" : "Frozen";
+      const clutchScore = clamp(Number(pose?.clutchScore) || 0, 0, 1);
+      card.querySelector('[data-field="clutch"]').textContent = !enabled
+        ? "Inactive"
+        : this.engaged[arm]
+          ? "Long-range on"
+          : clutchScore >= CLUTCH_ENGAGE_SCORE
+            ? "Hold point ↓"
+            : "Point index ↓";
+      card.querySelector('[data-field="table"]').textContent =
+        `${Math.round(this.tableReach[arm] * 100)}%`;
       card.querySelector('[data-field="xyz"]').textContent = command.translation_offset_m.map(value => Math.round(value * 1000)).join(" · ");
       card.querySelector('[data-field="rpy"]').textContent = command.rotation_vector_rad.map(value => Math.round(value * 180 / Math.PI)).join(" · ");
       card.querySelector('[data-field="gripper"]').textContent = !enabled
@@ -2018,6 +2111,33 @@ class HandController {
           : `Engage ${arm ? "right" : "left"}`;
       button.classList.toggle("engaged", this.engaged[arm]);
     }
+    this.renderSurfaceGuide();
+  }
+
+  renderSurfaceGuide() {
+    const guide = this.panel.querySelector("#handSurfaceGuide");
+    if (!guide) return;
+    const candidates = [0, 1]
+      .filter(arm => this.isArmEnabled(arm) && this.poses.has(arm))
+      .sort((left, right) => Number(this.engaged[right]) - Number(this.engaged[left]));
+    const arm = candidates[0];
+    const pose = arm === undefined ? null : this.poses.get(arm);
+    const score = clamp(Number(pose?.clutchScore) || 0, 0, 1);
+    const progress = arm === undefined ? 0 : this.tableReach[arm];
+    const pointing = score >= CLUTCH_ENGAGE_SCORE;
+    const engaged = arm !== undefined && this.engaged[arm];
+    const contact = engaged && progress >= 0.92;
+    guide.classList.toggle("pointing", pointing);
+    guide.classList.toggle("engaged", engaged);
+    guide.classList.toggle("contact", contact);
+    guide.querySelector("span").textContent = contact
+      ? "TIP AT FLOOR · HOLD STEADY"
+      : engaged
+        ? `LONG RANGE · ${Math.round(progress * 100)}% DOWN`
+        : pointing
+          ? "HOLD POINT ↓ TO ENGAGE"
+          : "POINT INDEX ↓";
+    guide.querySelector("b").textContent = contact ? "TABLE TARGET" : "TABLE REACH";
   }
 
   draw() {
@@ -2048,7 +2168,7 @@ class HandController {
       }
       points.forEach((point, index) => {
         this.context.beginPath();
-        this.context.arc(point.x, point.y, index === 4 || index === 8 ? 6 : 3, 0, Math.PI * 2);
+        this.context.arc(point.x, point.y, index === 8 ? 8 : index === 4 ? 6 : 3, 0, Math.PI * 2);
         this.context.fill();
       });
       if (accepted) {
@@ -2091,7 +2211,7 @@ class HandController {
       this.updateServerSnapshot(status.hand_teleop);
       if (wasEnabled && status.hand_teleop && !status.hand_teleop.enabled) {
         this.freezeAll(false);
-        this.setBanner("Manual takeover · open then curl to re-enable", "warn");
+        this.setBanner("Manual takeover · relax, then point down to re-enable", "warn");
       }
     } catch (_error) {}
   }

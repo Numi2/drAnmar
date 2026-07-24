@@ -11,15 +11,21 @@ Dr.Anmar's webcam controller is a simulation-only master-pose input for the two 
 - Palm-frame orientation maps through the same live camera frame to bounded
   tool rotation.
 - Only thumb and index spacing controls proportional jaw aperture.
-- Curling at least two of the middle, ring, and little fingers is the natural
-  motion clutch. Extending them freezes immediately; curling them steadily for
-  250 ms engages. These fingers never affect jaw aperture or an analog axis.
+- Pointing the index finger down with the other fingers tucked is the natural
+  motion clutch. Holding the point steadily for 180 ms engages; relaxing or
+  lifting the point freezes immediately. The tucked fingers distinguish a
+  deliberate point from an open hand and never affect jaw aperture.
 - A new engagement captures the current hand pose and robot target, then ramps
   gain in smoothly, so freezing and recentering cannot jump.
 - Precision is progressive: small movements receive microsurgical gain while
-  larger deliberate movements receive more reach without a mode change.
-- The second hand must first appear open and then deliberately curl before it
-  is admitted. Visibility alone never activates Instrument 2.
+  larger deliberate movements expand into the full bounded 120 mm
+  camera-relative workspace without a mode change.
+- The index fingertip is the vertical intent point. Moving it toward the
+  preview's bottom **TABLE REACH** line progressively lowers the instrument;
+  touching the line requests the full safe downward endpoint so native PhysX
+  contact can settle the tool onto the table.
+- The second hand must first appear relaxed and then deliberately point down
+  before it is admitted. Visibility alone never activates Instrument 2.
 - The webcam launcher lives on the operative camera rather than inside the
   keyboard-control drawer. Its window floats independently above the room,
   can be dragged by its title bar, resized from the lower corner, and restores
@@ -38,7 +44,7 @@ robot or update jaw aperture.
 Each arm uses time-aware One Euro filtering: it suppresses stationary landmark jitter while automatically reducing
 lag during deliberate motion. A bounded 25 ms velocity prediction compensates part of camera/inference latency,
 small translation and rotation deadbands remove resting chatter, and the interface exposes vision rate, inference
-time, round-trip command time, per-arm quality, and the active safety state.
+time, round-trip command time, per-arm quality, point-down clutch state, table reach, and the active safety state.
 
 Depth uses the ratio between image-space palm geometry and corresponding
 camera-aligned world-landmark geometry. This compensates for palm
@@ -144,12 +150,14 @@ python3 -m unittest tests/test_hand_teleop.py -v
 node --test tests/hand_control.test.mjs
 ```
 
-The JavaScript suite covers bimanual identity stability, robust calibration, palm-frame degeneracy, adaptive
-filtering, bounded prediction, quality rejection, depth, rotation, proportional aperture, and frame synchronization.
+The JavaScript suite covers bimanual identity stability, robust calibration, point-down clutch discrimination,
+bottom-line table reach, long-range bounds, palm-frame degeneracy, adaptive filtering, bounded prediction, quality
+rejection, depth, rotation, proportional aperture, and frame synchronization.
 The Python suite covers validation without mutation, quality holds, acceleration conditioning, cumulative target
 resampling, watchdog/reacquisition, native IK scales, manual takeover, proportional gripper endpoints, and recording
 compatibility.
 
-Real-webcam acceptance must still be performed from the secured Mac browser: calibrate both hands, verify independent
-XYZ and wrist rotation, check 0/50/100% jaw positions, coordinate both arms, freeze/recenter, leave and re-enter the
-frame, then take over with keyboard control.
+Real-webcam acceptance must still be performed from the secured Mac browser: calibrate both hands, verify deliberate
+point-down engagement and immediate relaxed-pose freeze, move the fingertip to the **TABLE REACH** line and confirm
+native table contact, verify independent XYZ and wrist rotation, check 0/50/100% jaw positions, coordinate both arms,
+freeze/recenter, leave and re-enter the frame, then take over with keyboard control.

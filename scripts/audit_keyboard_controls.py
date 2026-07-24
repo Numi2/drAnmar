@@ -107,7 +107,8 @@ def main() -> int:
     ]
     required_hand_control = {
         "landmarks[4], landmarks[8]": "thumb-index-only aperture input",
-        "Engage tracked": "explicit webcam motion clutch",
+        "downwardPointingClutchScore": "point-down webcam motion clutch",
+        "tableReachProgress": "fingertip-to-table reach mapping",
         "Freeze both": "explicit webcam recenter control",
         "motion_engaged": "per-arm webcam clutch state",
         "window.isSecureContext": "secure-context camera gate",

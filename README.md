@@ -39,7 +39,7 @@ Every visual below was captured from Dr.Anmar itself. No figures were copied fro
 | --- | --- | --- |
 | **Guided robotics curriculum** | 21 lessons that explain control, demonstration, vision, policies, procedures, safety, recovery and orthopedic ultrasound in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
 | **Interactive surgical digital twin** | Dr.Anmar rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | Native task bindings, versioned OpenUSD composition, contact instrumentation and simulator telemetry |
-| **Webcam surgical teleoperation** | Move one or two instruments with natural hand pose; use thumb–index distance as a proportional gripper and open the resting fingers to freeze | Camera-aligned six-axis targets, automatic per-camera calibration, quality gating, audited commands and native differential-IK execution |
+| **Webcam surgical teleoperation** | Move one or two instruments with a downward index-point clutch, proportional thumb–index grippers, and a visible fingertip-to-table target | Long-range camera-aligned six-axis targets, automatic per-camera calibration, quality gating, audited commands and native differential-IK execution |
 | **Procedure rooms** | Needle handling, retraction, anatomy navigation, recovery, thread work and ultrasound tasks that connect to real simulator environments | A compact catalog with direct task, asset and external-provider bindings |
 | **Demonstrations and Skills Twin** | Record a complete attempt, replay it, see phase-aware coaching, and compare against a clinician-selected reference | Checksummed trajectory/manifest pairs, task-native tool paths, multimodal observations, analysis and content-addressed dataset cards |
 | **Failure Lab and policy evaluation** | Practise shifted viewpoints, low light, occlusion, target variation, calibration drift, tissue variation and safe hand-back | Seeded challenge matrices, interventions, native outcomes, safety events and immutable policy-evaluation cards |
@@ -50,10 +50,12 @@ Every visual below was captured from Dr.Anmar itself. No figures were copied fro
 - **Camera-native hand control:** palm translation and orientation follow the live operative view and are transformed
   into each PSM's native NVIDIA differential-IK frame. Changing camera view freezes motion and requires a fresh,
   jump-free anchor.
-- **Two-finger proportional grasping:** only thumb–index spacing controls jaw aperture. Curling two resting fingers
-  engages the motion clutch after 250 ms; opening them freezes immediately so the operator can recenter freely.
+- **Point-down motion clutch:** a straight downward index with the other fingers tucked engages after a steady 180 ms
+  hold; relaxing the point freezes immediately. The preview shows clutch, range, and table-contact intent in real time.
+- **Fingertip-to-table mapping:** deliberate movement uses the full safe camera-relative workspace, and touching the
+  preview's bottom **TABLE REACH** line requests the downward endpoint for native table contact.
 - **Hands-free setup:** calibration advances automatically from on-screen instructions, works with either hand,
-  starts in one-hand mode, and admits a second hand only after an intentional open-then-curl gesture.
+  starts in one-hand mode, and admits a second hand only after an intentional relaxed-then-point gesture.
 - **Precision without mode juggling:** orientation-compensated relative depth, time-aware filtering, bounded
   prediction and progressive gain keep small motions fine while preserving deliberate reach.
 - **A separate webcam workspace:** the camera preview launches from the operative view rather than the keymap
@@ -157,8 +159,9 @@ learn immediately:
   camera selection, speed changes, smart assist and emergency stop without creating an always-listening control path.
 - A checksum-pinned, locally served MediaPipe Hand Landmarker provides one- or two-hand webcam pose control:
   left/right hands own the corresponding PSM, palm translation/orientation follows the displayed camera, and only
-  thumb–index spacing controls each proportional jaw. Automatic calibration, a natural resting-finger clutch,
-  jump-free recentering, independent hand-loss freezes and a 250 ms server watchdog keep motion bounded.
+  thumb–index spacing controls each proportional jaw. Automatic calibration, a downward index-point clutch,
+  fingertip-to-table reach, jump-free recentering, independent hand-loss freezes and a 250 ms server watchdog keep
+  motion bounded.
 - `Enter` becomes a contextual approach → grasp → lift control, while six hold-to-move surgical combinations
   provide orbiting, curved needle driving, reversal, lift/retract, and lower/approach with one key each.
 - A quick tap performs a bounded precision nudge; holding the same combination key gives continuous motion.
@@ -236,7 +239,8 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
 - Camera-native one- or two-hand webcam teleoperation with automatic per-hand calibration, proportional
-  thumb–index grippers, natural motion clutching, a detached movable/resizable preview and local-only video.
+  thumb–index grippers, point-down long-range clutching, fingertip-to-table reach, a detached movable/resizable
+  preview and local-only video.
 - OpenUSD operating rooms, seven pinned anatomy sources, and a repository-local
   Dr.Anmar bench shelf with the standalone needle, the pinned NVIDIA needle
   factory-swaged to Dr.Anmar 4-0 suture, the native Dr.Anmar needle-suture

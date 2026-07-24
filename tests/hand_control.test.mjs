@@ -10,9 +10,10 @@ import {
   assignHandDetections,
   conditionPoseVector,
   depthOffset,
+  downwardPointingClutchScore,
   handednessToArm,
+  longRangeTranslation,
   median,
-  naturalClutchScore,
   normalizedAperture,
   orientationCompensatedPalmScale,
   palmFrame,
@@ -21,6 +22,7 @@ import {
   robustCalibrationSample,
   rotationDelta,
   smoothVector,
+  tableReachProgress,
   trackingQuality,
 } from "../web/hand_control.mjs";
 
@@ -43,6 +45,32 @@ function rotateZ(basis, angle) {
     sine * x + cosine * y,
     z,
   ]);
+}
+
+function pointDownHand({ restingFingersOpen = false } = {}) {
+  const points = baseHand();
+  points[5] = { x: 0.62, y: 0.58, z: 0 };
+  points[6] = { x: 0.60, y: 0.68, z: 0 };
+  points[7] = { x: 0.58, y: 0.78, z: 0 };
+  points[8] = { x: 0.56, y: 0.90, z: 0 };
+  const restingChains = [
+    [9, 10, 11, 12, 0.50],
+    [13, 14, 15, 16, 0.44],
+    [17, 18, 19, 20, 0.38],
+  ];
+  for (const [mcp, pip, dip, tip, x] of restingChains) {
+    points[mcp] = { x, y: 0.58, z: 0 };
+    if (restingFingersOpen) {
+      points[pip] = { x, y: 0.68, z: 0 };
+      points[dip] = { x, y: 0.79, z: 0 };
+      points[tip] = { x, y: 0.90, z: 0 };
+    } else {
+      points[pip] = { x, y: 0.66, z: 0 };
+      points[dip] = { x: x + 0.08, y: 0.62, z: 0 };
+      points[tip] = { x: x + 0.08, y: 0.55, z: 0 };
+    }
+  }
+  return points;
 }
 
 test("raw webcam handedness is corrected to physical left and right", () => {
@@ -97,37 +125,40 @@ test("translation follows displayed lateral/vertical directions and smoothing", 
   assert.deepEqual(smoothVector([0, 0], [1, -1], 0.25), [0.25, -0.25]);
 });
 
-test("thumb-index aperture remains independent from the natural safety clutch", async () => {
+test("thumb-index aperture remains independent from the point-down safety clutch", async () => {
   const source = await readFile(new URL("../web/hand_control.mjs", import.meta.url), "utf8");
   assert.match(source, /landmarks\[4\], landmarks\[8\]/);
-  assert.match(source, /Two-of-three consensus/);
+  assert.match(source, /one-finger point from/);
   assert.match(source, /Instrument .* frozen · recenter freely/);
-  assert.match(source, /curl the resting fingers to move/i);
+  assert.match(source, /point the index finger down to move/i);
 });
 
-test("natural clutch uses two-of-three finger flexion and adaptive motion gain", () => {
-  const extended = baseHand();
-  const fingerChains = [
-    [9, 10, 11, 12, 0.50],
-    [13, 14, 15, 16, 0.44],
-    [17, 18, 19, 20, 0.38],
-  ];
-  for (const [mcp, pip, dip, tip, x] of fingerChains) {
-    extended[mcp] = { x, y: 0.58, z: 0 };
-    extended[pip] = { x, y: 0.46, z: 0 };
-    extended[dip] = { x, y: 0.34, z: 0 };
-    extended[tip] = { x, y: 0.22, z: 0 };
-  }
-  const curled = structuredClone(extended);
-  for (const [, pip, dip, tip, x] of fingerChains) {
-    curled[pip] = { x, y: 0.48, z: 0 };
-    curled[dip] = { x: x + 0.07, y: 0.50, z: 0 };
-    curled[tip] = { x: x + 0.08, y: 0.58, z: 0 };
-  }
-  assert.ok(naturalClutchScore(extended) < 0.1);
-  assert.ok(naturalClutchScore(curled) > 0.34);
+test("point-down clutch rejects an open palm and expands deliberate motion", () => {
+  const pointing = pointDownHand();
+  const openPalm = pointDownHand({ restingFingersOpen: true });
+  const relaxed = structuredClone(pointing);
+  relaxed[6] = { x: 0.60, y: 0.52, z: 0 };
+  relaxed[7] = { x: 0.58, y: 0.46, z: 0 };
+  relaxed[8] = { x: 0.56, y: 0.40, z: 0 };
+  assert.ok(downwardPointingClutchScore(pointing) > 0.72);
+  assert.ok(downwardPointingClutchScore(openPalm) < 0.48);
+  assert.ok(downwardPointingClutchScore(relaxed) < 0.48);
   assert.ok(adaptiveMotionGain(0.001, true) < adaptiveMotionGain(0.04, true));
   assert.ok(adaptiveMotionGain(0.04, true) < adaptiveMotionGain(0.04, false));
+  const mapped = longRangeTranslation([0.02, 0.04, -0.04], 1, 0, 1);
+  assert.ok(mapped[1] > 0.04);
+  assert.ok(mapped[2] < -0.04);
+});
+
+test("fingertip reaching the bottom guide maps to the safe table endpoint", () => {
+  assert.equal(tableReachProgress(0.52, 0.52), 0);
+  assert.ok(Math.abs(tableReachProgress(0.72, 0.52) - 0.5) < 1e-12);
+  assert.equal(tableReachProgress(0.92, 0.52), 1);
+  assert.deepEqual(
+    longRangeTranslation([0, 0, 0], 1, 1, 1),
+    [0, 0, -0.12],
+  );
+  assert.ok(longRangeTranslation([1, -1, 1], 2, 0, 1).every(value => Math.abs(value) <= 0.12));
 });
 
 test("world/image palm fusion supplies an orientation-compensated depth scale", () => {
