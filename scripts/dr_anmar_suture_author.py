@@ -52,7 +52,9 @@ from dr_anmar_suture_integration import (
 )
 from dr_anmar_suture_model import (
     DEFAULT_PROFILE_PATH,
+    SutureInterfaceVisualMesh,
     SutureVisualMesh,
+    build_suture_interface_visual_mesh,
     build_suture_material_texture,
     build_suture_visual_mesh,
     capsule_point_containment_margin,
@@ -99,29 +101,45 @@ def indent(text: str, spaces: int = 4) -> str:
     return "\n".join(prefix + line if line else "" for line in text.splitlines())
 
 
-def capsule_body_geometry_block(
+def swage_interface_geometry_block(
     *,
     name: str,
     x_m: float,
     radius_m: float,
     cylinder_height_m: float,
     color: tuple[float, float, float],
+    mesh: SutureInterfaceVisualMesh,
     collider_purpose: str,
     collider_visibility: str,
 ) -> str:
+    """Author an explicit swage render mesh with a primitive collider."""
+
     total_half_length = cylinder_height_m / 2.0 + radius_m
+    points = ",\n            ".join(usd_vec(point) for point in mesh.points)
+    normals = ",\n            ".join(usd_vec(normal) for normal in mesh.normals)
+    face_counts = ", ".join(str(value) for value in mesh.face_vertex_counts)
+    face_indices = ", ".join(str(value) for value in mesh.face_vertex_indices)
     return f"""def Xform "{name}"
 {{
     double3 xformOp:translate = {usd_vec((x_m, 0.0, 0.0))}
     uniform token[] xformOpOrder = ["xformOp:translate"]
 
-    def Capsule "Visual"
+    def Mesh "Visual"
     {{
-        uniform token axis = "X"
-        float height = {usd_float(cylinder_height_m)}
-        float radius = {usd_float(radius_m)}
-        float3[] extent = [{usd_vec((-total_half_length, -radius_m, -radius_m))}, {usd_vec((total_half_length, radius_m, radius_m))}]
+        uniform bool doubleSided = false
+        float3[] extent = [{usd_vec(mesh.extent_min)}, {usd_vec(mesh.extent_max)}]
+        int[] faceVertexCounts = [{face_counts}]
+        int[] faceVertexIndices = [{face_indices}]
+        point3f[] points = [
+            {points}
+        ]
+        normal3f[] primvars:normals = [
+            {normals}
+        ] (
+            interpolation = "vertex"
+        )
         color3f[] primvars:displayColor = [{usd_vec(color)}]
+        uniform token subdivisionScheme = "none"
     }}
 
     def Capsule "Collision"
@@ -382,12 +400,16 @@ def author(
     swage_radius = float(swage["needle_end_diameter_m"]) / 2.0
     interface_height = spacing
     geometry_blocks: list[str] = [
-        capsule_body_geometry_block(
+        swage_interface_geometry_block(
             name="NeedleInterface",
             x_m=-spacing / 2.0,
             radius_m=swage_radius,
             cylinder_height_m=interface_height,
             color=(0.58, 0.61, 0.66),
+            mesh=build_suture_interface_visual_mesh(
+                profile,
+                derived=derived,
+            ),
             collider_purpose=str(visual_representation["collider_purpose"]),
             collider_visibility=str(visual_representation["collider_visibility"]),
         )
@@ -1408,6 +1430,19 @@ def main() -> int:
     suture_visual_minimum_radius_ratio = math.inf
     suture_visual_maximum_radius_ratio = 0.0
     suture_minimum_visual_collision_margin_m = math.inf
+    suture_interface_visual_mesh = build_suture_interface_visual_mesh(
+        profile,
+        derived=derived,
+    )
+    suture_interface_radius = float(profile["swage"]["needle_end_diameter_m"]) / 2.0
+    suture_interface_minimum_collision_margin_m = min(
+        capsule_point_containment_margin(
+            point,
+            radius_m=suture_interface_radius,
+            cylinder_height_m=derived.segment_spacing_m,
+        )
+        for point in suture_interface_visual_mesh.points
+    )
     for segment_index in range(derived.segment_count):
         collision_radius = suture_segment_collision_radius(
             profile,
@@ -1447,7 +1482,7 @@ def main() -> int:
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v11",
+        "schema": "dr.anmar.suture-asset-report.v12",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
@@ -1459,6 +1494,12 @@ def main() -> int:
         "suture_geometry_format": "usdc",
         "suture_geometry_sha256": sha256(geometry_output),
         "suture_geometry_bytes": geometry_output.stat().st_size,
+        "suture_interface_visual_mesh_schema": profile["geometry"]["visual_representation"][
+            "needle_interface_visual_schema"
+        ],
+        "suture_interface_visual_vertex_count": len(suture_interface_visual_mesh.points),
+        "suture_interface_visual_face_count": len(suture_interface_visual_mesh.face_vertex_counts),
+        "suture_interface_minimum_collision_margin_m": suture_interface_minimum_collision_margin_m,
         "suture_visual_mesh_schema": profile["geometry"]["visual_representation"]["visual_schema"],
         "suture_visual_vertices_per_segment": suture_visual_vertex_count // derived.segment_count,
         "suture_visual_faces_per_segment": suture_visual_face_count // derived.segment_count,

@@ -238,6 +238,16 @@ class SutureVisualMesh:
 
 
 @dataclass(frozen=True)
+class SutureInterfaceVisualMesh:
+    points: tuple[tuple[float, float, float], ...]
+    normals: tuple[tuple[float, float, float], ...]
+    face_vertex_counts: tuple[int, ...]
+    face_vertex_indices: tuple[int, ...]
+    extent_min: tuple[float, float, float]
+    extent_max: tuple[float, float, float]
+
+
+@dataclass(frozen=True)
 class SutureMaterialTexture:
     width: int
     height: int
@@ -462,6 +472,159 @@ def capsule_point_containment_margin(
     return radius - distance_to_spine
 
 
+def build_suture_interface_visual_mesh(
+    profile: dict[str, Any],
+    *,
+    derived: DerivedSuture | None = None,
+) -> SutureInterfaceVisualMesh:
+    """Tessellate the steel swage interface inside its capsule collider.
+
+    A render mesh is used instead of relying on analytic-primitive rendering,
+    which varies across Hydra delegates.  The hidden collision representation
+    remains one solver-efficient capsule with identical dimensions.
+    """
+
+    model = derived or derive(profile)
+    visual = profile["geometry"]["visual_representation"]
+    radial_samples = int(visual["needle_interface_visual_radial_samples"])
+    cap_samples = int(visual["needle_interface_visual_cap_samples"])
+    cylinder_samples = int(visual["needle_interface_visual_cylinder_samples"])
+    taper_samples = int(visual["needle_interface_suture_exit_taper_samples"])
+    if radial_samples < 24 or radial_samples % 4:
+        raise ValueError("suture interface radial samples must be divisible by four and at least 24")
+    if cap_samples < 4 or cylinder_samples < 2 or taper_samples < 2:
+        raise ValueError("suture interface axial tessellation is too low")
+    radius = float(profile["swage"]["needle_end_diameter_m"]) / 2.0
+    cylinder_height = model.segment_spacing_m
+    half_height = cylinder_height / 2.0
+
+    rings: list[tuple[float, float, float, float]] = []
+    for cap_index in range(1, cap_samples + 1):
+        angle = 0.5 * math.pi * cap_index / cap_samples
+        rings.append(
+            (
+                -half_height - radius * math.cos(angle),
+                radius * math.sin(angle),
+                -math.cos(angle),
+                math.sin(angle),
+            )
+        )
+    for cylinder_index in range(1, cylinder_samples):
+        amount = cylinder_index / cylinder_samples
+        rings.append(
+            (
+                lerp(-half_height, half_height, amount),
+                radius,
+                0.0,
+                1.0,
+            )
+        )
+    rings.append((half_height, radius, 0.0, 1.0))
+    overlap = float(visual["needle_interface_suture_overlap_m"])
+    if not 0.0 < overlap < radius:
+        raise ValueError("suture interface overlap is outside the supported range")
+    if visual["needle_interface_suture_exit_radius_policy"] != "nominal_radius_times_one_minus_relief_depth":
+        raise ValueError("unsupported suture interface exit-radius policy")
+    exit_radius = model.radius_m * (1.0 - float(visual["relief_depth_fraction"]))
+    taper_slope = (exit_radius - radius) / overlap
+    normal_scale = math.sqrt(1.0 + taper_slope * taper_slope)
+    taper_normal_axial = -taper_slope / normal_scale
+    taper_normal_radial = 1.0 / normal_scale
+    for taper_index in range(1, taper_samples + 1):
+        amount = taper_index / taper_samples
+        rings.append(
+            (
+                half_height + overlap * amount,
+                lerp(radius, exit_radius, amount),
+                taper_normal_axial,
+                taper_normal_radial,
+            )
+        )
+
+    points: list[tuple[float, float, float]] = [(-half_height - radius, 0.0, 0.0)]
+    normals: list[tuple[float, float, float]] = [(-1.0, 0.0, 0.0)]
+    ring_starts: list[int] = []
+    for axial, ring_radius, normal_axial, normal_radial in rings:
+        ring_starts.append(len(points))
+        for radial_index in range(radial_samples):
+            theta = 2.0 * math.pi * radial_index / radial_samples
+            cosine = math.cos(theta)
+            sine = math.sin(theta)
+            points.append(
+                (
+                    axial,
+                    ring_radius * cosine,
+                    ring_radius * sine,
+                )
+            )
+            normals.append(
+                (
+                    normal_axial,
+                    normal_radial * cosine,
+                    normal_radial * sine,
+                )
+            )
+    right_pole = len(points)
+    points.append((half_height + overlap, 0.0, 0.0))
+    normals.append((1.0, 0.0, 0.0))
+
+    face_counts: list[int] = []
+    face_indices: list[int] = []
+    first_ring = ring_starts[0]
+    for radial_index in range(radial_samples):
+        next_radial = (radial_index + 1) % radial_samples
+        face_counts.append(3)
+        face_indices.extend(
+            (
+                0,
+                first_ring + next_radial,
+                first_ring + radial_index,
+            )
+        )
+    for left_ring, right_ring in zip(
+        ring_starts,
+        ring_starts[1:],
+    ):
+        for radial_index in range(radial_samples):
+            next_radial = (radial_index + 1) % radial_samples
+            face_counts.append(4)
+            face_indices.extend(
+                (
+                    left_ring + radial_index,
+                    left_ring + next_radial,
+                    right_ring + next_radial,
+                    right_ring + radial_index,
+                )
+            )
+    last_ring = ring_starts[-1]
+    for radial_index in range(radial_samples):
+        next_radial = (radial_index + 1) % radial_samples
+        face_counts.append(3)
+        face_indices.extend(
+            (
+                right_pole,
+                last_ring + radial_index,
+                last_ring + next_radial,
+            )
+        )
+    return SutureInterfaceVisualMesh(
+        points=tuple(points),
+        normals=tuple(normals),
+        face_vertex_counts=tuple(face_counts),
+        face_vertex_indices=tuple(face_indices),
+        extent_min=(
+            -half_height - radius,
+            -radius,
+            -radius,
+        ),
+        extent_max=(
+            half_height + overlap,
+            radius,
+            radius,
+        ),
+    )
+
+
 def build_suture_visual_mesh(
     profile: dict[str, Any],
     segment_index: int,
@@ -495,50 +658,13 @@ def build_suture_visual_mesh(
     if pitch <= 0.0 or not 0.0 < relief_depth < 0.25 or not 1.0 <= carrier_profile_exponent <= 8.0 or sharpness <= 0.0:
         raise ValueError("invalid suture braid visual parameters")
     spacing = model.segment_spacing_m
-    left_boundary_radius = (
-        collision_radius
-        if index == 0
-        else min(
-            collision_radius,
-            suture_segment_collision_radius(
-                profile,
-                index - 1,
-                derived=model,
-            ),
-        )
-    )
-    right_boundary_radius = (
-        collision_radius
-        if index == model.segment_count - 1
-        else min(
-            collision_radius,
-            suture_segment_collision_radius(
-                profile,
-                index + 1,
-                derived=model,
-            ),
-        )
-    )
+    if visual["visual_radius_policy"] != "nominal_suture_radius_independent_of_swage_collision_envelope":
+        raise ValueError("unsupported suture visual radius policy")
     segment_start_x = index * spacing
     segment_center_x = (index + 0.5) * spacing
 
-    def smoothstep(amount: float) -> float:
-        value = clamp(amount, 0.0, 1.0)
-        return value * value * (3.0 - 2.0 * value)
-
-    def envelope_radius(global_x: float) -> float:
-        amount = clamp((global_x - segment_start_x) / spacing, 0.0, 1.0)
-        if amount <= 0.5:
-            return lerp(
-                left_boundary_radius,
-                collision_radius,
-                smoothstep(amount * 2.0),
-            )
-        return lerp(
-            collision_radius,
-            right_boundary_radius,
-            smoothstep((amount - 0.5) * 2.0),
-        )
+    def envelope_radius(_global_x: float) -> float:
+        return model.radius_m
 
     def weave(global_x: float, theta: float) -> float:
         return braid_weave_value(
