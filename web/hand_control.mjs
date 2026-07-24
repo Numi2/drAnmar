@@ -496,18 +496,17 @@ function createInterface() {
     .hand-control-launch.state-active{border-color:#79c8a2!important;background:#162922ee!important;color:#effff7!important}.hand-control-launch.state-active .hand-camera-dot{background:#79c8a2;box-shadow:0 0 10px #79c8a299}
     .hand-control-launch kbd{height:18px;min-width:30px;padding:0 4px;font-size:8px}
     .hand-panel{box-sizing:border-box;container-type:inline-size;position:fixed;z-index:70;right:18px;bottom:18px;width:min(420px,calc(100vw - 24px));min-width:min(300px,calc(100vw - 12px));min-height:min(260px,calc(100vh - 12px));max-width:calc(100vw - 12px);max-height:calc(100vh - 12px);resize:none;overflow:auto;border:1px solid #2f5968;border-radius:14px;background:#07151df2;color:#e9f8fa;box-shadow:0 18px 52px #000b;backdrop-filter:blur(16px);padding:12px}
-    .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:8px;cursor:grab;touch-action:none;user-select:none}.hand-head.dragging{cursor:grabbing}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:11px}.hand-head .spacer{flex:1}.hand-head-actions{display:flex;gap:5px}.hand-head button{min-height:32px;padding:5px 8px;cursor:pointer;touch-action:auto;font-size:10px}.hand-head button.engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
+    .hand-panel.hidden{display:none}.hand-head{display:flex;align-items:flex-start;gap:8px;cursor:grab;touch-action:none;user-select:none}.hand-head.dragging{cursor:grabbing}.hand-head h2{margin:1px 0 4px;color:#e9f8fa}.hand-head p{margin:0;color:#88a6b2;font-size:11px}.hand-head .spacer{flex:1}.hand-head-actions{display:flex;gap:3px;flex-wrap:nowrap;justify-content:flex-end}.hand-head button{min-height:25px;padding:3px 6px;cursor:pointer;touch-action:auto;font-size:8px}.hand-head button.hand-head-compact{min-height:21px;padding:2px 5px;border-color:#294650;background:#0a171d;color:#9ab4bc;font-size:7px}.hand-head button.hand-head-compact:hover{border-color:#4b7580;color:#d7eef2}.hand-head button.engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
     .hand-video-wrap{position:relative;margin-top:12px;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:#020608;border:1px solid #24404d}.hand-video-wrap video,.hand-video-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.hand-video-wrap canvas{z-index:1;transform:none;pointer-events:none}
     .hand-banner{box-sizing:border-box;position:absolute;z-index:3;left:10px;top:10px;max-width:62%;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px/1.35 ui-monospace,SFMono-Regular;white-space:normal}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
     .hand-metrics{position:absolute;z-index:3;right:10px;top:10px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:72%}.hand-metrics span{padding:5px 7px;border-radius:6px;background:#07151ddd;border:1px solid #264653;color:#9db6bf;font:700 9px ui-monospace,SFMono-Regular}
     .hand-surface-guide{position:absolute;z-index:2;left:0;right:0;bottom:0;height:8%;display:flex;align-items:flex-end;justify-content:space-between;padding:0 10px 7px;box-sizing:border-box;border-top:1px dashed #66828b99;background:linear-gradient(180deg,transparent,#07151d99);color:#91aab2;pointer-events:none;transition:border-color 140ms ease,background 140ms ease,color 140ms ease,box-shadow 140ms ease}.hand-surface-guide span,.hand-surface-guide b{padding:3px 6px;border-radius:5px;background:#07151ddd;font:800 8px/1 ui-monospace,SFMono-Regular;letter-spacing:.04em}.hand-surface-guide b{color:#c5d6da}.hand-surface-guide.pointing{border-color:#2cd2e8cc;color:#7fefff;background:linear-gradient(180deg,transparent,#08313a99);box-shadow:0 -14px 28px #2cd2e811}.hand-surface-guide.engaged{border-color:#42e49b;color:#8ef0bd;background:linear-gradient(180deg,transparent,#0a352799);box-shadow:0 -22px 38px #42e49b16}.hand-surface-guide.contact{border-top-style:solid;border-color:#f4d27a;color:#ffe8a8;background:linear-gradient(180deg,transparent,#4b371699);box-shadow:0 -32px 48px #e5b83b24}.hand-surface-guide.contact b{color:#ffe8a8}
-    .hand-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}.hand-actions button{min-width:0;min-height:36px;padding:6px;font-size:10px}.hand-actions .engaged{background:#2cd2e8;color:#031014;border-color:#2cd2e8}
     .hand-cards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.hand-card{padding:8px;border:1px solid #24404d;border-radius:9px;background:#091920}.hand-card.inactive{opacity:.62}.hand-card.quality-hold{border-color:#82513d;background:#1b1412}.hand-card header{height:auto;padding:0;border:0;background:none}.hand-card b{font-size:11px}.hand-card .track{margin-left:auto;color:#ff8a90;font:800 8px ui-monospace}.hand-card.tracked .track{color:#42e49b}.hand-card dl{display:grid;grid-template-columns:auto 1fr;margin:7px 0 0;gap:3px 7px;font:9px ui-monospace,SFMono-Regular}.hand-card dt{color:#71929d}.hand-card dd{margin:0;text-align:right}.hand-card button{width:100%;margin-top:7px;min-height:30px}
     .hand-advanced.hidden{display:none}
     .hand-privacy{margin:10px 2px 0;color:#6f909b;font-size:10px}
     .hand-resize-handle{position:sticky;z-index:4;right:0;bottom:0;float:right;width:28px!important;min-width:28px!important;height:28px!important;min-height:28px!important;margin:-22px -8px -8px 0!important;padding:0!important;border:0!important;border-radius:8px 0 8px 0!important;background:linear-gradient(135deg,transparent 45%,#315766 46% 53%,transparent 54% 62%,#8bc6cd 63% 70%,transparent 71%)!important;box-shadow:none!important;cursor:nwse-resize!important;touch-action:none}
     .hand-resize-handle:focus-visible{outline:2px solid #8bc6cd;outline-offset:-2px}.hand-resize-handle:hover{background:linear-gradient(135deg,transparent 42%,#52747d 43% 51%,transparent 52% 60%,#b9f6ff 61% 70%,transparent 71%)!important}
-    @container(max-width:350px){.hand-cards{grid-template-columns:1fr}.hand-actions{grid-template-columns:1fr 1fr}.hand-head p{font-size:10px}.hand-metrics{top:auto;bottom:7px;left:7px;right:7px;max-width:none;justify-content:flex-start}}
+    @container(max-width:350px){.hand-cards{grid-template-columns:1fr}.hand-head p{font-size:10px}.hand-metrics{top:auto;bottom:7px;left:7px;right:7px;max-width:none;justify-content:flex-start}}
     @media(max-width:640px){.hand-control-dock{left:8px;top:8px}.hand-control-launch{min-height:32px!important;padding:0 8px!important}.hand-panel{right:6px;bottom:6px;width:calc(100vw - 12px)}}
   `;
   document.head.append(style);
@@ -532,10 +531,9 @@ function createInterface() {
   panel.className = "hand-panel hidden";
   panel.setAttribute("aria-label", "Webcam hand control");
   panel.innerHTML = `
-    <div class="hand-head"><div><h2>Point-down surgical control</h2><p>Index ↓ to move · fingertip to table line</p></div><div class="spacer"></div><div class="hand-head-actions"><button id="handPanelReset" aria-label="Reset webcam window position and size">Fit</button><button id="handControlsToggle" aria-controls="handAdvanced" aria-expanded="false">Controls</button><button id="handClose" data-shortcut="CAM">Close</button></div></div>
+    <div class="hand-head"><div><h2>Point-down surgical control</h2><p>Index ↓ to move · fingertip to table line</p></div><div class="spacer"></div><div class="hand-head-actions"><button id="handFreezeAll" class="hand-head-compact" data-shortcut="FREEZE" aria-label="Freeze both instruments">Freeze</button><button id="handRecalibrate" class="hand-head-compact" data-shortcut="CAL" aria-label="Recalibrate webcam hand control">Cal</button><button id="handPanelReset" aria-label="Reset webcam window position and size">Fit</button><button id="handControlsToggle" aria-controls="handAdvanced" aria-expanded="false">Controls</button><button id="handClose" data-shortcut="CAM">Close</button></div></div>
     <div class="hand-video-wrap"><video id="handVideo" playsinline muted></video><canvas id="handOverlay"></canvas><div id="handBanner" class="hand-banner">Camera off</div><div class="hand-metrics"><span id="handRate">0 Hz</span><span id="handInference">— ms vision</span><span id="handLatency">— ms loop</span></div><div id="handSurfaceGuide" class="hand-surface-guide"><span>POINT INDEX ↓</span><b>TABLE REACH</b></div></div>
     <div id="handAdvanced" class="hand-advanced hidden">
-      <div class="hand-actions"><button id="handStart" data-shortcut="CAM">Start camera</button><button id="handFreezeAll" data-shortcut="FREEZE">Freeze hand</button><button id="handEngageAll" data-shortcut="ENGAGE">Engage hand</button><button id="handPrecision" class="engaged" data-shortcut="PRECISION">Precision on</button><button id="handRecalibrate" data-shortcut="CAL">Recalibrate</button><button id="handMode">One hand ready</button></div>
       <div class="hand-cards">
         <article id="handCard0" class="hand-card"><header><b>Left hand · Instrument 1</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Point index ↓</dd><dt>Table reach</dt><dd data-field="table">0%</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="0" data-shortcut="L CAM">Engage left</button></article>
         <article id="handCard1" class="hand-card"><header><b>Right hand · Instrument 2</b><span class="track">NOT TRACKED</span></header><dl><dt>Safety</dt><dd data-field="safety">Frozen</dd><dt>Clutch</dt><dd data-field="clutch">Point index ↓</dd><dt>Table reach</dt><dd data-field="table">0%</dd><dt>XYZ mm</dt><dd data-field="xyz">0 · 0 · 0</dd><dt>RPY °</dt><dd data-field="rpy">0 · 0 · 0</dd><dt>Gripper</dt><dd data-field="gripper">—</dd><dt>Signal quality</dt><dd data-field="confidence">—</dd></dl><button data-hand-arm="1" data-shortcut="R CAM">Engage right</button></article>
@@ -682,20 +680,8 @@ class HandController {
       });
       this.panelResizeObserver.observe(this.panel);
     }
-    this.panel.querySelector("#handStart").addEventListener("click", () => this.start());
     this.panel.querySelector("#handFreezeAll").addEventListener("click", () => {
       this.cancelAutomaticEngage();
-      this.freezeAll();
-    });
-    this.panel.querySelector("#handEngageAll").addEventListener("click", () => {
-      this.cancelAutomaticEngage();
-      this.engageAll();
-    });
-    this.panel.querySelector("#handPrecision").addEventListener("click", () => {
-      this.precision = !this.precision;
-      const button = this.panel.querySelector("#handPrecision");
-      button.textContent = this.precision ? "Precision on" : "Precision off";
-      button.classList.toggle("engaged", this.precision);
       this.freezeAll();
     });
     this.panel.querySelector("#handRecalibrate").addEventListener("click", () => {
@@ -704,7 +690,6 @@ class HandController {
         : [];
       this.beginCalibration({ targetArms });
     });
-    this.panel.querySelector("#handMode").addEventListener("click", () => this.toggleControlMode());
     this.panel.querySelectorAll("[data-hand-arm]").forEach(button => {
       button.addEventListener("click", () => {
         this.cancelAutomaticEngage();
@@ -954,18 +939,7 @@ class HandController {
   }
 
   renderModeControl() {
-    const button = this.panel.querySelector("#handMode");
-    if (!button) return;
-    const dual = this.controlMode === "dual";
-    button.textContent = dual
-      ? "Use one hand"
-      : this.singleHandTried
-        ? "Add second now"
-        : "One hand ready";
-    button.disabled = !dual && !this.singleHandTried;
-    button.classList.toggle("engaged", dual);
-    this.panel.querySelector("#handFreezeAll").textContent = dual ? "Freeze both" : "Freeze hand";
-    this.panel.querySelector("#handEngageAll").textContent = dual ? "Engage both" : "Engage hand";
+    this.panel.dataset.controlMode = this.controlMode;
   }
 
   toggleControlMode({ automatic = false } = {}) {
@@ -1201,7 +1175,6 @@ class HandController {
       this.lastMediaPipeTimestampMs = -1;
       this.lastFrameAt = null;
       this.launch.classList.add("state-active");
-      this.panel.querySelector("#handStart").textContent = "Camera active";
       this.setBanner("Tracking hands · motion frozen", "good");
       await this.setServerEnabled(true);
       if (this.calibration) {
@@ -2203,7 +2176,6 @@ class HandController {
     this.landmarker?.close?.();
     this.landmarker = null;
     this.lastMediaPipeTimestampMs = -1;
-    this.panel.querySelector("#handStart").textContent = "Start camera";
     this.launch.classList.remove("state-active");
   }
 

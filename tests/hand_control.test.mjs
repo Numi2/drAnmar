@@ -264,3 +264,14 @@ test("calibration instructions use the webcam overlay without a duplicate yellow
   assert.match(source, /calibrationStagePrompt\(\).*waiting for stability/s);
   assert.match(source, /calibrationStagePrompt\(\).*sampling/s);
 });
+
+test("webcam keeps only compact safety controls and removes redundant button clutter", async () => {
+  const source = await readFile(new URL("../web/hand_control.mjs", import.meta.url), "utf8");
+  assert.match(source, /id="handFreezeAll" class="hand-head-compact"/);
+  assert.match(source, /id="handRecalibrate" class="hand-head-compact"/);
+  assert.doesNotMatch(source, /id="handStart"/);
+  assert.doesNotMatch(source, /id="handEngageAll"/);
+  assert.doesNotMatch(source, /id="handPrecision"/);
+  assert.doesNotMatch(source, /id="handMode"/);
+  assert.doesNotMatch(source, /hand-settings-tray/);
+});
