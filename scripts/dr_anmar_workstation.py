@@ -956,9 +956,29 @@ class SharedState:
         with self.lock:
             procedure_status = self._procedure_status()
             guide_kind = str(self.procedure.get("guide_kind", ""))
-            thread_required = guide_kind == "softmimicgen_threading"
-            needle_required = guide_kind in NATIVE_NEEDLE_GUIDE_KINDS or bool(
-                guide_kind == "softmimicgen_threading" and self.procedure.get("bimanual")
+            active_bench_assets = set(
+                self.procedure.get("active_bench_assets", ())
+            )
+            authored_suture_selected = bool(
+                "dr_anmar_needle_suture" in active_bench_assets
+            )
+            thread_required = bool(
+                guide_kind == "softmimicgen_threading"
+                or authored_suture_selected
+            )
+            needle_required = bool(
+                guide_kind in NATIVE_NEEDLE_GUIDE_KINDS
+                or (
+                    guide_kind == "softmimicgen_threading"
+                    and self.procedure.get("bimanual")
+                )
+                or active_bench_assets.intersection(
+                    {
+                        "needle",
+                        "dr_anmar_needle",
+                        "dr_anmar_needle_suture",
+                    }
+                )
             )
             thread_geometry_ready = not thread_required or self.deformable_strand_ready
             needle_geometry_ready = not needle_required or self.needle_visual_ready
@@ -3541,6 +3561,7 @@ def main() -> None:
         procedure.get("single_active_camera_renderer", True)
     )
     nvidia_native_bench = bool(procedure.get("nvidia_native_bench"))
+    selected_bench_assets: set[str] = set()
     bench_asset_paths: dict[str, Path] = {}
     if nvidia_native_bench:
         bench_catalog = tuple(procedure.get("bench_asset_catalog", ()))
@@ -3613,6 +3634,10 @@ def main() -> None:
                 "The operating-room bench is missing required assets: "
                 + "; ".join(missing_bench_assets)
             )
+    bench_dr_anmar_suture_enabled = bool(
+        nvidia_native_bench
+        and "dr_anmar_needle_suture" in selected_bench_assets
+    )
     if "-IK-Rel" not in args_cli.task:
         raise ValueError("The browser workstation accepts relative-IK tasks. Other variants remain available via the CLI.")
     guide_kind = str(procedure.get("guide_kind", ""))
@@ -3644,6 +3669,9 @@ def main() -> None:
         env_cfg.sim.dt = orbit_psm_foundation.sim.dt
         env_cfg.decimation = orbit_psm_foundation.decimation
         env_cfg.sim.render_interval = orbit_psm_foundation.sim.render_interval
+    microscopic_bench_assets = selected_bench_assets.intersection(
+        {"dr_anmar_needle", "dr_anmar_needle_suture"}
+    )
     interactive_rendering_mode = procedure.get("interactive_rendering_mode")
     if interactive_rendering_mode:
         # Use Isaac Lab's official real-time RTX preset for the doctor-facing
@@ -3661,6 +3689,12 @@ def main() -> None:
     )
     if hasattr(env_cfg.sim.physx, "enable_external_forces_every_iteration"):
         env_cfg.sim.physx.enable_external_forces_every_iteration = True
+    if microscopic_bench_assets:
+        # Isaac Lab's global PhysX CCD switch must be enabled in addition to
+        # the rigid-body CCD schemas authored on surgical-scale assets.
+        # Without the scene switch, the sub-millimetre needle can tunnel
+        # through the NVIDIA table even though its USD requests CCD.
+        env_cfg.sim.physx.enable_ccd = True
     if nvidia_native_bench:
         # Compose the room exclusively from the pinned Isaac for Healthcare
         # catalog. The existing handover task continues to own both PSMs,
@@ -3756,29 +3790,22 @@ def main() -> None:
                 ),
             )
         if "dr_anmar_needle" in selected_bench_assets:
-            env_cfg.scene.dr_anmar_needle = RigidObjectCfg(
-                prim_path="{ENV_REGEX_NS}/DrAnmarNeedle",
+            env_cfg.scene.dr_anmar_standalone_needle = RigidObjectCfg(
+                prim_path="{ENV_REGEX_NS}/DrAnmarStandaloneNeedle",
                 init_state=RigidObjectCfg.InitialStateCfg(
-                    # Standalone grasping needle on the right rear landing.
-                    pos=(0.075, 0.245, 0.0008),
+                    # Reuse the working NVIDIA needle landing when this is the
+                    # isolated grasping object. Keep a separate visible landing
+                    # only when both needle variants are requested.
+                    pos=(
+                        (0.060, 0.055, 0.0012)
+                        if "needle" in selected_bench_assets
+                        or "dr_anmar_needle_suture" in selected_bench_assets
+                        else (-0.195, 0.015, 0.0012)
+                    ),
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=sim_utils.UsdFileCfg(
                     usd_path=str(bench_asset_paths["dr_anmar_needle"]),
-                    variants={"Physics": "physx"},
-                    activate_contact_sensors=True,
-                ),
-            )
-        if "dr_anmar_needle_suture" in selected_bench_assets:
-            env_cfg.scene.dr_anmar_needle_suture = AssetBaseCfg(
-                prim_path="{ENV_REGEX_NS}/DrAnmarNeedleAssembly",
-                init_state=AssetBaseCfg.InitialStateCfg(
-                    # The 180 mm strand trails left from a separate rear landing.
-                    pos=(-0.065, 0.245, 0.0008),
-                    rot=(1.0, 0.0, 0.0, 0.0),
-                ),
-                spawn=sim_utils.UsdFileCfg(
-                    usd_path=str(bench_asset_paths["dr_anmar_needle_suture"]),
                     variants={"Physics": "physx"},
                     activate_contact_sensors=True,
                 ),
@@ -3827,6 +3854,134 @@ def main() -> None:
                     activate_contact_sensors=True,
                 ),
             )
+
+    if bench_dr_anmar_suture_enabled:
+        # Use SoftMimicGen's released deformable Rope.usd for the strand and
+        # the same native PhysX auto-attachment pattern already proven in the
+        # NVIDIA threading room. Dr.Anmar contributes the needle geometry and
+        # its explicit swage anchor; no rigid-link rope or projected curve is
+        # introduced in the main operating room.
+        env_cfg.scene.replicate_physics = False
+        rope_usd = (
+            _softmimicgen_root
+            / "source/softmimicgen_assets/data/Props/Rope/Rope.usd"
+        )
+        threaded_needle_usd = (
+            REPOSITORY_ROOT
+            / "assets/dr_anmar/needle/DrAnmarNeedleOnly.usda"
+        )
+        if not rope_usd.is_file():
+            raise RuntimeError(
+                f"Pinned NVIDIA SoftMimicGen Rope.usd is missing: {rope_usd}"
+            )
+        if not threaded_needle_usd.is_file():
+            raise RuntimeError(
+                f"Dr.Anmar needle runtime asset is missing: {threaded_needle_usd}"
+            )
+        one_room_physx = {
+            "gpu_max_rigid_contact_count": 2**16,
+            "gpu_max_rigid_patch_count": 2**14,
+            "gpu_found_lost_pairs_capacity": 2**16,
+            "gpu_found_lost_aggregate_pairs_capacity": 2**16,
+            "gpu_total_aggregate_pairs_capacity": 2**16,
+            "gpu_collision_stack_size": 2**24,
+            "gpu_heap_capacity": 2**24,
+            "gpu_temp_buffer_capacity": 2**22,
+            "gpu_max_soft_body_contacts": 2**16,
+            "gpu_max_particle_contacts": 2**14,
+        }
+        for setting, value in one_room_physx.items():
+            if hasattr(env_cfg.sim.physx, setting):
+                setattr(env_cfg.sim.physx, setting, value)
+        env_cfg.scene.dr_anmar_native_suture = DeformableObjectCfg(
+            prim_path="{ENV_REGEX_NS}/DrAnmarNativeSuture",
+            init_state=DeformableObjectCfg.InitialStateCfg(
+                pos=(-0.1, 0.0, 0.01),
+                rot=(1.0, 0.0, 0.0, 0.0),
+            ),
+            spawn=sim_utils.UsdFileCfg(
+                usd_path=str(rope_usd),
+                # Rope.usd has a 10 mm local radius. Preserve NVIDIA's 0.2
+                # longitudinal scale and set both rendered and physical
+                # diameter to the proven 0.8 mm SoftMimicGen configuration.
+                scale=(0.2, 0.04, 0.04),
+            ),
+            debug_vis=False,
+        )
+        threaded_needle_spawn = sim_utils.UsdFileCfg(
+            usd_path=str(threaded_needle_usd),
+            activate_contact_sensors=True,
+        )
+        source_threaded_needle_spawn = threaded_needle_spawn.func
+
+        def spawn_dr_anmar_threaded_needle(
+            prim_path: str,
+            cfg: sim_utils.UsdFileCfg,
+            translation: tuple[float, float, float] | None = None,
+            orientation: tuple[float, float, float, float] | None = None,
+            **kwargs: Any,
+        ) -> Any:
+            needle_prim = source_threaded_needle_spawn(
+                prim_path,
+                cfg,
+                translation=translation,
+                orientation=orientation,
+                **kwargs,
+            )
+            import omni.usd
+            from pxr import PhysxSchema, Sdf
+
+            stage = omni.usd.get_context().get_stage()
+            resolved_root_path = str(needle_prim.GetPath())
+            environment_path = resolved_root_path.rsplit("/", 1)[0]
+            attachment = PhysxSchema.PhysxPhysicsAttachment.Define(
+                stage,
+                Sdf.Path(
+                    f"{environment_path}/DrAnmarSutureNeedleAttachment"
+                ),
+            )
+            attachment.GetActor0Rel().SetTargets(
+                [
+                    Sdf.Path(
+                        f"{environment_path}/DrAnmarNativeSuture/Xform"
+                    )
+                ]
+            )
+            attachment.GetActor1Rel().SetTargets(
+                [Sdf.Path(f"{resolved_root_path}/Needle")]
+            )
+            auto_attachment = (
+                PhysxSchema.PhysxAutoAttachmentAPI.Apply(
+                    attachment.GetPrim()
+                )
+            )
+            auto_attachment.CreateDeformableVertexOverlapOffsetAttr(
+                0.0012
+            )
+            auto_attachment.CreateCollisionFilteringOffsetAttr(0.0012)
+            return needle_prim
+
+        threaded_needle_spawn.func = spawn_dr_anmar_threaded_needle
+        softmimicgen_swage_target_world = np.asarray(
+            (-0.0201500003, 0.0000380001, 0.0093380004),
+            dtype=np.float64,
+        )
+        dr_anmar_swage_anchor_local = np.asarray(
+            (0.0, 0.00700281749604, 0.0),
+            dtype=np.float64,
+        )
+        dr_anmar_threaded_needle_position = (
+            softmimicgen_swage_target_world
+            - dr_anmar_swage_anchor_local
+        )
+        env_cfg.scene.dr_anmar_threaded_needle = RigidObjectCfg(
+            prim_path="{ENV_REGEX_NS}/DrAnmarThreadedNeedle",
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=tuple(dr_anmar_threaded_needle_position.tolist()),
+                rot=(1.0, 0.0, 0.0, 0.0),
+            ),
+            spawn=threaded_needle_spawn,
+        )
 
     if _softmimicgen_task:
         # There is one interactive room, so physics replication provides no
@@ -4029,9 +4184,10 @@ def main() -> None:
                 setattr(env_cfg.scene, camera_name, None)
             if hasattr(env_cfg.observations.policy, camera_name):
                 setattr(env_cfg.observations.policy, camera_name, None)
-    # Only the authored Dr.Anmar suturing room receives this additional
-    # needle-strand system. NVIDIA/ORBIT/SoftMimicGen rooms must run their
-    # native assets and solver contracts without a hidden second suture.
+    # Keep the legacy authored research-room assembly quarantined here. The
+    # main operating bench uses SoftMimicGen's native deformable strand above;
+    # NVIDIA/ORBIT/SoftMimicGen rooms otherwise keep their native assets and
+    # solver contracts unchanged.
     dr_anmar_needle_manifest = (
         configure_dr_anmar_needle(
             env_cfg.scene,
@@ -4532,6 +4688,8 @@ def main() -> None:
     initial_dr_anmar_needle_domain: dict[str, Any] = {}
     suture_runtime_domain_state: list[dict[str, Any]] = [{}]
     suture_physics_view = SimulationManager.get_physics_sim_view()
+    suture_needle_view = None
+    suture_interface_view = None
     suture_segment_view = None
     if dr_anmar_needle_enabled:
         if dr_anmar_needle_manifest is None:
@@ -4608,6 +4766,21 @@ def main() -> None:
                 "The Dr.Anmar live suture tensor view is incomplete: "
                 f"segments="
                 f"{suture_segment_view.count if suture_segment_view._backend else 0}"
+            )
+        suture_needle_view = suture_physics_view.create_rigid_body_view(
+            f"{suture_root_path}/Needle"
+        )
+        suture_interface_view = suture_physics_view.create_rigid_body_view(
+            f"{suture_root_path}/Suture/NeedleInterface"
+        )
+        if (
+            suture_needle_view._backend is None
+            or suture_needle_view.count != 1
+            or suture_interface_view._backend is None
+            or suture_interface_view.count != 1
+        ):
+            raise RuntimeError(
+                "The Dr.Anmar needle-suture rigid-body views are incomplete"
             )
     hemostasis_clip_view = None
     if native_hemostasis_enabled:
@@ -4719,7 +4892,13 @@ def main() -> None:
     deformable_names = sorted(getattr(scene, "deformable_objects", {}).keys())
     deformables = {name: scene[name] for name in deformable_names}
     native_tissue = deformables.get(str(native_room.get("stage_key", ""))) if native_room else None
-    interactive_deformable = deformables.get("object") if _softmimicgen_task else native_tissue
+    interactive_deformable = (
+        deformables.get("object")
+        if _softmimicgen_task
+        else deformables.get("dr_anmar_native_suture")
+        if bench_dr_anmar_suture_enabled
+        else native_tissue
+    )
     ring_physics_ready = "ring" in objects
     strand_self_collision_ready = not bool(procedure.get("enable_strand_self_collision"))
     self_collision_attributes: dict[str, Any] = {}
@@ -5367,6 +5546,32 @@ def main() -> None:
             )
         return transforms[:, :3]
 
+    def suture_body_position(view: Any) -> np.ndarray | None:
+        if view is None or view._backend is None or view.count != 1:
+            return None
+        transforms = (
+            view.get_transforms()
+            .detach()
+            .cpu()
+            .numpy()
+            .astype(np.float64)
+        )
+        if transforms.shape != (1, 7) or not np.isfinite(transforms).all():
+            return None
+        return transforms[0, :3].astype(np.float32)
+
+    def suture_render_positions() -> np.ndarray:
+        segment_positions = suture_segment_positions()
+        interface_position = suture_body_position(suture_interface_view)
+        if interface_position is None:
+            if len(segment_positions) == 0:
+                return segment_positions
+            interface_position = segment_positions[0]
+        return np.concatenate(
+            (interface_position.reshape(1, 3), segment_positions),
+            axis=0,
+        )
+
     def disabled_suture_curve_update(
         _world_positions: np.ndarray,
     ) -> None:
@@ -5385,7 +5590,7 @@ def main() -> None:
         realtime_suture_curve.CreateTypeAttr(UsdGeom.Tokens.linear)
         realtime_suture_curve.CreateWrapAttr(UsdGeom.Tokens.nonperiodic)
         realtime_suture_curve.CreateCurveVertexCountsAttr(
-            Vt.IntArray([suture_segment_count])
+            Vt.IntArray([suture_segment_count + 1])
         )
         realtime_suture_curve.CreateWidthsAttr(Vt.FloatArray([0.00025]))
         realtime_suture_curve.SetWidthsInterpolation(
@@ -5429,7 +5634,7 @@ def main() -> None:
                 for point in world_positions
             ]
 
-        initial_suture_world_positions = suture_segment_positions()
+        initial_suture_world_positions = suture_render_positions()
         initial_suture_local_points = realtime_suture_local_points(
             initial_suture_world_positions
         )
@@ -5636,11 +5841,21 @@ def main() -> None:
         anatomy_collision_meshes=collision_mesh_count,
         sensor_profile=args_cli.sensor_profile,
         needle_visual_ready=bool(
-            "suture_needle" in objects or "object" in objects
-        )
-        if guide_kind in NATIVE_NEEDLE_GUIDE_KINDS or bimanual_softmimicgen
-        else True,
-        deformable_strand_ready=bool("object" in deformables),
+            "suture_needle" in objects
+            or "dr_anmar_standalone_needle" in objects
+            or "dr_anmar_threaded_needle" in objects
+            or suture_body_position(suture_needle_view) is not None
+            or "object" in objects
+        ),
+        deformable_strand_ready=bool(
+            "object" in deformables
+            or "dr_anmar_native_suture" in deformables
+            or (
+                suture_segment_view is not None
+                and suture_segment_view._backend is not None
+                and suture_segment_view.count == suture_segment_count
+            )
+        ),
         native_rigid_object_names=object_names,
         native_deformable_object_names=deformable_names,
         dr_anmar_needle_domain=initial_dr_anmar_needle_domain,
@@ -5659,6 +5874,10 @@ def main() -> None:
         "device": str(env.unwrapped.device),
         "physics_dt_s": float(env_cfg.sim.dt),
         "action_decimation": int(env_cfg.decimation),
+        "action_period_s": float(env_cfg.sim.dt * env_cfg.decimation),
+        "scene_ccd_enabled": bool(
+            getattr(env_cfg.sim.physx, "enable_ccd", False)
+        ),
         "render_interval_physics_steps": int(env_cfg.sim.render_interval),
         "single_active_camera_renderer": shared_camera_renderer,
         "native_segment_rendering": suture_native_segment_rendering,
@@ -6278,6 +6497,20 @@ def main() -> None:
                     objects["suture_needle"].data.root_pos_w[0, :3]
                     .detach().cpu().numpy().astype(np.float32)
                 )
+            elif (
+                bench_dr_anmar_suture_enabled
+                and "dr_anmar_threaded_needle" in objects
+            ):
+                expert_object = (
+                    objects["dr_anmar_threaded_needle"]
+                    .data.root_pos_w[0, :3]
+                    .detach().cpu().numpy().astype(np.float32)
+                )
+            elif (
+                "dr_anmar_needle" not in selected_bench_assets
+                and dr_anmar_needle_enabled
+            ):
+                expert_object = suture_body_position(suture_needle_view)
             elif objects:
                 expert_object = next(iter(objects.values())).data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
             elif native_tissue is not None:
@@ -6394,10 +6627,24 @@ def main() -> None:
                 objects["suture_needle"].data.root_pos_w[0, :3]
                 .detach().cpu().numpy().astype(np.float32)
             )
+        elif (
+            bench_dr_anmar_suture_enabled
+            and "dr_anmar_threaded_needle" in objects
+        ):
+            grasp_target_position = (
+                objects["dr_anmar_threaded_needle"]
+                .data.root_pos_w[0, :3]
+                .detach().cpu().numpy().astype(np.float32)
+            )
         elif interactive_deformable is not None:
             nodal_position_value = interactive_deformable.data.nodal_pos_w
             nodal_positions = getattr(nodal_position_value, "torch", nodal_position_value)
             grasp_target_position = nodal_positions[0].mean(dim=0).detach().cpu().numpy().astype(np.float32)
+        elif (
+            "dr_anmar_needle" not in selected_bench_assets
+            and dr_anmar_needle_enabled
+        ):
+            grasp_target_position = suture_body_position(suture_needle_view)
         elif objects:
             grasp_object = next(iter(objects.values()))
             grasp_target_position = grasp_object.data.root_pos_w[0, :3].detach().cpu().numpy().astype(np.float32)
@@ -6454,7 +6701,7 @@ def main() -> None:
                 )
             if suture_visual_active:
                 curve_update_started = time.perf_counter()
-                update_realtime_suture_curve(suture_segment_positions())
+                update_realtime_suture_curve(suture_render_positions())
                 curve_update_ms = (
                     time.perf_counter() - curve_update_started
                 ) * 1000.0
@@ -6694,7 +6941,10 @@ def main() -> None:
             # clinically meaningful tissue stress in this dry-lab room.
             latest_deformable_safety = sample_deformable_safety(
                 deformables,
-                include_material_metrics=not _softmimicgen_task,
+                include_material_metrics=not (
+                    _softmimicgen_task
+                    or bench_dr_anmar_suture_enabled
+                ),
             )
             suture_sample_time = time.monotonic()
             suture_dt_s = max(
@@ -6712,6 +6962,17 @@ def main() -> None:
                 and suture_dt_s >= suture_sample_period_s
             ):
                 live_suture_positions = suture_segment_positions()
+                adjacent_suture_distances = np.linalg.norm(
+                    np.diff(live_suture_positions, axis=0),
+                    axis=1,
+                )
+                suture_axis_span = np.ptp(
+                    live_suture_positions,
+                    axis=0,
+                )
+                interface_position = suture_body_position(
+                    suture_interface_view
+                )
                 latest_suture_telemetry = {
                     "schema": "dr.anmar.native-suture-telemetry.v1",
                     "profile_id": suture_profile["id"],
@@ -6725,6 +6986,117 @@ def main() -> None:
                     "sample_period_s": suture_dt_s,
                     "evidence_source": (
                         "native_physx_tensor_poses"
+                    ),
+                    "axis_span_m": [
+                        round(float(value), 6)
+                        for value in suture_axis_span
+                    ],
+                    "path_length_m": round(
+                        float(adjacent_suture_distances.sum()),
+                        6,
+                    ),
+                    "maximum_adjacent_segment_gap_m": round(
+                        float(adjacent_suture_distances.max()),
+                        6,
+                    ),
+                    "needle_interface_gap_m": (
+                        round(
+                            float(
+                                np.linalg.norm(
+                                    interface_position
+                                    - live_suture_positions[0]
+                                )
+                            ),
+                            6,
+                        )
+                        if interface_position is not None
+                        else None
+                    ),
+                }
+                suture_last_sample_time[0] = suture_sample_time
+            elif (
+                bench_dr_anmar_suture_enabled
+                and interactive_deformable is not None
+                and "dr_anmar_threaded_needle" in objects
+                and suture_dt_s >= suture_sample_period_s
+            ):
+                # Observe the released SoftMimicGen deformable directly. The
+                # nodal cloud is intentionally not treated as an ordered
+                # centerline or a clinical material metric.
+                nodal_value = interactive_deformable.data.nodal_pos_w
+                nodal_positions = (
+                    getattr(nodal_value, "torch", nodal_value)[0]
+                    .detach()
+                    .cpu()
+                    .numpy()
+                    .astype(np.float64)
+                )
+                default_value = interactive_deformable.data.default_nodal_state_w
+                default_positions = (
+                    getattr(default_value, "torch", default_value)[0, :, :3]
+                    .detach()
+                    .cpu()
+                    .numpy()
+                    .astype(np.float64)
+                )
+                endpoint_mask = (
+                    default_positions[:, 0]
+                    >= float(default_positions[:, 0].max()) - 0.0002
+                )
+                endpoint_position = nodal_positions[endpoint_mask].mean(axis=0)
+                needle_state = objects["dr_anmar_threaded_needle"].data
+                needle_position = (
+                    needle_state.root_pos_w[0]
+                    .detach()
+                    .cpu()
+                    .numpy()
+                    .astype(np.float64)
+                )
+                needle_quaternion = (
+                    needle_state.root_quat_w[0]
+                    .detach()
+                    .cpu()
+                    .numpy()
+                    .astype(np.float64)
+                )
+                needle_quaternion /= np.linalg.norm(needle_quaternion)
+                quaternion_vector = needle_quaternion[1:]
+                doubled_cross = 2.0 * np.cross(
+                    quaternion_vector,
+                    dr_anmar_swage_anchor_local,
+                )
+                rotated_anchor = (
+                    dr_anmar_swage_anchor_local
+                    + needle_quaternion[0] * doubled_cross
+                    + np.cross(quaternion_vector, doubled_cross)
+                )
+                swage_position = needle_position + rotated_anchor
+                latest_suture_telemetry = {
+                    "schema": "dr.anmar.native-suture-telemetry.v1",
+                    "profile_id": "nvidia-softmimicgen-rope-0.8mm",
+                    "physics_authority": "NVIDIA_SoftMimicGen_PhysX",
+                    "native_state_finite": bool(
+                        np.isfinite(nodal_positions).all()
+                    ),
+                    "material_history_controller": False,
+                    "sample_period_s": suture_dt_s,
+                    "evidence_source": "native_deformable_nodal_positions",
+                    "attachment": "PhysxAutoAttachmentAPI",
+                    "rendered_diameter_m": 0.0008,
+                    "physical_diameter_m": 0.0008,
+                    "node_count": int(nodal_positions.shape[0]),
+                    "terminal_surface_nodes": int(endpoint_mask.sum()),
+                    "axis_span_m": [
+                        round(float(value), 6)
+                        for value in np.ptp(nodal_positions, axis=0)
+                    ],
+                    "swage_endpoint_gap_m": round(
+                        float(
+                            np.linalg.norm(
+                                endpoint_position - swage_position
+                            )
+                        ),
+                        6,
                     ),
                 }
                 suture_last_sample_time[0] = suture_sample_time

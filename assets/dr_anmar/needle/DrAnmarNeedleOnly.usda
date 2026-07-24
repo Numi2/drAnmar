@@ -14,7 +14,38 @@ def Xform "DrAnmarNeedleOnly" (
     }
 )
 {
+    over "Needle"
+    {
+        over "Collision" (
+            active = false
+        )
+        {
+        }
+
+        over "Visual" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI", "PhysxCollisionAPI", "PhysxSDFMeshCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            bool physics:collisionEnabled = true
+            uniform token physics:approximation = "sdf"
+            uniform token physxSDFMeshCollision:sdfBitsPerSubgridPixel = "BitsPerPixel16"
+            bool physxSDFMeshCollision:sdfEnableRemeshing = false
+            float physxSDFMeshCollision:sdfMargin = 0.01
+            float physxSDFMeshCollision:sdfNarrowBandThickness = 0.01
+            int physxSDFMeshCollision:sdfResolution = 256
+            int physxSDFMeshCollision:sdfSubgridResolution = 6
+            float physxSDFMeshCollision:sdfTriangleCountReductionFactor = 1
+            rel material:binding:physics = </DrAnmarNeedleOnly/Looks/NeedleSteelPhysics>
+        }
+    }
+
     over "Suture" (
+        active = false
+    )
+    {
+    }
+
+    over "FactorySwage" (
         active = false
     )
     {
