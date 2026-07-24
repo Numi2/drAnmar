@@ -5,16 +5,33 @@
   "asset_sha256": "7b33b49b6b2c7934af9569d789b45bf2bdf0df16e98cc7d9806f56440e831c90",
   "dr_anmar_needle_name": "DrAnmar Needle",
   "dr_anmar_needle_asset_id": "dr-anmar-needle",
-  "dr_anmar_needle_asset_version": "1.1.0",
+  "dr_anmar_needle_asset_version": "1.2.0",
   "dr_anmar_needle": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
-  "dr_anmar_needle_sha256": "bb6d42aeec61ea127c571d3da86f9428956a2b5c0cb02083e61a0646b6b2ae35",
+  "dr_anmar_needle_sha256": "86ffe340d6775a17264498dbcf518963236dc80875699bde67714c728128f2a9",
   "needle_profile": "physics_next/needles/dr-anmar-needle-v1.json",
   "needle_profile_id": "dr-anmar-needle-v1",
   "needle_geometry_source": "independently_generated_parametric_geometry",
   "needle_arc_length_m": 0.022,
   "needle_curvature_radius_m": 0.0070028174960433945,
   "needle_body_diameter_m": 0.00052,
-  "needle_mass_kg": 3.1895423334977654e-05,
+  "needle_mass_kg": 3.189542333463235e-05,
+  "needle_mass_property_integration_slices": 8192,
+  "needle_center_of_mass_m": [
+    0.0050193794285684976,
+    0.0006195416306296188,
+    0.0
+  ],
+  "needle_diagonal_inertia_kg_m2": [
+    9.42851455125689e-11,
+    6.565994298708686e-10,
+    7.498559124943371e-10
+  ],
+  "needle_principal_axes_wxyz": [
+    0.7491962903735767,
+    0.0,
+    0.0,
+    -0.6623480342618006
+  ],
   "needle_visual_vertex_count": 2049,
   "needle_collision_capsule_count": 40,
   "needle_collision_contract": {

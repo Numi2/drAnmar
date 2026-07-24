@@ -7,15 +7,10 @@ import argparse
 import json
 from pathlib import Path
 
-from isaaclab.app import AppLauncher
-
 from dr_anmar_needle_model import derive_needle, load_needle_profile
-from dr_anmar_suture_integration import (
-    DR_ANMAR_NEEDLE_ASSET_ID,
-    DR_ANMAR_NEEDLE_ASSET_VERSION,
-    DR_ANMAR_NEEDLE_NAME,
-)
+from dr_anmar_suture_integration import DR_ANMAR_NEEDLE_ASSET_ID, DR_ANMAR_NEEDLE_ASSET_VERSION, DR_ANMAR_NEEDLE_NAME
 
+from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--asset", type=Path, required=True)
@@ -28,10 +23,12 @@ simulation_app = app_launcher.app
 
 
 import numpy as np  # noqa: E402
+
 import omni.usd  # noqa: E402
-from isaaclab.sim import PhysxCfg, SimulationCfg, SimulationContext  # noqa: E402
 from isaacsim.core.simulation_manager import SimulationManager  # noqa: E402
 from pxr import Gf, UsdGeom, UsdPhysics  # noqa: E402
+
+from isaaclab.sim import PhysxCfg, SimulationCfg, SimulationContext  # noqa: E402
 
 
 def rotate_xyzw(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
@@ -40,9 +37,13 @@ def rotate_xyzw(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
     vector_part = quaternion[:3]
     scalar_part = quaternion[3]
     doubled_cross = 2.0 * np.cross(vector_part, vector)
-    return vector + scalar_part * doubled_cross + np.cross(
-        vector_part,
-        doubled_cross,
+    return (
+        vector
+        + scalar_part * doubled_cross
+        + np.cross(
+            vector_part,
+            doubled_cross,
+        )
     )
 
 
@@ -95,54 +96,27 @@ def main() -> int:
 
     sim.reset()
     physics_view = SimulationManager.get_physics_sim_view()
-    assembly = stage.GetPrimAtPath(
-        f"{root_path}/Suture/Segments/S0000"
-    ).IsValid()
-    segment_pattern = (
-        f"{root_path}/Suture/Segments/S*"
-        if assembly
-        else f"{root_path}/Segments/S*"
-    )
-    joint_prefix = (
-        f"{root_path}/Suture/Joints/"
-        if assembly
-        else f"{root_path}/Joints/"
-    )
-    segments = physics_view.create_rigid_body_view(
-        segment_pattern
-    )
+    assembly = stage.GetPrimAtPath(f"{root_path}/Suture/Segments/S0000").IsValid()
+    segment_pattern = f"{root_path}/Suture/Segments/S*" if assembly else f"{root_path}/Segments/S*"
+    joint_prefix = f"{root_path}/Suture/Joints/" if assembly else f"{root_path}/Joints/"
+    segments = physics_view.create_rigid_body_view(segment_pattern)
     if segments._backend is None or segments.count != 360:
-        raise RuntimeError(
-            f"PhysX created {segments.count if segments._backend else 0} of 360 suture bodies"
-        )
+        raise RuntimeError(f"PhysX created {segments.count if segments._backend else 0} of 360 suture bodies")
     needle = None
     interface = None
     initial_swage_distance_m = None
     if assembly:
-        needle = physics_view.create_rigid_body_view(
-            f"{root_path}/Needle"
-        )
-        interface = physics_view.create_rigid_body_view(
-            f"{root_path}/Suture/NeedleInterface"
-        )
-        if (
-            needle._backend is None
-            or needle.count != 1
-            or interface._backend is None
-            or interface.count != 1
-        ):
+        needle = physics_view.create_rigid_body_view(f"{root_path}/Needle")
+        interface = physics_view.create_rigid_body_view(f"{root_path}/Suture/NeedleInterface")
+        if needle._backend is None or needle.count != 1 or interface._backend is None or interface.count != 1:
             raise RuntimeError("PhysX did not create the needle and swage rigid bodies")
         initial_needle = needle.get_transforms().cpu().numpy().astype(np.float64)[0]
-        initial_interface = (
-            interface.get_transforms().cpu().numpy().astype(np.float64)[0]
-        )
+        initial_interface = interface.get_transforms().cpu().numpy().astype(np.float64)[0]
         initial_anchor = initial_needle[:3] + rotate_xyzw(
             initial_needle[3:7],
             np.asarray(derived_needle.swage_anchor_m, dtype=np.float64),
         )
-        initial_swage_distance_m = float(
-            np.linalg.norm(initial_anchor - initial_interface[:3])
-        )
+        initial_swage_distance_m = float(np.linalg.norm(initial_anchor - initial_interface[:3]))
     initial = segments.get_transforms().cpu().numpy().astype(np.float64)
     for _ in range(max(1, args.steps)):
         sim.step(render=False)
@@ -153,48 +127,94 @@ def main() -> int:
     final_swage_distance_m = None
     if needle is not None and interface is not None:
         final_needle = needle.get_transforms().cpu().numpy().astype(np.float64)[0]
-        final_interface = (
-            interface.get_transforms().cpu().numpy().astype(np.float64)[0]
-        )
+        final_interface = interface.get_transforms().cpu().numpy().astype(np.float64)[0]
         final_anchor = final_needle[:3] + rotate_xyzw(
             final_needle[3:7],
             np.asarray(derived_needle.swage_anchor_m, dtype=np.float64),
         )
-        final_swage_distance_m = float(
-            np.linalg.norm(final_anchor - final_interface[:3])
-        )
+        final_swage_distance_m = float(np.linalg.norm(final_anchor - final_interface[:3]))
     joint_count = sum(
         prim.GetTypeName() == "PhysicsJoint"
         for prim in stage.Traverse()
         if str(prim.GetPath()).startswith(joint_prefix)
     )
-    factory_swage = stage.GetPrimAtPath(
-        f"{root_path}/FactorySwage"
-    )
+    factory_swage = stage.GetPrimAtPath(f"{root_path}/FactorySwage")
     needle_collision_capsules = []
     needle_collision_extent_count = None
     needle_friction_combine_mode = None
+    needle_authored_mass_kg = None
+    needle_center_of_mass_m = None
+    needle_diagonal_inertia_kg_m2 = None
+    needle_principal_axes_wxyz = None
+    needle_mass_properties_match_geometry = None
     if assembly:
         needle_collision_capsules = [
             prim
             for prim in stage.Traverse()
-            if prim.GetTypeName() == "Capsule"
-            and str(prim.GetPath()).startswith(
-                f"{root_path}/Needle/Collision/C"
-            )
+            if prim.GetTypeName() == "Capsule" and str(prim.GetPath()).startswith(f"{root_path}/Needle/Collision/C")
         ]
         needle_collision_extent_count = sum(
-            UsdGeom.Capsule(prim).GetExtentAttr().HasAuthoredValueOpinion()
-            for prim in needle_collision_capsules
+            UsdGeom.Capsule(prim).GetExtentAttr().HasAuthoredValueOpinion() for prim in needle_collision_capsules
         )
-        needle_material = stage.GetPrimAtPath(
-            f"{root_path}/Materials/NeedleSteel"
+        needle_material = stage.GetPrimAtPath(f"{root_path}/Materials/NeedleSteel")
+        needle_friction_combine_mode = needle_material.GetAttribute("physxMaterial:frictionCombineMode").Get()
+        mass_api = UsdPhysics.MassAPI(stage.GetPrimAtPath(f"{root_path}/Needle"))
+        needle_authored_mass_kg = float(mass_api.GetMassAttr().Get())
+        center_of_mass = mass_api.GetCenterOfMassAttr().Get()
+        diagonal_inertia = mass_api.GetDiagonalInertiaAttr().Get()
+        principal_axes = mass_api.GetPrincipalAxesAttr().Get()
+        principal_imaginary = principal_axes.GetImaginary()
+        needle_center_of_mass_m = [float(center_of_mass[index]) for index in range(3)]
+        needle_diagonal_inertia_kg_m2 = [float(diagonal_inertia[index]) for index in range(3)]
+        needle_principal_axes_wxyz = [
+            float(principal_axes.GetReal()),
+            *(float(principal_imaginary[index]) for index in range(3)),
+        ]
+        expected_mass_properties = derived_needle.mass_properties
+        needle_mass_properties_match_geometry = bool(
+            np.isfinite(
+                [
+                    needle_authored_mass_kg,
+                    *needle_center_of_mass_m,
+                    *needle_diagonal_inertia_kg_m2,
+                    *needle_principal_axes_wxyz,
+                ]
+            ).all()
+            and needle_authored_mass_kg > 0.0
+            and all(value > 0.0 for value in needle_diagonal_inertia_kg_m2)
+            and np.isclose(
+                needle_authored_mass_kg,
+                derived_needle.mass_kg,
+                rtol=1.0e-6,
+                atol=0.0,
+            )
+            and np.allclose(
+                needle_center_of_mass_m,
+                expected_mass_properties.center_of_mass_m,
+                rtol=1.0e-6,
+                atol=1.0e-12,
+            )
+            and np.allclose(
+                needle_diagonal_inertia_kg_m2,
+                expected_mass_properties.diagonal_inertia_kg_m2,
+                rtol=1.0e-6,
+                atol=0.0,
+            )
+            and np.allclose(
+                needle_principal_axes_wxyz,
+                expected_mass_properties.principal_axes_wxyz,
+                rtol=1.0e-6,
+                atol=1.0e-7,
+            )
+            and np.isclose(
+                np.linalg.norm(needle_principal_axes_wxyz),
+                1.0,
+                rtol=0.0,
+                atol=1.0e-6,
+            )
         )
-        needle_friction_combine_mode = needle_material.GetAttribute(
-            "physxMaterial:frictionCombineMode"
-        ).Get()
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v1",
+        "schema": "dr.anmar.needle-native-physx-probe.v2",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -204,13 +224,14 @@ def main() -> int:
         "segment_count": int(segments.count),
         "joint_count": int(joint_count),
         "factory_swage": bool(factory_swage.IsValid()) if assembly else None,
-        "needle_collision_capsule_count": (
-            len(needle_collision_capsules) if assembly else None
-        ),
-        "needle_collision_explicit_extent_count": (
-            needle_collision_extent_count
-        ),
+        "needle_collision_capsule_count": len(needle_collision_capsules) if assembly else None,
+        "needle_collision_explicit_extent_count": needle_collision_extent_count,
         "needle_friction_combine_mode": needle_friction_combine_mode,
+        "needle_authored_mass_kg": needle_authored_mass_kg,
+        "needle_center_of_mass_m": needle_center_of_mass_m,
+        "needle_diagonal_inertia_kg_m2": needle_diagonal_inertia_kg_m2,
+        "needle_principal_axes_wxyz": needle_principal_axes_wxyz,
+        "needle_mass_properties_match_geometry": needle_mass_properties_match_geometry,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -231,11 +252,10 @@ def main() -> int:
             not assembly
             or (
                 report["factory_swage"]
-                and report["needle_collision_capsule_count"]
-                == derived_needle.collision_capsule_count
-                and report["needle_collision_explicit_extent_count"]
-                == derived_needle.collision_capsule_count
+                and report["needle_collision_capsule_count"] == derived_needle.collision_capsule_count
+                and report["needle_collision_explicit_extent_count"] == derived_needle.collision_capsule_count
                 and report["needle_friction_combine_mode"] == "max"
+                and report["needle_mass_properties_match_geometry"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None

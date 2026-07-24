@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Pure parametric geometry and mass model for DrAnmar Needle."""
 
 from __future__ import annotations
@@ -10,11 +9,24 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_NEEDLE_PROFILE_PATH = (
-    REPOSITORY_ROOT / "physics_next/needles/dr-anmar-needle-v1.json"
-)
+DEFAULT_NEEDLE_PROFILE_PATH = REPOSITORY_ROOT / "physics_next/needles/dr-anmar-needle-v1.json"
+DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES = 8192
+
+
+@dataclass(frozen=True)
+class NeedleMassProperties:
+    integration_slices: int
+    volume_m3: float
+    mass_kg: float
+    center_of_mass_m: tuple[float, float, float]
+    inertia_tensor_kg_m2: tuple[
+        tuple[float, float, float],
+        tuple[float, float, float],
+        tuple[float, float, float],
+    ]
+    diagonal_inertia_kg_m2: tuple[float, float, float]
+    principal_axes_wxyz: tuple[float, float, float, float]
 
 
 @dataclass(frozen=True)
@@ -26,6 +38,7 @@ class DerivedNeedle:
     swage_radius_m: float
     tip_radius_m: float
     mass_kg: float
+    mass_properties: NeedleMassProperties
     swage_anchor_m: tuple[float, float, float]
     swage_tangent: tuple[float, float, float]
     visual_vertex_count: int
@@ -145,6 +158,212 @@ def centerline_at(
     return point, tangent
 
 
+def derive_needle_mass_properties(
+    profile: dict[str, Any],
+    *,
+    integration_slices: int = DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES,
+) -> NeedleMassProperties:
+    """Integrate the tapered needle solid and diagonalize its inertia tensor.
+
+    Each midpoint slice analytically integrates its complete circular cross
+    section normal to the curved centerline. The ``1 + u / R`` toroidal
+    Jacobian accounts for the larger swept volume on the outside of the arc.
+    The resulting tensor is shifted to the integrated center of mass before
+    extracting principal axes.
+    """
+
+    if integration_slices < 32:
+        raise ValueError("needle mass integration requires at least 32 slices")
+    construction = profile["construction"]
+    arc_length = float(construction["centerline_arc_length_m"])
+    curvature_radius = arc_length / math.pi
+    density = float(profile["material"]["density_kg_m3"])
+    distance_step = arc_length / integration_slices
+    mass = 0.0
+    volume = 0.0
+    first_moment = [0.0, 0.0, 0.0]
+    inertia_origin = [[0.0, 0.0, 0.0] for _ in range(3)]
+    for index in range(integration_slices):
+        distance = (index + 0.5) * distance_step
+        fraction = distance / arc_length
+        center, _tangent = centerline_at(profile, fraction)
+        radius = radius_at_distance(profile, distance)
+        cross_section_area = math.pi * radius * radius
+        cross_section_second_moment = math.pi * radius**4 / 4.0
+        slice_volume = cross_section_area * distance_step
+        slice_mass = density * slice_volume
+        volume += slice_volume
+        mass += slice_mass
+        outward_radial = tuple(component / curvature_radius for component in center)
+        binormal = (0.0, 0.0, 1.0)
+        radial_first_moment = cross_section_second_moment / curvature_radius
+        for axis in range(3):
+            first_moment[axis] += (
+                density
+                * distance_step
+                * (cross_section_area * center[axis] + radial_first_moment * outward_radial[axis])
+            )
+
+        # Raw second moment of the curved swept cross-section. Odd disk
+        # moments vanish except ∫u(1 + u/R)dA = πa⁴/(4R).
+        raw_second_moment = [[0.0, 0.0, 0.0] for _ in range(3)]
+        for row in range(3):
+            for column in range(3):
+                raw_second_moment[row][column] = (
+                    cross_section_area * center[row] * center[column]
+                    + radial_first_moment
+                    * (center[row] * outward_radial[column] + outward_radial[row] * center[column])
+                    + cross_section_second_moment
+                    * (outward_radial[row] * outward_radial[column] + binormal[row] * binormal[column])
+                )
+        second_moment_trace = sum(raw_second_moment[axis][axis] for axis in range(3))
+        for row in range(3):
+            for column in range(3):
+                inertia_origin[row][column] += (
+                    density
+                    * distance_step
+                    * ((second_moment_trace if row == column else 0.0) - raw_second_moment[row][column])
+                )
+
+    if not math.isfinite(mass) or mass <= 0.0:
+        raise ValueError("needle mass integration produced invalid mass")
+    center_of_mass = (
+        first_moment[0] / mass,
+        first_moment[1] / mass,
+        first_moment[2] / mass,
+    )
+    center_squared = sum(component * component for component in center_of_mass)
+    inertia_center = [[0.0, 0.0, 0.0] for _ in range(3)]
+    for row in range(3):
+        for column in range(3):
+            identity = 1.0 if row == column else 0.0
+            inertia_center[row][column] = inertia_origin[row][column] - mass * (
+                center_squared * identity - center_of_mass[row] * center_of_mass[column]
+            )
+    # Numerical integration preserves this planar symmetry exactly, but
+    # symmetrize explicitly to keep future geometry changes deterministic.
+    for row in range(3):
+        for column in range(row + 1, 3):
+            symmetric = 0.5 * (inertia_center[row][column] + inertia_center[column][row])
+            inertia_center[row][column] = symmetric
+            inertia_center[column][row] = symmetric
+
+    inertia_xx = inertia_center[0][0]
+    inertia_xy = inertia_center[0][1]
+    inertia_yy = inertia_center[1][1]
+    discriminant = math.hypot(
+        inertia_xx - inertia_yy,
+        2.0 * inertia_xy,
+    )
+    eigenvalue_low = 0.5 * (inertia_xx + inertia_yy - discriminant)
+    eigenvalue_high = 0.5 * (inertia_xx + inertia_yy + discriminant)
+    if abs(inertia_xy) > 1.0e-30:
+        axis_x = inertia_xy
+        axis_y = eigenvalue_low - inertia_xx
+        axis_length = math.hypot(axis_x, axis_y)
+        axis_x /= axis_length
+        axis_y /= axis_length
+    elif inertia_xx <= inertia_yy:
+        axis_x, axis_y = 1.0, 0.0
+    else:
+        axis_x, axis_y = 0.0, 1.0
+    # Eigenvector sign is physically equivalent; choose one canonical sign so
+    # regenerated USD and deterministic reports remain byte-stable.
+    if axis_x < 0.0 or (math.isclose(axis_x, 0.0, abs_tol=1.0e-15) and axis_y < 0.0):
+        axis_x = -axis_x
+        axis_y = -axis_y
+    principal_yaw = math.atan2(axis_y, axis_x)
+    principal_axes = (
+        math.cos(principal_yaw / 2.0),
+        0.0,
+        0.0,
+        math.sin(principal_yaw / 2.0),
+    )
+    return NeedleMassProperties(
+        integration_slices=integration_slices,
+        volume_m3=volume,
+        mass_kg=mass,
+        center_of_mass_m=center_of_mass,
+        inertia_tensor_kg_m2=(
+            (
+                inertia_center[0][0],
+                inertia_center[0][1],
+                inertia_center[0][2],
+            ),
+            (
+                inertia_center[1][0],
+                inertia_center[1][1],
+                inertia_center[1][2],
+            ),
+            (
+                inertia_center[2][0],
+                inertia_center[2][1],
+                inertia_center[2][2],
+            ),
+        ),
+        diagonal_inertia_kg_m2=(
+            eigenvalue_low,
+            eigenvalue_high,
+            inertia_center[2][2],
+        ),
+        principal_axes_wxyz=principal_axes,
+    )
+
+
+def reconstruct_inertia_tensor(
+    diagonal_inertia_kg_m2: tuple[float, float, float],
+    principal_axes_wxyz: tuple[float, float, float, float],
+) -> tuple[
+    tuple[float, float, float],
+    tuple[float, float, float],
+    tuple[float, float, float],
+]:
+    """Reconstruct a body-frame tensor from USD principal-axis attributes."""
+
+    quaternion_norm = math.sqrt(sum(value * value for value in principal_axes_wxyz))
+    if quaternion_norm <= 0.0:
+        raise ValueError("principal-axis quaternion has zero length")
+    w, x, y, z = (value / quaternion_norm for value in principal_axes_wxyz)
+    rotation = (
+        (
+            1.0 - 2.0 * (y * y + z * z),
+            2.0 * (x * y - z * w),
+            2.0 * (x * z + y * w),
+        ),
+        (
+            2.0 * (x * y + z * w),
+            1.0 - 2.0 * (x * x + z * z),
+            2.0 * (y * z - x * w),
+        ),
+        (
+            2.0 * (x * z - y * w),
+            2.0 * (y * z + x * w),
+            1.0 - 2.0 * (x * x + y * y),
+        ),
+    )
+
+    def tensor_component(row: int, column: int) -> float:
+        return sum(rotation[row][axis] * diagonal_inertia_kg_m2[axis] * rotation[column][axis] for axis in range(3))
+
+    return (
+        (
+            tensor_component(0, 0),
+            tensor_component(0, 1),
+            tensor_component(0, 2),
+        ),
+        (
+            tensor_component(1, 0),
+            tensor_component(1, 1),
+            tensor_component(1, 2),
+        ),
+        (
+            tensor_component(2, 0),
+            tensor_component(2, 1),
+            tensor_component(2, 2),
+        ),
+    )
+
+
 def derive_needle(profile: dict[str, Any]) -> DerivedNeedle:
     construction = profile["construction"]
     arc_length = float(construction["centerline_arc_length_m"])
@@ -153,14 +372,7 @@ def derive_needle(profile: dict[str, Any]) -> DerivedNeedle:
     body_radius = float(construction["body_diameter_m"]) / 2.0
     swage_radius = float(construction["swage_end_diameter_m"]) / 2.0
     tip_radius = float(construction["tip_end_diameter_m"]) / 2.0
-    samples = 2048
-    distance_step = arc_length / samples
-    volume = 0.0
-    for index in range(samples):
-        distance = (index + 0.5) * distance_step
-        radius = radius_at_distance(profile, distance)
-        volume += math.pi * radius * radius * distance_step
-    mass = volume * float(profile["material"]["density_kg_m3"])
+    mass_properties = derive_needle_mass_properties(profile)
     swage_anchor, swage_tangent = centerline_at(profile, 1.0)
     centerline_samples = int(construction["visual_centerline_samples"])
     radial_samples = int(construction["visual_radial_samples"])
@@ -174,7 +386,8 @@ def derive_needle(profile: dict[str, Any]) -> DerivedNeedle:
         body_radius_m=body_radius,
         swage_radius_m=swage_radius,
         tip_radius_m=tip_radius,
-        mass_kg=mass,
+        mass_kg=mass_properties.mass_kg,
+        mass_properties=mass_properties,
         swage_anchor_m=swage_anchor,
         swage_tangent=swage_tangent,
         visual_vertex_count=visual_vertex_count,
@@ -234,12 +447,17 @@ def build_needle_mesh(profile: dict[str, Any]) -> NeedleMesh:
             )
     last_ring = 1 + (ring_count - 1) * radial_samples
     counts.append(radial_samples)
-    indices.extend(
-        last_ring + radial_index
-        for radial_index in reversed(range(radial_samples))
+    indices.extend(last_ring + radial_index for radial_index in reversed(range(radial_samples)))
+    extent_min = (
+        min(point[0] for point in points),
+        min(point[1] for point in points),
+        min(point[2] for point in points),
     )
-    extent_min = tuple(min(point[axis] for point in points) for axis in range(3))
-    extent_max = tuple(max(point[axis] for point in points) for axis in range(3))
+    extent_max = (
+        max(point[0] for point in points),
+        max(point[1] for point in points),
+        max(point[2] for point in points),
+    )
     return NeedleMesh(
         points=tuple(points),
         face_vertex_counts=tuple(counts),
@@ -276,9 +494,7 @@ def build_needle_collision_capsules(
         middle, tangent = centerline_at(profile, middle_fraction)
         chord_length = math.dist(left, right)
         half_chord = chord_length / 2.0
-        sagitta = curvature_radius - math.sqrt(
-            max(curvature_radius * curvature_radius - half_chord * half_chord, 0.0)
-        )
+        sagitta = curvature_radius - math.sqrt(max(curvature_radius * curvature_radius - half_chord * half_chord, 0.0))
         physical_radius = max(
             radius_at_distance(
                 profile,
@@ -318,16 +534,12 @@ def build_needle_collision_capsules(
             raw_capsules,
         )
     )
-    coverage_epsilon = float(
-        construction["collision_contract"]["coverage_epsilon_m"]
-    )
+    coverage_epsilon = float(construction["collision_contract"]["coverage_epsilon_m"])
     seam_margin = max(0.0, -raw_face_margin) + coverage_epsilon
     return tuple(
         replace(
             capsule,
-            collision_radius_m=(
-                capsule.collision_radius_m + seam_margin
-            ),
+            collision_radius_m=(capsule.collision_radius_m + seam_margin),
             visual_seam_margin_m=seam_margin,
         )
         for capsule in raw_capsules
@@ -341,16 +553,8 @@ def point_collision_margin_m(
     """Return positive distance inside one capsule and negative outside."""
 
     half_spine = capsule.cylinder_height_m / 2.0
-    start = tuple(
-        capsule.center_m[axis]
-        - capsule.axis_direction[axis] * half_spine
-        for axis in range(3)
-    )
-    end = tuple(
-        capsule.center_m[axis]
-        + capsule.axis_direction[axis] * half_spine
-        for axis in range(3)
-    )
+    start = tuple(capsule.center_m[axis] - capsule.axis_direction[axis] * half_spine for axis in range(3))
+    end = tuple(capsule.center_m[axis] + capsule.axis_direction[axis] * half_spine for axis in range(3))
     edge = tuple(end[axis] - start[axis] for axis in range(3))
     relative = tuple(point[axis] - start[axis] for axis in range(3))
     edge_squared = sum(value * value for value in edge)
@@ -361,17 +565,11 @@ def point_collision_margin_m(
             0.0,
             min(
                 1.0,
-                sum(
-                    relative[axis] * edge[axis]
-                    for axis in range(3)
-                )
-                / edge_squared,
+                sum(relative[axis] * edge[axis] for axis in range(3)) / edge_squared,
             ),
         )
     )
-    closest = tuple(
-        start[axis] + amount * edge[axis] for axis in range(3)
-    )
+    closest = tuple(start[axis] + amount * edge[axis] for axis in range(3))
     distance = math.dist(point, closest)
     return capsule.collision_radius_m - distance
 
@@ -381,25 +579,16 @@ def _face_containment_margins(
     capsules: tuple[NeedleCollisionCapsule, ...],
 ) -> list[float]:
     point_capsule_margins = [
-        [
-            point_collision_margin_m(point, capsule)
-            for capsule in capsules
-        ]
-        for point in visual.points
+        [point_collision_margin_m(point, capsule) for capsule in capsules] for point in visual.points
     ]
     face_margins: list[float] = []
     cursor = 0
     for face_count in visual.face_vertex_counts:
-        face_indices = visual.face_vertex_indices[
-            cursor : cursor + face_count
-        ]
+        face_indices = visual.face_vertex_indices[cursor : cursor + face_count]
         cursor += face_count
         face_margins.append(
             max(
-                min(
-                    point_capsule_margins[point_index][capsule_index]
-                    for point_index in face_indices
-                )
+                min(point_capsule_margins[point_index][capsule_index] for point_index in face_indices)
                 for capsule_index in range(len(capsules))
             )
         )
@@ -420,16 +609,9 @@ def needle_mesh_collision_coverage(
     visual = mesh if mesh is not None else build_needle_mesh(profile)
     capsules = build_needle_collision_capsules(profile)
     point_capsule_margins = [
-        [
-            point_collision_margin_m(point, capsule)
-            for capsule in capsules
-        ]
-        for point in visual.points
+        [point_collision_margin_m(point, capsule) for capsule in capsules] for point in visual.points
     ]
-    point_margins = [
-        max(capsule_margins)
-        for capsule_margins in point_capsule_margins
-    ]
+    point_margins = [max(capsule_margins) for capsule_margins in point_capsule_margins]
     face_margins = _face_containment_margins(
         visual,
         capsules,
@@ -438,21 +620,11 @@ def needle_mesh_collision_coverage(
     return {
         "visual_vertex_count": len(visual.points),
         "visual_face_count": len(visual.face_vertex_counts),
-        "uncovered_visual_vertex_count": sum(
-            margin < -tolerance for margin in point_margins
-        ),
-        "uncovered_visual_face_count": sum(
-            margin < -tolerance for margin in face_margins
-        ),
-        "minimum_visual_vertex_containment_margin_m": min(
-            point_margins
-        ),
-        "minimum_visual_face_containment_margin_m": (
-            min(face_margins)
-        ),
-        "maximum_visual_vertex_containment_margin_m": max(
-            point_margins
-        ),
+        "uncovered_visual_vertex_count": sum(margin < -tolerance for margin in point_margins),
+        "uncovered_visual_face_count": sum(margin < -tolerance for margin in face_margins),
+        "minimum_visual_vertex_containment_margin_m": min(point_margins),
+        "minimum_visual_face_containment_margin_m": min(face_margins),
+        "maximum_visual_vertex_containment_margin_m": max(point_margins),
     }
 
 
@@ -469,19 +641,13 @@ def sample_episode_parameters(
     appearance = profile["appearance"]
     density = generator.uniform(*map(float, material["density_range_kg_m3"]))
     mass = derived.mass_kg * density / float(material["density_kg_m3"])
-    static_friction = generator.uniform(
-        *map(float, contact["static_friction_range"])
-    )
+    static_friction = generator.uniform(*map(float, contact["static_friction_range"]))
     dynamic_friction = min(
         static_friction,
         generator.uniform(*map(float, contact["dynamic_friction_range"])),
     )
-    restitution = generator.uniform(
-        *map(float, contact["restitution_range"])
-    )
-    surface_roughness = generator.uniform(
-        *map(float, appearance["roughness_range"])
-    )
+    restitution = generator.uniform(*map(float, contact["restitution_range"]))
+    surface_roughness = generator.uniform(*map(float, appearance["roughness_range"]))
     return NeedleEpisodeParameters(
         seed=int(seed),
         mass_kg=mass,

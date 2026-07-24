@@ -2,7 +2,7 @@
   "schema": "dr.anmar.needle-profile.v1",
   "id": "dr-anmar-needle-v1",
   "name": "DrAnmar Needle",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "status": "research_informed_engineering_model_pending_metrology_bench_and_clinical_validation",
   "construction": {
     "geometry_source": "independently_generated_parametric_geometry",
@@ -36,6 +36,21 @@
       "visual_face_coverage": "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face",
       "coverage_epsilon_m": 1e-09,
       "extent_policy": "explicit_local_extent_on_every_capsule"
+    },
+    "mass_properties": {
+      "source": "numerical_volume_integration_of_tapered_curved_swept_solid",
+      "integration_slices": 8192,
+      "cross_section": "circular_and_normal_to_centerline",
+      "curvature_jacobian": "one_plus_outward_radial_coordinate_over_curvature_radius",
+      "includes_finite_cross_section_inertia": true,
+      "reference_frame": "needle_local_frame_at_integrated_center_of_mass",
+      "usd_authoring": [
+        "physics:mass",
+        "physics:centerOfMass",
+        "physics:diagonalInertia",
+        "physics:principalAxes"
+      ],
+      "episode_density_scaling": "mass_and_diagonal_inertia_scale_together_while_geometry_center_of_mass_and_principal_axes_remain_fixed"
     }
   },
   "material": {
@@ -101,12 +116,17 @@
       "title": "OpenUSD Exchange SDK capsule definition",
       "url": "https://docs.omniverse.nvidia.com/usd/code-docs/usd-exchange-sdk/2.2.0/api/function_group__gprim_1ga21f8572afeb9a14b7d8b4bfd4e6641ba.html",
       "used_for": "capsule cylinder-height semantics and total-height calculation"
+    },
+    {
+      "title": "NVIDIA rigid-body mass properties requirements",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/asset-requirements/1.7.1/capabilities/physics_bodies/physics_rigid_bodies/requirements/rigid-body-mass.html",
+      "used_for": "explicit mass, center of mass, diagonal inertia and principal-axis authoring"
     }
   ],
   "sim_to_real": {
     "parameterization_seed": 20260723,
     "implemented_randomization_on_episode_reset": [
-      "needle_mass",
+      "needle_mass_and_density_scaled_inertia",
       "needle_contact_friction",
       "needle_restitution",
       "needle_surface_roughness"

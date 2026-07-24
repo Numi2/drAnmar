@@ -11,16 +11,19 @@ import re
 from pathlib import Path
 from typing import Any
 
-from dr_anmar_procedures import PROCEDURE_ROOMS
 from dr_anmar_needle_model import (
+    DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES,
     DEFAULT_NEEDLE_PROFILE_PATH,
     build_needle_collision_capsules,
     build_needle_mesh,
     derive_needle,
+    derive_needle_mass_properties,
     load_needle_profile,
     needle_mesh_collision_coverage,
+    reconstruct_inertia_tensor,
     sample_episode_parameters,
 )
+from dr_anmar_procedures import PROCEDURE_ROOMS
 from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ASSET_ID,
     DR_ANMAR_NEEDLE_ASSET_PATH,
@@ -29,6 +32,7 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_ROOT_PRIM,
     configure_dr_anmar_needle,
     local_room_ids,
+    needle_mass_properties_for_mass,
 )
 from dr_anmar_suture_model import (
     DEFAULT_PROFILE_PATH,
@@ -43,16 +47,12 @@ from dr_anmar_suture_model import (
 )
 from dr_anmar_suture_runtime import SutureRuntime
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ASSET = (
-    REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
-)
+DEFAULT_ASSET = REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 DEFAULT_NEEDLE = DR_ANMAR_NEEDLE_ASSET_PATH
 DEFAULT_WORKSTATION = REPOSITORY_ROOT / "scripts/dr_anmar_workstation.py"
-DEFAULT_NATIVE_PROBE = (
-    REPOSITORY_ROOT / "scripts/dr_anmar_suture_physics_probe.py"
-)
+DEFAULT_NATIVE_PROBE = REPOSITORY_ROOT / "scripts/dr_anmar_suture_physics_probe.py"
+DEFAULT_INTEGRATION = REPOSITORY_ROOT / "scripts/dr_anmar_suture_integration.py"
 
 
 def check(
@@ -81,6 +81,7 @@ def validate(
     derived_needle = derive_needle(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     native_probe_text = DEFAULT_NATIVE_PROBE.read_text(encoding="utf-8")
+    integration_text = DEFAULT_INTEGRATION.read_text(encoding="utf-8")
     geometry = profile["geometry"]
     material = profile["material"]
     tension = profile["tension"]
@@ -112,15 +113,11 @@ def validate(
     check(
         checks,
         "elongation_at_break",
-        failure_strain_range[0]
-        <= float(tension["failure_strain"])
-        <= failure_strain_range[1],
+        failure_strain_range[0] <= float(tension["failure_strain"]) <= failure_strain_range[1],
         float(tension["failure_strain"]),
         failure_strain_range,
     )
-    knot_range = [
-        float(value) for value in profile["knot"]["strength_efficiency_range"]
-    ]
+    knot_range = [float(value) for value in profile["knot"]["strength_efficiency_range"]]
     knot_efficiency = derived.knot_failure_load_n / derived.straight_failure_load_n
     check(
         checks,
@@ -129,18 +126,12 @@ def validate(
         knot_efficiency,
         knot_range,
     )
-    force_yield, failed_yield = monotonic_tension_force(
-        profile, float(tension["yield_strain"])
-    )
-    force_break, failed_break = monotonic_tension_force(
-        profile, float(tension["failure_strain"])
-    )
+    force_yield, failed_yield = monotonic_tension_force(profile, float(tension["yield_strain"]))
+    force_break, failed_break = monotonic_tension_force(profile, float(tension["failure_strain"]))
     check(
         checks,
         "nonlinear_tension_curve",
-        0.0 < force_yield < force_break <= derived.straight_failure_load_n
-        and not failed_yield
-        and failed_break,
+        0.0 < force_yield < force_break <= derived.straight_failure_load_n and not failed_yield and failed_break,
         {"yield_force_n": force_yield, "break_force_n": force_break},
         "positive yield force below a 20-25 N failed endpoint",
     )
@@ -183,8 +174,7 @@ def validate(
     check(
         checks,
         "combined_knot_and_crush_failure",
-        effective_failure_load(profile, knotted=True, grasp_count=1)
-        < derived.knot_failure_load_n,
+        effective_failure_load(profile, knotted=True, grasp_count=1) < derived.knot_failure_load_n,
         effective_failure_load(profile, knotted=True, grasp_count=1),
         f"less than {derived.knot_failure_load_n}",
     )
@@ -200,8 +190,7 @@ def validate(
     check(
         checks,
         "breakable_joint_resolution",
-        joint_defs == derived.segment_count
-        and asset_text.count("physics:breakForce") == derived.segment_count,
+        joint_defs == derived.segment_count and asset_text.count("physics:breakForce") == derived.segment_count,
         {
             "joint_defs": joint_defs,
             "break_force_attributes": asset_text.count("physics:breakForce"),
@@ -219,9 +208,7 @@ def validate(
         'def Capsule "NeedleInterface"',
         "drAnmar:swageFraction",
     ]
-    missing_tokens = [
-        token for token in required_asset_tokens if token not in asset_text
-    ]
+    missing_tokens = [token for token in required_asset_tokens if token not in asset_text]
     check(
         checks,
         "runtime_physics_contract",
@@ -245,8 +232,7 @@ def validate(
     check(
         checks,
         "actual_scale_not_visibility_inflated",
-        "drAnmarVisibilityScale" not in asset_text
-        and math.isclose(derived.diameter_m, 0.00025),
+        "drAnmarVisibilityScale" not in asset_text and math.isclose(derived.diameter_m, 0.00025),
         derived.diameter_m,
         0.00025,
     )
@@ -257,6 +243,7 @@ def validate(
         f'drAnmarAssetVersion = "{DR_ANMAR_NEEDLE_ASSET_VERSION}"',
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         'drAnmarGeometrySource = "independently_generated_parametric_geometry"',
+        f"drAnmarMassPropertyIntegrationSlices = {DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES}",
         'drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"',
         'drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"',
         '"PhysicsMaterialAPI", "PhysxMaterialAPI"',
@@ -266,19 +253,19 @@ def validate(
         'def PhysicsFixedJoint "FactorySwage"',
         'def Mesh "Visual"',
         'def Xform "Needle"',
+        "point3f physics:centerOfMass",
+        "float3 physics:diagonalInertia",
+        "quatf physics:principalAxes",
         f"physics:body0 = </{DR_ANMAR_NEEDLE_ROOT_PRIM}/Needle>",
         f"physics:body1 = </{DR_ANMAR_NEEDLE_ROOT_PRIM}/Suture/NeedleInterface>",
         "physics:kinematicEnabled = false",
         'drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"',
     ]
-    missing_identity_tokens = [
-        token for token in needle_identity_tokens if token not in needle_text
-    ]
+    missing_identity_tokens = [token for token in needle_identity_tokens if token not in needle_text]
     check(
         checks,
         "dr_anmar_needle_identity_and_provenance",
-        not missing_identity_tokens
-        and needle_profile["version"] == DR_ANMAR_NEEDLE_ASSET_VERSION,
+        not missing_identity_tokens and needle_profile["version"] == DR_ANMAR_NEEDLE_ASSET_VERSION,
         {
             "missing": missing_identity_tokens,
             "profile_version": needle_profile["version"],
@@ -291,9 +278,7 @@ def validate(
         "needle_sdf.usd",
         "ORBIT",
     ]
-    present_forbidden_needle_tokens = [
-        token for token in forbidden_needle_tokens if token in needle_text
-    ]
+    present_forbidden_needle_tokens = [token for token in forbidden_needle_tokens if token in needle_text]
     check(
         checks,
         "independent_dr_anmar_needle_geometry",
@@ -301,15 +286,12 @@ def validate(
         {"forbidden_references": present_forbidden_needle_tokens},
         "no external needle geometry or naming",
     )
-    authored_collision_capsules = len(
-        re.findall(r'def Capsule "C\d{3}"', needle_text)
-    )
+    authored_collision_capsules = len(re.findall(r'def Capsule "C\d{3}"', needle_text))
     check(
         checks,
         "needle_visual_and_collision_resolution",
         len(needle_mesh.points) == derived_needle.visual_vertex_count
-        and authored_collision_capsules
-        == derived_needle.collision_capsule_count,
+        and authored_collision_capsules == derived_needle.collision_capsule_count,
         {
             "visual_vertices": len(needle_mesh.points),
             "collision_capsules": authored_collision_capsules,
@@ -319,9 +301,7 @@ def validate(
             "collision_capsules": derived_needle.collision_capsule_count,
         },
     )
-    needle_collision_capsules = build_needle_collision_capsules(
-        needle_profile
-    )
+    needle_collision_capsules = build_needle_collision_capsules(needle_profile)
     collision_attribute_errors: list[str] = []
     for index, capsule in enumerate(needle_collision_capsules):
         match = re.search(
@@ -330,9 +310,7 @@ def validate(
             flags=re.DOTALL,
         )
         if match is None:
-            collision_attribute_errors.append(
-                f"C{index:03d}:missing_block"
-            )
+            collision_attribute_errors.append(f"C{index:03d}:missing_block")
             continue
         block = match.group(0)
         height_match = re.search(r"float height = ([0-9.eE+-]+)", block)
@@ -343,34 +321,21 @@ def validate(
             rel_tol=0.0,
             abs_tol=1.0e-12,
         ):
-            collision_attribute_errors.append(
-                f"C{index:03d}:height"
-            )
+            collision_attribute_errors.append(f"C{index:03d}:height")
         if radius_match is None or not math.isclose(
             float(radius_match.group(1)),
             capsule.collision_radius_m,
             rel_tol=0.0,
             abs_tol=1.0e-12,
         ):
-            collision_attribute_errors.append(
-                f"C{index:03d}:radius"
-            )
+            collision_attribute_errors.append(f"C{index:03d}:radius")
         if "float3[] extent = [" not in block:
-            collision_attribute_errors.append(
-                f"C{index:03d}:extent"
-            )
+            collision_attribute_errors.append(f"C{index:03d}:extent")
     maximum_chord_error = max(
-        abs(capsule.cylinder_height_m - capsule.chord_length_m)
-        for capsule in needle_collision_capsules
+        abs(capsule.cylinder_height_m - capsule.chord_length_m) for capsule in needle_collision_capsules
     )
-    maximum_sagitta = max(
-        capsule.curvature_sagitta_m
-        for capsule in needle_collision_capsules
-    )
-    maximum_seam_margin = max(
-        capsule.visual_seam_margin_m
-        for capsule in needle_collision_capsules
-    )
+    maximum_sagitta = max(capsule.curvature_sagitta_m for capsule in needle_collision_capsules)
+    maximum_seam_margin = max(capsule.visual_seam_margin_m for capsule in needle_collision_capsules)
     collision_coverage = needle_mesh_collision_coverage(
         needle_profile,
         needle_mesh,
@@ -379,16 +344,13 @@ def validate(
         checks,
         "needle_collision_envelope_matches_centerline_partition",
         not collision_attribute_errors
-        and len(needle_collision_capsules)
-        == derived_needle.collision_capsule_count
+        and len(needle_collision_capsules) == derived_needle.collision_capsule_count
         and all(
             capsule.collision_radius_m >= capsule.physical_radius_m
             and capsule.cylinder_height_m > 0.0
             and math.isclose(
                 capsule.collision_radius_m,
-                capsule.physical_radius_m
-                + capsule.curvature_sagitta_m
-                + capsule.visual_seam_margin_m,
+                capsule.physical_radius_m + capsule.curvature_sagitta_m + capsule.visual_seam_margin_m,
                 rel_tol=0.0,
                 abs_tol=1.0e-15,
             )
@@ -399,16 +361,9 @@ def validate(
         and 0.0 < maximum_seam_margin < 1.0e-5
         and collision_coverage["uncovered_visual_vertex_count"] == 0
         and collision_coverage["uncovered_visual_face_count"] == 0
-        and collision_coverage[
-            "minimum_visual_vertex_containment_margin_m"
-        ]
-        >= -1.0e-12
-        and collision_coverage[
-            "minimum_visual_face_containment_margin_m"
-        ]
-        >= -1.0e-12
-        and needle_text.count("float3[] extent = [")
-        == derived_needle.collision_capsule_count + 1,
+        and collision_coverage["minimum_visual_vertex_containment_margin_m"] >= -1.0e-12
+        and collision_coverage["minimum_visual_face_containment_margin_m"] >= -1.0e-12
+        and needle_text.count("float3[] extent = [") == derived_needle.collision_capsule_count + 1,
         {
             "capsule_count": len(needle_collision_capsules),
             "attribute_errors": collision_attribute_errors,
@@ -416,50 +371,42 @@ def validate(
             "maximum_curvature_sagitta_m": maximum_sagitta,
             "maximum_visual_seam_margin_m": maximum_seam_margin,
             "visual_mesh_collision_coverage": collision_coverage,
-            "authored_extent_count": needle_text.count(
-                "float3[] extent = ["
-            ),
+            "authored_extent_count": needle_text.count("float3[] extent = ["),
         },
-        "capsule spine equals each assigned chord with curvature-bounded radius, explicit extents, and complete visual-mesh coverage",
+        "capsule spine equals each assigned chord with curvature-bounded radius, explicit extents, and complete"
+        " visual-mesh coverage",
     )
     nvidia_stack_references = needle_profile.get(
         "nvidia_stack_references",
         [],
     )
-    collision_contract = needle_profile["construction"][
-        "collision_contract"
-    ]
+    collision_contract = needle_profile["construction"]["collision_contract"]
     native_probe_tokens = [
         "needle_collision_capsule_count",
         "needle_collision_explicit_extent_count",
         "needle_friction_combine_mode",
+        "needle_authored_mass_kg",
+        "needle_center_of_mass_m",
+        "needle_diagonal_inertia_kg_m2",
+        "needle_principal_axes_wxyz",
+        "needle_mass_properties_match_geometry",
     ]
-    missing_native_probe_tokens = [
-        token
-        for token in native_probe_tokens
-        if token not in native_probe_text
-    ]
+    missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(
         checks,
         "needle_nvidia_stack_collision_contract",
-        len(nvidia_stack_references) >= 3
+        len(nvidia_stack_references) >= 4
         and all(
-            item.get("url", "").startswith(
-                "https://docs.omniverse.nvidia.com/"
-            )
-            and item.get("used_for")
+            item.get("url", "").startswith("https://docs.omniverse.nvidia.com/") and item.get("used_for")
             for item in nvidia_stack_references
         )
         and collision_contract["primitive"] == "UsdGeomCapsule"
-        and collision_contract["height_semantics"]
-        == "cylinder_spine_excluding_spherical_caps"
-        and collision_contract["spine_length"]
-        == "assigned_centerline_chord"
+        and collision_contract["height_semantics"] == "cylinder_spine_excluding_spherical_caps"
+        and collision_contract["spine_length"] == "assigned_centerline_chord"
         and collision_contract["visual_face_coverage"]
         == "minimum_derived_uniform_seam_margin_for_single_convex_capsule_containment_per_face"
         and 0.0 < float(collision_contract["coverage_epsilon_m"]) <= 1.0e-8
-        and collision_contract["extent_policy"]
-        == "explicit_local_extent_on_every_capsule"
+        and collision_contract["extent_policy"] == "explicit_local_extent_on_every_capsule"
         and needle_profile["solver"]["ccd"] is True
         and needle_profile["contact"]["combine_mode"] == "max"
         and not missing_native_probe_tokens,
@@ -467,29 +414,19 @@ def validate(
             "reference_count": len(nvidia_stack_references),
             "collision_contract": collision_contract,
             "ccd": needle_profile["solver"]["ccd"],
-            "friction_combine_mode": needle_profile["contact"][
-                "combine_mode"
-            ],
+            "friction_combine_mode": needle_profile["contact"]["combine_mode"],
             "missing_native_probe_tokens": missing_native_probe_tokens,
         },
         "NVIDIA Omni Physics primitive-collider, CCD, extent, and material schema contract",
     )
     construction = needle_profile["construction"]
-    arc_range = [
-        float(value)
-        for value in construction["centerline_arc_length_range_m"]
-    ]
-    diameter_range = [
-        float(value)
-        for value in construction["body_diameter_range_m"]
-    ]
+    arc_range = [float(value) for value in construction["centerline_arc_length_range_m"]]
+    diameter_range = [float(value) for value in construction["body_diameter_range_m"]]
     check(
         checks,
         "needle_scale_and_mass",
         arc_range[0] <= derived_needle.arc_length_m <= arc_range[1]
-        and diameter_range[0]
-        <= 2.0 * derived_needle.body_radius_m
-        <= diameter_range[1]
+        and diameter_range[0] <= 2.0 * derived_needle.body_radius_m <= diameter_range[1]
         and 0.0 < derived_needle.mass_kg < 0.001,
         {
             "arc_length_m": derived_needle.arc_length_m,
@@ -502,14 +439,219 @@ def validate(
             "mass_kg": "positive and below 1 gram",
         },
     )
+    mass_properties = derived_needle.mass_properties
+    coarse_mass_properties = derive_needle_mass_properties(
+        needle_profile,
+        integration_slices=(DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES // 2),
+    )
+    reconstructed_inertia = reconstruct_inertia_tensor(
+        mass_properties.diagonal_inertia_kg_m2,
+        mass_properties.principal_axes_wxyz,
+    )
+    maximum_reconstruction_error = max(
+        abs(reconstructed_inertia[row][column] - mass_properties.inertia_tensor_kg_m2[row][column])
+        for row in range(3)
+        for column in range(3)
+    )
+    maximum_relative_inertia_convergence_drift = max(
+        abs(fine - coarse) / fine
+        for fine, coarse in zip(
+            mass_properties.diagonal_inertia_kg_m2,
+            coarse_mass_properties.diagonal_inertia_kg_m2,
+            strict=True,
+        )
+    )
+    maximum_center_of_mass_convergence_drift_m = max(
+        abs(fine - coarse)
+        for fine, coarse in zip(
+            mass_properties.center_of_mass_m,
+            coarse_mass_properties.center_of_mass_m,
+            strict=True,
+        )
+    )
+    relative_mass_convergence_drift = (
+        abs(mass_properties.mass_kg - coarse_mass_properties.mass_kg) / mass_properties.mass_kg
+    )
+    quaternion_norm = math.sqrt(sum(component * component for component in mass_properties.principal_axes_wxyz))
+
+    def authored_tuple(
+        type_name: str,
+        attribute_name: str,
+        component_count: int,
+    ) -> tuple[float, ...] | None:
+        match = re.search(
+            rf"{re.escape(type_name)} {re.escape(attribute_name)}" rf" = \(([^)]+)\)",
+            needle_text,
+        )
+        if match is None:
+            return None
+        values = tuple(float(value.strip()) for value in match.group(1).split(","))
+        return values if len(values) == component_count else None
+
+    authored_mass_match = re.search(
+        r"float physics:mass = ([0-9.eE+-]+)",
+        needle_text,
+    )
+    authored_mass = float(authored_mass_match.group(1)) if authored_mass_match is not None else None
+    authored_center_of_mass = authored_tuple(
+        "point3f",
+        "physics:centerOfMass",
+        3,
+    )
+    authored_diagonal_inertia = authored_tuple(
+        "float3",
+        "physics:diagonalInertia",
+        3,
+    )
+    authored_principal_axes = authored_tuple(
+        "quatf",
+        "physics:principalAxes",
+        4,
+    )
+
+    def tuples_close(
+        left: tuple[float, ...] | None,
+        right: tuple[float, ...],
+        *,
+        relative_tolerance: float,
+        absolute_tolerance: float,
+    ) -> bool:
+        return left is not None and all(
+            math.isclose(
+                left_value,
+                right_value,
+                rel_tol=relative_tolerance,
+                abs_tol=absolute_tolerance,
+            )
+            for left_value, right_value in zip(
+                left,
+                right,
+                strict=True,
+            )
+        )
+
+    mass_contract = construction["mass_properties"]
+    sampled_mass_parameters = sample_episode_parameters(
+        needle_profile,
+        1701,
+    )
+    sampled_mass_properties = needle_mass_properties_for_mass(
+        needle_profile,
+        sampled_mass_parameters.mass_kg,
+    )
+    mass_scale = sampled_mass_parameters.mass_kg / mass_properties.mass_kg
+    expected_scaled_inertia = tuple(value * mass_scale for value in mass_properties.diagonal_inertia_kg_m2)
+    live_mass_property_tokens = [
+        "GetCenterOfMassAttr().Set(",
+        "GetDiagonalInertiaAttr().Set(",
+        "GetPrincipalAxesAttr().Set(",
+        "needle_mass_properties_for_mass(",
+    ]
+    missing_live_mass_property_tokens = [token for token in live_mass_property_tokens if token not in integration_text]
+    diagonal_inertia = mass_properties.diagonal_inertia_kg_m2
+    check(
+        checks,
+        "needle_explicit_geometry_mass_properties",
+        mass_properties.integration_slices
+        == DEFAULT_MASS_PROPERTY_INTEGRATION_SLICES
+        == int(mass_contract["integration_slices"])
+        and mass_contract["source"] == "numerical_volume_integration_of_tapered_curved_swept_solid"
+        and mass_contract["curvature_jacobian"] == "one_plus_outward_radial_coordinate_over_curvature_radius"
+        and mass_contract["includes_finite_cross_section_inertia"] is True
+        and mass_contract["usd_authoring"]
+        == [
+            "physics:mass",
+            "physics:centerOfMass",
+            "physics:diagonalInertia",
+            "physics:principalAxes",
+        ]
+        and math.isclose(
+            mass_properties.mass_kg,
+            derived_needle.mass_kg,
+            rel_tol=0.0,
+            abs_tol=1.0e-18,
+        )
+        and all(math.isfinite(value) for value in diagonal_inertia)
+        and all(value > 0.0 for value in diagonal_inertia)
+        and all(
+            diagonal_inertia[index] <= sum(diagonal_inertia) - diagonal_inertia[index] + 1.0e-20 for index in range(3)
+        )
+        and all(
+            needle_mesh.extent_min[index] - 1.0e-12
+            <= mass_properties.center_of_mass_m[index]
+            <= needle_mesh.extent_max[index] + 1.0e-12
+            for index in range(3)
+        )
+        and math.isclose(
+            quaternion_norm,
+            1.0,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        )
+        and maximum_reconstruction_error <= max(diagonal_inertia) * 1.0e-12
+        and relative_mass_convergence_drift < 1.0e-8
+        and maximum_center_of_mass_convergence_drift_m < 3.0e-11
+        and maximum_relative_inertia_convergence_drift < 5.0e-7
+        and authored_mass is not None
+        and math.isclose(
+            authored_mass,
+            mass_properties.mass_kg,
+            rel_tol=1.0e-10,
+            abs_tol=0.0,
+        )
+        and tuples_close(
+            authored_center_of_mass,
+            mass_properties.center_of_mass_m,
+            relative_tolerance=1.0e-10,
+            absolute_tolerance=1.0e-14,
+        )
+        and tuples_close(
+            authored_diagonal_inertia,
+            diagonal_inertia,
+            relative_tolerance=1.0e-10,
+            absolute_tolerance=0.0,
+        )
+        and tuples_close(
+            authored_principal_axes,
+            mass_properties.principal_axes_wxyz,
+            relative_tolerance=1.0e-10,
+            absolute_tolerance=1.0e-12,
+        )
+        and tuples_close(
+            sampled_mass_properties.diagonal_inertia_kg_m2,
+            expected_scaled_inertia,
+            relative_tolerance=1.0e-12,
+            absolute_tolerance=0.0,
+        )
+        and sampled_mass_properties.center_of_mass_m == mass_properties.center_of_mass_m
+        and sampled_mass_properties.principal_axes_wxyz == mass_properties.principal_axes_wxyz
+        and not missing_live_mass_property_tokens,
+        {
+            "integration_slices": mass_properties.integration_slices,
+            "mass_kg": mass_properties.mass_kg,
+            "center_of_mass_m": mass_properties.center_of_mass_m,
+            "inertia_tensor_kg_m2": mass_properties.inertia_tensor_kg_m2,
+            "diagonal_inertia_kg_m2": diagonal_inertia,
+            "principal_axes_wxyz": mass_properties.principal_axes_wxyz,
+            "principal_axes_norm": quaternion_norm,
+            "maximum_reconstruction_error_kg_m2": maximum_reconstruction_error,
+            "relative_mass_convergence_drift": relative_mass_convergence_drift,
+            "maximum_center_of_mass_convergence_drift_m": maximum_center_of_mass_convergence_drift_m,
+            "maximum_relative_inertia_convergence_drift": maximum_relative_inertia_convergence_drift,
+            "authored_mass_kg": authored_mass,
+            "authored_center_of_mass_m": authored_center_of_mass,
+            "authored_diagonal_inertia_kg_m2": authored_diagonal_inertia,
+            "authored_principal_axes_wxyz": authored_principal_axes,
+            "episode_mass_scale": mass_scale,
+            "episode_diagonal_inertia_kg_m2": sampled_mass_properties.diagonal_inertia_kg_m2,
+            "missing_live_mass_property_tokens": missing_live_mass_property_tokens,
+        },
+        "explicit converged geometry-derived USD mass properties with density-consistent episode scaling",
+    )
     sim_to_real = needle_profile["sim_to_real"]
     gaps = sim_to_real["gaps"]
-    implemented_randomization = sim_to_real[
-        "implemented_randomization_on_episode_reset"
-    ]
-    planned_randomization = sim_to_real[
-        "planned_randomization_after_calibration"
-    ]
+    implemented_randomization = sim_to_real["implemented_randomization_on_episode_reset"]
+    planned_randomization = sim_to_real["planned_randomization_after_calibration"]
     complete_gaps = all(
         {
             "id",
@@ -523,15 +665,10 @@ def validate(
     check(
         checks,
         "sim_to_real_gap_register",
-        len(gaps) >= 7
-        and complete_gaps
-        and len(implemented_randomization) >= 4
-        and len(planned_randomization) >= 4,
+        len(gaps) >= 7 and complete_gaps and len(implemented_randomization) >= 4 and len(planned_randomization) >= 4,
         {
             "gap_count": len(gaps),
-            "implemented_randomized_parameters": len(
-                implemented_randomization
-            ),
+            "implemented_randomized_parameters": len(implemented_randomization),
             "planned_randomized_parameters": len(planned_randomization),
             "complete_gap_records": complete_gaps,
         },
@@ -560,24 +697,16 @@ def validate(
         profile,
         2701,
     )
-    sampled_suture_replay, sampled_suture_domain_replay = (
-        sample_suture_runtime_profile(profile, 2701)
-    )
+    sampled_suture_replay, sampled_suture_domain_replay = sample_suture_runtime_profile(profile, 2701)
     sampled_suture_b, sampled_suture_domain_b = sample_suture_runtime_profile(
         profile,
         2702,
     )
     suture_gaps = profile["sim_to_real"]["gaps"]
     suture_requirements = profile["qualification"]["requirements"]
-    suture_clinical = [
-        item for item in suture_requirements if item["id"] == "clinical_use"
-    ]
-    sampled_self_friction_a = sampled_suture_a["contact"][
-        "load_dependent_self_friction"
-    ]
-    sampled_self_friction_b = sampled_suture_b["contact"][
-        "load_dependent_self_friction"
-    ]
+    suture_clinical = [item for item in suture_requirements if item["id"] == "clinical_use"]
+    sampled_self_friction_a = sampled_suture_a["contact"]["load_dependent_self_friction"]
+    sampled_self_friction_b = sampled_suture_b["contact"]["load_dependent_self_friction"]
     check(
         checks,
         "suture_runtime_domain_and_qualification",
@@ -587,19 +716,10 @@ def validate(
         and sampled_suture_a != sampled_suture_b
         and sampled_self_friction_a != sampled_self_friction_b
         and sampled_suture_a["contact"]["sampled_static_to_dynamic_ratio"]
-        == (
-            sampled_suture_domain_a["static_friction"]
-            / sampled_suture_domain_a["dynamic_friction"]
-        )
+        == (sampled_suture_domain_a["static_friction"] / sampled_suture_domain_a["dynamic_friction"])
         and len(suture_gaps) >= 8
-        and all(
-            {"id", "risk", "mitigation", "status"}.issubset(gap)
-            for gap in suture_gaps
-        )
-        and len(
-            profile["sim_to_real"]["runtime_applied_parameter_sampling"]
-        )
-        >= 7
+        and all({"id", "risk", "mitigation", "status"}.issubset(gap) for gap in suture_gaps)
+        and len(profile["sim_to_real"]["runtime_applied_parameter_sampling"]) >= 7
         and profile["qualification"]["policy"] == "fail_closed"
         and len(suture_requirements) >= 7
         and len(suture_clinical) == 1
@@ -617,14 +737,11 @@ def validate(
     )
     qualification = needle_profile["qualification"]
     qualification_gates = qualification["gates"]
-    clinical_gates = [
-        gate for gate in qualification_gates if gate["id"] == "clinical_use"
-    ]
+    clinical_gates = [gate for gate in qualification_gates if gate["id"] == "clinical_use"]
     check(
         checks,
         "fail_closed_sim_to_real_qualification",
-        qualification["policy"]
-        == "fail_closed_until_each_evidence_gate_is_satisfied"
+        qualification["policy"] == "fail_closed_until_each_evidence_gate_is_satisfied"
         and len(qualification_gates) >= 6
         and len(clinical_gates) == 1
         and clinical_gates[0]["status"] == "blocked"
@@ -641,11 +758,7 @@ def validate(
     check(
         checks,
         "needle_research_provenance",
-        len(needle_evidence) >= 4
-        and all(
-            item.get("url") and item.get("used_for")
-            for item in needle_evidence
-        ),
+        len(needle_evidence) >= 4 and all(item.get("url") and item.get("used_for") for item in needle_evidence),
         len(needle_evidence),
         "at least four traceable primary product or regulatory sources",
     )
@@ -717,20 +830,14 @@ def validate(
     for call in integration_calls:
         ancestor = parents.get(call)
         guarded = False
-        while ancestor is not None and not isinstance(
-            ancestor, (ast.FunctionDef, ast.AsyncFunctionDef)
-        ):
+        while ancestor is not None and not isinstance(ancestor, (ast.FunctionDef, ast.AsyncFunctionDef)):
             if isinstance(
                 ancestor,
                 (ast.If, ast.For, ast.AsyncFor, ast.While, ast.Try, ast.With, ast.AsyncWith),
             ):
                 guarded = True
             ancestor = parents.get(ancestor)
-        if (
-            isinstance(ancestor, ast.FunctionDef)
-            and ancestor.name == "main"
-            and not guarded
-        ):
+        if isinstance(ancestor, ast.FunctionDef) and ancestor.name == "main" and not guarded:
             direct_main_calls.append(call.lineno)
     check(
         checks,
@@ -749,9 +856,7 @@ def validate(
     domain_call_owners: list[str] = []
     for call in domain_calls:
         ancestor = parents.get(call)
-        while ancestor is not None and not isinstance(
-            ancestor, (ast.FunctionDef, ast.AsyncFunctionDef)
-        ):
+        while ancestor is not None and not isinstance(ancestor, (ast.FunctionDef, ast.AsyncFunctionDef)):
             ancestor = parents.get(ancestor)
         if isinstance(ancestor, (ast.FunctionDef, ast.AsyncFunctionDef)):
             domain_call_owners.append(ancestor.name)
@@ -765,16 +870,12 @@ def validate(
     runtime_probe = SutureRuntime(profile)
     half_dose_first = runtime_probe.record_instrument_grasp(
         (20,),
-        pressure_pa=float(
-            profile["instrument_damage"]["reference_crush_pressure_pa"]
-        ),
+        pressure_pa=float(profile["instrument_damage"]["reference_crush_pressure_pa"]),
         duration_s=0.5,
     )
     half_dose_second = runtime_probe.record_instrument_grasp(
         (20,),
-        pressure_pa=float(
-            profile["instrument_damage"]["reference_crush_pressure_pa"]
-        ),
+        pressure_pa=float(profile["instrument_damage"]["reference_crush_pressure_pa"]),
         duration_s=0.5,
     )
     live_runtime_tokens = [
@@ -786,9 +887,7 @@ def validate(
         "force_matrix_w",
         "{ENV_REGEX_NS}/DrAnmarNeedle/Suture/Segments/S.*",
     ]
-    missing_live_runtime_tokens = [
-        token for token in live_runtime_tokens if token not in workstation_text
-    ]
+    missing_live_runtime_tokens = [token for token in live_runtime_tokens if token not in workstation_text]
     check(
         checks,
         "live_suture_material_history_wiring",
@@ -806,55 +905,30 @@ def validate(
     runtime_detection = profile["runtime_detection"]
     broadphase = runtime_detection["self_contact_broadphase"]
     spacing = derived.segment_spacing_m
-    straight_positions = [
-        (index * spacing, 0.0, 0.0)
-        for index in range(derived.segment_count)
-    ]
+    straight_positions = [(index * spacing, 0.0, 0.0) for index in range(derived.segment_count)]
     (
         straight_contacts,
         broadphase_candidates,
         broadphase_overflow_edges,
-    ) = (
-        runtime_probe._nonadjacent_edge_contacts(
-            straight_positions,
-            contact_distance_m=float(
-                runtime_detection[
-                    "self_contact_centerline_distance_m"
-                ]
-            ),
-            minimum_index_separation=int(
-                runtime_detection["knot_minimum_index_separation"]
-            ),
-            cell_size_multiplier=float(
-                broadphase["cell_size_to_contact_distance"]
-            ),
-            maximum_cells_per_edge=int(
-                broadphase["maximum_cells_per_edge"]
-            ),
-        )
+    ) = runtime_probe._nonadjacent_edge_contacts(
+        straight_positions,
+        contact_distance_m=float(runtime_detection["self_contact_centerline_distance_m"]),
+        minimum_index_separation=int(runtime_detection["knot_minimum_index_separation"]),
+        cell_size_multiplier=float(broadphase["cell_size_to_contact_distance"]),
+        maximum_cells_per_edge=int(broadphase["maximum_cells_per_edge"]),
     )
     naive_pairs = (
-        (
-            derived.segment_count
-            - 1
-            - int(runtime_detection["knot_minimum_index_separation"])
-        )
-        * (
-            derived.segment_count
-            - int(runtime_detection["knot_minimum_index_separation"])
-        )
+        (derived.segment_count - 1 - int(runtime_detection["knot_minimum_index_separation"]))
+        * (derived.segment_count - int(runtime_detection["knot_minimum_index_separation"]))
         // 2
     )
     check(
         checks,
         "geometry_aware_self_contact_broadphase",
-        broadphase["algorithm"]
-        == "uniform_spatial_hash_over_expanded_centerline_edge_aabbs"
-        and broadphase["narrowphase"]
-        == "exact_3d_segment_to_segment_closest_distance"
+        broadphase["algorithm"] == "uniform_spatial_hash_over_expanded_centerline_edge_aabbs"
+        and broadphase["narrowphase"] == "exact_3d_segment_to_segment_closest_distance"
         and broadphase["deterministic_pair_order"] is True
-        and broadphase["overflow_policy"]
-        == "exact_test_overflow_edge_against_all_nonadjacent_edges"
+        and broadphase["overflow_policy"] == "exact_test_overflow_edge_against_all_nonadjacent_edges"
         and not straight_contacts
         and broadphase_candidates < naive_pairs * 0.05
         and broadphase_overflow_edges == 0
@@ -874,8 +948,7 @@ def validate(
     check(
         checks,
         "primary_research_provenance",
-        len(evidence) >= 6
-        and all(item.get("url") and item.get("used_for") for item in evidence),
+        len(evidence) >= 6 and all(item.get("url") and item.get("used_for") for item in evidence),
         len(evidence),
         "at least six traceable experimental/computational sources",
     )
@@ -896,6 +969,9 @@ def validate(
             "needle_curvature_radius_m": derived_needle.curvature_radius_m,
             "needle_body_diameter_m": 2.0 * derived_needle.body_radius_m,
             "needle_mass_kg": derived_needle.mass_kg,
+            "needle_center_of_mass_m": derived_needle.mass_properties.center_of_mass_m,
+            "needle_diagonal_inertia_kg_m2": derived_needle.mass_properties.diagonal_inertia_kg_m2,
+            "needle_principal_axes_wxyz": derived_needle.mass_properties.principal_axes_wxyz,
             "needle_visual_vertex_count": derived_needle.visual_vertex_count,
             "needle_collision_capsule_count": derived_needle.collision_capsule_count,
             "sim_to_real_gap_count": len(gaps),

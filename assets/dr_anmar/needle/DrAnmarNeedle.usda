@@ -11,10 +11,11 @@ def Xform "DrAnmarNeedle" (
     customData = {
         string drAnmarAssetId = "dr-anmar-needle"
         string drAnmarAssetName = "DrAnmar Needle"
-        string drAnmarAssetVersion = "1.1.0"
+        string drAnmarAssetVersion = "1.2.0"
         string drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"
         bool drAnmarClinicalValidation = false
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
+        int drAnmarMassPropertyIntegrationSlices = 8192
         string drAnmarNeedleProfileId = "dr-anmar-needle-v1"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
@@ -56,7 +57,10 @@ def Xform "DrAnmarNeedle" (
     {
         bool physics:rigidBodyEnabled = true
         bool physics:kinematicEnabled = false
-        float physics:mass = 3.1895423335e-05
+        float physics:mass = 3.18954233346e-05
+        point3f physics:centerOfMass = (0.00501937942857, 0.00061954163063, 0)
+        float3 physics:diagonalInertia = (9.42851455126e-11, 6.56599429871e-10, 7.49855912494e-10)
+        quatf physics:principalAxes = (0.749196290374, 0, 0, -0.662348034262)
         bool physxRigidBody:enableCCD = true
         int physxRigidBody:solverPositionIterationCount = 24
         int physxRigidBody:solverVelocityIterationCount = 8

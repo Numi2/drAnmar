@@ -55,9 +55,10 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.1.0\"",
+        "drAnmarAssetVersion = \"1.2.0\"",
         "prepend references = @../suture/DrAnmarSuture4_0.usda@",
         "drAnmarGeometrySource = \"independently_generated_parametric_geometry\"",
+        "drAnmarMassPropertyIntegrationSlices = 8192",
         "drAnmarRepresentation = \"high_resolution_mesh_with_compound_capsule_collision\"",
         "drAnmarCollisionContract = \"curvature_sagitta_bounded_capsules_with_explicit_extents\"",
         "\"PhysicsMaterialAPI\", \"PhysxMaterialAPI\"",
@@ -67,15 +68,18 @@
         "def PhysicsFixedJoint \"FactorySwage\"",
         "def Mesh \"Visual\"",
         "def Xform \"Needle\"",
+        "point3f physics:centerOfMass",
+        "float3 physics:diagonalInertia",
+        "quatf physics:principalAxes",
         "physics:body0 = </DrAnmarNeedle/Needle>",
         "physics:body1 = </DrAnmarNeedle/Suture/NeedleInterface>",
         "physics:kinematicEnabled = false",
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.1.0",
+        "integration_version": "1.2.0",
         "missing": [],
-        "profile_version": "1.1.0"
+        "profile_version": "1.2.0"
       },
       "passed": true
     },
@@ -200,6 +204,76 @@
       },
       "passed": true
     },
+    "needle_explicit_geometry_mass_properties": {
+      "expected": "explicit converged geometry-derived USD mass properties with density-consistent episode scaling",
+      "measured": {
+        "authored_center_of_mass_m": [
+          0.00501937942857,
+          0.00061954163063,
+          0.0
+        ],
+        "authored_diagonal_inertia_kg_m2": [
+          9.42851455126e-11,
+          6.56599429871e-10,
+          7.49855912494e-10
+        ],
+        "authored_mass_kg": 3.18954233346e-05,
+        "authored_principal_axes_wxyz": [
+          0.749196290374,
+          0.0,
+          0.0,
+          -0.662348034262
+        ],
+        "center_of_mass_m": [
+          0.0050193794285684976,
+          0.0006195416306296188,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          9.42851455125689e-11,
+          6.565994298708686e-10,
+          7.498559124943371e-10
+        ],
+        "episode_diagonal_inertia_kg_m2": [
+          9.306857220665704e-11,
+          6.48127243348641e-10,
+          7.401804256351777e-10
+        ],
+        "episode_mass_scale": 0.9870968719484058,
+        "inertia_tensor_kg_m2": [
+          [
+            6.481487750813394e-10,
+            6.841425534171457e-11,
+            0.0
+          ],
+          [
+            6.841425534171457e-11,
+            1.0273580030209805e-10,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            7.498559124943371e-10
+          ]
+        ],
+        "integration_slices": 8192,
+        "mass_kg": 3.189542333463235e-05,
+        "maximum_center_of_mass_convergence_drift_m": 2.059587222991155e-11,
+        "maximum_reconstruction_error_kg_m2": 2.0679515313825692e-25,
+        "maximum_relative_inertia_convergence_drift": 5.8125955432748315e-08,
+        "missing_live_mass_property_tokens": [],
+        "principal_axes_norm": 1.0,
+        "principal_axes_wxyz": [
+          0.7491962903735767,
+          0.0,
+          0.0,
+          -0.6623480342618006
+        ],
+        "relative_mass_convergence_drift": 2.930719000001906e-11
+      },
+      "passed": true
+    },
     "needle_nvidia_stack_collision_contract": {
       "expected": "NVIDIA Omni Physics primitive-collider, CCD, extent, and material schema contract",
       "measured": {
@@ -217,7 +291,7 @@
         },
         "friction_combine_mode": "max",
         "missing_native_probe_tokens": [],
-        "reference_count": 3
+        "reference_count": 4
       },
       "passed": true
     },
@@ -241,7 +315,7 @@
       "measured": {
         "arc_length_m": 0.022,
         "body_diameter_m": 0.00052,
-        "mass_kg": 3.1895423334977654e-05
+        "mass_kg": 3.189542333463235e-05
       },
       "passed": true
     },
@@ -324,7 +398,7 @@
       "measured": {
         "seed_1701": {
           "dynamic_friction": 0.29777502113335985,
-          "mass_kg": 3.148387260342663e-05,
+          "mass_kg": 3.148387260308578e-05,
           "restitution": 0.014797771346713118,
           "seed": 1701,
           "static_friction": 0.3522315736593612,
@@ -332,7 +406,7 @@
         },
         "seed_1701_replay": {
           "dynamic_friction": 0.29777502113335985,
-          "mass_kg": 3.148387260342663e-05,
+          "mass_kg": 3.148387260308578e-05,
           "restitution": 0.014797771346713118,
           "seed": 1701,
           "static_friction": 0.3522315736593612,
@@ -340,7 +414,7 @@
         },
         "seed_1702": {
           "dynamic_friction": 0.2848994280717924,
-          "mass_kg": 3.1368347772606715e-05,
+          "mass_kg": 3.136834777226711e-05,
           "restitution": 0.0036879343092894755,
           "seed": 1702,
           "static_friction": 0.2848994280717924,
@@ -427,9 +501,25 @@
     "mass_kg": 1.1486448139687682e-05,
     "needle_arc_length_m": 0.022,
     "needle_body_diameter_m": 0.00052,
+    "needle_center_of_mass_m": [
+      0.0050193794285684976,
+      0.0006195416306296188,
+      0.0
+    ],
     "needle_collision_capsule_count": 40,
     "needle_curvature_radius_m": 0.0070028174960433945,
-    "needle_mass_kg": 3.1895423334977654e-05,
+    "needle_diagonal_inertia_kg_m2": [
+      9.42851455125689e-11,
+      6.565994298708686e-10,
+      7.498559124943371e-10
+    ],
+    "needle_mass_kg": 3.189542333463235e-05,
+    "needle_principal_axes_wxyz": [
+      0.7491962903735767,
+      0.0,
+      0.0,
+      -0.6623480342618006
+    ],
     "needle_visual_vertex_count": 2049,
     "segment_mass_kg": 3.190680038802134e-08,
     "sim_to_real_gap_count": 7,

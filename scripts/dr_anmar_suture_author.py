@@ -35,11 +35,8 @@ from dr_anmar_suture_integration import (
 )
 from dr_anmar_suture_model import DEFAULT_PROFILE_PATH, derive, load_profile
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = (
-    REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
-)
+DEFAULT_OUTPUT = REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
 DEFAULT_NEEDLE_OUTPUT = DR_ANMAR_NEEDLE_ASSET_PATH
 
 
@@ -52,13 +49,7 @@ def usd_vec(values: tuple[float, float, float]) -> str:
 
 
 def usd_quat(values: tuple[float, float, float, float]) -> str:
-    return (
-        "("
-        + usd_float(values[0])
-        + ", "
-        + ", ".join(usd_float(value) for value in values[1:])
-        + ")"
-    )
+    return "(" + usd_float(values[0]) + ", " + ", ".join(usd_float(value) for value in values[1:]) + ")"
 
 
 def indent(text: str, spaces: int = 4) -> str:
@@ -90,10 +81,8 @@ def capsule_block(
     if filtered_pair:
         schemas.append('"PhysicsFilteredPairsAPI"')
     total_half_length = cylinder_height_m / 2.0 + radius_m
-    filtered = (
-        f"\n    rel physics:filteredPairs = <{filtered_pair}>" if filtered_pair else ""
-    )
-    return f'''def Capsule "{name}" (
+    filtered = f"\n    rel physics:filteredPairs = <{filtered_pair}>" if filtered_pair else ""
+    return f"""def Capsule "{name}" (
     prepend apiSchemas = [{", ".join(schemas)}]
 )
 {{
@@ -113,7 +102,7 @@ def capsule_block(
     float physxRigidBody:maxDepenetrationVelocity = 0.25
     double3 xformOp:translate = {usd_vec((x_m, 0.0, 0.0))}
     uniform token[] xformOpOrder = ["xformOp:translate"]{filtered}
-}}'''
+}}"""
 
 
 def joint_block(
@@ -147,7 +136,7 @@ def joint_block(
     bend_per_degree = bend_stiffness_n_m_rad * per_degree
     bend_damping_per_degree = bend_damping_n_m_s_rad * per_degree
     twist_per_degree = twist_stiffness_n_m_rad * per_degree
-    return f'''def PhysicsJoint "{name}" (
+    return f"""def PhysicsJoint "{name}" (
     prepend apiSchemas = [{", ".join(schemas)}]
 )
 {{
@@ -191,7 +180,7 @@ def joint_block(
     float drive:rotZ:physics:damping = {usd_float(bend_damping_per_degree)}
     float drive:rotZ:physics:maxForce = {usd_float(break_torque_n_m)}
     custom float drAnmar:swageFraction = {usd_float(swage_fraction)}
-}}'''
+}}"""
 
 
 def author(profile: dict[str, Any]) -> str:
@@ -200,15 +189,18 @@ def author(profile: dict[str, Any]) -> str:
     tension = profile["tension"]
     contact = profile["contact"]
     swage = profile["swage"]
-    color = tuple(float(value) for value in geometry["color_rgb"])
+    color = (
+        float(geometry["color_rgb"][0]),
+        float(geometry["color_rgb"][1]),
+        float(geometry["color_rgb"][2]),
+    )
     spacing = derived.segment_spacing_m
     base_radius = derived.radius_m
     root = "/DrAnmarSuture4_0"
     material_path = f"{root}/Materials/SutureMaterial"
     steel_path = f"{root}/Materials/SwageSteel"
     blocks: list[str] = []
-    blocks.append(
-        f"""def Scope "Materials"
+    blocks.append(f"""def Scope "Materials"
 {{
     def Material "SutureMaterial" (
         prepend apiSchemas = ["PhysicsMaterialAPI"]
@@ -226,8 +218,7 @@ def author(profile: dict[str, Any]) -> str:
         float physics:dynamicFriction = 0.25
         float physics:restitution = 0
     }}
-}}"""
-    )
+}}""")
     swage_radius = float(swage["needle_end_diameter_m"]) / 2.0
     blocks.append(
         capsule_block(
@@ -249,19 +240,15 @@ def author(profile: dict[str, Any]) -> str:
     for index in range(derived.segment_count):
         swage_fraction = clamp01(1.0 - index / max(1, derived.swage_segment_count - 1))
         taper_radius = base_radius + (swage_radius - base_radius) * swage_fraction
-        roughness = 1.0 + modulation * math.sin(
-            2.0 * math.pi * index / modulation_period
-        )
+        roughness = 1.0 + modulation * math.sin(2.0 * math.pi * index / modulation_period)
         radius = taper_radius * roughness
-        segment_color = tuple(
-            max(0.0, min(1.0, component * (0.92 + 0.08 * ((index % 3) / 2.0))))
-            for component in color
+        shade = 0.92 + 0.08 * ((index % 3) / 2.0)
+        segment_color = (
+            max(0.0, min(1.0, color[0] * shade)),
+            max(0.0, min(1.0, color[1] * shade)),
+            max(0.0, min(1.0, color[2] * shade)),
         )
-        previous_path = (
-            f"{root}/NeedleInterface"
-            if index == 0
-            else f"{root}/Segments/S{index - 1:04d}"
-        )
+        previous_path = f"{root}/NeedleInterface" if index == 0 else f"{root}/Segments/S{index - 1:04d}"
         segment_blocks.append(
             capsule_block(
                 name=f"S{index:04d}",
@@ -276,39 +263,21 @@ def author(profile: dict[str, Any]) -> str:
                 profile=profile,
             )
         )
-    blocks.append(
-        'def Scope "Segments"\n{\n' + indent("\n\n".join(segment_blocks)) + "\n}"
-    )
+    blocks.append('def Scope "Segments"\n{\n' + indent("\n\n".join(segment_blocks)) + "\n}")
     joint_blocks: list[str] = []
     extension_limit = spacing * float(tension["joint_extension_limit_fraction"])
     break_torque = (
-        derived.straight_failure_load_n
-        * derived.radius_m
-        * float(profile["knot"]["nominal_strength_efficiency"])
+        derived.straight_failure_load_n * derived.radius_m * float(profile["knot"]["nominal_strength_efficiency"])
     )
     for joint_index in range(derived.segment_count):
         is_swage_joint = joint_index == 0
         segment_index = joint_index
-        body0 = (
-            f"{root}/NeedleInterface"
-            if is_swage_joint
-            else f"{root}/Segments/S{segment_index - 1:04d}"
-        )
+        body0 = f"{root}/NeedleInterface" if is_swage_joint else f"{root}/Segments/S{segment_index - 1:04d}"
         body1 = f"{root}/Segments/S{segment_index:04d}"
-        swage_fraction = clamp01(
-            1.0 - segment_index / max(1, derived.swage_segment_count - 1)
-        )
-        axial_multiplier = lerp1(
-            1.0, float(swage["axial_stiffness_multiplier"]), swage_fraction
-        )
-        bend_multiplier = lerp1(
-            1.0, float(swage["bending_stiffness_multiplier"]), swage_fraction
-        )
-        failure_load = (
-            float(swage["pullout_force_n_seed"])
-            if is_swage_joint
-            else derived.straight_failure_load_n
-        )
+        swage_fraction = clamp01(1.0 - segment_index / max(1, derived.swage_segment_count - 1))
+        axial_multiplier = lerp1(1.0, float(swage["axial_stiffness_multiplier"]), swage_fraction)
+        bend_multiplier = lerp1(1.0, float(swage["bending_stiffness_multiplier"]), swage_fraction)
+        failure_load = float(swage["pullout_force_n_seed"]) if is_swage_joint else derived.straight_failure_load_n
         joint_blocks.append(
             joint_block(
                 name=f"J{joint_index:04d}",
@@ -316,16 +285,11 @@ def author(profile: dict[str, Any]) -> str:
                 body1=body1,
                 half_spacing_m=spacing / 2.0,
                 extension_limit_m=extension_limit,
-                axial_stiffness_n_m=derived.axial_joint_stiffness_n_m
-                * axial_multiplier,
-                axial_damping_n_s_m=derived.axial_joint_damping_n_s_m
-                * math.sqrt(axial_multiplier),
-                bend_stiffness_n_m_rad=derived.bend_joint_stiffness_n_m_rad
-                * bend_multiplier,
-                bend_damping_n_m_s_rad=derived.bend_joint_damping_n_m_s_rad
-                * math.sqrt(bend_multiplier),
-                twist_stiffness_n_m_rad=derived.twist_joint_stiffness_n_m_rad
-                * bend_multiplier,
+                axial_stiffness_n_m=derived.axial_joint_stiffness_n_m * axial_multiplier,
+                axial_damping_n_s_m=derived.axial_joint_damping_n_s_m * math.sqrt(axial_multiplier),
+                bend_stiffness_n_m_rad=derived.bend_joint_stiffness_n_m_rad * bend_multiplier,
+                bend_damping_n_m_s_rad=derived.bend_joint_damping_n_m_s_rad * math.sqrt(bend_multiplier),
+                twist_stiffness_n_m_rad=derived.twist_joint_stiffness_n_m_rad * bend_multiplier,
                 break_force_n=failure_load,
                 break_torque_n_m=break_torque,
                 swage_fraction=swage_fraction,
@@ -342,11 +306,7 @@ def author(profile: dict[str, Any]) -> str:
     }
     custom_lines = "\n".join(
         f"        {'bool' if isinstance(value, bool) else 'string'} {key} = "
-        + (
-            ("true" if value else "false")
-            if isinstance(value, bool)
-            else json.dumps(str(value))
-        )
+        + (("true" if value else "false") if isinstance(value, bool) else json.dumps(str(value)))
         for key, value in custom_data.items()
     )
     body = "\n\n".join(indent(block) for block in blocks)
@@ -379,6 +339,7 @@ def author_dr_anmar_needle(
     """Author independent needle geometry and attach the Dr.Anmar suture."""
 
     derived_needle = derive_needle(needle_profile)
+    mass_properties = derived_needle.mass_properties
     mesh = build_needle_mesh(needle_profile)
     contact = needle_profile["contact"]
     solver = needle_profile["solver"]
@@ -396,9 +357,10 @@ def author_dr_anmar_needle(
         swage_tangent[1] * SUTURE_NEEDLE_INTERFACE_CENTER_M[0],
         0.0,
     )
-    suture_translation = tuple(
-        swage_anchor[index] - rotated_interface_center[index]
-        for index in range(3)
+    suture_translation = (
+        swage_anchor[0] - rotated_interface_center[0],
+        swage_anchor[1] - rotated_interface_center[1],
+        swage_anchor[2] - rotated_interface_center[2],
     )
     root = f"/{DR_ANMAR_NEEDLE_ROOT_PRIM}"
     steel_material_path = f"{root}/Materials/NeedleSteel"
@@ -408,8 +370,7 @@ def author_dr_anmar_needle(
     collision_blocks: list[str] = []
     collision_capsules = build_needle_collision_capsules(needle_profile)
     for index, capsule in enumerate(collision_capsules):
-        collision_blocks.append(
-            f'''def Capsule "C{index:03d}" (
+        collision_blocks.append(f"""def Capsule "C{index:03d}" (
     prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
 )
 {{
@@ -422,15 +383,10 @@ def author_dr_anmar_needle(
     quatf xformOp:orient = {usd_quat(capsule.orientation_wxyz)}
     double3 xformOp:translate = {usd_vec(capsule.center_m)}
     uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
-}}'''
-        )
+}}""")
     collisions = indent("\n\n".join(collision_blocks), 8)
     sim_to_real_gap_count = len(needle_profile["sim_to_real"]["gaps"])
-    implemented_randomization_count = len(
-        needle_profile["sim_to_real"][
-            "implemented_randomization_on_episode_reset"
-        ]
-    )
+    implemented_randomization_count = len(needle_profile["sim_to_real"]["implemented_randomization_on_episode_reset"])
     return f"""#usda 1.0
 (
     defaultPrim = "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
@@ -448,6 +404,7 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         string drAnmarAuthorship = "Independent Dr.Anmar geometry, collision, instrument composition and suture physics"
         bool drAnmarClinicalValidation = false
         string drAnmarGeometrySource = "independently_generated_parametric_geometry"
+        int drAnmarMassPropertyIntegrationSlices = {mass_properties.integration_slices}
         string drAnmarNeedleProfileId = "{needle_profile["id"]}"
         string drAnmarRepresentation = "high_resolution_mesh_with_compound_capsule_collision"
         string drAnmarCollisionContract = "curvature_sagitta_bounded_capsules_with_explicit_extents"
@@ -490,6 +447,9 @@ def Xform "{DR_ANMAR_NEEDLE_ROOT_PRIM}" (
         bool physics:rigidBodyEnabled = true
         bool physics:kinematicEnabled = false
         float physics:mass = {usd_float(derived_needle.mass_kg)}
+        point3f physics:centerOfMass = {usd_vec(mass_properties.center_of_mass_m)}
+        float3 physics:diagonalInertia = {usd_vec(mass_properties.diagonal_inertia_kg_m2)}
+        quatf physics:principalAxes = {usd_quat(mass_properties.principal_axes_wxyz)}
         bool physxRigidBody:enableCCD = {"true" if solver["ccd"] else "false"}
         int physxRigidBody:solverPositionIterationCount = {int(solver["position_iterations"])}
         int physxRigidBody:solverVelocityIterationCount = {int(solver["velocity_iterations"])}
@@ -602,9 +562,7 @@ def main() -> int:
     temporary.replace(output)
     needle_output.parent.mkdir(parents=True, exist_ok=True)
     needle_temporary = needle_output.with_suffix(needle_output.suffix + ".tmp")
-    suture_reference = Path(
-        os.path.relpath(output, start=needle_output.parent)
-    ).as_posix()
+    suture_reference = Path(os.path.relpath(output, start=needle_output.parent)).as_posix()
     needle_temporary.write_text(
         author_dr_anmar_needle(
             profile,
@@ -635,33 +593,24 @@ def main() -> int:
         "needle_curvature_radius_m": derived_needle.curvature_radius_m,
         "needle_body_diameter_m": derived_needle.body_radius_m * 2.0,
         "needle_mass_kg": derived_needle.mass_kg,
+        "needle_mass_property_integration_slices": derived_needle.mass_properties.integration_slices,
+        "needle_center_of_mass_m": list(derived_needle.mass_properties.center_of_mass_m),
+        "needle_diagonal_inertia_kg_m2": list(derived_needle.mass_properties.diagonal_inertia_kg_m2),
+        "needle_principal_axes_wxyz": list(derived_needle.mass_properties.principal_axes_wxyz),
         "needle_visual_vertex_count": derived_needle.visual_vertex_count,
         "needle_collision_capsule_count": derived_needle.collision_capsule_count,
-        "needle_collision_contract": needle_profile["construction"][
-            "collision_contract"
-        ],
-        "needle_collision_max_curvature_sagitta_m": max(
-            capsule.curvature_sagitta_m
-            for capsule in collision_capsules
-        ),
-        "needle_collision_visual_seam_margin_m": max(
-            capsule.visual_seam_margin_m
-            for capsule in collision_capsules
-        ),
+        "needle_collision_contract": needle_profile["construction"]["collision_contract"],
+        "needle_collision_max_curvature_sagitta_m": max(capsule.curvature_sagitta_m for capsule in collision_capsules),
+        "needle_collision_visual_seam_margin_m": max(capsule.visual_seam_margin_m for capsule in collision_capsules),
         "needle_collision_max_chord_length_error_m": max(
-            abs(capsule.cylinder_height_m - capsule.chord_length_m)
-            for capsule in collision_capsules
+            abs(capsule.cylinder_height_m - capsule.chord_length_m) for capsule in collision_capsules
         ),
-        "needle_collision_visual_mesh_coverage": (
-            needle_mesh_collision_coverage(
-                needle_profile,
-                needle_mesh,
-            )
+        "needle_collision_visual_mesh_coverage": needle_mesh_collision_coverage(
+            needle_profile,
+            needle_mesh,
         ),
         "needle_swage_anchor_m": list(derived_needle.swage_anchor_m),
-        "needle_sim_to_real_gap_count": len(
-            needle_profile["sim_to_real"]["gaps"]
-        ),
+        "needle_sim_to_real_gap_count": len(needle_profile["sim_to_real"]["gaps"]),
         "suture_sim_to_real_gap_count": len(profile["sim_to_real"]["gaps"]),
         "swage_connection": "fixed_needle_to_interface_then_breakable_pullout_joint",
         "representation": "visible_collision_capsules_with_breakable_d6_cosserat_joints",
@@ -673,12 +622,8 @@ def main() -> int:
         "straight_failure_load_n": derived.straight_failure_load_n,
         "knot_failure_load_n": derived.knot_failure_load_n,
         "runtime_material_history_controller": "scripts/dr_anmar_suture_runtime.py",
-        "runtime_observation_source": profile["runtime_detection"][
-            "observation_source"
-        ],
-        "runtime_self_contact_broadphase": profile["runtime_detection"][
-            "self_contact_broadphase"
-        ],
+        "runtime_observation_source": profile["runtime_detection"]["observation_source"],
+        "runtime_self_contact_broadphase": profile["runtime_detection"]["self_contact_broadphase"],
         "clinical_validation": False,
         "independent_from_current_thread": True,
     }
