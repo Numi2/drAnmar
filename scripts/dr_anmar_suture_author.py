@@ -39,12 +39,21 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH,
     DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH,
     DR_ANMAR_NEEDLE_ROOT_PRIM,
+    SUTURE_ASSET_PATH,
+    SUTURE_GEOMETRY_ASSET_PATH,
+    SUTURE_MATERIALS_ASSET_PATH,
     SUTURE_NEEDLE_INTERFACE_CENTER_M,
+    SUTURE_PHYSICS_ASSET_PATH,
+    SUTURE_PHYSX_ASSET_PATH,
 )
 from dr_anmar_suture_model import DEFAULT_PROFILE_PATH, derive, load_profile
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
+DEFAULT_OUTPUT = SUTURE_ASSET_PATH
+DEFAULT_GEOMETRY_OUTPUT = SUTURE_GEOMETRY_ASSET_PATH
+DEFAULT_MATERIALS_OUTPUT = SUTURE_MATERIALS_ASSET_PATH
+DEFAULT_PHYSICS_OUTPUT = SUTURE_PHYSICS_ASSET_PATH
+DEFAULT_PHYSX_OUTPUT = SUTURE_PHYSX_ASSET_PATH
 DEFAULT_NEEDLE_OUTPUT = DR_ANMAR_NEEDLE_ASSET_PATH
 DEFAULT_NEEDLE_GEOMETRY_OUTPUT = DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH
 DEFAULT_NEEDLE_MATERIALS_OUTPUT = DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH
@@ -69,51 +78,87 @@ def indent(text: str, spaces: int = 4) -> str:
     return "\n".join(prefix + line if line else "" for line in text.splitlines())
 
 
-def capsule_block(
+def capsule_geometry_block(
     *,
     name: str,
     x_m: float,
     radius_m: float,
     cylinder_height_m: float,
-    mass_kg: float,
     color: tuple[float, float, float],
-    material_path: str,
-    kinematic: bool,
-    filtered_pair: str | None,
-    profile: dict[str, Any],
 ) -> str:
-    material = profile["material"]
-    schemas = [
-        '"PhysicsCollisionAPI"',
-        '"PhysicsRigidBodyAPI"',
-        '"PhysicsMassAPI"',
-        '"PhysxRigidBodyAPI"',
-        '"MaterialBindingAPI"',
-    ]
-    if filtered_pair:
-        schemas.append('"PhysicsFilteredPairsAPI"')
     total_half_length = cylinder_height_m / 2.0 + radius_m
-    filtered = f"\n    rel physics:filteredPairs = <{filtered_pair}>" if filtered_pair else ""
-    return f"""def Capsule "{name}" (
-    prepend apiSchemas = [{", ".join(schemas)}]
-)
+    return f"""def Capsule "{name}"
 {{
     uniform token axis = "X"
     float height = {usd_float(cylinder_height_m)}
     float radius = {usd_float(radius_m)}
     float3[] extent = [{usd_vec((-total_half_length, -radius_m, -radius_m))}, {usd_vec((total_half_length, radius_m, radius_m))}]
     color3f[] primvars:displayColor = [{usd_vec(color)}]
-    rel material:binding = <{material_path}>
+    double3 xformOp:translate = {usd_vec((x_m, 0.0, 0.0))}
+    uniform token[] xformOpOrder = ["xformOp:translate"]
+}}"""
+
+
+def capsule_physics_block(
+    *,
+    name: str,
+    mass_kg: float,
+    kinematic: bool,
+    filtered_pair: str | None,
+    physics_material_path: str | None = None,
+) -> str:
+    schemas = [
+        '"PhysicsCollisionAPI"',
+        '"PhysicsRigidBodyAPI"',
+        '"PhysicsMassAPI"',
+    ]
+    if filtered_pair:
+        schemas.append('"PhysicsFilteredPairsAPI"')
+    if physics_material_path:
+        schemas.append('"MaterialBindingAPI"')
+    filtered = f"\n    rel physics:filteredPairs = <{filtered_pair}>" if filtered_pair else ""
+    binding = f"\n    rel material:binding:physics = <{physics_material_path}>" if physics_material_path else ""
+    return f"""over "{name}" (
+    prepend apiSchemas = [{", ".join(schemas)}]
+)
+{{
     bool physics:collisionEnabled = true
     bool physics:rigidBodyEnabled = true
     bool physics:kinematicEnabled = {"true" if kinematic else "false"}
     float physics:mass = {usd_float(mass_kg)}
+    {(filtered + binding).lstrip()}
+}}"""
+
+
+def capsule_physx_block(
+    *,
+    name: str,
+    radius_m: float,
+    profile: dict[str, Any],
+) -> str:
+    material = profile["material"]
+    solver = profile["solver"]
+    offset_contract = profile["contact"]["contact_offsets"]
+    contact_offset = max(
+        float(offset_contract["minimum_m"]),
+        min(
+            float(offset_contract["maximum_m"]),
+            radius_m * float(offset_contract["collision_radius_fraction"]),
+        ),
+    )
+    return f"""over "{name}" (
+    prepend apiSchemas = ["PhysxRigidBodyAPI", "PhysxCollisionAPI"]
+)
+{{
     bool physxRigidBody:enableCCD = true
+    bool physxRigidBody:enableSpeculativeCCD = {"true" if profile["contact"]["speculative_ccd"] else "false"}
     float physxRigidBody:linearDamping = {usd_float(float(material["linear_velocity_damping"]))}
     float physxRigidBody:angularDamping = {usd_float(float(material["angular_velocity_damping"]))}
+    int physxRigidBody:solverPositionIterationCount = {int(solver["position_iterations"])}
+    int physxRigidBody:solverVelocityIterationCount = {int(solver["velocity_iterations"])}
     float physxRigidBody:maxDepenetrationVelocity = 0.25
-    double3 xformOp:translate = {usd_vec((x_m, 0.0, 0.0))}
-    uniform token[] xformOpOrder = ["xformOp:translate"]{filtered}
+    float physxCollision:contactOffset = {usd_float(contact_offset)}
+    float physxCollision:restOffset = {usd_float(float(offset_contract["rest_offset_m"]))}
 }}"""
 
 
@@ -195,7 +240,16 @@ def joint_block(
 }}"""
 
 
-def author(profile: dict[str, Any]) -> str:
+def author(
+    profile: dict[str, Any],
+    *,
+    geometry_sublayer_reference: str,
+    materials_sublayer_reference: str,
+    physx_sublayer_reference: str,
+    neutral_physics_sublayer_reference: str,
+) -> tuple[str, str, str, str, str]:
+    """Author isolated entry, geometry, materials, neutral physics, and PhysX layers."""
+
     derived = derive(profile)
     geometry = profile["geometry"]
     tension = profile["tension"]
@@ -209,44 +263,24 @@ def author(profile: dict[str, Any]) -> str:
     spacing = derived.segment_spacing_m
     base_radius = derived.radius_m
     root = "/DrAnmarSuture4_0"
-    material_path = f"{root}/Materials/SutureMaterial"
-    steel_path = f"{root}/Materials/SwageSteel"
-    blocks: list[str] = []
-    blocks.append(f"""def Scope "Materials"
-{{
-    def Material "SutureMaterial" (
-        prepend apiSchemas = ["PhysicsMaterialAPI"]
-    )
-    {{
-        float physics:staticFriction = {usd_float(float(contact["static_friction"]))}
-        float physics:dynamicFriction = {usd_float(float(contact["dynamic_friction"]))}
-        float physics:restitution = {usd_float(float(contact["restitution"]))}
-    }}
-    def Material "SwageSteel" (
-        prepend apiSchemas = ["PhysicsMaterialAPI"]
-    )
-    {{
-        float physics:staticFriction = 0.35
-        float physics:dynamicFriction = 0.25
-        float physics:restitution = 0
-    }}
-}}""")
+    suture_visual_path = f"{root}/Looks/SutureVisual"
+    swage_visual_path = f"{root}/Looks/SwageVisual"
+    suture_physics_path = f"{root}/Materials/SutureMaterial"
+    swage_physics_path = f"{root}/Materials/SwageSteel"
     swage_radius = float(swage["needle_end_diameter_m"]) / 2.0
-    blocks.append(
-        capsule_block(
+    interface_height = max(spacing - 2.0 * swage_radius, spacing * 0.05)
+    geometry_blocks: list[str] = [
+        capsule_geometry_block(
             name="NeedleInterface",
             x_m=-spacing / 2.0,
             radius_m=swage_radius,
-            cylinder_height_m=max(spacing - 2.0 * swage_radius, spacing * 0.05),
-            mass_kg=max(derived.segment_mass_kg * 8.0, 1e-7),
+            cylinder_height_m=interface_height,
             color=(0.58, 0.61, 0.66),
-            material_path=steel_path,
-            kinematic=True,
-            filtered_pair=f"{root}/Segments/S0000",
-            profile=profile,
-        ).replace('def Capsule "NeedleInterface"', 'def Capsule "NeedleInterface"')
-    )
-    segment_blocks: list[str] = []
+        )
+    ]
+    segment_geometry_blocks: list[str] = []
+    segment_physics_blocks: list[str] = []
+    segment_physx_blocks: list[str] = []
     modulation = float(geometry["surface_radius_modulation_fraction"])
     modulation_period = int(geometry["surface_modulation_period_segments"])
     for index in range(derived.segment_count):
@@ -261,21 +295,31 @@ def author(profile: dict[str, Any]) -> str:
             max(0.0, min(1.0, color[2] * shade)),
         )
         previous_path = f"{root}/NeedleInterface" if index == 0 else f"{root}/Segments/S{index - 1:04d}"
-        segment_blocks.append(
-            capsule_block(
+        cylinder_height = max(spacing - 2.0 * radius, spacing * 0.05)
+        segment_geometry_blocks.append(
+            capsule_geometry_block(
                 name=f"S{index:04d}",
                 x_m=(index + 0.5) * spacing,
                 radius_m=radius,
-                cylinder_height_m=max(spacing - 2.0 * radius, spacing * 0.05),
-                mass_kg=derived.segment_mass_kg,
+                cylinder_height_m=cylinder_height,
                 color=segment_color,
-                material_path=material_path,
+            )
+        )
+        segment_physics_blocks.append(
+            capsule_physics_block(
+                name=f"S{index:04d}",
+                mass_kg=derived.segment_mass_kg,
                 kinematic=False,
                 filtered_pair=previous_path,
+            )
+        )
+        segment_physx_blocks.append(
+            capsule_physx_block(
+                name=f"S{index:04d}",
+                radius_m=radius,
                 profile=profile,
             )
         )
-    blocks.append('def Scope "Segments"\n{\n' + indent("\n\n".join(segment_blocks)) + "\n}")
     joint_blocks: list[str] = []
     extension_limit = spacing * float(tension["joint_extension_limit_fraction"])
     break_torque = (
@@ -307,11 +351,12 @@ def author(profile: dict[str, Any]) -> str:
                 swage_fraction=swage_fraction,
             )
         )
-    blocks.append('def Scope "Joints"\n{\n' + indent("\n\n".join(joint_blocks)) + "\n}")
     custom_data = {
+        "drAnmarAssetVersion": profile["version"],
         "drAnmarClinicalValidation": False,
         "drAnmarCanonicalAssetPackage": "assets/dr_anmar",
         "drAnmarIndependentAsset": True,
+        "drAnmarLayerContract": "entry_sublayers_physx_materials_geometry_with_neutral_physics_under_physx",
         "drAnmarProfileId": profile["id"],
         "drAnmarRepresentation": "discrete_cosserat_rod",
         "drAnmarStatus": profile["status"],
@@ -321,9 +366,18 @@ def author(profile: dict[str, Any]) -> str:
         + (("true" if value else "false") if isinstance(value, bool) else json.dumps(str(value)))
         for key, value in custom_data.items()
     )
-    body = "\n\n".join(indent(block) for block in blocks)
-    return f"""#usda 1.0
+    interface_geometry_source = indent(geometry_blocks[0])
+    segment_geometry_source = indent("\n\n".join(segment_geometry_blocks), 8)
+    segment_physics_source = indent("\n\n".join(segment_physics_blocks), 8)
+    joint_source = indent("\n\n".join(joint_blocks), 8)
+    segment_physx_source = indent("\n\n".join(segment_physx_blocks), 8)
+    entry_layer = f"""#usda 1.0
 (
+    subLayers = [
+        @{physx_sublayer_reference}@,
+        @{materials_sublayer_reference}@,
+        @{geometry_sublayer_reference}@
+    ]
     defaultPrim = "DrAnmarSuture4_0"
     doc = "Independent research-grade 4-0 braided surgical-suture asset; not clinically validated."
     kilogramsPerUnit = 1
@@ -337,9 +391,198 @@ def Xform "DrAnmarSuture4_0" (
     }}
 )
 {{
-{body}
+    def Scope "Looks"
+    {{
+    }}
+
+    def Scope "Materials"
+    {{
+    }}
+
+    def Scope "Segments"
+    {{
+    }}
+
+    def Scope "Joints"
+    {{
+    }}
 }}
 """
+    geometry_layer = f"""#usda 1.0
+(
+    defaultPrim = "DrAnmarSuture4_0"
+    doc = "Dr.Anmar 4-0 suture binary capsule geometry layer. Composed by DrAnmarSuture4_0.usda."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "DrAnmarSuture4_0"
+{{
+{interface_geometry_source}
+
+    over "Segments"
+    {{
+{segment_geometry_source}
+    }}
+}}
+"""
+    materials_layer = f"""#usda 1.0
+(
+    defaultPrim = "DrAnmarSuture4_0"
+    doc = "Dr.Anmar 4-0 suture visual look-development and inherited binding layer."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "DrAnmarSuture4_0"
+{{
+    over "Looks"
+    {{
+        def Material "SutureVisual"
+        {{
+            def Shader "PreviewSurface"
+            {{
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = {usd_vec(color)}
+                float inputs:metallic = 0
+                float inputs:roughness = 0.48
+                token outputs:surface
+            }}
+            token outputs:surface.connect = <{suture_visual_path}/PreviewSurface.outputs:surface>
+        }}
+
+        def Material "SwageVisual"
+        {{
+            def Shader "PreviewSurface"
+            {{
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.58, 0.61, 0.66)
+                float inputs:metallic = 0.86
+                float inputs:roughness = 0.24
+                token outputs:surface
+            }}
+            token outputs:surface.connect = <{swage_visual_path}/PreviewSurface.outputs:surface>
+        }}
+    }}
+
+    over "NeedleInterface" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {{
+        rel material:binding = <{swage_visual_path}>
+    }}
+
+    over "Segments" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {{
+        rel material:binding = <{suture_visual_path}>
+    }}
+}}
+"""
+    interface_physics = capsule_physics_block(
+        name="NeedleInterface",
+        mass_kg=max(derived.segment_mass_kg * 8.0, 1e-7),
+        kinematic=True,
+        filtered_pair=f"{root}/Segments/S0000",
+        physics_material_path=swage_physics_path,
+    )
+    neutral_physics_layer = f"""#usda 1.0
+(
+    defaultPrim = "DrAnmarSuture4_0"
+    doc = "Dr.Anmar 4-0 suture engine-neutral rigid-body, collision, material, and D6-joint layer."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "DrAnmarSuture4_0"
+{{
+    over "Materials"
+    {{
+        def Material "SutureMaterial" (
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
+        )
+        {{
+            float physics:staticFriction = {usd_float(float(contact["static_friction"]))}
+            float physics:dynamicFriction = {usd_float(float(contact["dynamic_friction"]))}
+            float physics:restitution = {usd_float(float(contact["restitution"]))}
+        }}
+
+        def Material "SwageSteel" (
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
+        )
+        {{
+            float physics:staticFriction = 0.35
+            float physics:dynamicFriction = 0.25
+            float physics:restitution = 0
+        }}
+    }}
+
+{indent(interface_physics)}
+
+    over "Segments" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {{
+        rel material:binding:physics = <{suture_physics_path}>
+
+{segment_physics_source}
+    }}
+
+    over "Joints"
+    {{
+{joint_source}
+    }}
+}}
+"""
+    interface_physx = capsule_physx_block(
+        name="NeedleInterface",
+        radius_m=swage_radius,
+        profile=profile,
+    )
+    physx_layer = f"""#usda 1.0
+(
+    subLayers = [
+        @{neutral_physics_sublayer_reference}@
+    ]
+    defaultPrim = "DrAnmarSuture4_0"
+    doc = "Dr.Anmar 4-0 suture PhysX-specific CCD, damping, solver, contact-offset, and combine-mode layer."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "DrAnmarSuture4_0"
+{{
+    over "Materials"
+    {{
+        over "SutureMaterial" (
+            prepend apiSchemas = ["PhysxMaterialAPI"]
+        )
+        {{
+            uniform token physxMaterial:frictionCombineMode = "{contact["combine_mode"]}"
+        }}
+
+        over "SwageSteel" (
+            prepend apiSchemas = ["PhysxMaterialAPI"]
+        )
+        {{
+            uniform token physxMaterial:frictionCombineMode = "{contact["combine_mode"]}"
+        }}
+    }}
+
+{indent(interface_physx)}
+
+    over "Segments"
+    {{
+{segment_physx_source}
+    }}
+}}
+"""
+    return entry_layer, geometry_layer, materials_layer, neutral_physics_layer, physx_layer
 
 
 def author_dr_anmar_needle(
@@ -686,10 +929,10 @@ def write_usdc(text: str, output: Path, usdcat_command: str) -> None:
     if usdcat_path is None:
         raise RuntimeError(f"OpenUSD usdcat is required to author binary geometry: {usdcat_command}")
     output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".dr_anmar_needle_geometry_", dir=output.parent) as temporary_directory:
+    with tempfile.TemporaryDirectory(prefix=".dr_anmar_usdc_", dir=output.parent) as temporary_directory:
         temporary_root = Path(temporary_directory)
-        source = temporary_root / "DrAnmarNeedle_geometry.usda"
-        binary = temporary_root / "DrAnmarNeedle_geometry.usd"
+        source = temporary_root / f"{output.stem}.usda"
+        binary = temporary_root / output.name
         source.write_text(text, encoding="utf-8")
         subprocess.run(
             [
@@ -714,6 +957,26 @@ def main() -> int:
         default=DEFAULT_NEEDLE_PROFILE_PATH,
     )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--geometry-output",
+        type=Path,
+        default=DEFAULT_GEOMETRY_OUTPUT,
+    )
+    parser.add_argument(
+        "--materials-output",
+        type=Path,
+        default=DEFAULT_MATERIALS_OUTPUT,
+    )
+    parser.add_argument(
+        "--physics-output",
+        type=Path,
+        default=DEFAULT_PHYSICS_OUTPUT,
+    )
+    parser.add_argument(
+        "--physx-output",
+        type=Path,
+        default=DEFAULT_PHYSX_OUTPUT,
+    )
     parser.add_argument(
         "--needle-output",
         "--assembly-output",
@@ -749,15 +1012,58 @@ def main() -> int:
     profile = load_profile(args.profile)
     needle_profile = load_needle_profile(args.needle_profile)
     output = args.output.expanduser().resolve()
+    geometry_output = args.geometry_output.expanduser().resolve()
+    materials_output = args.materials_output.expanduser().resolve()
+    physics_output = args.physics_output.expanduser().resolve()
+    physx_output = args.physx_output.expanduser().resolve()
     needle_output = args.needle_output.expanduser().resolve()
     needle_geometry_output = args.needle_geometry_output.expanduser().resolve()
     needle_materials_output = args.needle_materials_output.expanduser().resolve()
     needle_physics_output = args.needle_physics_output.expanduser().resolve()
     needle_physx_output = args.needle_physx_output.expanduser().resolve()
-    output.parent.mkdir(parents=True, exist_ok=True)
-    temporary = output.with_suffix(output.suffix + ".tmp")
-    temporary.write_text(author(profile), encoding="utf-8")
-    temporary.replace(output)
+    for layer_output in (
+        output,
+        geometry_output,
+        materials_output,
+        physics_output,
+        physx_output,
+    ):
+        layer_output.parent.mkdir(parents=True, exist_ok=True)
+    suture_geometry_reference = Path(os.path.relpath(geometry_output, start=output.parent)).as_posix()
+    suture_materials_reference = Path(os.path.relpath(materials_output, start=output.parent)).as_posix()
+    suture_physx_reference = Path(os.path.relpath(physx_output, start=output.parent)).as_posix()
+    suture_neutral_physics_reference = Path(
+        os.path.relpath(
+            physics_output,
+            start=physx_output.parent,
+        )
+    ).as_posix()
+    (
+        suture_entry_text,
+        suture_geometry_text,
+        suture_materials_text,
+        suture_physics_text,
+        suture_physx_text,
+    ) = author(
+        profile,
+        geometry_sublayer_reference=suture_geometry_reference,
+        materials_sublayer_reference=suture_materials_reference,
+        physx_sublayer_reference=suture_physx_reference,
+        neutral_physics_sublayer_reference=suture_neutral_physics_reference,
+    )
+    suture_temporary = output.with_suffix(output.suffix + ".tmp")
+    suture_materials_temporary = materials_output.with_suffix(materials_output.suffix + ".tmp")
+    suture_physics_temporary = physics_output.with_suffix(physics_output.suffix + ".tmp")
+    suture_physx_temporary = physx_output.with_suffix(physx_output.suffix + ".tmp")
+    suture_temporary.write_text(suture_entry_text, encoding="utf-8")
+    suture_materials_temporary.write_text(suture_materials_text, encoding="utf-8")
+    suture_physics_temporary.write_text(suture_physics_text, encoding="utf-8")
+    suture_physx_temporary.write_text(suture_physx_text, encoding="utf-8")
+    write_usdc(suture_geometry_text, geometry_output, args.usdcat)
+    suture_materials_temporary.replace(materials_output)
+    suture_physics_temporary.replace(physics_output)
+    suture_physx_temporary.replace(physx_output)
+    suture_temporary.replace(output)
     needle_output.parent.mkdir(parents=True, exist_ok=True)
     needle_geometry_output.parent.mkdir(parents=True, exist_ok=True)
     needle_materials_output.parent.mkdir(parents=True, exist_ok=True)
@@ -821,10 +1127,23 @@ def main() -> int:
     collision_capsules = build_needle_collision_capsules(needle_profile)
     needle_mesh = build_needle_mesh(needle_profile)
     report = {
-        "schema": "dr.anmar.suture-asset-report.v6",
+        "schema": "dr.anmar.suture-asset-report.v7",
         "profile": portable_path(args.profile),
         "asset": portable_path(output),
         "asset_sha256": sha256(output),
+        "suture_asset_version": profile["version"],
+        "suture_entry_bytes": output.stat().st_size,
+        "suture_geometry": portable_path(geometry_output),
+        "suture_geometry_format": "usdc",
+        "suture_geometry_sha256": sha256(geometry_output),
+        "suture_geometry_bytes": geometry_output.stat().st_size,
+        "suture_materials": portable_path(materials_output),
+        "suture_materials_sha256": sha256(materials_output),
+        "suture_physics": portable_path(physics_output),
+        "suture_physics_sha256": sha256(physics_output),
+        "suture_physx": portable_path(physx_output),
+        "suture_physx_sha256": sha256(physx_output),
+        "suture_layer_contract": profile["asset_structure"],
         "dr_anmar_needle_name": DR_ANMAR_NEEDLE_NAME,
         "dr_anmar_needle_asset_id": DR_ANMAR_NEEDLE_ASSET_ID,
         "dr_anmar_needle_asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION,

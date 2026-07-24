@@ -37,6 +37,11 @@ from dr_anmar_suture_integration import (
     DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH,
     DR_ANMAR_NEEDLE_PHYSX_ASSET_PATH,
     DR_ANMAR_NEEDLE_ROOT_PRIM,
+    SUTURE_ASSET_PATH,
+    SUTURE_GEOMETRY_ASSET_PATH,
+    SUTURE_MATERIALS_ASSET_PATH,
+    SUTURE_PHYSICS_ASSET_PATH,
+    SUTURE_PHYSX_ASSET_PATH,
     configure_dr_anmar_needle,
     local_room_ids,
     needle_mass_properties_for_mass,
@@ -55,7 +60,11 @@ from dr_anmar_suture_model import (
 from dr_anmar_suture_runtime import SutureRuntime
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ASSET = REPOSITORY_ROOT / "assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
+DEFAULT_ASSET = SUTURE_ASSET_PATH
+DEFAULT_SUTURE_GEOMETRY = SUTURE_GEOMETRY_ASSET_PATH
+DEFAULT_SUTURE_MATERIALS = SUTURE_MATERIALS_ASSET_PATH
+DEFAULT_SUTURE_PHYSICS = SUTURE_PHYSICS_ASSET_PATH
+DEFAULT_SUTURE_PHYSX = SUTURE_PHYSX_ASSET_PATH
 DEFAULT_NEEDLE = DR_ANMAR_NEEDLE_ASSET_PATH
 DEFAULT_NEEDLE_GEOMETRY = DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH
 DEFAULT_NEEDLE_MATERIALS = DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH
@@ -100,10 +109,265 @@ def read_usd_as_text(path: Path, usdcat_command: str) -> str:
     ).stdout
 
 
+def add_suture_layer_checks(
+    checks: dict[str, dict[str, Any]],
+    profile: dict[str, Any],
+    *,
+    segment_count: int,
+    entry_text: str,
+    geometry_text: str,
+    geometry_is_usdc: bool,
+    materials_text: str,
+    physics_text: str,
+    physx_text: str,
+) -> None:
+    """Validate source ownership and scale-aware PhysX tuning for the suture layers."""
+
+    layer_contract = profile["asset_structure"]
+    entry_engine_properties = sorted(
+        set(re.findall(r"\b(?:physics:|physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*", entry_text))
+    )
+    entry_engine_schemas = sorted(set(re.findall(r'"((?:Physics|Physx|Newton)[A-Za-z0-9_]*API)"', entry_text)))
+    geometry_forbidden = present_text_tokens(
+        (geometry_text,),
+        (
+            "apiSchemas",
+            "material:binding",
+            'def Material "',
+            'def Shader "',
+            "physics:",
+            "physx",
+            "newton:",
+        ),
+    )
+    materials_forbidden = present_text_tokens(
+        (materials_text,),
+        (
+            'def Capsule "',
+            "float height",
+            "float radius",
+            "physics:",
+            "Physx",
+            "physx",
+            "Newton",
+            "newton:",
+        ),
+    )
+    neutral_engine_specific = present_text_tokens(
+        (physics_text,),
+        (
+            '"Physx',
+            "physx",
+            '"Newton',
+            "newton:",
+        ),
+    )
+    physx_neutral_or_newton = present_text_tokens(
+        (physx_text,),
+        (
+            "physics:collisionEnabled",
+            "physics:rigidBodyEnabled",
+            "physics:mass",
+            "physics:body0",
+            "physics:breakForce",
+            '"PhysicsRigidBodyAPI"',
+            '"PhysicsCollisionAPI"',
+            '"Newton',
+            "newton:",
+        ),
+    )
+    entry_forbidden = present_text_tokens(
+        (entry_text,),
+        (
+            'def Capsule "',
+            'def Material "',
+            'def Shader "',
+            "material:binding",
+            "physics:",
+            "newton:",
+        ),
+    )
+    nvidia_references = profile.get("nvidia_stack_references", [])
+    check(
+        checks,
+        "suture_asset_structure_source_ownership",
+        profile["version"] == "2.0.0"
+        and layer_contract["entry_layer"] == "DrAnmarSuture4_0.usda"
+        and layer_contract["geometry_layer"] == "DrAnmarSuture4_0_geometry.usd"
+        and layer_contract["geometry_format"] == "usdc"
+        and layer_contract["materials_layer"] == "DrAnmarSuture4_0_materials.usda"
+        and layer_contract["physics_layer"] == "DrAnmarSuture4_0_physics.usda"
+        and layer_contract["physx_layer"] == "DrAnmarSuture4_0_physx.usda"
+        and layer_contract["composition"]
+        == "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics"
+        and layer_contract["engine_isolation"]
+        == "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions"
+        and f'@{layer_contract["physx_layer"]}@' in entry_text
+        and f'@{layer_contract["materials_layer"]}@' in entry_text
+        and f'@{layer_contract["geometry_layer"]}@' in entry_text
+        and f'@{layer_contract["physics_layer"]}@' not in entry_text
+        and f'@{layer_contract["physics_layer"]}@' in physx_text
+        and len(entry_text.encode("utf-8")) <= int(layer_contract["entry_layer_max_bytes"])
+        and geometry_is_usdc
+        and not entry_engine_properties
+        and not entry_engine_schemas
+        and not entry_forbidden
+        and not geometry_forbidden
+        and not materials_forbidden
+        and not neutral_engine_specific
+        and not physx_neutral_or_newton
+        and len(re.findall(r'def Capsule "S\d{4}"', geometry_text)) == segment_count
+        and geometry_text.count('def Capsule "NeedleInterface"') == 1
+        and materials_text.count('def Material "') == 2
+        and materials_text.count('def Shader "PreviewSurface"') == 2
+        and materials_text.count("rel material:binding =") == 2
+        and physics_text.count('"PhysicsRigidBodyAPI"') == segment_count + 1
+        and physics_text.count('"PhysicsCollisionAPI"') == segment_count + 1
+        and len(re.findall(r'def PhysicsJoint "J\d{4}"', physics_text)) == segment_count
+        and physx_text.count('"PhysxRigidBodyAPI", "PhysxCollisionAPI"') == segment_count + 1
+        and physx_text.count("physxRigidBody:enableCCD") == segment_count + 1
+        and physx_text.count("physxRigidBody:enableSpeculativeCCD") == segment_count + 1
+        and physx_text.count("physxCollision:contactOffset") == segment_count + 1
+        and physx_text.count("physxCollision:restOffset") == segment_count + 1
+        and physx_text.count('"PhysxMaterialAPI"') == 2
+        and len(nvidia_references) >= 5
+        and all(
+            item.get("url", "").startswith(
+                (
+                    "https://docs.omniverse.nvidia.com/",
+                    "https://docs.isaacsim.omniverse.nvidia.com/",
+                )
+            )
+            and item.get("used_for")
+            for item in nvidia_references
+        ),
+        {
+            "contract": layer_contract,
+            "entry_bytes": len(entry_text.encode("utf-8")),
+            "geometry_is_usdc": geometry_is_usdc,
+            "entry_engine_properties": entry_engine_properties,
+            "entry_engine_schemas": entry_engine_schemas,
+            "entry_forbidden": entry_forbidden,
+            "geometry_forbidden": geometry_forbidden,
+            "materials_forbidden": materials_forbidden,
+            "neutral_engine_specific": neutral_engine_specific,
+            "physx_neutral_or_newton": physx_neutral_or_newton,
+            "nvidia_reference_count": len(nvidia_references),
+        },
+        "lightweight entry, binary capsule geometry, visual look-development, neutral mechanics, and PhysX tuning"
+        " have isolated deterministic source ownership",
+    )
+
+    offset_contract = profile["contact"]["contact_offsets"]
+    contact_offsets: list[float] = []
+    rest_offsets: list[float] = []
+    attribute_errors: list[str] = []
+    body_names = ["NeedleInterface", *(f"S{index:04d}" for index in range(segment_count))]
+    for body_name in body_names:
+        geometry_match = re.search(
+            rf'def Capsule "{body_name}".*?\n\s*\}}',
+            geometry_text,
+            flags=re.DOTALL,
+        )
+        physx_match = re.search(
+            rf'over "{body_name}".*?\n\s*\}}',
+            physx_text,
+            flags=re.DOTALL,
+        )
+        if geometry_match is None or physx_match is None:
+            attribute_errors.append(f"{body_name}:missing_geometry_or_physx_block")
+            continue
+        geometry_block = geometry_match.group(0)
+        physx_block = physx_match.group(0)
+        radius_match = re.search(r"float radius = ([0-9.eE+-]+)", geometry_block)
+        contact_match = re.search(r"float physxCollision:contactOffset = ([0-9.eE+-]+)", physx_block)
+        rest_match = re.search(r"float physxCollision:restOffset = ([0-9.eE+-]+)", physx_block)
+        if radius_match is None or contact_match is None or rest_match is None:
+            attribute_errors.append(f"{body_name}:missing_radius_or_offset")
+            continue
+        radius = float(radius_match.group(1))
+        contact_offset = float(contact_match.group(1))
+        rest_offset = float(rest_match.group(1))
+        expected_contact_offset = max(
+            float(offset_contract["minimum_m"]),
+            min(
+                float(offset_contract["maximum_m"]),
+                radius * float(offset_contract["collision_radius_fraction"]),
+            ),
+        )
+        if not math.isclose(
+            contact_offset,
+            expected_contact_offset,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
+            attribute_errors.append(f"{body_name}:contact_offset")
+        if not math.isclose(
+            rest_offset,
+            float(offset_contract["rest_offset_m"]),
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
+            attribute_errors.append(f"{body_name}:rest_offset")
+        for token in (
+            "bool physxRigidBody:enableCCD = true",
+            "bool physxRigidBody:enableSpeculativeCCD = true",
+            f'int physxRigidBody:solverPositionIterationCount = {int(profile["solver"]["position_iterations"])}',
+            f'int physxRigidBody:solverVelocityIterationCount = {int(profile["solver"]["velocity_iterations"])}',
+        ):
+            if token not in physx_block:
+                attribute_errors.append(f"{body_name}:{token.split(':')[-1].split()[0]}")
+        contact_offsets.append(contact_offset)
+        rest_offsets.append(rest_offset)
+    check(
+        checks,
+        "suture_hybrid_ccd_and_scale_aware_contact",
+        profile["contact"]["sweep_ccd"] is True
+        and profile["contact"]["speculative_ccd"] is True
+        and profile["contact"]["ccd_mode"] == "hybrid_linear_and_angular"
+        and profile["contact"]["combine_mode"] == "max"
+        and offset_contract["policy"] == "clamped_fraction_of_authored_capsule_radius"
+        and offset_contract["engine_layer"] == "DrAnmarSuture4_0_physx.usda"
+        and offset_contract["neutral_layer_policy"] == "no_engine_specific_contact_schema"
+        and not attribute_errors
+        and len(contact_offsets) == segment_count + 1
+        and all(
+            0.0 <= rest_offset < contact_offset
+            for rest_offset, contact_offset in zip(
+                rest_offsets,
+                contact_offsets,
+                strict=True,
+            )
+        )
+        and min(contact_offsets) >= float(offset_contract["minimum_m"])
+        and max(contact_offsets) <= float(offset_contract["maximum_m"])
+        and physx_text.count('physxMaterial:frictionCombineMode = "max"') == 2,
+        {
+            "attribute_errors": attribute_errors,
+            "body_count": len(contact_offsets),
+            "contact_offset_range_m": [
+                min(contact_offsets) if contact_offsets else None,
+                max(contact_offsets) if contact_offsets else None,
+            ],
+            "rest_offset_range_m": [
+                min(rest_offsets) if rest_offsets else None,
+                max(rest_offsets) if rest_offsets else None,
+            ],
+            "contract": offset_contract,
+        },
+        "hybrid linear and angular CCD with bounded radius-scaled PhysX contact offsets on every suture body",
+    )
+
+
 def validate(
     profile: dict[str, Any],
     needle_profile: dict[str, Any],
-    asset_text: str,
+    suture_entry_text: str,
+    suture_geometry_text: str,
+    suture_geometry_is_usdc: bool,
+    suture_materials_text: str,
+    suture_physics_text: str,
+    suture_physx_text: str,
     needle_entry_text: str,
     needle_geometry_text: str,
     needle_geometry_is_usdc: bool,
@@ -122,6 +386,15 @@ def validate(
     )
     native_probe_text = DEFAULT_NATIVE_PROBE.read_text(encoding="utf-8")
     integration_text = DEFAULT_INTEGRATION.read_text(encoding="utf-8")
+    asset_text = "\n".join(
+        (
+            suture_entry_text,
+            suture_geometry_text,
+            suture_materials_text,
+            suture_physics_text,
+            suture_physx_text,
+        )
+    )
     needle_text = "\n".join(
         (
             needle_entry_text,
@@ -245,6 +518,17 @@ def validate(
             "break_force_attributes": asset_text.count("physics:breakForce"),
         },
         derived.segment_count,
+    )
+    add_suture_layer_checks(
+        checks,
+        profile,
+        segment_count=derived.segment_count,
+        entry_text=suture_entry_text,
+        geometry_text=suture_geometry_text,
+        geometry_is_usdc=suture_geometry_is_usdc,
+        materials_text=suture_materials_text,
+        physics_text=suture_physics_text,
+        physx_text=suture_physx_text,
     )
     required_asset_tokens = [
         "PhysicsRigidBodyAPI",
@@ -1002,6 +1286,11 @@ def validate(
         "needle_render_collision_separation_valid",
         "needle_material_organization_valid",
         "needle_asset_structure_source_ownership_valid",
+        "suture_asset_structure_source_ownership_valid",
+        "suture_physx_collision_api_count",
+        "suture_hybrid_ccd_body_count",
+        "suture_physx_contact_offsets_match_profile",
+        "suture_material_bindings_valid",
     ]
     missing_native_probe_tokens = [token for token in native_probe_tokens if token not in native_probe_text]
     check(
@@ -1629,6 +1918,26 @@ def main() -> int:
     )
     parser.add_argument("--asset", type=Path, default=DEFAULT_ASSET)
     parser.add_argument(
+        "--suture-geometry",
+        type=Path,
+        default=DEFAULT_SUTURE_GEOMETRY,
+    )
+    parser.add_argument(
+        "--suture-materials",
+        type=Path,
+        default=DEFAULT_SUTURE_MATERIALS,
+    )
+    parser.add_argument(
+        "--suture-physics",
+        type=Path,
+        default=DEFAULT_SUTURE_PHYSICS,
+    )
+    parser.add_argument(
+        "--suture-physx",
+        type=Path,
+        default=DEFAULT_SUTURE_PHYSX,
+    )
+    parser.add_argument(
         "--needle",
         "--assembly",
         dest="needle",
@@ -1664,7 +1973,12 @@ def main() -> int:
     args = parser.parse_args()
     profile = load_profile(args.profile)
     needle_profile = load_needle_profile(args.needle_profile)
-    asset_text = args.asset.read_text(encoding="utf-8")
+    suture_entry_text = args.asset.read_text(encoding="utf-8")
+    suture_geometry_text = read_usd_as_text(args.suture_geometry, args.usdcat)
+    suture_geometry_is_usdc = args.suture_geometry.read_bytes()[:8] == b"PXR-USDC"
+    suture_materials_text = args.suture_materials.read_text(encoding="utf-8")
+    suture_physics_text = args.suture_physics.read_text(encoding="utf-8")
+    suture_physx_text = args.suture_physx.read_text(encoding="utf-8")
     needle_entry_text = args.needle.read_text(encoding="utf-8")
     needle_geometry_text = read_usd_as_text(args.needle_geometry, args.usdcat)
     needle_geometry_is_usdc = args.needle_geometry.read_bytes()[:8] == b"PXR-USDC"
@@ -1675,7 +1989,12 @@ def main() -> int:
     report = validate(
         profile,
         needle_profile,
-        asset_text,
+        suture_entry_text,
+        suture_geometry_text,
+        suture_geometry_is_usdc,
+        suture_materials_text,
+        suture_physics_text,
+        suture_physx_text,
         needle_entry_text,
         needle_geometry_text,
         needle_geometry_is_usdc,

@@ -5,6 +5,10 @@ REPOSITORY_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROFILE="${REPOSITORY_ROOT}/physics_next/sutures/dr-anmar-suture-4-0.json"
 NEEDLE_PROFILE="${REPOSITORY_ROOT}/physics_next/needles/dr-anmar-needle-v1.json"
 ASSET="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0.usda"
+SUTURE_GEOMETRY="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0_geometry.usd"
+SUTURE_MATERIALS="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0_materials.usda"
+SUTURE_PHYSICS="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0_physics.usda"
+SUTURE_PHYSX="${REPOSITORY_ROOT}/assets/dr_anmar/suture/DrAnmarSuture4_0_physx.usda"
 DR_ANMAR_NEEDLE="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle.usda"
 DR_ANMAR_NEEDLE_GEOMETRY="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_geometry.usd"
 DR_ANMAR_NEEDLE_MATERIALS="${REPOSITORY_ROOT}/assets/dr_anmar/needle/DrAnmarNeedle_materials.usda"
@@ -19,6 +23,10 @@ case "${1:-validate}" in
             --profile "${PROFILE}" \
             --needle-profile "${NEEDLE_PROFILE}" \
             --output "${ASSET}" \
+            --geometry-output "${SUTURE_GEOMETRY}" \
+            --materials-output "${SUTURE_MATERIALS}" \
+            --physics-output "${SUTURE_PHYSICS}" \
+            --physx-output "${SUTURE_PHYSX}" \
             --needle-output "${DR_ANMAR_NEEDLE}" \
             --needle-geometry-output "${DR_ANMAR_NEEDLE_GEOMETRY}" \
             --needle-materials-output "${DR_ANMAR_NEEDLE_MATERIALS}" \
@@ -30,6 +38,10 @@ case "${1:-validate}" in
             --profile "${PROFILE}" \
             --needle-profile "${NEEDLE_PROFILE}" \
             --asset "${ASSET}" \
+            --suture-geometry "${SUTURE_GEOMETRY}" \
+            --suture-materials "${SUTURE_MATERIALS}" \
+            --suture-physics "${SUTURE_PHYSICS}" \
+            --suture-physx "${SUTURE_PHYSX}" \
             --needle "${DR_ANMAR_NEEDLE}" \
             --needle-geometry "${DR_ANMAR_NEEDLE_GEOMETRY}" \
             --needle-materials "${DR_ANMAR_NEEDLE_MATERIALS}" \

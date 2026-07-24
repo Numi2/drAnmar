@@ -68,6 +68,15 @@ The profile and derived mechanics live in
 `physics_next/sutures/dr-anmar-suture-4-0.json`. The committed OpenUSD asset is
 `assets/dr_anmar/suture/DrAnmarSuture4_0.usda`.
 
+The entry file is intentionally lightweight. It composes a binary USDC capsule
+geometry layer, a visual look-development layer, an engine-neutral physics
+layer, and a PhysX-only tuning layer. Geometry contains no material or physics
+opinions; the neutral layer contains no PhysX or Newton schemas; and the PhysX
+layer owns hybrid sweep/speculative CCD, solver iterations, damping,
+friction-combine modes, and radius-scaled contact offsets. This follows the
+NVIDIA USD Asset Structure pattern while preserving the original prim paths
+used by the runtime.
+
 ## DrAnmar Needle
 
 `assets/dr_anmar/needle/DrAnmarNeedle.usda` is the independently authored
@@ -111,8 +120,9 @@ prims. `physics-probe` runs the complete 360-body, 360-joint asset under native
 PhysX gravity and fails if the strand is absent, static, non-finite, or unstable.
 
 The recommended simulation step is 0.5 ms (16 substeps per 120 Hz rendered
-frame). Continuous collision detection is enabled because a 0.25 mm strand can
-otherwise tunnel through fast instruments or thin tissue.
+frame). Hybrid linear and angular continuous collision detection is enabled
+because a 0.25 mm strand can otherwise tunnel through fast instruments or thin
+tissue.
 
 ## Integration contract
 

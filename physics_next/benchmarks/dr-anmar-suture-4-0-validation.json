@@ -55,7 +55,7 @@
         "defaultPrim = \"DrAnmarNeedle\"",
         "drAnmarAssetId = \"dr-anmar-needle\"",
         "drAnmarAssetName = \"DrAnmar Needle\"",
-        "drAnmarAssetVersion = \"1.9.0\"",
+        "drAnmarAssetVersion = \"1.10.0\"",
         "@DrAnmarNeedle_physx.usda@",
         "@DrAnmarNeedle_materials.usda@",
         "@DrAnmarNeedle_geometry.usd@",
@@ -86,9 +86,9 @@
         "drAnmarAuthorship = \"Independent Dr.Anmar geometry, collision, instrument composition and suture physics\""
       ],
       "measured": {
-        "integration_version": "1.9.0",
+        "integration_version": "1.10.0",
         "missing": [],
-        "profile_version": "1.9.0"
+        "profile_version": "1.10.0"
       },
       "passed": true
     },
@@ -295,7 +295,7 @@
             "Physx"
           ]
         },
-        "entry_bytes": 2810,
+        "entry_bytes": 2811,
         "entry_forbidden_content_tokens": [],
         "entry_physics_properties": [],
         "entry_physics_schemas": [],
@@ -679,6 +679,91 @@
         25.0
       ],
       "measured": 22.5,
+      "passed": true
+    },
+    "suture_asset_structure_source_ownership": {
+      "expected": "lightweight entry, binary capsule geometry, visual look-development, neutral mechanics, and PhysX tuning have isolated deterministic source ownership",
+      "measured": {
+        "contract": {
+          "composition": "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics",
+          "content_isolation": "entry_contains_no_geometry_material_or_physics_payload_geometry_contains_no_material_or_physics_payload_and_materials_contains_no_physics_payload",
+          "default_runtime": "physx",
+          "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
+          "entry_layer": "DrAnmarSuture4_0.usda",
+          "entry_layer_max_bytes": 8192,
+          "entry_layer_owns": [
+            "stage_metadata",
+            "asset_identity",
+            "structural_scopes"
+          ],
+          "geometry_format": "usdc",
+          "geometry_layer": "DrAnmarSuture4_0_geometry.usd",
+          "geometry_layer_owns": [
+            "capsule_types",
+            "capsule_dimensions",
+            "capsule_extents",
+            "capsule_display_colors",
+            "capsule_transforms"
+          ],
+          "materials_layer": "DrAnmarSuture4_0_materials.usda",
+          "materials_layer_owns": [
+            "visual_materials",
+            "visual_shaders",
+            "inherited_visual_material_bindings"
+          ],
+          "physics_layer": "DrAnmarSuture4_0_physics.usda",
+          "physics_layer_owns": [
+            "physics_materials",
+            "inherited_physics_material_bindings",
+            "rigid_body_collision_and_mass_schemas",
+            "adjacent_collision_filtering",
+            "breakable_cosserat_joints"
+          ],
+          "physx_layer": "DrAnmarSuture4_0_physx.usda",
+          "physx_layer_owns": [
+            "physx_material_combine_modes",
+            "hybrid_ccd",
+            "rigid_body_damping_and_solver_iterations",
+            "scale_aware_contact_offsets"
+          ]
+        },
+        "entry_bytes": 1125,
+        "entry_engine_properties": [],
+        "entry_engine_schemas": [],
+        "entry_forbidden": [],
+        "geometry_forbidden": [],
+        "geometry_is_usdc": true,
+        "materials_forbidden": [],
+        "neutral_engine_specific": [],
+        "nvidia_reference_count": 5,
+        "physx_neutral_or_newton": []
+      },
+      "passed": true
+    },
+    "suture_hybrid_ccd_and_scale_aware_contact": {
+      "expected": "hybrid linear and angular CCD with bounded radius-scaled PhysX contact offsets on every suture body",
+      "measured": {
+        "attribute_errors": [],
+        "body_count": 361,
+        "contact_offset_range_m": [
+          1.21211138858e-05,
+          1.7e-05
+        ],
+        "contract": {
+          "basis": "engineering_seed_for_submillimetre_hybrid_ccd_colliders_pending_native_velocity_and_timestep_sweep",
+          "collision_radius_fraction": 0.1,
+          "engine_layer": "DrAnmarSuture4_0_physx.usda",
+          "maximum_m": 2.5e-05,
+          "minimum_m": 5e-06,
+          "neutral_layer_policy": "no_engine_specific_contact_schema",
+          "policy": "clamped_fraction_of_authored_capsule_radius",
+          "rest_offset_m": 0.0
+        },
+        "rest_offset_range_m": [
+          0.0,
+          0.0
+        ]
+      },
       "passed": true
     },
     "suture_runtime_domain_and_qualification": {

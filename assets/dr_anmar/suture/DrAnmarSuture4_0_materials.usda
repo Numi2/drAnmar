@@ -1,0 +1,54 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarSuture4_0"
+    doc = "Dr.Anmar 4-0 suture visual look-development and inherited binding layer."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+over "DrAnmarSuture4_0"
+{
+    over "Looks"
+    {
+        def Material "SutureVisual"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.42, 0.08, 0.55)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.48
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSuture4_0/Looks/SutureVisual/PreviewSurface.outputs:surface>
+        }
+
+        def Material "SwageVisual"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.58, 0.61, 0.66)
+                float inputs:metallic = 0.86
+                float inputs:roughness = 0.24
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSuture4_0/Looks/SwageVisual/PreviewSurface.outputs:surface>
+        }
+    }
+
+    over "NeedleInterface" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </DrAnmarSuture4_0/Looks/SwageVisual>
+    }
+
+    over "Segments" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </DrAnmarSuture4_0/Looks/SutureVisual>
+    }
+}

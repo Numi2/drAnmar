@@ -2,6 +2,7 @@
   "schema": "dr.anmar.suture-profile.v1",
   "id": "dr-anmar-suture-4-0-braided-v1",
   "name": "Dr.Anmar 4-0 braided surgical suture",
+  "version": "2.0.0",
   "purpose": "Research-grade physical suture asset for operating-room simulation",
   "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
   "clinical_validation": false,
@@ -9,6 +10,49 @@
   "independent_asset": true,
   "does_not_replace": "NVIDIA SoftMimicGen Rope.usd or the nvidia-strand-ring-threading room",
   "units": "metres-kilograms-seconds",
+  "asset_structure": {
+    "entry_layer": "DrAnmarSuture4_0.usda",
+    "geometry_layer": "DrAnmarSuture4_0_geometry.usd",
+    "geometry_format": "usdc",
+    "materials_layer": "DrAnmarSuture4_0_materials.usda",
+    "physics_layer": "DrAnmarSuture4_0_physics.usda",
+    "physx_layer": "DrAnmarSuture4_0_physx.usda",
+    "entry_layer_max_bytes": 8192,
+    "composition": "entry_sublayers_physx_materials_geometry_and_physx_sublayers_neutral_physics",
+    "default_runtime": "physx",
+    "entry_layer_owns": [
+      "stage_metadata",
+      "asset_identity",
+      "structural_scopes"
+    ],
+    "geometry_layer_owns": [
+      "capsule_types",
+      "capsule_dimensions",
+      "capsule_extents",
+      "capsule_display_colors",
+      "capsule_transforms"
+    ],
+    "materials_layer_owns": [
+      "visual_materials",
+      "visual_shaders",
+      "inherited_visual_material_bindings"
+    ],
+    "physics_layer_owns": [
+      "physics_materials",
+      "inherited_physics_material_bindings",
+      "rigid_body_collision_and_mass_schemas",
+      "adjacent_collision_filtering",
+      "breakable_cosserat_joints"
+    ],
+    "physx_layer_owns": [
+      "physx_material_combine_modes",
+      "hybrid_ccd",
+      "rigid_body_damping_and_solver_iterations",
+      "scale_aware_contact_offsets"
+    ],
+    "engine_isolation": "neutral_layer_contains_no_physx_or_newton_opinions_and_physx_layer_contains_no_newton_opinions",
+    "content_isolation": "entry_contains_no_geometry_material_or_physics_payload_geometry_contains_no_material_or_physics_payload_and_materials_contains_no_physics_payload"
+  },
   "geometry": {
     "usp_size": "4-0",
     "metric_size": 1.5,
@@ -63,10 +107,27 @@
   },
   "contact": {
     "static_friction": 0.42,
-    "static_friction_range": [0.25, 0.62],
+    "static_friction_range": [
+      0.25,
+      0.62
+    ],
     "dynamic_friction": 0.32,
-    "dynamic_friction_range": [0.18, 0.5],
+    "dynamic_friction_range": [
+      0.18,
+      0.5
+    ],
     "restitution": 0.0,
+    "combine_mode": "max",
+    "contact_offsets": {
+      "policy": "clamped_fraction_of_authored_capsule_radius",
+      "basis": "engineering_seed_for_submillimetre_hybrid_ccd_colliders_pending_native_velocity_and_timestep_sweep",
+      "collision_radius_fraction": 0.1,
+      "minimum_m": 0.000005,
+      "maximum_m": 0.000025,
+      "rest_offset_m": 0.0,
+      "engine_layer": "DrAnmarSuture4_0_physx.usda",
+      "neutral_layer_policy": "no_engine_specific_contact_schema"
+    },
     "load_dependent_self_friction": {
       "low_load_coefficient": 0.46,
       "high_load_coefficient": 0.28,
@@ -74,7 +135,9 @@
     },
     "self_collision": true,
     "connected_segment_collision": false,
-    "speculative_ccd": true
+    "sweep_ccd": true,
+    "speculative_ccd": true,
+    "ccd_mode": "hybrid_linear_and_angular"
   },
   "viscoelasticity": {
     "wet_state": true,
@@ -308,6 +371,33 @@
       "doi": "10.1371/journal.pone.0343682",
       "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0343682",
       "used_for": "S-shaped tensile response and inelastic load drops in knotted and looped sutures"
+    }
+  ],
+  "nvidia_stack_references": [
+    {
+      "title": "Isaac Sim USD Asset Structure 3.0",
+      "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/openusd_tuning_tutorials/tutorial_02_asset_structure.html",
+      "used_for": "dedicated geometry, materials, neutral physics, and engine-specific source layers"
+    },
+    {
+      "title": "Isaac Sim Asset Transformer",
+      "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_transformer.html",
+      "used_for": "binary geometry routing, visual material routing, and PhysX schema isolation"
+    },
+    {
+      "title": "Isaac Sim Asset Transformer idempotency rules",
+      "url": "https://docs.isaacsim.omniverse.nvidia.com/6.0.0/robot_setup/asset_transformer_rules.html",
+      "used_for": "byte-reproducible generated layers and stable composition arcs"
+    },
+    {
+      "title": "Omni Physics rigid bodies",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/107.0/dev_guide/rigid_bodies_articulations/rigid_bodies.html",
+      "used_for": "hybrid sweep and speculative CCD on thin fast-moving bodies"
+    },
+    {
+      "title": "Omni Physics colliders",
+      "url": "https://docs.omniverse.nvidia.com/kit/docs/omni_physics/latest/dev_guide/rigid_bodies_articulations/collision.html",
+      "used_for": "primitive capsule colliders and explicit scale-aware contact configuration"
     }
   ],
   "required_physical_calibration": [

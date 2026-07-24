@@ -33,10 +33,14 @@
     {
       "id": "dr-anmar-suture-4-0-braided-v1",
       "asset": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
+      "geometry_layer": "assets/dr_anmar/suture/DrAnmarSuture4_0_geometry.usd",
+      "materials_layer": "assets/dr_anmar/suture/DrAnmarSuture4_0_materials.usda",
+      "physics_layer": "assets/dr_anmar/suture/DrAnmarSuture4_0_physics.usda",
+      "physx_layer": "assets/dr_anmar/suture/DrAnmarSuture4_0_physx.usda",
       "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
       "report": "assets/dr_anmar/suture/DrAnmarSuture4_0.report.json",
       "live_integration": "all_repository_local_rooms",
-      "live_behavior": "native_pose_and_filtered_contact_driven_strain_geometry_aware_edge_contact_knot_crush_abrasion_relaxation_and_failure",
+      "live_behavior": "lightweight_entry_binary_capsule_geometry_visual_materials_neutral_mechanics_and_dedicated_physx_layers_with_inherited_purpose_specific_material_bindings_hybrid_ccd_scale_aware_contact_offsets_native_pose_and_filtered_contact_driven_strain_geometry_aware_edge_contact_knot_crush_abrasion_relaxation_and_failure",
       "native_gpu_qualification": "blocked_pending_convergence_and_procedural_probe",
       "physical_qualification": "blocked_pending_straight_knotted_damage_and_swage_bench_data",
       "clinical_validation": false

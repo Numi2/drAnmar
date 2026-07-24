@@ -12,10 +12,14 @@ from dr_anmar_needle_model import derive_needle, load_needle_profile, sample_epi
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DR_ANMAR_NEEDLE_NAME = "DrAnmar Needle"
 DR_ANMAR_NEEDLE_ASSET_ID = "dr-anmar-needle"
-DR_ANMAR_NEEDLE_ASSET_VERSION = "1.9.0"
+DR_ANMAR_NEEDLE_ASSET_VERSION = "1.10.0"
 DR_ANMAR_NEEDLE_ROOT_PRIM = "DrAnmarNeedle"
 DR_ANMAR_ASSET_ROOT = REPOSITORY_ROOT / "assets/dr_anmar"
 SUTURE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0.usda"
+SUTURE_GEOMETRY_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_geometry.usd"
+SUTURE_MATERIALS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_materials.usda"
+SUTURE_PHYSICS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_physics.usda"
+SUTURE_PHYSX_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "suture/DrAnmarSuture4_0_physx.usda"
 DR_ANMAR_NEEDLE_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle.usda"
 DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_geometry.usd"
 DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH = DR_ANMAR_ASSET_ROOT / "needle/DrAnmarNeedle_materials.usda"
@@ -51,6 +55,10 @@ def validate_source_assets() -> None:
         str(path)
         for path in (
             SUTURE_ASSET_PATH,
+            SUTURE_GEOMETRY_ASSET_PATH,
+            SUTURE_MATERIALS_ASSET_PATH,
+            SUTURE_PHYSICS_ASSET_PATH,
+            SUTURE_PHYSX_ASSET_PATH,
             DR_ANMAR_NEEDLE_ASSET_PATH,
             DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH,
             DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH,
@@ -87,6 +95,11 @@ def configure_dr_anmar_needle(
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID,
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION,
         "asset": str(DR_ANMAR_NEEDLE_ASSET_PATH),
+        "suture_entry_layer": str(SUTURE_ASSET_PATH),
+        "suture_geometry_layer": str(SUTURE_GEOMETRY_ASSET_PATH),
+        "suture_materials_layer": str(SUTURE_MATERIALS_ASSET_PATH),
+        "suture_physics_layer": str(SUTURE_PHYSICS_ASSET_PATH),
+        "suture_physx_layer": str(SUTURE_PHYSX_ASSET_PATH),
         "geometry_layer": str(DR_ANMAR_NEEDLE_GEOMETRY_ASSET_PATH),
         "materials_layer": str(DR_ANMAR_NEEDLE_MATERIALS_ASSET_PATH),
         "physics_layer": str(DR_ANMAR_NEEDLE_PHYSICS_ASSET_PATH),

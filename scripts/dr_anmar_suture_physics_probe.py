@@ -10,6 +10,7 @@ from pathlib import Path
 
 from dr_anmar_needle_model import build_needle_collision_capsules, build_needle_mesh, derive_needle, load_needle_profile
 from dr_anmar_suture_integration import DR_ANMAR_NEEDLE_ASSET_ID, DR_ANMAR_NEEDLE_ASSET_VERSION, DR_ANMAR_NEEDLE_NAME
+from dr_anmar_suture_model import load_profile as load_suture_profile
 
 from isaaclab.app import AppLauncher
 
@@ -52,6 +53,7 @@ def main() -> int:
     if not args.asset.is_file():
         raise FileNotFoundError(args.asset)
     needle_profile = load_needle_profile()
+    suture_profile = load_suture_profile()
     derived_needle = derive_needle(needle_profile)
     expected_collision_capsules = build_needle_collision_capsules(needle_profile)
     expected_needle_mesh = build_needle_mesh(needle_profile)
@@ -170,6 +172,17 @@ def main() -> int:
     needle_neutral_physics_layer_name = None
     needle_physx_layer_name = None
     needle_asset_structure_source_ownership_valid = None
+    suture_geometry_layer_name = None
+    suture_materials_layer_name = None
+    suture_neutral_physics_layer_name = None
+    suture_physx_layer_name = None
+    suture_asset_structure_source_ownership_valid = None
+    suture_physx_collision_api_count = None
+    suture_hybrid_ccd_body_count = None
+    suture_physx_contact_offset_range_m = None
+    suture_physx_rest_offset_range_m = None
+    suture_physx_contact_offsets_match_profile = None
+    suture_material_bindings_valid = None
     if assembly:
         layer_organization = needle_profile["construction"]["layer_organization"]
         needle_geometry_layer_name = str(layer_organization["geometry_layer"])
@@ -282,6 +295,137 @@ def main() -> int:
             and 'def Shader "PreviewSurface"' not in physx_layer_text
             and "prepend references =" not in physics_layer_text
             and "prepend references =" not in physx_layer_text
+        )
+        suture_layer_organization = suture_profile["asset_structure"]
+        suture_geometry_layer_name = str(suture_layer_organization["geometry_layer"])
+        suture_materials_layer_name = str(suture_layer_organization["materials_layer"])
+        suture_neutral_physics_layer_name = str(suture_layer_organization["physics_layer"])
+        suture_physx_layer_name = str(suture_layer_organization["physx_layer"])
+        suture_directory = args.asset.resolve().parent.parent / "suture"
+        suture_entry_path = suture_directory / str(suture_layer_organization["entry_layer"])
+        suture_geometry_path = suture_directory / suture_geometry_layer_name
+        suture_materials_path = suture_directory / suture_materials_layer_name
+        suture_physics_path = suture_directory / suture_neutral_physics_layer_name
+        suture_physx_path = suture_directory / suture_physx_layer_name
+        suture_entry_text = suture_entry_path.read_text(encoding="utf-8")
+        suture_geometry_stage = Usd.Stage.Open(str(suture_geometry_path))
+        if suture_geometry_stage is None:
+            raise RuntimeError(f"Could not open the suture geometry layer: {suture_geometry_path}")
+        suture_geometry_text = suture_geometry_stage.GetRootLayer().ExportToString()
+        suture_materials_text = suture_materials_path.read_text(encoding="utf-8")
+        suture_physics_text = suture_physics_path.read_text(encoding="utf-8")
+        suture_physx_text = suture_physx_path.read_text(encoding="utf-8")
+        suture_asset_structure_source_ownership_valid = bool(
+            suture_geometry_path.read_bytes()[:8] == b"PXR-USDC"
+            and f"@{suture_geometry_layer_name}@" in suture_entry_text
+            and f"@{suture_materials_layer_name}@" in suture_entry_text
+            and f"@{suture_physx_layer_name}@" in suture_entry_text
+            and f"@{suture_neutral_physics_layer_name}@" not in suture_entry_text
+            and f"@{suture_neutral_physics_layer_name}@" in suture_physx_text
+            and len(suture_entry_text.encode("utf-8")) <= int(suture_layer_organization["entry_layer_max_bytes"])
+            and not re.findall(
+                r"\b(?:physics:|physx[A-Za-z]*:|newton:)[A-Za-z][A-Za-z0-9_]*",
+                suture_entry_text,
+            )
+            and 'def Capsule "NeedleInterface"' in suture_geometry_text
+            and len(re.findall(r'def Capsule "S\d{4}"', suture_geometry_text)) == 360
+            and "apiSchemas" not in suture_geometry_text
+            and "material:binding" not in suture_geometry_text
+            and "physics:" not in suture_geometry_text
+            and "physx" not in suture_geometry_text
+            and suture_materials_text.count('def Material "') == 2
+            and suture_materials_text.count('def Shader "PreviewSurface"') == 2
+            and "physics:" not in suture_materials_text
+            and "physx" not in suture_materials_text
+            and '"Physx' not in suture_physics_text
+            and "physx" not in suture_physics_text
+            and '"Newton' not in suture_physics_text
+            and "newton:" not in suture_physics_text
+            and "physics:rigidBodyEnabled" not in suture_physx_text
+            and "physics:mass" not in suture_physx_text
+            and '"PhysicsRigidBodyAPI"' not in suture_physx_text
+            and '"Newton' not in suture_physx_text
+            and "newton:" not in suture_physx_text
+        )
+        suture_segment_prims = [
+            stage.GetPrimAtPath(f"{root_path}/Suture/Segments/S{index:04d}") for index in range(360)
+        ]
+        suture_interface_prim = stage.GetPrimAtPath(f"{root_path}/Suture/NeedleInterface")
+        suture_body_prims = [suture_interface_prim, *suture_segment_prims]
+        suture_physx_collision_api_count = sum(
+            "PhysxCollisionAPI" in prim.GetAppliedSchemas() for prim in suture_body_prims
+        )
+        suture_hybrid_ccd_body_count = sum(
+            bool(prim.GetAttribute("physxRigidBody:enableCCD").Get())
+            and bool(prim.GetAttribute("physxRigidBody:enableSpeculativeCCD").Get())
+            for prim in suture_body_prims
+        )
+        suture_contact_offsets = [
+            float(prim.GetAttribute("physxCollision:contactOffset").Get()) for prim in suture_body_prims
+        ]
+        suture_rest_offsets = [
+            float(prim.GetAttribute("physxCollision:restOffset").Get()) for prim in suture_body_prims
+        ]
+        suture_physx_contact_offset_range_m = [
+            min(suture_contact_offsets),
+            max(suture_contact_offsets),
+        ]
+        suture_physx_rest_offset_range_m = [
+            min(suture_rest_offsets),
+            max(suture_rest_offsets),
+        ]
+        suture_offset_contract = suture_profile["contact"]["contact_offsets"]
+        suture_expected_contact_offsets = [
+            max(
+                float(suture_offset_contract["minimum_m"]),
+                min(
+                    float(suture_offset_contract["maximum_m"]),
+                    float(UsdGeom.Capsule(prim).GetRadiusAttr().Get())
+                    * float(suture_offset_contract["collision_radius_fraction"]),
+                ),
+            )
+            for prim in suture_body_prims
+        ]
+        suture_physx_contact_offsets_match_profile = bool(
+            np.allclose(
+                suture_contact_offsets,
+                suture_expected_contact_offsets,
+                rtol=1.0e-6,
+                atol=1.0e-12,
+            )
+            and np.allclose(
+                suture_rest_offsets,
+                float(suture_offset_contract["rest_offset_m"]),
+                rtol=0.0,
+                atol=1.0e-12,
+            )
+        )
+        suture_segments_scope = stage.GetPrimAtPath(f"{root_path}/Suture/Segments")
+        suture_visual_material_path = f"{root_path}/Suture/Looks/SutureVisual"
+        suture_physics_material_path = f"{root_path}/Suture/Materials/SutureMaterial"
+        swage_visual_material_path = f"{root_path}/Suture/Looks/SwageVisual"
+        swage_physics_material_path = f"{root_path}/Suture/Materials/SwageSteel"
+        suture_physics_material_prim = stage.GetPrimAtPath(suture_physics_material_path)
+        swage_physics_material_prim = stage.GetPrimAtPath(swage_physics_material_path)
+        suture_material_bindings_valid = bool(
+            [str(target) for target in suture_segments_scope.GetRelationship("material:binding").GetTargets()]
+            == [suture_visual_material_path]
+            and [
+                str(target) for target in suture_segments_scope.GetRelationship("material:binding:physics").GetTargets()
+            ]
+            == [suture_physics_material_path]
+            and [str(target) for target in suture_interface_prim.GetRelationship("material:binding").GetTargets()]
+            == [swage_visual_material_path]
+            and [
+                str(target) for target in suture_interface_prim.GetRelationship("material:binding:physics").GetTargets()
+            ]
+            == [swage_physics_material_path]
+            and "PhysicsMaterialAPI" in suture_physics_material_prim.GetAppliedSchemas()
+            and "PhysxMaterialAPI" in suture_physics_material_prim.GetAppliedSchemas()
+            and "PhysicsMaterialAPI" in swage_physics_material_prim.GetAppliedSchemas()
+            and "PhysxMaterialAPI" in swage_physics_material_prim.GetAppliedSchemas()
+            and str(suture_physics_material_prim.GetAttribute("physxMaterial:frictionCombineMode").Get()) == "max"
+            and str(swage_physics_material_prim.GetAttribute("physxMaterial:frictionCombineMode").Get()) == "max"
         )
         needle_collision_capsules = [
             prim
@@ -501,7 +645,7 @@ def main() -> int:
             )
         )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v9",
+        "schema": "dr.anmar.needle-native-physx-probe.v10",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
@@ -539,6 +683,17 @@ def main() -> int:
         "needle_neutral_physics_layer_name": needle_neutral_physics_layer_name,
         "needle_physx_layer_name": needle_physx_layer_name,
         "needle_asset_structure_source_ownership_valid": needle_asset_structure_source_ownership_valid,
+        "suture_geometry_layer_name": suture_geometry_layer_name,
+        "suture_materials_layer_name": suture_materials_layer_name,
+        "suture_neutral_physics_layer_name": suture_neutral_physics_layer_name,
+        "suture_physx_layer_name": suture_physx_layer_name,
+        "suture_asset_structure_source_ownership_valid": suture_asset_structure_source_ownership_valid,
+        "suture_physx_collision_api_count": suture_physx_collision_api_count,
+        "suture_hybrid_ccd_body_count": suture_hybrid_ccd_body_count,
+        "suture_physx_contact_offset_range_m": suture_physx_contact_offset_range_m,
+        "suture_physx_rest_offset_range_m": suture_physx_rest_offset_range_m,
+        "suture_physx_contact_offsets_match_profile": suture_physx_contact_offsets_match_profile,
+        "suture_material_bindings_valid": suture_material_bindings_valid,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
@@ -576,6 +731,11 @@ def main() -> int:
                 and report["needle_render_collision_separation_valid"]
                 and report["needle_material_organization_valid"]
                 and report["needle_asset_structure_source_ownership_valid"]
+                and report["suture_asset_structure_source_ownership_valid"]
+                and report["suture_physx_collision_api_count"] == 361
+                and report["suture_hybrid_ccd_body_count"] == 361
+                and report["suture_physx_contact_offsets_match_profile"]
+                and report["suture_material_bindings_valid"]
                 and initial_swage_distance_m is not None
                 and initial_swage_distance_m < 0.0001
                 and final_swage_distance_m is not None
