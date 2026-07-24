@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from dr_anmar_asset_layout import asset_landing
 from dr_anmar_needle_model import derive_needle, load_needle_profile, sample_episode_parameters
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -76,7 +77,7 @@ SUTURE_NEEDLE_INTERFACE_CENTER_M = (-0.00025, 0.0, 0.0)
 # A 90-degree yaw keeps the 180 mm strand inside the shared PSM workspace.
 # The assembly is deliberately an additional sterile-table instrument: it
 # never replaces the room's existing task object or task-specific thread.
-SUTURE_LANDING_POSITION_M = (-0.080, -0.105, 0.0030)
+SUTURE_LANDING_POSITION_M = asset_landing("dr_anmar_needle_suture")
 SUTURE_LANDING_ROTATION_WXYZ = (
     0.7071067811865476,
     0.0,

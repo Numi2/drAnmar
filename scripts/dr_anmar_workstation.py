@@ -29,6 +29,7 @@ from isaaclab.app import AppLauncher
 
 from dr_anmar_procedures import PROCEDURES_BY_ID
 from dr_anmar_native_rooms import resolve_native_room
+from dr_anmar_asset_layout import asset_landing as dr_anmar_asset_landing
 from dr_anmar_psm_gripper import (
     CANONICAL_PSM_GRIPPER_PROFILE,
     apply_psm_gripper_action_profile,
@@ -4023,8 +4024,8 @@ def main() -> None:
             env_cfg.scene.skin_stapler = RigidObjectCfg(
                 prim_path="{ENV_REGEX_NS}/SkinStapler",
                 init_state=RigidObjectCfg.InitialStateCfg(
-                    # Rest the stapler on its broad side at a separate landing.
-                    pos=(0.135, 0.145, 0.014),
+                    # Keep the broad-side landing inside the shared PSM field.
+                    pos=dr_anmar_asset_landing("skin_stapler"),
                     rot=(0.70710678, 0.70710678, 0.0, 0.0),
                 ),
                 spawn=sim_utils.UsdFileCfg(
@@ -4044,17 +4045,7 @@ def main() -> None:
             env_cfg.scene.dr_anmar_standalone_needle = RigidObjectCfg(
                 prim_path="{ENV_REGEX_NS}/DrAnmarStandaloneNeedle",
                 init_state=RigidObjectCfg.InitialStateCfg(
-                    # Reuse the working NVIDIA needle landing when this is the
-                    # isolated grasping object. Keep a separate visible landing
-                    # only when both needle variants are requested.
-                    pos=(
-                        (0.060, 0.055, 0.0012)
-                        if "needle" in selected_bench_assets
-                        or "dr_anmar_needle_suture" in selected_bench_assets
-                        or "nvidia_needle_dr_anmar_suture"
-                        in selected_bench_assets
-                        else (-0.195, 0.015, 0.0012)
-                    ),
+                    pos=dr_anmar_asset_landing("dr_anmar_needle"),
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=sim_utils.UsdFileCfg(
@@ -4068,10 +4059,8 @@ def main() -> None:
                 prim_path="{ENV_REGEX_NS}/DrAnmarNeedleV030",
                 usd_path=bench_asset_paths["dr_anmar_needle_v030"],
             )
-            env_cfg.scene.dr_anmar_needle_v030.init_state.pos = (
-                -0.115,
-                0.090,
-                0.0012,
+            env_cfg.scene.dr_anmar_needle_v030.init_state.pos = dr_anmar_asset_landing(
+                "dr_anmar_needle_v030"
             )
         if "dr_anmar_needle_thread_coiled" in selected_bench_assets:
             env_cfg.scene.dr_anmar_needle_thread_coiled = (
@@ -4083,10 +4072,8 @@ def main() -> None:
                     ],
                 )
             )
-            env_cfg.scene.dr_anmar_needle_thread_coiled.init_state.pos = (
-                -0.055,
-                -0.120,
-                0.0012,
+            env_cfg.scene.dr_anmar_needle_thread_coiled.init_state.pos = dr_anmar_asset_landing(
+                "dr_anmar_needle_thread_coiled"
             )
         if "dr_anmar_needle_thread_extended" in selected_bench_assets:
             env_cfg.scene.dr_anmar_needle_thread_extended = (
@@ -4098,10 +4085,8 @@ def main() -> None:
                     ],
                 )
             )
-            env_cfg.scene.dr_anmar_needle_thread_extended.init_state.pos = (
-                0.075,
-                -0.180,
-                0.0012,
+            env_cfg.scene.dr_anmar_needle_thread_extended.init_state.pos = dr_anmar_asset_landing(
+                "dr_anmar_needle_thread_extended"
             )
         if "dr_anmar_needle_thread_proxy" in selected_bench_assets:
             env_cfg.scene.dr_anmar_needle_thread_proxy = (
@@ -4112,16 +4097,14 @@ def main() -> None:
                     ],
                 )
             )
-            env_cfg.scene.dr_anmar_needle_thread_proxy.init_state.pos = (
-                0.035,
-                -0.105,
-                0.0012,
+            env_cfg.scene.dr_anmar_needle_thread_proxy.init_state.pos = dr_anmar_asset_landing(
+                "dr_anmar_needle_thread_proxy"
             )
         if "dr_anmar_tissue" in selected_bench_assets:
             env_cfg.scene.dr_anmar_tissue = AssetBaseCfg(
                 prim_path="{ENV_REGEX_NS}/DrAnmarSuturableTissue",
                 init_state=AssetBaseCfg.InitialStateCfg(
-                    pos=(-0.040, -0.250, 0.004),
+                    pos=dr_anmar_asset_landing("dr_anmar_tissue"),
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=sim_utils.UsdFileCfg(
@@ -4132,7 +4115,7 @@ def main() -> None:
             env_cfg.scene.dr_anmar_vascular_clip = RigidObjectCfg(
                 prim_path="{ENV_REGEX_NS}/DrAnmarVascularClip",
                 init_state=RigidObjectCfg.InitialStateCfg(
-                    pos=(-0.130, -0.250, 0.0003),
+                    pos=dr_anmar_asset_landing("vascular_clip"),
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=sim_utils.UsdFileCfg(
@@ -4144,8 +4127,8 @@ def main() -> None:
             env_cfg.scene.laparotomy_sponge = RigidObjectCfg(
                 prim_path="{ENV_REGEX_NS}/LaparotomySponge",
                 init_state=RigidObjectCfg.InitialStateCfg(
-                    # Its 142 x 116 mm body occupies the right rear landing.
-                    pos=(0.075, -0.340, 0.0141),
+                    # Keep the large folded proxy near both instruments.
+                    pos=dr_anmar_asset_landing("laparotomy_sponge"),
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=sim_utils.UsdFileCfg(

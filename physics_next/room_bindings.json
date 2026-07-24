@@ -11,7 +11,7 @@
       "stage_key": "native_tissue",
       "stage_prim_name": "NativeTissue",
       "spawn": {
-        "translation_m": [0.0, -0.08, 0.004],
+        "translation_m": [-0.04, -0.055, 0.004],
         "scale": [1.0, 1.0, 1.0]
       },
       "attachment": {
@@ -33,8 +33,8 @@
       "stage_prim_name": "NativeVessel",
       "spawn": {
         "translation_m": [
-          0.0,
-          -0.08,
+          -0.04,
+          -0.04,
           0.004
         ],
         "scale": [
@@ -58,8 +58,8 @@
           "prim_name": "DrAnmarVascularClip",
           "asset": "assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
           "translation_m": [
-            0.0,
             -0.08,
+            -0.05,
             0.016
           ],
           "rotation_wxyz": [
