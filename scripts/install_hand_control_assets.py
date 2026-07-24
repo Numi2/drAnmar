@@ -39,6 +39,20 @@ PACKAGE_MEMBERS = {
 }
 
 
+def default_destination() -> Path:
+    """Return the same runtime-data location used by the workstation."""
+
+    data_root = Path(
+        os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")
+    ).expanduser()
+    return Path(
+        os.environ.get(
+            "DR_ANMAR_HAND_CONTROL_ASSET_ROOT",
+            data_root / "assets/hand-control" / f"mediapipe-tasks-vision-{TASKS_VERSION}",
+        )
+    ).expanduser()
+
+
 def download(url: str, expected_sha256: str) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": "DrAnmar-asset-installer/1"})
     with urllib.request.urlopen(request, timeout=90) as response:
@@ -90,14 +104,7 @@ def main() -> None:
     parser.add_argument(
         "--destination",
         type=Path,
-        default=Path(
-            os.environ.get(
-                "DR_ANMAR_HAND_CONTROL_ASSET_ROOT",
-                Path.home()
-                / ".local/share/dr-anmar/assets/hand-control/"
-                f"mediapipe-tasks-vision-{TASKS_VERSION}",
-            )
-        ),
+        default=default_destination(),
     )
     args = parser.parse_args()
     install(args.destination)

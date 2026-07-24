@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import math
+import os
 import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +22,7 @@ from dr_anmar_hand_teleop import (  # noqa: E402
     validate_hand_frame,
 )
 from dr_anmar_psm_native_adapter import native_ik_action_scales  # noqa: E402
+from install_hand_control_assets import default_destination  # noqa: E402
 
 
 def hand(
@@ -122,6 +125,20 @@ class ResamplingAndSafetyTests(unittest.TestCase):
 
 
 class NativeScaleAndGripperTests(unittest.TestCase):
+    def test_asset_installer_uses_workstation_data_root(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"DR_ANMAR_ROOT": "/srv/dr-anmar"},
+            clear=False,
+        ):
+            self.assertEqual(
+                default_destination(),
+                Path(
+                    "/srv/dr-anmar/assets/hand-control/"
+                    "mediapipe-tasks-vision-0.10.35"
+                ),
+            )
+
     def test_reads_active_nvidia_ik_term_scale(self) -> None:
         robot = object()
         ik_type = type("DifferentialInverseKinematicsAction", (), {})
