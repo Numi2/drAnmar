@@ -62,5 +62,12 @@
     "cutting"
   ],
   "sim_to_real_gap_count": 10,
-  "clinical_validation": false
+  "clinical_validation": false,
+  "physx_flap_assets": {
+    "left": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.left.usda",
+    "left_sha256": "9a0bfe5c780698de0cf3bdc3631ccc75d22a75fdb022b639f9e9be5619d6bfad",
+    "right": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.right.usda",
+    "right_sha256": "52a73e0a41b20e4e51552751dea051f1a3ed24a8eb204bc6c506d79ed8df5d35",
+    "purpose": "one connected FEM body per wound flap for stable PhysX cooking"
+  }
 }

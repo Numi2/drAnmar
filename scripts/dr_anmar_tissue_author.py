@@ -15,12 +15,19 @@ from dr_anmar_tissue_model import (
     build_tissue_mesh,
     derive_tissue,
     load_tissue_profile,
+    signed_tetra_volume,
 )
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = REPOSITORY_ROOT / "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda"
 DEFAULT_TET_OUTPUT = DEFAULT_OUTPUT.with_name("DrAnmarSuturableTissue.tet.usda")
+DEFAULT_LEFT_FLAP_OUTPUT = DEFAULT_OUTPUT.with_name(
+    "DrAnmarSuturableTissue.left.usda"
+)
+DEFAULT_RIGHT_FLAP_OUTPUT = DEFAULT_OUTPUT.with_name(
+    "DrAnmarSuturableTissue.right.usda"
+)
 DEFAULT_REPORT = DEFAULT_OUTPUT.with_suffix(".report.json")
 ASSET_NAME = "DrAnmar Suturable Tissue"
 ASSET_ID = "dr-anmar-suturable-tissue"
@@ -185,6 +192,87 @@ def Xform "{root}" (
 """
 
 
+def component_mesh(mesh: TissueMesh, component: int) -> TissueMesh:
+    """Extract one disconnected flap and remap all topology deterministically."""
+
+    if component not in (0, 1):
+        raise ValueError("Tissue component must be 0 or 1")
+    midpoint = len(mesh.points) // 2
+    start = 0 if component == 0 else midpoint
+    stop = midpoint if component == 0 else len(mesh.points)
+    old_to_new = {
+        old_index: old_index - start
+        for old_index in range(start, stop)
+    }
+    points = mesh.points[start:stop]
+    kept_tetrahedra = [
+        (old_index, tetrahedron)
+        for old_index, tetrahedron in enumerate(mesh.tetrahedra)
+        if all(index in old_to_new for index in tetrahedron)
+    ]
+    kept_triangles = [
+        (old_index, triangle)
+        for old_index, triangle in enumerate(mesh.surface_triangles)
+        if all(index in old_to_new for index in triangle)
+    ]
+    tetrahedron_index_map = {
+        old_index: new_index
+        for new_index, (old_index, _) in enumerate(kept_tetrahedra)
+    }
+    triangle_index_map = {
+        old_index: new_index
+        for new_index, (old_index, _) in enumerate(kept_triangles)
+    }
+    tetrahedra = tuple(
+        tuple(old_to_new[index] for index in tetrahedron)
+        for _, tetrahedron in kept_tetrahedra
+    )
+    surface_triangles = tuple(
+        tuple(old_to_new[index] for index in triangle)
+        for _, triangle in kept_triangles
+    )
+    volumes = [
+        abs(
+            signed_tetra_volume(
+                *(points[index] for index in tetrahedron)
+            )
+        )
+        for tetrahedron in tetrahedra
+    ]
+    return TissueMesh(
+        points=points,
+        tetrahedra=tetrahedra,
+        tetrahedron_groups={
+            name: tuple(
+                tetrahedron_index_map[index]
+                for index in indices
+                if index in tetrahedron_index_map
+            )
+            for name, indices in mesh.tetrahedron_groups.items()
+        },
+        surface_triangles=surface_triangles,
+        surface_groups={
+            name: tuple(
+                triangle_index_map[index]
+                for index in indices
+                if index in triangle_index_map
+            )
+            for name, indices in mesh.surface_groups.items()
+        },
+        extent_min=tuple(
+            min(point[axis] for point in points)
+            for axis in range(3)
+        ),
+        extent_max=tuple(
+            max(point[axis] for point in points)
+            for axis in range(3)
+        ),
+        volume_m3=sum(volumes),
+        minimum_tetra_volume_m3=min(volumes),
+        connected_components=1,
+    )
+
+
 def author_tetmesh(profile: dict[str, Any], mesh: TissueMesh) -> str:
     root = TET_ROOT_PRIM
     layer_order = ("fascia", "bulk", "surface")
@@ -312,16 +400,38 @@ def main() -> int:
         type=Path,
         default=DEFAULT_TET_OUTPUT,
     )
+    parser.add_argument(
+        "--left-flap-output",
+        type=Path,
+        default=DEFAULT_LEFT_FLAP_OUTPUT,
+    )
+    parser.add_argument(
+        "--right-flap-output",
+        type=Path,
+        default=DEFAULT_RIGHT_FLAP_OUTPUT,
+    )
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
     args = parser.parse_args()
     profile = load_tissue_profile(args.profile)
     mesh = build_tissue_mesh(profile)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.tet_output.parent.mkdir(parents=True, exist_ok=True)
+    args.left_flap_output.parent.mkdir(parents=True, exist_ok=True)
+    args.right_flap_output.parent.mkdir(parents=True, exist_ok=True)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(author_surface(profile, mesh), encoding="utf-8")
     args.tet_output.write_text(
         author_tetmesh(profile, mesh),
+        encoding="utf-8",
+    )
+    left_flap_mesh = component_mesh(mesh, 0)
+    right_flap_mesh = component_mesh(mesh, 1)
+    args.left_flap_output.write_text(
+        author_surface(profile, left_flap_mesh),
+        encoding="utf-8",
+    )
+    args.right_flap_output.write_text(
+        author_surface(profile, right_flap_mesh),
         encoding="utf-8",
     )
     report = build_report(
@@ -331,6 +441,15 @@ def main() -> int:
         args.output,
         args.tet_output,
     )
+    report["physx_flap_assets"] = {
+        "left": portable_path(args.left_flap_output),
+        "left_sha256": sha256(args.left_flap_output),
+        "right": portable_path(args.right_flap_output),
+        "right_sha256": sha256(args.right_flap_output),
+        "purpose": (
+            "one connected FEM body per wound flap for stable PhysX cooking"
+        ),
+    }
     args.report.write_text(
         json.dumps(report, indent=2) + "\n",
         encoding="utf-8",

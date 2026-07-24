@@ -258,6 +258,10 @@ STAPLER_CLOSURE_STATION_SPACING_M = 0.006
 STAPLER_TEST_DEVICE_MOUNT_Z_M = 0.0592
 STAPLER_CLOSURE_TARGET_CENTER_M = (0.096, 0.0, 0.0602)
 STAPLER_CLOSURE_TISSUE_CENTER_M = (0.095, 0.0, 0.055)
+STAPLER_TISSUE_APPROXIMATION_DURATION_S = 0.85
+STAPLER_TISSUE_TARGET_GAP_M = 0.0008
+STAPLER_TISSUE_STATION_HALF_WIDTH_M = 0.0032
+STAPLER_TISSUE_EDGE_CAPTURE_M = 0.0075
 STAPLER_CLOSURE_TISSUE_ROTATION_WXYZ = (
     0.70710678,
     0.0,
@@ -440,7 +444,7 @@ APP_HTML = r"""<!doctype html>
     .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}
     .supervision{border-color:#356475;background:linear-gradient(135deg,#0d2731,#09171e)}.supervision-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.supervision-state b{color:var(--cyan)}.cue{min-height:32px;margin-top:9px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#9fc0c9;font-size:11px}
     .safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.safety-metric{padding:8px;background:#061219;border:1px solid #1c3742}.safety-metric b{display:block;color:var(--green);font:15px ui-monospace,monospace}.safety-metric span{color:var(--muted);font-size:9px}
-    .stapler-cell{padding:12px;border:1px solid #5d6140;border-radius:11px;background:linear-gradient(135deg,#252417,#151b1f)}#staplerCell.hidden{display:none!important}.stapler-cell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}.stapler-cell-head b{display:block;color:#f1e6c1;font-size:14px}.stapler-cell-head small{display:block;margin-top:2px;color:#aaa58d;font-size:9px}.stapler-phase{padding:4px 7px;border-radius:5px;background:#393622;color:#f0cf77;font:800 8px ui-monospace,monospace;text-transform:uppercase}.stapler-metrics{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.stapler-metric{padding:7px;border:1px solid #4c4930;border-radius:6px;background:#181b18}.stapler-metric b{display:block;color:#e9d98e;font:14px ui-monospace,monospace}.stapler-metric span{color:#928f7d;font-size:7px;letter-spacing:.05em}.stapler-progress{height:5px;margin-top:7px;overflow:hidden;border-radius:4px;background:#111411}.stapler-progress i{display:block;width:0;height:100%;background:#d8b750;transition:width .25s ease}.stapler-controls{display:grid;grid-template-columns:.8fr 1.6fr .8fr repeat(3,1fr);gap:6px;margin-top:8px}.stapler-target{display:grid;grid-column:span 3;grid-template-columns:1fr auto;align-items:center;gap:4px 8px;padding:6px 8px;border:1px solid #4c4930;border-radius:7px;background:#181b18}.stapler-target b{color:#d9d3b6;font-size:9px}.stapler-target output{color:#e9d98e;font:12px ui-monospace,monospace}.stapler-target input{grid-column:1/-1;width:100%;accent-color:#d8b750}.stapler-controls button{min-height:42px;background:#29291d;border-color:#565135;font-size:9px}.stapler-controls button.primary{background:#d8b750;border-color:#d8b750;color:#221f10}.stapler-controls button:disabled{cursor:not-allowed;opacity:.45}.stapler-boundary{margin:7px 0 0;color:#8f8c7f;font-size:8px}
+    .stapler-cell{padding:12px;border:1px solid #5d6140;border-radius:11px;background:linear-gradient(135deg,#252417,#151b1f)}#staplerCell.hidden{display:none!important}.stapler-cell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}.stapler-cell-head b{display:block;color:#f1e6c1;font-size:14px}.stapler-cell-head small{display:block;margin-top:2px;color:#aaa58d;font-size:9px}.stapler-phase{padding:4px 7px;border-radius:5px;background:#393622;color:#f0cf77;font:800 8px ui-monospace,monospace;text-transform:uppercase}.stapler-metrics{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}.stapler-metric{padding:7px;border:1px solid #4c4930;border-radius:6px;background:#181b18}.stapler-metric b{display:block;color:#e9d98e;font:14px ui-monospace,monospace}.stapler-metric span{color:#928f7d;font-size:7px;letter-spacing:.05em}.stapler-progress{height:5px;margin-top:7px;overflow:hidden;border-radius:4px;background:#111411}.stapler-progress i{display:block;width:0;height:100%;background:#d8b750;transition:width .25s ease}.stapler-controls{display:grid;grid-template-columns:.8fr 1.6fr .8fr repeat(3,1fr);gap:6px;margin-top:8px}.stapler-target{display:grid;grid-column:span 3;grid-template-columns:1fr auto;align-items:center;gap:4px 8px;padding:6px 8px;border:1px solid #4c4930;border-radius:7px;background:#181b18}.stapler-target b{color:#d9d3b6;font-size:9px}.stapler-target output{color:#e9d98e;font:12px ui-monospace,monospace}.stapler-target input{grid-column:1/-1;width:100%;accent-color:#d8b750}.stapler-controls button{min-height:42px;background:#29291d;border-color:#565135;font-size:9px}.stapler-controls button.primary{background:#d8b750;border-color:#d8b750;color:#221f10}.stapler-controls button:disabled{cursor:not-allowed;opacity:.45}.stapler-boundary{margin:7px 0 0;color:#8f8c7f;font-size:8px}
     .control-dock{position:relative;margin:0 0 10px;padding:34px 10px 8px;border:1px solid #294651;border-radius:9px;background:#0a171e;box-shadow:none}.control-dock:before{content:"Robot controls";position:absolute;left:12px;top:10px;color:#dffbff;font:800 12px/1 ui-sans-serif,system-ui}.control-dock:after{display:none}.control-dock .move-button{min-height:43px;padding:4px 2px;border:1px solid #31515d;background:#0d2028;font-size:10px;line-height:1.05}.control-dock .move-button small{font-size:8px;margin-top:2px}.control-dock .stop-center{width:100%;min-height:34px;padding:3px 8px;border:1px solid #68444b;background:#25181c;color:#ffc2c7;font-size:9px}.control-dock .hint{display:none}.instrument-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.instrument-grid.single{grid-template-columns:1fr}.instrument-card{min-width:0;padding:7px;border:1px solid #1d3540;border-radius:8px;background:#08131a}.instrument-head{display:flex;align-items:center;gap:7px;margin-bottom:5px}.instrument-head button{flex:1;min-height:30px;padding:3px 7px;text-align:left;font-size:10px}.instrument-head .arm.active{border-color:#426775;background:#132a33;color:#dffbff}.instrument-head span{color:#708b95;font:750 8px/1 ui-monospace,monospace;letter-spacing:.08em;white-space:nowrap}.hand-key-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.hand-key{display:flex;flex-direction:column;align-items:center;justify-content:center}.hand-key kbd{height:18px;min-width:22px;padding:0 4px;font-size:9px}.instrument-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:5px}.instrument-actions .modifier-chip,.instrument-actions button{min-height:29px;display:flex;align-items:center;justify-content:center;gap:3px;padding:2px;font-size:8px}.instrument-actions button,.instrument-actions .primary{border-color:#31515d;background:#0d2028;color:#dffbff}.direct-roll{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}.direct-roll .move-button{min-height:29px;font-size:8px}.direct-roll kbd{height:16px;min-width:18px;padding:0 3px;font-size:8px}.hand-speeds{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px}.hand-speeds button{min-height:29px;padding:2px;font-size:8px}.hand-speeds button.active{border-color:#527480;background:#132a33}.hand-speeds kbd{height:16px;min-width:17px;padding:0 3px;font-size:8px}.control-stop-row{margin-top:7px;padding-top:6px;border-top:1px solid #1d3540}.control-dock .control-readout{min-height:15px;margin-top:3px;font-size:8px}.control-dock .control-readout i{width:5px;height:5px}
     kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 6px;border:1px solid #4a6570;border-bottom-width:2px;border-radius:5px;background:#09141a;color:#dffbff;font:800 10px/1 ui-monospace,SFMono-Regular,Menlo;white-space:nowrap}button kbd{pointer-events:none}.header-keyboard{min-height:32px;margin-left:4px;padding:0 10px;background:#10252e;color:#cfe7eb;font-size:11px}.header-keyboard kbd{margin-right:5px}.keyboard-quick{display:grid;grid-template-columns:.9fr 1.1fr;gap:5px;margin:0;padding:0;border:0;background:transparent}.keyboard-quick-head{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 1px}.keyboard-quick-head b{color:#8eabb5;font-size:10px;font-weight:750;letter-spacing:.04em}.keyboard-quick-head span{display:none}.keyboard-input-display{display:flex;align-items:center;gap:6px;min-height:38px;margin:0;padding:5px 7px;border:1px solid #1d3540;border-radius:6px;background:#08131a;color:#a7bbc2;font-size:10px}.keyboard-input-display kbd{min-width:38px;height:18px;font-size:8px;color:var(--green);border-color:#3b7a67}.keyboard-input-display.active{border-color:var(--green);box-shadow:none}.keyboard-input-display.active span{color:#e5ffff}.smart-action{width:100%;min-height:38px;margin:0;background:#2fc5d8;border-color:#52d7e8;color:#031014;text-align:left;padding:5px 8px;box-shadow:none}.smart-action strong{display:block;font-size:11px}.smart-action strong kbd{height:17px;min-width:24px;padding:0 4px;font-size:8px}.smart-action small{display:block;overflow:hidden;color:#174851;font-size:8px;line-height:1.1;white-space:nowrap;text-overflow:ellipsis}.proximity{grid-column:1/-1;margin:0;padding:4px 7px;border:0;border-radius:5px;background:#071219;font-size:9px;line-height:1.2}.proximity b{font-size:9px;margin-right:5px}.control-feel{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:7px;min-height:23px;border:1px solid #1d3540;border-radius:5px;background:#071219;color:#86a5af;font:8px/1 ui-monospace,SFMono-Regular,Menlo}.control-feel b{color:#dffbff}.modifier-row{grid-column:1/-1;display:flex;gap:4px;margin:0}.modifier-chip{flex:1;padding:3px;border:0;border-radius:5px;background:#071219;color:#829aa3;font-size:9px;text-align:center}.modifier-chip kbd{height:16px;min-width:20px;padding:0 3px;font-size:8px}.modifier-chip.active{color:var(--green);background:#0b2b25}.keyboard-coverage{display:none}.keyboard-coverage.bad{color:var(--red)}button.key-active,button.state-active{border-color:var(--green)!important;box-shadow:0 0 0 1px #42e49b77!important;background:#174a42!important;color:#efffff!important}button.key-active kbd,button.state-active kbd{border-color:#9bffe0;background:#dcfff5;color:#09281f}.smart-action.key-active{background:#8bffe0!important;color:#041a13!important;transform:none}
     .teleop-strip{grid-column:1/-1;display:grid;grid-template-columns:1.05fr .95fr;gap:5px}.gamepad-status{min-width:0;min-height:42px;padding:4px 7px;display:grid;grid-template-columns:7px minmax(0,1fr) auto;align-items:center;gap:7px;text-align:left;border-color:#294b57;background:#081820;color:#a9c2ca;overflow:hidden}.gamepad-status.connected{border-color:#387c68;color:var(--green);background:linear-gradient(120deg,#0a241f,#081820)}.gamepad-status.mode{border-color:var(--cyan);box-shadow:inset 0 0 12px #2cd2e817}.gamepad-dot{width:7px;height:7px;border-radius:50%;background:#60767d}.gamepad-status.connected .gamepad-dot{background:var(--green);box-shadow:0 0 8px #42e49baa}.gamepad-copy{min-width:0}.gamepad-copy b,.gamepad-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gamepad-copy b{color:#dffbff;font:800 9px/1.1 ui-sans-serif,system-ui}.gamepad-copy small{margin-top:2px;color:#7f9ca5;font:8px/1.1 ui-monospace,SFMono-Regular,Menlo}.gamepad-status.connected .gamepad-copy small{color:#89bbae}.gamepad-sticks{display:flex;gap:4px}.stick-meter{position:relative;width:20px;height:20px;border:1px solid #3c5c66;border-radius:50%;background:#061219}.stick-meter:before,.stick-meter:after{content:"";position:absolute;background:#294550}.stick-meter:before{left:3px;right:3px;top:9px;height:1px}.stick-meter:after{top:3px;bottom:3px;left:9px;width:1px}.stick-meter i{position:absolute;left:7px;top:7px;width:5px;height:5px;border-radius:50%;background:#66828b;transition:transform 45ms linear}.gamepad-status.connected .stick-meter i{background:var(--cyan);box-shadow:0 0 5px #2cd2e899}.voice-form{display:grid;grid-template-columns:minmax(0,1fr) 36px 36px;gap:4px}.voice-form input{min-width:0;height:34px;padding:0 8px;border:1px solid #294b57;border-radius:6px;background:#061219;color:#ddf7fa;font:9px/1 ui-sans-serif,system-ui}.voice-form input:focus{outline:1px solid var(--cyan);border-color:var(--cyan)}.voice-form button{min-height:34px;padding:0;font-size:12px}.voice-mic.listening{border-color:#ff8b93;background:#4b1f28;color:#fff;box-shadow:0 0 12px #ff4f6670}.voice-status{grid-column:1/-1;min-height:8px;color:#718f99;font:8px/1.1 ui-monospace,SFMono-Regular,Menlo;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.voice-status.listening{color:#ff9da5}.voice-status.ok{color:var(--green)}.voice-status.error{color:#ffb1b6}
@@ -504,11 +508,11 @@ APP_HTML = r"""<!doctype html>
       </div><div class="control-stop-row"><button class="stop-center" data-shortcut="Esc" onclick="emergencyStop()">Stop both robots <kbd>Esc / ⌫</kbd></button></div><div id="controlReadout" class="control-readout" aria-live="polite"><i></i><span>Ready · hold a key to move either instrument</span></div>
     </section>
     <section id="staplerCell" class="stapler-cell hidden" aria-label="Stapler test cell controls">
-      <div class="stapler-cell-head"><div><b>Dr.Anmar tissue closure bench</b><small>Real Dr.Anmar open-incision asset · guided indexing fixture · no robot grip required</small></div><span id="staplerPhase" class="stapler-phase">READY</span></div>
-      <div class="stapler-metrics"><div class="stapler-metric"><b id="staplerStation">1 / 7</b><span>CLOSURE STATION</span></div><div class="stapler-metric"><b id="staplerClosure">0 / 7</b><span>STAPLES PLACED</span></div><div class="stapler-metric"><b id="staplerSpacing">6.0 mm</b><span>GUIDED SPACING</span></div><div class="stapler-metric"><b id="staplerTrigger">0.0°</b><span>ACTUAL TRIGGER</span></div><div class="stapler-metric"><b id="staplerPusher">0.0 mm</b><span>PUSHER TRAVEL</span></div><div class="stapler-metric"><b id="staplerMagazine">35 / 35</b><span>MAGAZINE</span></div><div class="stapler-metric"><b id="staplerPartial">0 / 0</b><span>PARTIAL PASSES / TRIES</span></div></div>
+      <div class="stapler-cell-head"><div><b>Dr.Anmar physical tissue closure bench</b><small>PhysX FEM tissue · pre-fire wound approximation · rigid retained staples · no robot grip required</small></div><span id="staplerPhase" class="stapler-phase">READY</span></div>
+      <div class="stapler-metrics"><div class="stapler-metric"><b id="staplerStation">1 / 7</b><span>CLOSURE STATION</span></div><div class="stapler-metric"><b id="staplerClosure">0 / 7</b><span>STAPLES PLACED</span></div><div class="stapler-metric"><b id="staplerGap">—</b><span>LIVE TISSUE GAP</span></div><div class="stapler-metric"><b id="staplerApproximation">0%</b><span>APPROXIMATION</span></div><div class="stapler-metric"><b id="staplerSpacing">6.0 mm</b><span>GUIDED SPACING</span></div><div class="stapler-metric"><b id="staplerTrigger">0.0°</b><span>ACTUAL TRIGGER</span></div><div class="stapler-metric"><b id="staplerPusher">0.0 mm</b><span>PUSHER TRAVEL</span></div><div class="stapler-metric"><b id="staplerMagazine">35 / 35</b><span>MAGAZINE</span></div><div class="stapler-metric"><b id="staplerRetention">OPEN</b><span>PHYSICAL RETENTION</span></div></div>
       <div class="stapler-progress" aria-label="Closure placement progress"><i id="staplerProgress"></i></div>
       <div class="stapler-controls"><button id="staplerPrevious" data-shortcut="CELL-PREV" onclick="staplerCommand('previous_station')">← Previous<br>station</button><button id="staplerFire" class="primary" data-shortcut="CELL-FIRE" onclick="runStaplerCycle()">Staple &amp; advance<br>one full cycle</button><button id="staplerNext" data-shortcut="CELL-NEXT" onclick="staplerCommand('next_station')">Next<br>station →</button><button data-shortcut="CELL-20" onclick="setStaplerTarget(20)">Mechanism check<br>partial 20°</button><button data-shortcut="CELL-RELEASE" onclick="staplerCommand('release')">Release<br>&lt; 8°</button><button data-shortcut="CELL-RESET" onclick="staplerCommand('reset')">Reset closure</button></div>
-      <p class="stapler-boundary">This records guided formed-staple placement proxies on static OpenUSD tissue geometry. Tissue collisions are disabled because this room has no penetration or deformation backend; it does not validate staple forming, closure strength or clinical performance.</p>
+      <p class="stapler-boundary">The tissue is a live PhysX FEM body. Each cycle first approximates both wound edges, then a collision-enabled rigid staple retains two local FEM attachment bands after release. The backend does not cut tissue or model needle penetration, metal plastic forming, calibrated pullout strength or clinical performance.</p>
     </section>
     <details class="session-details"><summary>Procedure details and session tools</summary><div class="session-details-grid">
       <section class="session-section"><h2>Procedure</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div></div></section>
@@ -556,7 +560,7 @@ function toast(s){const e=document.getElementById('toast');e.textContent=s;e.cla
 async function staplerCommand(action,targetDeg=null){try{const body={action};if(targetDeg!==null)body.target_deg=Number(targetDeg);await post('/api/stapler/command',body);const message={fire:'Stapler cycle started',reset:'Tissue closure reset',release:'Stapler released',previous_station:'Fixture indexed to previous station',next_station:'Fixture indexed to next station'}[action]||`Trigger target ${Number(targetDeg).toFixed(0)}°`;toast(message);await refresh()}catch(e){toast(e.message)}}
 function setStaplerTarget(value){const target=Math.max(0,Math.min(28,Number(value)||0));return staplerCommand('set_target',target)}
 function runStaplerCycle(){return staplerCommand('fire')}
-function renderStaplerCell(cell={}){const panel=document.getElementById('staplerCell'),enabled=!!cell.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const station=Number(cell.station_index||1),stationCount=Number(cell.station_count||7),placed=Number(cell.closed_station_count||0),running=!!cell.cycle_running,stationPlaced=cell.station_state==='placed',stationReady=cell.station_ready!==false;document.getElementById('staplerPhase').textContent=cell.closure_complete?'closure complete':!stationReady?'indexing':String(cell.cycle_phase||'ready').replaceAll('_',' ');document.getElementById('staplerStation').textContent=`${station} / ${stationCount}`;document.getElementById('staplerClosure').textContent=`${placed} / ${stationCount}`;document.getElementById('staplerSpacing').textContent=`${Number(cell.station_spacing_mm||6).toFixed(1)} mm`;document.getElementById('staplerTrigger').textContent=`${Number(cell.actual_trigger_deg||0).toFixed(1)}°`;document.getElementById('staplerPusher').textContent=`${Number(cell.pusher_travel_mm||0).toFixed(2)} mm`;document.getElementById('staplerMagazine').textContent=`${cell.magazine_remaining??0} / ${cell.magazine_capacity??35}`;document.getElementById('staplerPartial').textContent=`${cell.partial_stroke_passes??0} / ${cell.partial_stroke_attempts??0}`;document.getElementById('staplerProgress').style.width=`${Number(cell.closure_progress_percent||0)}%`;document.getElementById('staplerPrevious').disabled=running||!stationReady||station<=1;document.getElementById('staplerNext').disabled=running||!stationReady||station>=stationCount;const fire=document.getElementById('staplerFire');fire.disabled=running||!stationReady||stationPlaced||!!cell.closure_complete;fire.innerHTML=cell.closure_complete?'Closure complete<br>reset to repeat':!stationReady?'Indexing fixture<br>hold position':stationPlaced?'Station placed<br>choose next':'Staple &amp; advance<br>one full cycle'}
+function renderStaplerCell(cell={}){const panel=document.getElementById('staplerCell'),enabled=!!cell.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const station=Number(cell.station_index||1),stationCount=Number(cell.station_count||7),placed=Number(cell.closed_station_count||0),running=!!cell.cycle_running,stationPlaced=cell.station_state==='placed',stationReady=cell.station_ready!==false,gap=cell.tissue_gap_mm;document.getElementById('staplerPhase').textContent=cell.closure_complete?'closure complete':!stationReady?'indexing':String(cell.cycle_phase||'ready').replaceAll('_',' ');document.getElementById('staplerStation').textContent=`${station} / ${stationCount}`;document.getElementById('staplerClosure').textContent=`${placed} / ${stationCount}`;document.getElementById('staplerGap').textContent=gap===null||gap===undefined?'—':`${Number(gap).toFixed(2)} mm`;document.getElementById('staplerApproximation').textContent=`${Number(cell.approximation_progress_percent||0).toFixed(0)}%`;document.getElementById('staplerRetention').textContent=String(cell.retention_state||'open').replaceAll('_',' ').toUpperCase();document.getElementById('staplerSpacing').textContent=`${Number(cell.station_spacing_mm||6).toFixed(1)} mm`;document.getElementById('staplerTrigger').textContent=`${Number(cell.actual_trigger_deg||0).toFixed(1)}°`;document.getElementById('staplerPusher').textContent=`${Number(cell.pusher_travel_mm||0).toFixed(2)} mm`;document.getElementById('staplerMagazine').textContent=`${cell.magazine_remaining??0} / ${cell.magazine_capacity??35}`;document.getElementById('staplerProgress').style.width=`${Number(cell.closure_progress_percent||0)}%`;document.getElementById('staplerPrevious').disabled=running||!stationReady||station<=1;document.getElementById('staplerNext').disabled=running||!stationReady||station>=stationCount;const fire=document.getElementById('staplerFire');fire.disabled=running||!stationReady||stationPlaced||!!cell.closure_complete;fire.innerHTML=cell.closure_complete?'Closure complete<br>reset to repeat':!stationReady?'Indexing fixture<br>hold position':stationPlaced?'Staple retaining tissue<br>choose next':'Approximate, staple &amp; retain<br>one physical cycle'}
 function showKeyAction(key,label,active=true){const display=document.getElementById('keyActionDisplay');display.classList.toggle('active',active);display.querySelector('kbd').textContent=key;display.querySelector('span').textContent=label}
 function flashShortcut(shortcut,label,duration=850){if(keyFlashTimer)clearTimeout(keyFlashTimer);document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));document.querySelectorAll('button[data-shortcut]').forEach(button=>{if(button.dataset.shortcut===shortcut)button.classList.add('key-active')});showKeyAction(shortcut,label,true);keyFlashTimer=setTimeout(()=>{document.querySelectorAll('button.key-active').forEach(button=>button.classList.remove('key-active'));showKeyAction('READY','Keyboard control ready',false)},duration)}
 function runShortcut(shortcut,label,action){flashShortcut(shortcut,label);action()}
@@ -1319,16 +1323,19 @@ class SharedState:
             cell = self.stapler_test_cell
             completed = int(bool(cell.get("enabled")))
             completed += int(
-                float(cell.get("max_trigger_deg", 0.0)) >= 1.0
-            )
-            completed += int(int(cell.get("deployment_count", 0)) >= 1)
-            completed += int(
-                int(cell.get("cycle_count", 0)) >= 1
-                and float(cell.get("actual_trigger_deg", 28.0))
-                <= REARM_THRESHOLD_DEG
+                float(
+                    cell.get("tissue_max_displacement_mm", 0.0)
+                )
+                >= 0.5
             )
             completed += int(
-                int(cell.get("cycle_count", 0)) >= 1
+                int(cell.get("retained_attachment_count", 0)) >= 1
+            )
+            completed += int(
+                bool(cell.get("closure_complete"))
+            )
+            completed += int(
+                bool(cell.get("closure_complete"))
                 and not bool(cell.get("cycle_running"))
             )
         elif kind == "native_suturing_bench":
@@ -2121,8 +2128,9 @@ def build_web_app(state: SharedState) -> FastAPI:
                     state.stapler_manual_target_deg = 0.0
                 state.coaching_cue = {
                     "fire": (
-                        "Stapling the selected tissue station. The bounded "
-                        "cycle will release and advance automatically."
+                        "Approximating both wound edges before firing. The "
+                        "formed staple will retain the FEM tissue after "
+                        "release, then the fixture will advance."
                     ),
                     "release": "Returning the actuator below the 8° rearm threshold.",
                     "reset": "Resetting the closure, fixture and magazine evidence.",
@@ -4003,9 +4011,15 @@ def main() -> None:
         "device": REPOSITORY_ROOT
         / "source/extensions/orbit.surgical.assets/data/Props/"
         "SurgicalClosure/StaplerTestCell/stapler_test_device.usda",
-        "tissue": REPOSITORY_ROOT
-        / "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+        "tissue_left": REPOSITORY_ROOT
+        / "assets/dr_anmar/tissue/DrAnmarSuturableTissue.left.usda",
+        "tissue_right": REPOSITORY_ROOT
+        / "assets/dr_anmar/tissue/DrAnmarSuturableTissue.right.usda",
+        "tissue_profile": REPOSITORY_ROOT
+        / "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
     }
+    stapler_tissue_material_runtime: dict[str, float | str] = {}
+    stapler_tissue_episode_payload: dict[str, float | int] = {}
     if stapler_test_cell_enabled:
         missing_test_cell_assets = [
             f"{name}: {path}"
@@ -4017,6 +4031,76 @@ def main() -> None:
                 "The Dr.Anmar stapler test cell is incomplete: "
                 + "; ".join(missing_test_cell_assets)
             )
+        stapler_tissue_profile = json.loads(
+            stapler_test_cell_paths["tissue_profile"].read_text(
+                encoding="utf-8"
+            )
+        )
+        stapler_tissue_episode = sample_tissue_episode_parameters(
+            stapler_tissue_profile,
+            DEFAULT_SCENARIO_SEED,
+        )
+        stapler_tissue_episode_payload = (
+            stapler_tissue_episode.payload()
+        )
+        stapler_tissue_proxy = stable_physx_proxy_parameters(
+            stapler_tissue_profile,
+            stapler_tissue_episode,
+        )
+        stapler_tissue_material_runtime = {
+            "density_kg_m3": float(
+                stapler_tissue_proxy["density_kg_m3"]
+            ),
+            "dynamic_friction": float(
+                stapler_tissue_proxy["dynamic_friction"]
+            ),
+            "youngs_modulus_pa": float(
+                min(
+                    120000.0,
+                    float(
+                        stapler_tissue_proxy[
+                            "youngs_modulus_pa"
+                        ]
+                    ),
+                )
+            ),
+            "poisson_ratio": float(
+                min(
+                    0.40,
+                    float(
+                        stapler_tissue_proxy["poisson_ratio"]
+                    ),
+                )
+            ),
+            "vertex_velocity_damping": min(
+                1.0,
+                max(
+                    0.05,
+                    float(
+                        stapler_tissue_proxy["damping_ratio"]
+                    ),
+                ),
+            ),
+            "solver_position_iterations": float(
+                max(
+                    32,
+                    int(
+                        stapler_tissue_profile["solver"][
+                            "position_iterations"
+                        ]
+                    ),
+                )
+            ),
+            "target_youngs_modulus_pa": float(
+                stapler_tissue_proxy["youngs_modulus_pa"]
+            ),
+            "target_poisson_ratio": float(
+                stapler_tissue_proxy["poisson_ratio"]
+            ),
+            "stability_proxy": (
+                "bounded_linear_tangent_for_interactive_physx"
+            ),
+        }
     nvidia_needle_dr_anmar_suture_enabled = bool(
         nvidia_native_bench
         and "nvidia_needle_dr_anmar_suture" in selected_bench_assets
@@ -4064,6 +4148,18 @@ def main() -> None:
         env_cfg.sim.dt = orbit_psm_foundation.sim.dt
         env_cfg.decimation = orbit_psm_foundation.decimation
         env_cfg.sim.render_interval = orbit_psm_foundation.sim.render_interval
+    if stapler_test_cell_enabled:
+        # The imported 6 mm tissue coupon requires the profile's 1 ms FEM
+        # cadence. Preserve the PSM action period by increasing decimation
+        # while giving the deformable solver the substeps it needs.
+        foundation_action_period_s = (
+            float(env_cfg.sim.dt) * int(env_cfg.decimation)
+        )
+        env_cfg.sim.dt = 0.001
+        env_cfg.decimation = max(
+            1,
+            int(round(foundation_action_period_s / env_cfg.sim.dt)),
+        )
     microscopic_bench_assets = selected_bench_assets.intersection(
         {
             "dr_anmar_needle",
@@ -4180,6 +4276,15 @@ def main() -> None:
             env_cfg.events.reset_object_position = None
 
         if stapler_test_cell_enabled:
+            env_cfg.scene.replicate_physics = False
+            for setting, value in {
+                "gpu_max_soft_body_contacts": 2**17,
+                "gpu_max_particle_contacts": 2**14,
+                "gpu_heap_capacity": 2**24,
+                "gpu_temp_buffer_capacity": 2**22,
+            }.items():
+                if hasattr(env_cfg.sim.physx, setting):
+                    setattr(env_cfg.sim.physx, setting, value)
             env_cfg.scene.stapler_test_fixture = AssetBaseCfg(
                 prim_path="{ENV_REGEX_NS}/StaplerTestFixture",
                 init_state=AssetBaseCfg.InitialStateCfg(
@@ -4198,6 +4303,12 @@ def main() -> None:
                     disable_gravity=True,
                 )
             )
+            stapler_trigger_actuator = (
+                env_cfg.scene.stapler_test_device.actuators["trigger"]
+            )
+            stapler_trigger_actuator.effort_limit_sim = 6.0
+            stapler_trigger_actuator.stiffness = 8.0
+            stapler_trigger_actuator.damping = 0.40
             # The fixture runtime holds this authored root datum while the
             # trigger and pusher remain dynamic articulation coordinates.
             env_cfg.scene.stapler_test_device.init_state.pos = (
@@ -4211,22 +4322,129 @@ def main() -> None:
                 0.0,
                 0.0,
             )
-            # Rotate the two-flap Dr.Anmar tissue so its incision follows the
-            # fixture's X indexing rail and every staple crown bridges the
-            # wound gap along Y. Its 6 mm thickness replaces the old visual
-            # coupon at the same top-surface datum.
-            env_cfg.scene.stapler_closure_tissue = AssetBaseCfg(
-                prim_path="{ENV_REGEX_NS}/StaplerClosureTissue",
-                init_state=AssetBaseCfg.InitialStateCfg(
-                    pos=STAPLER_CLOSURE_TISSUE_CENTER_M,
-                    rot=STAPLER_CLOSURE_TISSUE_ROTATION_WXYZ,
-                ),
-                spawn=sim_utils.UsdFileCfg(
-                    usd_path=str(stapler_test_cell_paths["tissue"]),
-                    collision_props=sim_utils.CollisionPropertiesCfg(
-                        collision_enabled=False,
+            # PhysX cooks the two disconnected watertight flaps into a
+            # volumetric deformable. The local +90 degree rotation makes the
+            # incision follow the fixture's X rail while staple crowns bridge
+            # the gap along Y.
+            def make_stapler_tissue_flap_cfg(
+                *,
+                usd_path: Path,
+                prim_name: str,
+            ) -> DeformableObjectCfg:
+                tissue_spawn = sim_utils.UsdFileCfg(
+                    usd_path=str(usd_path),
+                    deformable_props=(
+                        sim_utils.DeformableBodyPropertiesCfg(
+                            deformable_enabled=True,
+                            kinematic_enabled=True,
+                            self_collision=False,
+                            solver_position_iteration_count=int(
+                                stapler_tissue_material_runtime[
+                                    "solver_position_iterations"
+                                ]
+                            ),
+                            vertex_velocity_damping=float(
+                                stapler_tissue_material_runtime[
+                                    "vertex_velocity_damping"
+                                ]
+                            ),
+                            sleep_damping=0.0,
+                            sleep_threshold=0.0,
+                            settling_threshold=0.0,
+                            simulation_hexahedral_resolution=12,
+                            contact_offset=0.0005,
+                            rest_offset=0.0001,
+                            max_depenetration_velocity=0.10,
+                        )
                     ),
-                ),
+                )
+                source_spawn = tissue_spawn.func
+
+                def spawn_tissue_flap(
+                    prim_path: str,
+                    cfg: sim_utils.UsdFileCfg,
+                    translation=None,
+                    orientation=None,
+                    **kwargs: Any,
+                ) -> Any:
+                    deformable_props = cfg.deformable_props
+                    source_cfg = cfg.replace(deformable_props=None)
+                    root_prim = source_spawn(
+                        prim_path,
+                        source_cfg,
+                        translation=translation,
+                        orientation=orientation,
+                        **kwargs,
+                    )
+                    root_path = str(root_prim.GetPath())
+                    if root_prim.GetTypeName() == "Mesh":
+                        PhysxSchema.PhysxDeformableBodyAPI.Apply(
+                            root_prim
+                        )
+                        sim_utils.modify_deformable_body_properties(
+                            root_path,
+                            deformable_props,
+                        )
+                    else:
+                        sim_utils.define_deformable_body_properties(
+                            root_path,
+                            deformable_props,
+                        )
+                    material_path = (
+                        f"{root_path}/DrAnmarStaplerTissueMaterial"
+                    )
+                    material_cfg = (
+                        sim_utils.DeformableBodyMaterialCfg(
+                            density=float(
+                                stapler_tissue_material_runtime[
+                                    "density_kg_m3"
+                                ]
+                            ),
+                            dynamic_friction=float(
+                                stapler_tissue_material_runtime[
+                                    "dynamic_friction"
+                                ]
+                            ),
+                            youngs_modulus=float(
+                                stapler_tissue_material_runtime[
+                                    "youngs_modulus_pa"
+                                ]
+                            ),
+                            poissons_ratio=float(
+                                stapler_tissue_material_runtime[
+                                    "poisson_ratio"
+                                ]
+                            ),
+                        )
+                    )
+                    material_cfg.func(material_path, material_cfg)
+                    sim_utils.bind_physics_material(
+                        root_path,
+                        material_path,
+                    )
+                    return root_prim
+
+                tissue_spawn.func = spawn_tissue_flap
+                return DeformableObjectCfg(
+                    prim_path=f"{{ENV_REGEX_NS}}/{prim_name}",
+                    init_state=DeformableObjectCfg.InitialStateCfg(
+                        pos=STAPLER_CLOSURE_TISSUE_CENTER_M,
+                        rot=STAPLER_CLOSURE_TISSUE_ROTATION_WXYZ,
+                    ),
+                    spawn=tissue_spawn,
+                )
+
+            env_cfg.scene.stapler_closure_tissue_left = (
+                make_stapler_tissue_flap_cfg(
+                    usd_path=stapler_test_cell_paths["tissue_left"],
+                    prim_name="StaplerClosureTissueLeft",
+                )
+            )
+            env_cfg.scene.stapler_closure_tissue_right = (
+                make_stapler_tissue_flap_cfg(
+                    usd_path=stapler_test_cell_paths["tissue_right"],
+                    prim_name="StaplerClosureTissueRight",
+                )
             )
 
         # The pad is NVIDIA-authored static collision geometry. It intentionally
@@ -5225,7 +5443,16 @@ def main() -> None:
     env.reset()
     import omni.usd
     from isaacsim.core.simulation_manager import SimulationManager
-    from pxr import Gf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt
+    from pxr import (
+        Gf,
+        PhysxSchema,
+        Sdf,
+        Usd,
+        UsdGeom,
+        UsdPhysics,
+        UsdShade,
+        Vt,
+    )
 
     suture_stage = omni.usd.get_context().get_stage()
     suture_root_path = ""
@@ -5510,6 +5737,25 @@ def main() -> None:
     deformable_names = sorted(getattr(scene, "deformable_objects", {}).keys())
     deformables = {name: scene[name] for name in deformable_names}
     native_tissue = deformables.get(str(native_room.get("stage_key", ""))) if native_room else None
+    stapler_closure_tissues = (
+        [
+            deformables.get("stapler_closure_tissue_left"),
+            deformables.get("stapler_closure_tissue_right"),
+        ]
+        if stapler_test_cell_enabled
+        else []
+    )
+    if stapler_test_cell_enabled and any(
+        tissue is None for tissue in stapler_closure_tissues
+    ):
+        raise RuntimeError(
+            "The stapler test cell did not create both PhysX FEM tissue flaps"
+        )
+    stapler_closure_tissues = [
+        tissue
+        for tissue in stapler_closure_tissues
+        if tissue is not None
+    ]
     interactive_deformable = (
         deformables.get("object")
         if _softmimicgen_task
@@ -6484,6 +6730,409 @@ def main() -> None:
     stapler_pending_advance = False
     stapler_last_placement: dict[str, Any] | None = None
     stapler_visual_root_path = "/World/envs/env_0/StaplerClosurePlacements"
+    stapler_tissue_default_state: torch.Tensor | None = None
+    stapler_tissue_default_states: list[torch.Tensor] = []
+    stapler_tissue_node_slices: list[slice] = []
+    stapler_tissue_default_positions: torch.Tensor | None = None
+    stapler_tissue_base_targets: torch.Tensor | None = None
+    stapler_tissue_station_masks: list[torch.Tensor] = []
+    stapler_tissue_station_closed_positions: list[torch.Tensor] = []
+    stapler_tissue_initial_gaps_mm: list[float] = []
+    stapler_tissue_outer_anchor_count = 0
+    stapler_tissue_detected_wound_axis = "unknown"
+    stapler_tissue_detected_source_gap_mm = 0.0
+    stapler_tissue_wound_axis = 1
+    stapler_tissue_longitudinal_axis = 0
+    stapler_tissue_wound_center = float(
+        STAPLER_CLOSURE_TARGET_CENTER_M[1]
+    )
+    stapler_tissue_longitudinal_center = float(
+        STAPLER_CLOSURE_TARGET_CENTER_M[0]
+    )
+    stapler_tissue_station_longitudinal_coordinates = [
+        float(target[0]) for target in stapler_closure_targets_m
+    ]
+    stapler_tissue_approximation_progress = 0.0
+    stapler_tissue_max_displacement_mm = 0.0
+    stapler_approximation_paddle_translate_ops: dict[
+        str,
+        Any,
+    ] = {}
+    if stapler_closure_tissues:
+        target_parts: list[torch.Tensor] = []
+        node_start = 0
+        for tissue_flap in stapler_closure_tissues:
+            default_state_value = (
+                tissue_flap.data.nodal_state_w
+            )
+            flap_default_state = getattr(
+                default_state_value,
+                "torch",
+                default_state_value,
+            ).clone()
+            flap_default_state[..., 3:] = 0.0
+            stapler_tissue_default_states.append(
+                flap_default_state
+            )
+            node_stop = node_start + flap_default_state.shape[1]
+            stapler_tissue_node_slices.append(
+                slice(node_start, node_stop)
+            )
+            node_start = node_stop
+            target_value = tissue_flap.data.nodal_kinematic_target
+            target_parts.append(
+                getattr(target_value, "torch", target_value).clone()
+            )
+        stapler_tissue_default_state = torch.cat(
+            stapler_tissue_default_states,
+            dim=1,
+        )
+        # PhysX exposes cooked simulation vertices in the USD asset's authored
+        # coordinate frame rather than the visual prim's intuitive local
+        # frame. The authored wound axis is the wider in-plane dimension, so
+        # detect its robust span and map the FEM mesh into the test-cell frame.
+        # This keeps both tissue flaps, their tetrahedra, and their separation
+        # intact without assuming how the imported USD was authored.
+        cooked_positions = stapler_tissue_default_state[0, :, :3]
+        in_plane_spans: list[float] = []
+        in_plane_centers: list[float] = []
+        for candidate_axis in (0, 1):
+            ordered_coordinates = torch.sort(
+                cooked_positions[:, candidate_axis]
+            ).values
+            lower_quantile = torch.quantile(
+                ordered_coordinates,
+                0.05,
+            )
+            upper_quantile = torch.quantile(
+                ordered_coordinates,
+                0.95,
+            )
+            in_plane_spans.append(
+                float((upper_quantile - lower_quantile).item())
+            )
+            in_plane_centers.append(
+                float(
+                    ((lower_quantile + upper_quantile) * 0.5).item()
+                )
+            )
+        wound_axis = max(
+            range(2),
+            key=lambda axis_index: in_plane_spans[axis_index],
+        )
+        longitudinal_axis = 1 - wound_axis
+        wound_coordinates = cooked_positions[:, wound_axis]
+        wound_center = in_plane_centers[wound_axis]
+        raw_left_component = wound_coordinates < wound_center
+        raw_right_component = ~raw_left_component
+        wound_left_inner = torch.max(
+            wound_coordinates[raw_left_component]
+        )
+        wound_right_inner = torch.min(
+            wound_coordinates[raw_right_component]
+        )
+        detected_gap_m = float(
+            (wound_right_inner - wound_left_inner).item()
+        )
+        stapler_tissue_default_state[0, :, 3:] = 0.0
+        stapler_tissue_wound_axis = wound_axis
+        stapler_tissue_longitudinal_axis = longitudinal_axis
+        stapler_tissue_wound_center = wound_center
+        stapler_tissue_longitudinal_center = in_plane_centers[
+            longitudinal_axis
+        ]
+        stapler_tissue_station_longitudinal_coordinates = [
+            stapler_tissue_longitudinal_center + offset
+            for offset in STAPLER_CLOSURE_STATION_OFFSETS_M
+        ]
+        stapler_tissue_detected_wound_axis = (
+            "x" if wound_axis == 0 else "y"
+        )
+        stapler_tissue_detected_source_gap_mm = (
+            detected_gap_m * 1000.0
+        )
+        stapler_tissue_default_positions = (
+            stapler_tissue_default_state[..., :3].clone()
+        )
+        stapler_tissue_base_targets = torch.cat(
+            target_parts,
+            dim=1,
+        )
+        stapler_tissue_base_targets[..., :3] = (
+            stapler_tissue_default_positions
+        )
+        stapler_tissue_base_targets[..., 3] = 1.0
+        default_positions = stapler_tissue_default_positions[0]
+        closure_center_y = stapler_tissue_wound_center
+        lateral_distance = torch.abs(
+            default_positions[:, stapler_tissue_wound_axis]
+            - closure_center_y
+        )
+        outer_anchor_threshold = torch.quantile(
+            lateral_distance,
+            0.60,
+        )
+        outer_anchor_mask = lateral_distance >= outer_anchor_threshold
+        stapler_tissue_base_targets[
+            0,
+            outer_anchor_mask,
+            :3,
+        ] = default_positions[outer_anchor_mask]
+        stapler_tissue_base_targets[
+            0,
+            outer_anchor_mask,
+            3,
+        ] = 0.0
+        stapler_tissue_outer_anchor_count = int(
+            outer_anchor_mask.sum().item()
+        )
+        for station_index, target_position_m in enumerate(
+            stapler_closure_targets_m
+        ):
+            tissue_station_coordinate = (
+                stapler_tissue_station_longitudinal_coordinates[
+                    station_index
+                ]
+            )
+            longitudinal_mask = (
+                torch.abs(
+                    default_positions[
+                        :,
+                        stapler_tissue_longitudinal_axis,
+                    ]
+                    - tissue_station_coordinate
+                )
+                <= STAPLER_TISSUE_STATION_HALF_WIDTH_M
+            )
+            left_flap = (
+                default_positions[:, stapler_tissue_wound_axis]
+                < closure_center_y
+            )
+            right_flap = (
+                default_positions[:, stapler_tissue_wound_axis]
+                > closure_center_y
+            )
+            left_candidates = longitudinal_mask & left_flap
+            right_candidates = longitudinal_mask & right_flap
+            minimum_station_candidates = 2
+            if (
+                int(left_candidates.sum().item())
+                < minimum_station_candidates
+            ):
+                left_flap_indices = torch.nonzero(
+                    left_flap,
+                    as_tuple=False,
+                ).flatten()
+                nearest_left_longitudinal = left_flap_indices[
+                    torch.argsort(
+                        torch.abs(
+                            default_positions[
+                                left_flap_indices,
+                                stapler_tissue_longitudinal_axis,
+                            ]
+                            - tissue_station_coordinate
+                        )
+                    )[:minimum_station_candidates]
+                ]
+                left_candidates[nearest_left_longitudinal] = True
+            if (
+                int(right_candidates.sum().item())
+                < minimum_station_candidates
+            ):
+                right_flap_indices = torch.nonzero(
+                    right_flap,
+                    as_tuple=False,
+                ).flatten()
+                nearest_right_longitudinal = right_flap_indices[
+                    torch.argsort(
+                        torch.abs(
+                            default_positions[
+                                right_flap_indices,
+                                stapler_tissue_longitudinal_axis,
+                            ]
+                            - tissue_station_coordinate
+                        )
+                    )[:minimum_station_candidates]
+                ]
+                right_candidates[
+                    nearest_right_longitudinal
+                ] = True
+            if (
+                not bool(left_candidates.any())
+                or not bool(right_candidates.any())
+            ):
+                raise RuntimeError(
+                    "The stapler FEM tissue is missing a flap at closure "
+                    f"station x={target_position_m[0]:.6f}"
+                )
+            left_inner = torch.max(
+                default_positions[
+                    left_candidates,
+                    stapler_tissue_wound_axis,
+                ]
+            )
+            right_inner = torch.min(
+                default_positions[
+                    right_candidates,
+                    stapler_tissue_wound_axis,
+                ]
+            )
+            left_edge_distance = (
+                left_inner
+                - default_positions[:, stapler_tissue_wound_axis]
+            )
+            right_edge_distance = (
+                default_positions[:, stapler_tissue_wound_axis]
+                - right_inner
+            )
+            left_candidate_indices = torch.nonzero(
+                left_candidates,
+                as_tuple=False,
+            ).flatten()
+            right_candidate_indices = torch.nonzero(
+                right_candidates,
+                as_tuple=False,
+            ).flatten()
+            left_mask = torch.zeros_like(left_candidates)
+            right_mask = torch.zeros_like(right_candidates)
+            nearest_left_indices = left_candidate_indices[
+                torch.argsort(
+                    left_edge_distance[left_candidate_indices]
+                )[:2]
+            ]
+            nearest_right_indices = right_candidate_indices[
+                torch.argsort(
+                    right_edge_distance[right_candidate_indices]
+                )[:2]
+            ]
+            left_mask[nearest_left_indices] = True
+            right_mask[nearest_right_indices] = True
+            if (
+                int(left_mask.sum().item()) < 2
+                or int(right_mask.sum().item()) < 2
+            ):
+                raise RuntimeError(
+                    "The stapler FEM tissue exposes too few wound-edge "
+                    "nodes at a closure station: "
+                    f"target_x={target_position_m[0]:.6f}, "
+                    f"x_extent=({float(default_positions[:, 0].min().item()):.6f},"
+                    f"{float(default_positions[:, 0].max().item()):.6f}), "
+                    f"y_extent=({float(default_positions[:, 1].min().item()):.6f},"
+                    f"{float(default_positions[:, 1].max().item()):.6f}), "
+                    f"x_q=({float(torch.quantile(default_positions[:, 0], 0.05).item()):.6f},"
+                    f"{float(torch.quantile(default_positions[:, 0], 0.50).item()):.6f},"
+                    f"{float(torch.quantile(default_positions[:, 0], 0.95).item()):.6f}), "
+                    f"y_q=({float(torch.quantile(default_positions[:, 1], 0.05).item()):.6f},"
+                    f"{float(torch.quantile(default_positions[:, 1], 0.50).item()):.6f},"
+                    f"{float(torch.quantile(default_positions[:, 1], 0.95).item()):.6f}), "
+                    f"left_candidates={int(left_candidates.sum().item())}, "
+                    f"right_candidates={int(right_candidates.sum().item())}, "
+                    f"left={int(left_mask.sum().item())}, "
+                    f"right={int(right_mask.sum().item())}"
+                )
+            stapler_tissue_initial_gaps_mm.append(
+                float((right_inner - left_inner).item() * 1000.0)
+            )
+            station_closed_positions = default_positions.clone()
+            target_half_gap = STAPLER_TISSUE_TARGET_GAP_M / 2.0
+            full_capture_distance = 0.0020
+            blend_span = max(
+                1.0e-6,
+                STAPLER_TISSUE_EDGE_CAPTURE_M
+                - full_capture_distance,
+            )
+            left_capture_weights = torch.clamp(
+                (
+                    STAPLER_TISSUE_EDGE_CAPTURE_M
+                    - left_edge_distance
+                )
+                / blend_span,
+                0.0,
+                1.0,
+            )
+            right_capture_weights = torch.clamp(
+                (
+                    STAPLER_TISSUE_EDGE_CAPTURE_M
+                    - right_edge_distance
+                )
+                / blend_span,
+                0.0,
+                1.0,
+            )
+            left_capture_weights[left_mask] = torch.clamp(
+                left_capture_weights[left_mask],
+                min=0.25,
+            )
+            right_capture_weights[right_mask] = torch.clamp(
+                right_capture_weights[right_mask],
+                min=0.25,
+            )
+            station_closed_positions[
+                left_mask,
+                stapler_tissue_wound_axis,
+            ] = (
+                default_positions[
+                    left_mask,
+                    stapler_tissue_wound_axis,
+                ]
+                + left_capture_weights[left_mask]
+                * (
+                    closure_center_y
+                    - target_half_gap
+                    - left_inner
+                )
+            )
+            station_closed_positions[
+                right_mask,
+                stapler_tissue_wound_axis,
+            ] = (
+                default_positions[
+                    right_mask,
+                    stapler_tissue_wound_axis,
+                ]
+                + right_capture_weights[right_mask]
+                * (
+                    closure_center_y
+                    + target_half_gap
+                    - right_inner
+                )
+            )
+            stapler_tissue_station_masks.append(
+                left_mask | right_mask
+            )
+            stapler_tissue_station_closed_positions.append(
+                station_closed_positions
+            )
+        approximation_root_path = (
+            "/World/envs/env_0/StaplerTissueApproximator"
+        )
+        suture_stage.DefinePrim(approximation_root_path, "Xform")
+        for side, color in (
+            ("Left", (0.16, 0.62, 0.72)),
+            ("Right", (0.16, 0.62, 0.72)),
+        ):
+            paddle_path = (
+                f"{approximation_root_path}/{side}ApproximationFoot"
+            )
+            paddle = UsdGeom.Cube.Define(
+                suture_stage,
+                paddle_path,
+            )
+            paddle.CreateSizeAttr(1.0)
+            paddle.CreateDisplayColorAttr(
+                [Gf.Vec3f(*color)]
+            )
+            xformable = UsdGeom.Xformable(paddle.GetPrim())
+            xformable.ClearXformOpOrder()
+            translate_op = xformable.AddTranslateOp(
+                UsdGeom.XformOp.PrecisionDouble
+            )
+            xformable.AddScaleOp(
+                UsdGeom.XformOp.PrecisionDouble
+            ).Set(Gf.Vec3d(0.0042, 0.0012, 0.0008))
+            stapler_approximation_paddle_translate_ops[
+                side.lower()
+            ] = translate_op
     state = SharedState(
         task=args_cli.task,
         camera_width=interactive_camera_width,
@@ -6556,7 +7205,7 @@ def main() -> None:
         strand_self_collision_ready=strand_self_collision_ready,
         stapler_test_cell={
             "enabled": stapler_test_cell_enabled,
-            "mode": "six_dof_proportional_velocity_fixture",
+            "mode": "fem_preapproximation_and_retained_staple_constraints",
             "cycle_phase": "ready" if stapler_test_cell_enabled else "disabled",
             "cycle_running": False,
             "target_trigger_deg": 0.0,
@@ -6577,8 +7226,51 @@ def main() -> None:
             "partial_stroke_attempts": 0,
             "partial_stroke_passes": 0,
             "tissue_asset_id": "dr-anmar-suturable-tissue",
-            "tissue_runtime": "static_openusd_visual_surface",
-            "closure_model": "guided_formed_staple_placement_proxy",
+            "tissue_runtime": "physx_fem_two_flap_deformable",
+            "closure_model": "preapproximation_then_rigid_staple_fem_retention",
+            "detected_wound_axis": stapler_tissue_detected_wound_axis,
+            "detected_source_gap_mm": round(
+                stapler_tissue_detected_source_gap_mm,
+                4,
+            ),
+            "approximation_duration_s": (
+                STAPLER_TISSUE_APPROXIMATION_DURATION_S
+            ),
+            "approximation_progress_percent": 0.0,
+            "initial_tissue_gap_mm": (
+                round(stapler_tissue_initial_gaps_mm[0], 4)
+                if stapler_tissue_initial_gaps_mm
+                else None
+            ),
+            "tissue_gap_mm": (
+                round(stapler_tissue_initial_gaps_mm[0], 4)
+                if stapler_tissue_initial_gaps_mm
+                else None
+            ),
+            "target_tissue_gap_mm": (
+                STAPLER_TISSUE_TARGET_GAP_M * 1000.0
+            ),
+            "tissue_max_displacement_mm": 0.0,
+            "outer_anchor_node_count": (
+                stapler_tissue_outer_anchor_count
+            ),
+            "retained_attachment_count": 0,
+            "retained_node_count": 0,
+            "retained_verified_count": 0,
+            "retained_station_gaps_mm": {},
+            "retention_state": "open",
+            "staple_rigid_body_mode": (
+                "kinematic_retainer_with_collision"
+            ),
+            "tissue_attachment_mode": (
+                "fem_nodal_staple_leg_constraint"
+            ),
+            "tissue_material": dict(
+                stapler_tissue_material_runtime
+            ),
+            "tissue_episode": dict(
+                stapler_tissue_episode_payload
+            ),
             "station_index": 1,
             "station_count": len(STAPLER_CLOSURE_STATION_OFFSETS_M),
             "station_spacing_mm": STAPLER_CLOSURE_STATION_SPACING_M
@@ -6866,6 +7558,177 @@ def main() -> None:
 
     stapler_placement_longitudinal_m: dict[int, float] = {}
 
+    def stapler_tissue_station_gap_mm(
+        station_index: int,
+    ) -> float | None:
+        if (
+            not stapler_closure_tissues
+            or stapler_tissue_default_positions is None
+            or not stapler_tissue_station_masks
+        ):
+            return None
+        bounded_index = max(
+            0,
+            min(
+                len(stapler_tissue_station_masks) - 1,
+                int(station_index),
+            ),
+        )
+        current_positions = torch.cat(
+            [
+                getattr(
+                    tissue_flap.data.nodal_pos_w,
+                    "torch",
+                    tissue_flap.data.nodal_pos_w,
+                )
+                for tissue_flap in stapler_closure_tissues
+            ],
+            dim=1,
+        )[0]
+        default_positions = stapler_tissue_default_positions[0]
+        station_mask = stapler_tissue_station_masks[bounded_index]
+        closure_center_y = stapler_tissue_wound_center
+        left_mask = station_mask & (
+            default_positions[:, stapler_tissue_wound_axis]
+            < closure_center_y
+        )
+        right_mask = station_mask & (
+            default_positions[:, stapler_tissue_wound_axis]
+            > closure_center_y
+        )
+        if not bool(left_mask.any()) or not bool(right_mask.any()):
+            return None
+        left_edge = torch.max(
+            current_positions[left_mask, stapler_tissue_wound_axis]
+        )
+        right_edge = torch.min(
+            current_positions[right_mask, stapler_tissue_wound_axis]
+        )
+        return max(
+            0.0,
+            float((right_edge - left_edge).item() * 1000.0),
+        )
+
+    def write_stapler_tissue_constraints(
+        approximation_progress: float,
+    ) -> None:
+        nonlocal stapler_tissue_approximation_progress
+
+        if (
+            not stapler_closure_tissues
+            or stapler_tissue_base_targets is None
+            or stapler_tissue_default_positions is None
+        ):
+            return
+        progress = max(
+            0.0,
+            min(1.0, float(approximation_progress)),
+        )
+        targets = stapler_tissue_base_targets.clone()
+        default_positions = stapler_tissue_default_positions[0]
+        for retained_index in sorted(
+            stapler_closed_station_indices
+        ):
+            retained_mask = stapler_tissue_station_masks[
+                retained_index
+            ]
+            targets[0, retained_mask, :3] = (
+                stapler_tissue_station_closed_positions[
+                    retained_index
+                ][retained_mask]
+            )
+            targets[0, retained_mask, 3] = 0.0
+        if (
+            stapler_active_station_index
+            not in stapler_closed_station_indices
+            and progress > 0.0
+        ):
+            active_mask = stapler_tissue_station_masks[
+                stapler_active_station_index
+            ]
+            closed_positions = (
+                stapler_tissue_station_closed_positions[
+                    stapler_active_station_index
+                ]
+            )
+            targets[0, active_mask, :3] = (
+                default_positions[active_mask]
+                + progress
+                * (
+                    closed_positions[active_mask]
+                    - default_positions[active_mask]
+                )
+            )
+            targets[0, active_mask, 3] = 0.0
+        for tissue_flap, node_slice in zip(
+            stapler_closure_tissues,
+            stapler_tissue_node_slices,
+            strict=True,
+        ):
+            tissue_flap.write_nodal_kinematic_target_to_sim(
+                targets[:, node_slice, :]
+            )
+            tissue_flap.write_data_to_sim()
+        paddle_open_offset_m = 0.0062
+        paddle_closed_offset_m = 0.0023
+        paddle_offset_m = (
+            paddle_open_offset_m
+            + progress
+            * (
+                paddle_closed_offset_m
+                - paddle_open_offset_m
+            )
+        )
+        paddle_x_m = stapler_closure_targets_m[
+            stapler_active_station_index
+        ][0]
+        for side, direction in (("left", -1.0), ("right", 1.0)):
+            translate_op = (
+                stapler_approximation_paddle_translate_ops.get(side)
+            )
+            if translate_op is not None:
+                translate_op.Set(
+                    Gf.Vec3d(
+                        paddle_x_m,
+                        direction * paddle_offset_m,
+                        0.0590,
+                    )
+                )
+        stapler_tissue_approximation_progress = progress
+
+    def reset_stapler_tissue_physics() -> None:
+        nonlocal stapler_tissue_approximation_progress
+        nonlocal stapler_tissue_max_displacement_mm
+
+        if (
+            not stapler_closure_tissues
+            or stapler_tissue_default_state is None
+            or stapler_tissue_base_targets is None
+        ):
+            return
+        for (
+            tissue_flap,
+            flap_default_state,
+            node_slice,
+        ) in zip(
+            stapler_closure_tissues,
+            stapler_tissue_default_states,
+            stapler_tissue_node_slices,
+            strict=True,
+        ):
+            tissue_flap.write_nodal_state_to_sim(
+                flap_default_state
+            )
+            tissue_flap.write_nodal_kinematic_target_to_sim(
+                stapler_tissue_base_targets[:, node_slice, :]
+            )
+            tissue_flap.write_data_to_sim()
+        stapler_tissue_approximation_progress = 0.0
+        stapler_tissue_max_displacement_mm = 0.0
+        write_stapler_tissue_constraints(0.0)
+
+    reset_stapler_tissue_physics()
+
     def stapler_closure_payload() -> dict[str, Any]:
         spacing_errors = spacing_errors_m(
             tuple(stapler_placement_longitudinal_m.values()),
@@ -6875,6 +7738,53 @@ def main() -> None:
         closed_count = len(stapler_closed_station_indices)
         station_ready = (
             time.monotonic() >= stapler_station_settle_until
+        )
+        tissue_gap_mm = stapler_tissue_station_gap_mm(
+            stapler_active_station_index
+        )
+        retained_mask = None
+        if stapler_tissue_station_masks:
+            retained_mask = torch.zeros_like(
+                stapler_tissue_station_masks[0],
+                dtype=torch.bool,
+            )
+            for retained_index in stapler_closed_station_indices:
+                retained_mask |= stapler_tissue_station_masks[
+                    retained_index
+                ]
+        retained_node_count = (
+            int(retained_mask.sum().item())
+            if retained_mask is not None
+            else 0
+        )
+        current_station_retained = (
+            stapler_active_station_index
+            in stapler_closed_station_indices
+        )
+        retained_station_gaps_mm = {
+            retained_index + 1: stapler_tissue_station_gap_mm(
+                retained_index
+            )
+            for retained_index in sorted(
+                stapler_closed_station_indices
+            )
+        }
+        retained_gap_limit_mm = (
+            STAPLER_TISSUE_TARGET_GAP_M * 1000.0 + 0.25
+        )
+        retained_verified_count = sum(
+            gap_mm is not None
+            and gap_mm <= retained_gap_limit_mm
+            for gap_mm in retained_station_gaps_mm.values()
+        )
+        retention_state = (
+            "retained_complete"
+            if closed_count == station_count
+            else "retained"
+            if current_station_retained
+            else "approximating"
+            if stapler_tissue_approximation_progress > 0.0
+            else "open"
         )
         return {
             "station_index": stapler_active_station_index + 1,
@@ -6900,6 +7810,56 @@ def main() -> None:
                 2,
             ),
             "closure_complete": closed_count == station_count,
+            "approximation_progress_percent": round(
+                stapler_tissue_approximation_progress * 100.0,
+                2,
+            ),
+            "initial_tissue_gap_mm": (
+                round(
+                    stapler_tissue_initial_gaps_mm[
+                        stapler_active_station_index
+                    ],
+                    4,
+                )
+                if stapler_tissue_initial_gaps_mm
+                else None
+            ),
+            "tissue_gap_mm": (
+                round(tissue_gap_mm, 4)
+                if tissue_gap_mm is not None
+                else None
+            ),
+            "target_tissue_gap_mm": (
+                STAPLER_TISSUE_TARGET_GAP_M * 1000.0
+            ),
+            "detected_wound_axis": stapler_tissue_detected_wound_axis,
+            "detected_source_gap_mm": round(
+                stapler_tissue_detected_source_gap_mm,
+                4,
+            ),
+            "tissue_max_displacement_mm": round(
+                stapler_tissue_max_displacement_mm,
+                4,
+            ),
+            "retained_attachment_count": closed_count,
+            "retained_node_count": retained_node_count,
+            "retained_verified_count": retained_verified_count,
+            "retained_station_gaps_mm": {
+                str(station): (
+                    round(gap_mm, 4)
+                    if gap_mm is not None
+                    else None
+                )
+                for station, gap_mm
+                in retained_station_gaps_mm.items()
+            },
+            "retention_state": retention_state,
+            "retention_verified": bool(
+                current_station_retained
+                and tissue_gap_mm is not None
+                and tissue_gap_mm
+                <= STAPLER_TISSUE_TARGET_GAP_M * 1000.0 + 0.25
+            ),
             "current_target_m": list(
                 stapler_closure_targets_m[stapler_active_station_index]
             ),
@@ -6955,6 +7915,7 @@ def main() -> None:
         stapler_placement_longitudinal_m.clear()
         stapler_last_placement = None
         move_stapler_to_station(0)
+        reset_stapler_tissue_physics()
 
     def record_stapler_placement() -> dict[str, Any]:
         nonlocal stapler_last_placement
@@ -6973,23 +7934,40 @@ def main() -> None:
             translation_m=target_position_m,
             orientation_wxyz=(1.0, 0.0, 0.0, 0.0),
         )
-        # Placement staples are retained as non-dynamic evidence. They are
-        # visual OpenUSD proxies, not penetration or tissue-constraint bodies.
+        # The formed staple remains a kinematic rigid retainer with collision.
+        # Its two FEM attachment bands are driven below through PhysX nodal
+        # constraints. This models post-release retention without pretending
+        # that the current backend simulates puncture or metal plasticity.
+        rigid_body = UsdPhysics.RigidBodyAPI.Apply(staple_prim)
+        rigid_body.CreateRigidBodyEnabledAttr().Set(True)
+        rigid_body.CreateKinematicEnabledAttr().Set(True)
         for descendant in Usd.PrimRange(staple_prim):
-            if descendant.HasAPI(UsdPhysics.RigidBodyAPI):
-                UsdPhysics.RigidBodyAPI(
-                    descendant
-                ).CreateRigidBodyEnabledAttr().Set(False)
             if descendant.HasAPI(UsdPhysics.CollisionAPI):
                 UsdPhysics.CollisionAPI(
                     descendant
-                ).CreateCollisionEnabledAttr().Set(False)
+                ).CreateCollisionEnabledAttr().Set(True)
+        staple_prim.CreateAttribute(
+            "drAnmar:retentionMode",
+            Sdf.ValueTypeNames.String,
+        ).Set("physx_fem_nodal_staple_leg_constraint")
+        staple_prim.CreateAttribute(
+            "drAnmar:rigidRetainer",
+            Sdf.ValueTypeNames.Bool,
+        ).Set(True)
+        staple_prim.CreateAttribute(
+            "drAnmar:clinicalValidation",
+            Sdf.ValueTypeNames.Bool,
+        ).Set(False)
         placement = assess_placement(
             stapler_closure_line,
             target_position_m,
             (0.0, 1.0, 0.0),
         )
+        tissue_gap_at_deployment_mm = (
+            stapler_tissue_station_gap_mm(station_index)
+        )
         stapler_closed_station_indices.add(station_index)
+        write_stapler_tissue_constraints(1.0)
         stapler_placement_longitudinal_m[
             station_index
         ] = placement.longitudinal_m
@@ -7009,7 +7987,19 @@ def main() -> None:
                 4,
             ),
             "within_line_extent": placement.within_line_extent,
-            "representation": "formed_staple_visual_proxy",
+            "tissue_gap_mm_at_deployment": (
+                round(tissue_gap_at_deployment_mm, 4)
+                if tissue_gap_at_deployment_mm is not None
+                else None
+            ),
+            "retained_node_count": int(
+                stapler_tissue_station_masks[station_index]
+                .sum()
+                .item()
+            ),
+            "representation": (
+                "formed_staple_rigid_fem_retainer"
+            ),
         }
         return dict(stapler_last_placement)
 
@@ -7059,6 +8049,7 @@ def main() -> None:
             stapler_last_placement = None
             stapler_fixture_position_w = None
             stapler_fixture_quaternion_w = None
+            reset_stapler_tissue_physics()
         dr_anmar_needle_domain: dict[str, Any] = {}
         if dr_anmar_parametric_needle_enabled:
             dr_anmar_needle_domain = (
@@ -7331,6 +8322,7 @@ def main() -> None:
 
         stapler_target_deg = 0.0
         stapler_cycle_phase = "disabled"
+        stapler_tissue_progress_target = 0.0
         if stapler_test_cell_enabled and stapler_articulation is not None:
             if (
                 stapler_station_request is not None
@@ -7399,10 +8391,28 @@ def main() -> None:
                         ].item()
                     )
                 )
-                if stapler_cycle_threshold_at is None:
+                approximation_fraction = min(
+                    1.0,
+                    cycle_elapsed_s
+                    / STAPLER_TISSUE_APPROXIMATION_DURATION_S,
+                )
+                stapler_tissue_progress_target = (
+                    approximation_fraction
+                    * approximation_fraction
+                    * (3.0 - 2.0 * approximation_fraction)
+                )
+                press_elapsed_s = max(
+                    0.0,
+                    cycle_elapsed_s
+                    - STAPLER_TISSUE_APPROXIMATION_DURATION_S,
+                )
+                if approximation_fraction < 1.0:
+                    stapler_cycle_phase = "approximate_tissue"
+                    stapler_target_deg = 0.0
+                elif stapler_cycle_threshold_at is None:
                     stapler_target_deg = min(
                         TRIGGER_LIMIT_DEG,
-                        TRIGGER_LIMIT_DEG * cycle_elapsed_s,
+                        TRIGGER_LIMIT_DEG * press_elapsed_s,
                     )
                     stapler_cycle_phase = (
                         "press"
@@ -7442,6 +8452,7 @@ def main() -> None:
                         stapler_cycle_threshold_at = None
                         stapler_cycle_release_started_at = None
                         stapler_cycle_count += 1
+                        stapler_tissue_progress_target = 0.0
                         if stapler_pending_advance:
                             open_station_indices = [
                                 index
@@ -7468,6 +8479,11 @@ def main() -> None:
                     else "manual"
                 )
                 stapler_target_deg = stapler_manual_target_deg
+                stapler_tissue_progress_target = 0.0
+
+            write_stapler_tissue_constraints(
+                stapler_tissue_progress_target
+            )
 
             stapler_targets = synchronized_joint_targets_deg(
                 stapler_target_deg
@@ -8102,6 +9118,35 @@ def main() -> None:
                 )
                 * 1000.0
             )
+            if (
+                stapler_closure_tissues
+                and stapler_tissue_default_positions is not None
+            ):
+                tissue_positions = torch.cat(
+                    [
+                        getattr(
+                            tissue_flap.data.nodal_pos_w,
+                            "torch",
+                            tissue_flap.data.nodal_pos_w,
+                        )
+                        for tissue_flap in stapler_closure_tissues
+                    ],
+                    dim=1,
+                )
+                current_tissue_displacement_mm = float(
+                    torch.linalg.vector_norm(
+                        tissue_positions
+                        - stapler_tissue_default_positions,
+                        dim=-1,
+                    )
+                    .max()
+                    .item()
+                    * 1000.0
+                )
+                stapler_tissue_max_displacement_mm = max(
+                    stapler_tissue_max_displacement_mm,
+                    current_tissue_displacement_mm,
+                )
             fixture_translation_error_mm = 0.0
             fixture_rotation_error_deg = 0.0
             if (
@@ -8335,11 +9380,12 @@ def main() -> None:
                         == len(STAPLER_CLOSURE_STATION_OFFSETS_M)
                     )
                     state.coaching_cue = (
-                        "All seven guided placement stations are complete. "
-                        "Review the closure evidence or reset to repeat."
+                        "All seven rigid staples are retaining the approximated "
+                        "FEM tissue. Review the closure evidence or reset."
                         if closure_complete
-                        else "Placement recorded on the Dr.Anmar tissue. "
-                        "The fixture will advance after release."
+                        else "The rigid staple is retaining both FEM tissue "
+                        "attachment bands. The fixture will advance after "
+                        "release."
                     )
         if (
             skin_adhesive_enabled
