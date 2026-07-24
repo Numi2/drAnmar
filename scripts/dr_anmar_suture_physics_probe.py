@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 from pathlib import Path
 
@@ -21,6 +22,172 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--asset", type=Path, required=True)
 parser.add_argument("--steps", type=int, default=600)
 parser.add_argument("--output", type=Path)
+parser.add_argument(
+    "--physics-dt",
+    type=float,
+    default=0.0005,
+    help="Diagnostic-capable physics timestep; the canonical probe uses 0.5 ms.",
+)
+parser.add_argument(
+    "--friction-offset-threshold",
+    type=float,
+    default=0.04,
+    help="PhysX friction-patch offset threshold in metres.",
+)
+parser.add_argument(
+    "--friction-correlation-distance",
+    type=float,
+    default=0.025,
+    help="PhysX friction-patch correlation distance in metres.",
+)
+parser.add_argument(
+    "--bounce-threshold-velocity",
+    type=float,
+    default=0.5,
+    help="PhysX restitution threshold velocity in metres per second.",
+)
+parser.add_argument(
+    "--axial-drive-stiffness-scale",
+    type=float,
+    default=1.0,
+    help="Diagnostic-only multiplier applied to composed axial joint-drive stiffness.",
+)
+parser.add_argument(
+    "--diagnostic-disable-collisions",
+    action="store_true",
+    help="Disable every collision shape before reset to isolate joint stability.",
+)
+parser.add_argument(
+    "--diagnostic-disable-joints",
+    action="store_true",
+    help="Disable every physics joint before reset to isolate contact stability.",
+)
+parser.add_argument(
+    "--diagnostic-filter-needle-exit-pairs",
+    action="store_true",
+    help="Filter needle contact with the swage interface and first suture segment.",
+)
+parser.add_argument(
+    "--diagnostic-filter-adjacent-colliders",
+    action="store_true",
+    help="Reapply adjacent strand filtering directly to composed collision prims.",
+)
+parser.add_argument(
+    "--diagnostic-disable-even-segment-collisions",
+    action="store_true",
+    help="Disable even-numbered segment colliders to remove adjacent overlap.",
+)
+parser.add_argument(
+    "--diagnostic-disable-hybrid-ccd",
+    action="store_true",
+    help="Disable sweep and speculative CCD on rigid bodies before reset.",
+)
+parser.add_argument(
+    "--diagnostic-collision-radius-scale",
+    type=float,
+    default=1.0,
+    help="Diagnostic-only multiplier applied to composed capsule radii.",
+)
+parser.add_argument(
+    "--diagnostic-contact-offset-scale",
+    type=float,
+    default=1.0,
+    help="Diagnostic-only multiplier applied to composed PhysX contact offsets.",
+)
+parser.add_argument(
+    "--diagnostic-rigid-mass-scale",
+    type=float,
+    default=1.0,
+    help="Diagnostic-only multiplier applied to suture rigid-body mass.",
+)
+parser.add_argument(
+    "--diagnostic-rigid-inertia-scale",
+    type=float,
+    default=1.0,
+    help="Diagnostic-only multiplier applied to suture rigid-body inertia.",
+)
+parser.add_argument(
+    "--diagnostic-only-segment-collider",
+    type=int,
+    default=-1,
+    help="Keep only one segment collider enabled; -1 preserves all colliders.",
+)
+parser.add_argument(
+    "--diagnostic-segment-collider-stride",
+    type=int,
+    default=1,
+    help="Keep every Nth segment collider enabled; 1 preserves all colliders.",
+)
+parser.add_argument(
+    "--diagnostic-compliant-contact-frequency-hz",
+    type=float,
+    default=0.0,
+    help="Enable a critically damped acceleration-spring contact at this frequency.",
+)
+parser.add_argument(
+    "--diagnostic-filter-all-suture-self-collision",
+    action="store_true",
+    help="Filter every collision pair within the composed suture hierarchy.",
+)
+parser.add_argument(
+    "--diagnostic-disable-ground-collision",
+    action="store_true",
+    help="Disable only the probe ground collider before reset.",
+)
+parser.add_argument(
+    "--diagnostic-release-self-filter-after-warmup",
+    action="store_true",
+    help="Remove the diagnostic self-collision group after filtered warmup.",
+)
+parser.add_argument(
+    "--diagnostic-self-filter-warmup-steps",
+    type=int,
+    default=0,
+    help="Filtered physics steps before releasing diagnostic self-collision.",
+)
+parser.add_argument(
+    "--diagnostic-self-filter-neighbor-span",
+    type=int,
+    default=1,
+    help="Filter contacts within this many segment indices along the strand.",
+)
+parser.add_argument(
+    "--diagnostic-collision-group-neighbor-span",
+    type=int,
+    default=0,
+    help="Filter local strand neighbors with per-body USD collision groups; zero disables it.",
+)
+parser.add_argument(
+    "--diagnostic-trim-capsule-end-overlap",
+    action="store_true",
+    help="Trim capsule cylindrical height so adjacent strand colliders do not pre-penetrate.",
+)
+parser.add_argument(
+    "--diagnostic-capture-contacts",
+    action="store_true",
+    help="Capture a bounded sample of PhysX contact pairs for root-cause analysis.",
+)
+parser.add_argument(
+    "--diagnostic-world-length-scale",
+    type=float,
+    default=1.0,
+    help="Represent one metre with this many stage units while preserving physical scale.",
+)
+parser.add_argument(
+    "--diagnostic-overlap-distant-segments",
+    action="store_true",
+    help="Teleport the first and last segments together after reset to test restored self-contact.",
+)
+parser.add_argument(
+    "--diagnostic-enable-collisions-after-reset",
+    action="store_true",
+    help="Re-enable colliders after a collision-free reset and flush the supported USD change.",
+)
+parser.add_argument(
+    "--diagnostic-articulation",
+    action="store_true",
+    help="Test a fixed-base, self-colliding articulation with locked linear D6 axes.",
+)
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 app_launcher = AppLauncher(args)
@@ -31,12 +198,14 @@ import numpy as np  # noqa: E402
 
 import omni.usd  # noqa: E402
 from isaacsim.core.simulation_manager import SimulationManager  # noqa: E402
-from pxr import Gf, Usd, UsdGeom, UsdPhysics  # noqa: E402
+from omni.physx import get_physx_simulation_interface  # noqa: E402
+from pxr import Gf, PhysicsSchemaTools, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics  # noqa: E402
 
 from isaaclab.sim import PhysxCfg, SimulationCfg, SimulationContext  # noqa: E402
 
 SEMANTIC_SCHEMA = "SemanticsLabelsAPI:wikidata_qcode"
 SEMANTIC_LABEL_ATTRIBUTE = "semantics:labels:wikidata_qcode"
+GPU_MAX_RIGID_PATCH_COUNT = 2**17
 
 
 def rotate_xyzw(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
@@ -90,9 +259,655 @@ def nearest_semantic_qcodes(prim: Usd.Prim) -> list[str] | None:
     return None
 
 
+def apply_diagnostic_overrides(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    disable_collisions: bool,
+    disable_joints: bool,
+    filter_needle_exit_pairs: bool,
+    filter_adjacent_colliders: bool,
+    disable_even_segment_collisions: bool,
+    disable_hybrid_ccd: bool,
+    collision_radius_scale: float,
+    contact_offset_scale: float,
+) -> tuple[int, int, int, int, int, int, int, int]:
+    """Apply explicitly noncanonical isolation controls before PhysX starts."""
+
+    disabled_collision_count = 0
+    disabled_joint_count = 0
+    filtered_needle_exit_pair_count = 0
+    filtered_adjacent_collider_pair_count = 0
+    disabled_even_segment_collision_count = 0
+    disabled_hybrid_ccd_body_count = 0
+    scaled_collision_capsule_count = 0
+    scaled_contact_offset_count = 0
+    if disable_collisions:
+        for prim in stage.Traverse():
+            collision_enabled_attribute = prim.GetAttribute("physics:collisionEnabled")
+            if not collision_enabled_attribute.IsValid():
+                continue
+            collision_enabled_attribute.Set(False)
+            disabled_collision_count += 1
+    if disable_joints:
+        for prim in stage.Traverse():
+            if not prim.IsA(UsdPhysics.Joint):
+                continue
+            UsdPhysics.Joint(prim).CreateJointEnabledAttr(False)
+            disabled_joint_count += 1
+    if filter_needle_exit_pairs:
+        needle_prim = stage.GetPrimAtPath(f"{root_path}/Needle")
+        filtered_pairs = UsdPhysics.FilteredPairsAPI.Apply(needle_prim).CreateFilteredPairsRel()
+        for target in (
+            f"{root_path}/Suture/NeedleInterface",
+            f"{root_path}/Suture/Segments/S0000",
+        ):
+            filtered_pairs.AddTarget(Sdf.Path(target))
+            filtered_needle_exit_pair_count += 1
+    if filter_adjacent_colliders:
+        collision_paths = [
+            f"{root_path}/Suture/NeedleInterface/Collision",
+            *(f"{root_path}/Suture/Segments/S{index:04d}/Collision" for index in range(360)),
+        ]
+        if not stage.GetPrimAtPath(collision_paths[0]).IsValid():
+            collision_paths = [
+                f"{root_path}/NeedleInterface/Collision",
+                *(f"{root_path}/Segments/S{index:04d}/Collision" for index in range(360)),
+            ]
+        for previous_path, current_path in zip(collision_paths, collision_paths[1:]):
+            current_prim = stage.GetPrimAtPath(current_path)
+            UsdPhysics.FilteredPairsAPI.Apply(current_prim).CreateFilteredPairsRel().AddTarget(Sdf.Path(previous_path))
+            filtered_adjacent_collider_pair_count += 1
+    if disable_even_segment_collisions:
+        segment_parent = f"{root_path}/Suture/Segments"
+        if not stage.GetPrimAtPath(f"{segment_parent}/S0000").IsValid():
+            segment_parent = f"{root_path}/Segments"
+        for index in range(0, 360, 2):
+            stage.GetPrimAtPath(f"{segment_parent}/S{index:04d}/Collision").GetAttribute(
+                "physics:collisionEnabled"
+            ).Set(False)
+            disabled_even_segment_collision_count += 1
+    if disable_hybrid_ccd:
+        for prim in stage.Traverse():
+            speculative_attribute = prim.GetAttribute("physxRigidBody:enableSpeculativeCCD")
+            sweep_attribute = prim.GetAttribute("physxRigidBody:enableCCD")
+            if not speculative_attribute.IsValid() and not sweep_attribute.IsValid():
+                continue
+            if speculative_attribute.IsValid():
+                speculative_attribute.Set(False)
+            if sweep_attribute.IsValid():
+                sweep_attribute.Set(False)
+            disabled_hybrid_ccd_body_count += 1
+    if not math.isclose(collision_radius_scale, 1.0, rel_tol=0.0, abs_tol=0.0):
+        for prim in stage.Traverse():
+            if prim.GetTypeName() != "Capsule":
+                continue
+            radius_attribute = UsdGeom.Capsule(prim).GetRadiusAttr()
+            radius_attribute.Set(float(radius_attribute.Get()) * collision_radius_scale)
+            scaled_collision_capsule_count += 1
+    if not math.isclose(contact_offset_scale, 1.0, rel_tol=0.0, abs_tol=0.0):
+        for prim in stage.Traverse():
+            contact_offset_attribute = prim.GetAttribute("physxCollision:contactOffset")
+            if not contact_offset_attribute.IsValid():
+                continue
+            contact_offset_attribute.Set(float(contact_offset_attribute.Get()) * contact_offset_scale)
+            scaled_contact_offset_count += 1
+    return (
+        disabled_collision_count,
+        disabled_joint_count,
+        filtered_needle_exit_pair_count,
+        filtered_adjacent_collider_pair_count,
+        disabled_even_segment_collision_count,
+        disabled_hybrid_ccd_body_count,
+        scaled_collision_capsule_count,
+        scaled_contact_offset_count,
+    )
+
+
+def authored_swage_pose(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    swage_anchor_m: tuple[float, float, float],
+) -> tuple[list[float] | None, list[float] | None, list[float] | None, float | None]:
+    """Return the composed pre-PhysX needle and swage positions."""
+
+    if not assembly:
+        return None, None, None, None
+    xform_cache = UsdGeom.XformCache()
+    needle_transform = xform_cache.GetLocalToWorldTransform(stage.GetPrimAtPath(f"{root_path}/Needle"))
+    interface_transform = xform_cache.GetLocalToWorldTransform(
+        stage.GetPrimAtPath(f"{root_path}/Suture/NeedleInterface")
+    )
+    needle_position = np.asarray(
+        needle_transform.ExtractTranslation(),
+        dtype=np.float64,
+    )
+    needle_anchor = np.asarray(
+        needle_transform.Transform(Gf.Vec3d(*swage_anchor_m)),
+        dtype=np.float64,
+    )
+    interface_position = np.asarray(
+        interface_transform.ExtractTranslation(),
+        dtype=np.float64,
+    )
+    return (
+        needle_position.tolist(),
+        needle_anchor.tolist(),
+        interface_position.tolist(),
+        float(np.linalg.norm(needle_anchor - interface_position)),
+    )
+
+
+def scale_authored_swage_pose_to_meters(
+    needle_position: list[float] | None,
+    needle_anchor_position: list[float] | None,
+    interface_position: list[float] | None,
+    swage_distance: float | None,
+    *,
+    world_length_scale: float,
+) -> tuple[list[float] | None, list[float] | None, list[float] | None, float | None]:
+    """Convert stage-unit swage measurements to physical metres."""
+
+    if needle_position is None:
+        return None, None, None, None
+    return (
+        (np.asarray(needle_position) / world_length_scale).tolist(),
+        (np.asarray(needle_anchor_position) / world_length_scale).tolist(),
+        (np.asarray(interface_position) / world_length_scale).tolist(),
+        float(swage_distance / world_length_scale),
+    )
+
+
+def apply_suture_mass_conditioning(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    mass_scale: float,
+    inertia_scale: float,
+) -> int:
+    """Apply diagnostic solver mass conditioning without changing source layers."""
+
+    if math.isclose(mass_scale, 1.0, rel_tol=0.0, abs_tol=0.0) and math.isclose(
+        inertia_scale,
+        1.0,
+        rel_tol=0.0,
+        abs_tol=0.0,
+    ):
+        return 0
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    body_paths = [
+        f"{suture_root}/NeedleInterface",
+        *(f"{suture_root}/Segments/S{index:04d}" for index in range(360)),
+    ]
+    for body_path in body_paths:
+        prim = stage.GetPrimAtPath(body_path)
+        mass_attribute = prim.GetAttribute("physics:mass")
+        inertia_attribute = prim.GetAttribute("physics:diagonalInertia")
+        mass_attribute.Set(float(mass_attribute.Get()) * mass_scale)
+        inertia = inertia_attribute.Get()
+        inertia_attribute.Set(Gf.Vec3f(*(float(component) * inertia_scale for component in inertia)))
+    return len(body_paths)
+
+
+def apply_segment_collision_subset(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    segment_index: int,
+    segment_stride: int,
+) -> int:
+    """Disable suture colliders outside a diagnostic index subset."""
+
+    if segment_index < 0 and segment_stride == 1:
+        return 0
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    disabled_count = 0
+    stage.GetPrimAtPath(f"{suture_root}/NeedleInterface/Collision").GetAttribute("physics:collisionEnabled").Set(False)
+    disabled_count += 1
+    for index in range(360):
+        enabled = index == segment_index if segment_index >= 0 else index % segment_stride == 0
+        if enabled:
+            continue
+        stage.GetPrimAtPath(f"{suture_root}/Segments/S{index:04d}/Collision").GetAttribute(
+            "physics:collisionEnabled"
+        ).Set(False)
+        disabled_count += 1
+    return disabled_count
+
+
+def apply_compliant_contact(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    frequency_hz: float,
+) -> tuple[int, float, float]:
+    """Apply diagnostic mass-independent compliant contact to suture materials."""
+
+    if frequency_hz == 0.0:
+        return 0, 0.0, 0.0
+    angular_frequency = 2.0 * math.pi * frequency_hz
+    stiffness = angular_frequency * angular_frequency
+    damping = 2.0 * angular_frequency
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    material_paths = [
+        f"{suture_root}/Materials/SutureMaterial",
+        f"{suture_root}/Materials/SwageSteel",
+    ]
+    for material_path in material_paths:
+        prim = stage.GetPrimAtPath(material_path)
+        prim.CreateAttribute(
+            "physxMaterial:compliantContactStiffness",
+            Sdf.ValueTypeNames.Float,
+        ).Set(stiffness)
+        prim.CreateAttribute(
+            "physxMaterial:compliantContactDamping",
+            Sdf.ValueTypeNames.Float,
+        ).Set(damping)
+        prim.CreateAttribute(
+            "physxMaterial:compliantContactAccelerationSpring",
+            Sdf.ValueTypeNames.Bool,
+        ).Set(True)
+    return len(material_paths), stiffness, damping
+
+
+def apply_all_suture_self_filter(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    enabled: bool,
+) -> bool:
+    """Apply a diagnostic collision group that filters its own hierarchy."""
+
+    if not enabled:
+        return False
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    group_path = "/World/DrAnmarSutureSelfCollisionGroup"
+    collision_group = UsdPhysics.CollisionGroup.Define(stage, group_path)
+    collection = Usd.CollectionAPI.Apply(
+        collision_group.GetPrim(),
+        UsdPhysics.Tokens.colliders,
+    )
+    collection.CreateIncludesRel().AddTarget(Sdf.Path(suture_root))
+    collision_group.CreateFilteredGroupsRel().AddTarget(Sdf.Path(group_path))
+    return True
+
+
+def apply_suture_neighbor_filter_span(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    neighbor_span: int,
+) -> int:
+    """Filter a local geodesic neighborhood while preserving distant self-contact."""
+
+    if neighbor_span == 1:
+        return 0
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    interface_path = f"{suture_root}/NeedleInterface"
+    target_count = 0
+    for index in range(360):
+        body_path = f"{suture_root}/Segments/S{index:04d}"
+        lower_index = max(0, index - neighbor_span)
+        targets = [
+            *(f"{suture_root}/Segments/S{previous:04d}" for previous in range(lower_index, index)),
+        ]
+        if index < neighbor_span:
+            targets.insert(0, interface_path)
+        relation = UsdPhysics.FilteredPairsAPI.Apply(stage.GetPrimAtPath(body_path)).CreateFilteredPairsRel()
+        relation.SetTargets([Sdf.Path(target) for target in targets])
+        target_count += len(targets)
+    return target_count
+
+
+def apply_suture_collision_group_neighbor_filter(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    neighbor_span: int,
+) -> tuple[int, int, bool | None, bool | None]:
+    """Filter local neighbors using one collision group per collider."""
+
+    if neighbor_span == 0:
+        return 0, 0, None, None
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    body_paths = [
+        f"{suture_root}/NeedleInterface/Collision",
+        *(f"{suture_root}/Segments/S{index:04d}/Collision" for index in range(360)),
+    ]
+    group_root = "/World/DrAnmarSutureCollisionGroups"
+    stage.DefinePrim(group_root, "Scope")
+    collision_groups: list[UsdPhysics.CollisionGroup] = []
+    target_count = 0
+    for index, body_path in enumerate(body_paths):
+        group_path = Sdf.Path(f"{group_root}/G{index:04d}")
+        collision_group = UsdPhysics.CollisionGroup.Define(stage, group_path)
+        collection = Usd.CollectionAPI.Apply(
+            collision_group.GetPrim(),
+            UsdPhysics.Tokens.colliders,
+        )
+        collection.CreateIncludesRel().AddTarget(Sdf.Path(body_path))
+        lower_index = max(0, index - neighbor_span)
+        filtered_groups = [group.GetPath() for group in collision_groups[lower_index:index]]
+        collision_group.CreateFilteredGroupsRel().SetTargets(filtered_groups)
+        target_count += len(filtered_groups)
+        collision_groups.append(collision_group)
+    table = UsdPhysics.CollisionGroup.ComputeCollisionGroupTable(stage)
+    adjacent_filter_valid = all(
+        not table.IsCollisionEnabled(collision_groups[index - 1].GetPath(), collision_groups[index].GetPath())
+        for index in range(1, len(collision_groups))
+    )
+    nonadjacent_enabled = table.IsCollisionEnabled(
+        collision_groups[0].GetPath(),
+        collision_groups[-1].GetPath(),
+    )
+    return len(collision_groups), target_count, adjacent_filter_valid, nonadjacent_enabled
+
+
+def trim_suture_capsule_end_overlap(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    enabled: bool,
+) -> int:
+    """Remove capsule end overlap while keeping the physical collision radius."""
+
+    if not enabled:
+        return 0
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    collision_paths = [
+        f"{suture_root}/NeedleInterface/Collision",
+        *(f"{suture_root}/Segments/S{index:04d}/Collision" for index in range(360)),
+    ]
+    for collision_path in collision_paths:
+        capsule = UsdGeom.Capsule(stage.GetPrimAtPath(collision_path))
+        radius = float(capsule.GetRadiusAttr().Get())
+        cylinder_height = float(capsule.GetHeightAttr().Get())
+        capsule.GetHeightAttr().Set(max(0.0, cylinder_height - 2.0 * radius))
+    return len(collision_paths)
+
+
+def apply_diagnostic_articulation(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    enabled: bool,
+) -> tuple[bool, int]:
+    """Convert the strand to a fixed-base articulation for a stability probe."""
+
+    if not enabled:
+        return False, 0
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    articulation_root = stage.GetPrimAtPath(suture_root)
+    UsdPhysics.ArticulationRootAPI.Apply(articulation_root)
+    PhysxSchema.PhysxArticulationAPI.Apply(articulation_root).CreateEnabledSelfCollisionsAttr(True)
+    interface_path = f"{suture_root}/NeedleInterface"
+    stage.GetPrimAtPath(interface_path).GetAttribute("physics:kinematicEnabled").Set(False)
+    fixed_root_joint = UsdPhysics.FixedJoint.Define(stage, f"{suture_root}/ArticulationRootJoint")
+    fixed_root_joint.CreateBody1Rel().SetTargets([Sdf.Path(interface_path)])
+    joint_root = f"{suture_root}/Joints/"
+    locked_joint_count = 0
+    for prim in stage.Traverse():
+        if prim.GetTypeName() != "PhysicsJoint" or not str(prim.GetPath()).startswith(joint_root):
+            continue
+        prim.GetAttribute("limit:transX:physics:low").Set(1.0)
+        prim.GetAttribute("limit:transX:physics:high").Set(-1.0)
+        locked_joint_count += 1
+    return True, locked_joint_count
+
+
+def enable_suture_contact_capture(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+    enabled: bool,
+) -> tuple[list[tuple[str, str, float | None]], object | None]:
+    """Enable a bounded contact-pair trace without changing canonical runs."""
+
+    records: list[tuple[str, str, float | None]] = []
+    if not enabled:
+        return records, None
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    body_paths = [
+        f"{suture_root}/NeedleInterface",
+        *(f"{suture_root}/Segments/S{index:04d}" for index in range(360)),
+    ]
+    for body_path in body_paths:
+        contact_api = PhysxSchema.PhysxContactReportAPI.Apply(stage.GetPrimAtPath(body_path))
+        contact_api.CreateThresholdAttr(0.0)
+
+    def on_contact_report(contact_headers: object, contact_data: object) -> None:
+        if len(records) >= 4096:
+            return
+        for header in contact_headers:
+            collider0 = str(PhysicsSchemaTools.intToSdfPath(header.collider0))
+            collider1 = str(PhysicsSchemaTools.intToSdfPath(header.collider1))
+            minimum_separation = None
+            if header.num_contact_data:
+                separations = [
+                    float(contact_data[index].separation)
+                    for index in range(
+                        header.contact_data_offset,
+                        header.contact_data_offset + header.num_contact_data,
+                    )
+                ]
+                minimum_separation = min(separations)
+            records.append((collider0, collider1, minimum_separation))
+            if len(records) >= 4096:
+                break
+
+    subscription = get_physx_simulation_interface().subscribe_contact_report_events(on_contact_report)
+    return records, subscription
+
+
+def inspect_suture_filtered_pairs(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+) -> tuple[int, int, list[dict[str, object]]]:
+    """Inspect the composed adjacent-pair collision-filter relationship."""
+
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    entries = [
+        (
+            f"{suture_root}/NeedleInterface",
+            f"{suture_root}/Segments/S0000",
+        ),
+        *(
+            (
+                f"{suture_root}/Segments/S{index:04d}",
+                (f"{suture_root}/NeedleInterface" if index == 0 else f"{suture_root}/Segments/S{index - 1:04d}"),
+            )
+            for index in range(360)
+        ),
+    ]
+    api_count = 0
+    valid_count = 0
+    mismatches: list[dict[str, object]] = []
+    for body_path, expected_target in entries:
+        prim = stage.GetPrimAtPath(body_path)
+        if "PhysicsFilteredPairsAPI" in prim.GetAppliedSchemas():
+            api_count += 1
+        targets = [str(target) for target in prim.GetRelationship("physics:filteredPairs").GetTargets()]
+        if targets == [expected_target]:
+            valid_count += 1
+        elif len(mismatches) < 8:
+            mismatches.append(
+                {
+                    "body": body_path,
+                    "expected": expected_target,
+                    "actual": targets,
+                    "schemas": list(prim.GetAppliedSchemas()),
+                }
+            )
+    return api_count, valid_count, mismatches
+
+
+def inspect_physx_collision_schema(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+) -> tuple[int, list[float]]:
+    """Read contact offsets through the registered PhysX schema bindings."""
+
+    suture_root = f"{root_path}/Suture" if assembly else root_path
+    collision_paths = [
+        f"{suture_root}/NeedleInterface/Collision",
+        *(f"{suture_root}/Segments/S{index:04d}/Collision" for index in range(360)),
+    ]
+    api_count = 0
+    offsets: list[float] = []
+    for collision_path in collision_paths:
+        prim = stage.GetPrimAtPath(collision_path)
+        if prim.HasAPI(PhysxSchema.PhysxCollisionAPI):
+            api_count += 1
+        offset = PhysxSchema.PhysxCollisionAPI(prim).GetContactOffsetAttr().Get()
+        if offset is not None:
+            offsets.append(float(offset))
+    return api_count, [min(offsets), max(offsets)] if offsets else []
+
+
+def authored_segment_positions(
+    stage: Usd.Stage,
+    *,
+    root_path: str,
+    assembly: bool,
+) -> np.ndarray:
+    """Return composed segment origins before the physics scene is initialized."""
+
+    parent = f"{root_path}/Suture/Segments" if assembly else f"{root_path}/Segments"
+    xform_cache = UsdGeom.XformCache()
+    return np.asarray(
+        [
+            xform_cache.GetLocalToWorldTransform(stage.GetPrimAtPath(f"{parent}/S{index:04d}")).ExtractTranslation()
+            for index in range(360)
+        ],
+        dtype=np.float64,
+    )
+
+
+def apply_diagnostic_distant_segment_overlap(
+    segments: object,
+    *,
+    enabled: bool,
+    world_length_scale: float,
+) -> float | None:
+    """Teleport the strand endpoints together and return their initial gap."""
+
+    if not enabled:
+        return None
+    segment_transforms = segments.get_transforms().clone()
+    segment_transforms[359, :3] = segment_transforms[0, :3]
+    segments.set_transforms(segment_transforms)
+    overlapped = segments.get_transforms().cpu().numpy().astype(np.float64)
+    return float(np.linalg.norm(overlapped[359, :3] - overlapped[0, :3]) / world_length_scale)
+
+
+def validate_arguments(parsed_args: argparse.Namespace) -> None:
+    """Reject invalid diagnostic controls before creating an Isaac app scene."""
+
+    if not parsed_args.asset.is_file():
+        raise FileNotFoundError(parsed_args.asset)
+    if not math.isfinite(parsed_args.physics_dt) or parsed_args.physics_dt <= 0.0:
+        raise ValueError("--physics-dt must be finite and positive")
+    if not math.isfinite(parsed_args.diagnostic_world_length_scale) or parsed_args.diagnostic_world_length_scale <= 0.0:
+        raise ValueError("--diagnostic-world-length-scale must be finite and positive")
+    if not math.isfinite(parsed_args.friction_offset_threshold) or parsed_args.friction_offset_threshold <= 0.0:
+        raise ValueError("--friction-offset-threshold must be finite and positive")
+    if not math.isfinite(parsed_args.friction_correlation_distance) or parsed_args.friction_correlation_distance <= 0.0:
+        raise ValueError("--friction-correlation-distance must be finite and positive")
+    if not math.isfinite(parsed_args.bounce_threshold_velocity) or parsed_args.bounce_threshold_velocity < 0.0:
+        raise ValueError("--bounce-threshold-velocity must be finite and non-negative")
+    if not math.isfinite(parsed_args.axial_drive_stiffness_scale) or parsed_args.axial_drive_stiffness_scale < 0.0:
+        raise ValueError("--axial-drive-stiffness-scale must be finite and non-negative")
+    if (
+        not math.isfinite(parsed_args.diagnostic_collision_radius_scale)
+        or not 0.0 < parsed_args.diagnostic_collision_radius_scale <= 1.0
+    ):
+        raise ValueError("--diagnostic-collision-radius-scale must be in (0, 1]")
+    if (
+        not math.isfinite(parsed_args.diagnostic_contact_offset_scale)
+        or not 0.0 < parsed_args.diagnostic_contact_offset_scale <= 1.0
+    ):
+        raise ValueError("--diagnostic-contact-offset-scale must be in (0, 1]")
+    for argument_name, value in (
+        ("--diagnostic-rigid-mass-scale", parsed_args.diagnostic_rigid_mass_scale),
+        ("--diagnostic-rigid-inertia-scale", parsed_args.diagnostic_rigid_inertia_scale),
+    ):
+        if not math.isfinite(value) or value <= 0.0:
+            raise ValueError(f"{argument_name} must be finite and positive")
+    if not -1 <= parsed_args.diagnostic_only_segment_collider < 360:
+        raise ValueError("--diagnostic-only-segment-collider must be -1 or in [0, 359]")
+    if not 1 <= parsed_args.diagnostic_segment_collider_stride <= 360:
+        raise ValueError("--diagnostic-segment-collider-stride must be in [1, 360]")
+    if (
+        not math.isfinite(parsed_args.diagnostic_compliant_contact_frequency_hz)
+        or parsed_args.diagnostic_compliant_contact_frequency_hz < 0.0
+    ):
+        raise ValueError("--diagnostic-compliant-contact-frequency-hz must be finite and non-negative")
+    if parsed_args.diagnostic_self_filter_warmup_steps < 0:
+        raise ValueError("--diagnostic-self-filter-warmup-steps must be non-negative")
+    if not 1 <= parsed_args.diagnostic_self_filter_neighbor_span < 360:
+        raise ValueError("--diagnostic-self-filter-neighbor-span must be in [1, 359]")
+    if not 0 <= parsed_args.diagnostic_collision_group_neighbor_span < 360:
+        raise ValueError("--diagnostic-collision-group-neighbor-span must be in [0, 359]")
+    if parsed_args.diagnostic_release_self_filter_after_warmup:
+        raise ValueError("runtime CollisionGroup removal is undefined in PhysX and is intentionally rejected")
+    if parsed_args.diagnostic_overlap_distant_segments and not parsed_args.diagnostic_disable_joints:
+        raise ValueError("--diagnostic-overlap-distant-segments requires --diagnostic-disable-joints")
+    if parsed_args.diagnostic_enable_collisions_after_reset and not parsed_args.diagnostic_disable_collisions:
+        raise ValueError("--diagnostic-enable-collisions-after-reset requires --diagnostic-disable-collisions")
+    if parsed_args.diagnostic_articulation:
+        raise ValueError("the installed Isaac GPU articulation path is rejected after a CUDA qualification failure")
+
+
+def run_filtered_warmup(
+    sim: SimulationContext,
+    stage: Usd.Stage,
+    parsed_args: argparse.Namespace,
+) -> None:
+    """Run optional isolation warmup and release its temporary collision group."""
+
+    for _ in range(parsed_args.diagnostic_self_filter_warmup_steps):
+        sim.step(render=False)
+    if parsed_args.diagnostic_release_self_filter_after_warmup:
+        stage.RemovePrim("/World/DrAnmarSutureSelfCollisionGroup")
+
+
+def enable_collisions_after_reset(
+    stage: Usd.Stage,
+    *,
+    enabled: bool,
+) -> int:
+    """Re-enable authored collision shapes after a collision-free reset."""
+
+    if not enabled:
+        return 0
+    enabled_count = 0
+    for prim in stage.Traverse():
+        collision_enabled_attribute = prim.GetAttribute("physics:collisionEnabled")
+        if not collision_enabled_attribute.IsValid():
+            continue
+        collision_enabled_attribute.Set(True)
+        enabled_count += 1
+    get_physx_simulation_interface().flush_changes()
+    return enabled_count
+
+
 def main() -> int:
-    if not args.asset.is_file():
-        raise FileNotFoundError(args.asset)
+    validate_arguments(args)
     needle_profile = load_needle_profile()
     suture_profile = load_suture_profile()
     derived_suture = derive_suture(suture_profile)
@@ -105,7 +920,7 @@ def main() -> int:
     expected_needle_mesh = build_needle_mesh(needle_profile)
     sim = SimulationContext(
         SimulationCfg(
-            dt=0.0005,
+            dt=args.physics_dt,
             render_interval=16,
             device=args.device,
             use_fabric=False,
@@ -116,8 +931,11 @@ def main() -> int:
                 min_velocity_iteration_count=2,
                 max_velocity_iteration_count=8,
                 enable_ccd=True,
+                bounce_threshold_velocity=args.bounce_threshold_velocity,
+                friction_offset_threshold=args.friction_offset_threshold,
+                friction_correlation_distance=args.friction_correlation_distance,
                 gpu_max_rigid_contact_count=2**18,
-                gpu_max_rigid_patch_count=2**16,
+                gpu_max_rigid_patch_count=GPU_MAX_RIGID_PATCH_COUNT,
                 gpu_found_lost_pairs_capacity=2**18,
                 gpu_found_lost_aggregate_pairs_capacity=2**18,
                 gpu_total_aggregate_pairs_capacity=2**18,
@@ -128,10 +946,11 @@ def main() -> int:
         )
     )
     stage = omni.usd.get_context().get_stage()
-    UsdGeom.SetStageMetersPerUnit(stage, 1.0)
+    world_length_scale = args.diagnostic_world_length_scale
+    UsdGeom.SetStageMetersPerUnit(stage, 1.0 / world_length_scale)
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.z)
     scene = UsdPhysics.Scene.Get(stage, "/physicsScene")
-    scene.GetGravityMagnitudeAttr().Set(9.81)
+    scene.GetGravityMagnitudeAttr().Set(9.81 * world_length_scale)
 
     root_path = "/World/DrAnmarNeedle"
     root = stage.DefinePrim(root_path, "Xform")
@@ -147,17 +966,181 @@ def main() -> int:
         needle_physics_variant_selection == "physx" and suture_physics_variant_selection == "physx"
     )
     xform = UsdGeom.Xformable(root)
-    xform.AddTranslateOp().Set(Gf.Vec3d(-0.09, 0.0, 0.06))
+    xform.AddTranslateOp().Set(Gf.Vec3d(-0.09 * world_length_scale, 0.0, 0.06 * world_length_scale))
+    if not math.isclose(world_length_scale, 1.0, rel_tol=0.0, abs_tol=0.0):
+        xform.AddScaleOp().Set(Gf.Vec3f(world_length_scale))
 
     ground = UsdGeom.Cube.Define(stage, "/World/Ground")
     ground.CreateSizeAttr(1.0)
-    ground.AddScaleOp().Set(Gf.Vec3f(0.3, 0.2, 0.002))
-    ground.AddTranslateOp().Set(Gf.Vec3d(0.0, 0.0, -0.002))
-    UsdPhysics.CollisionAPI.Apply(ground.GetPrim())
+    ground.AddScaleOp().Set(
+        Gf.Vec3f(
+            0.3 * world_length_scale,
+            0.2 * world_length_scale,
+            0.002 * world_length_scale,
+        )
+    )
+    ground.AddTranslateOp().Set(Gf.Vec3d(0.0, 0.0, -0.002 * world_length_scale))
+    ground_collision_api = UsdPhysics.CollisionAPI.Apply(ground.GetPrim())
+    if args.diagnostic_disable_ground_collision:
+        ground_collision_api.CreateCollisionEnabledAttr(False)
+
+    assembly = stage.GetPrimAtPath(f"{root_path}/Suture/Segments/S0000").IsValid()
+    joint_prefix = f"{root_path}/Suture/Joints/" if assembly else f"{root_path}/Joints/"
+    runtime_axial_drive_stiffnesses: list[float] = []
+    for prim in stage.Traverse():
+        if prim.GetTypeName() != "PhysicsJoint" or not str(prim.GetPath()).startswith(joint_prefix):
+            continue
+        stiffness_attribute = prim.GetAttribute("drive:transX:physics:stiffness")
+        authored_stiffness = stiffness_attribute.Get()
+        if authored_stiffness is None:
+            continue
+        runtime_stiffness = float(authored_stiffness) * args.axial_drive_stiffness_scale
+        stiffness_attribute.Set(runtime_stiffness)
+        runtime_axial_drive_stiffnesses.append(runtime_stiffness)
+
+    (
+        diagnostic_disabled_collision_count,
+        diagnostic_disabled_joint_count,
+        diagnostic_filtered_needle_exit_pair_count,
+        diagnostic_filtered_adjacent_collider_pair_count,
+        diagnostic_disabled_even_segment_collision_count,
+        diagnostic_disabled_hybrid_ccd_body_count,
+        diagnostic_scaled_collision_capsule_count,
+        diagnostic_scaled_contact_offset_count,
+    ) = apply_diagnostic_overrides(
+        stage,
+        root_path=root_path,
+        disable_collisions=args.diagnostic_disable_collisions,
+        disable_joints=args.diagnostic_disable_joints,
+        filter_needle_exit_pairs=args.diagnostic_filter_needle_exit_pairs,
+        filter_adjacent_colliders=args.diagnostic_filter_adjacent_colliders,
+        disable_even_segment_collisions=args.diagnostic_disable_even_segment_collisions,
+        disable_hybrid_ccd=args.diagnostic_disable_hybrid_ccd,
+        collision_radius_scale=args.diagnostic_collision_radius_scale,
+        contact_offset_scale=args.diagnostic_contact_offset_scale,
+    )
+    diagnostic_mass_conditioned_body_count = apply_suture_mass_conditioning(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        mass_scale=args.diagnostic_rigid_mass_scale,
+        inertia_scale=args.diagnostic_rigid_inertia_scale,
+    )
+    diagnostic_disabled_collision_subset_count = apply_segment_collision_subset(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        segment_index=args.diagnostic_only_segment_collider,
+        segment_stride=args.diagnostic_segment_collider_stride,
+    )
+    (
+        diagnostic_compliant_contact_material_count,
+        diagnostic_compliant_contact_stiffness_s2,
+        diagnostic_compliant_contact_damping_s,
+    ) = apply_compliant_contact(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        frequency_hz=args.diagnostic_compliant_contact_frequency_hz,
+    )
+    diagnostic_all_suture_self_filter_applied = apply_all_suture_self_filter(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        enabled=args.diagnostic_filter_all_suture_self_collision,
+    )
+    diagnostic_neighbor_filter_target_count = apply_suture_neighbor_filter_span(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        neighbor_span=args.diagnostic_self_filter_neighbor_span,
+    )
+    (
+        diagnostic_collision_group_count,
+        diagnostic_collision_group_filter_target_count,
+        diagnostic_collision_group_adjacent_filter_valid,
+        diagnostic_collision_group_nonadjacent_enabled,
+    ) = apply_suture_collision_group_neighbor_filter(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        neighbor_span=args.diagnostic_collision_group_neighbor_span,
+    )
+    diagnostic_trimmed_capsule_count = trim_suture_capsule_end_overlap(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        enabled=args.diagnostic_trim_capsule_end_overlap,
+    )
+    (
+        diagnostic_articulation_applied,
+        diagnostic_articulation_locked_joint_count,
+    ) = apply_diagnostic_articulation(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        enabled=args.diagnostic_articulation,
+    )
+    diagnostic_contact_records, diagnostic_contact_subscription = enable_suture_contact_capture(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        enabled=args.diagnostic_capture_contacts,
+    )
+    (
+        composed_suture_filtered_pairs_api_count,
+        composed_suture_filtered_pairs_valid_count,
+        composed_suture_filtered_pair_mismatches,
+    ) = inspect_suture_filtered_pairs(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+    )
+    (
+        registered_physx_collision_api_count,
+        registered_physx_contact_offset_range_m,
+    ) = inspect_physx_collision_schema(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+    )
+    (
+        authored_needle_position_m,
+        authored_needle_anchor_position_m,
+        authored_interface_position_m,
+        authored_swage_distance_m,
+    ) = authored_swage_pose(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+        swage_anchor_m=derived_needle.swage_anchor_m,
+    )
+    (
+        authored_needle_position_m,
+        authored_needle_anchor_position_m,
+        authored_interface_position_m,
+        authored_swage_distance_m,
+    ) = scale_authored_swage_pose_to_meters(
+        authored_needle_position_m,
+        authored_needle_anchor_position_m,
+        authored_interface_position_m,
+        authored_swage_distance_m,
+        world_length_scale=world_length_scale,
+    )
+    authored_segment_positions_m = authored_segment_positions(
+        stage,
+        root_path=root_path,
+        assembly=assembly,
+    )
+    authored_segment_positions_m /= world_length_scale
 
     sim.reset()
+    diagnostic_reenabled_collision_count = enable_collisions_after_reset(
+        stage,
+        enabled=args.diagnostic_enable_collisions_after_reset,
+    )
+    run_filtered_warmup(sim, stage, args)
     physics_view = SimulationManager.get_physics_sim_view()
-    assembly = stage.GetPrimAtPath(f"{root_path}/Suture/Segments/S0000").IsValid()
     root_asset_info = dict(root.GetMetadata("assetInfo") or {})
     root_model_identity_valid = bool(
         root.GetMetadata("kind") == "component"
@@ -217,13 +1200,20 @@ def main() -> int:
         len(semantic_visual_meshes) == (362 if assembly else 361) and not semantic_visual_mesh_failures
     )
     segment_pattern = f"{root_path}/Suture/Segments/S*" if assembly else f"{root_path}/Segments/S*"
-    joint_prefix = f"{root_path}/Suture/Joints/" if assembly else f"{root_path}/Joints/"
     segments = physics_view.create_rigid_body_view(segment_pattern)
     if segments._backend is None or segments.count != 360:
         raise RuntimeError(f"PhysX created {segments.count if segments._backend else 0} of 360 suture bodies")
+    diagnostic_overlap_initial_distance_m = apply_diagnostic_distant_segment_overlap(
+        segments,
+        enabled=args.diagnostic_overlap_distant_segments,
+        world_length_scale=world_length_scale,
+    )
     needle = None
     interface = None
     initial_swage_distance_m = None
+    initial_needle_position_m = None
+    initial_needle_anchor_position_m = None
+    initial_interface_position_m = None
     if assembly:
         needle = physics_view.create_rigid_body_view(f"{root_path}/Needle")
         interface = physics_view.create_rigid_body_view(f"{root_path}/Suture/NeedleInterface")
@@ -231,15 +1221,29 @@ def main() -> int:
             raise RuntimeError("PhysX did not create the needle and swage rigid bodies")
         initial_needle = needle.get_transforms().cpu().numpy().astype(np.float64)[0]
         initial_interface = interface.get_transforms().cpu().numpy().astype(np.float64)[0]
+        initial_needle[:3] /= world_length_scale
+        initial_interface[:3] /= world_length_scale
         initial_anchor = initial_needle[:3] + rotate_xyzw(
             initial_needle[3:7],
             np.asarray(derived_needle.swage_anchor_m, dtype=np.float64),
         )
+        initial_needle_position_m = initial_needle[:3].tolist()
+        initial_needle_anchor_position_m = initial_anchor.tolist()
+        initial_interface_position_m = initial_interface[:3].tolist()
         initial_swage_distance_m = float(np.linalg.norm(initial_anchor - initial_interface[:3]))
     initial = segments.get_transforms().cpu().numpy().astype(np.float64)
+    initial[:, :3] /= world_length_scale
+    post_reset_segment_pose_error_m = np.linalg.norm(
+        initial[:, :3] - authored_segment_positions_m,
+        axis=1,
+    )
     for _ in range(max(1, args.steps)):
         sim.step(render=False)
     final = segments.get_transforms().cpu().numpy().astype(np.float64)
+    final[:, :3] /= world_length_scale
+    diagnostic_overlap_final_distance_m = (
+        float(np.linalg.norm(final[359, :3] - final[0, :3])) if args.diagnostic_overlap_distant_segments else None
+    )
     finite = bool(np.isfinite(final).all())
     free_end_drop = float(initial[-1, 2] - final[-1, 2])
     displacement = np.linalg.norm(final[:, :3] - initial[:, :3], axis=1)
@@ -247,6 +1251,8 @@ def main() -> int:
     if needle is not None and interface is not None:
         final_needle = needle.get_transforms().cpu().numpy().astype(np.float64)[0]
         final_interface = interface.get_transforms().cpu().numpy().astype(np.float64)[0]
+        final_needle[:3] /= world_length_scale
+        final_interface[:3] /= world_length_scale
         final_anchor = final_needle[:3] + rotate_xyzw(
             final_needle[3:7],
             np.asarray(derived_needle.swage_anchor_m, dtype=np.float64),
@@ -327,6 +1333,7 @@ def main() -> int:
     suture_minimum_visual_collision_margin_m = None
     suture_interface_minimum_visual_collision_margin_m = None
     suture_interface_visual_mesh_valid = None
+    suture_interface_visual_mesh_checks = None
     suture_render_collision_separation_valid = None
     if assembly:
         layer_organization = needle_profile["construction"]["layer_organization"]
@@ -1041,10 +2048,12 @@ def main() -> int:
             interface_visual_mesh.GetPointsAttr().Get(),
             dtype=np.float64,
         )
+        interface_normal_attribute = suture_interface_visual_prim.GetAttribute("primvars:normals")
         interface_normals = np.asarray(
-            interface_visual_mesh.GetNormalsAttr().Get(),
+            interface_normal_attribute.Get(),
             dtype=np.float64,
         )
+        interface_normal_indices_attribute = suture_interface_visual_prim.GetAttribute("primvars:normals:indices")
         interface_face_counts = np.asarray(
             interface_visual_mesh.GetFaceVertexCountsAttr().Get(),
             dtype=np.int64,
@@ -1115,54 +2124,72 @@ def main() -> int:
                 axis=1,
             ).max()
         )
-        suture_interface_visual_mesh_valid = bool(
-            suture_interface_visual_prim.GetTypeName() == "Mesh"
-            and interface_points.shape == expected_interface_points.shape
-            and interface_normals.shape == interface_points.shape
-            and len(interface_face_counts) == len(expected_suture_interface_mesh.face_vertex_counts)
-            and len(interface_face_indices) == len(expected_suture_interface_mesh.face_vertex_indices)
-            and int(interface_face_counts.sum()) == len(interface_face_indices)
-            and np.all(interface_face_counts >= 3)
-            and np.all(interface_face_indices >= 0)
-            and np.all(interface_face_indices < len(interface_points))
-            and np.isfinite(interface_points).all()
-            and np.isfinite(interface_normals).all()
-            and np.allclose(
-                np.linalg.norm(interface_normals, axis=1),
-                1.0,
-                rtol=0.0,
-                atol=2.0e-5,
-            )
-            and np.allclose(
-                interface_points,
-                expected_interface_points,
-                rtol=1.0e-6,
-                atol=1.0e-10,
-            )
-            and all(count == 2 for count in interface_edge_counts.values())
-            and np.isclose(
-                interface_exit_x,
-                expected_interface_exit_x,
-                rtol=0.0,
-                atol=1.0e-9,
-            )
-            and np.isclose(
-                interface_exit_radius,
-                expected_interface_exit_radius,
-                rtol=1.0e-6,
-                atol=1.0e-10,
-            )
-            and suture_interface_minimum_visual_collision_margin_m
-            >= -float(
+        suture_interface_visual_mesh_checks = {
+            "mesh_schema": suture_interface_visual_prim.GetTypeName() == "Mesh",
+            "point_shape": interface_points.shape == expected_interface_points.shape,
+            "normal_shape": interface_normals.shape == interface_points.shape,
+            "normal_primvar_authored": bool(
+                interface_normal_attribute.IsValid() and interface_normal_attribute.HasAuthoredValueOpinion()
+            ),
+            "normal_interpolation_vertex": interface_normal_attribute.GetMetadata("interpolation") == "vertex",
+            "normal_primvar_unindexed": not bool(
+                interface_normal_indices_attribute.IsValid()
+                and interface_normal_indices_attribute.HasAuthoredValueOpinion()
+            ),
+            "face_count": len(interface_face_counts) == len(expected_suture_interface_mesh.face_vertex_counts),
+            "face_index_count": len(interface_face_indices) == len(expected_suture_interface_mesh.face_vertex_indices),
+            "face_index_cardinality": int(interface_face_counts.sum()) == len(interface_face_indices),
+            "minimum_face_size": bool(np.all(interface_face_counts >= 3)),
+            "non_negative_indices": bool(np.all(interface_face_indices >= 0)),
+            "indices_in_range": bool(np.all(interface_face_indices < len(interface_points))),
+            "finite_points": bool(np.isfinite(interface_points).all()),
+            "finite_normals": bool(np.isfinite(interface_normals).all()),
+            "unit_normals": bool(
+                np.allclose(
+                    np.linalg.norm(interface_normals, axis=1),
+                    1.0,
+                    rtol=0.0,
+                    atol=2.0e-5,
+                )
+            ),
+            "analytic_points": bool(
+                np.allclose(
+                    interface_points,
+                    expected_interface_points,
+                    rtol=1.0e-6,
+                    atol=1.0e-10,
+                )
+            ),
+            "closed_manifold": all(count == 2 for count in interface_edge_counts.values()),
+            "exit_position": bool(
+                np.isclose(
+                    interface_exit_x,
+                    expected_interface_exit_x,
+                    rtol=0.0,
+                    atol=1.0e-9,
+                )
+            ),
+            "exit_radius": bool(
+                np.isclose(
+                    interface_exit_radius,
+                    expected_interface_exit_radius,
+                    rtol=1.0e-6,
+                    atol=1.0e-10,
+                )
+            ),
+            "collision_containment": suture_interface_minimum_visual_collision_margin_m >= -float(
                 suture_profile["geometry"]["visual_representation"]["binary_visual_point_containment_tolerance_m"]
-            )
-            and interface_visual_mesh.GetSubdivisionSchemeAttr().Get() == "none"
-            and str(UsdGeom.Imageable(suture_interface_visual_prim).GetPurposeAttr().Get()) == "default"
-            and str(UsdGeom.Imageable(suture_interface_visual_prim).GetVisibilityAttr().Get()) == "inherited"
-            and "PhysicsCollisionAPI" not in suture_interface_visual_prim.GetAppliedSchemas()
-            and "PhysxCollisionAPI" not in suture_interface_visual_prim.GetAppliedSchemas()
-            and not suture_interface_visual_prim.GetRelationship("material:binding:physics").HasAuthoredTargets()
-        )
+            ),
+            "non_subdivided": interface_visual_mesh.GetSubdivisionSchemeAttr().Get() == "none",
+            "render_purpose": str(UsdGeom.Imageable(suture_interface_visual_prim).GetPurposeAttr().Get()) == "default",
+            "visible": str(UsdGeom.Imageable(suture_interface_visual_prim).GetVisibilityAttr().Get()) == "inherited",
+            "no_neutral_collision_api": "PhysicsCollisionAPI" not in suture_interface_visual_prim.GetAppliedSchemas(),
+            "no_physx_collision_api": "PhysxCollisionAPI" not in suture_interface_visual_prim.GetAppliedSchemas(),
+            "no_physics_material_binding": not suture_interface_visual_prim.GetRelationship(
+                "material:binding:physics"
+            ).HasAuthoredTargets(),
+        }
+        suture_interface_visual_mesh_valid = all(suture_interface_visual_mesh_checks.values())
         expected_suture_physics_material_paths = [
             swage_physics_material_path,
             *([suture_physics_material_path] * len(suture_segment_prims)),
@@ -1454,13 +2481,178 @@ def main() -> int:
                 expected_normal_indices,
             )
         )
+    maximum_segment_displacement_m = float(displacement.max())
+    diagnostic_contact_pairs = sorted(
+        {
+            tuple(sorted((collider0, collider1)))
+            for collider0, collider1, _minimum_separation in diagnostic_contact_records
+        }
+    )
+    diagnostic_minimum_contact_separation_m = min(
+        (
+            minimum_separation
+            for _collider0, _collider1, minimum_separation in diagnostic_contact_records
+            if minimum_separation is not None
+        ),
+        default=None,
+    )
+    simulation_stability_valid = bool(finite and 0.0001 < free_end_drop < 0.5 and maximum_segment_displacement_m < 0.5)
+    runtime_axial_drive_stiffness_range_n_m = (
+        [
+            min(runtime_axial_drive_stiffnesses),
+            max(runtime_axial_drive_stiffnesses),
+        ]
+        if runtime_axial_drive_stiffnesses
+        else None
+    )
+    canonical_asset_parameters = math.isclose(
+        args.axial_drive_stiffness_scale,
+        1.0,
+        rel_tol=0.0,
+        abs_tol=0.0,
+    ) and math.isclose(
+        args.physics_dt,
+        0.0005,
+        rel_tol=0.0,
+        abs_tol=0.0,
+    )
+    canonical_asset_parameters = canonical_asset_parameters and math.isclose(
+        args.diagnostic_collision_radius_scale,
+        1.0,
+        rel_tol=0.0,
+        abs_tol=0.0,
+    )
+    canonical_asset_parameters = canonical_asset_parameters and math.isclose(
+        args.diagnostic_contact_offset_scale,
+        1.0,
+        rel_tol=0.0,
+        abs_tol=0.0,
+    )
+    canonical_asset_parameters = (
+        canonical_asset_parameters
+        and math.isclose(args.friction_offset_threshold, 0.04, rel_tol=0.0, abs_tol=0.0)
+        and math.isclose(args.friction_correlation_distance, 0.025, rel_tol=0.0, abs_tol=0.0)
+        and math.isclose(args.bounce_threshold_velocity, 0.5, rel_tol=0.0, abs_tol=0.0)
+    )
+    canonical_asset_parameters = (
+        canonical_asset_parameters
+        and math.isclose(
+            args.diagnostic_rigid_mass_scale,
+            1.0,
+            rel_tol=0.0,
+            abs_tol=0.0,
+        )
+        and args.diagnostic_only_segment_collider == -1
+        and args.diagnostic_segment_collider_stride == 1
+        and args.diagnostic_compliant_contact_frequency_hz == 0.0
+        and not args.diagnostic_filter_all_suture_self_collision
+        and not args.diagnostic_disable_ground_collision
+        and not args.diagnostic_release_self_filter_after_warmup
+        and args.diagnostic_self_filter_warmup_steps == 0
+        and args.diagnostic_self_filter_neighbor_span == 1
+        and args.diagnostic_collision_group_neighbor_span == 0
+        and not args.diagnostic_trim_capsule_end_overlap
+        and not args.diagnostic_capture_contacts
+        and math.isclose(args.diagnostic_world_length_scale, 1.0, rel_tol=0.0, abs_tol=0.0)
+        and not args.diagnostic_overlap_distant_segments
+        and not args.diagnostic_enable_collisions_after_reset
+        and not args.diagnostic_articulation
+        and math.isclose(
+            args.diagnostic_rigid_inertia_scale,
+            1.0,
+            rel_tol=0.0,
+            abs_tol=0.0,
+        )
+    )
+    canonical_probe_configuration = bool(
+        canonical_asset_parameters
+        and args.device == "cuda:0"
+        and not args.diagnostic_disable_collisions
+        and not args.diagnostic_disable_joints
+        and not args.diagnostic_filter_needle_exit_pairs
+        and not args.diagnostic_filter_adjacent_colliders
+        and not args.diagnostic_disable_even_segment_collisions
+        and not args.diagnostic_disable_hybrid_ccd
+    )
     report = {
-        "schema": "dr.anmar.needle-native-physx-probe.v16",
+        "schema": "dr.anmar.needle-native-physx-probe.v18",
         "asset_name": DR_ANMAR_NEEDLE_NAME if assembly else "DrAnmar Suture 4-0",
         "asset_id": DR_ANMAR_NEEDLE_ASSET_ID if assembly else "dr-anmar-suture-4-0",
         "asset_version": DR_ANMAR_NEEDLE_ASSET_VERSION if assembly else None,
         "asset": str(args.asset.resolve()),
-        "physics_dt_s": 0.0005,
+        "device": args.device,
+        "physics_dt_s": args.physics_dt,
+        "stage_meters_per_unit": 1.0 / world_length_scale,
+        "world_length_scale": world_length_scale,
+        "friction_offset_threshold_m": args.friction_offset_threshold,
+        "friction_correlation_distance_m": args.friction_correlation_distance,
+        "bounce_threshold_velocity_m_s": args.bounce_threshold_velocity,
+        "gpu_max_rigid_patch_count": GPU_MAX_RIGID_PATCH_COUNT,
+        "axial_drive_stiffness_scale": args.axial_drive_stiffness_scale,
+        "diagnostic_collision_radius_scale": args.diagnostic_collision_radius_scale,
+        "diagnostic_contact_offset_scale": args.diagnostic_contact_offset_scale,
+        "diagnostic_rigid_mass_scale": args.diagnostic_rigid_mass_scale,
+        "diagnostic_rigid_inertia_scale": args.diagnostic_rigid_inertia_scale,
+        "diagnostic_only_segment_collider": args.diagnostic_only_segment_collider,
+        "diagnostic_segment_collider_stride": args.diagnostic_segment_collider_stride,
+        "diagnostic_compliant_contact_frequency_hz": args.diagnostic_compliant_contact_frequency_hz,
+        "diagnostic_filter_all_suture_self_collision": args.diagnostic_filter_all_suture_self_collision,
+        "diagnostic_disable_ground_collision": args.diagnostic_disable_ground_collision,
+        "diagnostic_release_self_filter_after_warmup": args.diagnostic_release_self_filter_after_warmup,
+        "diagnostic_self_filter_warmup_steps": args.diagnostic_self_filter_warmup_steps,
+        "diagnostic_self_filter_neighbor_span": args.diagnostic_self_filter_neighbor_span,
+        "diagnostic_collision_group_neighbor_span": args.diagnostic_collision_group_neighbor_span,
+        "diagnostic_trim_capsule_end_overlap": args.diagnostic_trim_capsule_end_overlap,
+        "diagnostic_capture_contacts": args.diagnostic_capture_contacts,
+        "diagnostic_world_length_scale": args.diagnostic_world_length_scale,
+        "diagnostic_overlap_distant_segments": args.diagnostic_overlap_distant_segments,
+        "diagnostic_enable_collisions_after_reset": args.diagnostic_enable_collisions_after_reset,
+        "diagnostic_articulation": args.diagnostic_articulation,
+        "canonical_asset_parameters": canonical_asset_parameters,
+        "diagnostic_disable_collisions": args.diagnostic_disable_collisions,
+        "diagnostic_disable_joints": args.diagnostic_disable_joints,
+        "diagnostic_filter_needle_exit_pairs": args.diagnostic_filter_needle_exit_pairs,
+        "diagnostic_filter_adjacent_colliders": args.diagnostic_filter_adjacent_colliders,
+        "diagnostic_disable_even_segment_collisions": args.diagnostic_disable_even_segment_collisions,
+        "diagnostic_disable_hybrid_ccd": args.diagnostic_disable_hybrid_ccd,
+        "diagnostic_disabled_collision_count": diagnostic_disabled_collision_count,
+        "diagnostic_disabled_joint_count": diagnostic_disabled_joint_count,
+        "diagnostic_filtered_needle_exit_pair_count": diagnostic_filtered_needle_exit_pair_count,
+        "diagnostic_filtered_adjacent_collider_pair_count": diagnostic_filtered_adjacent_collider_pair_count,
+        "diagnostic_disabled_even_segment_collision_count": diagnostic_disabled_even_segment_collision_count,
+        "diagnostic_disabled_hybrid_ccd_body_count": diagnostic_disabled_hybrid_ccd_body_count,
+        "diagnostic_scaled_collision_capsule_count": diagnostic_scaled_collision_capsule_count,
+        "diagnostic_scaled_contact_offset_count": diagnostic_scaled_contact_offset_count,
+        "diagnostic_mass_conditioned_body_count": diagnostic_mass_conditioned_body_count,
+        "diagnostic_disabled_collision_subset_count": diagnostic_disabled_collision_subset_count,
+        "diagnostic_compliant_contact_material_count": diagnostic_compliant_contact_material_count,
+        "diagnostic_compliant_contact_stiffness_s2": diagnostic_compliant_contact_stiffness_s2,
+        "diagnostic_compliant_contact_damping_s": diagnostic_compliant_contact_damping_s,
+        "diagnostic_all_suture_self_filter_applied": diagnostic_all_suture_self_filter_applied,
+        "diagnostic_neighbor_filter_target_count": diagnostic_neighbor_filter_target_count,
+        "diagnostic_collision_group_count": diagnostic_collision_group_count,
+        "diagnostic_collision_group_filter_target_count": diagnostic_collision_group_filter_target_count,
+        "diagnostic_collision_group_adjacent_filter_valid": diagnostic_collision_group_adjacent_filter_valid,
+        "diagnostic_collision_group_nonadjacent_enabled": diagnostic_collision_group_nonadjacent_enabled,
+        "diagnostic_trimmed_capsule_count": diagnostic_trimmed_capsule_count,
+        "diagnostic_contact_event_count": len(diagnostic_contact_records),
+        "diagnostic_unique_contact_pair_count": len(diagnostic_contact_pairs),
+        "diagnostic_contact_pair_sample": diagnostic_contact_pairs[:64],
+        "diagnostic_minimum_contact_separation_m": diagnostic_minimum_contact_separation_m,
+        "diagnostic_contact_subscription_active": diagnostic_contact_subscription is not None,
+        "diagnostic_overlap_initial_distance_m": diagnostic_overlap_initial_distance_m,
+        "diagnostic_overlap_final_distance_m": diagnostic_overlap_final_distance_m,
+        "diagnostic_reenabled_collision_count": diagnostic_reenabled_collision_count,
+        "diagnostic_articulation_applied": diagnostic_articulation_applied,
+        "diagnostic_articulation_locked_joint_count": diagnostic_articulation_locked_joint_count,
+        "composed_suture_filtered_pairs_api_count": composed_suture_filtered_pairs_api_count,
+        "composed_suture_filtered_pairs_valid_count": composed_suture_filtered_pairs_valid_count,
+        "composed_suture_filtered_pair_mismatches": composed_suture_filtered_pair_mismatches,
+        "registered_physx_collision_api_count": registered_physx_collision_api_count,
+        "registered_physx_contact_offset_range_m": registered_physx_contact_offset_range_m,
+        "canonical_probe_configuration": canonical_probe_configuration,
+        "runtime_axial_drive_count": len(runtime_axial_drive_stiffnesses),
+        "runtime_axial_drive_stiffness_range_n_m": runtime_axial_drive_stiffness_range_n_m,
         "steps": int(args.steps),
         "segment_count": int(segments.count),
         "joint_count": int(joint_count),
@@ -1547,23 +2739,37 @@ def main() -> int:
         "suture_minimum_visual_collision_margin_m": suture_minimum_visual_collision_margin_m,
         "suture_interface_minimum_visual_collision_margin_m": suture_interface_minimum_visual_collision_margin_m,
         "suture_interface_visual_mesh_valid": suture_interface_visual_mesh_valid,
+        "suture_interface_visual_mesh_checks": suture_interface_visual_mesh_checks,
         "suture_render_collision_separation_valid": suture_render_collision_separation_valid,
+        "authored_needle_position_m": authored_needle_position_m,
+        "authored_needle_anchor_position_m": authored_needle_anchor_position_m,
+        "authored_interface_position_m": authored_interface_position_m,
+        "authored_swage_distance_m": authored_swage_distance_m,
+        "authored_segment_endpoint_positions_m": authored_segment_positions_m[[0, -1]].tolist(),
+        "authored_segment_position_span_m": np.ptp(authored_segment_positions_m, axis=0).tolist(),
+        "post_reset_segment_endpoint_positions_m": initial[[0, -1], :3].tolist(),
+        "post_reset_segment_position_span_m": np.ptp(initial[:, :3], axis=0).tolist(),
+        "post_reset_maximum_segment_pose_error_m": float(post_reset_segment_pose_error_m.max()),
+        "initial_needle_position_m": initial_needle_position_m,
+        "initial_needle_anchor_position_m": initial_needle_anchor_position_m,
+        "initial_interface_position_m": initial_interface_position_m,
         "initial_swage_distance_m": initial_swage_distance_m,
         "final_swage_distance_m": final_swage_distance_m,
         "finite_transforms": finite,
         "free_end_drop_m": free_end_drop,
-        "maximum_segment_displacement_m": float(displacement.max()),
+        "maximum_segment_displacement_m": maximum_segment_displacement_m,
+        "simulation_stability_valid": simulation_stability_valid,
         "native_rigid_contact_bodies": int(segments.count),
         "authored_pose_writes_after_reset": 0,
         "current_thread_modified": False,
         "clinical_validation": False,
     }
     report["passed"] = bool(
-        finite
+        report["canonical_probe_configuration"]
+        and report["runtime_axial_drive_count"] == 360
+        and report["simulation_stability_valid"]
         and report["segment_count"] == 360
         and report["joint_count"] == 360
-        and free_end_drop > 0.0001
-        and report["maximum_segment_displacement_m"] < 0.5
         and report["root_model_identity_valid"]
         and report["suture_subcomponent_identity_valid"]
         and report["semantic_visual_mesh_labels_valid"]
@@ -1637,7 +2843,7 @@ def main() -> int:
         )
     )
     encoded = json.dumps(report, indent=2, sort_keys=True)
-    print(encoded)
+    print(encoded, flush=True)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(encoded + "\n", encoding="utf-8")
