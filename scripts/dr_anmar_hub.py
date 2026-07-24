@@ -160,14 +160,18 @@ def missing_required_bench_assets(
         for path in procedure.get("required_nvidia_assets", ())
     ]
     selected = set(bench_assets or ())
-    dr_anmar_asset_root = (
-        args.root / "source/extensions/orbit.surgical.assets/data"
-    )
+    provider_roots = {
+        "nvidia_i4h": content_root,
+        "dr_anmar": args.root / "source/extensions/orbit.surgical.assets/data",
+        "dr_anmar_repository": args.root,
+    }
     for item in procedure.get("bench_asset_catalog", ()):
         if str(item["id"]) not in selected:
             continue
         provider = str(item.get("provider", "nvidia_i4h"))
-        root = dr_anmar_asset_root if provider == "dr_anmar" else content_root
+        root = provider_roots.get(provider)
+        if root is None:
+            raise RuntimeError(f"Unknown operating-room asset provider: {provider}")
         required.append((root, str(item["path"])))
     return [
         str(relative_path)

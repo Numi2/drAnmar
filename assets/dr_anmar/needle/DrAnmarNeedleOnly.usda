@@ -1,0 +1,22 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarNeedleOnly"
+    doc = "Standalone Dr.Anmar curved needle. This composition preserves the canonical needle geometry and PhysX collision while deactivating the attached suture assembly."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarNeedleOnly" (
+    prepend references = @./DrAnmarNeedle.usda@
+    variants = {
+        string Physics = "physx"
+    }
+)
+{
+    over "Suture" (
+        active = false
+    )
+    {
+    }
+}

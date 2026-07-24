@@ -81,7 +81,7 @@ def Xform "LaparotomySponge" (
             def Shader "PrimvarReader"
             {
                 uniform token info:id = "UsdPrimvarReader_float2"
-                token inputs:varname = "st"
+                string inputs:varname = "st"
                 float2 outputs:result
             }
         }
@@ -127,7 +127,7 @@ def Xform "LaparotomySponge" (
             def Shader "PrimvarReader"
             {
                 uniform token info:id = "UsdPrimvarReader_float2"
-                token inputs:varname = "st"
+                string inputs:varname = "st"
                 float2 outputs:result
             }
         }
@@ -164,7 +164,9 @@ def Xform "LaparotomySponge" (
         }
     }
 
-    def Mesh "Body"
+    def Mesh "Body" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
     {
         uniform bool doubleSided = false
         uniform token subdivisionScheme = "none"
@@ -1267,7 +1269,9 @@ def Xform "LaparotomySponge" (
         )
     }
 
-    def Mesh "XrayMarkerRegion"
+    def Mesh "XrayMarkerRegion" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
     {
         uniform token subdivisionScheme = "none"
         float3[] extent = [(-0.056, -0.045, 0.0121), (-0.044, 0.045, 0.0143)]
@@ -1285,7 +1289,9 @@ def Xform "LaparotomySponge" (
         rel material:binding = </LaparotomySponge/Looks/MedicalBlue>
     }
 
-    def Mesh "CountingLoop"
+    def Mesh "CountingLoop" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
     {
         uniform token subdivisionScheme = "none"
         float3[] extent = [(-0.05917, 0.0423677, 0.0115), (-0.0295108, 0.075965, 0.0175)]
@@ -1827,7 +1833,9 @@ def Xform "LaparotomySponge" (
         rel material:binding = </LaparotomySponge/Looks/MedicalBlue>
     }
 
-    def Scope "Colliders"
+    def Scope "Colliders" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
     {
         def Cube "BodyCollision" (
             prepend apiSchemas = ["PhysicsCollisionAPI"]

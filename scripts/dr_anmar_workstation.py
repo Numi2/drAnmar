@@ -3358,17 +3358,32 @@ def main() -> None:
             / "Props/SutureNeedle/needle_sdf.usd",
             "table": I4H_ASSET_CONTENT_ROOT / "Props/Table/table.usd",
         }
-        dr_anmar_asset_root = (
-            REPOSITORY_ROOT / "source/extensions/orbit.surgical.assets/data"
+        bench_asset_provider_roots = {
+            "nvidia_i4h": I4H_ASSET_CONTENT_ROOT,
+            "dr_anmar": (
+                REPOSITORY_ROOT / "source/extensions/orbit.surgical.assets/data"
+            ),
+            "dr_anmar_repository": REPOSITORY_ROOT,
+        }
+        unknown_bench_providers = sorted(
+            {
+                str(item.get("provider", "nvidia_i4h"))
+                for item in bench_catalog
+                if str(item["id"]) in selected_bench_assets
+            }
+            - bench_asset_provider_roots.keys()
         )
+        if unknown_bench_providers:
+            raise ValueError(
+                "Unknown operating-room asset providers: "
+                + ", ".join(unknown_bench_providers)
+            )
         bench_asset_paths = {
             **core_bench_assets,
             **{
-                str(item["id"]): (
-                    dr_anmar_asset_root
-                    if item.get("provider") == "dr_anmar"
-                    else I4H_ASSET_CONTENT_ROOT
-                )
+                str(item["id"]): bench_asset_provider_roots[
+                    str(item.get("provider", "nvidia_i4h"))
+                ]
                 / str(item["path"])
                 for item in bench_catalog
                 if str(item["id"]) in selected_bench_assets
@@ -3522,6 +3537,78 @@ def main() -> None:
                         ("workflow_handover", "handover"),
                         ("workflow_closure", "closure"),
                         ("state", "loaded"),
+                    ],
+                    activate_contact_sensors=True,
+                ),
+            )
+        if "dr_anmar_needle" in selected_bench_assets:
+            env_cfg.scene.dr_anmar_needle = RigidObjectCfg(
+                prim_path="{ENV_REGEX_NS}/DrAnmarNeedle",
+                init_state=RigidObjectCfg.InitialStateCfg(
+                    # Standalone grasping needle on the right rear landing.
+                    pos=(0.075, 0.245, 0.0008),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(bench_asset_paths["dr_anmar_needle"]),
+                    variants={"Physics": "physx"},
+                    activate_contact_sensors=True,
+                ),
+            )
+        if "dr_anmar_needle_suture" in selected_bench_assets:
+            env_cfg.scene.dr_anmar_needle_suture = AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/DrAnmarNeedleAssembly",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    # The 180 mm strand trails left from a separate rear landing.
+                    pos=(-0.065, 0.245, 0.0008),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(bench_asset_paths["dr_anmar_needle_suture"]),
+                    variants={"Physics": "physx"},
+                    activate_contact_sensors=True,
+                ),
+            )
+        if "dr_anmar_tissue" in selected_bench_assets:
+            env_cfg.scene.dr_anmar_tissue = AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/DrAnmarSuturableTissue",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    pos=(-0.040, -0.250, 0.004),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(bench_asset_paths["dr_anmar_tissue"]),
+                ),
+            )
+        if "vascular_clip" in selected_bench_assets:
+            env_cfg.scene.dr_anmar_vascular_clip = RigidObjectCfg(
+                prim_path="{ENV_REGEX_NS}/DrAnmarVascularClip",
+                init_state=RigidObjectCfg.InitialStateCfg(
+                    pos=(-0.130, -0.250, 0.0003),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(bench_asset_paths["vascular_clip"]),
+                    activate_contact_sensors=True,
+                ),
+            )
+        if "laparotomy_sponge" in selected_bench_assets:
+            env_cfg.scene.laparotomy_sponge = RigidObjectCfg(
+                prim_path="{ENV_REGEX_NS}/LaparotomySponge",
+                init_state=RigidObjectCfg.InitialStateCfg(
+                    # Its 142 x 116 mm body occupies the right rear landing.
+                    pos=(0.075, -0.340, 0.0141),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(bench_asset_paths["laparotomy_sponge"]),
+                    variants={"state": "dry"},
+                    semantic_tags=[
+                        ("class", "laparotomy_sponge"),
+                        ("count_category", "sponge"),
+                        ("workflow_counting", "counting"),
+                        ("workflow_retrieval", "retrieval"),
+                        ("state", "dry"),
                     ],
                     activate_contact_sensors=True,
                 ),

@@ -204,8 +204,9 @@ Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until
 ## What is included
 
 - Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
-- OpenUSD operating rooms, seven pinned anatomy sources, and repository-local
-  Dr.Anmar surgical assets including the optional skin stapler.
+- OpenUSD operating rooms, seven pinned anatomy sources, and a repository-local
+  Dr.Anmar bench shelf with the standalone needle, swaged needle and 4-0
+  suture, suturable tissue, vascular clip, laparotomy sponge, and skin stapler.
 - Native rigid-body needle pickup, dual-arm handover, passing/regrasp, navigation and recovery rooms.
 - PhysX contact sensors on the gripper bodies; no synthetic grasp joints or collision-disabling puncture paths.
 - A compact 12-room procedure catalog backed by local tasks, installed thread assets, NVIDIA ultrasound,
@@ -354,9 +355,15 @@ licence shipped with every downloaded asset before redistribution. Lightwheel as
 non-commercial research and development use. Installation, bundle sizes and the Gilgamesh evidence are in
 [`docs/I4H_ASSET_CATALOG_V070.md`](docs/I4H_ASSET_CATALOG_V070.md).
 
-Dr.Anmar's own Apache-2.0 skin stapler is shipped locally and can be enabled
-from the main operating-room setup. Its rigid, articulated and standalone
-staple representations, helpers and qualification boundary are documented in
+The main operating-room Bench Setup now exposes Dr.Anmar's authored surgical
+asset family as optional props: standalone curved needle, factory-swaged needle
+with 4-0 braided suture, open-incision tissue, vascular clip, folded laparotomy
+sponge, and loaded skin stapler. Each uses a separate table landing and the
+default NVIDIA skills layout remains unchanged until a doctor enables one.
+Advanced deformable tissue and hemostasis behavior remains in the dedicated
+research rooms. Asset details and qualification boundaries are documented in
+[`docs/DR_ANMAR_SUTURE_4_0.md`](docs/DR_ANMAR_SUTURE_4_0.md),
+[`docs/LAPAROTOMY_SPONGE.md`](docs/LAPAROTOMY_SPONGE.md), and
 [`docs/SKIN_STAPLER.md`](docs/SKIN_STAPLER.md).
 
 Official workflow containers also require Docker Engine with NVIDIA GPU container support. DDS-based modes

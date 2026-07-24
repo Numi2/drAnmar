@@ -2563,8 +2563,11 @@ point3f[] points = [
 ]
 uniform token subdivisionScheme = "none"
 uniform token orientation = "rightHanded"
+uniform token subsetFamily:materialBind:familyType = "partition"
 
-        def GeomSubset "SurfaceFaces"
+        def GeomSubset "SurfaceFaces" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
         {
             uniform token elementType = "face"
             uniform token familyName = "materialBind"
@@ -2572,7 +2575,9 @@ uniform token orientation = "rightHanded"
             rel material:binding = </DrAnmarSuturableTissue/Materials/Surface>
         }
 
-        def GeomSubset "BulkFaces"
+        def GeomSubset "BulkFaces" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
         {
             uniform token elementType = "face"
             uniform token familyName = "materialBind"
@@ -2580,7 +2585,9 @@ uniform token orientation = "rightHanded"
             rel material:binding = </DrAnmarSuturableTissue/Materials/Bulk>
         }
 
-        def GeomSubset "FasciaFaces"
+        def GeomSubset "FasciaFaces" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
         {
             uniform token elementType = "face"
             uniform token familyName = "materialBind"
@@ -2588,7 +2595,9 @@ uniform token orientation = "rightHanded"
             rel material:binding = </DrAnmarSuturableTissue/Materials/Fascia>
         }
 
-        def GeomSubset "WoundFaces"
+        def GeomSubset "WoundFaces" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
         {
             uniform token elementType = "face"
             uniform token familyName = "materialBind"

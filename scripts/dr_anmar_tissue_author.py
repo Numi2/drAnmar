@@ -101,7 +101,8 @@ point3f[] points = [
 {prefix}{points}
 ]
 uniform token subdivisionScheme = "none"
-uniform token orientation = "rightHanded\""""
+uniform token orientation = "rightHanded"
+uniform token subsetFamily:materialBind:familyType = "partition\""""
 
 
 def subset_blocks(
@@ -116,7 +117,9 @@ def subset_blocks(
         material_name = group.title()
         encoded = ", ".join(str(index) for index in indices)
         blocks.append(
-            f'''def GeomSubset "{material_name}Faces"
+            f'''def GeomSubset "{material_name}Faces" (
+    prepend apiSchemas = ["MaterialBindingAPI"]
+)
 {{
     uniform token elementType = "face"
     uniform token familyName = "materialBind"

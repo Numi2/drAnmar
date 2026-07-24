@@ -15,11 +15,11 @@
   "assets": {
     "unfolded_surface": {
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
-      "sha256": "1e445d1ea97ca0bf408b8825ca6805832ea32a1466c1bafa260a404013f8adbd"
+      "sha256": "f4d867e73d7146f377c558b3a8d7c680f97ccfbdd9034948378c1deab66051bb"
     },
     "folded_rigid_proxy": {
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
-      "sha256": "2df31e4d445b91532a942e114517aaa74bee51aa24a2338920732d56bf612ab1"
+      "sha256": "ab061bb27ad431fa465b55d7542c7ba3c36509a58db2865efb07428c1bfa6bb4"
     }
   },
   "static_validation": {
@@ -46,6 +46,17 @@
       "loop_capsule_count": 32,
       "loop_radial_coverage_ratio": 1.0666666666666667
     }
+  },
+  "post_validation_openusd_correction": {
+    "date": "2026-07-24",
+    "status": "pass",
+    "usdchecker": "pass_all_default_dry_wet_variants",
+    "changes": [
+      "UsdPrimvarReader varname corrected from token to string",
+      "MaterialBindingAPI applied to authored material-binding prims"
+    ],
+    "geometry_changed": false,
+    "physics_parameters_changed": false
   },
   "rigid_cuda": {
     "runtime": {
