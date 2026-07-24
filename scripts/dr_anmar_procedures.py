@@ -82,6 +82,16 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
                 "default": False,
             },
             {
+                "id": "skin_adhesive_system",
+                "title": "Dr.Anmar topical skin adhesive",
+                "description": "Articulated dual-paddle applicator, independently graspable cap, and fresh adhesive-bead task representation.",
+                "path": "Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_articulated.usda",
+                "provider": "dr_anmar",
+                "state": "activated",
+                "representation": "articulated_applicator_cap_and_kinematic_bead",
+                "default": False,
+            },
+            {
                 "id": "dr_anmar_needle_v030",
                 "title": "Dr.Anmar needle v0.3",
                 "description": "New half-circle taper-point needle with explicit swage recess, compound collision and authored grasp frames.",

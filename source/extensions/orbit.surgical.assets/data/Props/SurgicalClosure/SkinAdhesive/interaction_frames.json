@@ -1,0 +1,285 @@
+{
+  "schema": "dr.anmar.interaction-frames.v1",
+  "version": "0.1.0",
+  "coordinate_contract": {
+    "forward": "+X",
+    "up": "+Z",
+    "quaternion_order": "wxyz"
+  },
+  "applicator": {
+    "body_grasp": {
+      "position_m": [
+        -0.041,
+        0.0,
+        0.0
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "primary_robot_grasp",
+      "parent_link": "Body"
+    },
+    "paddle_left_contact": {
+      "position_m": [
+        0.0029999999999999957,
+        0.01395,
+        0.0
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "left_activation_contact",
+      "parent_link": "LeftPaddle"
+    },
+    "paddle_right_contact": {
+      "position_m": [
+        0.0029999999999999957,
+        -0.01395,
+        0.0
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "right_activation_contact",
+      "parent_link": "RightPaddle"
+    },
+    "tip": {
+      "position_m": [
+        0.0878,
+        0.0,
+        0.0
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "physical_applicator_tip",
+      "parent_link": "Body"
+    },
+    "dispense_exit": {
+      "position_m": [
+        0.0883,
+        0.0,
+        0.0
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "adhesive_exit",
+      "parent_link": "Body"
+    },
+    "placement_reference": {
+      "position_m": [
+        0.08900000000000001,
+        0.0,
+        -0.001
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "wound_surface_placement",
+      "parent_link": "Body"
+    },
+    "path_tangent_reference": {
+      "position_m": [
+        0.08900000000000001,
+        0.0,
+        -0.001
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "dispense_path_tangent",
+      "parent_link": "Body"
+    },
+    "reservoir_center": {
+      "position_m": [
+        -0.011,
+        0.0,
+        0.0
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "reservoir_reference",
+      "parent_link": "Body"
+    },
+    "activation_reference": {
+      "position_m": [
+        -0.008,
+        0.0,
+        0.0
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "coordinated_paddle_activation",
+      "parent_link": "Body"
+    },
+    "count_reference": {
+      "position_m": [
+        -0.061,
+        0.0,
+        0.011
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "inventory_count_reference",
+      "parent_link": "Body"
+    }
+  },
+  "cap": {
+    "cap_grasp": {
+      "position_m": [
+        0.002,
+        0.0,
+        0.0
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "robot_cap_grasp",
+      "parent_link": "Cap"
+    },
+    "cap_snap_axis": {
+      "position_m": [
+        -0.0114,
+        0.0,
+        0.0
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "applicator_tip_alignment",
+      "parent_link": "Cap"
+    },
+    "count_reference": {
+      "position_m": [
+        0.0105,
+        0.0,
+        0.0085
+      ],
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "inventory_count_reference",
+      "parent_link": "Cap"
+    }
+  },
+  "bead": {
+    "bead_start": {
+      "position_m": [
+        -0.035,
+        0.0,
+        0.0
+      ],
+      "orientation_wxyz": [
+        0.9999752179172425,
+        0.0,
+        0.0,
+        0.007040138589778203
+      ],
+      "role": "deposit_start",
+      "parent_link": "Bead"
+    },
+    "bead_mid": {
+      "position_m": [
+        0.0,
+        4.898587196589413e-19,
+        0.0
+      ],
+      "orientation_wxyz": [
+        0.9852330659313051,
+        -0.0,
+        0.0,
+        -0.17121859068337303
+      ],
+      "role": "deposit_midpoint",
+      "parent_link": "Bead"
+    },
+    "bead_end": {
+      "position_m": [
+        0.035,
+        -1.1998078261294862e-34,
+        0.0
+      ],
+      "orientation_wxyz": [
+        0.9999752179172425,
+        0.0,
+        0.0,
+        0.007040138589778222
+      ],
+      "role": "deposit_end",
+      "parent_link": "Bead"
+    },
+    "path_tangent_reference": {
+      "position_m": [
+        0.0,
+        4.898587196589413e-19,
+        0.0
+      ],
+      "orientation_wxyz": [
+        0.9852330659313051,
+        -0.0,
+        0.0,
+        -0.17121859068337303
+      ],
+      "role": "closure_path_tangent",
+      "parent_link": "Bead"
+    },
+    "count_reference": {
+      "position_m": [
+        0.0,
+        4.898587196589413e-19,
+        0.0
+      ],
+      "orientation_wxyz": [
+        0.9852330659313051,
+        -0.0,
+        0.0,
+        -0.17121859068337303
+      ],
+      "role": "deposit_count_reference",
+      "parent_link": "Bead"
+    }
+  }
+}

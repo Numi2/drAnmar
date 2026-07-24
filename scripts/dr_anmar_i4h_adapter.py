@@ -369,6 +369,30 @@ def asset_catalog_payload() -> dict[str, Any]:
             "standalone_formed_staple_rigid_body",
         ),
         (
+            "skin_adhesive_applicator_articulated",
+            "Props/SurgicalClosure/SkinAdhesive/"
+            "skin_adhesive_applicator_articulated.usda",
+            "dual_paddle_and_metering_piston_articulation",
+        ),
+        (
+            "skin_adhesive_applicator_rigid_proxy",
+            "Props/SurgicalClosure/SkinAdhesive/"
+            "skin_adhesive_applicator_rigid_proxy.usda",
+            "single_rigid_body_perception_handover_proxy",
+        ),
+        (
+            "skin_adhesive_cap",
+            "Props/SurgicalClosure/SkinAdhesive/"
+            "skin_adhesive_cap.usda",
+            "independently_graspable_removable_cap",
+        ),
+        (
+            "skin_adhesive_bead",
+            "Props/SurgicalClosure/SkinAdhesive/"
+            "skin_adhesive_bead.usda",
+            "fresh_or_cured_kinematic_deposit_task_state",
+        ),
+        (
             "dr_anmar_needle_v030",
             "Props/SurgicalClosure/Needle/dranmar_needle.usda",
             "rigid_half_circle_taper_point_needle",

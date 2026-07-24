@@ -1,6 +1,18 @@
 Changelog
 ---------
 
+0.5.0 (2026-07-24)
+~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added the DrAnmar Topical Skin Adhesive System 0.1.0 under
+  ``Props/SurgicalClosure/SkinAdhesive``.
+* Added articulated applicator, rigid proxy, removable cap, fresh/cured bead,
+  interaction-frame, state-selection and coordinated-activation helpers.
+* Added the complete system as an optional main operating-room bench asset.
+
 0.4.0 (2026-07-24)
 ~~~~~~~~~~~~~~~~~~
 

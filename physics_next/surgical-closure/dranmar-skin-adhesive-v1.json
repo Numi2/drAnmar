@@ -1,0 +1,229 @@
+{
+  "schema": "dr.anmar.skin-adhesive-profile.v1",
+  "id": "dranmar-skin-adhesive-system-v1",
+  "name": "DrAnmar Topical Skin Adhesive System",
+  "version": "0.1.0",
+  "status": "enabled_research_asset_with_provisional_category_parameters_pending_runtime_and_physical_calibration",
+  "clinical_validation": false,
+  "medical_device": false,
+  "units": "metres-kilograms-seconds",
+  "catalog_subpath": "Props/SurgicalClosure/SkinAdhesive",
+  "construction": {
+    "geometry_source": "independently_generated_category_level_parametric_geometry",
+    "applicator_type": "single_use_dual_paddle_topical_skin_adhesive_applicator",
+    "forward_axis": "+X",
+    "up_axis": "+Z",
+    "visual_bounds": {
+      "min_m": [
+        -0.06745,
+        -0.013925174670088388,
+        -0.0088494
+      ],
+      "max_m": [
+        0.08780000000000002,
+        0.013925174670088388,
+        0.0088494
+      ],
+      "envelope_m": [
+        0.15525,
+        0.027850349340176776,
+        0.0176988
+      ]
+    },
+    "collision_bounds": {
+      "min_m": [
+        -0.0681,
+        -0.016608559519414392,
+        -0.009044474403664121
+      ],
+      "max_m": [
+        0.08780000000000002,
+        0.016608559519414392,
+        0.009044474403664121
+      ],
+      "envelope_m": [
+        0.1559,
+        0.033217119038828784,
+        0.018088948807328243
+      ]
+    },
+    "collider_to_visual_envelope_ratio_xyz": [
+      1.0041867954911434,
+      1.1927002650164225,
+      1.0220437999936856
+    ],
+    "state_variants": [
+      "sealed",
+      "activated",
+      "empty"
+    ],
+    "continuous_motion": [
+      "left_paddle_joint",
+      "right_paddle_joint",
+      "metering_piston_joint"
+    ],
+    "cap_asset": "skin_adhesive_cap.usda",
+    "deposit_asset": "skin_adhesive_bead.usda"
+  },
+  "applicator_states": {
+    "sealed": {
+      "mass_kg": 0.0188,
+      "center_of_mass_m": [
+        -0.03332760860827168,
+        -6.109681594131144e-05,
+        9.156284071247731e-06
+      ],
+      "diagonal_inertia_kg_m2": [
+        8.40903372941631e-07,
+        3.697173172394782e-06,
+        3.820067782158274e-06
+      ],
+      "principal_axes_wxyz": [
+        0.9999889748767424,
+        -0.004635383190917141,
+        -0.00013826826953490236,
+        0.0007377191342316083
+      ],
+      "measurement_status": "geometry_distributed_provisional_total_mass_not_product_metrology"
+    },
+    "activated": {
+      "mass_kg": 0.0186,
+      "center_of_mass_m": [
+        -0.03317101312951041,
+        -6.109681594131144e-05,
+        9.156284071247731e-06
+      ],
+      "diagonal_inertia_kg_m2": [
+        8.319573913815828e-07,
+        3.7961898589043047e-06,
+        3.91777683030176e-06
+      ],
+      "principal_axes_wxyz": [
+        0.9999889802879381,
+        -0.004635210847655022,
+        -0.00012788231928823862,
+        0.0007333274846430996
+      ],
+      "measurement_status": "geometry_distributed_provisional_total_mass_not_product_metrology"
+    },
+    "empty": {
+      "mass_kg": 0.0157,
+      "center_of_mass_m": [
+        -0.03455726219202673,
+        -6.4461615100789e-05,
+        9.660550234258105e-06
+      ],
+      "diagonal_inertia_kg_m2": [
+        7.35597471989855e-07,
+        2.698152780726314e-06,
+        2.8058248925065185e-06
+      ],
+      "principal_axes_wxyz": [
+        0.9999889222742343,
+        -0.004659623557201368,
+        -0.00021900797444658312,
+        0.0006287071079316506
+      ],
+      "measurement_status": "geometry_distributed_provisional_total_mass_not_product_metrology"
+    }
+  },
+  "moving_links": {
+    "left_paddle": {
+      "mass_kg": 0.00115,
+      "joint_axis": "Z",
+      "limits_deg": [
+        -11.0,
+        0.0
+      ]
+    },
+    "right_paddle": {
+      "mass_kg": 0.00115,
+      "joint_axis": "Z",
+      "limits_deg": [
+        0.0,
+        11.0
+      ]
+    },
+    "metering_piston": {
+      "mass_kg": 0.0013,
+      "joint_axis": "X",
+      "limits_m": [
+        0.0,
+        0.009
+      ]
+    }
+  },
+  "runtime_coupling": {
+    "mapping": "mean_absolute_paddle_fraction_to_piston_translation",
+    "formula": "piston_target_m = clamp(mean(abs(left_deg), abs(right_deg)) / 11deg, 0, 1) * 0.009m",
+    "status": "task_controller_contract_not_a_claim_about_internal_commercial_applicator_mechanics"
+  },
+  "contact": {
+    "materials": {
+      "body": {
+        "static_friction": 0.48,
+        "dynamic_friction": 0.37
+      },
+      "grip": {
+        "static_friction": 0.82,
+        "dynamic_friction": 0.7
+      },
+      "paddles": {
+        "static_friction": 0.68,
+        "dynamic_friction": 0.56
+      },
+      "dry_tip": {
+        "static_friction": 0.52,
+        "dynamic_friction": 0.4
+      },
+      "activated_tip": {
+        "static_friction": 0.98,
+        "dynamic_friction": 0.78
+      },
+      "spent_tip": {
+        "static_friction": 0.64,
+        "dynamic_friction": 0.5
+      }
+    },
+    "status": "provisional_clean_surface_seeds_not_measured_against_skin_or_surgical_drape"
+  },
+  "adhesive_bead": {
+    "representation": "kinematic_deposit_task_asset_not_a_fluid_or_curing_solver",
+    "length_m": 0.07,
+    "width_m": 0.0023,
+    "height_m": 0.00076,
+    "collider_count": 35,
+    "states": {
+      "fresh": {
+        "mass_kg": 0.00024,
+        "static_friction": 1.1,
+        "dynamic_friction": 0.82
+      },
+      "cured": {
+        "mass_kg": 0.00022,
+        "static_friction": 0.76,
+        "dynamic_friction": 0.58
+      }
+    },
+    "mass_property_source": "mesh_distribution_scaled_to_provisional_state_mass",
+    "center_of_mass_m": [
+      -5.835353120666049e-19,
+      -1.8673129986131355e-19,
+      5.288288765603606e-21
+    ],
+    "principal_axes_wxyz": [
+      -0.022050868654744232,
+      -0.022050868654744232,
+      0.7067628733822761,
+      0.7067628733822761
+    ]
+  },
+  "limitations": [
+    "no_fluid_flow_solver",
+    "no_polymerization_or_cure_kinetics",
+    "no_tissue_adhesion_or_bond_strength_model",
+    "no_wound_edge_biomechanics",
+    "no_clinical_effectiveness_or_safety_claim",
+    "all_unmeasured_masses_friction_drive_gains_and_dose_values_are_provisional"
+  ]
+}

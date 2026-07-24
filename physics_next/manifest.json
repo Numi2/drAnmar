@@ -16,6 +16,9 @@
     "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/physics_profile.json",
     "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/interaction_frames.json",
     "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/integration_report.json",
+    "surgical-closure/dranmar-skin-adhesive-v1.json",
+    "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/interaction_frames.json",
+    "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/asset_manifest.json",
     "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/physics_profile.json",
     "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/interaction_frames.json",
     "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/physics_profile.json",
@@ -120,6 +123,17 @@
       "formed_staple": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_staple.usda",
       "current_capability": "optional_loaded_rigid_operating_room_prop_and_articulated_research_helpers",
       "deployment": "enabled_with_native_runtime_qualification_pending"
+    },
+    "dr_anmar_skin_adhesive": {
+      "profile": "surgical-closure/dranmar-skin-adhesive-v1.json",
+      "interaction_frames": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/interaction_frames.json",
+      "package_manifest": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/asset_manifest.json",
+      "articulated_applicator": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_articulated.usda",
+      "rigid_proxy": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_rigid_proxy.usda",
+      "removable_cap": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_cap.usda",
+      "deposit_bead": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_bead.usda",
+      "current_capability": "articulated_activation_graspable_cap_and_fresh_or_cured_kinematic_deposit_workflow",
+      "deployment": "enabled_as_optional_bench_system"
     },
     "dr_anmar_needle_system_v030": {
       "profile": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/physics_profile.json",

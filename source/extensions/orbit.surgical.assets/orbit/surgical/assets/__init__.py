@@ -30,5 +30,6 @@ from .ecm import *
 from .laparotomy_sponge import *
 from .needle_thread import *
 from .psm import *
+from .skin_adhesive import *
 from .skin_stapler import *
 from .star import *

@@ -152,6 +152,22 @@
       "clinical_validation": false
     },
     {
+      "id": "dranmar-skin-adhesive-system-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_articulated.usda",
+      "rigid_proxy": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_rigid_proxy.usda",
+      "cap_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_cap.usda",
+      "bead_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_bead.usda",
+      "profile": "physics_next/surgical-closure/dranmar-skin-adhesive-v1.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/interaction_frames.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/asset_manifest.json",
+      "live_integration": "optional_complete_system_in_main_operating_room_bench",
+      "live_behavior": "four_link_dual_paddle_and_metering_piston_articulation_independently_graspable_cap_and_fresh_or_cured_kinematic_deposit_task_state",
+      "deployment": "enabled_as_optional_bench_system",
+      "native_gpu_qualification": "pending_live_isaac_sim_cuda_execution",
+      "physical_qualification": "provisional_category_parameters_active",
+      "clinical_validation": false
+    },
+    {
       "id": "dr-anmar-stapler-test-cell-v0.1.0",
       "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda",
       "fixture_articulated_device": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_device.usda",

@@ -24,6 +24,7 @@ addressing convention:
 ```text
 Props/SurgicalCount/LaparotomySponge
 Props/SurgicalClosure/SkinStapler
+Props/SurgicalClosure/SkinAdhesive
 Props/SurgicalClosure/Needle
 Props/SurgicalClosure/NeedleThread
 Props/SurgicalClosure/StaplerTestCell
@@ -31,19 +32,23 @@ Props/SurgicalClosure/StaplerTestCell
 
 These local extensions are not represented as NVIDIA-authored catalog content.
 `SurgicalCountAssets` exposes the unfolded and folded paths in the form
-expected by `BaseI4HAssets`; `SurgicalClosureAssets` exposes the rigid stapler,
-articulated stapler and standalone staple. DrAnmar's capability payload
+expected by `BaseI4HAssets`; `SurgicalClosureAssets` exposes the stapler and
+topical skin-adhesive system paths. DrAnmar's capability payload
 identifies `provider: dr_anmar`, the local path, licence, representation and
 readiness.
 
-The sponge package keeps both dry/wet representations runnable. The needle
+The sponge package keeps both dry/wet representations runnable. The topical
+skin-adhesive package adds an articulated applicator, removable rigid cap,
+fresh/cured deposit state, and coordinated activation helper. The needle
 system adds independently selectable standalone, coiled, extended and rigid
 proxy routes. The stapler package adds loaded/empty state handling, stable and
 articulated runtime routes, semantics, trigger/pusher control, simulated
 deployment bookkeeping, an optional loaded rigid prop and a dedicated fixed
 test-cell room. Provisional physics and nonclinical provenance are recorded in
 [`LAPAROTOMY_SPONGE.md`](LAPAROTOMY_SPONGE.md) and
-[`SKIN_STAPLER.md`](SKIN_STAPLER.md), with the new needle package documented
+[`SKIN_STAPLER.md`](SKIN_STAPLER.md), the adhesive package in
+[`DRANMAR_SKIN_ADHESIVE.md`](DRANMAR_SKIN_ADHESIVE.md), and the needle package
+documented
 in [`DR_ANMAR_NEEDLE_SYSTEM_0_3.md`](DR_ANMAR_NEEDLE_SYSTEM_0_3.md).
 
 ## Useful Dr.Anmar bundles

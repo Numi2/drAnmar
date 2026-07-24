@@ -1,0 +1,38 @@
+{
+  "schema": "dr.anmar.collider-coverage.v1",
+  "visual": {
+    "min_m": [
+      -0.06745,
+      -0.013925174670088388,
+      -0.0088494
+    ],
+    "max_m": [
+      0.08780000000000002,
+      0.013925174670088388,
+      0.0088494
+    ],
+    "envelope_m": [
+      0.15525,
+      0.027850349340176776,
+      0.0176988
+    ]
+  },
+  "collision": {
+    "min_m": [
+      -0.0681,
+      -0.016608559519414392,
+      -0.009044474403664121
+    ],
+    "max_m": [
+      0.08780000000000002,
+      0.016608559519414392,
+      0.009044474403664121
+    ],
+    "envelope_m": [
+      0.1559,
+      0.033217119038828784,
+      0.018088948807328243
+    ]
+  },
+  "note": "Envelope report for rest configuration; deliberate collider insets and overreach are described in physics_profile.json."
+}

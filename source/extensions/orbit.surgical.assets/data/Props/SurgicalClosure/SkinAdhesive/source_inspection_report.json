@@ -1,0 +1,38 @@
+{
+  "schema": "dr.anmar.source-inspection.v1",
+  "note": "Static source inspection only; user will perform target-runtime parsing and qualification.",
+  "files": [
+    {
+      "path": "skin_adhesive_applicator_articulated.usda",
+      "bytes": 1627957,
+      "flat_quaternion_count": 37,
+      "contains_nested_quaternion_pattern": false,
+      "one_line_over_declarations": false,
+      "variant_set_count": 1
+    },
+    {
+      "path": "skin_adhesive_applicator_rigid_proxy.usda",
+      "bytes": 1464098,
+      "flat_quaternion_count": 25,
+      "contains_nested_quaternion_pattern": false,
+      "one_line_over_declarations": false,
+      "variant_set_count": 1
+    },
+    {
+      "path": "skin_adhesive_cap.usda",
+      "bytes": 543694,
+      "flat_quaternion_count": 6,
+      "contains_nested_quaternion_pattern": false,
+      "one_line_over_declarations": false,
+      "variant_set_count": 0
+    },
+    {
+      "path": "skin_adhesive_bead.usda",
+      "bytes": 414250,
+      "flat_quaternion_count": 42,
+      "contains_nested_quaternion_pattern": false,
+      "one_line_over_declarations": false,
+      "variant_set_count": 1
+    }
+  ]
+}
