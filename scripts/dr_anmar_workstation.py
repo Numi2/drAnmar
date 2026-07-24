@@ -3579,16 +3579,28 @@ def main() -> None:
             if apply_psm_gripper_articulation_profile(robot_cfg):
                 configured_psm_articulations.append(robot_attribute)
     if native_tissue_enabled:
-        env_cfg.actions.gripper_action = BinaryJointPositionActionCfg(
-            asset_name="robot",
-            joint_names=["psm_tool_gripper.*_joint"],
-            open_command_expr=psm_gripper_command_expr(
-                CANONICAL_PSM_GRIPPER_PROFILE.open_rad
-            ),
-            close_command_expr=psm_gripper_command_expr(
-                CANONICAL_PSM_GRIPPER_PROFILE.close_rad
-            ),
+        gripper_terms = (
+            ("gripper_action", "robot"),
+            ("gripper_1_action", "robot_1"),
+            ("gripper_2_action", "robot_2"),
         )
+        for term_name, asset_name in gripper_terms:
+            if not hasattr(env_cfg.actions, term_name):
+                continue
+            setattr(
+                env_cfg.actions,
+                term_name,
+                BinaryJointPositionActionCfg(
+                    asset_name=asset_name,
+                    joint_names=["psm_tool_gripper.*_joint"],
+                    open_command_expr=psm_gripper_command_expr(
+                        CANONICAL_PSM_GRIPPER_PROFILE.open_rad
+                    ),
+                    close_command_expr=psm_gripper_command_expr(
+                        CANONICAL_PSM_GRIPPER_PROFILE.close_rad
+                    ),
+                ),
+            )
     # Every interactive PSM room consumes the same foundation profile.
     configured_psm_action_terms = apply_psm_gripper_action_profile(env_cfg.actions)
     configured_psm_gripper_profile = psm_gripper_profile_manifest(
