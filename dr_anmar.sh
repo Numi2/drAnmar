@@ -69,6 +69,7 @@ case "${command}" in
         workstation_args=(
             --headless
             --enable_cameras
+            --host "${DR_ANMAR_WORKER_HOST:-127.0.0.1}"
             --task "${task}"
             --port "${port}"
             --demo_dir "${ROOT}/demos"

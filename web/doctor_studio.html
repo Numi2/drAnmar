@@ -171,7 +171,7 @@
 <script>
   const operatorId=(()=>{let value=sessionStorage.getItem('drAnmarOperatorId');if(!value){const random=crypto.randomUUID?crypto.randomUUID():`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;value=`browser-${random}`;sessionStorage.setItem('drAnmarOperatorId',value)}return value})();
   const S={curriculum:null,catalog:null,progress:null,status:null,anatomy:null,procedures:null,selectedProcedure:'needle-pickup',anatomySignature:'',workerInstance:'',courseId:'learning-from-demonstration',lessonId:'needle-lift',view:'learn',selectedAnatomy:0,trainingPrepared:false,demos:[],selectedDemo:null,datasetCards:[],scenarios:[],experiments:[],matrixScenarioIds:[],matrix:null,healthcare:null,healthcareJob:null,healthcareLogJob:'',multimodalStudies:[],studyModalities:[]};
-  const workerBase=()=>`${location.protocol}//${location.hostname}:${S.status?.worker_port||2361}`;
+  const workerBase=()=>'/workstation';
   const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   let studioDisposed=false,statusPollInFlight=false,healthcareLogInFlight=false,heartbeatInFlight=false,statusInterval=null,heartbeatInterval=null,expertUiInterval=null;
   const activeApiControllers=new Set();

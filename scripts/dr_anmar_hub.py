@@ -27,6 +27,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from dr_anmar_catalog import CATALOG, PRIMARY_TASKS, TASKS_BY_ID
 from dr_anmar_curriculum import curriculum_payload
@@ -514,6 +515,76 @@ def worker_status() -> dict[str, Any] | None:
         return worker_json("/api/status")
     except HTTPException:
         return None
+
+
+def proxy_worker_request(
+    path: str,
+    method: str,
+    query: str,
+    body: bytes,
+    incoming_headers: dict[str, str],
+) -> tuple[int, bytes, dict[str, str]]:
+    """Forward one browser request to the private workstation process."""
+    target = f"http://127.0.0.1:{args.worker_port}/{path}"
+    if query:
+        target = f"{target}?{query}"
+    headers: dict[str, str] = {}
+    for name in ("content-type", "accept", "range", OPERATOR_HEADER):
+        if value := incoming_headers.get(name):
+            headers[name] = value
+    if (access_token := configured_access_token()) is not None:
+        headers["Cookie"] = f"{ACCESS_COOKIE}={access_cookie_value(access_token)}"
+    request = urllib.request.Request(
+        target,
+        data=body if method not in {"GET", "HEAD"} else None,
+        method=method,
+        headers=headers,
+    )
+    try:
+        response = urllib.request.urlopen(request, timeout=10.0)
+    except urllib.error.HTTPError as exc:
+        response = exc
+    with response:
+        payload = response.read()
+        status = response.status
+        response_headers = {
+            name: value
+            for name, value in response.headers.items()
+            if name.lower() in {"content-type", "content-disposition", "content-range", "accept-ranges"}
+        }
+    content_type = response_headers.get("Content-Type", response_headers.get("content-type", ""))
+    if path == "" and "text/html" in content_type:
+        # The worker uses absolute browser paths because it can also run alone.
+        # Keep that implementation intact while mounting it behind the one
+        # public Doctor Studio address.
+        html = payload.decode("utf-8")
+        for prefix in ("api", "frame", "demos"):
+            html = html.replace(f"'/{prefix}/", f"'/workstation/{prefix}/")
+            html = html.replace(f'"/{prefix}/', f'"/workstation/{prefix}/')
+            html = html.replace(f"`/{prefix}/", f"`/workstation/{prefix}/")
+        payload = html.encode("utf-8")
+    return status, payload, response_headers
+
+
+@app.api_route(
+    "/workstation/{path:path}",
+    methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+)
+async def workstation_proxy(path: str, request: Request) -> Response:
+    """Expose the one private simulation worker through the public hub."""
+    body = await request.body()
+    try:
+        status, payload, headers = await run_in_threadpool(
+            proxy_worker_request,
+            path,
+            request.method,
+            request.url.query,
+            body,
+            {name.lower(): value for name, value in request.headers.items()},
+        )
+    except (OSError, urllib.error.URLError) as exc:
+        raise HTTPException(503, "The operating-room worker is not ready") from exc
+    return Response(content=payload, status_code=status, headers=headers)
 
 
 def capture_worker_context(current: dict[str, Any] | None, enabled: bool = True) -> dict[str, Any] | None:

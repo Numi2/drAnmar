@@ -463,7 +463,7 @@ async function replay(){try{const x=await post('/api/replay-last');toast(x.messa
 async function referenceGhost(enabled){try{const x=await post('/api/reference-ghost',{enabled});toast(x.message)}catch(e){toast(e.message)}}
 const cameraDelay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 for(const [name,label] of [['wrist_1','Gripper 1'],['wrist_2','Gripper 2']]){const button=document.querySelector(`[data-camera="${name}"]`);if(button?.firstChild)button.firstChild.textContent=`${label} `}
-function startCameraFeed(name){currentCamera=name;cameraFeedGeneration+=1;const generation=cameraFeedGeneration,image=document.getElementById('cameraImage');cameraFeedController?.abort();cameraFeedController=new AbortController();const controller=cameraFeedController;activeFetchControllers.add(controller);(async()=>{try{while(!pageDisposed&&generation===cameraFeedGeneration){if(document.hidden){await cameraDelay(250);continue}try{const response=await fetch(`/frame/${encodeURIComponent(name)}.jpg?t=${Date.now()}`,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error(`Camera frame ${response.status}`);const nextUrl=URL.createObjectURL(await response.blob()),previousUrl=cameraObjectUrl;cameraObjectUrl=nextUrl;image.src=nextUrl;if(previousUrl)URL.revokeObjectURL(previousUrl);await cameraDelay(55)}catch(error){if(controller.signal.aborted)return;await cameraDelay(250)}}}finally{activeFetchControllers.delete(controller)}})()}
+function startCameraFeed(name){currentCamera=name;cameraFeedGeneration+=1;const generation=cameraFeedGeneration,image=document.getElementById('cameraImage');cameraFeedController?.abort();cameraFeedController=new AbortController();const controller=cameraFeedController;activeFetchControllers.add(controller);(async()=>{try{while(!pageDisposed&&generation===cameraFeedGeneration){if(document.hidden){await cameraDelay(250);continue}try{const requestStarted=performance.now(),response=await fetch(`/frame/${encodeURIComponent(name)}.jpg?t=${Date.now()}`,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error(`Camera frame ${response.status}`);const nextUrl=URL.createObjectURL(await response.blob()),previousUrl=cameraObjectUrl;cameraObjectUrl=nextUrl;image.src=nextUrl;if(previousUrl)URL.revokeObjectURL(previousUrl);await cameraDelay(Math.max(0,55-(performance.now()-requestStarted)))}catch(error){if(controller.signal.aborted)return;await cameraDelay(250)}}}finally{activeFetchControllers.delete(controller)}})()}
 function cameraAdjustmentTarget(name=currentCamera){if(name.startsWith('wrist_'))return name;if(name.startsWith('endoscope_'))return'endoscope_left';return'endoscope_left'}
 function selectedCameraAdjustment(status=latestStatus){const target=cameraAdjustmentTarget();return status?.camera_adjustable_by_name?.[target]||status?.camera_adjustable||{}}
 function setCamera(name,button){if(currentCamera!==name||!cameraFeedController||cameraFeedController.signal.aborted)startCameraFeed(name);document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('active',x===button));renderFreeCamera(selectedCameraAdjustment())}
@@ -3296,10 +3296,9 @@ def main() -> None:
         args_cli.task,
         device=args_cli.device,
         num_envs=1,
-        # Use Isaac Lab's normal Fabric transform mirror so RTX cameras see
-        # every PhysX articulation update. The needle-to-strand attachment is
-        # authored before simulation starts and remains owned by PhysX; it does
-        # not require freezing the renderer on stale OpenUSD transforms.
+        # Native rigid suture segments must publish their PhysX transforms
+        # through USD/Hydra because they are authored after scene creation.
+        # Other rooms retain Isaac Lab's faster Fabric transform mirror.
         use_fabric=(
             not args_cli.disable_fabric
             and not (
@@ -3748,7 +3747,7 @@ def main() -> None:
     )
     env_cfg.scene.endoscope = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Endoscope",
-        update_period=0.04,
+        update_period=interactive_camera_period_s,
         height=interactive_camera_height,
         width=interactive_camera_width,
         data_types=endoscope_data_types,
