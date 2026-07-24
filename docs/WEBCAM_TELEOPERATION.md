@@ -10,9 +10,22 @@ Dr.Anmar's webcam controller is a simulation-only master-pose input for the two 
 - Only thumb and index spacing controls proportional jaw aperture.
 - Explicit per-arm and global Engage/Freeze buttons are the motion clutch. No other finger pose is a command.
 - A new engagement captures a new hand anchor, so freezing and recentering cannot move the robot.
+- Precision mode is enabled by default and scales motion without changing camera calibration.
 
-Calibration records numeric neutral palm scale and normalized closed/open thumb–index spacing per browser camera in
-`localStorage`. The webcam stream and MediaPipe landmarks stay inside the browser.
+Calibration records a robust median from 24 stable samples for neutral palm scale and normalized closed/open
+thumb–index spacing per browser camera in `localStorage`. Median absolute deviation rejects a moving hand rather than
+persisting a noisy calibration. The webcam stream and MediaPipe landmarks stay inside the browser.
+
+The browser runs inference on decoded camera frames with `requestVideoFrameCallback` where supported. Physical
+left/right identity combines MediaPipe handedness with palm-position continuity so one flickering handedness label
+cannot exchange the two instruments. A palm geometry score, field-of-view margin, landmark confidence, velocity, and
+scale-change plausibility form the transmitted signal-quality value. Frames below the quality gate do not move the
+robot or update jaw aperture.
+
+Each arm uses time-aware One Euro filtering: it suppresses stationary landmark jitter while automatically reducing
+lag during deliberate motion. A bounded 25 ms velocity prediction compensates part of camera/inference latency,
+small translation and rotation deadbands remove resting chatter, and the interface exposes vision rate, inference
+time, round-trip command time, per-arm quality, and the active safety state.
 
 ## Runtime contract
 
@@ -50,7 +63,9 @@ proportional command.
 
 After 250 ms without a valid frame, that arm freezes, pending displacement is discarded, and the last aperture is
 held. The arm must produce a tracked frozen frame before movement can resume. Manual input disables webcam authority
-globally until the operator explicitly enables it again.
+globally until the operator explicitly enables it again. The server independently rejects tracked frames below 60%
+quality, and simulator-rate commands use bounded acceleration for starts and direction changes plus exact residual
+settling to avoid chatter or cumulative-pose overshoot.
 
 ## Pinned local assets
 
@@ -81,6 +96,12 @@ Run the deterministic contract suites:
 python3 -m unittest tests/test_hand_teleop.py -v
 node --test tests/hand_control.test.mjs
 ```
+
+The JavaScript suite covers bimanual identity stability, robust calibration, palm-frame degeneracy, adaptive
+filtering, bounded prediction, quality rejection, depth, rotation, proportional aperture, and frame synchronization.
+The Python suite covers validation without mutation, quality holds, acceleration conditioning, cumulative target
+resampling, watchdog/reacquisition, native IK scales, manual takeover, proportional gripper endpoints, and recording
+compatibility.
 
 Real-webcam acceptance must still be performed from the secured Mac browser: calibrate both hands, verify independent
 XYZ and wrist rotation, check 0/50/100% jaw positions, coordinate both arms, freeze/recenter, leave and re-enter the

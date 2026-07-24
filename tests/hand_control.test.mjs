@@ -5,13 +5,20 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  OneEuroFilter,
+  assignHandDetections,
+  conditionPoseVector,
   depthOffset,
   handednessToArm,
+  median,
   normalizedAperture,
   palmFrame,
   poseOffset,
+  predictPoseVector,
+  robustCalibrationSample,
   rotationDelta,
   smoothVector,
+  trackingQuality,
 } from "../web/hand_control.mjs";
 
 function baseHand() {
@@ -93,4 +100,87 @@ test("only thumb and index are intentional gesture controls", async () => {
   assert.doesNotMatch(source, /middle.*curl|ring.*curl|pinky.*curl/i);
   assert.match(source, /Engage tracked/);
   assert.match(source, /Freeze both/);
+});
+
+test("robust calibration rejects motion and ignores isolated outliers", () => {
+  const stable = Array.from({ length: 23 }, (_, index) => 0.2 + (index % 3 - 1) * 0.001);
+  stable.push(0.9);
+  const sample = robustCalibrationSample(stable);
+  assert.ok(Math.abs(sample.value - 0.2) < 0.002);
+  assert.ok(sample.stability > 0.8);
+  assert.equal(median([9, 1, 3, 2]), 2.5);
+  assert.throws(
+    () => robustCalibrationSample(Array.from({ length: 12 }, (_, index) => 0.1 + index * 0.03)),
+    /moved too much/,
+  );
+});
+
+test("spatial continuity prevents one-frame handedness label swaps", () => {
+  const pose = x => ({
+    center: { x, y: 0.5, z: 0 },
+    scale: 0.2,
+    geometryQuality: 1,
+    confidence: 0.95,
+  });
+  const previous = new Map([[0, pose(0.30)], [1, pose(0.70)]]);
+  const assigned = assignHandDetections([
+    { proposedArm: 1, labelConfidence: 0.9, pose: pose(0.31) },
+    { proposedArm: 0, labelConfidence: 0.9, pose: pose(0.69) },
+  ], previous);
+  assert.equal(assigned.get(0).center.x, 0.31);
+  assert.equal(assigned.get(1).center.x, 0.69);
+});
+
+test("tracking quality gates implausible jumps and edge-of-frame geometry", () => {
+  const stable = {
+    center: { x: 0.5, y: 0.5, z: 0 },
+    scale: 0.2,
+    geometryQuality: 1,
+    confidence: 0.94,
+  };
+  assert.ok(trackingQuality(stable, stable, 1 / 30) > 0.9);
+  assert.equal(
+    trackingQuality({ ...stable, center: { x: 0.95, y: 0.5, z: 0 } }, stable, 0.01),
+    0,
+  );
+  assert.throws(() => {
+    const points = baseHand();
+    points[5] = { ...points[9] };
+    points[17] = { ...points[9] };
+    palmFrame(points);
+  }, /degenerate/);
+});
+
+test("adaptive filter suppresses rest jitter without hiding deliberate motion", () => {
+  const filter = new OneEuroFilter({ minCutoff: 1.7, beta: 0.22 });
+  const raw = Array.from({ length: 30 }, (_, index) => (index % 2 ? 0.02 : -0.02));
+  const filtered = raw.map((value, index) => filter.filter(value, index / 30));
+  const rawVariation = raw.slice(1).reduce((sum, value, index) => sum + Math.abs(value - raw[index]), 0);
+  const filteredVariation = filtered.slice(1).reduce(
+    (sum, value, index) => sum + Math.abs(value - filtered[index]),
+    0,
+  );
+  assert.ok(filteredVariation < rawVariation * 0.45);
+  const step = filter.filter(0.4, 1.01);
+  assert.ok(step > 0.08);
+});
+
+test("short-horizon prediction and pose conditioning stay safely bounded", () => {
+  const predicted = predictPoseVector(
+    [0, 0, 0, 0, 0, 0],
+    [0.02, -0.02, 0.01, 0.2, -0.2, 0.1],
+    0.01,
+  );
+  assert.ok(Math.abs(predicted[0] - 0.02) <= 0.0040001);
+  assert.ok(Math.abs(predicted[3] - 0.2) <= 0.0350001);
+  assert.deepEqual(conditionPoseVector([0.0001, 0, 0, 0.001, 0, 0]), [0, 0, 0, 0, 0, 0]);
+});
+
+test("vision inference is synchronized to decoded video frames", async () => {
+  const source = await readFile(new URL("../web/hand_control.mjs", import.meta.url), "utf8");
+  assert.match(source, /requestVideoFrameCallback/);
+  assert.match(source, /metadata\.mediaTime/);
+  assert.match(source, /MIN_INFERENCE_INTERVAL_MS/);
+  assert.match(source, /generation !== this\.startGeneration/);
+  assert.match(source, /stream\.getTracks\(\)\.forEach\(track => track\.stop\(\)\)/);
 });

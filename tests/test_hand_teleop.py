@@ -135,6 +135,61 @@ class ResamplingAndSafetyTests(unittest.TestCase):
         self.assertEqual(runtime.consume([[0.01] * 6], now=1.02)[0], [0.0] * 6)
         self.assertEqual(runtime.arm_states[0].target_offset, [0.0] * 6)
 
+    def test_low_quality_frame_freezes_motion_and_holds_last_good_aperture(self) -> None:
+        runtime = self.armed_runtime()
+        runtime.submit(
+            2,
+            [hand(engaged=True, translation=[0.02, 0.0, 0.0], aperture=0.31)],
+            now=1.01,
+        )
+        runtime.submit(
+            3,
+            [
+                hand(
+                    engaged=True,
+                    translation=[0.03, 0.0, 0.0],
+                    aperture=0.92,
+                    confidence=0.59,
+                )
+            ],
+            now=1.02,
+        )
+        state = runtime.arm_states[0]
+        self.assertFalse(state.tracked)
+        self.assertFalse(state.motion_engaged)
+        self.assertEqual(state.safety_state, "quality_hold")
+        self.assertEqual(state.rejected_frames, 1)
+        self.assertAlmostEqual(state.aperture_normalized, 0.31)
+        self.assertEqual(runtime.consume([[0.01] * 6], now=1.03)[0], [0.0] * 6)
+
+    def test_direction_reversal_is_acceleration_conditioned_without_overshoot(self) -> None:
+        runtime = self.armed_runtime()
+        runtime.submit(
+            2,
+            [hand(engaged=True, translation=[0.01, 0.0, 0.0])],
+            now=1.01,
+        )
+        self.assertAlmostEqual(runtime.consume([[0.01] * 6], now=1.02)[0][0], 1.0)
+        runtime.submit(
+            3,
+            [hand(engaged=True, translation=[-0.01, 0.0, 0.0])],
+            now=1.03,
+        )
+        reversed_command = runtime.consume([[0.01] * 6], now=1.03)[0][0]
+        self.assertLess(reversed_command, 0.0)
+        self.assertLessEqual(abs(reversed_command), 0.160001)
+        self.assertGreaterEqual(runtime.arm_states[0].consumed_offset[0], -0.01)
+
+    def test_sub_deadband_residual_settles_exactly(self) -> None:
+        runtime = self.armed_runtime()
+        runtime.submit(
+            2,
+            [hand(engaged=True, translation=[0.00005, 0.0, 0.0])],
+            now=1.01,
+        )
+        self.assertEqual(runtime.consume([[0.01] * 6], now=1.02)[0], [0.0] * 6)
+        self.assertAlmostEqual(runtime.arm_states[0].consumed_offset[0], 0.00005)
+
 
 class NativeScaleAndGripperTests(unittest.TestCase):
     def test_asset_installer_uses_workstation_data_root(self) -> None:
