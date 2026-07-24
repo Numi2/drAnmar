@@ -23,7 +23,7 @@ _OPERATOR_ID = re.compile(r"^[A-Za-z0-9._:-]{12,128}$")
 class OperatorLease:
     """Allow observation from many browsers but mutation from one live session."""
 
-    ttl_seconds: float = 30.0
+    ttl_seconds: float = 3.0
     _operator_id: str | None = None
     _last_seen: float = 0.0
     _lock: threading.Lock = field(default_factory=threading.Lock)
