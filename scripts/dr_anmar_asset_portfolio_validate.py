@@ -58,8 +58,8 @@ def main() -> int:
         if asset.get("id") == "dr-anmar-laparotomy-sponge-v1":
             if asset.get("deployment") != "enabled":
                 errors.append("laparotomy sponge must remain enabled")
-            if not native_qualification.startswith("rigid_cuda_qualified"):
-                errors.append("laparotomy sponge rigid CUDA qualification is missing")
+            if not native_qualification.startswith("qualified_rigid_and_surface_cuda"):
+                errors.append("laparotomy sponge rigid and surface CUDA qualification is missing")
             if not physical_qualification.startswith("provisional_category_grounded"):
                 errors.append("laparotomy sponge provisional calibration is not explicit")
             gpu_report = asset.get("gpu_report")

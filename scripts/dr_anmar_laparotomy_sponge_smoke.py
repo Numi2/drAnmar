@@ -67,6 +67,12 @@ def distribution_version(name: str) -> str | None:
         return None
 
 
+def torch_value(value):
+    """Return a torch tensor from Isaac Lab tensor or ProxyArray values."""
+
+    return value.torch if hasattr(value, "torch") else value
+
+
 def rigid_run(helper, sim, stage, root_path: str) -> dict[str, object]:
     sponge = RigidObject(
         helper.make_rigid_proxy_cfg(
@@ -104,7 +110,7 @@ def rigid_run(helper, sim, stage, root_path: str) -> dict[str, object]:
     for _ in range(args.steps):
         sim.step(render=not args.headless)
         sponge.update(sim.get_physics_dt())
-    state = sponge.data.root_state_w.detach().cpu().numpy()
+    state = torch_value(sponge.data.root_state_w).detach().cpu().numpy()
     if not np.isfinite(state).all():
         raise RuntimeError("Non-finite rigid state after simulation")
     return {
@@ -151,11 +157,11 @@ def surface_run(helper, sim, stage, root_path: str) -> dict[str, object]:
 
     deformable = DeformableObject(helper.make_surface_view_cfg(mesh_path))
     sim.reset()
-    initial = deformable.data.nodal_pos_w.detach().cpu().numpy().copy()
+    initial = torch_value(deformable.data.nodal_pos_w).detach().cpu().numpy().copy()
     for _ in range(args.steps):
         sim.step(render=not args.headless)
         deformable.update(sim.get_physics_dt())
-    final = deformable.data.nodal_pos_w.detach().cpu().numpy()
+    final = torch_value(deformable.data.nodal_pos_w).detach().cpu().numpy()
     if not np.isfinite(final).all():
         raise RuntimeError("Non-finite surface nodal positions after simulation")
     if int(final.shape[-2]) != 1027:

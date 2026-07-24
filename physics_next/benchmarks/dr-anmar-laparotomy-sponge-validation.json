@@ -4,7 +4,7 @@
   "asset_version": "0.1.0",
   "profile": "physics_next/surgical-count/dr-anmar-laparotomy-sponge-v1.json",
   "execution_date": "2026-07-24",
-  "status": "rigid_cuda_qualified_surface_route_enabled_execution_pending_explicit_kit_activation",
+  "status": "qualified_rigid_and_surface_cuda_dry_wet",
   "deployment": "enabled",
   "platform": {
     "host": "gilgamesh",
@@ -97,14 +97,30 @@
     },
     "route_enabled": true,
     "dry": {
-      "execution_status": "pending_explicit_operator_kit_eula_activation",
-      "surface_cooking_confirmed": false,
-      "self_collision_stability_confirmed": false
+      "execution_status": "pass",
+      "steps": 240,
+      "node_count": 1027,
+      "max_displacement_m": 0.4810173213481903,
+      "finite_state": true,
+      "kit_log_error_count": 0,
+      "surface_cooking_confirmed": true,
+      "self_collision_enabled": true,
+      "self_collision_stability_confirmed": true,
+      "surface_material": "/World/Materials/LaparotomySpongeDrySurfaceMaterial",
+      "semantic_backend": "isaacsim.core.experimental.utils.semantics.add_labels"
     },
     "wet": {
-      "execution_status": "pending_explicit_operator_kit_eula_activation",
-      "surface_cooking_confirmed": false,
-      "self_collision_stability_confirmed": false
+      "execution_status": "pass",
+      "steps": 240,
+      "node_count": 1027,
+      "max_displacement_m": 0.4810153543949127,
+      "finite_state": true,
+      "kit_log_error_count": 0,
+      "surface_cooking_confirmed": true,
+      "self_collision_enabled": true,
+      "self_collision_stability_confirmed": true,
+      "surface_material": "/World/Materials/LaparotomySpongeWetSurfaceMaterial",
+      "semantic_backend": "isaacsim.core.experimental.utils.semantics.add_labels"
     },
     "delivered_runtime_assertions": [
       "OmniPhysicsDeformableBodyAPI_applied",
@@ -115,7 +131,16 @@
       "node_count_1027",
       "all_nodal_positions_finite_after_240_steps"
     ],
-    "activation_boundary": "The installed Isaac Sim 6 runtime requests acceptance of the NVIDIA Omniverse Kit licence. No agent accepted legal terms on the operator's behalf.",
+    "applied_surface_schemas": [
+      "OmniPhysicsDeformableBodyAPI",
+      "OmniPhysicsBodyAPI",
+      "OmniPhysicsSurfaceDeformableSimAPI",
+      "PhysicsCollisionAPI",
+      "PhysxSurfaceDeformableBodyAPI",
+      "PhysxBaseDeformableBodyAPI",
+      "MaterialBindingAPI"
+    ],
+    "activation": "Operator explicitly accepted the NVIDIA Omniverse Kit licence on 2026-07-24 before execution.",
     "legacy_runtime_observation": "Isaac Lab 2.3.2 DeformableObject is volume-only and does not create a surface-deformable view; the selected surface route is Isaac Lab 3.0.0 beta 2."
   },
   "calibration": {

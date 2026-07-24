@@ -28,13 +28,13 @@ connected surface and is covered by 32 capsule colliders on the folded proxy.
 | Route | Selected runtime | Evidence |
 | --- | --- | --- |
 | Folded rigid proxy | Isaac Sim 5.1.0.0, Isaac Lab 2.3.2, CUDA 12.8 | Dry and wet each completed 240 RTX 4090 steps with finite state |
-| Unfolded surface | Isaac Sim 6.0.1.0, Isaac Lab 3.0.0 beta 2, Omni Physics 110.1.13, CUDA 12.8 | Runtime authoring and view path delivered; execution record awaits explicit operator activation of the installed Kit licence |
+| Unfolded surface | Isaac Sim 6.0.1.0, Isaac Lab 3.0.0 beta 2, Omni Physics 110.1.13, CUDA 12.8 | Dry and wet each completed 240 RTX 4090 steps; cooking, 1,027-node readback, self-collision and finite state confirmed |
 
 The unfolded route is not disabled while physical measurements are missing.
 The runtime helper cooks the triangular simulation mesh, binds one effective
 surface material, enables self-collision, and creates an Isaac Lab deformable
 view. Isaac Lab 2.3's legacy deformable view is volume-only, so the folded proxy
-is the 5.1 route and the current surface path uses the isolated 6.0 lane.
+is the 5.1 route and the executed surface path uses the isolated 6.0 lane.
 
 ## Provisional parameter calibration
 

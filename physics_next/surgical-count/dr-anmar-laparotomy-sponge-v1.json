@@ -188,6 +188,15 @@
   },
   "qualification": {
     "policy": "keep_both_representations_runnable_and_record_evidence_without_metrology_based_feature_disable",
+    "cuda_execution": {
+      "folded_rigid_dry": "pass_240_steps_isaac_sim_5.1_isaac_lab_2.3.2",
+      "folded_rigid_wet": "pass_240_steps_isaac_sim_5.1_isaac_lab_2.3.2",
+      "unfolded_surface_dry": "pass_240_steps_isaac_sim_6.0.1_isaac_lab_3.0.0_beta2",
+      "unfolded_surface_wet": "pass_240_steps_isaac_sim_6.0.1_isaac_lab_3.0.0_beta2",
+      "surface_cooking_confirmed": true,
+      "surface_node_count": 1027,
+      "surface_self_collision_stability_confirmed": true
+    },
     "engineering_checks": [
       "openusd_parse",
       "relative_reference_resolution",

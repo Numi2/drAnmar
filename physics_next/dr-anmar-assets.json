@@ -104,7 +104,7 @@
       "live_integration": "i4h_compatible_surgical_count_catalog_and_repository_local_rooms",
       "live_behavior": "dry_and_wet_rigid_perception_grasp_handover_tray_placement_counting_and_loop_retrieval_plus_runtime_cooked_connected_surface_deformation_with_self_collision",
       "deployment": "enabled",
-      "native_gpu_qualification": "rigid_cuda_qualified_surface_route_enabled_execution_evidence_pending_explicit_kit_activation",
+      "native_gpu_qualification": "qualified_rigid_and_surface_cuda_isaac_sim_5.1_and_6.0",
       "physical_qualification": "provisional_category_grounded_parameters_active",
       "clinical_validation": false
     }

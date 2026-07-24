@@ -113,10 +113,11 @@ All entries remain simulation/research-only and not clinically validated.
 - On the RTX 4090 / driver 580.159.03, the folded dry and wet variants each
   completed 240 CUDA steps in Isaac Sim 5.1.0.0 / Isaac Lab 2.3.2 with finite
   state.
-- The Isaac Sim 6.0.1.0 / Isaac Lab 3.0.0 beta 2 surface route is delivered and
-  enabled. Native surface-cooking and self-collision execution evidence awaits
-  explicit operator activation of the installed Omniverse Kit licence; the
-  agent did not accept legal terms on the operator's behalf.
+- After the operator explicitly accepted the installed Omniverse Kit licence,
+  both dry and wet surface variants completed 240 CUDA steps in Isaac Sim
+  6.0.1.0 / Isaac Lab 3.0.0 beta 2. Each run exposed all 1,027 nodes, applied
+  the Omni Physics and PhysX surface-deformable schemas, kept self-collision
+  enabled and completed with finite nodal state.
 
 These values are active provisional research parameters. They are not
 manufacturer measurements, clinical validation, or patient-care approval.
