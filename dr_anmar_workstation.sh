@@ -22,22 +22,74 @@ LOG_FILE="${ROOT}/logs/workstation.log"
 
 mkdir -p "${ROOT}/run" "${ROOT}/logs" "${ROOT}/demos"
 
-is_running() {
-    [[ -f "${PID_FILE}" ]] || return 1
-    local pid command
-    pid="$(cat "${PID_FILE}")"
+worker_command() {
+    local pid="$1"
+    local command
     kill -0 "${pid}" 2>/dev/null || return 1
     if [[ -r "/proc/${pid}/cmdline" ]]; then
         command="$(tr '\0' ' ' <"/proc/${pid}/cmdline")"
     else
         command="$(ps -p "${pid}" -o command= 2>/dev/null || true)"
     fi
-    [[ "${command}" == *"dr_anmar"* ]]
+    printf '%s' "${command}"
+}
+
+is_worker_pid() {
+    local command
+    command="$(worker_command "$1")" || return 1
+    [[
+        (
+            "${command}" == *"scripts/dr_anmar_workstation.py"* ||
+            "${command}" == *"scripts/dr_anmar_anatomy_viewer.py"*
+        ) &&
+        (
+            "${command}" == *"--port ${PORT} "* ||
+            "${command}" == *"--port ${PORT}"
+        )
+    ]]
+}
+
+worker_pids() {
+    local pid command
+    while read -r pid command; do
+        [[ -n "${pid}" && "${pid}" != "$$" ]] || continue
+        if [[
+            (
+                "${command}" == *"scripts/dr_anmar_workstation.py"* ||
+                "${command}" == *"scripts/dr_anmar_anatomy_viewer.py"*
+            ) &&
+            (
+                "${command}" == *"--port ${PORT} "* ||
+                "${command}" == *"--port ${PORT}"
+            )
+        ]]; then
+            printf '%s\n' "${pid}"
+        fi
+    done < <(ps -eo pid=,args=)
+}
+
+is_running() {
+    [[ -f "${PID_FILE}" ]] || return 1
+    local pid
+    pid="$(cat "${PID_FILE}")"
+    is_worker_pid "${pid}"
+}
+
+adopt_existing_worker() {
+    local pid
+    pid="$(worker_pids | head -n 1)"
+    [[ -n "${pid}" ]] || return 1
+    printf '%s\n' "${pid}" >"${PID_FILE}"
+    return 0
 }
 
 case "${1:-status}" in
     start)
         if is_running; then
+            echo "Dr.Anmar workstation is already running (PID $(cat "${PID_FILE}"))"
+            exit 0
+        fi
+        if adopt_existing_worker; then
             echo "Dr.Anmar workstation is already running (PID $(cat "${PID_FILE}"))"
             exit 0
         fi
@@ -56,6 +108,10 @@ case "${1:-status}" in
             echo "Dr.Anmar worker is already running (PID $(cat "${PID_FILE}"))"
             exit 0
         fi
+        if adopt_existing_worker; then
+            echo "Dr.Anmar worker is already running (PID $(cat "${PID_FILE}"))"
+            exit 0
+        fi
         rm -f "${PID_FILE}"
         cd "${ORBIT_ROOT}"
         nohup ./dr_anmar.sh anatomy-viewer "${PORT}" "${scene}" "${room_id}" "${room_title}" >>"${LOG_FILE}" 2>&1 &
@@ -64,20 +120,38 @@ case "${1:-status}" in
         echo "Log: ${LOG_FILE}"
         ;;
     stop)
-        if ! is_running; then
+        pids="$(
+            {
+                if [[ -f "${PID_FILE}" ]]; then
+                    pid="$(cat "${PID_FILE}")"
+                    is_worker_pid "${pid}" && printf '%s\n' "${pid}"
+                fi
+                worker_pids
+            } | awk '!seen[$0]++'
+        )"
+        if [[ -z "${pids}" ]]; then
             rm -f "${PID_FILE}"
             echo "Dr.Anmar workstation is not running"
             exit 0
         fi
-        pid="$(cat "${PID_FILE}")"
-        kill "${pid}"
-        for _ in $(seq 1 20); do
-            kill -0 "${pid}" 2>/dev/null || break
-            sleep 1
+        while read -r pid; do
+            [[ -n "${pid}" ]] && kill "${pid}" 2>/dev/null || true
+        done <<<"${pids}"
+        for _ in $(seq 1 30); do
+            remaining=""
+            while read -r pid; do
+                if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
+                    remaining="${remaining} ${pid}"
+                fi
+            done <<<"${pids}"
+            [[ -z "${remaining}" ]] && break
+            sleep 0.1
         done
-        if kill -0 "${pid}" 2>/dev/null; then
-            kill -KILL "${pid}"
-        fi
+        while read -r pid; do
+            if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
+                kill -KILL "${pid}" 2>/dev/null || true
+            fi
+        done <<<"${pids}"
         rm -f "${PID_FILE}"
         echo "Dr.Anmar workstation stopped"
         ;;

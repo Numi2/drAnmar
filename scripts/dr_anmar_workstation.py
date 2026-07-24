@@ -3294,16 +3294,10 @@ def main() -> None:
         args_cli.task,
         device=args_cli.device,
         num_envs=1,
-        # Native rigid suture segments must publish their PhysX transforms
-        # through USD/Hydra because they are authored after scene creation.
-        # Other rooms retain Isaac Lab's faster Fabric transform mirror.
-        use_fabric=(
-            not args_cli.disable_fabric
-            and not (
-                dr_anmar_needle_enabled
-                and suture_native_segment_rendering
-            )
-        ),
+        # Keep every interactive room on Isaac Lab's native Fabric transform
+        # path. The authored suture is rendered from its PhysX tensor poses
+        # below, so custom assets never disable live robot articulation.
+        use_fabric=not args_cli.disable_fabric,
     )
     # Every interactive PSM room inherits its control/physics cadence from the
     # released ORBIT needle-handover configuration that already works in the
@@ -4927,8 +4921,8 @@ def main() -> None:
     if dr_anmar_needle_enabled and not suture_native_segment_rendering:
         # Present the native PhysX strand to RTX as one dynamic curve. Drawing
         # one detailed mesh per physical segment forces Hydra to synchronize
-        # every moving visual prim on every camera frame. The curve is visual
-        # only and retains the authored 0.25 mm physical diameter.
+        # every moving visual prim on every camera frame. The curve reads the
+        # native segment poses and retains the authored 0.25 mm diameter.
         realtime_suture_curve = UsdGeom.BasisCurves.Define(
             suture_stage,
             f"{suture_root_path}/Suture/RealtimeVisual",
