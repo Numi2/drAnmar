@@ -1401,9 +1401,16 @@ def procedure_rooms() -> dict[str, Any]:
             ready = False
             reason = "Missing required room assets: " + ", ".join(missing_nvidia_assets) + "."
         room["readiness_reason"] = reason
-        anatomy_ready = bool(room.get("hide_anatomy")) or bool(
-            anatomy and anatomy.get("openusd_ready")
+        environment_scene = available_anatomy.get(
+            str(room.get("operating_room_environment", ""))
         )
+        anatomy_ready = (
+            bool(room.get("hide_anatomy"))
+            and (
+                not room.get("operating_room_environment")
+                or bool(environment_scene and environment_scene.get("openusd_ready"))
+            )
+        ) or bool(anatomy and anatomy.get("openusd_ready"))
         room["ready"] = bool(anatomy_ready and ready)
         if ready and not anatomy_ready:
             room["readiness_reason"] = "Required anatomy assets are not installed on this worker."
@@ -1545,7 +1552,15 @@ def launch_procedure_room(request: ProcedureLaunchRequest) -> dict[str, Any]:
         selected_anatomy = ""
         room_title = str(procedure.get("anatomy_focus") or "NVIDIA dry-lab field")
         asset = None
-        environment = None
+        environment_scene_id = str(procedure.get("operating_room_environment", ""))
+        environment_room = anatomy_room(environment_scene_id) if environment_scene_id else None
+        if environment_scene_id and environment_room is None:
+            raise HTTPException(404, "Unknown OpenUSD operating-room environment")
+        environment = (
+            openusd_environment_asset(environment_room)
+            if environment_room is not None
+            else None
+        )
     else:
         selected_anatomy = request.anatomy_scene or procedure["anatomy_scene"]
         room = anatomy_room(selected_anatomy)
