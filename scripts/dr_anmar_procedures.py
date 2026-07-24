@@ -127,10 +127,10 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         ),
         "nvidia_native_bench": True,
         # Keep the neutral needle drivers inside a useful shared handoff
-        # workspace. The upstream 0.40 m root spacing leaves the tool tips
-        # roughly 0.21 m apart in this room; 0.28 m retains base clearance
-        # while bringing the resting tips to about 0.08–0.09 m separation.
-        "psm_root_spacing_m": 0.28,
+        # workspace. The upstream 0.40 m root spacing leaves the vertical
+        # tool tips 0.40 m apart in a fresh room. A 0.12 m spacing retains
+        # housing clearance while making the shared operative field immediate.
+        "psm_root_spacing_m": 0.12,
         "hide_anatomy": True,
         "show_waypoint_markers": False,
         "guide_kind": "native_suturing_bench",

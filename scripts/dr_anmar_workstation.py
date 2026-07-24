@@ -3704,9 +3704,9 @@ def main() -> None:
         # tools begin inside a practical shared handoff workspace. The table
         # top (z=0) remains the single setup datum.
         psm_root_spacing_m = float(procedure.get("psm_root_spacing_m", 0.40))
-        if not 0.20 <= psm_root_spacing_m <= 0.40:
+        if not 0.12 <= psm_root_spacing_m <= 0.40:
             raise ValueError(
-                "NVIDIA bench psm_root_spacing_m must be between 0.20 and 0.40 m"
+                "NVIDIA bench psm_root_spacing_m must be between 0.12 and 0.40 m"
             )
         psm_root_half_spacing_m = psm_root_spacing_m / 2.0
         psm_root_positions = {
