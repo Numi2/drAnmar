@@ -1,0 +1,60 @@
+{
+  "cases": [
+    {
+      "pad_type": "fenestrated",
+      "representation": "standalone",
+      "status": "pass",
+      "steps": 120
+    },
+    {
+      "pad_type": "microcup",
+      "representation": "standalone",
+      "status": "pass",
+      "steps": 120
+    },
+    {
+      "pad_type": "fenestrated",
+      "representation": "franka",
+      "status": "pass",
+      "steps": 120
+    },
+    {
+      "pad_type": "microcup",
+      "representation": "franka",
+      "status": "pass",
+      "steps": 120
+    }
+  ],
+  "clinical_validation": false,
+  "date": "2026-07-25",
+  "device": "cuda:0",
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "host": "Numi",
+  "isaaclab_distribution_version": "6.1.16",
+  "isaacsim_distribution_version": "6.0.1.0",
+  "medical_device": false,
+  "not_qualified": [
+    "contact_tuning",
+    "tissue_mechanics",
+    "capture_pressure",
+    "physical_metrology",
+    "clinical_efficacy",
+    "regulatory_status",
+    "patient_use"
+  ],
+  "qualification_scope": "bounded_composition_and_execution_on_reported_stack",
+  "requirements_verified": {
+    "anchor_attachment_count": 2,
+    "attachment_type": "OmniPhysicsVtxXformAttachment",
+    "capture_attachment_count": 12,
+    "controller_output_finite_and_bounded": true,
+    "engine_error_count": 0,
+    "finite_joint_state": true,
+    "franka_arm_joint_count": 7,
+    "gpu_max_deformable_surface_contacts": 8388608,
+    "surface_deformable_flap_count": 2,
+    "tool_joint_count": 8
+  },
+  "schema": "dr.anmar.atraumatic-exposure-qualification.v1",
+  "status": "pass"
+}

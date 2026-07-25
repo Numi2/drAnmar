@@ -1,0 +1,5 @@
+numpy>=2.0,<3
+Pillow>=11,<13
+scipy>=1.15,<2
+trimesh>=4.8,<5
+matplotlib>=3.10,<4

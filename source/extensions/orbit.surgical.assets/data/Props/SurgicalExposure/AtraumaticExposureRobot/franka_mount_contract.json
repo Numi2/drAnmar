@@ -1,0 +1,28 @@
+{
+  "disabled_stock_prims": [
+    "panda_hand_joint",
+    "panda_hand",
+    "panda_finger_joint1",
+    "panda_finger_joint2",
+    "panda_leftfinger",
+    "panda_rightfinger"
+  ],
+  "fallback_local_rotation_wxyz": [
+    0.9238795325112867,
+    0,
+    0,
+    -0.3826834323650898
+  ],
+  "fixed_joint": "dranmar_exposure_mount_joint",
+  "frame_source": "stock_panda_hand_joint_local_frame",
+  "parent_link": "resolved_from_stock_panda_hand_joint_body0_with_unique_panda_link8_fallback",
+  "payload_mount_link": "Links/Mount",
+  "payload_root": "DrAnmarAtraumaticExposureTool",
+  "schema": "dr.anmar.franka-mount.v1",
+  "status": "qualified_in_complete_franka_representation_on_isaac_sim_6_0_1_0",
+  "translation_m": [
+    0,
+    0,
+    0
+  ]
+}

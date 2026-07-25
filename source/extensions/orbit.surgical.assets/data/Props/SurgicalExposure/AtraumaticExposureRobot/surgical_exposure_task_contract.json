@@ -1,0 +1,40 @@
+{
+  "clinical_validation": false,
+  "failure_events": [
+    "capture_loss",
+    "pad_overload",
+    "force_asymmetry",
+    "roi_reocclusion",
+    "tissue_attachment_break",
+    "joint_limit_contact"
+  ],
+  "phases": [
+    "stowed",
+    "approach",
+    "deploy",
+    "contact",
+    "capture",
+    "retract",
+    "hold",
+    "overload_relief",
+    "release"
+  ],
+  "required_observations": [
+    "tool_joint_state",
+    "pad_compliance_state",
+    "pad_contact_force",
+    "camera_or_segmentation_roi_visibility",
+    "capture_attachment_state"
+  ],
+  "schema": "dr.anmar.surgical-exposure-task.v1",
+  "success_metrics": [
+    "roi_visible_fraction",
+    "left_pad_force_n",
+    "right_pad_force_n",
+    "force_asymmetry_n",
+    "capture_cell_count",
+    "flap_edge_separation_m",
+    "retraction_stability",
+    "overload_events"
+  ]
+}

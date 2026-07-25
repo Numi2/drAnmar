@@ -194,6 +194,23 @@
       "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
       "physical_qualification": "provisional_unmeasured_parameters_active",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-atraumatic-exposure-robot-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_standalone.usda",
+      "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_payload.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_exposure_tissue_demo.usda",
+      "profile": "physics_next/surgical-exposure/dranmar-atraumatic-exposure-robot-v1.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/interaction_frames.json",
+      "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/surgical_exposure_task_contract.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/asset_manifest.json",
+      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/qualification_report.json",
+      "live_integration": "franka_verified_stock_hand_frame_replacement_and_standalone_articulation",
+      "live_behavior": "distributed_tissue_capture_independent_retraction_compliance_force_estimation_progressive_release_and_roi_visibility_control",
+      "deployment": "enabled_for_research_iteration",
+      "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_four_case_matrix",
+      "physical_qualification": "provisional_parameters_pending_instrumented_retraction_bench",
+      "clinical_validation": false
     }
   ],
   "validation": {

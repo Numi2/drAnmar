@@ -1,0 +1,58 @@
+{
+  "capture": {
+    "attachment_cells": "independent_runtime_deformable_attachments",
+    "fenestrated": "geometric_trapping_plus_distributed_overlap_attachments",
+    "microcup": "distributed_low_vacuum_proxy_plus_overlap_attachments",
+    "release": "progressive_outer_cell_release_then_full_release_on_hard_overload"
+  },
+  "clinical_validation": false,
+  "force_control": {
+    "all_values": "provisional_engineering_seeds",
+    "controller": "independent_force_limited_impedance_plus_roi_visibility_outer_loop",
+    "hard_release_force_per_pad_n": 4.0,
+    "maximum_force_asymmetry_n": 1.0,
+    "nominal_target_force_per_pad_n": 1.25,
+    "soft_limit_force_per_pad_n": 2.5
+  },
+  "id": "dranmar-atraumatic-exposure-robot-v1",
+  "mechanism": {
+    "capture_cells_per_pad": 6,
+    "compliance_damping_n_s_m": 38.0,
+    "compliance_stiffness_n_m": 1250.0,
+    "compliance_travel_m": 0.006,
+    "independent_lift_range_m": [
+      -0.025,
+      0.03
+    ],
+    "lateral_retraction_range_m": 0.04,
+    "pad_contact_area_m2_seed": 0.0015,
+    "pad_pitch_ranges_deg": {
+      "left": [
+        -42,
+        72
+      ],
+      "right": [
+        -72,
+        42
+      ]
+    }
+  },
+  "medical_device": false,
+  "runtime": {
+    "franka_mount": "verified stock panda_hand_joint frame with unique panda_link8 compatibility fallback",
+    "qualification": "four_case_cuda_matrix_on_numi_rtx_4090_2026_07_25",
+    "qualified_lane": "Isaac Sim 6.0.1.0 / Isaac Lab distribution 6.1.16 surface-deformable attachments"
+  },
+  "schema": "dr.anmar.atraumatic-exposure-profile.v1",
+  "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",
+  "tissue": {
+    "density_kg_m3_seed": 1050.0,
+    "poissons_ratio_seed": 0.45,
+    "representation": "two portable triangle surfaces cooked at runtime by the current surface-deformable route",
+    "self_collision": true,
+    "surface_thickness_m_seed": 0.006,
+    "youngs_modulus_pa_seed": 60000.0
+  },
+  "units": "MKS",
+  "version": "0.1.0"
+}

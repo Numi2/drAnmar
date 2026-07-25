@@ -1,0 +1,367 @@
+{
+  "asset": "DrAnmar Atraumatic Surgical Exposure Robot",
+  "coordinate_convention": "+Z approaches field, +X opens exposure, +Y follows ROI",
+  "frames": {
+    "count_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.048,
+        0.05
+      ],
+      "role": "inventory_reference"
+    },
+    "exposure_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.187
+      ],
+      "role": "exposure_roi_center"
+    },
+    "exposure_tcp": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.184
+      ],
+      "role": "tool_center_point"
+    },
+    "illumination_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.118
+      ],
+      "role": "field_illumination"
+    },
+    "left_capture_00": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        -0.014,
+        -0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "left_capture_01": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        0,
+        -0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "left_capture_02": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        0.014,
+        -0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "left_capture_03": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        -0.014,
+        0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "left_capture_04": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        0,
+        0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "left_capture_05": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        0.014,
+        0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "left_force_sensor": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        0,
+        0,
+        -0.006
+      ],
+      "role": "force_sensor_reference"
+    },
+    "left_pad_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "pad_contact_center"
+    },
+    "left_pad_normal": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        0,
+        0,
+        0.004
+      ],
+      "role": "pad_contact_normal"
+    },
+    "panda_link8_mount": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "robot_mount"
+    },
+    "right_capture_00": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        -0.014,
+        -0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "right_capture_01": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        0,
+        -0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "right_capture_02": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        0.014,
+        -0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "right_capture_03": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        -0.014,
+        0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "right_capture_04": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        0,
+        0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "right_capture_05": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        0.014,
+        0.01,
+        0.0015
+      ],
+      "role": "distributed_tissue_capture_cell"
+    },
+    "right_force_sensor": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        0,
+        0,
+        -0.006
+      ],
+      "role": "force_sensor_reference"
+    },
+    "right_pad_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "pad_contact_center"
+    },
+    "right_pad_normal": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        0,
+        0,
+        0.004
+      ],
+      "role": "pad_contact_normal"
+    },
+    "roi_camera": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.123
+      ],
+      "role": "roi_camera"
+    }
+  },
+  "schema": "dr.anmar.interaction-frames.v1"
+}
