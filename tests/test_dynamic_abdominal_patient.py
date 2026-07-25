@@ -68,7 +68,7 @@ def test_repository_contract_is_complete_and_registered_once() -> None:
     room = PROCEDURES_BY_ID["dr-anmar-dynamic-abdominal-patient"]
     assert room["dynamic_abdominal_patient"] is True
     assert room["dynamic_patient_access_state"] == "open"
-    assert room["dynamic_patient_active_deformables"] == ("liver",)
+    assert room["dynamic_patient_active_deformables"] == ("peritoneum",)
     assert room["nvidia_native_bench"] is True
     assert room["hide_anatomy"] is True
 
