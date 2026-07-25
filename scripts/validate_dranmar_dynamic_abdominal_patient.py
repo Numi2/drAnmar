@@ -579,7 +579,7 @@ def validate() -> dict[str, Any]:
             "physical bench calibration",
             "clinical validation",
         ],
-        "research_only": True,
+        "intended_use": "simulation_training",
     }
 
 

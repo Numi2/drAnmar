@@ -64,4 +64,5 @@ The task or policy commands the joint targets. `ClosureSequenceController` owns 
 - Adhesive is not decorative: each deposited bead creates independent left/right tissue bonds. Its task-level strength increases with cure fraction and can fail under an imposed resultant load.
 - No biological healing, chemical reaction, calibrated penetration, or clinical efficacy is claimed.
 
-Research simulation only. Category-level geometry and provisional engineering parameters. Not clinically validated and not approved for patient care.
+Available for simulation training with category-level geometry and disclosed
+engineering parameters. Real-world and clinical evidence are not established.

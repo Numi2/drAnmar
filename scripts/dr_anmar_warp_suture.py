@@ -38,7 +38,7 @@ except ImportError as error:  # pragma: no cover - exercised on GPU deployment
     ) from error
 
 
-REPORT_SCHEMA = "dr.anmar.warp-suture-qualification.v1"
+REPORT_SCHEMA = "dr.anmar.warp-suture-native-simulator-evidence.v1"
 BACKEND_ID = "dr-anmar-warp-xpbd-segment-capsule-v1"
 
 
@@ -2384,8 +2384,9 @@ def qualify(
         "checks": checks,
         "wall_seconds": time.perf_counter() - started,
         "note": (
-            "GPU engineering qualification only; physical bench, convergence, "
-            "sim-to-real, and clinical validation remain required."
+            "Native Warp GPU evidence for the recorded stack only; convergence, "
+            "real-world bench correlation, sim-to-real, and clinical evidence "
+            "are not established."
         ),
     }
 

@@ -20,7 +20,7 @@ def Xform "DrAnmarAdaptiveHemostasisTool" (
         string drAnmarAssetVersion = "0.1.0"
         bool drAnmarClinicalValidation = false
         bool drAnmarMedicalDevice = false
-        string drAnmarStatus = "research_only_runtime_observed_physical_effect_unqualified"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMount = "replaces_panda_hand_at_panda_link8"
         int drAnmarClipCapacity = 8
         int drAnmarPatchCapacity = 4

@@ -9,7 +9,7 @@
 def Xform "DrAnmarBloodDroplet" (
     customData = {
         bool drAnmarClinicalValidation = false
-        string drAnmarStatus = "research_only"
+        string drAnmarStatus = "simulation_training_effect"
         string drAnmarRepresentation = "particle_prototype"
     }
 )

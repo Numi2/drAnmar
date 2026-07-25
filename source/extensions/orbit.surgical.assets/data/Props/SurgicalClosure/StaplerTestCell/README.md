@@ -48,7 +48,7 @@ formed legs gripping tissue. Trigger torque, pusher force, contact friction and
 all other physical values remain provisional until calibrated on an
 instrumented physical bench.
 
-The recorded native RTX 4090 qualification on 2026-07-24 measured an initial
+The recorded native RTX 4090 simulator run on 2026-07-24 measured an initial
 3.7818 mm wound gap and verified that the approximation phase reached 0.8 mm
 with the trigger still at 0 degrees. Deployment occurred only after the actual
 trigger crossed 24 degrees. The run completed all seven stations, created seven
@@ -58,4 +58,4 @@ spacing with zero recorded spacing error. A separate 20.0002-degree partial
 stroke produced no deployment or attachment. Reset removed every staple and
 attachment, restored the 3.7818 mm gap and returned station 1 with a full
 35-staple magazine. See
-`tissue_closure_qualification_report.json` for the recorded evidence.
+`tissue_closure_native_simulator_evidence.json` for the recorded evidence.

@@ -10,4 +10,5 @@ The payload replaces the Panda hand at `panda_link8` and provides 17 controlled 
 Annular suction and irrigation operate around the same registered field. Stereo RGB, depth, fluorescence, and thermal frames are fixed to the housing so modality changes do not require scene re-registration.
 
 The mechanism is owned by DrAnmar and provider-neutral. NVIDIA Isaac Sim and
-Isaac Lab provide the target runtime. It is research-only.
+Isaac Lab provides the target runtime for this executable simulation-training
+workcell.

@@ -8,7 +8,7 @@
 
 def Xform "DrAnmarTumorResectionToolRigidProxy" (
     prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "SemanticsLabelsAPI:class"]
-    customData = { string drAnmarStatus = "research_only_not_clinically_validated" }
+    customData = { string drAnmarStatus = "simulation_training_instrument" }
 )
 {
     token[] semantics:labels:class = ["tumor_resection_robot", "rigid_proxy"]

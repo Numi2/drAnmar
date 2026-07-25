@@ -1,12 +1,12 @@
 {
-  "schema": "dr.anmar.dynamic-abdominal-patient-native-qualification.v1",
+  "schema": "dr.anmar.dynamic-abdominal-patient-native-simulator-evidence.v1",
   "asset_id": "dranmar-dynamic-abdominal-patient-v1",
   "executed_at_utc": "2026-07-25T20:11:09Z",
   "tested_commit": "d786c9ee8dc7c24997c73c4d9643aae40963e115",
-  "research_only": true,
-  "overall_qualified": false,
+  "intended_use": "simulation_training",
+  "evidence_result": "recorded_with_boundaries",
   "target": {
-    "host_role": "Dr.Anmar NVIDIA qualification workstation",
+    "host_role": "Dr.Anmar NVIDIA evidence workstation",
     "gpu": "NVIDIA GeForce RTX 4090",
     "driver": "580.159.03",
     "os": "Ubuntu 24.04.4 LTS",
@@ -68,10 +68,10 @@
     "detached_cut_piece": false,
     "arbitrary_solver_fracture": false,
     "physical_cut_path_calibrated": false,
-    "wound_edge_grasp_and_retraction_qualified": false,
+    "wound_edge_grasp_and_retraction_evidence": "not_established",
     "clinical_fidelity_claimed": false
   },
-  "not_qualified": [
+  "evidence_not_established": [
     "native volume deformables",
     "simultaneous multi-component deformables",
     "physical incision propagation",
@@ -86,6 +86,6 @@
     "scope": "native volume-deformable lane",
     "result": "failed",
     "failure": "PhysX GPU narrowphase/CUDA error 700 after delayed execution",
-    "deployment_effect": "Volume routes remain disabled and unqualified in the doctor-facing room."
+    "deployment_effect": "Volume routes remain disabled in the doctor-facing room; stable native-simulator evidence is not established."
   }
 }

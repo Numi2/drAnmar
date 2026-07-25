@@ -771,7 +771,7 @@ def root_header(articulation_root: bool) -> str:
         string version = "{VERSION}"
     }}
     customData = {{
-        string drAnmarStatus = "research_only_not_clinically_validated"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMountInterface = "franka_panda_link8_hand_replacement"
         string drAnmarMechanism = "bilateral_distributed_capture_force_sensing_lateral_retraction_and_independent_lift"
         string drAnmarCoordinateConvention = "+Z approach, +X lateral opening, +Y ROI tangent"
@@ -825,7 +825,7 @@ def tool_usda(bundle: ToolBundle, articulation_root: bool) -> str:
     return f'''#usda 1.0
 (
     defaultPrim = "{ROOT_PRIM}"
-    doc = "DrAnmar force-controlled atraumatic surgical exposure end effector. Research simulation only."
+    doc = "Dr.Anmar force-controlled surgical exposure end effector for simulation training."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -934,7 +934,7 @@ def simple_pad_usda(root_name: str, pad_mesh: trimesh.Trimesh, pad_type: str) ->
     return f'''#usda 1.0
 (
     defaultPrim = "{root_name}"
-    doc = "Replaceable {pad_type} atraumatic retraction pad. Research simulation only."
+    doc = "Replaceable {pad_type} atraumatic retraction pad for simulation training."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -988,7 +988,7 @@ def tissue_demo_usda(bundle: ToolBundle) -> str:
     return f'''#usda 1.0
 (
     defaultPrim = "{TISSUE_ROOT}"
-    doc = "Two-flap deformable exposure benchmark with an underlying ROI target. Research simulation only."
+    doc = "Two-flap deformable exposure training scenario with an underlying ROI target."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"

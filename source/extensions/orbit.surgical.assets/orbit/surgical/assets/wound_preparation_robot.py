@@ -995,5 +995,5 @@ class WoundPreparationSequenceController:
             "fluid": self.ledger.snapshot(),
             "debridement": self.debridement.snapshot(),
             "history": list(self.history),
-            "status": "research_only_not_clinically_validated",
+            "status": "simulation_training_workcell",
         }

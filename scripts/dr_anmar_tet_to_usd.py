@@ -69,7 +69,7 @@ def main() -> int:
     if not surface_faces:
         raise RuntimeError("OpenUSD could not derive the TetMesh surface")
     tet_mesh.GetSurfaceFaceVertexIndicesAttr().Set(surface_faces)
-    tet_mesh.GetPrim().SetMetadata("documentation", "Canonical Dr.Anmar simulation mesh; research-only")
+    tet_mesh.GetPrim().SetMetadata("documentation", "Canonical Dr.Anmar simulation-training mesh")
 
     visual = UsdGeom.Mesh.Define(stage, f"/{args_cli.asset_id}/vis_mesh")
     visual.GetPointsAttr().Set(Vt.Vec3fArray.FromNumpy(vertices))

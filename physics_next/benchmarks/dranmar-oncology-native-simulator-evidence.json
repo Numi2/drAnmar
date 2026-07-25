@@ -1,5 +1,5 @@
 {
-  "schema": "dr.anmar.oncology-native-qualification.v1",
+  "schema": "dr.anmar.oncology-native-simulator-evidence.v1",
   "status": "pass",
   "recorded_at": "2026-07-25",
   "host": {
@@ -15,7 +15,7 @@
     "steps_per_phase": 1,
     "phase_count": 16,
     "rendered_sensors": "skipped",
-    "qualification_mode": "non_contact_stability_with_registered_target_recorded",
+    "evidence_mode": "non_contact_stability_with_registered_target_recorded",
     "phase_sweep_contract": "finite_bounded_setpoint_acceptance_not_convergence_benchmark"
   },
   "tool_evidence": {
@@ -37,13 +37,13 @@
     "maximum_allowed_displacement_m": 0.025,
     "maximum_speed_m_s": 1.907188016048167e-05,
     "maximum_allowed_speed_m_s": 0.5,
-    "qualification_lateral_bench_offset_m": 0.45,
+    "evidence_lateral_bench_offset_m": 0.45,
     "registered_liver_target_world_m": [
       0.0,
       0.0,
       0.2770000014901161
     ],
-    "qualification_target_world_m": [
+    "evidence_target_world_m": [
       0.45,
       0.0,
       0.2770000014901161

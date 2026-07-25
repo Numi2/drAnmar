@@ -1,8 +1,16 @@
 # Dr.Anmar Dynamic Physiological Surgical Patient
 
-A Dr.Anmar-owned modular abdominal research patient for Isaac Sim and Isaac Lab. It combines independently addressable anatomy, mixed deformable representations, a solver-independent physiology runtime, intervention adapters, and a unified procedure scene. OpenUSD, Isaac Lab, and PhysX provide bounded runtime infrastructure; Dr.Anmar owns the patient, workflow, state, robot-adapter, evidence, and qualification contracts.
+A Dr.Anmar-owned interactive abdominal simulation-training patient for Isaac
+Sim and Isaac Lab. It combines independently addressable anatomy, mixed
+deformable representations, a solver-independent physiology runtime,
+intervention adapters, and a unified procedure scene. OpenUSD, Isaac Lab, and
+PhysX provide bounded runtime infrastructure; Dr.Anmar owns the patient,
+workflow, state, robot adapter, and evidence contracts.
 
-The patient is research-only. It is not patient-specific, clinically validated, or approved for patient care. Its material, anatomical, physiological, fluid, damage, and intervention values are provisional engineering parameters.
+The patient is available for simulation training, data generation, and
+evaluation. It is not patient-specific; real-world correlation and clinical
+evidence are not established. Its material, anatomical, physiological, fluid,
+damage, and intervention values are disclosed engineering parameters.
 
 ## Runtime contract
 

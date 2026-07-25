@@ -23,6 +23,6 @@
   "local_transform": "copied_from_stock_panda_hand_joint_frame_with_minus_45_degree_z_fallback",
   "parent_link": "resolved_from_stock_panda_hand_joint_body0_with_unique_panda_link8_fallback",
   "payload_link": "DrAnmarAdaptiveHemostasisTool/Links/Mount",
-  "research_only": true,
+  "intended_use": "simulation_training",
   "schema": "dranmar.franka-mount.v1"
 }

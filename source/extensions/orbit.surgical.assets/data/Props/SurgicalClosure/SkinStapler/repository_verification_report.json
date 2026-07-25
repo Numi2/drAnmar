@@ -108,12 +108,12 @@
     "textures/polymer_roughness.png": "91c5fd1567a704b5df706265d77fb3e4cf57e612051e2fe115d9b0da8125a458",
     "textures/trigger_polymer_basecolor.png": "ee6282a19d175718ddf8e8de025ad9cbbf71da02173391d39dbc9bfa776fa7e4"
   },
-  "runtime_validation": {
+  "native_simulator_evidence": {
     "isaac_sim_5_1_isaac_lab_2_3_2_cuda": "not_run",
     "isaac_sim_6_0_1_isaac_lab_3_0_beta2_cuda": "not_run",
     "openusd_target_runtime_parse": "not_run",
     "owner": "integrating_user"
   },
   "schema_version": 2,
-  "status": "authoring_complete_runtime_validation_delegated"
+  "status": "repository_verification_passed_native_simulator_evidence_not_recorded"
 }

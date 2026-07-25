@@ -22,7 +22,7 @@ def Xform "DrAnmarSafePlaneDissectionTool" (
         string drAnmarAssetVersion = "0.1.0"
         bool drAnmarClinicalValidation = false
         bool drAnmarMedicalDevice = false
-        string drAnmarStatus = "research_only_pending_runtime_and_physical_calibration"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMount = "replaces_panda_hand_at_panda_link8"
         int drAnmarTractionCellCount = 8
         int drAnmarDissectionModalityCount = 4

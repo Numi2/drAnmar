@@ -894,7 +894,7 @@ def root_header(articulation_root: bool) -> str:
         string version = "{VERSION}"
     }}
     customData = {{
-        string drAnmarStatus = "research_only_not_clinically_validated"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMountInterface = "franka_panda_link8_hand_replacement"
         string drAnmarMechanism = "concentric_irrigation_annular_aspiration_rotary_debridement_and_multimodal_inspection"
         string drAnmarCoordinateConvention = "+Z approach, +X lateral, +Y wound tangent"
@@ -1004,7 +1004,7 @@ def tool_usda(bundle: ToolBundle, articulation_root: bool) -> str:
     return f'''#usda 1.0
 (
     defaultPrim = "{ROOT_PRIM}"
-    doc = "DrAnmar wound-preparation end effector with irrigation, aspiration, rotary debridement and inspection. Research simulation only."
+    doc = "Dr.Anmar simulation-training end effector with irrigation, aspiration, rotary debridement, and inspection."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -1151,7 +1151,7 @@ def cartridge_usda(root_name: str, mesh: trimesh.Trimesh, material: str, collide
         "cartridge_mount": {"position": [0, 0, -0.003], "orientation_wxyz": [1, 0, 0, 0], "parent_link": root_name, "role": "cartridge_mount"},
         "contact_reference": {"position": [0, 0, 0.005], "orientation_wxyz": [1, 0, 0, 0], "parent_link": root_name, "role": "debridement_contact"},
     }
-    return simple_rigid_asset_usda(root_name, Visual("Visual", mesh, material, (role,)), collider, mass, [role, "debridement_cartridge"], frames, f"DrAnmar {role} cartridge. Research simulation only.")
+    return simple_rigid_asset_usda(root_name, Visual("Visual", mesh, material, (role,)), collider, mass, [role, "debridement_cartridge"], frames, f"Dr.Anmar {role} simulation-training cartridge.")
 
 
 def wound_surface_mesh_usda(mesh: trimesh.Trimesh, root_name: str) -> str:
@@ -1193,7 +1193,7 @@ def wound_bed_usda(bundle: ToolBundle) -> str:
     return f'''#usda 1.0
 (
     defaultPrim = "{root}"
-    doc = "DrAnmar wound-bed demonstration surface with detachable debris fragments. Research simulation only."
+    doc = "Dr.Anmar wound-bed simulation-training surface with detachable debris fragments."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -1621,7 +1621,7 @@ def generate_textures() -> list[Path]:
     draw.text((76, 88), "DrAnmar", fill=(18, 72, 104), font=font_big)
     draw.text((78, 218), "WOUND PREPARATION", fill=(20, 36, 46), font=font_small)
     draw.text((78, 286), "IRRIGATE • DEBRIDE • ASPIRATE", fill=(24, 126, 162), font=font_small)
-    draw.text((78, 362), "RESEARCH SIMULATION ONLY", fill=(164, 62, 38), font=font_small)
+    draw.text((78, 362), "SIMULATION TRAINING WORKCELL", fill=(164, 62, 38), font=font_small)
     outputs.append(save_texture(label, "dranmar_wound_prep_label.png"))
     return outputs
 
@@ -1704,7 +1704,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str, object]:
         "id": "dranmar-wound-preparation-robot-v1",
         "name": ASSET_NAME,
         "version": VERSION,
-        "status": "research_informed_engineering_model_pending_runtime_metrology_and_clinical_validation",
+        "status": "simulation_training_model",
         "units": "metres-kilograms-seconds",
         "mount": mount_contract(),
         "tool": {
@@ -2767,7 +2767,7 @@ class WoundPreparationSequenceController:
             "fluid": self.ledger.snapshot(),
             "debridement": self.debridement.snapshot(),
             "history": list(self.history),
-            "status": "research_only_not_clinically_validated",
+            "status": "simulation_training_workcell",
         }
 '''
     return source.replace("@VERSION@", VERSION)
@@ -2866,11 +2866,12 @@ The generator cleans only its owned output paths, mirrors the catalog into the
 extension data tree, writes fixed-timestamp ZIP members, and excludes bytecode
 and workstation metadata from manifests and archives.
 
-## Safety and qualification
+## Evidence boundary
 
-Research simulation only. The asset is not clinically validated, is not a
-medical device, and is not approved for patient care. All unmeasured mechanical,
-fluid, tissue and contact values are disclosed provisional engineering seeds.
+This simulation-training workcell is available for task execution and
+evaluation. Real-world and clinical evidence are not established. All
+unmeasured mechanical, fluid, tissue, and contact values remain disclosed
+engineering parameters.
 '''
 
 
@@ -3203,7 +3204,7 @@ def write_asset_files(bundle: ToolBundle) -> list[Path]:
             1.15e-6,
             ["irrigation_droplet", "fluid_particle_proxy"],
             {"center": {"position": [0, 0, 0], "orientation_wxyz": [1, 0, 0, 0], "parent_link": DROPLET_ROOT, "role": "particle_center"}},
-            "Rigid irrigation-droplet fallback asset. Research simulation only.",
+            "Rigid irrigation-droplet fallback for simulation training.",
         ),
         encoding="utf-8",
     )
@@ -3224,7 +3225,7 @@ def write_asset_files(bundle: ToolBundle) -> list[Path]:
                 "attachment_reference": {"position": debris_center.tolist(), "orientation_wxyz": [1, 0, 0, 0], "parent_link": DEBRIS_ROOT, "role": "debris_attachment"},
                 "count_reference": {"position": [0, 0, 0], "orientation_wxyz": [1, 0, 0, 0], "parent_link": DEBRIS_ROOT, "role": "inventory_reference"},
             },
-            "Detachable wound-debris fragment. Research simulation only.",
+            "Detachable wound-debris fragment for simulation training.",
         ),
         encoding="utf-8",
     )

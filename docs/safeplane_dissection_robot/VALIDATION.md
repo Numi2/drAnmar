@@ -1,9 +1,13 @@
-# Integrity and runtime boundaries
+# Capability and evidence boundaries
 
-Static gates cover deterministic assets, dependency closure, controller
-invariants, protected-structure interlocks, capacity-safe fluid accounting,
-fail-closed attachment overlap, and source/container integrity. The optional
-Isaac script is diagnostic only.
+The SafePlane Dissection Robot is an available Dr.Anmar simulation-training
+workcell with traction, blunt, hydro, guarded-scissor, and energy-dissection
+tasks around protected structures.
+
+Repository verification covers deterministic assets, dependency closure,
+controller invariants, protected-structure interlocks, capacity-safe fluid
+accounting, fail-closed attachment overlap, and source integrity. The optional
+Isaac script produces native-simulator evidence only.
 
 Injecting threshold-plus-margin work or fluid at an exact authored bridge
 coordinate is a controller unit test, not physical release evidence. Physical

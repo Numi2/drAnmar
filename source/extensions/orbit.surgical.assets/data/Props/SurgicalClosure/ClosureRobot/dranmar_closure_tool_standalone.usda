@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "DrAnmarClosureTool"
-    doc = "DrAnmar robotic wound closure end effector: tissue approximation, staple formation, and topical adhesive application. Research simulation only."
+    doc = "Dr.Anmar simulation-training wound-closure end effector for tissue approximation, staple deployment, and topical adhesive application."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -19,7 +19,7 @@ def Xform "DrAnmarClosureTool" (
         string version = "0.1.0"
     }
     customData = {
-        string drAnmarStatus = "research_only_not_clinically_validated"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMountInterface = "franka_panda_link8_hand_replacement"
         string drAnmarMechanism = "bilateral_capture_then_approximate_then_staple_then_adhesive"
         string drAnmarCoordinateConvention = "+Z approach, +X across wound, +Y along wound"

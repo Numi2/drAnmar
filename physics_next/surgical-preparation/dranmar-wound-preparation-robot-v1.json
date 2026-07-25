@@ -129,7 +129,7 @@
     "status": "particle-scale proxy_not_cfd_or_clinical_dose_model"
   },
   "schema": "dr.anmar.wound-preparation-physics.v1",
-  "status": "research_informed_engineering_model_pending_runtime_metrology_and_clinical_validation",
+  "status": "simulation_training_model",
   "suction": {
     "capture_depth_m": 0.026,
     "capture_radius_m": 0.023,

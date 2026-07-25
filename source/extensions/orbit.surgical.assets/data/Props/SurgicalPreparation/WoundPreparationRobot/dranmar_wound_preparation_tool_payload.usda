@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "DrAnmarWoundPreparationTool"
-    doc = "DrAnmar wound-preparation end effector with irrigation, aspiration, rotary debridement and inspection. Research simulation only."
+    doc = "Dr.Anmar simulation-training end effector with irrigation, aspiration, rotary debridement, and inspection."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -19,7 +19,7 @@ def Xform "DrAnmarWoundPreparationTool" (
         string version = "0.1.0"
     }
     customData = {
-        string drAnmarStatus = "research_only_not_clinically_validated"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMountInterface = "franka_panda_link8_hand_replacement"
         string drAnmarMechanism = "concentric_irrigation_annular_aspiration_rotary_debridement_and_multimodal_inspection"
         string drAnmarCoordinateConvention = "+Z approach, +X lateral, +Y wound tangent"

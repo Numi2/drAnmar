@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "DrAnmarNeedleThreadProxy"
-    doc = "Rigid perception and handover proxy for the DrAnmar needle-thread assembly. Research only."
+    doc = "Rigid perception and handover proxy for the Dr.Anmar simulation-training needle-thread assembly."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -17,7 +17,7 @@ def Xform "DrAnmarNeedleThreadProxy" (
     kind = "component"
 )
 {
-    custom string drAnmar:simulationUse = "research_only_not_clinically_validated_or_approved_for_patient_care"
+    custom string drAnmar:simulationUse = "simulation_training_component"
     custom string drAnmar:representation = "rigid_perception_handover_proxy"
     token[] semantics:labels:class = ["needle_thread_assembly", "surgical_suture", "wound_closure_system"]
     token[] semantics:labels:workflow = ["perception", "handover", "positioning", "disposal"]

@@ -13,6 +13,6 @@
     "physx": "DrAnmarSuture4_0_physx.usda"
   },
   "physics_profile": "../../../physics_next/sutures/dr-anmar-suture-4-0.json",
-  "gpu_qualification": "../../../physics_next/benchmarks/dr-anmar-warp-suture-qualification.json",
+  "native_simulator_evidence": "../../../physics_next/benchmarks/dr-anmar-warp-suture-native-simulator-evidence.json",
   "clinical_validation": false
 }

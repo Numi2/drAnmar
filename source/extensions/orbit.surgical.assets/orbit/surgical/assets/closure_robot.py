@@ -9,9 +9,10 @@ This module intentionally keeps the closure mechanics in the simulator:
 * tissue transforms and nodal positions are never rewritten to imitate a
   closure.
 
-The engineering parameters are provisional and research-only.  Nothing in
-this module models staple penetration, metal plasticity, adhesive chemistry,
-biological healing, or clinically calibrated failure strength.
+This is an executable simulation-training mechanism with disclosed engineering
+parameters. Nothing in this module models staple penetration, metal plasticity,
+adhesive chemistry, biological healing, or clinically calibrated failure
+strength; real-world and clinical evidence are not established.
 """
 
 from __future__ import annotations

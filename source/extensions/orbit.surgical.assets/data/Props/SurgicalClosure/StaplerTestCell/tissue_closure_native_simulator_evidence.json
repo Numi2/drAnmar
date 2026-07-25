@@ -1,6 +1,6 @@
 {
-  "schema": "dr.anmar.stapler-tissue-closure-qualification.v2",
-  "qualified_at": "2026-07-24T23:37:31Z",
+  "schema": "dr.anmar.stapler-tissue-closure-native-simulator-evidence.v2",
+  "recorded_at": "2026-07-24T23:37:31Z",
   "hardware": "NVIDIA GeForce RTX 4090",
   "runtime": "Isaac Sim 5.1 / Isaac Lab 2.3.2",
   "procedure": "dr-anmar-stapler-test-cell",
@@ -98,5 +98,5 @@
     "retained_attachment_count": 0,
     "restored_gap_mm": 3.7818
   },
-  "validation_boundary": "simulated FEM approximation and retained rigid-staple attachments only; no staple-leg puncture, metal plasticity, calibrated pull-out strength, clinical validation, sterility claim or patient-use claim"
+  "evidence_boundary": "simulated FEM approximation and retained rigid-staple attachments only; real-world staple-leg puncture, metal plasticity, calibrated pull-out strength, clinical, sterility, and patient-use evidence are not established"
 }

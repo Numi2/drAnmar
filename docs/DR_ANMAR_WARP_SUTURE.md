@@ -43,7 +43,7 @@ The implementation follows current NVIDIA boundaries:
 - Warp kernels use statically typed arrays and native CUDA execution.
 - Fixed allocation and pair ordering avoid dynamic GPU buffer growth during a
   step.
-- The qualification includes deterministic replay because CUDA floating-point
+- The native-simulator evidence run includes deterministic replay because CUDA floating-point
   atomics are not deterministic by default.
 
 References:
@@ -61,10 +61,10 @@ DR_ANMAR_ROOT=/home/numi/dr_anmar/dr-anmar-runtime \
 ./dr_anmar_suture_warp.sh qualify
 ```
 
-The committed qualification report is
-`physics_next/benchmarks/dr-anmar-warp-suture-qualification.json`.
+The committed native-simulator evidence is
+`physics_next/benchmarks/dr-anmar-warp-suture-native-simulator-evidence.json`.
 
-## Qualification boundary
+## Evidence boundary
 
 Passing the GPU report means the implementation passed its deterministic
 engineering scenarios on the recorded NVIDIA stack. It does not establish

@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "DrAnmarMicrocupRetractionPad"
-    doc = "Replaceable microcup atraumatic retraction pad. Research simulation only."
+    doc = "Replaceable microcup atraumatic retraction pad for simulation training."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"

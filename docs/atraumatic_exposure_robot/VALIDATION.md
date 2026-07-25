@@ -1,8 +1,12 @@
-# Integrity and runtime boundaries
+# Capability and evidence boundaries
 
-Static gates cover deterministic assets, dependency closure, controller
-invariants, fail-closed attachment overlap, and source/container integrity.
-The optional Isaac runtime script is diagnostic only.
+The Atraumatic Exposure Robot is an available Dr.Anmar simulation-training
+workcell with articulated bilateral capture, force-limited retraction, task
+state, observations, actions, safety gates, and evaluation signals.
+
+Repository verification covers deterministic assets, dependency closure,
+controller invariants, fail-closed attachment overlap, and source integrity.
+The optional Isaac runtime script produces native-simulator evidence only.
 
 It can report articulation motion, surface-deformable schema application,
 attachment creation, and registered camera output. Controller proxy inputs,
@@ -11,5 +15,5 @@ force, tissue capture quality, exposure efficacy, tissue safety, physical
 calibration, clinical performance, or patient use.
 
 The force/visibility controller output is applied to the articulation, but it
-remains unqualified until pad loads and ROI visibility come from calibrated
+has no real-world correlation claim until pad loads and ROI visibility come from calibrated
 runtime sensors rather than supplied proxy values.

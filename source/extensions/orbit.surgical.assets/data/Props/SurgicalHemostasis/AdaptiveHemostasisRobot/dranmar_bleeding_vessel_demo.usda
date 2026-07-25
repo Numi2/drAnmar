@@ -12,7 +12,7 @@ def Xform "DrAnmarBleedingVesselDemo" (
         bool drAnmarClinicalValidation = false
         float drAnmarReferencePressurePa = 10665.8
         float drAnmarDefectAreaM2 = 1.8e-6
-        string drAnmarStatus = "research_only_reduced_order_flow_source"
+        string drAnmarStatus = "simulation_training_scenario"
     }
 )
 {

@@ -15,7 +15,7 @@ def Xform "DrAnmarSkinAdhesiveCap" (
     custom string dranmar:assetId = "dranmar.surgical_closure.skin_adhesive_cap"
     custom string dranmar:assetName = "DrAnmar Skin Adhesive Applicator Cap"
     custom string dranmar:version = "0.1.0"
-    custom token dranmar:validationClass = "research_only_not_clinically_validated_or_approved_for_patient_care"
+    custom token dranmar:productCapability = "simulation_training_component"
     custom string dranmar:representation = "removable_rigid_snap_cap"
     bool physics:rigidBodyEnabled = 1
     bool physics:kinematicEnabled = 0

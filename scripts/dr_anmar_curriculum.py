@@ -428,7 +428,7 @@ LESSON_GUIDES = {
             "All native mechanics routes pass or the room stops before simulation.",
             "Physiology remains finite and blood loss never exceeds available circulation.",
             "Every damage and intervention transition remains chronologically reconstructable.",
-            "The final snapshot records research-only status and unpassed qualification gates.",
+            "The final snapshot records the evidence tier and any unestablished real-world or clinical evidence.",
         ],
         "reflection": "Which result came from native solver evidence, which came from a reduced-order state model, and which still requires physical or clinical validation?",
     },

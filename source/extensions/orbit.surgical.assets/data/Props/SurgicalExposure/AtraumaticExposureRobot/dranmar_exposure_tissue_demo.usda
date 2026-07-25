@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "DrAnmarExposureTissueDemo"
-    doc = "Two-flap deformable exposure benchmark with an underlying ROI target. Research simulation only."
+    doc = "Two-flap deformable exposure training scenario with an underlying ROI target."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"

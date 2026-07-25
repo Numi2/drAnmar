@@ -613,7 +613,7 @@ def main() -> int:
             ),
         },
         "payload_mass_kg": 2.537,
-        "research_only": True,
+        "intended_use": "simulation_training",
         "clinical_validation": False,
         "medical_device": False,
     }

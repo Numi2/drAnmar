@@ -1,6 +1,6 @@
 # Dynamic abdominal patient validation boundary
 
-This package is a research simulation platform. A software check or successful
+This package is an interactive simulation-training platform. A software check or successful
 scene run does not establish biological or clinical realism.
 
 | Area | Current evidence | Boundary |

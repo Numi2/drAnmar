@@ -755,6 +755,7 @@ def _validate_json_and_usd(
                             "physics_profile",
                             "validation_report",
                             "gpu_qualification",
+                            "native_simulator_evidence",
                             "external_geometry_dependency",
                             "suture_dependency",
                         ):

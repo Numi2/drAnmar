@@ -1,6 +1,6 @@
 {
   "patient_asset_id": "dranmar-dynamic-abdominal-patient-v1",
-  "research_only": true,
+  "intended_use": "simulation_training",
   "scenarios": [
     {
       "id": "laparotomy_cholecystectomy",

@@ -89,8 +89,9 @@ The generator cleans only its owned output paths, mirrors the catalog into the
 extension data tree, writes fixed-timestamp ZIP members, and excludes bytecode
 and workstation metadata from manifests and archives.
 
-## Safety and qualification
+## Evidence boundary
 
-Research simulation only. The asset is not clinically validated, is not a
-medical device, and is not approved for patient care. All unmeasured mechanical,
-fluid, tissue and contact values are disclosed provisional engineering seeds.
+This simulation-training workcell is available for task execution and
+evaluation. Real-world and clinical evidence are not established. All
+unmeasured mechanical, fluid, tissue, and contact values remain disclosed
+engineering parameters.

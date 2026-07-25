@@ -12,7 +12,7 @@
     "dranmar_ultrasound_coupling_pad.usda",
     "dranmar_flow_occluder.usda"
   ],
-  "research_only": true,
+  "intended_use": "simulation_training",
   "schema": "dr.anmar.asset-manifest.v1",
   "version": "0.1.1"
 }

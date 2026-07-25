@@ -1291,7 +1291,7 @@ def Xform "{root}" (
         string drAnmarAssetVersion = "{VERSION}"
         bool drAnmarClinicalValidation = false
         bool drAnmarMedicalDevice = false
-        string drAnmarStatus = "research_only_pending_runtime_and_physical_calibration"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMount = "replaces_panda_hand_at_panda_link8"
         int drAnmarTractionCellCount = {2 * TRACTION_CELL_COUNT_PER_SIDE}
         int drAnmarDissectionModalityCount = 4
@@ -2390,7 +2390,7 @@ def generate_textures() -> list[Path]:
         font = None
         small = None
     draw.text((36, 44), "DrAnmar", fill=(18, 65, 112), font=font)
-    draw.text((40, 148), "SAFEPLANE DISSECTION • RESEARCH ONLY", fill=(35, 45, 55), font=small)
+    draw.text((40, 148), "SAFEPLANE DISSECTION • TRAINING WORKCELL", fill=(35, 45, 55), font=small)
     path = TEXTURE_ROOT / "label_dranmar.png"
     image.save(path)
     outputs.append(path)
@@ -3852,7 +3852,7 @@ The payload replaces the Panda hand at `panda_link8` and provides {len(build_too
 Annular suction and irrigation operate around the same registered field. Stereo RGB, depth, fluorescence, and thermal frames are fixed to the housing so modality changes do not require scene re-registration.
 
 The mechanism is owned by DrAnmar and provider-neutral. NVIDIA Isaac Sim and
-Isaac Lab provide the target runtime. It is research-only.
+Isaac Lab provide the target runtime. It is an executable simulation-training workcell.
 '''
 
 

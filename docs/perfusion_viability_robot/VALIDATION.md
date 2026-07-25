@@ -7,7 +7,7 @@ python3 scripts/validate_dranmar_perfusion_viability_robot.py
 pytest -q tests/test_perfusion_viability_robot.py
 ```
 
-Native qualification runs both the standalone 12-joint articulation and the
+Native-simulator evidence runs both the standalone 12-joint articulation and the
 Franka hand-replacement articulation on CUDA:
 
 ```bash
@@ -41,5 +41,6 @@ robot system and one active camera renderer at a time.
 
 Passing it does not calibrate the optical, thermal, Doppler, ultrasound, flow,
 tracer, viability, diagnostic, interventional, payload, or contact models. The
-system remains manufacturer-neutral, research-only, not clinically validated,
+system remains manufacturer-neutral and available for simulation training;
+clinical and real-world evidence are not established,
 and not approved for patient care.

@@ -110,7 +110,7 @@ class ProcedureContractTests(unittest.TestCase):
         self.assertEqual(snapshot["phase"], "contact")
         self.assertEqual(snapshot["history"][0]["targets"], targets)
         self.assertEqual(
-            snapshot["status"], "research_only_not_clinically_validated"
+            snapshot["status"], "simulation_training_workcell"
         )
 
     def test_registered_camera_contract_is_complete(self) -> None:

@@ -10,4 +10,4 @@ An override has a physical consequence:
 - nerve injury removes continuity and sets conduction to zero;
 - duct injury removes continuity and activates a leak state.
 
-This is a research complication model, not a validated injury predictor.
+This is a simulation-training complication model, not a calibrated injury predictor.

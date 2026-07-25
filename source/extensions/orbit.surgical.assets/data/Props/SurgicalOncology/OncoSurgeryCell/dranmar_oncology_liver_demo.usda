@@ -10,7 +10,7 @@
 def Xform "DrAnmarOncologyLiverDemo" (
     prepend apiSchemas = ["SemanticsLabelsAPI:class"]
     customData = {
-        string drAnmarStatus = "research_only_not_clinically_validated"
+        string drAnmarStatus = "simulation_training_scenario"
         string drAnmarTumorField = "./tumor_field.json"
         string drAnmarResectionTopology = "./resection_topology.json"
         float drAnmarPlannedMarginM = 0.01

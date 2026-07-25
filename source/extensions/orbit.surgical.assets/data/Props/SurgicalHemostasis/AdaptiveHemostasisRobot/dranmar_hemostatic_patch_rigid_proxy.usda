@@ -10,7 +10,7 @@ def Xform "DrAnmarHemostaticPatchRigidProxy" (
     prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
     customData = {
         bool drAnmarClinicalValidation = false
-        string drAnmarStatus = "research_only"
+        string drAnmarStatus = "simulation_training_component"
         string drAnmarRepresentation = "rigid_patch_bond_carrier"
     }
 )

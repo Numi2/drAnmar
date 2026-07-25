@@ -58,7 +58,7 @@
       "failed"
     ]
   },
-  "status": "research_only_provisional_parameters",
+  "status": "simulation_training_model",
   "tool": {
     "bridge_pin_count": 8,
     "irrigation_ports": 6,

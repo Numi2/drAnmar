@@ -4,33 +4,33 @@
     "adaptive_anastomosis": {
       "asset_id": "dranmar-adaptive-anastomosis-robot-v1",
       "catalog_subpath": "Props/SurgicalReconstruction/AdaptiveAnastomosisRobot",
-      "file_count": 42,
+      "file_count": 41,
       "primary_usd": "dranmar_adaptive_anastomosis_tool_standalone.usda",
-      "sha256": "75c4e95f93980441bb975d194ed3262229bef3b9acd8e56cb1b048682bccbdec",
+      "sha256": "5730d9d89ecb2e4ba0516d82b8fe3cd95638aa0a79fee4a46f11ab0cd4b6ce27",
       "usd_references_checked": 30
     },
     "adaptive_hemostasis": {
       "asset_id": "dranmar-adaptive-hemostasis-robot-v1",
       "catalog_subpath": "Props/SurgicalHemostasis/AdaptiveHemostasisRobot",
-      "file_count": 39,
+      "file_count": 38,
       "primary_usd": "dranmar_adaptive_hemostasis_tool_standalone.usda",
-      "sha256": "7d987c1c0d5ae194ad70928c4d846a0c825be082f4e0d4b2fe24308f24fa83b6",
+      "sha256": "4ad19e8ca9dbf1bbc5365e1c284249630d7f8434a857f7fa18797477669e1427",
       "usd_references_checked": 32
     },
     "adaptive_seal_divide": {
       "asset_id": "dranmar-adaptive-seal-divide-robot-v1",
       "catalog_subpath": "Props/SurgicalDivision/AdaptiveSealDivideRobot",
-      "file_count": 41,
+      "file_count": 40,
       "primary_usd": "dranmar_adaptive_seal_divide_tool_standalone.usda",
-      "sha256": "15d578fc7fc81e9a09a90702c8edd0d0bbb2c16ee7f8369b41b9ea743fb5763f",
+      "sha256": "384d72c0da10d3cd2699aab1d7a3d1eb08de37997d27e62cf0cb49459439ad78",
       "usd_references_checked": 0
     },
     "atraumatic_exposure": {
       "asset_id": "dranmar-atraumatic-exposure-robot-v1",
       "catalog_subpath": "Props/SurgicalExposure/AtraumaticExposureRobot",
-      "file_count": 36,
+      "file_count": 35,
       "primary_usd": "dranmar_atraumatic_exposure_tool_standalone.usda",
-      "sha256": "2f0ea42388fa71ce9f5104695516aa0271fad6bad1213a2496dd5fc9e5e96680",
+      "sha256": "2a76c49fc7b5d76c17dc71510981fc595792e81dd8bba68a8bd4042b73f7bd48",
       "usd_references_checked": 48
     },
     "oncologic_resection": {
@@ -38,7 +38,7 @@
       "catalog_subpath": "Props/SurgicalOncology/OncoSurgeryCell",
       "file_count": 59,
       "primary_usd": "dranmar_tumor_resection_tool_standalone.usda",
-      "sha256": "9e664917e9f810dd0ff9cada57afcbd997d47145969dde2e937b7e1ffde26254",
+      "sha256": "9281930a6d2de1a18ecedff460c6337e6e636d142db9fea141fe695c215d79c6",
       "usd_references_checked": 4
     },
     "perfusion_viability": {
@@ -46,15 +46,15 @@
       "catalog_subpath": "Props/SurgicalAssessment/PerfusionViabilityRobot",
       "file_count": 49,
       "primary_usd": "dranmar_perfusion_viability_tool_standalone.usda",
-      "sha256": "d82ea2eee032e1fe807bf9a5e3df4823831d592bcf63d4892d65cda5e3a53d4b",
+      "sha256": "5d38ca56e1d9346c0a017c59c9d405356a4cf6354501f1dafbc5f4eb2bfb3ecc",
       "usd_references_checked": 0
     },
     "safeplane_dissection": {
       "asset_id": "dranmar-safeplane-dissection-robot-v1",
       "catalog_subpath": "Props/SurgicalDissection/SafePlaneDissectionRobot",
-      "file_count": 59,
+      "file_count": 58,
       "primary_usd": "dranmar_safeplane_dissection_tool_standalone.usda",
-      "sha256": "fe5815ebfac40e6f357972f1a9e4ce380f3efa33d1904549b5f3f3cd64ad0ff7",
+      "sha256": "cfd1c5deff76d8ca2df4d0414b68b52f05d60915f170ad417f4bbd1fb4d34dfc",
       "usd_references_checked": 3
     },
     "wound_preparation": {
@@ -62,7 +62,7 @@
       "catalog_subpath": "Props/SurgicalPreparation/WoundPreparationRobot",
       "file_count": 43,
       "primary_usd": "dranmar_wound_preparation_tool_standalone.usda",
-      "sha256": "61ccd1f2e64b6c71463a72f87908b5fa2d6b82d68628a15a75cc5e0a7d7d6852",
+      "sha256": "3f64a67bece2b2d30dfff22ae0dfe42d22c8a3ab78f7be3ba9e49db726313897",
       "usd_references_checked": 108
     }
   },

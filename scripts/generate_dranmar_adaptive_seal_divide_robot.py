@@ -934,7 +934,7 @@ def Xform "{root}" (
         string drAnmarAssetVersion = "{VERSION}"
         bool drAnmarClinicalValidation = false
         bool drAnmarMedicalDevice = false
-        string drAnmarStatus = "research_only_pending_runtime_and_physical_calibration"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMount = "replaces_panda_hand_at_panda_link8"
         int drAnmarSealZoneCount = 2
         bool drAnmarBladeInterlockRequired = true
@@ -1620,7 +1620,7 @@ def generate_textures() -> list[Path]:
     img=Image.new("RGB",(1024,256),(247,249,251));d=ImageDraw.Draw(img)
     try:font=ImageFont.truetype("DejaVuSans-Bold.ttf",72);small=ImageFont.truetype("DejaVuSans.ttf",30)
     except OSError:font=None;small=None
-    d.text((36,48),"DrAnmar",fill=(18,65,112),font=font);d.text((40,150),"ADAPTIVE SEAL + DIVIDE • RESEARCH ONLY",fill=(35,45,55),font=small)
+    d.text((36,48),"DrAnmar",fill=(18,65,112),font=font);d.text((40,150),"ADAPTIVE SEAL + DIVIDE • TRAINING WORKCELL",fill=(35,45,55),font=small)
     p=TEXTURE_ROOT/"label_dranmar.png";img.save(p);out.append(p);return out
 
 
@@ -1636,7 +1636,7 @@ def mount_contract() -> dict[str,object]:
         "local_translation_m":[0,0,0],
         "local_rotation_axis_angle_deg":{"axis":[0,0,1],"angle":FRANKA_HAND_EQUIVALENT_ROTATION_DEG},
         "deactivate":["panda_hand_joint","panda_hand","panda_finger_joint1","panda_finger_joint2","panda_leftfinger","panda_rightfinger"],
-        "research_only":True,
+        "intended_use":"simulation_training",
     }
 
 
@@ -1656,7 +1656,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str,object]:
         "schema":"dranmar.adaptive-seal-divide-profile.v1",
         "id":"dranmar-adaptive-seal-divide-robot-v1",
         "version":VERSION,
-        "status":"research_only_provisional_parameters",
+        "status":"simulation_training_model",
         "tool":{"mount":"panda_link8","joint_count":len(bundle.joints),"seal_zone_count":2,"bridge_pin_count":BRIDGE_PIN_COUNT,"suction_ports":SUCTION_PORT_COUNT,"irrigation_ports":IRRIGATION_PORT_COUNT},
         "centering":{"travel_per_side_m":CENTERING_TRAVEL_M,"target_force_per_side_n":0.7,"soft_limit_n":2.2},
         "compression":{"jaw_travel_per_side_m":JAW_TRAVEL_M,"target_total_force_n":18.0,"minimum_force_n":8.0,"soft_limit_n":32.0,"hard_abort_n":45.0},
@@ -1683,7 +1683,7 @@ def collider_coverage(bundle: ToolBundle) -> dict[str,object]:
 def asset_manifest() -> dict[str,object]:
     return {
         "schema":"dranmar.asset-manifest.v1","id":"dranmar-adaptive-seal-divide-robot-v1","version":VERSION,
-        "catalog_subpath":str(CATALOG_SUBPATH),"license":"Apache-2.0","research_only":True,"clinical_validation":False,
+        "catalog_subpath":str(CATALOG_SUBPATH),"license":"Apache-2.0","intended_use":"simulation_training","clinical_validation":False,
         "primary_assets":["dranmar_adaptive_seal_divide_tool_payload.usda","dranmar_adaptive_seal_divide_tool_standalone.usda","dranmar_adaptive_seal_divide_tool_rigid_proxy.usda","dranmar_seal_divide_vessel_demo.usda","dranmar_tissue_seal_band.usda","dranmar_division_blade_cartridge.usda","dranmar_seal_vapor_particle.usda"],
         "runtime_capabilities":["franka_hand_replacement","tissue_centering","dual_zone_compression","adaptive_energy_proxy","physical_seal_band_retention","blade_interlock","progressive_bridge_release_division","dual_stump_leak_verification"],
     }

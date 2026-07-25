@@ -5,7 +5,7 @@
     "no_validated_tissue_penetration_or_damage",
     "no_biochemical_adhesive_or_healing_model",
     "no_clinical_leak_threshold_claim",
-    "runtime_qualification_required"
+    "native_simulator_evidence_required"
   ],
   "capture": {
     "attachment_model": "six_current_vertex_to_xform_attachment_cells_per_side",
@@ -530,11 +530,11 @@
   },
   "schema": "dranmar.adaptive-anastomosis-profile.v1",
   "staples": {
-    "forming": "discrete_open_to_formed_state_until_qualified_plasticity_backend",
+    "forming": "discrete_open_to_formed_state_pending_plasticity_backend_evidence",
     "provisional_pullout_force_per_staple_n": 1.4,
     "representation": "sixteen_independent_rigid_formed_staples_with_left_and_right_attachment_regions"
   },
-  "status": "research_only_runtime_observed_physical_effect_unqualified",
+  "status": "simulation_training_model",
   "tissue_demo": {
     "constitutive_parameters": "provisional_category_level_seeds",
     "initial_gap_m": 0.02,

@@ -1851,7 +1851,7 @@
     "tumors_or_lesions",
     "adhesions"
   ],
-  "research_only": true,
+  "intended_use": "simulation_training",
   "schema": "dr.anmar.dynamic-abdominal-anatomy.v1",
   "units": "m_kg_s",
   "version": "0.1.0"

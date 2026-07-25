@@ -10,7 +10,7 @@ def Xform "DrAnmarMarginInkParticle" (
     prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "SemanticsLabelsAPI:class"]
     customData = {
         string drAnmarAssetId = "dranmar-margin-ink-particle"
-        string drAnmarStatus = "research_only_not_clinically_validated"
+        string drAnmarStatus = "simulation_training_effect"
     }
 )
 {

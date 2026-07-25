@@ -1,17 +1,220 @@
 {
-  "schema": "dr.anmar.asset-package.v1",
-  "id": "dranmar-skin-adhesive-system-v1",
-  "name": "DrAnmar Topical Skin Adhesive System",
-  "version": "0.1.0",
-  "catalog_subpath": "Props/SurgicalClosure/SkinAdhesive",
-  "research_only": true,
-  "clinical_validation": false,
   "assets": [
     "skin_adhesive_applicator_articulated.usda",
     "skin_adhesive_applicator_rigid_proxy.usda",
     "skin_adhesive_cap.usda",
     "skin_adhesive_bead.usda"
   ],
+  "catalog_subpath": "Props/SurgicalClosure/SkinAdhesive",
+  "clinical_validation": false,
+  "files": [
+    {
+      "bytes": 11358,
+      "path": "LICENSE.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "bytes": 2931,
+      "path": "README.md",
+      "sha256": "fa0f9812c12da11d19429843eb9c3248d26e44a7ee5a547d9e0b1894e46317ca"
+    },
+    {
+      "bytes": 11358,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/LICENSE.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "bytes": 2931,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/README.md",
+      "sha256": "fa0f9812c12da11d19429843eb9c3248d26e44a7ee5a547d9e0b1894e46317ca"
+    },
+    {
+      "bytes": 777,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/collider_coverage.json",
+      "sha256": "51717a69e1505c08abd7a66138dcf5674c3836764a673144d30c3c4a48181a7e"
+    },
+    {
+      "bytes": 219940,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_activated.glb",
+      "sha256": "73d04bd87ae5cb0f5629c1f4127544bf2f7d1128be257f33896bc82e489f0d80"
+    },
+    {
+      "bytes": 214152,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_empty.glb",
+      "sha256": "9b6b30f33fde368cd9d85ea579d74c25ac069b618ec6bff03874e710e8676d70"
+    },
+    {
+      "bytes": 219940,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_rigid_proxy.glb",
+      "sha256": "c990e5a75b61a51c001d7067ff0022e20b8d2651c3600b4739497c823ca46298"
+    },
+    {
+      "bytes": 219940,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_sealed.glb",
+      "sha256": "c990e5a75b61a51c001d7067ff0022e20b8d2651c3600b4739497c823ca46298"
+    },
+    {
+      "bytes": 219932,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_squeezed.glb",
+      "sha256": "e5739061806fa8c14efee7e06d005de2fce5fae1fdb08c1fc1f77110e00897cf"
+    },
+    {
+      "bytes": 134792,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_bead_collision_debug.glb",
+      "sha256": "69492832c6839d3fefb82a7ce3f07d94228d057fecd70292d8face898dc9d87f"
+    },
+    {
+      "bytes": 65456,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_bead_cured.glb",
+      "sha256": "fc1b68c267d2c3985d4236a143be41cf5b98fbc1166d16a3aa28cefce823a871"
+    },
+    {
+      "bytes": 75128,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_bead_frame_debug.glb",
+      "sha256": "23a3e401ddacd1f04e039994acd3eb5b0bb5e384562e93942e3a414f5b1dde9b"
+    },
+    {
+      "bytes": 65456,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_bead_fresh.glb",
+      "sha256": "7e5c55dd7fb760648e9bc618320b327eadaee01e86971d55d05187cb401a16dd"
+    },
+    {
+      "bytes": 87088,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_cap.glb",
+      "sha256": "f60f9b983843b667eedf60b418466a5e992f2170ff553d93b7e198ecb4d27f31"
+    },
+    {
+      "bytes": 244044,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_collision_debug.glb",
+      "sha256": "830c59bb5aeed43959eb2e00f2d783bd90ad8857dd3260aae07fac192012b5be"
+    },
+    {
+      "bytes": 243260,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_frame_debug.glb",
+      "sha256": "3f7b84767a62da8edf273f4aec8fa4612e6af429406f290be19eecfd20350c2a"
+    },
+    {
+      "bytes": 219904,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_mechanism_exploded.glb",
+      "sha256": "3b7ec973df9315b9526fc5c9c33306e7513b6b0e267e7efd2347e549e9a81836"
+    },
+    {
+      "bytes": 5174,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/interaction_frames.json",
+      "sha256": "b4ed5d22313317fd7206cafcdf6afaedf12888a1871a7773a31c95e04434ccd2"
+    },
+    {
+      "bytes": 6070,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/physics_profile.json",
+      "sha256": "0e0b2903b2e6f256f02215ec1f2483de69c1ee65929a45c48d62363280faf36f"
+    },
+    {
+      "bytes": 1627508,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_articulated.usda",
+      "sha256": "73dddfc9d1968c4bf31dcb174f9d1053934f8f0ebf01a3fbccdad077c7e2e5c4"
+    },
+    {
+      "bytes": 1463649,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_rigid_proxy.usda",
+      "sha256": "612c5d5df1d1c02ffe935417b7e230289a4c8f39bb6739b394436dea85d58891"
+    },
+    {
+      "bytes": 414202,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_bead.usda",
+      "sha256": "abb38a71c81e359fffba83ef0195a535ad0b31557d13b232a60b491d64e79749"
+    },
+    {
+      "bytes": 543514,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_cap.usda",
+      "sha256": "6bc3ec9f625360f8f786b506ab87fab02597162729b44ad10763f09ff5420d9e"
+    },
+    {
+      "bytes": 1145,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/source_inspection_report.json",
+      "sha256": "077393c67635812f693976967e461d3c899f49fbb2eb0101933d4cc861c49704"
+    },
+    {
+      "bytes": 332875,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/body_polymer_basecolor.png",
+      "sha256": "fbcad2edfe1c5e7c1ad1a51b90ba40a7168faa2c729e27231b76e538aeba66f6"
+    },
+    {
+      "bytes": 411977,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/cap_polymer_basecolor.png",
+      "sha256": "718a28993bb03e9260557096dc5b614c25e8b7af57f28ddb75b456e7888d7756"
+    },
+    {
+      "bytes": 31155,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/label_dranmar_skin_adhesive.png",
+      "sha256": "236738cdf688ecbedbde93e443933beaa4d5df876b62cdab0f492c5f80bc7b38"
+    },
+    {
+      "bytes": 326458,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/polymer_normal.png",
+      "sha256": "b7c051a3e3df57056af1b75d209010eeaa31726eac64846370dd104afe081b80"
+    },
+    {
+      "bytes": 95283,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/polymer_roughness.png",
+      "sha256": "90aec9bcf19f5b398b6c2066a87a32d9c5bd8233f96c76f16ebe330c6f26350f"
+    },
+    {
+      "bytes": 366208,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/wick_activated_basecolor.png",
+      "sha256": "a431ea8167f2b364e0ed7784beb66547b7227b99811fa0024d7d8e78506174d8"
+    },
+    {
+      "bytes": 336007,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/wick_dry_basecolor.png",
+      "sha256": "4b1e47a37398dacd09a5a5057bd4dd3e102e4706eafbf51692b94fbcda5737f1"
+    },
+    {
+      "bytes": 289378,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/wick_normal.png",
+      "sha256": "8823991faa3237287bc8acf779fdc169c87dbd7cf9e1c13c734b3c1df2c8f427"
+    },
+    {
+      "bytes": 166011,
+      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/wick_roughness.png",
+      "sha256": "b7d3f8b8eb60192a9305979567fd55bee11243411f9a68740c431b56c84c33b8"
+    },
+    {
+      "bytes": 2905,
+      "path": "docs/DRANMAR_SKIN_ADHESIVE.md",
+      "sha256": "7278c9541f8d37a8dec6d92c055fa4abb0e2a764cea84227cdaa9e4420bf3df2"
+    },
+    {
+      "bytes": 6070,
+      "path": "physics_next/surgical-closure/dranmar-skin-adhesive-v1.json",
+      "sha256": "0e0b2903b2e6f256f02215ec1f2483de69c1ee65929a45c48d62363280faf36f"
+    },
+    {
+      "bytes": 181494,
+      "path": "previews/dranmar_skin_adhesive_system_preview.png",
+      "sha256": "3db50f2cbf0b870438bfca26a1d63e7a185cda4fa1e98f78afb0be2d372aa326"
+    },
+    {
+      "bytes": 122422,
+      "path": "scripts/generate_dranmar_skin_adhesive.py",
+      "sha256": "a025a0340473aa4ce186904a9242dd7d658f74c5c4b66cdbf5031d95dc23d216"
+    },
+    {
+      "bytes": 4021,
+      "path": "scripts/install_into_dranmar.py",
+      "sha256": "46fd9f16e731425d58fafe688e962c4a2bbd0633c9d50137fa1d09437f9aaad6"
+    },
+    {
+      "bytes": 15899,
+      "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/skin_adhesive.py",
+      "sha256": "0463dca3f7b4fcb9e1e0f848dd0ff25e9b1590988a04cd80fdfebd3ad7f03f98"
+    }
+  ],
+  "id": "dranmar-skin-adhesive-system-v1",
+  "installed_overlay_entries_refreshed": 35,
+  "installed_overlay_hash_contract": "sha256 of exact current repository file bytes",
+  "intended_use": "simulation_training",
+  "name": "DrAnmar Topical Skin Adhesive System",
+  "schema": "dr.anmar.asset-package.v1",
   "states": {
     "applicator": [
       "sealed",
@@ -23,206 +226,5 @@
       "cured"
     ]
   },
-  "files": [
-    {
-      "path": "LICENSE.txt",
-      "bytes": 11358,
-      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-    },
-    {
-      "path": "README.md",
-      "bytes": 2931,
-      "sha256": "fa0f9812c12da11d19429843eb9c3248d26e44a7ee5a547d9e0b1894e46317ca"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/LICENSE.txt",
-      "bytes": 11358,
-      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/README.md",
-      "bytes": 2931,
-      "sha256": "fa0f9812c12da11d19429843eb9c3248d26e44a7ee5a547d9e0b1894e46317ca"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/collider_coverage.json",
-      "bytes": 777,
-      "sha256": "51717a69e1505c08abd7a66138dcf5674c3836764a673144d30c3c4a48181a7e"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_activated.glb",
-      "bytes": 219940,
-      "sha256": "73d04bd87ae5cb0f5629c1f4127544bf2f7d1128be257f33896bc82e489f0d80"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_empty.glb",
-      "bytes": 214152,
-      "sha256": "9b6b30f33fde368cd9d85ea579d74c25ac069b618ec6bff03874e710e8676d70"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_rigid_proxy.glb",
-      "bytes": 219940,
-      "sha256": "c990e5a75b61a51c001d7067ff0022e20b8d2651c3600b4739497c823ca46298"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_sealed.glb",
-      "bytes": 219940,
-      "sha256": "c990e5a75b61a51c001d7067ff0022e20b8d2651c3600b4739497c823ca46298"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_applicator_squeezed.glb",
-      "bytes": 219932,
-      "sha256": "e5739061806fa8c14efee7e06d005de2fce5fae1fdb08c1fc1f77110e00897cf"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_bead_collision_debug.glb",
-      "bytes": 134792,
-      "sha256": "69492832c6839d3fefb82a7ce3f07d94228d057fecd70292d8face898dc9d87f"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_bead_cured.glb",
-      "bytes": 65456,
-      "sha256": "fc1b68c267d2c3985d4236a143be41cf5b98fbc1166d16a3aa28cefce823a871"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_bead_frame_debug.glb",
-      "bytes": 75128,
-      "sha256": "23a3e401ddacd1f04e039994acd3eb5b0bb5e384562e93942e3a414f5b1dde9b"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_bead_fresh.glb",
-      "bytes": 65456,
-      "sha256": "7e5c55dd7fb760648e9bc618320b327eadaee01e86971d55d05187cb401a16dd"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_cap.glb",
-      "bytes": 87088,
-      "sha256": "f60f9b983843b667eedf60b418466a5e992f2170ff553d93b7e198ecb4d27f31"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_collision_debug.glb",
-      "bytes": 244044,
-      "sha256": "830c59bb5aeed43959eb2e00f2d783bd90ad8857dd3260aae07fac192012b5be"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_frame_debug.glb",
-      "bytes": 243260,
-      "sha256": "3f7b84767a62da8edf273f4aec8fa4612e6af429406f290be19eecfd20350c2a"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/glb/dranmar_skin_adhesive_mechanism_exploded.glb",
-      "bytes": 219904,
-      "sha256": "3b7ec973df9315b9526fc5c9c33306e7513b6b0e267e7efd2347e549e9a81836"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/interaction_frames.json",
-      "bytes": 5174,
-      "sha256": "b4ed5d22313317fd7206cafcdf6afaedf12888a1871a7773a31c95e04434ccd2"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/physics_profile.json",
-      "bytes": 6070,
-      "sha256": "0e0b2903b2e6f256f02215ec1f2483de69c1ee65929a45c48d62363280faf36f"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_articulated.usda",
-      "bytes": 1627957,
-      "sha256": "97b19672d7aaaa3340b8fd1a99f5a491a26bc486cb8f951949e9a33025cac7c2"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_rigid_proxy.usda",
-      "bytes": 1464098,
-      "sha256": "a767117052434237c5598033324ceb166ae3b2de53d1d498a15d6bc5c1806a31"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_bead.usda",
-      "bytes": 414250,
-      "sha256": "bfa32ccb6b0d6cfa3b5140f535c65950df0b6307cc6d4db0dcfd073c1f14072d"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_cap.usda",
-      "bytes": 543694,
-      "sha256": "0a30aa65d92237083b66b5f7f15d56de1e4a3e1b20de58192a033e5882c059ea"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/source_inspection_report.json",
-      "bytes": 1145,
-      "sha256": "85e309a736bc8143609c06f05973a9c31af92f6811499a12c82152e863bbd77e"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/body_polymer_basecolor.png",
-      "bytes": 332875,
-      "sha256": "fbcad2edfe1c5e7c1ad1a51b90ba40a7168faa2c729e27231b76e538aeba66f6"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/cap_polymer_basecolor.png",
-      "bytes": 411977,
-      "sha256": "718a28993bb03e9260557096dc5b614c25e8b7af57f28ddb75b456e7888d7756"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/label_dranmar_skin_adhesive.png",
-      "bytes": 31155,
-      "sha256": "236738cdf688ecbedbde93e443933beaa4d5df876b62cdab0f492c5f80bc7b38"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/polymer_normal.png",
-      "bytes": 326458,
-      "sha256": "b7c051a3e3df57056af1b75d209010eeaa31726eac64846370dd104afe081b80"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/polymer_roughness.png",
-      "bytes": 95283,
-      "sha256": "90aec9bcf19f5b398b6c2066a87a32d9c5bd8233f96c76f16ebe330c6f26350f"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/wick_activated_basecolor.png",
-      "bytes": 366208,
-      "sha256": "a431ea8167f2b364e0ed7784beb66547b7227b99811fa0024d7d8e78506174d8"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/wick_dry_basecolor.png",
-      "bytes": 336007,
-      "sha256": "4b1e47a37398dacd09a5a5057bd4dd3e102e4706eafbf51692b94fbcda5737f1"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/wick_normal.png",
-      "bytes": 289378,
-      "sha256": "8823991faa3237287bc8acf779fdc169c87dbd7cf9e1c13c734b3c1df2c8f427"
-    },
-    {
-      "path": "assets/Props/SurgicalClosure/SkinAdhesive/textures/wick_roughness.png",
-      "bytes": 166011,
-      "sha256": "b7d3f8b8eb60192a9305979567fd55bee11243411f9a68740c431b56c84c33b8"
-    },
-    {
-      "path": "docs/DRANMAR_SKIN_ADHESIVE.md",
-      "bytes": 1798,
-      "sha256": "ca3866bff6f93cae2315a36fac93b9132086f8f24a50520cce79262740316708"
-    },
-    {
-      "path": "physics_next/surgical-closure/dranmar-skin-adhesive-v1.json",
-      "bytes": 6070,
-      "sha256": "0e0b2903b2e6f256f02215ec1f2483de69c1ee65929a45c48d62363280faf36f"
-    },
-    {
-      "path": "previews/dranmar_skin_adhesive_system_preview.png",
-      "bytes": 181494,
-      "sha256": "3db50f2cbf0b870438bfca26a1d63e7a185cda4fa1e98f78afb0be2d372aa326"
-    },
-    {
-      "path": "scripts/generate_dranmar_skin_adhesive.py",
-      "bytes": 122422,
-      "sha256": "a025a0340473aa4ce186904a9242dd7d658f74c5c4b66cdbf5031d95dc23d216"
-    },
-    {
-      "path": "scripts/install_into_dranmar.py",
-      "bytes": 4021,
-      "sha256": "46fd9f16e731425d58fafe688e962c4a2bbd0633c9d50137fa1d09437f9aaad6"
-    },
-    {
-      "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/skin_adhesive.py",
-      "bytes": 10393,
-      "sha256": "3c18b5fb559bf57c05b63748ce8de0a474b62d59b69ffd6dc35d99420ef84ff4"
-    }
-  ]
+  "version": "0.1.0"
 }

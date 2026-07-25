@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "DrAnmarAtraumaticExposureTool"
-    doc = "DrAnmar force-controlled atraumatic surgical exposure end effector. Research simulation only."
+    doc = "Dr.Anmar force-controlled surgical exposure end effector for simulation training."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -18,7 +18,7 @@ def Xform "DrAnmarAtraumaticExposureTool" (
         string version = "0.1.0"
     }
     customData = {
-        string drAnmarStatus = "research_only_not_clinically_validated"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMountInterface = "franka_panda_link8_hand_replacement"
         string drAnmarMechanism = "bilateral_distributed_capture_force_sensing_lateral_retraction_and_independent_lift"
         string drAnmarCoordinateConvention = "+Z approach, +X lateral opening, +Y ROI tangent"

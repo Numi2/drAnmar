@@ -1,7 +1,7 @@
 {
   "integration_policy": "robot modules remain optional; patient event contract is stable and solver-independent",
   "patient_asset_id": "dranmar-dynamic-abdominal-patient-v1",
-  "research_only": true,
+  "intended_use": "simulation_training",
   "robots": [
     {
       "asset_id": "dranmar-atraumatic-exposure-robot-v1",

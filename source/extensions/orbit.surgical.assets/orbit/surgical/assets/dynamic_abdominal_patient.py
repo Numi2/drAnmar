@@ -2432,7 +2432,7 @@ class DynamicSurgicalPatient:
             "released_adhesions": sorted(self.released_adhesions),
             "anastomoses": self.anastomoses,
             "dressing": self.dressing_state,
-            "research_only": True,
+            "intended_use": "simulation_training",
         }
 
     def observation(self) -> dict[str, Any]:
@@ -3620,5 +3620,5 @@ def patient_adapter_contract() -> dict[str, Any]:
         ],
         "robot_compatibility": load_robot_compatibility(),
         "procedure_scenarios": load_procedure_scenarios(),
-        "research_only": True,
+        "intended_use": "simulation_training",
     }

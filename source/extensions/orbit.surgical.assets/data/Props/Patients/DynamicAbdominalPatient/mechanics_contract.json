@@ -60,6 +60,6 @@
       "liver_tumor"
     ]
   },
-  "research_only": true,
+  "intended_use": "simulation_training",
   "schema": "dr.anmar.dynamic-patient-mechanics.v1"
 }

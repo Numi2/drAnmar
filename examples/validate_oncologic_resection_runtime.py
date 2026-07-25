@@ -548,7 +548,7 @@ def main() -> int:
         raise RuntimeError(f"Isaac/PhysX errors: {fatal_errors[:8]}")
 
     report = {
-        "schema": "dr.anmar.oncology-native-qualification.v1",
+        "schema": "dr.anmar.oncology-native-simulator-evidence.v1",
         "status": "pass",
         "representation": args.representation,
         "tissue_mode": args.tissue_mode,

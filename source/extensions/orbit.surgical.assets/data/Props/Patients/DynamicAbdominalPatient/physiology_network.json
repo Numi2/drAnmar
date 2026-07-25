@@ -119,7 +119,7 @@
     "model": "map_and_renal_perfusion_dependent_urine_output",
     "normal_map_mmhg": 75.0
   },
-  "research_only": true,
+  "intended_use": "simulation_training",
   "respiration": {
     "diaphragm_excursion_m": 0.025,
     "inspiration_fraction": 0.38,

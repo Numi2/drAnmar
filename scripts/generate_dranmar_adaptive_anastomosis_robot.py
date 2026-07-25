@@ -1037,7 +1037,7 @@ def tool_usda(bundle: ToolBundle, articulation_root: bool) -> str:
     root_path=f"/{root}"
     schemas='prepend apiSchemas = ["PhysicsArticulationRootAPI"]' if articulation_root else ''
     schema_line=f"    {schemas}\n" if schemas else ""
-    runtime_status="research_only_runtime_observed_physical_effect_unqualified"
+    runtime_status="simulation_training_workcell"
     links="\n\n".join(link_usda(link,root_path,bundle.frames) for link in bundle.links.values())
     joints="\n\n".join(joint_usda(j,root_path) for j in bundle.joints)
     return f'''#usda 1.0
@@ -1763,7 +1763,7 @@ def generate_textures() -> list[Path]:
     try:font=ImageFont.truetype("DejaVuSans-Bold.ttf",72);small=ImageFont.truetype("DejaVuSans.ttf",29)
     except OSError:font=None;small=None
     d.text((36,46),"DrAnmar",fill=(18,65,112),font=font)
-    d.text((40,150),"ADAPTIVE ANASTOMOSIS • RESEARCH ONLY",fill=(35,45,55),font=small)
+    d.text((40,150),"ADAPTIVE ANASTOMOSIS • TRAINING WORKCELL",fill=(35,45,55),font=small)
     p=TEXTURE_ROOT/"label_dranmar.png";img.save(p);out.append(p)
     return out
 
@@ -1780,7 +1780,7 @@ def mount_contract() -> dict[str,object]:
         "local_translation_m":[0,0,0],
         "local_rotation_axis_angle_deg":{"axis":[0,0,1],"angle":FRANKA_HAND_EQUIVALENT_ROTATION_DEG},
         "deactivate":["panda_hand_joint","panda_hand","panda_finger_joint1","panda_finger_joint2","panda_leftfinger","panda_rightfinger"],
-        "research_only":True,
+        "intended_use":"simulation_training",
     }
 
 
@@ -1809,7 +1809,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str,object]:
         "id":"dranmar-adaptive-anastomosis-robot-v1",
         "name":ASSET_NAME,
         "version":VERSION,
-        "status":"research_only_runtime_observed_physical_effect_unqualified",
+        "status":"simulation_training_model",
         "units":"metres-kilograms-seconds",
         "mechanism":{
             "active_joint_count":sum(1 for j in bundle.joints if j.type!="fixed"),
@@ -1839,7 +1839,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str,object]:
         "staples":{
             "representation":"sixteen_independent_rigid_formed_staples_with_left_and_right_attachment_regions",
             "provisional_pullout_force_per_staple_n":1.4,
-            "forming":"discrete_open_to_formed_state_until_qualified_plasticity_backend",
+            "forming":"discrete_open_to_formed_state_pending_plasticity_backend_evidence",
         },
         "reinforcement_collar":{
             "surface_representation":"connected_triangular_circumferential_ribbon",
@@ -1855,7 +1855,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str,object]:
         },
         "boundaries":[
             "no_clinical_force_or_pressure_claims","no_continuous_staple_plasticity","no_validated_tissue_penetration_or_damage",
-            "no_biochemical_adhesive_or_healing_model","no_clinical_leak_threshold_claim","runtime_qualification_required",
+            "no_biochemical_adhesive_or_healing_model","no_clinical_leak_threshold_claim","native_simulator_evidence_required",
         ],
     }
 
@@ -2426,7 +2426,7 @@ class AdaptiveAnastomosisSequenceController:
 def readme() -> str:
     return f'''# {ASSET_NAME} v{VERSION}
 
-DrAnmar-owned, provider-neutral, research-only Franka-compatible end effector for end-to-end hollow-tissue anastomosis simulation. The live integration targets NVIDIA Isaac Sim and Isaac Lab while keeping the OpenUSD asset contract portable.
+Dr.Anmar executable simulation-training workcell for end-to-end hollow-tissue anastomosis tasks. The provider-neutral Franka-compatible system targets NVIDIA Isaac Sim and Isaac Lab while keeping the OpenUSD asset contract portable.
 
 ## Capabilities
 

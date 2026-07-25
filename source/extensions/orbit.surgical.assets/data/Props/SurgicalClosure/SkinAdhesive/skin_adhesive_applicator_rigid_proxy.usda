@@ -19,7 +19,7 @@ def Xform "DrAnmarSkinAdhesiveApplicatorRigidProxy" (
     custom string dranmar:assetId = "dranmar.surgical_closure.skin_adhesive_applicator.rigid_proxy"
     custom string dranmar:assetName = "DrAnmar Topical Skin Adhesive Applicator Rigid Proxy"
     custom string dranmar:version = "0.1.0"
-    custom token dranmar:validationClass = "research_only_not_clinically_validated_or_approved_for_patient_care"
+    custom token dranmar:productCapability = "simulation_training_instrument"
     custom token[] dranmar:supportedStates = ["sealed", "activated", "empty"]
     custom string dranmar:representation = "single_rigid_body_perception_handover_and_placement_proxy"
     bool physics:rigidBodyEnabled = 1

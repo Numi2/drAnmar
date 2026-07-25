@@ -20,6 +20,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MANIFESTS = (
     "source/extensions/orbit.surgical.assets/data/Props/"
+    "Patients/DynamicAbdominalPatient/asset_manifest.json",
+    "source/extensions/orbit.surgical.assets/data/Props/"
+    "SurgicalClosure/SkinAdhesive/asset_manifest.json",
+    "source/extensions/orbit.surgical.assets/data/Props/"
     "SurgicalPreparation/WoundPreparationRobot/asset_manifest.json",
     "source/extensions/orbit.surgical.assets/data/Props/"
     "SurgicalExposure/AtraumaticExposureRobot/asset_manifest.json",
@@ -66,6 +70,13 @@ def sha256(path: Path) -> str:
 
 def refresh_manifest(path: Path) -> int:
     payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["files"] = [
+        entry
+        for entry in payload.get("files", [])
+        if not str(entry.get("path", "")).endswith("/qualification_report.json")
+    ]
+    if "file_count" in payload:
+        payload["file_count"] = len(payload["files"])
     refreshed = 0
     for entry in payload.get("files", []):
         source = installed_overlay_source(entry["path"])

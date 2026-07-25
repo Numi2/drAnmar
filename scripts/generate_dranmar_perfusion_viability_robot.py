@@ -554,7 +554,7 @@ def Xform "{root}" (
         string drAnmarAssetVersion = "{VERSION}"
         bool drAnmarClinicalValidation = false
         bool drAnmarMedicalDevice = false
-        string drAnmarStatus = "research_only_pending_runtime_and_physical_calibration"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMount = "replaces_panda_hand_at_panda_link8"
         int drAnmarSensorModalityCount = 8
         string drAnmarSharedStateContract = "all_modalities_read_one_vascular_flow_tracer_compression_and_leak_state"
@@ -1182,21 +1182,21 @@ def task_contract(bundle: ToolBundle) -> dict[str,Any]:
         "intervention_evidence":["reported_displacement_m","reported_lumen_gain_fraction","reported_contact_force_n","reported_seal_fraction","reported_dwell_s"],
         "intervention_rule":"recovery advances continuously from physical evidence; evidence-free success transitions are rejected",
         "success":"post_intervention_scan_improves_global_viability_and_reduces_nonperfused_fraction_without_new_leak_or_sensor_disagreement_fault",
-        "research_only":True,
+        "intended_use":"simulation_training",
     }
 
 
 def physics_profile(bundle: ToolBundle) -> dict[str,Any]:
     return {
         "schema":"dr.anmar.perfusion-viability-profile.v1","id":"dranmar-perfusion-viability-robot-v1","version":VERSION,
-        "status":"runtime_qualified_research_engineering_model_pending_physical_sensor_and_clinical_validation",
+        "status":"simulation_training_model",
         "tool":{"joint_count":len(bundle.joints),"authored_mass_kg":2.537,"mount":"panda_link8_hand_replacement","work_plane_z_m":WORK_PLANE_Z},
         "tissue":{"width_m":TISSUE_WIDTH_M,"depth_m":TISSUE_DEPTH_M,"thickness_m":TISSUE_THICKNESS_M,"region_count":REGION_COUNT,"vascular_node_count":len(bundle.graph["nodes"]),"vascular_edge_count":len(bundle.graph["edges"])},
         "flow":{"model":"linear_resistive_network_with_boundary_pressure_obstruction_compression_and_leak_sinks","arterial_pressure_kpa_seed":13.3,"venous_pressure_kpa_seed":1.2,"conservation_required":True},
         "tracer":{"model":"edge_cstr_advection_with_region_exchange_and_extravascular_leak_compartments","injection_time_s":1.0,"input_peak_time_s":4.5,"not_a_dose_model":True},
         "modalities":{"rgb":"RTX_camera_context","nir_icg":"shared_tracer_state","laser_speckle":"shared_region_flow","thermal":"perfusion_heat_proxy","doppler":"projected_edge_velocity","ultrasound":"synthetic_b_mode_plus_color_flow_or_i4h_bridge","surface_oxygenation":"delivery_consumption_proxy","depth":"RTX_camera_or_host_depth_route"},
-        "runtime_qualification":{"host":"numi","gpu":"NVIDIA GeForce RTX 4090","isaac_sim":"6.0.1.0","isaac_lab":"6.1.16","representations":["standalone","franka"],"rendered_registered_cameras":6,"rendered_depth":True,"loaded_arm_sweep":True,"surface_deformable_fixture_attachments":2},
-        "qualification_boundary":["no clinical perfusion thresholds","no pharmacokinetic dosing claim","no calibrated optical transport","no calibrated laser speckle decorrelation","no validated thermal physiology","no clinical Doppler calibration","no diagnostic ultrasound claim","no physical payload or contact calibration","no patient-care decision support"],
+        "native_simulator_evidence":{"host":"numi","gpu":"NVIDIA GeForce RTX 4090","isaac_sim":"6.0.1.0","isaac_lab":"6.1.16","representations":["standalone","franka"],"rendered_registered_cameras":6,"rendered_depth":True,"loaded_arm_sweep":True,"surface_deformable_fixture_attachments":2},
+        "evidence_boundary":["no clinical perfusion thresholds","no pharmacokinetic dosing claim","no calibrated optical transport","no calibrated laser speckle decorrelation","no calibrated thermal physiology","no clinical Doppler calibration","no diagnostic ultrasound claim","no physical payload or contact calibration","no patient-care decision support"],
     }
 
 
@@ -1216,7 +1216,7 @@ def asset_manifest() -> dict[str,Any]:
         "schema":"dr.anmar.asset-manifest.v1","asset_id":"dranmar-perfusion-viability-robot-v1","version":VERSION,
         "catalog_subpath":CATALOG_SUBPATH.as_posix(),
         "primary_assets":["dranmar_perfusion_viability_tool_standalone.usda","dranmar_perfusion_viability_tool_payload.usda","dranmar_perfusion_viability_tool_rigid_proxy.usda","dranmar_perfused_tissue_demo.usda","dranmar_icg_tracer_particle.usda","dranmar_ultrasound_coupling_pad.usda","dranmar_flow_occluder.usda"],
-        "licence":"Apache-2.0","research_only":True,"clinical_validation":False,
+        "licence":"Apache-2.0","intended_use":"simulation_training","clinical_validation":False,
     }
 
 
@@ -1269,7 +1269,7 @@ def docs() -> dict[str,str]:
 
 
 def readme() -> str:
-    return f'''# {ASSET_NAME} v{VERSION}\n\nDr.Anmar-owned, research-only Franka hand-replacement for registered RGB, NIR/ICG, laser-speckle, thermal, Doppler, ultrasound, depth, and surface-oxygenation assessment.\n\n## Catalog path\n\n`{CATALOG_SUBPATH.as_posix()}`\n\n## Primary contract\n\nOne vascular-flow and tracer state drives the synthetic modality outputs. Diagnostic inference is blind to scenario labels and latent flow fields, carries temporal ICG evidence, excludes failed modalities, and explicitly abstains on insufficient registration, timing, coverage, or confidence. Conserved contrast and gel ledgers, force-coupled probe contact, physical intervention evidence, surface-deformable fixtures, rendered camera/depth evidence, and loaded-Franka qualification are included.\n\nThis package is not clinically validated and is not approved for patient care.\n'''
+    return f'''# {ASSET_NAME} v{VERSION}\n\nDr.Anmar executable simulation-training workcell for registered RGB, NIR/ICG, laser-speckle, thermal, Doppler, ultrasound, depth, and surface-oxygenation assessment workflows.\n\n## Catalog path\n\n`{CATALOG_SUBPATH.as_posix()}`\n\n## Primary contract\n\nOne vascular-flow and tracer state drives the synthetic modality outputs. Diagnostic inference is blind to scenario labels and latent flow fields, carries temporal ICG evidence, excludes failed modalities, and explicitly abstains on insufficient registration, timing, coverage, or confidence. Conserved contrast and gel ledgers, force-coupled probe contact, physical intervention evidence, surface-deformable fixtures, rendered camera/depth evidence, and loaded-Franka native simulator evidence are included.\n\nClinical and real-world evidence are not established.\n'''
 
 
 def installer_source() -> str:

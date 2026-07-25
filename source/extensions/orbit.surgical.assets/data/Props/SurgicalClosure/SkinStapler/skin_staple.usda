@@ -13,7 +13,7 @@ def Xform "SkinStaple" (
     custom string dranmar:assetId = "dranmar.surgical_closure.skin_stapler.formed_staple"
     custom string dranmar:version = "0.2.0"
     custom string dranmar:license = "Apache-2.0"
-    custom token dranmar:validationClass = "research_only_not_clinically_validated_not_approved_for_patient_care"
+    custom token dranmar:productCapability = "simulation_training_component"
     custom string[] dranmar:semanticLabels = ["skin_staple", "closure", "disposal"]
     custom string dranmar:representation = "formed_deployed_rigid_staple"
     custom string dranmar:parameterStatus = "category_reference_geometry_not_manufacturer_metrology"

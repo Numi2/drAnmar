@@ -16,18 +16,18 @@
     "thermal": "perfusion_heat_proxy",
     "ultrasound": "synthetic_b_mode_plus_color_flow_or_i4h_bridge"
   },
-  "qualification_boundary": [
+  "evidence_boundary": [
     "no clinical perfusion thresholds",
     "no pharmacokinetic dosing claim",
     "no calibrated optical transport",
     "no calibrated laser speckle decorrelation",
-    "no validated thermal physiology",
+    "no calibrated thermal physiology",
     "no clinical Doppler calibration",
     "no diagnostic ultrasound claim",
     "no physical payload or contact calibration",
     "no patient-care decision support"
   ],
-  "runtime_qualification": {
+  "native_simulator_evidence": {
     "gpu": "NVIDIA GeForce RTX 4090",
     "host": "numi",
     "isaac_lab": "6.1.16",
@@ -42,7 +42,7 @@
     "surface_deformable_fixture_attachments": 2
   },
   "schema": "dr.anmar.perfusion-viability-profile.v1",
-  "status": "runtime_qualified_research_engineering_model_pending_physical_sensor_and_clinical_validation",
+  "status": "simulation_training_model",
   "tissue": {
     "depth_m": 0.12,
     "region_count": 24,

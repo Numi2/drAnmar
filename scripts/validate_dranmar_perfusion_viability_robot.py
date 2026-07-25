@@ -153,7 +153,10 @@ def main() -> int:
     )
     graph = json.loads((ASSET_ROOT / "perfusion_network.json").read_text(encoding="utf-8"))
     require(tuple(task["phases"]) == TASK_PHASES, "task-phase sequence differs")
-    require(task.get("research_only") is True, "task must remain research-only")
+    require(
+        task.get("intended_use") == "simulation_training",
+        "task intended use must remain simulation training",
+    )
     require(profile["tool"]["joint_count"] == 12, "tool joint count differs")
     require(len(graph["regions"]) == 24, "perfusion region count differs")
     require(len(graph["nodes"]) == 60, "vascular node count differs")
@@ -235,7 +238,7 @@ def main() -> int:
         "python_files_compiled": len(PYTHON_FILES),
         "native_simulator_evidence": native_evidence.exists(),
         "pxr_required": args.require_pxr,
-        "research_only": True,
+        "intended_use": "simulation_training",
         "clinical_validation": False,
     }
     print(json.dumps(result, indent=2))

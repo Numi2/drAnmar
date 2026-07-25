@@ -930,7 +930,7 @@ def Xform "{root}" (
         string drAnmarAssetVersion = "{VERSION}"
         bool drAnmarClinicalValidation = false
         bool drAnmarMedicalDevice = false
-        string drAnmarStatus = "research_only_runtime_observed_physical_effect_unqualified"
+        string drAnmarStatus = "simulation_training_workcell"
         string drAnmarMount = "replaces_panda_hand_at_panda_link8"
         int drAnmarClipCapacity = {CLIP_CAPACITY}
         int drAnmarPatchCapacity = {PATCH_CAPACITY}
@@ -1053,7 +1053,7 @@ def Xform "{root}" (
 {schema_line}{variants_line}\
     customData = {{
         bool drAnmarClinicalValidation = false
-        string drAnmarStatus = "research_only"
+        string drAnmarStatus = "simulation_training_component"
 {custom_line}\
     }}
 )
@@ -1229,7 +1229,7 @@ def Xform "{VESSEL_ROOT}" (
         bool drAnmarClinicalValidation = false
         float drAnmarReferencePressurePa = 10665.8
         float drAnmarDefectAreaM2 = 1.8e-6
-        string drAnmarStatus = "research_only_reduced_order_flow_source"
+        string drAnmarStatus = "simulation_training_scenario"
     }}
 )
 {{
@@ -1473,7 +1473,7 @@ def generate_textures() -> list[Path]:
     img=Image.new("RGB",(1024,256),(247,249,251));d=ImageDraw.Draw(img)
     try: font=ImageFont.truetype("DejaVuSans-Bold.ttf",72);small=ImageFont.truetype("DejaVuSans.ttf",30)
     except OSError: font=None;small=None
-    d.text((36,48),"DrAnmar",fill=(18,65,112),font=font);d.text((40,150),"ADAPTIVE HEMOSTASIS • RESEARCH ONLY",fill=(35,45,55),font=small)
+    d.text((36,48),"DrAnmar",fill=(18,65,112),font=font);d.text((40,150),"ADAPTIVE HEMOSTASIS • TRAINING WORKCELL",fill=(35,45,55),font=small)
     p=TEXTURE_ROOT/"label_dranmar.png";img.save(p);out.append(p)
     return out
 
@@ -1483,7 +1483,7 @@ def interaction_frames(bundle: ToolBundle) -> dict[str,object]:
 
 
 def mount_contract() -> dict[str,object]:
-    return {"schema":"dranmar.franka-mount.v1","parent_link":"resolved_from_stock_panda_hand_joint_body0_with_unique_panda_link8_fallback","payload_link":"DrAnmarAdaptiveHemostasisTool/Links/Mount","local_transform":"copied_from_stock_panda_hand_joint_frame_with_minus_45_degree_z_fallback","fallback_local_translation_m":[0,0,0],"fallback_local_rotation_axis_angle_deg":{"axis":[0,0,1],"angle":FRANKA_HAND_EQUIVALENT_ROTATION_DEG},"deactivate":["panda_hand_joint","panda_hand","panda_finger_joint1","panda_finger_joint2","panda_leftfinger","panda_rightfinger"],"research_only":True}
+    return {"schema":"dranmar.franka-mount.v1","parent_link":"resolved_from_stock_panda_hand_joint_body0_with_unique_panda_link8_fallback","payload_link":"DrAnmarAdaptiveHemostasisTool/Links/Mount","local_transform":"copied_from_stock_panda_hand_joint_frame_with_minus_45_degree_z_fallback","fallback_local_translation_m":[0,0,0],"fallback_local_rotation_axis_angle_deg":{"axis":[0,0,1],"angle":FRANKA_HAND_EQUIVALENT_ROTATION_DEG},"deactivate":["panda_hand_joint","panda_hand","panda_finger_joint1","panda_finger_joint2","panda_leftfinger","panda_rightfinger"],"intended_use":"simulation_training"}
 
 
 def task_contract() -> dict[str,object]:
@@ -1492,7 +1492,7 @@ def task_contract() -> dict[str,object]:
 
 def physics_profile(bundle: ToolBundle) -> dict[str,object]:
     return {
-        "schema":"dranmar.adaptive-hemostasis-profile.v1","id":"dranmar-adaptive-hemostasis-robot-v1","version":VERSION,"status":"research_only_runtime_observed_physical_effect_unqualified",
+        "schema":"dranmar.adaptive-hemostasis-profile.v1","id":"dranmar-adaptive-hemostasis-robot-v1","version":VERSION,"status":"simulation_training_model",
         "tool":{"mount":"panda_link8","joint_count":len(bundle.joints),"clip_capacity":CLIP_CAPACITY,"patch_capacity":PATCH_CAPACITY,"suction_ports":SUCTION_PORT_COUNT,"irrigation_ports":IRRIGATION_PORT_COUNT},
         "compression":{"target_force_per_pad_n":1.8,"soft_limit_n":4.0,"hard_release_n":7.0,"maximum_travel_m":0.030},
         "clip":{"open_gap_m":0.0060,"formed_gap_m":0.0011,"reference_closing_force_n":5.0,"provisional_retention_force_n":2.8,"plastic_forming_not_simulated":True},

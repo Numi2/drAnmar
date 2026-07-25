@@ -21,7 +21,7 @@ def Xform "DrAnmarSkinAdhesiveApplicator" (
     custom string dranmar:version = "0.1.0"
     custom string dranmar:catalogSubpath = "Props/SurgicalClosure/SkinAdhesive"
     custom string dranmar:license = "Apache-2.0"
-    custom token dranmar:validationClass = "research_only_not_clinically_validated_or_approved_for_patient_care"
+    custom token dranmar:productCapability = "simulation_training_instrument"
     custom string dranmar:geometryClass = "original_category_level_robot_oriented_dual_paddle_skin_adhesive_applicator"
     custom token[] dranmar:supportedStates = ["sealed", "activated", "empty"]
     custom string[] dranmar:semanticLabels = ["skin_adhesive_applicator", "topical_skin_adhesive", "surgical_closure_device", "handover", "closure", "disposal"]

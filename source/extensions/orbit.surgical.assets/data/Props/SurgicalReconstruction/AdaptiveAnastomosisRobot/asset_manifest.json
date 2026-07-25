@@ -1,7 +1,7 @@
 {
   "asset": "dranmar-adaptive-anastomosis-robot-v1",
   "catalog_subpath": "Props/SurgicalReconstruction/AdaptiveAnastomosisRobot",
-  "file_count": 57,
+  "file_count": 56,
   "files": [
     {
       "bytes": 61,
@@ -9,9 +9,9 @@
       "sha256": "b1dfa2dfca252aa086c890c14107e1377fb5c6958f30251ccc0a7718725f5f37"
     },
     {
-      "bytes": 1741,
+      "bytes": 1792,
       "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/README.md",
-      "sha256": "a62201df48212b1e468bb8ebe9b8baf710fce0c6fea6a3bb5ee944f85cdb3178"
+      "sha256": "6e562d9cf23f6f7c9c0edcdd0d00d3d2ce1d7adcbdbcb57d4a6d3a3917822146"
     },
     {
       "bytes": 1150,
@@ -24,9 +24,9 @@
       "sha256": "5a901d610630604966d999ee87a87b093c72228bb46cb9a08055c608af02f278"
     },
     {
-      "bytes": 7717881,
+      "bytes": 7717851,
       "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_payload.usda",
-      "sha256": "fc1f00bf29dc78c43ef28414ccc8d31fcd67be85ecf2443811ca843fe2d57825"
+      "sha256": "d9f69d2216fe68498edd5eb2bdde88840b9b956747fa24c4160810e98da04693"
     },
     {
       "bytes": 7109237,
@@ -34,9 +34,9 @@
       "sha256": "9ecedfa5a3227380118e609b78d512168cd4a506694df86f121169736bcf5dee"
     },
     {
-      "bytes": 7720786,
+      "bytes": 7720756,
       "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_standalone.usda",
-      "sha256": "a061c146d2772189bebcd2db59cf593898eff2e6a91388419202fbef9df2707c"
+      "sha256": "4f978b820ad54d323ad2c2e547fe400d6fbcbb5c2199f2b4f3b1d37132e07e55"
     },
     {
       "bytes": 426636,
@@ -64,9 +64,9 @@
       "sha256": "1da5b05445d9b2b3c5893a09222204aaea6762859d5b3f102d220ad21304fa58"
     },
     {
-      "bytes": 490,
+      "bytes": 506,
       "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/franka_mount_contract.json",
-      "sha256": "ad1caa9d99b4dfe64ae0f0c387080a48fb3c7df7c916594e03f4f478243dedc3"
+      "sha256": "1350f228f1e971cd1c6befbc45dc1075293b03353327054ad2f1d9ecad5f0d7e"
     },
     {
       "bytes": 56792,
@@ -169,14 +169,9 @@
       "sha256": "2aa6b5f70765891ce0ea3398ed3584d60fc517f4c08aa062eee2afc0d0286aef"
     },
     {
-      "bytes": 12522,
+      "bytes": 12494,
       "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/physics_profile.json",
-      "sha256": "6745d8dcad228b917a062265cb9e5ff6ad32fe5ce950d4b91f7b93aadb83e933"
-    },
-    {
-      "bytes": 887,
-      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/qualification_report.json",
-      "sha256": "c8553a02027a4116f1d9575e74b000d916ae111799e089eac6ef664f37845922"
+      "sha256": "2d9734ff95444e2a0bebe44d15d675194b42a070ccf9963d07b6a206195f811e"
     },
     {
       "bytes": 4123,
@@ -229,9 +224,9 @@
       "sha256": "3e6b3cd358134836ceccc210908020900a1fab29d3b0022601e87f65b0627a2d"
     },
     {
-      "bytes": 718,
+      "bytes": 941,
       "path": "docs/adaptive_anastomosis_robot/VALIDATION.md",
-      "sha256": "97e30157aff4c97b387e2d30c45d49b2b708c63e2c96d7e69f47724622c26eb9"
+      "sha256": "c1af8220156ccbf531f3d1ea2b40f5696afc83c02a5de8b29c4c6979fe20a4c2"
     },
     {
       "bytes": 787,
@@ -244,9 +239,9 @@
       "sha256": "56a4a4d46ed420a376364a1545ee3d566af4ca48cdb10c72a144e8a9dfb4f530"
     },
     {
-      "bytes": 12522,
+      "bytes": 12494,
       "path": "physics_next/surgical-reconstruction/dranmar-adaptive-anastomosis-v1.json",
-      "sha256": "6745d8dcad228b917a062265cb9e5ff6ad32fe5ce950d4b91f7b93aadb83e933"
+      "sha256": "2d9734ff95444e2a0bebe44d15d675194b42a070ccf9963d07b6a206195f811e"
     },
     {
       "bytes": 74185,
@@ -259,9 +254,9 @@
       "sha256": "f8032a11e448596589baeaa23f8b0c7b1e5b62f67844ffe4d6885d3a2c72cde5"
     },
     {
-      "bytes": 149200,
+      "bytes": 149562,
       "path": "scripts/generate_dranmar_adaptive_anastomosis_robot.py",
-      "sha256": "5fb70e4f86c50171a0ec3bcce10b36f8f8983e743a9546a5b8d1bf9e0350e0f3"
+      "sha256": "4e418bae83eda65782b92a1bc150945e04c2d7c66e9460e2a7435bbea355374c"
     },
     {
       "bytes": 5731,
@@ -289,7 +284,7 @@
       "sha256": "ef420a3ff10da976a715a4baf2a28e0537e9252225d1e5455bea710072447393"
     }
   ],
-  "installed_overlay_entries_refreshed": 54,
+  "installed_overlay_entries_refreshed": 53,
   "installed_overlay_hash_contract": "sha256 of exact current repository file bytes",
   "schema": "dranmar.asset-manifest.v1",
   "version": "0.1.0"

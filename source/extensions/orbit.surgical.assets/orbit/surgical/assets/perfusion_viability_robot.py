@@ -3,7 +3,7 @@
 """Isaac integration and physiological models for the DrAnmar perfusion robot.
 
 A shared graph-based vascular state drives all synthetic modalities.  The
-implementation is manufacturer-neutral and research-only.  Values are
+implementation is manufacturer-neutral and intended for simulation training. Values are
 provisional and must not be interpreted as clinical thresholds or patient-care
 settings.
 """

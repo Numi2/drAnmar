@@ -4,7 +4,7 @@
   "name": "DrAnmar OncoSurgery Cell",
   "version": "0.2.0",
   "catalog_subpath": "Props/SurgicalOncology/OncoSurgeryCell",
-  "status": "native_gpu_volume_stability_qualified_pending_contact_sensor_and_physical_qualification",
+  "status": "simulation_training_workcell_with_recorded_native_volume_stability_evidence",
   "clinical_validation": false,
   "ownership": "DrAnmar",
   "license": "Apache-2.0",
@@ -53,9 +53,9 @@
     "arbitrary_runtime_mesh_cutting": false,
     "constitutive_validation": false
   },
-  "native_gpu_qualification": {
+  "native_simulator_evidence": {
     "status": "passed_non_contact_volume_stability_lane",
-    "report": "physics_next/benchmarks/dranmar-oncology-native-qualification.json",
+    "report": "physics_next/benchmarks/dranmar-oncology-native-simulator-evidence.json",
     "gpu": "NVIDIA GeForce RTX 4090",
     "device": "cuda:0",
     "nodal_point_count": 274,
@@ -69,5 +69,5 @@
       "physical_and_constitutive_validation"
     ]
   },
-  "physical_qualification": "pending_instrumented_payload_tissue_sensor_and_energy_bench"
+  "real_world_evidence": "instrumented_payload_tissue_sensor_and_energy_bench_not_yet_established"
 }

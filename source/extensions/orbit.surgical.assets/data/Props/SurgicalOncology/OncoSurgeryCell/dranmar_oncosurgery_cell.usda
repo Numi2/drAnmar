@@ -9,7 +9,7 @@
 
 def Xform "DrAnmarOncoSurgeryCell" (
     prepend apiSchemas = ["SemanticsLabelsAPI:class"]
-    customData = { string drAnmarStatus = "research_only_not_clinically_validated" }
+    customData = { string drAnmarStatus = "simulation_training_workcell" }
 )
 {
     token[] semantics:labels:class = ["multi_robot_surgical_cell", "surgical_oncology_workcell"]

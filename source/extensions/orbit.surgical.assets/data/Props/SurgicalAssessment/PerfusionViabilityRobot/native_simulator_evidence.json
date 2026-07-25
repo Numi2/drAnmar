@@ -198,6 +198,6 @@
     "medical_device": false,
     "patient_care_approved": false,
     "physical_calibration": false,
-    "claims": "Native simulation qualification only; rendered images prove camera registration and acquisition, not calibrated modality physics. No optical, thermal, Doppler, ultrasound, tracer, vascular-flow, viability, diagnostic, interventional, payload, contact, or clinical calibration."
+    "claims": "Native-simulator evidence for the recorded stack only; rendered images establish camera registration and acquisition in that run, not calibrated modality physics. Real-world optical, thermal, Doppler, ultrasound, tracer, vascular-flow, viability, interventional, payload, contact, diagnostic, and clinical evidence are not established."
   }
 }

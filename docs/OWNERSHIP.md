@@ -58,3 +58,8 @@ upstream names, licenses, citations, revisions, and ownership boundaries.
 Dr.Anmar must not claim native tissue, ultrasound, clinical validation, or
 physical-robot control unless the corresponding provider and evidence gates
 have actually passed.
+
+Product availability and evidence strength are different dimensions. Use the
+repository-wide [capability and evidence language](EVIDENCE_LEVELS.md): lead
+with the available Dr.Anmar training capability, then state repository,
+native-simulator, real-world, and clinical evidence separately.

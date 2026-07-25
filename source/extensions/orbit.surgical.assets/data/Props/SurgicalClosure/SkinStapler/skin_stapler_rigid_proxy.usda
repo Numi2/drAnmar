@@ -18,7 +18,7 @@ def Xform "SkinStaplerRigidProxy" (
     custom string dranmar:assetName = "DrAnmar Skin Stapler rigid proxy"
     custom string dranmar:version = "0.2.0"
     custom string dranmar:license = "Apache-2.0"
-    custom token dranmar:validationClass = "research_only_not_clinically_validated_not_approved_for_patient_care"
+    custom token dranmar:productCapability = "simulation_training_instrument"
     custom string dranmar:representation = "single_rigid_body_open_trigger_loaded_or_empty"
     custom string[] dranmar:semanticLabels = ["skin_stapler", "surgical_closure_device", "handover", "closure", "disposal"]
     custom token[] dranmar:supportedStates = ["loaded", "empty"]

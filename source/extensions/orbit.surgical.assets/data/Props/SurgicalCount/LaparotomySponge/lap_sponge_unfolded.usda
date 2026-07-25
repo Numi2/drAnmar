@@ -30,7 +30,7 @@ def Xform "LaparotomySponge" (
         double nominalWetMassKg = 0.12
         double nominalUnfoldedSizeM = 0.4572
         string physicsStatus = "runtime_authored"
-        string simulationUse = "research_only_not_a_medical_device"
+        string simulationUse = "simulation_training_component"
         string[] semanticLabels = ["surgical_sponge", "laparotomy_sponge", "radiopaque_sponge"]
     }
     kind = "component"

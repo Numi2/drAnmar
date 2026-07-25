@@ -22,6 +22,6 @@
   ],
   "parent_link": "panda_link8",
   "payload_link": "DrAnmarAdaptiveSealDivideTool/Links/Mount",
-  "research_only": true,
+  "intended_use": "simulation_training",
   "schema": "dranmar.franka-mount.v1"
 }

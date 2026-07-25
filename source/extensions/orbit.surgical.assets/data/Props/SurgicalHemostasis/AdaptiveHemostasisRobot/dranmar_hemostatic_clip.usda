@@ -12,7 +12,7 @@ def Xform "DrAnmarHemostaticClip" (
     variants = { string state = "open" }
     customData = {
         bool drAnmarClinicalValidation = false
-        string drAnmarStatus = "research_only"
+        string drAnmarStatus = "simulation_training_instrument"
         string drAnmarAssetId = "dranmar-hemostatic-clip"
     }
 )

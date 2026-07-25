@@ -19,7 +19,7 @@ def Xform "DrAnmarSkinAdhesiveBead" (
     custom string dranmar:assetId = "dranmar.surgical_closure.skin_adhesive_bead"
     custom string dranmar:assetName = "DrAnmar Topical Skin Adhesive Bead"
     custom string dranmar:version = "0.1.0"
-    custom token dranmar:validationClass = "research_only_not_clinically_validated_or_approved_for_patient_care"
+    custom token dranmar:productCapability = "simulation_training_effect"
     custom string dranmar:representation = "kinematic_deposit_task_asset_not_a_fluid_or_curing_solver"
     custom token[] dranmar:supportedStates = ["fresh", "cured"]
     custom float dranmar:nominalLengthM = 0.07

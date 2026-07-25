@@ -61,7 +61,7 @@
     "rescan",
     "verify"
   ],
-  "research_only": true,
+  "intended_use": "simulation_training",
   "schema": "dr.anmar.perfusion-viability-task.v1",
   "success": "post_intervention_scan_improves_global_viability_and_reduces_nonperfused_fraction_without_new_leak_or_sensor_disagreement_fault"
 }

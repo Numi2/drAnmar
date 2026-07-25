@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "DrAnmarBrushCartridge"
-    doc = "DrAnmar soft_debridement_brush cartridge. Research simulation only."
+    doc = "Dr.Anmar soft_debridement_brush simulation-training cartridge."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"

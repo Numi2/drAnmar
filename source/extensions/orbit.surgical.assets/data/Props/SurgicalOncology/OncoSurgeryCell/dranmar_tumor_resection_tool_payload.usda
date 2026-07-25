@@ -15,7 +15,7 @@ def Xform "DrAnmarTumorResectionTool" (
     }
     customData = {
         string drAnmarAssetId = "dranmar-oncosurgery-cell-v1"
-        string drAnmarStatus = "research_only_not_clinically_validated"
+        string drAnmarStatus = "simulation_training_instrument"
         bool drAnmarClinicalValidation = false
         int drAnmarJointCount = 22
         string drAnmarMountParent = "panda_link8"

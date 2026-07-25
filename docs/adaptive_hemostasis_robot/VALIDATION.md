@@ -1,8 +1,13 @@
-# Integrity and runtime boundaries
+# Capability and evidence boundaries
 
-Static gates cover deterministic assets, dependency closure, controller
-invariants, fail-closed attachment overlap, particle-ledger conservation, and
-source/container integrity. The optional Isaac script is diagnostic only.
+The Adaptive Hemostasis Robot is an available Dr.Anmar simulation-training
+workcell with field clearing, compression, clip and patch tasks, observations,
+actions, safety gates, and evaluation signals.
+
+Repository verification covers deterministic assets, dependency closure,
+controller invariants, fail-closed attachment overlap, particle-ledger
+conservation, and source integrity. The optional Isaac script produces
+native-simulator evidence only.
 
 It can report articulation motion, surface-deformable schema application,
 physical attachment objects, PBD blood movement through the annular-suction

@@ -163,7 +163,7 @@
       "status": "critical_research_state"
     }
   },
-  "research_only": true,
+  "intended_use": "simulation_training",
   "schema": "dr.anmar.dynamic-abdominal-patient-model-sanity.v1",
   "static": {
     "access_layer_variant_paths": {

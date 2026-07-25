@@ -337,7 +337,7 @@
       "passed": true
     },
     "profile_identity_and_boundary": {
-      "expected": "canonical research-only identity",
+      "expected": "canonical simulation-training identity",
       "measured": {
         "clinical_validation": false,
         "id": "dr-anmar-suturable-tissue-v1",

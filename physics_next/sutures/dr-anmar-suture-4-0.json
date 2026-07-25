@@ -101,8 +101,8 @@
       "attachment": "transferable_kinematic_particle_grasps_and_breakable_DrAnmar_Needle_swage_exit_target",
       "failure": "single_localized_weakest_constraint_failure_from_the_profile_force_elongation_envelope",
       "determinism": "fixed_pair_order_and_gather_without_floating_point_atomics",
-      "qualification_report": "physics_next/benchmarks/dr-anmar-warp-suture-qualification.json",
-      "status": "gpu_engineering_qualified_on_gilgamesh_pending_physical_convergence_and_clinical_validation"
+      "native_simulator_evidence": "physics_next/benchmarks/dr-anmar-warp-suture-native-simulator-evidence.json",
+      "status": "native_warp_gpu_evidence_recorded_on_gilgamesh"
     }
   },
   "geometry": {
@@ -432,7 +432,7 @@
       }
     ]
   },
-  "qualification": {
+  "evidence_gate": {
     "policy": "fail_closed",
     "requirements": [
       {
@@ -442,8 +442,8 @@
       },
       {
         "id": "native_physics_stability",
-        "evidence": "physics_next/benchmarks/dr-anmar-warp-suture-qualification.json",
-        "status": "warp_gpu_engineering_probe_passed_pending_resolution_timestep_and_physical_validation"
+        "evidence": "physics_next/benchmarks/dr-anmar-warp-suture-native-simulator-evidence.json",
+        "status": "warp_gpu_engineering_probe_recorded_pending_resolution_timestep_and_real_world_evidence"
       },
       {
         "id": "straight_and_knotted_mechanics",

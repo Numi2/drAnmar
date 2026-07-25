@@ -1,7 +1,7 @@
 # Physics-next validation log
 
 This is the evidence log for the experimental surgical-physics lane. It does
-not convert research simulation results into clinical claims.
+does not convert simulation results into real-world or clinical claims.
 
 ## 2026-07-21 — Gilgamesh baseline
 
@@ -90,7 +90,8 @@ benchmark remains pending that explicit activation.
 - Record a canonical patient-asset deterministic replay with reviewed boundary
   conditions, failure modes and clinician review.
 
-All entries remain simulation/research-only and not clinically validated.
+All entries are simulation-training assets. Their repository and native-runtime
+evidence does not establish real-world correlation or clinical evidence.
 
 ## 2026-07-24 — laparotomy sponge integration
 

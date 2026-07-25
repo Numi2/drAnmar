@@ -1,6 +1,6 @@
 # Dr.Anmar
 
-**A clinician-centered research platform for surgical robotics simulation, teleoperation, data collection, and policy evaluation.**
+**A clinician-centered surgical robotics simulation-training platform for teleoperation, data collection, and policy evaluation.**
 
 Dr.Anmar integrates interactive surgical workspaces, articulated robot systems, OpenUSD assets, PhysX mechanics,
 multimodal sensing, demonstration recording, and reproducible experiment contracts. The platform is designed to
@@ -13,15 +13,16 @@ optional providers execute bounded technical roles. The complete ownership and p
 [`docs/OWNERSHIP.md`](docs/OWNERSHIP.md).
 
 > [!CAUTION]
-> Dr.Anmar is research software for simulation, synthetic data, and education. It is not a medical device, has not
-> been clinically validated, and must not be used for diagnosis, treatment, patient-specific planning, or control of
-> physical surgical hardware.
+> Dr.Anmar is software for simulation training, synthetic data, and evaluation.
+> Real-world and clinical evidence are not established. It is not a medical
+> device and must not be used for diagnosis, treatment, patient-specific
+> planning, or control of physical surgical hardware.
 
 <p align="center">
   <img src="docs/screenshots/dr-anmar-live-controls-2026.gif" width="960" alt="Dr.Anmar operating room with live simulated surgical instruments, anatomy, cameras, controls, and guidance">
 </p>
 
-## Research scope
+## Product scope
 
 Dr.Anmar supports four connected activities:
 
@@ -32,7 +33,7 @@ Dr.Anmar supports four connected activities:
 3. **Robot learning:** record synchronized observations and actions, construct dataset cards, train bounded
    imitation- or reinforcement-learning experiments, and compare policies under controlled perturbations.
 4. **Evaluation:** reproduce task phases and failures, measure native simulator outcomes, retain provenance, and
-   distinguish software qualification from physical, biomechanical, clinical, and regulatory validation.
+   distinguish repository verification and native-simulator evidence from real-world, clinical, and regulatory evidence.
 
 The platform is intended for reproducible engineering studies. Every quantitative result must be interpreted
 within the exact asset revision, software stack, hardware, scenario, and measurement contract that produced it.
@@ -58,20 +59,27 @@ python3 scripts/dr_anmar_i4h_receipt.py verify
 
 The clinician-facing capability payload is generated from all 19 entries in
 `physics_next/dr-anmar-assets.json`, including every declared profile, runtime,
-report, qualification, and composition artifact. This structural readiness is
-not a substitute for native physics, physical, biomechanical, or clinical
-qualification. See [`docs/ASSET_CATALOG.md`](docs/ASSET_CATALOG.md).
+report, native-evidence, and composition artifact. Repository verification is
+not a substitute for native-simulator, real-world, biomechanical, or clinical
+evidence. See [`docs/ASSET_CATALOG.md`](docs/ASSET_CATALOG.md).
 
-## New Dr.Anmar robot systems
+Dr.Anmar does not use “validated” as a catch-all. Product capability,
+repository verification, native-simulator evidence, real-world evidence, and
+clinical evidence are separate claims. See
+[`docs/EVIDENCE_LEVELS.md`](docs/EVIDENCE_LEVELS.md).
 
-Seven procedure-specific systems were added and qualified on 25 July 2026. Each system is provided as:
+## Dr.Anmar robot systems
+
+Seven procedure-specific systems are available as simulation-training
+workcells. Native-simulator runs were recorded on 25 July 2026 for the exact
+revisions and stacks named in their evidence artifacts. Each system provides:
 
 - a standalone articulated mechanism for isolated development;
 - a composable payload mounted to an Isaac Lab Franka articulation;
 - deterministic source generation and asset manifests;
 - OpenUSD, GLB, texture, interaction-frame, controller, and task contracts;
 - CPU-side structural and controller tests; and
-- a headless CUDA runtime qualification program.
+- a headless CUDA native-simulator evidence program.
 
 The animations below were rendered directly from the complete Franka-mounted OpenUSD assemblies in Isaac Lab on
 an NVIDIA RTX 4090. Each clip opens on the full robot, then moves to the authored tool center point and procedure
@@ -89,7 +97,7 @@ multi-nozzle irrigation, annular aspiration, and explicit fluid-volume accountin
 adhered debris release through accumulated contact work and conserves emitted, active, aspirated, spilled, and
 discarded particle volume.
 
-The qualified CUDA snapshot covered both standalone and Franka-mounted representations for 120 steps, all five
+The recorded CUDA run covered both standalone and Franka-mounted representations for 120 steps, all five
 tool joints, a cooked surface-deformable wound, seven debris attachments, 80 PBD particles, zero fluid-ledger
 balance error, finite joint state, and zero error-level engine messages. See
 [`docs/VALIDATION.md`](docs/VALIDATION.md).
@@ -151,7 +159,7 @@ The seal-and-divide system integrates tissue centering, symmetric jaw compressio
 irrigation, suction, energy-state estimation, thermal and impedance observables, seal verification, and explicit
 blade-before-seal interlocks.
 
-CUDA qualification requires two cooked vessel surfaces, two distal fixtures, sixteen bridge attachments, four
+The native CUDA evidence gate requires two cooked vessel surfaces, two distal fixtures, sixteen bridge attachments, four
 temporary compression attachments, four retained seal-band attachments, interlocked division, release of temporary
 constraints, exact joint counts, finite state for 120 steps, and zero engine errors in both standalone and
 Franka-mounted representations. See
@@ -193,7 +201,7 @@ modeled faults, force-coupled probe contact, evidence-based intervention, and
 three loaded-arm poses with the authored 2.537 kg payload. See
 [`docs/perfusion_viability_robot/VALIDATION.md`](docs/perfusion_viability_robot/VALIDATION.md).
 
-### Surgical-oncology research cell
+### Surgical-oncology training cell
 
 The OncoSurgery Cell integrates a payload-backed 22-joint tumor-resection tool,
 a 3,028-cell liver tumor field, 96 explicit resection bonds, protected vascular
@@ -209,11 +217,11 @@ wrapped with lightweight relative-payload interfaces, and the Franka payload
 representations now share a consistent authored 2.5534 kg mass. The native
 tissue route couples the task to the Dynamic Patient liver's explicit
 tetrahedral PhysX GPU volume deformable while retaining the registered
-resection graph for irreversible topology changes. Native CUDA qualification
+resection graph for irreversible topology changes. Recorded native CUDA evidence
 now records a passing RTX 4090 non-contact volume-stability lane with 274 live
 tetrahedral nodes, bounded displacement and speed, and zero engine errors.
 Robot-tissue contact, rendered sensors, Franka payload behavior, and all
-physical, biomechanical, and clinical validation remain explicit promotion
+real-world, biomechanical, and clinical evidence remain explicit promotion
 gates. See
 [`docs/SURGICAL_ONCOLOGY.md`](docs/SURGICAL_ONCOLOGY.md).
 
@@ -254,7 +262,7 @@ This separation is intentional:
 Doctor Studio presents the simulator as a procedural workspace rather than an infrastructure console. It includes:
 
 - guided robotics lessons expressed in clinical language;
-- live OpenUSD operating and research rooms;
+- live OpenUSD operating and simulation-training rooms;
 - keyboard and game-controller bimanual control;
 - camera-native one- or two-hand webcam teleoperation;
 - bounded voice commands with a matching typed-command fallback;
@@ -270,30 +278,33 @@ The interaction model and safety behavior are documented in
 [`docs/WEBCAM_TELEOPERATION.md`](docs/WEBCAM_TELEOPERATION.md). The multimodal data contract is described in
 [`docs/MULTIMODAL_STUDIES.md`](docs/MULTIMODAL_STUDIES.md).
 
-## Evidence and validation model
+## Evidence model
 
-Dr.Anmar uses four distinct evidence levels:
+Dr.Anmar uses five distinct evidence levels:
 
 | Level | Establishes | Does not establish |
 | --- | --- | --- |
-| Structural validation | Parseable assets, schemas, manifests, hashes, paths, and package consistency | Runtime stability or physical behavior |
-| Controller tests | Deterministic phase logic, bounds, interlocks, accounting, and failure handling | Simulator integration or calibrated control |
-| CUDA runtime qualification | Bounded execution on the recorded Isaac/GPU stack, finite state, expected schemas and constraints, and specified smoke-test outcomes | Generalization to another stack or physical system |
-| Physical and clinical validation | Requires calibrated hardware, tissue models/specimens, metrology, safety analysis, clinician protocols, and regulatory governance | Not supplied by this repository |
+| Product capability | The asset or workcell is integrated and available for its stated simulation-training workflow | Numerical fidelity |
+| Repository verification | Assets, schemas, manifests, hashes, paths, controller invariants, and package consistency pass | Native engine behavior |
+| Native-simulator evidence | A named revision ran on a recorded Isaac/PhysX stack and hardware configuration | Generalization or real-world behavior |
+| Real-world evidence | Instrumented hardware, materials, sensors, or wet/dry-bench measurements support a specific correlation claim | Clinical effectiveness |
+| Clinical evidence | A defined clinical study and review support a specific clinical claim | Claims outside that study |
 
-Current robot qualification is limited to the first three levels. Mechanical constants, tissue parameters,
-pressure/flow thresholds, energy models, contact limits, damage proxies, and success thresholds are provisional
-research values unless a robot-specific document explicitly records calibrated evidence.
+Dr.Anmar’s current robot evidence is repository and native-simulator evidence.
+Mechanical constants, tissue parameters, pressure/flow thresholds, energy
+models, contact limits, damage proxies, and success thresholds remain
+engineering parameters unless a robot-specific artifact records instrumented
+real-world evidence.
 
 ## Requirements
 
 The simulator runtime requires a Linux x86-64 system with a compatible NVIDIA GPU. Source, documentation, and
 browser code can be inspected on macOS or Windows, but this project's Isaac Sim backend does not execute there.
 
-Validated lanes currently include:
+Recorded native-simulator lanes currently include:
 
 - Isaac Sim 5.1 with Isaac Lab 2.3.2 for the stable operating-room workflow; and
-- Isaac Sim 6.0.1.0 with Isaac Lab 6.1.16 for the new surface-deformable robot qualification lane.
+- Isaac Sim 6.0.1.0 with Isaac Lab 6.1.16 for the surface-deformable robot evidence lane.
 
 Python 3.10 or newer is required inside the corresponding Isaac environment. NVIDIA components and optional
 provider assets retain their own licenses and are not redistributed by this repository.
@@ -337,7 +348,7 @@ Open [http://localhost:2360](http://localhost:2360). Service controls are:
 
 See [`SECURITY.md`](SECURITY.md) before allowing access from another machine.
 
-## Reproducing robot qualification
+## Reproducing native-simulator evidence
 
 Run a robot's static validator and unit tests before its CUDA runtime test. For example:
 
@@ -391,7 +402,7 @@ Valid robot identifiers are `wound-preparation`, `atraumatic-exposure`, `adaptiv
 ```text
 web/                  Doctor Studio browser application
 scripts/              Hub, workers, control adapters, generators, and checks
-examples/             Native CUDA qualification programs
+examples/             Native CUDA evidence programs
 tests/                Controller and package regression tests
 source/extensions/    Simulator tasks and articulated robot assets
 source/standalone/    Teleoperation, data, training, and policy workflows
@@ -433,8 +444,8 @@ If ORBIT-Surgical-derived components contribute to published research, cite:
 ```
 
 Publications using Dr.Anmar should additionally report the repository revision, robot asset manifest, simulator
-and Isaac Lab versions, GPU/driver, scenario and seed, control policy, sensor profile, and applicable qualification
-report.
+and Isaac Lab versions, GPU/driver, scenario and seed, control policy, sensor
+profile, and applicable evidence artifact.
 
 ## License
 

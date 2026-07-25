@@ -653,6 +653,6 @@
   },
   "name": "DrAnmar Approximate-Staple-Seal Closure End Effector",
   "schema": "dr.anmar.closure-robot-profile.v1",
-  "status": "research_only_provisional_parameters_pending_runtime_and_physical_calibration",
+  "status": "simulation_training_model",
   "version": "0.1.0"
 }

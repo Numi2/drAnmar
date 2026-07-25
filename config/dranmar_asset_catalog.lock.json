@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "bytes": 21856358,
+      "bytes": 21856602,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_dynamic_abdominal_patient.usda",
@@ -24,10 +24,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/Patients/DynamicAbdominalPatient",
-      "sha256": "91e5fc8b714aea21cf43a8afe2a207cf28b412354ea8ffe5f3082fa346fde566"
+      "sha256": "79f7ec8f80b176cfc14285d98e58c4e004864302a84d68fb666eefe7749452f3"
     },
     {
-      "bytes": 35118868,
+      "bytes": 35118832,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_flow_occluder.usda",
@@ -56,10 +56,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalAssessment/PerfusionViabilityRobot",
-      "sha256": "012853c9c02b1b27d3a9a8738dbf90a50094f0c81aa387931fc2969b7a45ac42"
+      "sha256": "f4bd998140b6e1c59f3f67af3cf3f9d698f6cf7a7002b8a0cd1f040d0e609b34"
     },
     {
-      "bytes": 14929327,
+      "bytes": 14929244,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_closure_adhesive_bead.usda",
@@ -82,10 +82,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalClosure/ClosureRobot",
-      "sha256": "ff8bd9c9e5272d4e994a5556e589aa6d776e7db4abb4032321d2644e78f7f905"
+      "sha256": "fa67ba1568caf9fe7d6fa8a6cb61bc897280abacd565321b1e4fae5ac5bce56b"
     },
     {
-      "bytes": 2523189,
+      "bytes": 2523083,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_needle.usda"
@@ -101,10 +101,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalClosure/Needle",
-      "sha256": "a706d874f803b5b931aa54856c9029c980958b9e9f21ecccae210ab215beb856"
+      "sha256": "5fc31f57028c9eda6004b0f4b4258bfeb66f737bc88a61928209c9fbb6bfe81a"
     },
     {
-      "bytes": 17476800,
+      "bytes": 17476601,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_needle_thread.usda",
@@ -123,10 +123,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalClosure/NeedleThread",
-      "sha256": "d4fb4a594d8dc6906c3a0b6717855e69acdba6703aa79e0111e627540db996cf"
+      "sha256": "725f2ee17b91c3b86e7a9291017674919431bce7a6f9fe66f906ac8019dc60c6"
     },
     {
-      "bytes": 8669688,
+      "bytes": 8669690,
       "clinical_validation": false,
       "entrypoints": [
         "skin_adhesive_applicator_articulated.usda",
@@ -148,10 +148,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalClosure/SkinAdhesive",
-      "sha256": "5616f55286d3b77c1cdc41a60d04a41449653d267846de039c5ad38fc19c1157"
+      "sha256": "0aad8ed335a0b2062e60211f9c80709db8b301ce68e43a0e67c8201b001557a0"
     },
     {
-      "bytes": 59730548,
+      "bytes": 59730460,
       "clinical_validation": false,
       "entrypoints": [
         "skin_staple.usda",
@@ -165,17 +165,17 @@
         "LICENSE.txt",
         "NOTICE.txt",
         "README.md",
-        "deterministic_validation_report.json",
         "integration_report.json",
         "interaction_frames.json",
-        "physics_profile.json"
+        "physics_profile.json",
+        "repository_verification_report.json"
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalClosure/SkinStapler",
-      "sha256": "49e96c2b7b8b63537351b27787a50531222dc504055a2279c1bad708b30fadeb"
+      "sha256": "3e1bba9536a83a97fe3acce31428f64c0452895d2ed79d9761ad74579f3880cb"
     },
     {
-      "bytes": 17449,
+      "bytes": 17479,
       "clinical_validation": false,
       "entrypoints": [
         "stapler_test_device.usda",
@@ -187,14 +187,14 @@
       "metadata": [
         "README.md",
         "native_simulator_evidence.json",
-        "tissue_closure_qualification_report.json"
+        "tissue_closure_native_simulator_evidence.json"
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalClosure/StaplerTestCell",
-      "sha256": "1c98f70c4e1b171dbec490123fc5c16c2b57f9ce5b9bf96a3dc518ee79baf178"
+      "sha256": "65e5f6ec510adb66583068b3d8aaac244d29ddf295ce0993c9eaa339c2a444fc"
     },
     {
-      "bytes": 1308161,
+      "bytes": 1308151,
       "clinical_validation": false,
       "entrypoints": [
         "lap_sponge_folded_proxy.usda",
@@ -211,10 +211,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalCount/LaparotomySponge",
-      "sha256": "5ba80dde18531db08cc13d311986748a28e51507142a54fd7e8fdf8332700453"
+      "sha256": "a87f97bc68aa68d08404508cb50c4155d868444e9d9f44f6e4b6e300f7bed64e"
     },
     {
-      "bytes": 25740118,
+      "bytes": 25738964,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_adhesion_bridge.usda",
@@ -231,7 +231,7 @@
         "dranmar_safeplane_dissection_tool_standalone.usda",
         "dranmar_safeplane_tissue_demo.usda"
       ],
-      "file_count": 59,
+      "file_count": 58,
       "id": "dr_anmar:Props/SurgicalDissection/SafePlaneDissectionRobot",
       "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/LICENSE.txt",
       "metadata": [
@@ -243,15 +243,14 @@
         "franka_mount_contract.json",
         "interaction_frames.json",
         "physics_profile.json",
-        "qualification_report.json",
         "safeplane_dissection_task_contract.json"
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalDissection/SafePlaneDissectionRobot",
-      "sha256": "60236ab41c761c751fb1595e7ddbabf3a01647914ea599474d4850bf86288e95"
+      "sha256": "e631028e1a36183e006a18adef0db2e12e5c822790d455ae85a90f4c77f4bcb1"
     },
     {
-      "bytes": 9745553,
+      "bytes": 9744362,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_adaptive_seal_divide_tool_payload.usda",
@@ -262,7 +261,7 @@
         "dranmar_seal_vapor_particle.usda",
         "dranmar_tissue_seal_band.usda"
       ],
-      "file_count": 41,
+      "file_count": 40,
       "id": "dr_anmar:Props/SurgicalDivision/AdaptiveSealDivideRobot",
       "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/LICENSE.txt",
       "metadata": [
@@ -273,15 +272,14 @@
         "collider_coverage.json",
         "franka_mount_contract.json",
         "interaction_frames.json",
-        "physics_profile.json",
-        "qualification_report.json"
+        "physics_profile.json"
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalDivision/AdaptiveSealDivideRobot",
-      "sha256": "65c022fbf5e0b6de2086858e387748f1595aade88990ce740dcedcddd13f47e8"
+      "sha256": "6b3cf05c603906c5d6848ad2a44206419119aa6b8afcc842b7f6a52e2920371c"
     },
     {
-      "bytes": 37327765,
+      "bytes": 37326399,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_atraumatic_exposure_tool_payload.usda",
@@ -291,7 +289,7 @@
         "dranmar_fenestrated_retraction_pad.usda",
         "dranmar_microcup_retraction_pad.usda"
       ],
-      "file_count": 36,
+      "file_count": 35,
       "id": "dr_anmar:Props/SurgicalExposure/AtraumaticExposureRobot",
       "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/LICENSE.txt",
       "metadata": [
@@ -302,15 +300,14 @@
         "franka_mount_contract.json",
         "interaction_frames.json",
         "physics_profile.json",
-        "qualification_report.json",
         "surgical_exposure_task_contract.json"
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalExposure/AtraumaticExposureRobot",
-      "sha256": "448dfc366838a192857d4621332df0d87edab7002a7d3c6e4fe4c80ab8cffe63"
+      "sha256": "28c0e7f65deebcb6c5f9ae7b4d18793cf3f9217a4558e9ff497909835d4aed7a"
     },
     {
-      "bytes": 18738234,
+      "bytes": 18737089,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_adaptive_hemostasis_tool_payload.usda",
@@ -322,7 +319,7 @@
         "dranmar_hemostatic_patch.usda",
         "dranmar_hemostatic_patch_rigid_proxy.usda"
       ],
-      "file_count": 39,
+      "file_count": 38,
       "id": "dr_anmar:Props/SurgicalHemostasis/AdaptiveHemostasisRobot",
       "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/LICENSE.txt",
       "metadata": [
@@ -333,15 +330,14 @@
         "collider_coverage.json",
         "franka_mount_contract.json",
         "interaction_frames.json",
-        "physics_profile.json",
-        "qualification_report.json"
+        "physics_profile.json"
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalHemostasis/AdaptiveHemostasisRobot",
-      "sha256": "f972960f55bfccaf21bfd3874ffaa002dddaa195673a47ead34e22a4c1b09a00"
+      "sha256": "25525ebd1a3c4398b89056e57097b6e04d53bcd8567f16593e17875989fe2820"
     },
     {
-      "bytes": 12672101,
+      "bytes": 12671992,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_margin_ink_particle.usda",
@@ -377,10 +373,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalOncology/OncoSurgeryCell",
-      "sha256": "6610cf1ddced9bb36815f07440a76e804490ca959f2dc6b8c3db3bed763b9481"
+      "sha256": "2970dc0bfd6695c35762e648f1dc681a5654b8ffe9c72665052c1b14c2ab44dd"
     },
     {
-      "bytes": 26825574,
+      "bytes": 26825404,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_debridement_brush_cartridge.usda",
@@ -408,10 +404,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalPreparation/WoundPreparationRobot",
-      "sha256": "0da88b49a7d86f943e18e0f6dc83ab056399ba92c3153dfa0c392144ad761c4f"
+      "sha256": "f8ae0a42466d7156ea4d0bf944e25d0e037d38b59b97cb253cfd1e889d475146"
     },
     {
-      "bytes": 36652654,
+      "bytes": 36651526,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_adaptive_anastomosis_tool_payload.usda",
@@ -423,7 +419,7 @@
         "dranmar_reinforcement_collar.usda",
         "dranmar_reinforcement_collar_rigid_proxy.usda"
       ],
-      "file_count": 42,
+      "file_count": 41,
       "id": "dr_anmar:Props/SurgicalReconstruction/AdaptiveAnastomosisRobot",
       "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/LICENSE.txt",
       "metadata": [
@@ -434,12 +430,11 @@
         "collider_coverage.json",
         "franka_mount_contract.json",
         "interaction_frames.json",
-        "physics_profile.json",
-        "qualification_report.json"
+        "physics_profile.json"
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalReconstruction/AdaptiveAnastomosisRobot",
-      "sha256": "fda0aa4615a734519afde9a00dd79ff3c5659ad3bc4801303b722d36fd9c61ad"
+      "sha256": "15b8ca1c07f95fa7bfdd9cb9d981689a5164cdc0c3f98ec36b4f773c58967ee8"
     },
     {
       "bytes": 17062608,
@@ -592,7 +587,7 @@
       "sha256": "73c492f9a76042dd079be75dc076f9408b0bdb6004938cb61a5aa0b79f06adbb"
     },
     {
-      "bytes": 6593679,
+      "bytes": 6593711,
       "clinical_validation": false,
       "entrypoints": [
         "DrAnmarSuture4_0.usda",
@@ -612,7 +607,7 @@
       ],
       "provider": "dr_anmar_repository",
       "relative_path": "assets/dr_anmar/suture",
-      "sha256": "5d2f13aba4e4b7a6b4c70e022f7da4d6ef3f4ed851a81fafd52c0177cc14aae6"
+      "sha256": "9e85d82f354f797d335aad30027b392eb4a822e3eb5f35e913c094057d595fdf"
     },
     {
       "bytes": 1121176,
@@ -636,7 +631,7 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "9a8880911b7d771291727040afc8f3c6d297e3cd9d3f2b235480e981d66a8d43",
+  "catalog_sha256": "961ffabc16cc9085fda783ce5db47ec678bcb3eb82bfe6b692a653b61dc51cda",
   "catalog_version": "1.2.0",
   "clinical_validation": false,
   "i4h": {
@@ -786,9 +781,9 @@
           "asset": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
           "base_layer": "assets/dr_anmar/suture/DrAnmarSuture4_0_base.usda",
           "geometry_layer": "assets/dr_anmar/suture/DrAnmarSuture4_0_geometry.usd",
-          "gpu_report": "physics_next/benchmarks/dr-anmar-warp-suture-qualification.json",
           "material_texture": "assets/dr_anmar/suture/textures/DrAnmarSuture4_0_braid_normal_roughness.png",
           "materials_layer": "assets/dr_anmar/suture/DrAnmarSuture4_0_materials.usda",
+          "native_evidence": "physics_next/benchmarks/dr-anmar-warp-suture-native-simulator-evidence.json",
           "physics_layer": "assets/dr_anmar/suture/DrAnmarSuture4_0_physics.usda",
           "physx_layer": "assets/dr_anmar/suture/DrAnmarSuture4_0_physx.usda",
           "profile": "physics_next/sutures/dr-anmar-suture-4-0.json",
@@ -900,8 +895,8 @@
         "artifacts": {
           "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncosurgery_tool.usda",
           "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncology_liver.usda",
-          "gpu_report": "physics_next/benchmarks/dranmar-oncology-native-qualification.json",
           "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/interaction_frames.json",
+          "native_evidence": "physics_next/benchmarks/dranmar-oncology-native-simulator-evidence.json",
           "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_tumor_resection_tool_payload.usda",
           "profile": "physics_next/surgical-oncology/dranmar-oncosurgery-cell-v1.json",
           "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/asset_manifest.json",

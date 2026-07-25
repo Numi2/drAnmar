@@ -2,7 +2,7 @@
   "schema": "dr.anmar.surgical-needle-profile.v2",
   "id": "dranmar-needle-half-circle-taper-v2",
   "version": "0.3.0",
-  "status": "research_only_provisional_category_level_asset",
+  "status": "simulation_training_model",
   "clinical_validation": false,
   "medical_device": false,
   "geometry": {
@@ -69,5 +69,5 @@
     "closure",
     "disposal"
   ],
-  "simulation_use": "research_only_not_clinically_validated_or_approved_for_patient_care"
+  "simulation_use": "simulation_training"
 }

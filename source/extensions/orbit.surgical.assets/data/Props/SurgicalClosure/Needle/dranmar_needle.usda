@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "DrAnmarNeedle"
-    doc = "DrAnmar category-level half-circle taper-point surgical needle. Research only."
+    doc = "Dr.Anmar category-level half-circle taper-point needle for simulation training."
     kilogramsPerUnit = 1
     metersPerUnit = 1
     upAxis = "Z"
@@ -17,7 +17,7 @@ def Xform "DrAnmarNeedle" (
     kind = "component"
 )
 {
-    custom string drAnmar:simulationUse = "research_only_not_clinically_validated_or_approved_for_patient_care"
+    custom string drAnmar:simulationUse = "simulation_training_component"
     custom string drAnmar:geometryClass = "one_half_circle_round_body_taper_point"
     custom bool drAnmar:clinicalValidation = false
     token[] semantics:labels:class = ["surgical_needle", "wound_closure_needle", "dranmar_needle"]

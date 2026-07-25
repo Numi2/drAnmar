@@ -52,7 +52,7 @@
   },
   "clinical_validation": false,
   "device": "cuda:0",
-  "note": "GPU engineering qualification only; physical bench, convergence, sim-to-real, and clinical validation remain required.",
+  "note": "Native Warp GPU evidence for the recorded stack only; convergence, real-world bench correlation, sim-to-real, and clinical evidence are not established.",
   "pair_policy": {
     "correction_gather": "fixed_order_csr_without_float_atomics",
     "excluded_index_distance": 2,
@@ -63,7 +63,7 @@
   "passed": true,
   "profile_id": "dr-anmar-suture-4-0-braided-v1",
   "profile_version": "2.8.0",
-  "schema": "dr.anmar.warp-suture-qualification.v1",
+  "schema": "dr.anmar.warp-suture-native-simulator-evidence.v1",
   "solver_policy": {
     "failure": "xpbd_constraint_force_or_failure_strain",
     "friction": "coulomb_tangential_position_limit",

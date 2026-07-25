@@ -6,6 +6,13 @@ All notable changes to Dr.Anmar will be documented here.
 
 ### Added
 
+- Product-first capability and evidence tiers separating repository
+  verification, native-simulator evidence, real-world evidence, and clinical
+  evidence across all 19 portfolio assets.
+- Deleted five archived smoke snapshots that had been mislabeled and wired as
+  qualification reports; only reproducible native evidence remains in the
+  release catalog.
+
 - Standalone open-source repository structure and portable runtime configuration.
 - Doctor Studio browser interface, guided curriculum, anatomy library, demonstrations, and training lab.
 - Seven-scene resumable anatomy installer and default liver operating-room showcase.

@@ -1,8 +1,13 @@
-# Integrity and runtime boundaries
+# Capability and evidence boundaries
 
-Static gates cover deterministic assets, dependency closure, controller
-invariants, fail-closed attachment overlap, leak-ledger conservation, and
-source/container integrity. The optional Isaac script is diagnostic only.
+The Adaptive Anastomosis Robot is an available Dr.Anmar simulation-training
+workcell with capture, alignment, staple-ring, reinforcement, task state,
+observations, actions, and evaluation signals.
+
+Repository verification covers deterministic assets, dependency closure,
+controller invariants, fail-closed attachment overlap, leak-ledger
+conservation, and source integrity. The optional Isaac script produces
+native-simulator evidence only.
 
 Articulation motion, attachment creation, staple count, collar sectors, and
 nominal reduced-order inputs do not establish patency, edge apposition, or a

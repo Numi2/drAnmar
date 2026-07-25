@@ -56,7 +56,7 @@
     "patient.event_bus",
     "patient.fluids"
   ],
-  "research_only": true,
+  "intended_use": "simulation_training",
   "schema": "dr.anmar.dynamic-patient-runtime.v1",
   "snapshot_contract": {
     "includes": [

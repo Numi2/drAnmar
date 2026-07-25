@@ -1,6 +1,9 @@
 # DrAnmar Adaptive Anastomosis Robot v0.1.0
 
-DrAnmar-owned, provider-neutral, research-only Franka-compatible end effector for end-to-end hollow-tissue anastomosis simulation. The live integration targets NVIDIA Isaac Sim and Isaac Lab while keeping the OpenUSD asset contract portable.
+Dr.Anmar executable simulation-training workcell for end-to-end hollow-tissue
+anastomosis tasks. It includes a provider-neutral Franka-compatible end
+effector, portable OpenUSD assets, task state, observations, actions, safety
+gates, and evaluation signals for NVIDIA Isaac Sim and Isaac Lab.
 
 ## Capabilities
 

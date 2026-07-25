@@ -97,8 +97,7 @@
       "physics_profile.json",
       "mechanics_contract.json",
       "native_simulator_evidence.json",
-      "qualification_report.json",
-      "tissue_closure_qualification_report.json"
+      "tissue_closure_native_simulator_evidence.json"
     ],
     "ignored_names": [
       ".DS_Store",

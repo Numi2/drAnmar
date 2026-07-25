@@ -27,7 +27,7 @@ def Xform "LaparotomySponge" (
         string xrayMarkerRepresentation = "blue_edge_region_visual_abstraction"
         string loopRole = "counting_and_retrieval"
         string loopPhysicsMode = "compound_capsule_colliders"
-        string simulationUse = "research_only_not_a_medical_device"
+        string simulationUse = "simulation_training_component"
         string[] semanticLabels = ["surgical_sponge", "laparotomy_sponge", "radiopaque_sponge"]
     }
     kind = "component"

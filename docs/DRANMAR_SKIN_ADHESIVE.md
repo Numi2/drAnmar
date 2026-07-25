@@ -71,4 +71,5 @@ The room deliberately does not create a visual or kinematic bead. It does not
 claim liquid flow, droplet breakup, wetting, polymerization, tissue bonding,
 wound-edge mechanics, bond strength, toxicity, or clinical outcome. All
 unmeasured mass, friction, drive, and dose parameters remain provisional and
-the complete system is research-only.
+the complete system is available for simulation training. Real-world delivery
+correlation and clinical evidence are not established.

@@ -1,4 +1,8 @@
-# Integrity and runtime boundaries
+# Repository verification and runtime evidence
+
+This document records repository verification and native-simulator evidence;
+it does not claim real-world or clinical validation. The terminology follows
+[`EVIDENCE_LEVELS.md`](EVIDENCE_LEVELS.md).
 
 The wound-preparation release has deterministic static gates for Python
 compilation, JSON parsing, USDA structure, dependency closure, archive CRCs,
