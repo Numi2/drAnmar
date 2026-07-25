@@ -341,11 +341,16 @@ def test_hierarchical_volume_does_not_apply_legacy_mesh_only_api(
             return FakeRegistry()
 
     class FakeAttribute:
+        values: dict[str, object] = {}
+
+        def __init__(self, name: str):
+            self.name = name
+
         def IsValid(self) -> bool:
             return True
 
-        def Set(self, _value) -> None:
-            pass
+        def Set(self, value) -> None:
+            self.values[self.name] = value
 
     class FakePrim:
         def __init__(self):
@@ -354,8 +359,8 @@ def test_hierarchical_volume_does_not_apply_legacy_mesh_only_api(
         def ApplyAPI(self, name: str) -> None:
             self.applied.append(name)
 
-        def GetAttribute(self, _name: str) -> FakeAttribute:
-            return FakeAttribute()
+        def GetAttribute(self, name: str) -> FakeAttribute:
+            return FakeAttribute(name)
 
     monkeypatch.setitem(sys.modules, "pxr", SimpleNamespace(Usd=FakeUsd))
     prim = FakePrim()
@@ -370,3 +375,4 @@ def test_hierarchical_volume_does_not_apply_legacy_mesh_only_api(
     assert "OmniPhysicsDeformableBodyAPI" in prim.applied
     assert "PhysxBaseDeformableBodyAPI" in prim.applied
     assert "PhysxDeformableBodyAPI" not in prim.applied
+    assert FakeAttribute.values["physxDeformableBody:disableGravity"] is True

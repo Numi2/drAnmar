@@ -2389,7 +2389,14 @@ def _configure_deformable_body(
         # hierarchy makes the parser reject the body before cooking.
         if not hierarchical_volume:
             _apply_registered_api(body_prim, "PhysxDeformableBodyAPI")
-    _set_usd_attribute_if_valid(body_prim, "physxDeformableBody:disableGravity", False)
+    # Patient components are authored in situ. Until a component has explicit
+    # anatomical attachments or kinematic support nodes, allowing free fall
+    # makes it leave the body cavity and can drive invalid high-energy contact.
+    _set_usd_attribute_if_valid(
+        body_prim,
+        "physxDeformableBody:disableGravity",
+        bool(cfg.get("disable_gravity", True)),
+    )
     _set_usd_attribute_if_valid(
         body_prim,
         "physxDeformableBody:selfCollision",
