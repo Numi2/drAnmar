@@ -1,0 +1,51 @@
+{
+  "clinical_validation": false,
+  "failure_modes": [
+    "off_center_capture",
+    "insufficient_compression",
+    "excess_compression",
+    "seal_underenergy",
+    "seal_overtemperature",
+    "impedance_fault",
+    "blade_before_seal",
+    "incomplete_division",
+    "seal_band_delamination",
+    "stump_leak",
+    "tissue_crush_proxy"
+  ],
+  "interlocks": [
+    "tissue_centered",
+    "compression_within_window",
+    "left_seal_mature",
+    "right_seal_mature",
+    "predicted_stump_flow_below_limit",
+    "blade_guard_retracted",
+    "no_overtemperature_fault"
+  ],
+  "phases": [
+    "inspect",
+    "center",
+    "compress",
+    "seal",
+    "verify_seal",
+    "retract_guard",
+    "divide",
+    "release",
+    "verify_stumps",
+    "complete",
+    "abort"
+  ],
+  "schema": "dranmar.adaptive-seal-divide-task.v1",
+  "success_metrics": [
+    "left_seal_maturity",
+    "right_seal_maturity",
+    "left_stump_flow_ml_min",
+    "right_stump_flow_ml_min",
+    "peak_jaw_force_n",
+    "energy_j",
+    "blade_interlock_violations",
+    "bridge_cells_released",
+    "division_complete",
+    "seal_band_retained"
+  ]
+}

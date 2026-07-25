@@ -1,0 +1,292 @@
+{
+  "asset": "dranmar-adaptive-seal-divide-robot-v1",
+  "frames": {
+    "blade_guard_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "BladeGuard",
+      "position": [
+        0,
+        0,
+        0.016
+      ],
+      "role": "blade_guard_reference"
+    },
+    "blade_tip": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "BladeCarriage",
+      "position": [
+        0,
+        0,
+        0.034
+      ],
+      "role": "division_blade_tip"
+    },
+    "count_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.04
+      ],
+      "role": "instrument_count_reference"
+    },
+    "cut_plane": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.19
+      ],
+      "role": "central_division_plane"
+    },
+    "disposal_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.02
+      ],
+      "role": "disposal_reference"
+    },
+    "impedance_probe": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.184
+      ],
+      "role": "impedance_measurement_reference"
+    },
+    "irrigation_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.177
+      ],
+      "role": "irrigation_center"
+    },
+    "left_centering_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftCentering",
+      "position": [
+        0,
+        0.018,
+        0.031
+      ],
+      "role": "left_centering_contact"
+    },
+    "left_seal_zone": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        -0.0065,
+        0,
+        0.19
+      ],
+      "role": "left_seal_band_center"
+    },
+    "lower_jaw_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LowerJaw",
+      "position": [
+        0,
+        0,
+        -0.008
+      ],
+      "role": "lower_jaw_contact"
+    },
+    "panda_link8_mount": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "franka_wrist_mount"
+    },
+    "right_centering_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightCentering",
+      "position": [
+        0,
+        -0.018,
+        0.031
+      ],
+      "role": "right_centering_contact"
+    },
+    "right_seal_zone": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.0065,
+        0,
+        0.19
+      ],
+      "role": "right_seal_band_center"
+    },
+    "seal_divide_tcp": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.19
+      ],
+      "role": "seal_divide_tool_center_point"
+    },
+    "seal_verification_probe": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.18
+      ],
+      "role": "seal_verification_reference"
+    },
+    "suction_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.176
+      ],
+      "role": "annular_suction_center"
+    },
+    "thermal_camera": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.053,
+        0.098
+      ],
+      "role": "thermal_camera_optical_frame"
+    },
+    "tissue_center_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.19
+      ],
+      "role": "tissue_center_reference"
+    },
+    "upper_jaw_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "UpperJaw",
+      "position": [
+        0,
+        0,
+        0.008
+      ],
+      "role": "upper_jaw_contact"
+    }
+  },
+  "schema": "dranmar.interaction-frames.v1",
+  "units": "m"
+}

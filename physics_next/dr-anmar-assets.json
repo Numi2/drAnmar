@@ -245,6 +245,23 @@
       "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1",
       "physical_qualification": "provisional_parameters_pending_instrumented_anastomosis_bench",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-adaptive-seal-divide-robot-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_standalone.usda",
+      "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_payload.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_seal_divide_vessel_demo.usda",
+      "profile": "physics_next/surgical-division/dranmar-adaptive-seal-divide-v1.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/interaction_frames.json",
+      "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/adaptive_seal_divide_task_contract.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/asset_manifest.json",
+      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/qualification_report.json",
+      "live_integration": "franka_verified_stock_hand_frame_replacement_and_standalone_articulation",
+      "live_behavior": "dual_surface_deformables_distal_fixtures_bridge_cells_jaw_compression_retained_seal_bands_energy_interlock_division_and_stump_leak_proxy",
+      "deployment": "enabled_for_research_iteration",
+      "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1",
+      "physical_qualification": "provisional_parameters_pending_instrumented_seal_divide_bench",
+      "clinical_validation": false
     }
   ],
   "validation": {

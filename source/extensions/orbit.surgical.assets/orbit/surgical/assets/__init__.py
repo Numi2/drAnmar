@@ -38,3 +38,4 @@ from .wound_preparation_robot import *
 from .atraumatic_exposure_robot import *
 from .adaptive_hemostasis_robot import *
 from .adaptive_anastomosis_robot import *
+from .adaptive_seal_divide_robot import *

@@ -1,0 +1,1224 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarTissueSealBand"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarTissueSealBand" (
+    prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
+    prepend variantSets = "state"
+    variants = { string state = "fresh" }
+    customData = {
+        string drAnmarAssetId = "dranmar-tissue-seal-band-v1"
+        bool drAnmarClinicalValidation = false
+        string drAnmarRepresentation = "rigid_bond_carrier_with_two_deformable_attachment_regions"
+    }
+)
+{
+    float physics:mass = 0.0009
+    point3f physics:centerOfMass = (0, 0, 0)
+    vector3f physics:diagonalInertia = (1.2e-8, 2.0e-8, 2.0e-8)
+    quatf physics:principalAxes = (1, 0, 0, 0)
+    bool physxRigidBody:enableCCD = true
+    def Scope "Looks"
+    {
+        def Material "BodyPolymer"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.82, 0.85, 0.88)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.34
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/BodyPolymer/PreviewSurface.outputs:surface>
+        }
+        def Material "AccentPolymer"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.055, 0.31, 0.62)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.29
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/AccentPolymer/PreviewSurface.outputs:surface>
+        }
+        def Material "DarkPolymer"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.035, 0.045, 0.055)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.3
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/DarkPolymer/PreviewSurface.outputs:surface>
+        }
+        def Material "MountMetal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.44, 0.48, 0.53)
+                float inputs:metallic = 0.82
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/MountMetal/PreviewSurface.outputs:surface>
+        }
+        def Material "RailMetal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.25, 0.29, 0.34)
+                float inputs:metallic = 0.74
+                float inputs:roughness = 0.26
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/RailMetal/PreviewSurface.outputs:surface>
+        }
+        def Material "JawMetal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.6, 0.64, 0.68)
+                float inputs:metallic = 0.78
+                float inputs:roughness = 0.22
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/JawMetal/PreviewSurface.outputs:surface>
+        }
+        def Material "ElectrodeCopper"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.78, 0.4, 0.13)
+                float inputs:metallic = 0.88
+                float inputs:roughness = 0.2
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/ElectrodeCopper/PreviewSurface.outputs:surface>
+        }
+        def Material "CeramicWhite"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.91, 0.91, 0.88)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.16
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/CeramicWhite/PreviewSurface.outputs:surface>
+        }
+        def Material "BladeSteel"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.7, 0.73, 0.77)
+                float inputs:metallic = 0.92
+                float inputs:roughness = 0.12
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/BladeSteel/PreviewSurface.outputs:surface>
+        }
+        def Material "SpentBlade"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.32, 0.31, 0.3)
+                float inputs:metallic = 0.72
+                float inputs:roughness = 0.42
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/SpentBlade/PreviewSurface.outputs:surface>
+        }
+        def Material "PadElastomer"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.06, 0.53, 0.61)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.52
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/PadElastomer/PreviewSurface.outputs:surface>
+        }
+        def Material "SensorGlass"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.05, 0.16, 0.24)
+                float inputs:metallic = 0.15
+                float inputs:roughness = 0.1
+                float inputs:opacity = 0.75
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/SensorGlass/PreviewSurface.outputs:surface>
+        }
+        def Material "ThermalGlass"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.31, 0.05, 0.43)
+                float inputs:metallic = 0.18
+                float inputs:roughness = 0.13
+                float inputs:opacity = 0.85
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/ThermalGlass/PreviewSurface.outputs:surface>
+        }
+        def Material "SensorBlue"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.04, 0.39, 0.86)
+                float inputs:metallic = 0.05
+                float inputs:roughness = 0.2
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/SensorBlue/PreviewSurface.outputs:surface>
+        }
+        def Material "IndicatorGreen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.05, 0.86, 0.28)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.2
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/IndicatorGreen/PreviewSurface.outputs:surface>
+        }
+        def Material "IndicatorAmber"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (1, 0.52, 0.02)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.23
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/IndicatorAmber/PreviewSurface.outputs:surface>
+        }
+        def Material "IndicatorRed"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.92, 0.03, 0.04)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.22
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/IndicatorRed/PreviewSurface.outputs:surface>
+        }
+        def Material "SalineBlue"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.04, 0.46, 0.92)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.05
+                float inputs:opacity = 0.56
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/SalineBlue/PreviewSurface.outputs:surface>
+        }
+        def Material "CollectionDark"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.31, 0.12, 0.08)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.16
+                float inputs:opacity = 0.72
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/CollectionDark/PreviewSurface.outputs:surface>
+        }
+        def Material "TubeClear"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.63, 0.8, 0.88)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.08
+                float inputs:opacity = 0.34
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/TubeClear/PreviewSurface.outputs:surface>
+        }
+        def Material "LabelMaterial"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.96, 0.97, 0.98)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.4
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/LabelMaterial/PreviewSurface.outputs:surface>
+        }
+        def Material "VesselMaterial"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.52, 0.055, 0.045)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.44
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/VesselMaterial/PreviewSurface.outputs:surface>
+        }
+        def Material "VesselInner"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.74, 0.16, 0.13)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.39
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/VesselInner/PreviewSurface.outputs:surface>
+        }
+        def Material "BridgeMaterial"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.59, 0.075, 0.06)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.42
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/BridgeMaterial/PreviewSurface.outputs:surface>
+        }
+        def Material "SealBandFresh"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.94, 0.62, 0.1)
+                float inputs:metallic = 0.15
+                float inputs:roughness = 0.24
+                float inputs:opacity = 0.62
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/SealBandFresh/PreviewSurface.outputs:surface>
+        }
+        def Material "SealBandMature"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.47, 0.21, 0.05)
+                float inputs:metallic = 0.15
+                float inputs:roughness = 0.3
+                float inputs:opacity = 0.78
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/SealBandMature/PreviewSurface.outputs:surface>
+        }
+        def Material "SealBandFailed"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.2, 0.08, 0.04)
+                float inputs:metallic = 0.05
+                float inputs:roughness = 0.58
+                float inputs:opacity = 0.58
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/SealBandFailed/PreviewSurface.outputs:surface>
+        }
+        def Material "FixtureMaterial"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.08, 0.09, 0.11)
+                float inputs:metallic = 0.2
+                float inputs:roughness = 0.42
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/FixtureMaterial/PreviewSurface.outputs:surface>
+        }
+        def Material "VaporMaterial"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.78, 0.84, 0.88)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.08
+                float inputs:opacity = 0.3
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarTissueSealBand/Looks/VaporMaterial/PreviewSurface.outputs:surface>
+        }
+    }
+    def Mesh "BandVisual" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        custom token[] drAnmar:labels = ["tissue_seal_band"]
+        float3[] extent = [(-0.0023, -0.0052, -0.003), (0.0023, 0.0052, 0.003)]
+        int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+        int[] faceVertexIndices = [0, 1, 145, 0, 145, 144, 1, 2, 146, 1, 146, 145, 2, 3, 147, 2, 147, 146, 3, 4, 148, 3, 148, 147, 4, 5, 149, 4, 149, 148, 5, 6, 150, 5, 150, 149, 6, 7, 151, 6, 151, 150, 7, 8, 152, 7, 152, 151, 8, 9, 153, 8, 153, 152, 9, 10, 154, 9, 154, 153, 10, 11, 155, 10, 155, 154, 11, 12, 156, 11, 156, 155, 12, 13, 157, 12, 157, 156, 13, 14, 158, 13, 158, 157, 14, 15, 159, 14, 159, 158, 15, 16, 160, 15, 160, 159, 16, 17, 161, 16, 161, 160, 17, 18, 162, 17, 162, 161, 18, 19, 163, 18, 163, 162, 19, 20, 164, 19, 164, 163, 20, 21, 165, 20, 165, 164, 21, 22, 166, 21, 166, 165, 22, 23, 167, 22, 167, 166, 23, 24, 168, 23, 168, 167, 24, 25, 169, 24, 169, 168, 25, 26, 170, 25, 170, 169, 26, 27, 171, 26, 171, 170, 27, 28, 172, 27, 172, 171, 28, 29, 173, 28, 173, 172, 29, 30, 174, 29, 174, 173, 30, 31, 175, 30, 175, 174, 31, 32, 176, 31, 176, 175, 32, 33, 177, 32, 177, 176, 33, 34, 178, 33, 178, 177, 34, 35, 179, 34, 179, 178, 35, 36, 180, 35, 180, 179, 36, 37, 181, 36, 181, 180, 37, 38, 182, 37, 182, 181, 38, 39, 183, 38, 183, 182, 39, 40, 184, 39, 184, 183, 40, 41, 185, 40, 185, 184, 41, 42, 186, 41, 186, 185, 42, 43, 187, 42, 187, 186, 43, 44, 188, 43, 188, 187, 44, 45, 189, 44, 189, 188, 45, 46, 190, 45, 190, 189, 46, 47, 191, 46, 191, 190, 47, 48, 192, 47, 192, 191, 48, 49, 193, 48, 193, 192, 49, 50, 194, 49, 194, 193, 50, 51, 195, 50, 195, 194, 51, 52, 196, 51, 196, 195, 52, 53, 197, 52, 197, 196, 53, 54, 198, 53, 198, 197, 54, 55, 199, 54, 199, 198, 55, 56, 200, 55, 200, 199, 56, 57, 201, 56, 201, 200, 57, 58, 202, 57, 202, 201, 58, 59, 203, 58, 203, 202, 59, 60, 204, 59, 204, 203, 60, 61, 205, 60, 205, 204, 61, 62, 206, 61, 206, 205, 62, 63, 207, 62, 207, 206, 63, 64, 208, 63, 208, 207, 64, 65, 209, 64, 209, 208, 65, 66, 210, 65, 210, 209, 66, 67, 211, 66, 211, 210, 67, 68, 212, 67, 212, 211, 68, 69, 213, 68, 213, 212, 69, 70, 214, 69, 214, 213, 70, 71, 215, 70, 215, 214, 71, 0, 144, 71, 144, 215, 72, 217, 73, 72, 216, 217, 73, 218, 74, 73, 217, 218, 74, 219, 75, 74, 218, 219, 75, 220, 76, 75, 219, 220, 76, 221, 77, 76, 220, 221, 77, 222, 78, 77, 221, 222, 78, 223, 79, 78, 222, 223, 79, 224, 80, 79, 223, 224, 80, 225, 81, 80, 224, 225, 81, 226, 82, 81, 225, 226, 82, 227, 83, 82, 226, 227, 83, 228, 84, 83, 227, 228, 84, 229, 85, 84, 228, 229, 85, 230, 86, 85, 229, 230, 86, 231, 87, 86, 230, 231, 87, 232, 88, 87, 231, 232, 88, 233, 89, 88, 232, 233, 89, 234, 90, 89, 233, 234, 90, 235, 91, 90, 234, 235, 91, 236, 92, 91, 235, 236, 92, 237, 93, 92, 236, 237, 93, 238, 94, 93, 237, 238, 94, 239, 95, 94, 238, 239, 95, 240, 96, 95, 239, 240, 96, 241, 97, 96, 240, 241, 97, 242, 98, 97, 241, 242, 98, 243, 99, 98, 242, 243, 99, 244, 100, 99, 243, 244, 100, 245, 101, 100, 244, 245, 101, 246, 102, 101, 245, 246, 102, 247, 103, 102, 246, 247, 103, 248, 104, 103, 247, 248, 104, 249, 105, 104, 248, 249, 105, 250, 106, 105, 249, 250, 106, 251, 107, 106, 250, 251, 107, 252, 108, 107, 251, 252, 108, 253, 109, 108, 252, 253, 109, 254, 110, 109, 253, 254, 110, 255, 111, 110, 254, 255, 111, 256, 112, 111, 255, 256, 112, 257, 113, 112, 256, 257, 113, 258, 114, 113, 257, 258, 114, 259, 115, 114, 258, 259, 115, 260, 116, 115, 259, 260, 116, 261, 117, 116, 260, 261, 117, 262, 118, 117, 261, 262, 118, 263, 119, 118, 262, 263, 119, 264, 120, 119, 263, 264, 120, 265, 121, 120, 264, 265, 121, 266, 122, 121, 265, 266, 122, 267, 123, 122, 266, 267, 123, 268, 124, 123, 267, 268, 124, 269, 125, 124, 268, 269, 125, 270, 126, 125, 269, 270, 126, 271, 127, 126, 270, 271, 127, 272, 128, 127, 271, 272, 128, 273, 129, 128, 272, 273, 129, 274, 130, 129, 273, 274, 130, 275, 131, 130, 274, 275, 131, 276, 132, 131, 275, 276, 132, 277, 133, 132, 276, 277, 133, 278, 134, 133, 277, 278, 134, 279, 135, 134, 278, 279, 135, 280, 136, 135, 279, 280, 136, 281, 137, 136, 280, 281, 137, 282, 138, 137, 281, 282, 138, 283, 139, 138, 282, 283, 139, 284, 140, 139, 283, 284, 140, 285, 141, 140, 284, 285, 141, 286, 142, 141, 285, 286, 142, 287, 143, 142, 286, 287, 143, 216, 72, 143, 287, 216, 72, 73, 0, 73, 1, 0, 73, 74, 1, 74, 2, 1, 74, 75, 2, 75, 3, 2, 75, 76, 3, 76, 4, 3, 76, 77, 4, 77, 5, 4, 77, 78, 5, 78, 6, 5, 78, 79, 6, 79, 7, 6, 79, 80, 7, 80, 8, 7, 80, 81, 8, 81, 9, 8, 81, 82, 9, 82, 10, 9, 82, 83, 10, 83, 11, 10, 83, 84, 11, 84, 12, 11, 84, 85, 12, 85, 13, 12, 85, 86, 13, 86, 14, 13, 86, 87, 14, 87, 15, 14, 87, 88, 15, 88, 16, 15, 88, 89, 16, 89, 17, 16, 89, 90, 17, 90, 18, 17, 90, 91, 18, 91, 19, 18, 91, 92, 19, 92, 20, 19, 92, 93, 20, 93, 21, 20, 93, 94, 21, 94, 22, 21, 94, 95, 22, 95, 23, 22, 95, 96, 23, 96, 24, 23, 96, 97, 24, 97, 25, 24, 97, 98, 25, 98, 26, 25, 98, 99, 26, 99, 27, 26, 99, 100, 27, 100, 28, 27, 100, 101, 28, 101, 29, 28, 101, 102, 29, 102, 30, 29, 102, 103, 30, 103, 31, 30, 103, 104, 31, 104, 32, 31, 104, 105, 32, 105, 33, 32, 105, 106, 33, 106, 34, 33, 106, 107, 34, 107, 35, 34, 107, 108, 35, 108, 36, 35, 108, 109, 36, 109, 37, 36, 109, 110, 37, 110, 38, 37, 110, 111, 38, 111, 39, 38, 111, 112, 39, 112, 40, 39, 112, 113, 40, 113, 41, 40, 113, 114, 41, 114, 42, 41, 114, 115, 42, 115, 43, 42, 115, 116, 43, 116, 44, 43, 116, 117, 44, 117, 45, 44, 117, 118, 45, 118, 46, 45, 118, 119, 46, 119, 47, 46, 119, 120, 47, 120, 48, 47, 120, 121, 48, 121, 49, 48, 121, 122, 49, 122, 50, 49, 122, 123, 50, 123, 51, 50, 123, 124, 51, 124, 52, 51, 124, 125, 52, 125, 53, 52, 125, 126, 53, 126, 54, 53, 126, 127, 54, 127, 55, 54, 127, 128, 55, 128, 56, 55, 128, 129, 56, 129, 57, 56, 129, 130, 57, 130, 58, 57, 130, 131, 58, 131, 59, 58, 131, 132, 59, 132, 60, 59, 132, 133, 60, 133, 61, 60, 133, 134, 61, 134, 62, 61, 134, 135, 62, 135, 63, 62, 135, 136, 63, 136, 64, 63, 136, 137, 64, 137, 65, 64, 137, 138, 65, 138, 66, 65, 138, 139, 66, 139, 67, 66, 139, 140, 67, 140, 68, 67, 140, 141, 68, 141, 69, 68, 141, 142, 69, 142, 70, 69, 142, 143, 70, 143, 71, 70, 143, 72, 71, 72, 0, 71, 217, 216, 144, 145, 217, 144, 218, 217, 145, 146, 218, 145, 219, 218, 146, 147, 219, 146, 220, 219, 147, 148, 220, 147, 221, 220, 148, 149, 221, 148, 222, 221, 149, 150, 222, 149, 223, 222, 150, 151, 223, 150, 224, 223, 151, 152, 224, 151, 225, 224, 152, 153, 225, 152, 226, 225, 153, 154, 226, 153, 227, 226, 154, 155, 227, 154, 228, 227, 155, 156, 228, 155, 229, 228, 156, 157, 229, 156, 230, 229, 157, 158, 230, 157, 231, 230, 158, 159, 231, 158, 232, 231, 159, 160, 232, 159, 233, 232, 160, 161, 233, 160, 234, 233, 161, 162, 234, 161, 235, 234, 162, 163, 235, 162, 236, 235, 163, 164, 236, 163, 237, 236, 164, 165, 237, 164, 238, 237, 165, 166, 238, 165, 239, 238, 166, 167, 239, 166, 240, 239, 167, 168, 240, 167, 241, 240, 168, 169, 241, 168, 242, 241, 169, 170, 242, 169, 243, 242, 170, 171, 243, 170, 244, 243, 171, 172, 244, 171, 245, 244, 172, 173, 245, 172, 246, 245, 173, 174, 246, 173, 247, 246, 174, 175, 247, 174, 248, 247, 175, 176, 248, 175, 249, 248, 176, 177, 249, 176, 250, 249, 177, 178, 250, 177, 251, 250, 178, 179, 251, 178, 252, 251, 179, 180, 252, 179, 253, 252, 180, 181, 253, 180, 254, 253, 181, 182, 254, 181, 255, 254, 182, 183, 255, 182, 256, 255, 183, 184, 256, 183, 257, 256, 184, 185, 257, 184, 258, 257, 185, 186, 258, 185, 259, 258, 186, 187, 259, 186, 260, 259, 187, 188, 260, 187, 261, 260, 188, 189, 261, 188, 262, 261, 189, 190, 262, 189, 263, 262, 190, 191, 263, 190, 264, 263, 191, 192, 264, 191, 265, 264, 192, 193, 265, 192, 266, 265, 193, 194, 266, 193, 267, 266, 194, 195, 267, 194, 268, 267, 195, 196, 268, 195, 269, 268, 196, 197, 269, 196, 270, 269, 197, 198, 270, 197, 271, 270, 198, 199, 271, 198, 272, 271, 199, 200, 272, 199, 273, 272, 200, 201, 273, 200, 274, 273, 201, 202, 274, 201, 275, 274, 202, 203, 275, 202, 276, 275, 203, 204, 276, 203, 277, 276, 204, 205, 277, 204, 278, 277, 205, 206, 278, 205, 279, 278, 206, 207, 279, 206, 280, 279, 207, 208, 280, 207, 281, 280, 208, 209, 281, 208, 282, 281, 209, 210, 282, 209, 283, 282, 210, 211, 283, 210, 284, 283, 211, 212, 284, 211, 285, 284, 212, 213, 285, 212, 286, 285, 213, 214, 286, 213, 287, 286, 214, 215, 287, 214, 216, 287, 215, 144, 216, 215]
+        point3f[] points = [
+            (-0.0023, 0.0052, 0),
+            (-0.0023, 0.00518021243, 0.0002614672282),
+            (-0.0023, 0.005121000316, 0.000520944533),
+            (-0.0023, 0.005022814297, 0.0007764571353),
+            (-0.0023, 0.004886401628, 0.00102606043),
+            (-0.0023, 0.004712800493, 0.001267854785),
+            (-0.0023, 0.0045033321, 0.0015),
+            (-0.0023, 0.00425959063, 0.001720729309),
+            (-0.0023, 0.003983431104, 0.001928362829),
+            (-0.0023, 0.003676955262, 0.002121320344),
+            (-0.0023, 0.00334249557, 0.002298133329),
+            (-0.0023, 0.002982597469, 0.002457456133),
+            (-0.0023, 0.0026, 0.002598076211),
+            (-0.0023, 0.002197614961, 0.002718923361),
+            (-0.0023, 0.001778504745, 0.002819077862),
+            (-0.0023, 0.001345859035, 0.002897777479),
+            (-0.0023, 0.0009029705239, 0.002954423259),
+            (-0.0023, 0.0004532098623, 0.002988584094),
+            (-0.0023, 0, 0.003),
+            (-0.0023, -0.0004532098623, 0.002988584094),
+            (-0.0023, -0.0009029705239, 0.002954423259),
+            (-0.0023, -0.001345859035, 0.002897777479),
+            (-0.0023, -0.001778504745, 0.002819077862),
+            (-0.0023, -0.002197614961, 0.002718923361),
+            (-0.0023, -0.0026, 0.002598076211),
+            (-0.0023, -0.002982597469, 0.002457456133),
+            (-0.0023, -0.00334249557, 0.002298133329),
+            (-0.0023, -0.003676955262, 0.002121320344),
+            (-0.0023, -0.003983431104, 0.001928362829),
+            (-0.0023, -0.00425959063, 0.001720729309),
+            (-0.0023, -0.0045033321, 0.0015),
+            (-0.0023, -0.004712800493, 0.001267854785),
+            (-0.0023, -0.004886401628, 0.00102606043),
+            (-0.0023, -0.005022814297, 0.0007764571353),
+            (-0.0023, -0.005121000316, 0.000520944533),
+            (-0.0023, -0.00518021243, 0.0002614672282),
+            (-0.0023, -0.0052, 0),
+            (-0.0023, -0.00518021243, -0.0002614672282),
+            (-0.0023, -0.005121000316, -0.000520944533),
+            (-0.0023, -0.005022814297, -0.0007764571353),
+            (-0.0023, -0.004886401628, -0.00102606043),
+            (-0.0023, -0.004712800493, -0.001267854785),
+            (-0.0023, -0.0045033321, -0.0015),
+            (-0.0023, -0.00425959063, -0.001720729309),
+            (-0.0023, -0.003983431104, -0.001928362829),
+            (-0.0023, -0.003676955262, -0.002121320344),
+            (-0.0023, -0.00334249557, -0.002298133329),
+            (-0.0023, -0.002982597469, -0.002457456133),
+            (-0.0023, -0.0026, -0.002598076211),
+            (-0.0023, -0.002197614961, -0.002718923361),
+            (-0.0023, -0.001778504745, -0.002819077862),
+            (-0.0023, -0.001345859035, -0.002897777479),
+            (-0.0023, -0.0009029705239, -0.002954423259),
+            (-0.0023, -0.0004532098623, -0.002988584094),
+            (-0.0023, 0, -0.003),
+            (-0.0023, 0.0004532098623, -0.002988584094),
+            (-0.0023, 0.0009029705239, -0.002954423259),
+            (-0.0023, 0.001345859035, -0.002897777479),
+            (-0.0023, 0.001778504745, -0.002819077862),
+            (-0.0023, 0.002197614961, -0.002718923361),
+            (-0.0023, 0.0026, -0.002598076211),
+            (-0.0023, 0.002982597469, -0.002457456133),
+            (-0.0023, 0.00334249557, -0.002298133329),
+            (-0.0023, 0.003676955262, -0.002121320344),
+            (-0.0023, 0.003983431104, -0.001928362829),
+            (-0.0023, 0.00425959063, -0.001720729309),
+            (-0.0023, 0.0045033321, -0.0015),
+            (-0.0023, 0.004712800493, -0.001267854785),
+            (-0.0023, 0.004886401628, -0.00102606043),
+            (-0.0023, 0.005022814297, -0.0007764571353),
+            (-0.0023, 0.005121000316, -0.000520944533),
+            (-0.0023, 0.00518021243, -0.0002614672282),
+            (-0.0023, 0.00465, 0),
+            (-0.0023, 0.004632305346, 0.0002255154844),
+            (-0.0023, 0.004579356052, 0.0004493146597),
+            (-0.0023, 0.004491555092, 0.0006696942792),
+            (-0.0023, 0.004369570687, 0.0008849771209),
+            (-0.0023, 0.00421433121, 0.001093524752),
+            (-0.0023, 0.004027018128, 0.00129375),
+            (-0.0023, 0.003809057006, 0.001484129029),
+            (-0.0023, 0.003562106661, 0.00166321294),
+            (-0.0023, 0.003288046533, 0.001829638796),
+            (-0.0023, 0.002988962385, 0.001982139997),
+            (-0.0023, 0.002667130429, 0.002119555915),
+            (-0.0023, 0.002325, 0.002240840732),
+            (-0.0023, 0.001965174917, 0.002345071399),
+            (-0.0023, 0.001590393666, 0.002431454656),
+            (-0.0023, 0.00120350856, 0.002499333076),
+            (-0.0023, 0.0008074640262, 0.002548190061),
+            (-0.0023, 0.0004052742038, 0.002577653781),
+            (-0.0023, 0, 0.0025875),
+            (-0.0023, -0.0004052742038, 0.002577653781),
+            (-0.0023, -0.0008074640262, 0.002548190061),
+            (-0.0023, -0.00120350856, 0.002499333076),
+            (-0.0023, -0.001590393666, 0.002431454656),
+            (-0.0023, -0.001965174917, 0.002345071399),
+            (-0.0023, -0.002325, 0.002240840732),
+            (-0.0023, -0.002667130429, 0.002119555915),
+            (-0.0023, -0.002988962385, 0.001982139997),
+            (-0.0023, -0.003288046533, 0.001829638796),
+            (-0.0023, -0.003562106661, 0.00166321294),
+            (-0.0023, -0.003809057006, 0.001484129029),
+            (-0.0023, -0.004027018128, 0.00129375),
+            (-0.0023, -0.00421433121, 0.001093524752),
+            (-0.0023, -0.004369570687, 0.0008849771209),
+            (-0.0023, -0.004491555092, 0.0006696942792),
+            (-0.0023, -0.004579356052, 0.0004493146597),
+            (-0.0023, -0.004632305346, 0.0002255154844),
+            (-0.0023, -0.00465, 0),
+            (-0.0023, -0.004632305346, -0.0002255154844),
+            (-0.0023, -0.004579356052, -0.0004493146597),
+            (-0.0023, -0.004491555092, -0.0006696942792),
+            (-0.0023, -0.004369570687, -0.0008849771209),
+            (-0.0023, -0.00421433121, -0.001093524752),
+            (-0.0023, -0.004027018128, -0.00129375),
+            (-0.0023, -0.003809057006, -0.001484129029),
+            (-0.0023, -0.003562106661, -0.00166321294),
+            (-0.0023, -0.003288046533, -0.001829638796),
+            (-0.0023, -0.002988962385, -0.001982139997),
+            (-0.0023, -0.002667130429, -0.002119555915),
+            (-0.0023, -0.002325, -0.002240840732),
+            (-0.0023, -0.001965174917, -0.002345071399),
+            (-0.0023, -0.001590393666, -0.002431454656),
+            (-0.0023, -0.00120350856, -0.002499333076),
+            (-0.0023, -0.0008074640262, -0.002548190061),
+            (-0.0023, -0.0004052742038, -0.002577653781),
+            (-0.0023, 0, -0.0025875),
+            (-0.0023, 0.0004052742038, -0.002577653781),
+            (-0.0023, 0.0008074640262, -0.002548190061),
+            (-0.0023, 0.00120350856, -0.002499333076),
+            (-0.0023, 0.001590393666, -0.002431454656),
+            (-0.0023, 0.001965174917, -0.002345071399),
+            (-0.0023, 0.002325, -0.002240840732),
+            (-0.0023, 0.002667130429, -0.002119555915),
+            (-0.0023, 0.002988962385, -0.001982139997),
+            (-0.0023, 0.003288046533, -0.001829638796),
+            (-0.0023, 0.003562106661, -0.00166321294),
+            (-0.0023, 0.003809057006, -0.001484129029),
+            (-0.0023, 0.004027018128, -0.00129375),
+            (-0.0023, 0.00421433121, -0.001093524752),
+            (-0.0023, 0.004369570687, -0.0008849771209),
+            (-0.0023, 0.004491555092, -0.0006696942792),
+            (-0.0023, 0.004579356052, -0.0004493146597),
+            (-0.0023, 0.004632305346, -0.0002255154844),
+            (0.0023, 0.0052, 0),
+            (0.0023, 0.00518021243, 0.0002614672282),
+            (0.0023, 0.005121000316, 0.000520944533),
+            (0.0023, 0.005022814297, 0.0007764571353),
+            (0.0023, 0.004886401628, 0.00102606043),
+            (0.0023, 0.004712800493, 0.001267854785),
+            (0.0023, 0.0045033321, 0.0015),
+            (0.0023, 0.00425959063, 0.001720729309),
+            (0.0023, 0.003983431104, 0.001928362829),
+            (0.0023, 0.003676955262, 0.002121320344),
+            (0.0023, 0.00334249557, 0.002298133329),
+            (0.0023, 0.002982597469, 0.002457456133),
+            (0.0023, 0.0026, 0.002598076211),
+            (0.0023, 0.002197614961, 0.002718923361),
+            (0.0023, 0.001778504745, 0.002819077862),
+            (0.0023, 0.001345859035, 0.002897777479),
+            (0.0023, 0.0009029705239, 0.002954423259),
+            (0.0023, 0.0004532098623, 0.002988584094),
+            (0.0023, 0, 0.003),
+            (0.0023, -0.0004532098623, 0.002988584094),
+            (0.0023, -0.0009029705239, 0.002954423259),
+            (0.0023, -0.001345859035, 0.002897777479),
+            (0.0023, -0.001778504745, 0.002819077862),
+            (0.0023, -0.002197614961, 0.002718923361),
+            (0.0023, -0.0026, 0.002598076211),
+            (0.0023, -0.002982597469, 0.002457456133),
+            (0.0023, -0.00334249557, 0.002298133329),
+            (0.0023, -0.003676955262, 0.002121320344),
+            (0.0023, -0.003983431104, 0.001928362829),
+            (0.0023, -0.00425959063, 0.001720729309),
+            (0.0023, -0.0045033321, 0.0015),
+            (0.0023, -0.004712800493, 0.001267854785),
+            (0.0023, -0.004886401628, 0.00102606043),
+            (0.0023, -0.005022814297, 0.0007764571353),
+            (0.0023, -0.005121000316, 0.000520944533),
+            (0.0023, -0.00518021243, 0.0002614672282),
+            (0.0023, -0.0052, 0),
+            (0.0023, -0.00518021243, -0.0002614672282),
+            (0.0023, -0.005121000316, -0.000520944533),
+            (0.0023, -0.005022814297, -0.0007764571353),
+            (0.0023, -0.004886401628, -0.00102606043),
+            (0.0023, -0.004712800493, -0.001267854785),
+            (0.0023, -0.0045033321, -0.0015),
+            (0.0023, -0.00425959063, -0.001720729309),
+            (0.0023, -0.003983431104, -0.001928362829),
+            (0.0023, -0.003676955262, -0.002121320344),
+            (0.0023, -0.00334249557, -0.002298133329),
+            (0.0023, -0.002982597469, -0.002457456133),
+            (0.0023, -0.0026, -0.002598076211),
+            (0.0023, -0.002197614961, -0.002718923361),
+            (0.0023, -0.001778504745, -0.002819077862),
+            (0.0023, -0.001345859035, -0.002897777479),
+            (0.0023, -0.0009029705239, -0.002954423259),
+            (0.0023, -0.0004532098623, -0.002988584094),
+            (0.0023, 0, -0.003),
+            (0.0023, 0.0004532098623, -0.002988584094),
+            (0.0023, 0.0009029705239, -0.002954423259),
+            (0.0023, 0.001345859035, -0.002897777479),
+            (0.0023, 0.001778504745, -0.002819077862),
+            (0.0023, 0.002197614961, -0.002718923361),
+            (0.0023, 0.0026, -0.002598076211),
+            (0.0023, 0.002982597469, -0.002457456133),
+            (0.0023, 0.00334249557, -0.002298133329),
+            (0.0023, 0.003676955262, -0.002121320344),
+            (0.0023, 0.003983431104, -0.001928362829),
+            (0.0023, 0.00425959063, -0.001720729309),
+            (0.0023, 0.0045033321, -0.0015),
+            (0.0023, 0.004712800493, -0.001267854785),
+            (0.0023, 0.004886401628, -0.00102606043),
+            (0.0023, 0.005022814297, -0.0007764571353),
+            (0.0023, 0.005121000316, -0.000520944533),
+            (0.0023, 0.00518021243, -0.0002614672282),
+            (0.0023, 0.00465, 0),
+            (0.0023, 0.004632305346, 0.0002255154844),
+            (0.0023, 0.004579356052, 0.0004493146597),
+            (0.0023, 0.004491555092, 0.0006696942792),
+            (0.0023, 0.004369570687, 0.0008849771209),
+            (0.0023, 0.00421433121, 0.001093524752),
+            (0.0023, 0.004027018128, 0.00129375),
+            (0.0023, 0.003809057006, 0.001484129029),
+            (0.0023, 0.003562106661, 0.00166321294),
+            (0.0023, 0.003288046533, 0.001829638796),
+            (0.0023, 0.002988962385, 0.001982139997),
+            (0.0023, 0.002667130429, 0.002119555915),
+            (0.0023, 0.002325, 0.002240840732),
+            (0.0023, 0.001965174917, 0.002345071399),
+            (0.0023, 0.001590393666, 0.002431454656),
+            (0.0023, 0.00120350856, 0.002499333076),
+            (0.0023, 0.0008074640262, 0.002548190061),
+            (0.0023, 0.0004052742038, 0.002577653781),
+            (0.0023, 0, 0.0025875),
+            (0.0023, -0.0004052742038, 0.002577653781),
+            (0.0023, -0.0008074640262, 0.002548190061),
+            (0.0023, -0.00120350856, 0.002499333076),
+            (0.0023, -0.001590393666, 0.002431454656),
+            (0.0023, -0.001965174917, 0.002345071399),
+            (0.0023, -0.002325, 0.002240840732),
+            (0.0023, -0.002667130429, 0.002119555915),
+            (0.0023, -0.002988962385, 0.001982139997),
+            (0.0023, -0.003288046533, 0.001829638796),
+            (0.0023, -0.003562106661, 0.00166321294),
+            (0.0023, -0.003809057006, 0.001484129029),
+            (0.0023, -0.004027018128, 0.00129375),
+            (0.0023, -0.00421433121, 0.001093524752),
+            (0.0023, -0.004369570687, 0.0008849771209),
+            (0.0023, -0.004491555092, 0.0006696942792),
+            (0.0023, -0.004579356052, 0.0004493146597),
+            (0.0023, -0.004632305346, 0.0002255154844),
+            (0.0023, -0.00465, 0),
+            (0.0023, -0.004632305346, -0.0002255154844),
+            (0.0023, -0.004579356052, -0.0004493146597),
+            (0.0023, -0.004491555092, -0.0006696942792),
+            (0.0023, -0.004369570687, -0.0008849771209),
+            (0.0023, -0.00421433121, -0.001093524752),
+            (0.0023, -0.004027018128, -0.00129375),
+            (0.0023, -0.003809057006, -0.001484129029),
+            (0.0023, -0.003562106661, -0.00166321294),
+            (0.0023, -0.003288046533, -0.001829638796),
+            (0.0023, -0.002988962385, -0.001982139997),
+            (0.0023, -0.002667130429, -0.002119555915),
+            (0.0023, -0.002325, -0.002240840732),
+            (0.0023, -0.001965174917, -0.002345071399),
+            (0.0023, -0.001590393666, -0.002431454656),
+            (0.0023, -0.00120350856, -0.002499333076),
+            (0.0023, -0.0008074640262, -0.002548190061),
+            (0.0023, -0.0004052742038, -0.002577653781),
+            (0.0023, 0, -0.0025875),
+            (0.0023, 0.0004052742038, -0.002577653781),
+            (0.0023, 0.0008074640262, -0.002548190061),
+            (0.0023, 0.00120350856, -0.002499333076),
+            (0.0023, 0.001590393666, -0.002431454656),
+            (0.0023, 0.001965174917, -0.002345071399),
+            (0.0023, 0.002325, -0.002240840732),
+            (0.0023, 0.002667130429, -0.002119555915),
+            (0.0023, 0.002988962385, -0.001982139997),
+            (0.0023, 0.003288046533, -0.001829638796),
+            (0.0023, 0.003562106661, -0.00166321294),
+            (0.0023, 0.003809057006, -0.001484129029),
+            (0.0023, 0.004027018128, -0.00129375),
+            (0.0023, 0.00421433121, -0.001093524752),
+            (0.0023, 0.004369570687, -0.0008849771209),
+            (0.0023, 0.004491555092, -0.0006696942792),
+            (0.0023, 0.004579356052, -0.0004493146597),
+            (0.0023, 0.004632305346, -0.0002255154844)
+        ]
+        normal3f[] primvars:normals = [
+            (-0.6905096337, 0.7233231959, 3.399157683e-17),
+            (-0.6907506761, 0.7149793493, 0.1080186725),
+            (-0.6914272331, 0.6911087296, 0.2104687746),
+            (-0.692420048, 0.6547512029, 0.3030764581),
+            (-0.6935833835, 0.6097964862, 0.3835235789),
+            (-0.6947875866, 0.5599697298, 0.4513359184),
+            (-0.6959405139, 0.5082298802, 0.5073156709),
+            (-0.6969889796, 0.4566109137, 0.5529130454),
+            (-0.6979099094, 0.4063348467, 0.589757366),
+            (-0.6986995139, 0.358020349, 0.6193871318),
+            (-0.6993644881, 0.3118836414, 0.6431313295),
+            (-0.6999161156, 0.2678934964, 0.6620804375),
+            (-0.7003667917, 0.2258773975, 0.6771009957),
+            (-0.7007281873, 0.1855887579, 0.6888663299),
+            (-0.7010103968, 0.146746848, 0.6978895229),
+            (-0.7012216248, 0.1090589294, 0.7045526119),
+            (-0.7013681369, 0.07223131224, 0.7091300121),
+            (-0.7014543194, 0.03597375361, 0.7118059616),
+            (-0.7014827617, -6.590556253e-18, 0.7126864213),
+            (-0.7014543194, -0.03597375361, 0.7118059616),
+            (-0.7013681369, -0.07223131224, 0.7091300121),
+            (-0.7012216248, -0.1090589294, 0.7045526119),
+            (-0.7010103968, -0.146746848, 0.6978895229),
+            (-0.7007281873, -0.1855887579, 0.6888663299),
+            (-0.7003667917, -0.2258773975, 0.6771009957),
+            (-0.6999161156, -0.2678934964, 0.6620804375),
+            (-0.6993644881, -0.3118836414, 0.6431313295),
+            (-0.6986995139, -0.358020349, 0.6193871318),
+            (-0.6979099094, -0.4063348467, 0.589757366),
+            (-0.6969889796, -0.4566109137, 0.5529130454),
+            (-0.6959405139, -0.5082298802, 0.5073156709),
+            (-0.6947875866, -0.5599697298, 0.4513359184),
+            (-0.6935833835, -0.6097964862, 0.3835235789),
+            (-0.692420048, -0.6547512029, 0.3030764581),
+            (-0.6914272331, -0.6911087296, 0.2104687746),
+            (-0.6907506761, -0.7149793493, 0.1080186725),
+            (-0.6905096337, -0.7233231959, 3.325155173e-18),
+            (-0.6907506761, -0.7149793493, -0.1080186725),
+            (-0.6914272331, -0.6911087296, -0.2104687746),
+            (-0.692420048, -0.6547512029, -0.3030764581),
+            (-0.6935833835, -0.6097964862, -0.3835235789),
+            (-0.6947875866, -0.5599697298, -0.4513359184),
+            (-0.6959405139, -0.5082298802, -0.5073156709),
+            (-0.6969889796, -0.4566109137, -0.5529130454),
+            (-0.6979099094, -0.4063348467, -0.589757366),
+            (-0.6986995139, -0.358020349, -0.6193871318),
+            (-0.6993644881, -0.3118836414, -0.6431313295),
+            (-0.6999161156, -0.2678934964, -0.6620804375),
+            (-0.7003667917, -0.2258773975, -0.6771009957),
+            (-0.7007281873, -0.1855887579, -0.6888663299),
+            (-0.7010103968, -0.146746848, -0.6978895229),
+            (-0.7012216248, -0.1090589294, -0.7045526119),
+            (-0.7013681369, -0.07223131224, -0.7091300121),
+            (-0.7014543194, -0.03597375361, -0.7118059616),
+            (-0.7014827617, 5.015933248e-18, -0.7126864213),
+            (-0.7014543194, 0.03597375361, -0.7118059616),
+            (-0.7013681369, 0.07223131224, -0.7091300121),
+            (-0.7012216248, 0.1090589294, -0.7045526119),
+            (-0.7010103968, 0.146746848, -0.6978895229),
+            (-0.7007281873, 0.1855887579, -0.6888663299),
+            (-0.7003667917, 0.2258773975, -0.6771009957),
+            (-0.6999161156, 0.2678934964, -0.6620804375),
+            (-0.6993644881, 0.3118836414, -0.6431313295),
+            (-0.6986995139, 0.358020349, -0.6193871318),
+            (-0.6979099094, 0.4063348467, -0.589757366),
+            (-0.6969889796, 0.4566109137, -0.5529130454),
+            (-0.6959405139, 0.5082298802, -0.5073156709),
+            (-0.6947875866, 0.5599697298, -0.4513359184),
+            (-0.6935833835, 0.6097964862, -0.3835235789),
+            (-0.692420048, 0.6547512029, -0.3030764581),
+            (-0.6914272331, 0.6911087296, -0.2104687746),
+            (-0.6907506761, 0.7149793493, -0.1080186725),
+            (-0.725144517, -0.6885967103, -7.594879381e-17),
+            (-0.7248400069, -0.680624979, -0.1065673605),
+            (-0.7239929693, -0.6578198719, -0.2076227266),
+            (-0.7227700958, -0.6230906099, -0.2989339064),
+            (-0.7213668802, -0.5801636303, -0.3782062747),
+            (-0.7199471312, -0.5326091867, -0.4449759348),
+            (-0.7186181024, -0.4832609825, -0.5000468435),
+            (-0.7174344267, -0.4340625778, -0.5448646822),
+            (-0.7164137875, -0.3861770067, -0.5810495716),
+            (-0.7155525339, -0.3401887748, -0.6101279937),
+            (-0.7148369225, -0.2962978518, -0.6334159434),
+            (-0.7142499006, -0.2544688131, -0.6519913364),
+            (-0.713774691, -0.2145325843, -0.6667094275),
+            (-0.7133964354, -0.1762505875, -0.6782339245),
+            (-0.7131027841, -0.139352662, -0.687070051),
+            (-0.7128839738, -0.103557961, -0.6935936769),
+            (-0.7127326933, -0.06858529098, -0.6980746133),
+            (-0.7126438929, -0.03415713026, -0.700693922),
+            (-0.712614617, 8.618868381e-18, -0.7015557053),
+            (-0.7126438929, 0.03415713026, -0.700693922),
+            (-0.7127326933, 0.06858529098, -0.6980746133),
+            (-0.7128839738, 0.103557961, -0.6935936769),
+            (-0.7131027841, 0.139352662, -0.687070051),
+            (-0.7133964354, 0.1762505875, -0.6782339245),
+            (-0.713774691, 0.2145325843, -0.6667094275),
+            (-0.7142499006, 0.2544688131, -0.6519913364),
+            (-0.7148369225, 0.2962978518, -0.6334159434),
+            (-0.7155525339, 0.3401887748, -0.6101279937),
+            (-0.7164137875, 0.3861770067, -0.5810495716),
+            (-0.7174344267, 0.4340625778, -0.5448646822),
+            (-0.7186181024, 0.4832609825, -0.5000468435),
+            (-0.7199471312, 0.5326091867, -0.4449759348),
+            (-0.7213668802, 0.5801636303, -0.3782062747),
+            (-0.7227700958, 0.6230906099, -0.2989339064),
+            (-0.7239929693, 0.6578198719, -0.2076227266),
+            (-0.7248400069, 0.680624979, -0.1065673605),
+            (-0.725144517, 0.6885967103, 2.894695929e-17),
+            (-0.7248400069, 0.680624979, 0.1065673605),
+            (-0.7239929693, 0.6578198719, 0.2076227266),
+            (-0.7227700958, 0.6230906099, 0.2989339064),
+            (-0.7213668802, 0.5801636303, 0.3782062747),
+            (-0.7199471312, 0.5326091867, 0.4449759348),
+            (-0.7186181024, 0.4832609825, 0.5000468435),
+            (-0.7174344267, 0.4340625778, 0.5448646822),
+            (-0.7164137875, 0.3861770067, 0.5810495716),
+            (-0.7155525339, 0.3401887748, 0.6101279937),
+            (-0.7148369225, 0.2962978518, 0.6334159434),
+            (-0.7142499006, 0.2544688131, 0.6519913364),
+            (-0.713774691, 0.2145325843, 0.6667094275),
+            (-0.7133964354, 0.1762505875, 0.6782339245),
+            (-0.7131027841, 0.139352662, 0.687070051),
+            (-0.7128839738, 0.103557961, 0.6935936769),
+            (-0.7127326933, 0.06858529098, 0.6980746133),
+            (-0.7126438929, 0.03415713026, 0.700693922),
+            (-0.712614617, -8.618868381e-18, 0.7015557053),
+            (-0.7126438929, -0.03415713026, 0.700693922),
+            (-0.7127326933, -0.06858529098, 0.6980746133),
+            (-0.7128839738, -0.103557961, 0.6935936769),
+            (-0.7131027841, -0.139352662, 0.687070051),
+            (-0.7133964354, -0.1762505875, 0.6782339245),
+            (-0.713774691, -0.2145325843, 0.6667094275),
+            (-0.7142499006, -0.2544688131, 0.6519913364),
+            (-0.7148369225, -0.2962978518, 0.6334159434),
+            (-0.7155525339, -0.3401887748, 0.6101279937),
+            (-0.7164137875, -0.3861770067, 0.5810495716),
+            (-0.7174344267, -0.4340625778, 0.5448646822),
+            (-0.7186181024, -0.4832609825, 0.5000468435),
+            (-0.7199471312, -0.5326091867, 0.4449759348),
+            (-0.7213668802, -0.5801636303, 0.3782062747),
+            (-0.7227700958, -0.6230906099, 0.2989339064),
+            (-0.7239929693, -0.6578198719, 0.2076227266),
+            (-0.7248400069, -0.680624979, 0.1065673605),
+            (0.6905096337, 0.7233231959, 4.759040187e-17),
+            (0.6907506761, 0.7149793493, 0.1080186725),
+            (0.6914272331, 0.6911087296, 0.2104687746),
+            (0.692420048, 0.6547512029, 0.3030764581),
+            (0.6935833835, 0.6097964862, 0.3835235789),
+            (0.6947875866, 0.5599697298, 0.4513359184),
+            (0.6959405139, 0.5082298802, 0.5073156709),
+            (0.6969889796, 0.4566109137, 0.5529130454),
+            (0.6979099094, 0.4063348467, 0.589757366),
+            (0.6986995139, 0.358020349, 0.6193871318),
+            (0.6993644881, 0.3118836414, 0.6431313295),
+            (0.6999161156, 0.2678934964, 0.6620804375),
+            (0.7003667917, 0.2258773975, 0.6771009957),
+            (0.7007281873, 0.1855887579, 0.6888663299),
+            (0.7010103968, 0.146746848, 0.6978895229),
+            (0.7012216248, 0.1090589294, 0.7045526119),
+            (0.7013681369, 0.07223131224, 0.7091300121),
+            (0.7014543194, 0.03597375361, 0.7118059616),
+            (0.7014827617, 6.894258288e-18, 0.7126864213),
+            (0.7014543194, -0.03597375361, 0.7118059616),
+            (0.7013681369, -0.07223131224, 0.7091300121),
+            (0.7012216248, -0.1090589294, 0.7045526119),
+            (0.7010103968, -0.146746848, 0.6978895229),
+            (0.7007281873, -0.1855887579, 0.6888663299),
+            (0.7003667917, -0.2258773975, 0.6771009957),
+            (0.6999161156, -0.2678934964, 0.6620804375),
+            (0.6993644881, -0.3118836414, 0.6431313295),
+            (0.6986995139, -0.358020349, 0.6193871318),
+            (0.6979099094, -0.4063348467, 0.589757366),
+            (0.6969889796, -0.4566109137, 0.5529130454),
+            (0.6959405139, -0.5082298802, 0.5073156709),
+            (0.6947875866, -0.5599697298, 0.4513359184),
+            (0.6935833835, -0.6097964862, 0.3835235789),
+            (0.692420048, -0.6547512029, 0.3030764581),
+            (0.6914272331, -0.6911087296, 0.2104687746),
+            (0.6907506761, -0.7149793493, 0.1080186725),
+            (0.6905096337, -0.7233231959, -8.966134302e-18),
+            (0.6907506761, -0.7149793493, -0.1080186725),
+            (0.6914272331, -0.6911087296, -0.2104687746),
+            (0.692420048, -0.6547512029, -0.3030764581),
+            (0.6935833835, -0.6097964862, -0.3835235789),
+            (0.6947875866, -0.5599697298, -0.4513359184),
+            (0.6959405139, -0.5082298802, -0.5073156709),
+            (0.6969889796, -0.4566109137, -0.5529130454),
+            (0.6979099094, -0.4063348467, -0.589757366),
+            (0.6986995139, -0.358020349, -0.6193871318),
+            (0.6993644881, -0.3118836414, -0.6431313295),
+            (0.6999161156, -0.2678934964, -0.6620804375),
+            (0.7003667917, -0.2258773975, -0.6771009957),
+            (0.7007281873, -0.1855887579, -0.6888663299),
+            (0.7010103968, -0.146746848, -0.6978895229),
+            (0.7012216248, -0.1090589294, -0.7045526119),
+            (0.7013681369, -0.07223131224, -0.7091300121),
+            (0.7014543194, -0.03597375361, -0.7118059616),
+            (0.7014827617, -8.468881292e-18, -0.7126864213),
+            (0.7014543194, 0.03597375361, -0.7118059616),
+            (0.7013681369, 0.07223131224, -0.7091300121),
+            (0.7012216248, 0.1090589294, -0.7045526119),
+            (0.7010103968, 0.146746848, -0.6978895229),
+            (0.7007281873, 0.1855887579, -0.6888663299),
+            (0.7003667917, 0.2258773975, -0.6771009957),
+            (0.6999161156, 0.2678934964, -0.6620804375),
+            (0.6993644881, 0.3118836414, -0.6431313295),
+            (0.6986995139, 0.358020349, -0.6193871318),
+            (0.6979099094, 0.4063348467, -0.589757366),
+            (0.6969889796, 0.4566109137, -0.5529130454),
+            (0.6959405139, 0.5082298802, -0.5073156709),
+            (0.6947875866, 0.5599697298, -0.4513359184),
+            (0.6935833835, 0.6097964862, -0.3835235789),
+            (0.692420048, 0.6547512029, -0.3030764581),
+            (0.6914272331, 0.6911087296, -0.2104687746),
+            (0.6907506761, 0.7149793493, -0.1080186725),
+            (0.725144517, -0.6885967103, -4.895746945e-17),
+            (0.7248400069, -0.680624979, -0.1065673605),
+            (0.7239929693, -0.6578198719, -0.2076227266),
+            (0.7227700958, -0.6230906099, -0.2989339064),
+            (0.7213668802, -0.5801636303, -0.3782062747),
+            (0.7199471312, -0.5326091867, -0.4449759348),
+            (0.7186181024, -0.4832609825, -0.5000468435),
+            (0.7174344267, -0.4340625778, -0.5448646822),
+            (0.7164137875, -0.3861770067, -0.5810495716),
+            (0.7155525339, -0.3401887748, -0.6101279937),
+            (0.7148369225, -0.2962978518, -0.6334159434),
+            (0.7142499006, -0.2544688131, -0.6519913364),
+            (0.713774691, -0.2145325843, -0.6667094275),
+            (0.7133964354, -0.1762505875, -0.6782339245),
+            (0.7131027841, -0.139352662, -0.687070051),
+            (0.7128839738, -0.103557961, -0.6935936769),
+            (0.7127326933, -0.06858529098, -0.6980746133),
+            (0.7126438929, -0.03415713026, -0.700693922),
+            (0.712614617, 1.028948876e-18, -0.7015557053),
+            (0.7126438929, 0.03415713026, -0.700693922),
+            (0.7127326933, 0.06858529098, -0.6980746133),
+            (0.7128839738, 0.103557961, -0.6935936769),
+            (0.7131027841, 0.139352662, -0.687070051),
+            (0.7133964354, 0.1762505875, -0.6782339245),
+            (0.713774691, 0.2145325843, -0.6667094275),
+            (0.7142499006, 0.2544688131, -0.6519913364),
+            (0.7148369225, 0.2962978518, -0.6334159434),
+            (0.7155525339, 0.3401887748, -0.6101279937),
+            (0.7164137875, 0.3861770067, -0.5810495716),
+            (0.7174344267, 0.4340625778, -0.5448646822),
+            (0.7186181024, 0.4832609825, -0.5000468435),
+            (0.7199471312, 0.5326091867, -0.4449759348),
+            (0.7213668802, 0.5801636303, -0.3782062747),
+            (0.7227700958, 0.6230906099, -0.2989339064),
+            (0.7239929693, 0.6578198719, -0.2076227266),
+            (0.7248400069, 0.680624979, -0.1065673605),
+            (0.725144517, 0.6885967103, 2.496453697e-18),
+            (0.7248400069, 0.680624979, 0.1065673605),
+            (0.7239929693, 0.6578198719, 0.2076227266),
+            (0.7227700958, 0.6230906099, 0.2989339064),
+            (0.7213668802, 0.5801636303, 0.3782062747),
+            (0.7199471312, 0.5326091867, 0.4449759348),
+            (0.7186181024, 0.4832609825, 0.5000468435),
+            (0.7174344267, 0.4340625778, 0.5448646822),
+            (0.7164137875, 0.3861770067, 0.5810495716),
+            (0.7155525339, 0.3401887748, 0.6101279937),
+            (0.7148369225, 0.2962978518, 0.6334159434),
+            (0.7142499006, 0.2544688131, 0.6519913364),
+            (0.713774691, 0.2145325843, 0.6667094275),
+            (0.7133964354, 0.1762505875, 0.6782339245),
+            (0.7131027841, 0.139352662, 0.687070051),
+            (0.7128839738, 0.103557961, 0.6935936769),
+            (0.7127326933, 0.06858529098, 0.6980746133),
+            (0.7126438929, 0.03415713026, 0.700693922),
+            (0.712614617, 0, 0.7015557053),
+            (0.7126438929, -0.03415713026, 0.700693922),
+            (0.7127326933, -0.06858529098, 0.6980746133),
+            (0.7128839738, -0.103557961, 0.6935936769),
+            (0.7131027841, -0.139352662, 0.687070051),
+            (0.7133964354, -0.1762505875, 0.6782339245),
+            (0.713774691, -0.2145325843, 0.6667094275),
+            (0.7142499006, -0.2544688131, 0.6519913364),
+            (0.7148369225, -0.2962978518, 0.6334159434),
+            (0.7155525339, -0.3401887748, 0.6101279937),
+            (0.7164137875, -0.3861770067, 0.5810495716),
+            (0.7174344267, -0.4340625778, 0.5448646822),
+            (0.7186181024, -0.4832609825, 0.5000468435),
+            (0.7199471312, -0.5326091867, 0.4449759348),
+            (0.7213668802, -0.5801636303, 0.3782062747),
+            (0.7227700958, -0.6230906099, 0.2989339064),
+            (0.7239929693, -0.6578198719, 0.2076227266),
+            (0.7248400069, -0.680624979, 0.1065673605)
+        ] (
+            interpolation = "vertex"
+        )
+        uniform token subdivisionScheme = "none"
+    }
+    def Mesh "FreshStatus" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </DrAnmarTissueSealBand/Looks/IndicatorAmber>
+        float3[] extent = [(-0.0005, 0.0045, 0.0027), (0.0005, 0.0065, 0.0037)]
+        int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+        int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+        point3f[] points = [
+            (-0.0005, 0.0045, 0.0027),
+            (-0.0005, 0.0045, 0.0037),
+            (-0.0005, 0.0065, 0.0027),
+            (-0.0005, 0.0065, 0.0037),
+            (0.0005, 0.0045, 0.0027),
+            (0.0005, 0.0045, 0.0037),
+            (0.0005, 0.0065, 0.0027),
+            (0.0005, 0.0065, 0.0037)
+        ]
+        normal3f[] primvars:normals = [
+            (-0.5773502692, -0.5773502692, -0.5773502692),
+            (-0.5773502692, -0.5773502692, 0.5773502692),
+            (-0.5773502692, 0.5773502692, -0.5773502692),
+            (-0.5773502692, 0.5773502692, 0.5773502692),
+            (0.5773502692, -0.5773502692, -0.5773502692),
+            (0.5773502692, -0.5773502692, 0.5773502692),
+            (0.5773502692, 0.5773502692, -0.5773502692),
+            (0.5773502692, 0.5773502692, 0.5773502692)
+        ] (
+            interpolation = "vertex"
+        )
+        uniform token subdivisionScheme = "none"
+    }
+    def Mesh "MatureStatus" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </DrAnmarTissueSealBand/Looks/IndicatorGreen>
+        float3[] extent = [(-0.0005, 0.0045, 0.0027), (0.0005, 0.0065, 0.0037)]
+        int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+        int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+        point3f[] points = [
+            (-0.0005, 0.0045, 0.0027),
+            (-0.0005, 0.0045, 0.0037),
+            (-0.0005, 0.0065, 0.0027),
+            (-0.0005, 0.0065, 0.0037),
+            (0.0005, 0.0045, 0.0027),
+            (0.0005, 0.0045, 0.0037),
+            (0.0005, 0.0065, 0.0027),
+            (0.0005, 0.0065, 0.0037)
+        ]
+        normal3f[] primvars:normals = [
+            (-0.5773502692, -0.5773502692, -0.5773502692),
+            (-0.5773502692, -0.5773502692, 0.5773502692),
+            (-0.5773502692, 0.5773502692, -0.5773502692),
+            (-0.5773502692, 0.5773502692, 0.5773502692),
+            (0.5773502692, -0.5773502692, -0.5773502692),
+            (0.5773502692, -0.5773502692, 0.5773502692),
+            (0.5773502692, 0.5773502692, -0.5773502692),
+            (0.5773502692, 0.5773502692, 0.5773502692)
+        ] (
+            interpolation = "vertex"
+        )
+        uniform token subdivisionScheme = "none"
+    }
+    def Mesh "FailedStatus" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </DrAnmarTissueSealBand/Looks/IndicatorRed>
+        float3[] extent = [(-0.0005, 0.0045, 0.0027), (0.0005, 0.0065, 0.0037)]
+        int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+        int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+        point3f[] points = [
+            (-0.0005, 0.0045, 0.0027),
+            (-0.0005, 0.0045, 0.0037),
+            (-0.0005, 0.0065, 0.0027),
+            (-0.0005, 0.0065, 0.0037),
+            (0.0005, 0.0045, 0.0027),
+            (0.0005, 0.0045, 0.0037),
+            (0.0005, 0.0065, 0.0027),
+            (0.0005, 0.0065, 0.0037)
+        ]
+        normal3f[] primvars:normals = [
+            (-0.5773502692, -0.5773502692, -0.5773502692),
+            (-0.5773502692, -0.5773502692, 0.5773502692),
+            (-0.5773502692, 0.5773502692, -0.5773502692),
+            (-0.5773502692, 0.5773502692, 0.5773502692),
+            (0.5773502692, -0.5773502692, -0.5773502692),
+            (0.5773502692, -0.5773502692, 0.5773502692),
+            (0.5773502692, 0.5773502692, -0.5773502692),
+            (0.5773502692, 0.5773502692, 0.5773502692)
+        ] (
+            interpolation = "vertex"
+        )
+        uniform token subdivisionScheme = "none"
+    }
+    def Scope "Collisions"
+    {
+        def Cube "TopBandCollider" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            rel material:binding:physics = </DrAnmarTissueSealBand/PhysicsMaterials/SealBandPhysics>
+            double size = 1
+            double3 xformOp:translate = (0, 0, 0.0027)
+            double3 xformOp:scale = (0.0048, 0.0102, 0.0007)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            token visibility = "invisible"
+            uniform token purpose = "guide"
+        }
+        def Cube "BottomBandCollider" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            rel material:binding:physics = </DrAnmarTissueSealBand/PhysicsMaterials/SealBandPhysics>
+            double size = 1
+            double3 xformOp:translate = (0, 0, -0.0027)
+            double3 xformOp:scale = (0.0048, 0.0102, 0.0007)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            token visibility = "invisible"
+            uniform token purpose = "guide"
+        }
+        def Cube "UpperBondVolume" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            rel material:binding:physics = </DrAnmarTissueSealBand/PhysicsMaterials/SealBandPhysics>
+            custom string drAnmar:role = "upper_tissue_bond_volume"
+            double size = 1
+            double3 xformOp:translate = (0, 0, 0.0015)
+            double3 xformOp:scale = (0.0052, 0.0090, 0.0022)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            token visibility = "invisible"
+            uniform token purpose = "guide"
+        }
+        def Cube "LowerBondVolume" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
+        )
+        {
+            rel material:binding:physics = </DrAnmarTissueSealBand/PhysicsMaterials/SealBandPhysics>
+            custom string drAnmar:role = "lower_tissue_bond_volume"
+            double size = 1
+            double3 xformOp:translate = (0, 0, -0.0015)
+            double3 xformOp:scale = (0.0052, 0.0090, 0.0022)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            token visibility = "invisible"
+            uniform token purpose = "guide"
+        }
+    }
+    def Scope "Frames"
+    {
+        def Xform "seal_center"
+        {
+            custom string drAnmar:role = "seal_center"
+        }
+        def Xform "upper_bond"
+        {
+            custom string drAnmar:role = "upper_bond_reference"
+            double3 xformOp:translate = (0, 0, 0.0015)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "lower_bond"
+        {
+            custom string drAnmar:role = "lower_bond_reference"
+            double3 xformOp:translate = (0, 0, -0.0015)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+    variantSet "state" = {
+        "fresh"
+        {
+            over "BandVisual"
+            {
+                rel material:binding = </DrAnmarTissueSealBand/Looks/SealBandFresh>
+            }
+            over "FreshStatus"
+            {
+                token visibility = "inherited"
+            }
+            over "MatureStatus"
+            {
+                token visibility = "invisible"
+            }
+            over "FailedStatus"
+            {
+                token visibility = "invisible"
+            }
+        }
+        "mature"
+        {
+            over "BandVisual"
+            {
+                rel material:binding = </DrAnmarTissueSealBand/Looks/SealBandMature>
+            }
+            over "FreshStatus"
+            {
+                token visibility = "invisible"
+            }
+            over "MatureStatus"
+            {
+                token visibility = "inherited"
+            }
+            over "FailedStatus"
+            {
+                token visibility = "invisible"
+            }
+        }
+        "failed"
+        {
+            over "BandVisual"
+            {
+                rel material:binding = </DrAnmarTissueSealBand/Looks/SealBandFailed>
+            }
+            over "FreshStatus"
+            {
+                token visibility = "invisible"
+            }
+            over "MatureStatus"
+            {
+                token visibility = "invisible"
+            }
+            over "FailedStatus"
+            {
+                token visibility = "inherited"
+            }
+        }
+    }
+}

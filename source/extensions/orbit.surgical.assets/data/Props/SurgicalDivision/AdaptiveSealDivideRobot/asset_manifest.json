@@ -1,0 +1,309 @@
+{
+  "asset": "dranmar-adaptive-seal-divide-robot-v1",
+  "catalog_subpath": "Props/SurgicalDivision/AdaptiveSealDivideRobot",
+  "file_count": 60,
+  "files": [
+    {
+      "bytes": 37,
+      "path": ".pytest_cache/.gitignore",
+      "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd"
+    },
+    {
+      "bytes": 191,
+      "path": ".pytest_cache/CACHEDIR.TAG",
+      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4"
+    },
+    {
+      "bytes": 302,
+      "path": ".pytest_cache/README.md",
+      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad"
+    },
+    {
+      "bytes": 740,
+      "path": ".pytest_cache/v/cache/nodeids",
+      "sha256": "a04de3a93655a0c8a290a54f5f64d0e6290b75f9413c8f8f3a34ad5404d6de13"
+    },
+    {
+      "bytes": 61,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/LICENSE.txt",
+      "sha256": "b1dfa2dfca252aa086c890c14107e1377fb5c6958f30251ccc0a7718725f5f37"
+    },
+    {
+      "bytes": 1080,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/README.md",
+      "sha256": "8f2f999cb012e7cf32adee6ec73e987df7e8e770fc891f4f970094acecb37518"
+    },
+    {
+      "bytes": 1114,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/adaptive_seal_divide_task_contract.json",
+      "sha256": "63341cbec3c4b9d1ca25830e83d8ac946fb2a522e069654ed7feec649e599dd8"
+    },
+    {
+      "bytes": 5034,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/collider_coverage.json",
+      "sha256": "48f80b75fa505016c622a49c5faefa0dfbeb48d463f940bc79b9e2244f48cf17"
+    },
+    {
+      "bytes": 1218397,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_payload.usda",
+      "sha256": "3826025b3dbb16f62cab6c6febc846432041a968647036be4a60428101256b0b"
+    },
+    {
+      "bytes": 1105636,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_rigid_proxy.usda",
+      "sha256": "ff8c529d7d53f0425de8f8a4c3900e95fd5911538108b36c6096e285e9e3f871"
+    },
+    {
+      "bytes": 1219942,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_standalone.usda",
+      "sha256": "1c5e5a9fe06e7fc03c55af5ca5a10db18645d959d620fcbf4506b1e2c740a136"
+    },
+    {
+      "bytes": 25349,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_division_blade_cartridge.usda",
+      "sha256": "1c78f59a7e93265f4dab00e586356c89636075f6fe211515e038196083cc12e9"
+    },
+    {
+      "bytes": 462898,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_seal_divide_vessel_demo.usda",
+      "sha256": "cce9dbd92bf39d500af4ab7eb6a9e39354bdb74a42d71addfac27379733bd841"
+    },
+    {
+      "bytes": 40551,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_seal_vapor_particle.usda",
+      "sha256": "f3a9a87cc24f693d258558f4b384c6b499e0d1689a26a4590bf1e3737f479368"
+    },
+    {
+      "bytes": 67495,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_tissue_seal_band.usda",
+      "sha256": "311a289a44e3ef184634f394c2de50b295a94c500a146a3715e16ce11a852c56"
+    },
+    {
+      "bytes": 489,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/franka_mount_contract.json",
+      "sha256": "60f3eaf990d3043c62d8916c3b8a12659fcd19e9bf7e0052ea9c72c45333ed74"
+    },
+    {
+      "bytes": 1636,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_division_blade_cartridge.glb",
+      "sha256": "9007291c510ae55d16d83c77dfdc45ad0479e0fcd175e9d418f2bdd9e28ab3d6"
+    },
+    {
+      "bytes": 301500,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_franka_seal_divide_assembly.glb",
+      "sha256": "b534c3405e1f957a3a80b78f396a6e571fd0374b7e1cf3f3f65be7e10f8cdf1e"
+    },
+    {
+      "bytes": 299328,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_center.glb",
+      "sha256": "c9289e8e1951923a28a36d38599a9d2f44d63df14a82fb8245e84331f146e416"
+    },
+    {
+      "bytes": 244080,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_collision_debug.glb",
+      "sha256": "24b8d61eeb4f32f5448ec92cef365973a59a6817b37d25227a53523685f9a582"
+    },
+    {
+      "bytes": 289532,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_complete.glb",
+      "sha256": "9eae7f98f1d3b76be5346ca6c8871cf784a8046e7ee8dce0583c86e4797bd4d2"
+    },
+    {
+      "bytes": 299336,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_compress.glb",
+      "sha256": "10ecca03a2252a43e7db4242bd4b9a30979e0193258da6876c3ef54bc0ce66d8"
+    },
+    {
+      "bytes": 316060,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_divide.glb",
+      "sha256": "aba524fb1bb9374013ea6327f7ef1e214dfa762917febc6a549859ca6cd605b5"
+    },
+    {
+      "bytes": 214752,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_exploded.glb",
+      "sha256": "befa59d5da82d6a7c52b74f215693ded29d02c74654484c432cd6b6cfc7fa00d"
+    },
+    {
+      "bytes": 268880,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_frame_debug.glb",
+      "sha256": "d9602bb9f37b31505136cdeb0f1cbb7ec09f68e7e19ff4fc62e257ef5e12e760"
+    },
+    {
+      "bytes": 299732,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_inspect.glb",
+      "sha256": "ed001be8fe793ebdc1573f5727e311ad883ea7540d71e100a70040f8fc7bb17e"
+    },
+    {
+      "bytes": 289532,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_release.glb",
+      "sha256": "b681f24021f9dcdaeaa3524919bd93744976bb5d251ead92d1638c5b2531c22e"
+    },
+    {
+      "bytes": 315508,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_seal.glb",
+      "sha256": "339674a9e661ee69e4b0d748ef42087f2e7aab2bc0b90f8d66e4afdd09a0021a"
+    },
+    {
+      "bytes": 315508,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_tool_verify.glb",
+      "sha256": "fb2227c0bc6d09316d662a91033f558a06e4918384d0955ecbbc18b89463c8b5"
+    },
+    {
+      "bytes": 85408,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_vessel_compressed.glb",
+      "sha256": "6e63dd5b9d0fc2690e6f678568e6c9fcb380a19091bd1691fa226ed00a2c5cd9"
+    },
+    {
+      "bytes": 75200,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_vessel_divided.glb",
+      "sha256": "d2d8c58862f88ab5dc51ab8e46a809037b5b81a3d1679bc03f4c434c3c0e4e28"
+    },
+    {
+      "bytes": 85404,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_vessel_intact.glb",
+      "sha256": "9dc3f4bcc52c7abf73c48a1429483202d3a4fe3291555d1fcffc53f9d9949737"
+    },
+    {
+      "bytes": 101572,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_seal_divide_vessel_sealed.glb",
+      "sha256": "49fbe8df5a2fce4e2d48f064b0fd2805cea427e460c954615c68bef279504339"
+    },
+    {
+      "bytes": 12516,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/glb/dranmar_tissue_seal_band.glb",
+      "sha256": "7f0d35bf856bc4799992900df8ef40cf68d1aef77dc7b6b6925561ca2ec97367"
+    },
+    {
+      "bytes": 4913,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/interaction_frames.json",
+      "sha256": "327b9b69d36c2f67fa6a05e7216f273484fc8418740dde38c4398fa93119d48f"
+    },
+    {
+      "bytes": 2054,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/physics_profile.json",
+      "sha256": "4a480b1de323a33be96510a4e3797cc47a503ab480099d5129616b118bd8296a"
+    },
+    {
+      "bytes": 2910,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/qualification_report.json",
+      "sha256": "66c3f34b2d7b152abfd3f9f3fb9b53ca2372b0d9925357453d338e555b88dd08"
+    },
+    {
+      "bytes": 219937,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/textures/ceramic_microtexture.png",
+      "sha256": "0fa6d55ec184eb35434b762573176f8ff806e8e0f19b0ee596e84ea466cf55f7"
+    },
+    {
+      "bytes": 263043,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/textures/electrode_microtexture.png",
+      "sha256": "4354b8c1b76a6919e82e47c73a9af61ac8951124cbbb142686c78c8fe4b45aa6"
+    },
+    {
+      "bytes": 3975,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/textures/label_dranmar.png",
+      "sha256": "48f0e9e5bb818bdd03804b0f0d6bd5d98f35f604d0000a42f1ec2ba27a315684"
+    },
+    {
+      "bytes": 248884,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/textures/metal_microtexture.png",
+      "sha256": "a7dfdf2a89cbe452de2c20933b2e20e519c596d8db4ba0d6506874473d8fd4ad"
+    },
+    {
+      "bytes": 273763,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/textures/polymer_microtexture.png",
+      "sha256": "6dcdd360aa547a5d48b79e94f8fe007cd0433837db35aceed33d7c6117848798"
+    },
+    {
+      "bytes": 384155,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/textures/seal_band_basecolor.png",
+      "sha256": "ab96f1feaa97c278724641a29cfd2eedef756b818cd408e8b74927d5a130d2cb"
+    },
+    {
+      "bytes": 369401,
+      "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/textures/vessel_basecolor.png",
+      "sha256": "ee88e78fca7378bd710cd2f0b5f66813940a172b528b2fa3752e851628115a1a"
+    },
+    {
+      "bytes": 986,
+      "path": "docs/adaptive_seal_divide_robot/ENERGY_AND_LEAK_MODEL.md",
+      "sha256": "1e111f3c2c57e13316c3b1f1d8257cb8089bb8794c7741235a715dae4c0911a0"
+    },
+    {
+      "bytes": 793,
+      "path": "docs/adaptive_seal_divide_robot/FRANKA_INTEGRATION.md",
+      "sha256": "807e50bfff6975c12c6437ca53cd761adbc52f51a0134857ae172b86232b4986"
+    },
+    {
+      "bytes": 733,
+      "path": "docs/adaptive_seal_divide_robot/MECHANISM.md",
+      "sha256": "92bcfa245c73d426189e7cf8bd92f887a5632bb973cdcba6e73b5492124c41b7"
+    },
+    {
+      "bytes": 1661,
+      "path": "docs/adaptive_seal_divide_robot/PHYSICAL_SEAL_AND_DIVIDE.md",
+      "sha256": "1d185f486424a8b96dce4812f25110bc4d7c6ee3433523f6c6f1746165caefbb"
+    },
+    {
+      "bytes": 1038,
+      "path": "docs/adaptive_seal_divide_robot/VALIDATION.md",
+      "sha256": "4e3984a742f2d76e80925050df1b62a587836d1e8e00b58f3d8701f3650c8aa8"
+    },
+    {
+      "bytes": 1342,
+      "path": "examples/franka_adaptive_seal_divide_scene.py",
+      "sha256": "6c0b1b82c077a7a513aa74cc91de3b0100e8bf05a07766bee69bf6aa36ebc7b7"
+    },
+    {
+      "bytes": 12589,
+      "path": "examples/validate_adaptive_seal_divide_runtime.py",
+      "sha256": "59921e3c119124272b2adb457d1675256069eef96870c80f42df3ff8bcaef9f7"
+    },
+    {
+      "bytes": 2054,
+      "path": "physics_next/surgical-division/dranmar-adaptive-seal-divide-v1.json",
+      "sha256": "4a480b1de323a33be96510a4e3797cc47a503ab480099d5129616b118bd8296a"
+    },
+    {
+      "bytes": 91920,
+      "path": "previews/dranmar_adaptive_seal_divide_robot_full_arm_preview.png",
+      "sha256": "0a9f5e554460acf45f40ade783f6793f0acef1be9bccd6c871874f6acaa228a3"
+    },
+    {
+      "bytes": 159334,
+      "path": "previews/dranmar_adaptive_seal_divide_robot_preview.png",
+      "sha256": "ddef0ade0bd6646140d98a75bc053e6b778915aa4d83272e16f341582999ec67"
+    },
+    {
+      "bytes": 131966,
+      "path": "scripts/generate_dranmar_adaptive_seal_divide_robot.py",
+      "sha256": "273fdc074c0a703772ad35286fe4fd5ceffd19bce14afd44d2b2311a1944ad47"
+    },
+    {
+      "bytes": 5719,
+      "path": "scripts/install_into_dranmar.py",
+      "sha256": "4e03e3e8e1db3aedaae9c229efba89ed609053b0d99602eb9c926db773c88560"
+    },
+    {
+      "bytes": 95,
+      "path": "scripts/requirements_adaptive_seal_divide_generation.txt",
+      "sha256": "db70e38e4b0bfe5aa07fa3b64fc1a317c450e6832a6194b7868a665a7c04cf86"
+    },
+    {
+      "bytes": 8608,
+      "path": "scripts/validate_dranmar_adaptive_seal_divide_robot.py",
+      "sha256": "5b817d10222f03627d42e71de647cb056f3a3ecaceae2d77cdb41d7ffb762dea"
+    },
+    {
+      "bytes": 36986,
+      "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/adaptive_seal_divide_robot.py",
+      "sha256": "846f35a1b66cbfd565ab4d0bc0856eac4b587b816829ea21c4770e814b2f9b99"
+    },
+    {
+      "bytes": 5553,
+      "path": "tests/test_adaptive_seal_divide_robot.py",
+      "sha256": "f1d18f2ea5831e988450021d40f5fbd9c2bce086bf76fb5cd2ecccb0095d1fbf"
+    }
+  ],
+  "schema": "dranmar.asset-manifest.v1",
+  "version": "0.1.0"
+}

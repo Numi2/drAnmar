@@ -1,0 +1,27 @@
+{
+  "deactivate": [
+    "panda_hand_joint",
+    "panda_hand",
+    "panda_finger_joint1",
+    "panda_finger_joint2",
+    "panda_leftfinger",
+    "panda_rightfinger"
+  ],
+  "local_rotation_axis_angle_deg": {
+    "angle": -45.0,
+    "axis": [
+      0,
+      0,
+      1
+    ]
+  },
+  "local_translation_m": [
+    0,
+    0,
+    0
+  ],
+  "parent_link": "panda_link8",
+  "payload_link": "DrAnmarAdaptiveSealDivideTool/Links/Mount",
+  "research_only": true,
+  "schema": "dranmar.franka-mount.v1"
+}

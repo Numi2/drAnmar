@@ -1,0 +1,262 @@
+{
+  "asset": "dranmar-adaptive-seal-divide-robot-v1",
+  "links": {
+    "BladeCarriage": {
+      "axis_coverage_ratio": [
+        1.125,
+        1.0289389067524117,
+        0.9916666666666667
+      ],
+      "collider_bounds_max_m": [
+        0.009,
+        0.016,
+        0.0325
+      ],
+      "collider_bounds_min_m": [
+        -0.009,
+        -0.016,
+        -0.027000000000000003
+      ],
+      "deliberate_gaps": [],
+      "visual_bounds_max_m": [
+        0.008,
+        0.015,
+        0.034
+      ],
+      "visual_bounds_min_m": [
+        -0.008,
+        -0.0161,
+        -0.026000000000000002
+      ]
+    },
+    "BladeGuard": {
+      "axis_coverage_ratio": [
+        1.05,
+        1.0309278350515463,
+        1.0285714285714285
+      ],
+      "collider_bounds_max_m": [
+        0.00525,
+        0.015,
+        0.018
+      ],
+      "collider_bounds_min_m": [
+        -0.00525,
+        -0.015,
+        -0.018
+      ],
+      "deliberate_gaps": [],
+      "visual_bounds_max_m": [
+        0.005,
+        0.014,
+        0.018000000000000002
+      ],
+      "visual_bounds_min_m": [
+        -0.005,
+        -0.0151,
+        -0.017
+      ]
+    },
+    "IrrigationValve": {
+      "axis_coverage_ratio": [
+        0.7142857142857143,
+        0.9629629629629629,
+        1.0000000000000002
+      ],
+      "collider_bounds_max_m": [
+        0.005,
+        0.013,
+        0.005000000000000001
+      ],
+      "collider_bounds_min_m": [
+        -0.005,
+        -0.013,
+        -0.005000000000000001
+      ],
+      "deliberate_gaps": [],
+      "visual_bounds_max_m": [
+        0.007,
+        0.012,
+        0.005
+      ],
+      "visual_bounds_min_m": [
+        -0.007,
+        -0.015,
+        -0.005
+      ]
+    },
+    "LeftCentering": {
+      "axis_coverage_ratio": [
+        1.0666666666666667,
+        1.0434782608695652,
+        1.063157894736842
+      ],
+      "collider_bounds_max_m": [
+        0.016,
+        0.032,
+        0.038
+      ],
+      "collider_bounds_min_m": [
+        -0.016,
+        -0.016,
+        -0.0125
+      ],
+      "deliberate_gaps": [],
+      "visual_bounds_max_m": [
+        0.015,
+        0.031,
+        0.036
+      ],
+      "visual_bounds_min_m": [
+        -0.015,
+        -0.015,
+        -0.0115
+      ]
+    },
+    "LowerJaw": {
+      "axis_coverage_ratio": [
+        1.0357142857142858,
+        1.0289389067524117,
+        1.0110294117647056
+      ],
+      "collider_bounds_max_m": [
+        0.029,
+        0.016,
+        0.008749999999999999
+      ],
+      "collider_bounds_min_m": [
+        -0.029,
+        -0.016,
+        -0.005
+      ],
+      "deliberate_gaps": [
+        "central blade channel"
+      ],
+      "visual_bounds_max_m": [
+        0.028,
+        0.015,
+        0.0086
+      ],
+      "visual_bounds_min_m": [
+        -0.028,
+        -0.0161,
+        -0.005
+      ]
+    },
+    "Mount": {
+      "axis_coverage_ratio": [
+        0.9914529914529916,
+        1.025974025974026,
+        0.9603399433427763
+      ],
+      "collider_bounds_max_m": [
+        0.058,
+        0.079,
+        0.1695
+      ],
+      "collider_bounds_min_m": [
+        -0.058,
+        -0.079,
+        0.0
+      ],
+      "deliberate_gaps": [],
+      "visual_bounds_max_m": [
+        0.055,
+        0.077,
+        0.1765
+      ],
+      "visual_bounds_min_m": [
+        -0.062,
+        -0.077,
+        0.0
+      ]
+    },
+    "RightCentering": {
+      "axis_coverage_ratio": [
+        1.0666666666666667,
+        1.0434782608695652,
+        1.063157894736842
+      ],
+      "collider_bounds_max_m": [
+        0.016,
+        0.016,
+        0.038
+      ],
+      "collider_bounds_min_m": [
+        -0.016,
+        -0.032,
+        -0.0125
+      ],
+      "deliberate_gaps": [],
+      "visual_bounds_max_m": [
+        0.015,
+        0.015,
+        0.036
+      ],
+      "visual_bounds_min_m": [
+        -0.015,
+        -0.031,
+        -0.0115
+      ]
+    },
+    "SuctionValve": {
+      "axis_coverage_ratio": [
+        0.7142857142857143,
+        0.9629629629629629,
+        1.0000000000000002
+      ],
+      "collider_bounds_max_m": [
+        0.005,
+        0.013,
+        0.005000000000000001
+      ],
+      "collider_bounds_min_m": [
+        -0.005,
+        -0.013,
+        -0.005000000000000001
+      ],
+      "deliberate_gaps": [],
+      "visual_bounds_max_m": [
+        0.007,
+        0.015,
+        0.005
+      ],
+      "visual_bounds_min_m": [
+        -0.007,
+        -0.012,
+        -0.005
+      ]
+    },
+    "UpperJaw": {
+      "axis_coverage_ratio": [
+        1.0357142857142858,
+        1.0289389067524117,
+        1.0110294117647056
+      ],
+      "collider_bounds_max_m": [
+        0.029,
+        0.016,
+        0.005
+      ],
+      "collider_bounds_min_m": [
+        -0.029,
+        -0.016,
+        -0.008749999999999999
+      ],
+      "deliberate_gaps": [
+        "central blade channel"
+      ],
+      "visual_bounds_max_m": [
+        0.028,
+        0.015,
+        0.005
+      ],
+      "visual_bounds_min_m": [
+        -0.028,
+        -0.0161,
+        -0.0086
+      ]
+    }
+  },
+  "schema": "dranmar.collider-coverage.v1"
+}
