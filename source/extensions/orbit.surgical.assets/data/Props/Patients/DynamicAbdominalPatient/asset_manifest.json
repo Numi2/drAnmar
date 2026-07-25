@@ -132,9 +132,9 @@
       "sha256": "11e48cd7b2a32f5754c3685617acfe03e52d76cc7db30d1617deaf9dcc8a691c"
     },
     {
-      "bytes": 14794,
+      "bytes": 15610,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda",
-      "sha256": "7dc1081cda8657a1426406bbb45162b606ecebe9012ec30ccf5276ef60709d65"
+      "sha256": "32a844c2a4bde36f1876b5835b6340a6daa27d05d7bbd24f56d4a46d439f30d1"
     },
     {
       "bytes": 2628,
@@ -352,9 +352,9 @@
       "sha256": "5613f2e746feedfabef3d2a9c7411fbc5dc69105377442277ae9bcb545a0eaf6"
     },
     {
-      "bytes": 2226,
+      "bytes": 2450,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/patient_runtime_contract.json",
-      "sha256": "8de5c632b4cda85a3cf8b08528295b88c1821d63afa1c0e1022fdbbcbce7dc37"
+      "sha256": "671a9b7d9b29f2813f2edc16ad7f74d57c1fc1c22a34580014fb5153cbf136d0"
     },
     {
       "bytes": 3786,
@@ -362,14 +362,14 @@
       "sha256": "d655370b94726d642f93680ebc4ae71c3df061e895892c7e6c9f37f6d7b2eada"
     },
     {
-      "bytes": 2260,
+      "bytes": 2299,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/procedure_scenarios.json",
-      "sha256": "b8b1602a6f7c9cdb06591f835d8541d96291488858a0efa18af9390dba9d5108"
+      "sha256": "bdd46e140b0e93d2a2adda369c4799b5cc9a2ba365e55f44f18fc054a18a83a1"
     },
     {
-      "bytes": 2596,
+      "bytes": 2378,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/robot_compatibility.json",
-      "sha256": "dc07a73dcb2a6c26d20d47e068c02f8ebacb36280c45ddd68f664f22e8453f12"
+      "sha256": "05341813659695fea15329655547bd1fa779337c33eb70b42e20dab37a611ba9"
     },
     {
       "bytes": 433227,
@@ -457,9 +457,9 @@
       "sha256": "0767c43fcfacd0d38df71c791045176e7159cf755c39d3041ce59cb09fae5e7d"
     },
     {
-      "bytes": 2852,
+      "bytes": 2854,
       "path": "examples/end_to_end_procedure.py",
-      "sha256": "4a1a3fc5916fb5a9672e0f3e275ecd36b6edc525aec359802cfb58db2c254fe9"
+      "sha256": "3667220031095074eb96d2ad4bfd03a71d9cdc263bb24717ecaef41506900121"
     },
     {
       "bytes": 2549,

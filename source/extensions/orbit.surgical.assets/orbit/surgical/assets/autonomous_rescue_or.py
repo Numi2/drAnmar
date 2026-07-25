@@ -15,7 +15,7 @@ adapter is the only ingress to :mod:`deformable_rescue`.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 import json
 from pathlib import Path
@@ -665,10 +665,7 @@ class AutonomousRescueORRuntime:
         self._previous_blood_loss_ml = 0.0
         self._previous_perfusion_fraction = 1.0
         self._previous_overload_damage_fraction = 0.0
-        self._previous_spo2_fraction = (
-            self._patient_spo2_fraction() or 0.985
-        )
-        self._previous_airway_pressure_damage_fraction = 0.0
+        self._pending_support_reward = 0.0
         self._hemostasis_rewarded = False
         self._film_seal_rewarded = False
         self._latest_complications: tuple[ComplicationObservation, ...] = ()
@@ -695,6 +692,36 @@ class AutonomousRescueORRuntime:
         value = getattr(vital_signs, "spo2_fraction", None)
         return None if value is None else float(value)
 
+    def _patient_map_mmhg(self) -> float | None:
+        if self.patient_bridge is None:
+            return None
+        vital_signs = getattr(self.patient_bridge.patient, "vital_signs", None)
+        value = getattr(vital_signs, "mean_arterial_pressure_mmhg", None)
+        return None if value is None else float(value)
+
+    def _couple_vessel_pressure(
+        self,
+        frame: PhysicsEvidenceFrame,
+    ) -> PhysicsEvidenceFrame:
+        """Tie vessel pressure evidence to the shared circulation when present."""
+
+        if frame.target_id != "rescue_vessel":
+            return frame
+        patient_map = self._patient_map_mmhg()
+        if patient_map is None:
+            return frame
+        measured = frame.measured_upstream_pressure_mmhg
+        if measured is None:
+            return replace(
+                frame,
+                measured_upstream_pressure_mmhg=patient_map,
+            )
+        if abs(measured - patient_map) > 35.0:
+            raise ValueError(
+                "vessel pressure evidence is inconsistent with shared patient MAP"
+            )
+        return frame
+
     def reset(self, *, seed: int | None = None) -> Mapping[str, object]:
         self.effects.reset(seed=seed)
         self.resuscitation.reset()
@@ -707,10 +734,7 @@ class AutonomousRescueORRuntime:
         self._previous_blood_loss_ml = 0.0
         self._previous_perfusion_fraction = 1.0
         self._previous_overload_damage_fraction = 0.0
-        self._previous_spo2_fraction = (
-            self._patient_spo2_fraction() or 0.985
-        )
-        self._previous_airway_pressure_damage_fraction = 0.0
+        self._pending_support_reward = 0.0
         self._hemostasis_rewarded = False
         self._film_seal_rewarded = False
         self._latest_complications = ()
@@ -801,9 +825,12 @@ class AutonomousRescueORRuntime:
 
         previous = self.effects.snapshot()
         previous_spo2 = self._patient_spo2_fraction()
+        previous_map = self._patient_map_mmhg()
+        frame = self._couple_vessel_pressure(frame)
         observed_target_ids = {frame.target_id}
         current = self._scene_adapter.publish(frame)
         for companion in companion_frames:
+            companion = self._couple_vessel_pressure(companion)
             if (
                 companion.physics_step != frame.physics_step
                 or companion.simulation_time_s != frame.simulation_time_s
@@ -826,6 +853,7 @@ class AutonomousRescueORRuntime:
             )
             self.patient_bridge.advance_physiology(frame.dt_s)
         current_spo2 = self._patient_spo2_fraction()
+        current_map = self._patient_map_mmhg()
         self._latest_complications = self.detector.detect(
             current,
             baseline_blood_volume_ml=(
@@ -854,22 +882,6 @@ class AutonomousRescueORRuntime:
         newly_film_verified = (
             film_verified and not self._film_seal_rewarded
         )
-        current_spo2 = self._patient_spo2_fraction()
-        oxygenation_delta = (
-            current_spo2 - self._previous_spo2_fraction
-            if current_spo2 is not None
-            else 0.0
-        )
-        airway_pressure_damage = float(
-            self.resuscitation.snapshot().ventilation[
-                "pressure_damage_fraction"
-            ]
-        )
-        airway_pressure_damage_delta = max(
-            0.0,
-            airway_pressure_damage
-            - self._previous_airway_pressure_damage_fraction,
-        )
         film_was_observed = int(previous_film["last_physics_step"]) >= 0
         film_leak_improvement = (
             float(previous_film["leak_rate_ml_s"]) - film_leak
@@ -891,6 +903,11 @@ class AutonomousRescueORRuntime:
             if current_spo2 is not None and previous_spo2 is not None
             else 0.0
         )
+        map_improvement = (
+            current_map - previous_map
+            if current_map is not None and previous_map is not None
+            else 0.0
+        )
         self._last_reward = (
             2.0 * flow_improvement
             - 0.5 * (current_loss - previous_loss)
@@ -904,10 +921,11 @@ class AutonomousRescueORRuntime:
             + 1.5 * film_leak_improvement
             + 2.0 * film_quality_improvement
             + (6.0 if newly_film_verified else 0.0)
-            + 20.0 * oxygenation_delta
-            - 6.0 * airway_pressure_damage_delta
-            + 10.0 * oxygenation_improvement
+            + 20.0 * oxygenation_improvement
+            + map_improvement
+            + self._pending_support_reward
         )
+        self._pending_support_reward = 0.0
         self._hemostasis_rewarded = self._hemostasis_rewarded or verified
         self._film_seal_rewarded = (
             self._film_seal_rewarded or film_verified
@@ -916,11 +934,6 @@ class AutonomousRescueORRuntime:
         self._previous_blood_loss_ml = current_loss
         self._previous_perfusion_fraction = perfusion
         self._previous_overload_damage_fraction = overload
-        if current_spo2 is not None:
-            self._previous_spo2_fraction = current_spo2
-        self._previous_airway_pressure_damage_fraction = (
-            airway_pressure_damage
-        )
         return self.policy_observation()
 
     def advance_resuscitation(
@@ -999,6 +1012,7 @@ class AutonomousRescueORRuntime:
             - 0.02 * waste_delta
             - 10.0 * pressure_damage_delta
         )
+        self._pending_support_reward += self._last_resuscitation_reward
         self._last_reward = self._last_resuscitation_reward
         return self.policy_observation()
 
@@ -1016,6 +1030,7 @@ class AutonomousRescueORRuntime:
             - float(previous.ventilation["pressure_damage_fraction"]),
         )
         self._last_resuscitation_reward = -10.0 * damage_delta
+        self._pending_support_reward += self._last_resuscitation_reward
         self._last_reward = self._last_resuscitation_reward
         return self.policy_observation()
 

@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "bytes": 16734804,
+      "bytes": 16735134,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_autonomous_rescue_or.usda",
@@ -48,7 +48,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Environments/SurgicalAutonomy/AutonomousRescueOR",
-      "sha256": "635d78199a2ac1273d240a8a13cf4999574eb20174bd18d3aabafdd85403785b"
+      "sha256": "ddb79f5cca5bae8ef28ec3db2ac007d04aacac829b53f3b7bb0cd61dcfc5f5bf"
     },
     {
       "bytes": 21857721,
@@ -74,7 +74,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/Patients/DynamicAbdominalPatient",
-      "sha256": "283473c42f482558f593d80f5675dde98f6a550b34f6e349bcb051b019ff2833"
+      "sha256": "bea74f6560d5888ff831a735ff2c0967f1924af172cc4ab51cf11c05ac4fb265"
     },
     {
       "bytes": 35118832,
@@ -681,7 +681,7 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "b2e9cfba465c3bec53df414640a0c2d8075808088aee38c74b34c8d3c20d5fd3",
+  "catalog_sha256": "45e6ab2fa4181b6fbdec41f89e75e813b0d2456a6ccce1f3709b2a9223b77755",
   "catalog_version": "1.2.0",
   "clinical_validation": false,
   "i4h": {
