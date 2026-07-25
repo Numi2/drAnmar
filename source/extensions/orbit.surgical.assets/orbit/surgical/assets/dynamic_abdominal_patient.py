@@ -2374,6 +2374,7 @@ def _configure_deformable_body(
     *,
     surface: bool,
     hierarchical_volume: bool = False,
+    legacy_volume: bool = False,
 ) -> None:
     """Apply explicit mass and conservative body settings to the resolved body prim."""
     _apply_registered_api(body_prim, "OmniPhysicsDeformableBodyAPI")
@@ -2384,10 +2385,10 @@ def _configure_deformable_body(
         _apply_registered_api(body_prim, "PhysxSurfaceDeformableBodyAPI")
     else:
         _apply_registered_api(body_prim, "PhysxBaseDeformableBodyAPI")
-        # PhysxDeformableBodyAPI is the legacy single-UsdGeomMesh schema. In
-        # Isaac 5.1, applying it to the Xform root of a modern deformable
-        # hierarchy makes the parser reject the body before cooking.
-        if not hierarchical_volume:
+        # PhysxDeformableBodyAPI is the legacy single-UsdGeomMesh schema. It
+        # must not be applied to modern Xform hierarchies or UsdGeom.TetMesh
+        # bodies in Isaac 5.1.
+        if legacy_volume:
             _apply_registered_api(body_prim, "PhysxDeformableBodyAPI")
     # Patient components are authored in situ. Until a component has explicit
     # anatomical attachments or kinematic support nodes, allowing free fall
@@ -2469,11 +2470,22 @@ def apply_component_deformable(
         collision_prim = None
         ok: Any = False
 
-        if volume and hasattr(
+        explicit_tet = volume and stage.GetPrimAtPath(tet_path).IsValid()
+        if explicit_tet and hasattr(
+            deformableUtils, "set_physics_volume_deformable_body"
+        ):
+            ok = deformableUtils.set_physics_volume_deformable_body(
+                stage, stage.GetPrimAtPath(tet_path).GetPath()
+            )
+            body_prim = stage.GetPrimAtPath(tet_path)
+            collision_prim = body_prim
+            result["simulation_mesh_path"] = tet_path
+            result["route"] = "current_direct_explicit_tetmesh_volume"
+            result["cooking_triggered"] = False
+        elif volume and hasattr(
             deformableUtils, "create_auto_volume_deformable_hierarchy"
         ):
-            explicit_tet = stage.GetPrimAtPath(tet_path).IsValid()
-            simulation_path = tet_path if explicit_tet else auto_tet_path
+            simulation_path = auto_tet_path
             ok = deformableUtils.create_auto_volume_deformable_hierarchy(
                 stage,
                 root_prim_path=geometry_root_path,
@@ -2481,17 +2493,13 @@ def apply_component_deformable(
                 collision_tetmesh_path=simulation_path,
                 cooking_src_mesh_path=visual_path,
                 simulation_hex_mesh_enabled=False,
-                cooking_src_simplification_enabled=not explicit_tet,
+                cooking_src_simplification_enabled=True,
                 set_visibility_with_guide_purpose=True,
             )
             body_prim = stage.GetPrimAtPath(geometry_root_path)
             collision_prim = stage.GetPrimAtPath(simulation_path)
             result["simulation_mesh_path"] = simulation_path
-            result["route"] = (
-                "current_explicit_tetmesh_volume_hierarchy"
-                if explicit_tet
-                else "current_auto_cooked_volume_hierarchy"
-            )
+            result["route"] = "current_auto_cooked_volume_hierarchy"
             if ok is not False:
                 try:
                     from omni.physx import get_physx_cooking_interface
@@ -2511,18 +2519,6 @@ def apply_component_deformable(
                     # synchronous cook is unavailable.
                     result["cooking_triggered"] = False
                     result["cooking_note"] = str(cooking_exc)
-        elif (
-            volume
-            and stage.GetPrimAtPath(tet_path).IsValid()
-            and hasattr(deformableUtils, "set_physics_volume_deformable_body")
-        ):
-            ok = deformableUtils.set_physics_volume_deformable_body(
-                stage, stage.GetPrimAtPath(tet_path).GetPath()
-            )
-            body_prim = stage.GetPrimAtPath(tet_path)
-            collision_prim = body_prim
-            result["simulation_mesh_path"] = tet_path
-            result["route"] = "current_single_tetmesh_volume_without_render_binding"
         elif surface and hasattr(
             deformableUtils, "set_physics_surface_deformable_body"
         ):
@@ -2599,6 +2595,7 @@ def apply_component_deformable(
             hierarchical_volume=bool(
                 volume and str(body_prim.GetPath()) == geometry_root_path
             ),
+            legacy_volume=result["route"] == "legacy_cooked_volume",
         )
         UsdShade.MaterialBindingAPI.Apply(body_prim).Bind(
             material, UsdShade.Tokens.weakerThanDescendants, "physics"
