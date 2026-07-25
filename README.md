@@ -92,10 +92,19 @@ physical-performance or clinical evidence.
   <img src="docs/screenshots/robots/wound-preparation-isaac-lab.gif" width="800" alt="Dr.Anmar wound preparation robot moving through inspect, contact, irrigation, debridement, aspiration, and rinse phases in Isaac Lab">
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/robots/wound-preparation-contact-debridement.gif" width="395" alt="Close Isaac Lab view of the wound preparation robot moving through contact and debridement targets">
+  <img src="docs/screenshots/robots/wound-preparation-irrigation-aspiration.gif" width="395" alt="Close Isaac Lab view of the wound preparation robot moving through irrigation and aspiration targets">
+</p>
+
 An articulated concentric work head combines a compliant contact guard, interchangeable debridement cartridge,
 multi-nozzle irrigation, annular aspiration, and explicit fluid-volume accounting. The simulation model represents
 adhered debris release through accumulated contact work and conserves emitted, active, aspirated, spilled, and
 discarded particle volume.
+
+These three clips come from the same fresh Isaac Lab run. The first preserves the complete Franka workcell
+context; the two shorter clips retain the simulated frames while focusing the contact/debridement and
+irrigation/aspiration portions of the sequence.
 
 The recorded CUDA run covered both standalone and Franka-mounted representations for 120 steps, all five
 tool joints, a cooked surface-deformable wound, seven debris attachments, 80 PBD particles, zero fluid-ledger
@@ -378,6 +387,10 @@ The Isaac Lab documentation GIFs can be regenerated with:
 
 Valid robot identifiers are `wound-preparation`, `atraumatic-exposure`, `adaptive-hemostasis`,
 `adaptive-anastomosis`, and `adaptive-seal-divide`.
+
+For a provider asset already mirrored onto the runtime machine, pass
+`--franka-usd /absolute/path/to/franka.usd`; omit it to use Isaac Lab's configured
+Franka asset location.
 
 ## Command-line workflows
 

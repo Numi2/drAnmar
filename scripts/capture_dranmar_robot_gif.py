@@ -47,6 +47,16 @@ parser.add_argument("--width", type=int, default=720)
 parser.add_argument("--height", type=int, default=450)
 parser.add_argument("--frames-per-transition", type=int, default=7)
 parser.add_argument("--hold-frames", type=int, default=4)
+parser.add_argument(
+    "--standalone",
+    action="store_true",
+    help="Render the local articulated tool workcell without fetching the Franka asset.",
+)
+parser.add_argument(
+    "--franka-usd",
+    type=Path,
+    help="Use a local cached Franka USD instead of the external asset service.",
+)
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 app_launcher = AppLauncher(args)
@@ -58,8 +68,17 @@ import omni.usd
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
 from isaaclab.sensors.camera import Camera, CameraCfg
+try:
+    from isaaclab_physx.physics import PhysxGpuCfg, PhysxScene
+except ImportError:
+    from isaaclab_physx.physics import PhysxCfg
+
+    PhysxGpuCfg = None
+    PhysxScene = None
+else:
+    PhysxCfg = None
 from PIL import Image, ImageDraw, ImageFont
-from pxr import Gf, UsdGeom
+from pxr import Gf, PhysxSchema, UsdGeom, UsdPhysics
 
 
 @dataclass(frozen=True)
@@ -129,6 +148,16 @@ CAPTURES = {
     ),
 }
 
+WOUND_PREPARATION_DOCUMENTATION_ARM_POSE = {
+    "panda_joint1": -1.0641,
+    "panda_joint2": -0.9560,
+    "panda_joint3": 0.5321,
+    "panda_joint4": -2.1003,
+    "panda_joint5": 0.0159,
+    "panda_joint6": 2.1233,
+    "panda_joint7": 0.5403,
+}
+
 
 def load_asset_module(name: str):
     path = ASSET_MODULE_ROOT / f"{name}.py"
@@ -173,6 +202,37 @@ def tensor_rgb_to_image(value) -> Image.Image:
     return Image.fromarray(array, mode="RGB")
 
 
+def tensor_value(value):
+    return value.torch if hasattr(value, "torch") else value
+
+
+def write_joint_positions(robot: Articulation, position: torch.Tensor) -> None:
+    writer = getattr(robot, "write_joint_position_to_sim_index", None)
+    if writer is not None:
+        writer(position=position)
+    else:
+        robot.write_joint_position_to_sim(position)
+
+
+def write_joint_velocities(robot: Articulation, velocity: torch.Tensor) -> None:
+    writer = getattr(robot, "write_joint_velocity_to_sim_index", None)
+    if writer is not None:
+        writer(velocity=velocity)
+    else:
+        robot.write_joint_velocity_to_sim(velocity)
+
+
+def set_joint_position_targets(
+    robot: Articulation,
+    position: torch.Tensor,
+) -> None:
+    writer = getattr(robot, "set_joint_position_target_index", None)
+    if writer is not None:
+        writer(position=position)
+    else:
+        robot.set_joint_position_target(position)
+
+
 def annotate(image: Image.Image, capture: RobotCapture, phase: str) -> Image.Image:
     canvas = image.convert("RGBA")
     draw = ImageDraw.Draw(canvas, "RGBA")
@@ -207,7 +267,11 @@ def annotate(image: Image.Image, capture: RobotCapture, phase: str) -> Image.Ima
     )
     draw.text(
         (22, canvas.height - 23),
-        "COMPLETE FRANKA ASSEMBLY · ISAAC LAB / CUDA · NON-CLINICAL RESEARCH",
+        (
+            "STANDALONE ARTICULATED WORKCELL · ISAAC LAB / CUDA · NON-CLINICAL RESEARCH"
+            if args.standalone
+            else "COMPLETE FRANKA ASSEMBLY · ISAAC LAB / CUDA · NON-CLINICAL RESEARCH"
+        ),
         font=font(12),
         fill=(218, 230, 238, 255),
     )
@@ -218,7 +282,19 @@ def spawn_franka_and_task(capture: RobotCapture, helper):
     root_path = "/World/Robot"
     stage = omni.usd.get_context().get_stage()
 
-    if args.robot == "wound-preparation":
+    if args.standalone:
+        if args.robot != "wound-preparation":
+            raise ValueError("--standalone currently supports wound-preparation")
+        root_path = "/World/WoundPreparationTool"
+        tool_path = root_path
+        robot_cfg = helper.make_tool_cfg(
+            prim_path=root_path,
+            irrigation_state="loaded",
+            collection_state="empty",
+            position=(0.45, 0.0, 0.45),
+            orientation_wxyz=(0.0, 1.0, 0.0, 0.0),
+        )
+    elif args.robot == "wound-preparation":
         tool_path = f"{root_path}/DrAnmarWoundPreparationTool"
         robot_cfg = helper.make_franka_wound_preparation_robot_cfg(
             prim_path=root_path,
@@ -249,6 +325,15 @@ def spawn_franka_and_task(capture: RobotCapture, helper):
             **capture.variants,
         )
 
+    if args.robot == "wound-preparation" and not args.standalone:
+        robot_cfg.init_state.joint_pos.update(
+            WOUND_PREPARATION_DOCUMENTATION_ARM_POSE
+        )
+    if args.franka_usd is not None and not args.standalone:
+        franka_usd = args.franka_usd.expanduser().resolve()
+        if not franka_usd.is_file():
+            raise FileNotFoundError(f"Local Franka USD does not exist: {franka_usd}")
+        robot_cfg.spawn.usd_path = str(franka_usd)
     robot = Articulation(robot_cfg)
 
     if args.robot == "wound-preparation":
@@ -282,13 +367,15 @@ def rotate_wxyz(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
 def align_fixture_to_mounted_tcp(
     robot: Articulation,
     tcp_offset_m: float,
+    *,
+    align_orientation_to_mount: bool = True,
 ) -> np.ndarray:
     mount_index = robot.body_names.index("Mount")
     mount_position = (
-        robot.data.body_pos_w.torch[0, mount_index].detach().cpu().numpy()
+        tensor_value(robot.data.body_pos_w)[0, mount_index].detach().cpu().numpy()
     )
     mount_quaternion = (
-        robot.data.body_quat_w.torch[0, mount_index].detach().cpu().numpy()
+        tensor_value(robot.data.body_quat_w)[0, mount_index].detach().cpu().numpy()
     )
     tcp = mount_position + rotate_wxyz(
         mount_quaternion,
@@ -300,6 +387,11 @@ def align_fixture_to_mounted_tcp(
     if not prim or not prim.IsValid():
         raise RuntimeError("Procedure fixture was not spawned")
     xformable = UsdGeom.Xformable(prim)
+    fixture_quaternion = (
+        mount_quaternion
+        if align_orientation_to_mount
+        else np.asarray((1.0, 0.0, 0.0, 0.0), dtype=np.float32)
+    )
     translate_set = False
     orient_set = False
     for operation in xformable.GetOrderedXformOps():
@@ -309,10 +401,10 @@ def align_fixture_to_mounted_tcp(
         elif operation.GetOpType() == UsdGeom.XformOp.TypeOrient:
             operation.Set(
                 Gf.Quatd(
-                    float(mount_quaternion[0]),
-                    float(mount_quaternion[1]),
-                    float(mount_quaternion[2]),
-                    float(mount_quaternion[3]),
+                    float(fixture_quaternion[0]),
+                    float(fixture_quaternion[1]),
+                    float(fixture_quaternion[2]),
+                    float(fixture_quaternion[3]),
                 )
             )
             orient_set = True
@@ -323,13 +415,127 @@ def align_fixture_to_mounted_tcp(
     if not orient_set:
         xformable.AddOrientOp().Set(
             Gf.Quatd(
-                float(mount_quaternion[0]),
-                float(mount_quaternion[1]),
-                float(mount_quaternion[2]),
-                float(mount_quaternion[3]),
+                float(fixture_quaternion[0]),
+                float(fixture_quaternion[1]),
+                float(fixture_quaternion[2]),
+                float(fixture_quaternion[3]),
             )
         )
     return tcp.astype(np.float32)
+
+
+def set_prim_translation(prim_path: str, translation: np.ndarray) -> None:
+    prim = omni.usd.get_context().get_stage().GetPrimAtPath(prim_path)
+    if not prim or not prim.IsValid():
+        raise RuntimeError(f"Missing prim for documentation layout: {prim_path}")
+    xformable = UsdGeom.Xformable(prim)
+    for operation in xformable.GetOrderedXformOps():
+        if operation.GetOpType() == UsdGeom.XformOp.TypeTranslate:
+            operation.Set(Gf.Vec3d(*[float(value) for value in translation]))
+            return
+    xformable.AddTranslateOp().Set(
+        Gf.Vec3d(*[float(value) for value in translation])
+    )
+
+
+def position_franka_for_downward_workcell(
+    robot: Articulation,
+) -> torch.Tensor:
+    arm_indices = [
+        robot.joint_names.index(f"panda_joint{index}")
+        for index in range(1, 8)
+    ]
+    mount_index = robot.body_names.index("Mount")
+    joint_state = tensor_value(robot.data.joint_pos).clone()
+    arm_state = (
+        joint_state[0, arm_indices].detach().cpu().numpy().astype(np.float64)
+    )
+    limits = (
+        tensor_value(robot.data.soft_joint_pos_limits)[0, arm_indices]
+        .detach()
+        .cpu()
+        .numpy()
+        .astype(np.float64)
+    )
+    target = np.concatenate(
+        (
+            np.asarray((0.45, 0.0, 0.48), dtype=np.float64),
+            np.asarray((0.0, 0.0, -1.0), dtype=np.float64),
+        )
+    )
+    row_scale = np.asarray((2.5, 2.5, 2.5, 1.0, 1.0, 1.0))
+
+    def apply_and_measure(values: np.ndarray) -> np.ndarray:
+        updated = joint_state.clone()
+        updated[0, arm_indices] = torch.as_tensor(
+            values,
+            dtype=updated.dtype,
+            device=updated.device,
+        )
+        write_joint_positions(robot, updated)
+        write_joint_velocities(robot, torch.zeros_like(updated))
+        # PhysX refreshes forward kinematics when the body-pose tensor is read
+        # after a direct joint-state write. Stepping here would let the PD
+        # drives move toward an earlier target and corrupt the finite
+        # difference Jacobian.
+        position = (
+            tensor_value(robot.data.body_pos_w)[0, mount_index]
+            .detach()
+            .cpu()
+            .numpy()
+        )
+        quaternion = (
+            tensor_value(robot.data.body_quat_w)[0, mount_index]
+            .detach()
+            .cpu()
+            .numpy()
+        )
+        return np.concatenate(
+            (
+                position,
+                rotate_wxyz(quaternion, np.asarray((0.0, 0.0, 1.0))),
+            )
+        )
+
+    epsilon = 5.0e-3
+    for _ in range(36):
+        feature = apply_and_measure(arm_state)
+        residual = (feature - target) * row_scale
+        if float(np.linalg.norm(residual)) < 1.5e-3:
+            break
+        jacobian = np.zeros((feature.size, arm_state.size), dtype=np.float64)
+        for column in range(arm_state.size):
+            perturbed = arm_state.copy()
+            perturbed[column] += epsilon
+            jacobian[:, column] = (
+                apply_and_measure(perturbed) - feature
+            ) / epsilon
+        jacobian *= row_scale[:, None]
+        normal = jacobian.T @ jacobian + np.eye(arm_state.size) * 1.0e-2
+        delta = -np.linalg.solve(normal, jacobian.T @ residual)
+        delta = np.clip(delta, -0.16, 0.16)
+        arm_state = np.clip(
+            arm_state + delta,
+            limits[:, 0] + 1.0e-3,
+            limits[:, 1] - 1.0e-3,
+        )
+
+    final_feature = apply_and_measure(arm_state)
+    if final_feature[5] > -0.985:
+        raise RuntimeError(
+            "Unable to align the Franka wound-preparation approach axis downward: "
+            f"mount={final_feature[:3].round(4).tolist()} "
+            f"approach={final_feature[3:6].round(4).tolist()}"
+        )
+    final_state = tensor_value(robot.data.joint_pos).clone()
+    set_joint_position_targets(robot, final_state)
+    print(
+        "Franka documentation pose: "
+        f"mount={final_feature[:3].round(4).tolist()} "
+        f"approach={final_feature[3:6].round(4).tolist()}",
+        flush=True,
+    )
+    return final_state
 
 
 def camera_for_points(
@@ -370,7 +576,7 @@ def update_task_visual_state(phase: str) -> None:
 
 
 def target_vector(robot: Articulation, phase_targets: dict[str, float]) -> tuple[torch.Tensor, torch.Tensor]:
-    position = robot.data.joint_pos.torch.clone()
+    position = tensor_value(robot.data.joint_pos).clone()
     velocity = torch.zeros_like(position)
     name_to_index = {name: index for index, name in enumerate(robot.joint_names)}
     for target_name, value in phase_targets.items():
@@ -397,13 +603,28 @@ def main() -> None:
 
     capture = CAPTURES[args.robot]
     helper = load_asset_module(capture.module_name)
-    sim = sim_utils.SimulationContext(
-        sim_utils.SimulationCfg(
-            dt=1.0 / 60.0,
-            device=args.device,
-            gravity=(0.0, 0.0, 0.0),
+    sim_cfg_kwargs = {
+        "dt": 1.0 / 60.0,
+        "device": args.device,
+        "gravity": (0.0, 0.0, 0.0),
+    }
+    if PhysxCfg is not None:
+        sim_cfg_kwargs["physics"] = PhysxCfg(
+            gpu_max_soft_body_contacts=2**21,
         )
+    sim = sim_utils.SimulationContext(
+        sim_utils.SimulationCfg(**sim_cfg_kwargs)
     )
+    stage = omni.usd.get_context().get_stage()
+    physics_scene = UsdPhysics.Scene.Get(stage, sim.cfg.physics_prim_path)
+    if not physics_scene:
+        physics_scene = UsdPhysics.Scene.Define(stage, sim.cfg.physics_prim_path)
+    physx_scene_api = PhysxSchema.PhysxSceneAPI.Apply(physics_scene.GetPrim())
+    physx_scene_api.CreateGpuMaxDeformableSurfaceContactsAttr(2**21)
+    if PhysxScene is not None and PhysxGpuCfg is not None:
+        PhysxScene(sim.cfg.physics_prim_path).set_gpu_configuration(
+            PhysxGpuCfg(gpu_max_deformable_surface_contacts=2**21)
+        )
     ground_cfg = sim_utils.GroundPlaneCfg(color=(0.035, 0.045, 0.055))
     ground_cfg.func("/World/GroundPlane", ground_cfg)
     dome_cfg = sim_utils.DomeLightCfg(intensity=1800.0, color=(0.78, 0.84, 0.92))
@@ -455,9 +676,52 @@ def main() -> None:
     )
 
     sim.reset()
-    tcp = align_fixture_to_mounted_tcp(robot, capture.tcp_offset_m)
+    franka_documentation_joint_state = None
+    if args.robot == "wound-preparation" and not args.standalone:
+        franka_documentation_joint_state = position_franka_for_downward_workcell(
+            robot
+        )
+    tcp = align_fixture_to_mounted_tcp(
+        robot,
+        capture.tcp_offset_m,
+        align_orientation_to_mount=args.robot != "wound-preparation",
+    )
+    wound_runtime = None
+    if args.robot == "wound-preparation":
+        set_prim_translation(
+            "/World/ProcedureTable",
+            tcp + np.asarray((0.08, 0.0, -0.055), dtype=np.float32),
+        )
+        stage = omni.usd.get_context().get_stage()
+        helper.apply_wound_surface_deformable(
+            "/World/ProcedureFixture",
+            stage=stage,
+        )
+        helper.attach_demo_debris(
+            "/World/ProcedureFixture",
+            stage=stage,
+        )
+        particle_paths = helper.ensure_irrigation_particle_system(stage=stage)
+        wound_runtime = {
+            "stage": stage,
+            "particle_set_path": particle_paths["particle_set_path"],
+            "ledger": helper.FluidLedger(),
+            "suction": helper.SuctionFieldController(),
+        }
     sim.reset()
-    body_positions = robot.data.body_pos_w.torch[0].detach().cpu().numpy()
+    if franka_documentation_joint_state is not None:
+        write_joint_positions(robot, franka_documentation_joint_state)
+        write_joint_velocities(
+            robot,
+            torch.zeros_like(franka_documentation_joint_state),
+        )
+        set_joint_position_targets(robot, franka_documentation_joint_state)
+        robot.write_data_to_sim()
+        sim.step(render=False)
+        robot.update(sim.get_physics_dt())
+    body_positions = (
+        tensor_value(robot.data.body_pos_w)[0].detach().cpu().numpy()
+    )
     tool_body_ids = [
         index
         for index, name in enumerate(robot.body_names)
@@ -479,18 +743,26 @@ def main() -> None:
         np.concatenate((tool_positions, fixture_context), axis=0),
         distance_scale=2.5,
         minimum_distance=0.50,
-        direction_xyz=(0.4, 1.0, 0.18),
+        direction_xyz=(0.55, 0.75, 0.48),
     )
     action_distance = float(np.linalg.norm(action_eye - action_target))
-    action_direction = np.asarray((0.4, 1.0, 0.18), dtype=np.float32)
+    action_direction = np.asarray((0.58, 0.72, 0.64), dtype=np.float32)
     action_direction /= np.linalg.norm(action_direction)
-    action_target = (
-        np.mean(tool_positions, axis=0) * 0.65 + tcp * 0.35
-    ).astype(np.float32)
+    if args.robot == "wound-preparation":
+        mount_position = body_positions[robot.body_names.index("Mount")]
+        # Frame the complete distal mechanism and the wound together. A TCP-only
+        # target crops the vertically mounted tool above the sensor on a
+        # downward workcell pose.
+        action_target = ((mount_position + tcp) * 0.5).astype(np.float32)
+        action_distance = 0.72
+    else:
+        action_target = (
+            np.mean(tool_positions, axis=0) * 0.65 + tcp * 0.35
+        ).astype(np.float32)
     action_eye = action_target + action_direction * action_distance
     camera.set_world_poses_from_view(
-        torch.tensor([wide_eye], device=args.device),
-        torch.tensor([wide_target], device=args.device),
+        torch.as_tensor(np.asarray([wide_eye]), device=args.device),
+        torch.as_tensor(np.asarray([wide_target]), device=args.device),
     )
     for _ in range(12):
         sim.step(render=True)
@@ -503,14 +775,29 @@ def main() -> None:
         robot.update(sim.get_physics_dt())
         camera.update(sim.get_physics_dt(), force_recompute=True)
         frame = tensor_rgb_to_image(camera.data.output["rgb"])
-        frames.append(annotate(frame, capture, "FRANKA MOUNTED"))
+        frames.append(
+            annotate(
+                frame,
+                capture,
+                "ARTICULATED WORKCELL" if args.standalone else "FRANKA MOUNTED",
+            )
+        )
 
-    previous_position = robot.data.joint_pos.torch.clone()
+    previous_position = tensor_value(robot.data.joint_pos).clone()
     previous_eye = wide_eye
     previous_target = wide_target
     for phase in capture.phases:
         print(f"Capturing {capture.display_name}: {phase}", flush=True)
         update_task_visual_state(phase)
+        if wound_runtime is not None and phase in {"pre_rinse", "post_rinse"}:
+            helper.emit_irrigation_burst(
+                _tool_path,
+                wound_runtime["ledger"],
+                requested_ml=0.12,
+                random_seed=17 if phase == "pre_rinse" else 29,
+                stage=wound_runtime["stage"],
+                particle_set_path=wound_runtime["particle_set_path"],
+            )
         end_position, end_velocity = target_vector(robot, helper.phase_targets(phase))
         for step in range(1, args.frames_per_transition + 1):
             blend = 0.5 - 0.5 * math.cos(math.pi * step / args.frames_per_transition)
@@ -518,24 +805,50 @@ def main() -> None:
             eye = previous_eye + (action_eye - previous_eye) * blend
             target = previous_target + (action_target - previous_target) * blend
             camera.set_world_poses_from_view(
-                torch.tensor([eye], device=args.device),
-                torch.tensor([target], device=args.device),
+                torch.as_tensor(np.asarray([eye]), device=args.device),
+                torch.as_tensor(np.asarray([target]), device=args.device),
             )
-            robot.write_joint_position_to_sim_index(position=position)
-            robot.write_joint_velocity_to_sim_index(velocity=end_velocity)
+            write_joint_positions(robot, position)
+            write_joint_velocities(robot, end_velocity)
             sim.step(render=True)
+            if wound_runtime is not None and phase in {
+                "aspirate",
+                "debride",
+                "post_rinse",
+            }:
+                wound_runtime["suction"].update_particles(
+                    _tool_path,
+                    wound_runtime["ledger"],
+                    dt=sim.get_physics_dt(),
+                    opening=1.0,
+                    stage=wound_runtime["stage"],
+                    particle_set_path=wound_runtime["particle_set_path"],
+                )
             robot.update(sim.get_physics_dt())
             camera.update(sim.get_physics_dt(), force_recompute=True)
             frame = tensor_rgb_to_image(camera.data.output["rgb"])
             frames.append(annotate(frame, capture, phase))
         for _ in range(args.hold_frames):
             camera.set_world_poses_from_view(
-                torch.tensor([action_eye], device=args.device),
-                torch.tensor([action_target], device=args.device),
+                torch.as_tensor(np.asarray([action_eye]), device=args.device),
+                torch.as_tensor(np.asarray([action_target]), device=args.device),
             )
-            robot.write_joint_position_to_sim_index(position=end_position)
-            robot.write_joint_velocity_to_sim_index(velocity=end_velocity)
+            write_joint_positions(robot, end_position)
+            write_joint_velocities(robot, end_velocity)
             sim.step(render=True)
+            if wound_runtime is not None and phase in {
+                "aspirate",
+                "debride",
+                "post_rinse",
+            }:
+                wound_runtime["suction"].update_particles(
+                    _tool_path,
+                    wound_runtime["ledger"],
+                    dt=sim.get_physics_dt(),
+                    opening=1.0,
+                    stage=wound_runtime["stage"],
+                    particle_set_path=wound_runtime["particle_set_path"],
+                )
             robot.update(sim.get_physics_dt())
             camera.update(sim.get_physics_dt(), force_recompute=True)
             frame = tensor_rgb_to_image(camera.data.output["rgb"])
