@@ -114,6 +114,15 @@ VALID_CONDITIONS = frozenset(
     }
 )
 VALID_HABITUS = frozenset({"baseline", "lean", "increased_visceral_fat"})
+NATIVE_DEFORMABLE_ROUTES = frozenset(
+    {
+        "current_direct_explicit_tetmesh_volume",
+        "current_auto_cooked_volume_hierarchy",
+        "current_surface_deformable",
+        "legacy_cooked_volume",
+        "legacy_surface_deformable",
+    }
+)
 
 
 def tensor_value(value: Any):
@@ -2192,7 +2201,10 @@ def spawn_patient(
     orientation_wxyz=(1, 0, 0, 0),
 ):
     if access_state not in VALID_ACCESS_STATES:
-        raise ValueError(access_state)
+        raise ValueError(
+            f"unsupported access_state {access_state!r}; "
+            f"expected one of {sorted(VALID_ACCESS_STATES)}"
+        )
     import isaaclab.sim as sim_utils
 
     cfg = sim_utils.UsdFileCfg(
@@ -2220,26 +2232,44 @@ def spawn_operating_scene(
 
 def set_access_state(patient_path: str, state: str, *, stage=None) -> None:
     if state not in VALID_ACCESS_STATES:
-        raise ValueError(state)
+        raise ValueError(
+            f"unsupported access_state {state!r}; "
+            f"expected one of {sorted(VALID_ACCESS_STATES)}"
+        )
     if stage is None:
         import omni.usd
 
         stage = omni.usd.get_context().get_stage()
-    root = stage.GetPrimAtPath(patient_path.rstrip("/"))
+    normalized_path = patient_path.rstrip("/")
+    root = stage.GetPrimAtPath(normalized_path)
+    if not root or not root.IsValid():
+        raise RuntimeError(f"Patient prim does not exist: {normalized_path}")
     if root and root.IsValid():
         variants = root.GetVariantSets()
         if variants.HasVariantSet("access_state"):
             variant = variants.GetVariantSet("access_state")
             if state in variant.GetVariantNames():
-                variant.SetVariantSelection(state)
+                if not variant.SetVariantSelection(state):
+                    raise RuntimeError(
+                        f"Unable to select access_state {state!r} on {normalized_path}"
+                    )
                 return
+    selected_components: list[str] = []
     for name in ("skin", "subcutaneous_fat", "fascia", "abdominal_wall", "peritoneum"):
-        prim = stage.GetPrimAtPath(f"{patient_path.rstrip('/')}/Anatomy/{name}")
+        prim = stage.GetPrimAtPath(f"{normalized_path}/Anatomy/{name}")
         if not prim or not prim.IsValid():
             continue
         variant = prim.GetVariantSets().GetVariantSet("access_state")
         if state in variant.GetVariantNames():
-            variant.SetVariantSelection(state)
+            if not variant.SetVariantSelection(state):
+                raise RuntimeError(
+                    f"Unable to select access_state {state!r} on component {name!r}"
+                )
+            selected_components.append(name)
+    if not selected_components:
+        raise RuntimeError(
+            f"No access_state variant was found below patient prim {normalized_path}"
+        )
 
 
 def _set_usd_attribute_if_valid(prim: Any, name: str, value: Any) -> bool:
@@ -2373,7 +2403,6 @@ def _configure_deformable_body(
     cfg: Mapping[str, Any],
     *,
     surface: bool,
-    hierarchical_volume: bool = False,
     legacy_volume: bool = False,
 ) -> None:
     """Apply explicit mass and conservative body settings to the resolved body prim."""
@@ -2592,9 +2621,6 @@ def apply_component_deformable(
             body_prim,
             component_cfg,
             surface=surface,
-            hierarchical_volume=bool(
-                volume and str(body_prim.GetPath()) == geometry_root_path
-            ),
             legacy_volume=result["route"] == "legacy_cooked_volume",
         )
         UsdShade.MaterialBindingAPI.Apply(body_prim).Bind(
@@ -2633,13 +2659,48 @@ def apply_patient_deformables(
     include: Sequence[str] | None = None,
     stage=None,
 ) -> dict[str, Any]:
-    """Apply mechanics routes after the patient and access variant are spawned."""
+    """Apply mechanics routes after the patient and access variant are spawned.
+
+    An explicit ``include`` is treated as an operational request and therefore
+    fails closed for empty, duplicate, unknown, or host-controlled component
+    identifiers. Omitting ``include`` retains the inspection behavior that
+    reports a route for every manifest component.
+    """
+    manifest = load_anatomy_manifest()
+    components = {
+        str(component["id"]): component for component in manifest["components"]
+    }
+    wanted: set[str] | None = None
+    if include is not None:
+        if isinstance(include, (str, bytes)):
+            raise TypeError("include must be a sequence of component IDs, not a string")
+        requested = tuple(str(component_id) for component_id in include)
+        if not requested:
+            raise ValueError("include must request at least one deformable component")
+        if len(set(requested)) != len(requested):
+            raise ValueError(f"include contains duplicate component IDs: {requested!r}")
+        unknown = sorted(set(requested).difference(components))
+        if unknown:
+            raise ValueError(f"unknown dynamic-patient component IDs: {unknown}")
+        non_deformable = sorted(
+            component_id
+            for component_id in requested
+            if not any(
+                token in str(components[component_id].get("mechanics", ""))
+                for token in ("surface", "volume")
+            )
+        )
+        if non_deformable:
+            raise ValueError(
+                "requested components do not use a native deformable route: "
+                f"{non_deformable}"
+            )
+        wanted = set(requested)
+
     if stage is None:
         import omni.usd
 
         stage = omni.usd.get_context().get_stage()
-    manifest = load_anatomy_manifest()
-    wanted = set(include) if include is not None else None
     results: dict[str, Any] = {}
     for cfg in manifest["components"]:
         if wanted is not None and cfg["id"] not in wanted:

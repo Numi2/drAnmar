@@ -26,11 +26,14 @@ sim = sim_utils.SimulationContext(
     sim_utils.SimulationCfg(dt=1 / 120, device=args.device)
 )
 spawn_patient("/World/Patient", access_state="open")
-mechanics_routes = apply_patient_deformables("/World/Patient")
+mechanics_routes = apply_patient_deformables(
+    "/World/Patient",
+    include=("peritoneum",),
+)
 failed_routes = {
     component: result
     for component, result in mechanics_routes.items()
-    if result["route"] in {"not_applied", "unsupported_mechanics_contract"}
+    if result["route"] == "not_applied"
 }
 if failed_routes:
     raise RuntimeError(f"Patient deformable setup failed closed: {failed_routes}")

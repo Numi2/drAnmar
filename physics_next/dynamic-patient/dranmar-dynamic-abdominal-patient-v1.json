@@ -13,8 +13,11 @@
   "clinical_validation": false,
   "deployment": {
     "doctor_room_id": "dr-anmar-dynamic-abdominal-patient",
-    "default_access_state": "open",
+    "default_access_state": "intact",
+    "maximum_solver_active_deformables": 1,
     "mechanics_policy": "fail_closed_if_any_requested_native_route_is_not_applied",
+    "multi_component_deformables_qualified": false,
+    "native_volume_deformables_qualified": false,
     "validation_report": "physics_next/benchmarks/dranmar-dynamic-abdominal-patient-validation.json"
   },
   "id": "dranmar-dynamic-abdominal-patient-v1",
@@ -57,5 +60,9 @@
   ],
   "schema": "dr.anmar.dynamic-abdominal-patient-profile.v1",
   "status": "research_informed_engineering_platform_pending_runtime_physical_sensor_and_clinical_validation",
+  "validation_scope": {
+    "automated_report": "source_payload_and_solver_independent_behavior_only",
+    "overall_qualified": false
+  },
   "version": "0.1.0"
 }

@@ -309,11 +309,12 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "guide_kind": "dynamic_abdominal_patient",
         "nvidia_native_bench": True,
         "dynamic_abdominal_patient": True,
-        "dynamic_patient_access_state": "open",
+        "dynamic_patient_access_state": "intact",
+        "dynamic_patient_position_m": (0.0, 0.0, 0.0),
         # Isaac 5.1 supports only one deformable collision group. Keep one
         # procedure target solver-active while the complete modular anatomy
         # and shared physiology remain present.
-        "dynamic_patient_active_deformables": ("peritoneum",),
+        "dynamic_patient_active_deformables": ("mesentery",),
         "required_nvidia_assets": (
             "Robots/dVRK/PSM/psm.usd",
             "Props/SutureNeedle/needle_sdf.usd",
@@ -333,17 +334,22 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         ),
         "bench_asset_catalog": (),
         "psm_root_spacing_m": 0.20,
+        # The needle-handover neutral pose is too low for the 105 mm-tall
+        # abdominal stack. Raise both opposed PSM roots so their tools begin
+        # clear of intact skin instead of intersecting the patient.
+        "psm_root_height_m": 0.22,
         "hide_anatomy": True,
         "show_waypoint_markers": False,
         "interactive_camera_width_px": 960,
         "interactive_camera_height_px": 640,
-        "interactive_camera_eye_m": (0.58, -0.62, 0.48),
-        "interactive_camera_target_m": (0.0, 0.0, 0.10),
+        "interactive_camera_eye_m": (0.38, -0.44, 0.40),
+        "interactive_camera_target_m": (-0.02, -0.02, 0.06),
         "interactive_rgb_only": True,
         "interactive_multiview": True,
         "single_active_camera_renderer": True,
         "steps": [
-            step("inspect", "Inspect patient", "Confirm the open access layers, target anatomy, pathology, and protected structures before moving an instrument.", "patient and target visibility"),
+            step("inspect", "Inspect patient", "Confirm the intact abdominal surface and planned access site before moving an instrument.", "surface and access site identified"),
+            step("access", "Create surgical access", "Perform the modeled laparotomy cut to expose the abdominal cavity.", "open access variant and cut event recorded"),
             step("expose", "Establish exposure", "Retract only through the typed patient adapter and monitor regional compression and perfusion.", "exposure and perfusion state"),
             step("treat", "Perform the procedure", "Apply dissection, hemostasis, division, or reconstruction events while preserving the chronological damage and intervention record.", "intervention and damage stream"),
             step("assess", "Assess viability", "Run a perfusion scan and reconcile regional flow, active bleeding, fluid balance, and vital-sign state.", "shared physiology observation"),

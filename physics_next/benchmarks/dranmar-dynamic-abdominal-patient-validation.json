@@ -9,7 +9,9 @@
     "physical bench calibration",
     "clinical validation"
   ],
+  "overall_qualified": false,
   "passed": true,
+  "passed_scope": "checks_executed_by_this_validator_only",
   "physiology": {
     "conditions": {
       "bile_leak": {
@@ -164,6 +166,13 @@
   "research_only": true,
   "schema": "dr.anmar.dynamic-abdominal-patient-model-sanity.v1",
   "static": {
+    "access_layer_variant_paths": {
+      "abdominal_wall": true,
+      "fascia": true,
+      "peritoneum": true,
+      "skin": true,
+      "subcutaneous_fat": true
+    },
     "deformable_hierarchy_roots": {
       "abdominal_wall": true,
       "bladder": true,
@@ -460,8 +469,8 @@
         "flat_quaternion_count": 12
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_abdominal_wall.usda": {
-        "brace_pairs": 18,
-        "bytes": 119596,
+        "brace_pairs": 20,
+        "bytes": 119772,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_bladder.usda": {
@@ -485,8 +494,8 @@
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_fascia.usda": {
-        "brace_pairs": 18,
-        "bytes": 120355,
+        "brace_pairs": 20,
+        "bytes": 120531,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_gallbladder.usda": {
@@ -530,8 +539,8 @@
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_peritoneum.usda": {
-        "brace_pairs": 18,
-        "bytes": 120556,
+        "brace_pairs": 20,
+        "bytes": 120732,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_right_kidney.usda": {
@@ -540,8 +549,8 @@
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_skin.usda": {
-        "brace_pairs": 18,
-        "bytes": 119424,
+        "brace_pairs": 20,
+        "bytes": 119600,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_small_bowel.usda": {
@@ -560,8 +569,8 @@
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_subcutaneous_fat.usda": {
-        "brace_pairs": 18,
-        "bytes": 119560,
+        "brace_pairs": 20,
+        "bytes": 119736,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_ureters.usda": {

@@ -41,11 +41,17 @@ The access-state variant must be selected before deformable views initialize:
 
 ```python
 spawn_patient("/World/Patient", access_state="open")
-routes = apply_patient_deformables("/World/Patient")
+routes = apply_patient_deformables(
+    "/World/Patient",
+    include=("peritoneum",),
+)
 ```
 
 Any `not_applied` mechanics route is a failed native-runtime gate, not a
-successful fallback.
+successful fallback. The current guarded workstation boundary permits exactly
+one explicitly selected solver-active surface component. Omitting `include`
+is useful for route inspection, but it requests all component mechanics and is
+not an approved workstation configuration.
 
 ## Validation
 
@@ -73,5 +79,7 @@ Run the native scene only from the repository's Isaac Lab environment:
 ./isaaclab.sh -p examples/dynamic_abdominal_patient_scene.py --device cuda:0
 ```
 
-That run must load the OpenUSD stage, create every requested deformable route,
-step on CUDA, and remain finite before native qualification can be promoted.
+That run must load the OpenUSD stage, create the explicitly requested
+deformable route, step on CUDA, and remain finite before that route can be
+promoted. Qualification of one route does not qualify other organs or a
+multi-deformable patient.

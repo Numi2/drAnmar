@@ -437,6 +437,7 @@ RESEARCH_ADVISORY_LIMITS = {
 PROCEDURE_PHASES = {
     "setup": 0,
     "rest": 0,
+    "access": 1,
     "approach": 1,
     "align": 2,
     "contact": 3,
@@ -447,7 +448,16 @@ PROCEDURE_PHASES = {
     "recover": 7,
     "recovery": 7,
 }
-PROCEDURE_EVENTS = {"none": 0, "target_visible": 1, "contact": 2, "grasp": 3, "task_complete": 4, "handoff": 5, "safety_review": 6}
+PROCEDURE_EVENTS = {
+    "none": 0,
+    "target_visible": 1,
+    "contact": 2,
+    "grasp": 3,
+    "task_complete": 4,
+    "handoff": 5,
+    "safety_review": 6,
+    "laparotomy_cut_open": 7,
+}
 OPERATOR_INPUT_SOURCES = {
     "none": 0,
     "keyboard_pointer": 1,
@@ -489,7 +499,7 @@ APP_HTML = r"""<!doctype html>
     button.primary{background:var(--cyan);border-color:var(--cyan);color:#041014}button.danger{background:#31171c;border-color:#74414a;color:#ffabb2}button.stop{grid-column:1/-1;background:#27323a;border-color:#5f727c}
     .speedbar{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:11px}.speedbar button{min-height:35px;font-size:11px}.speedbar button.active{background:var(--cyan);border-color:var(--cyan);color:#041014}.dpad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:"blank up blank2" "left stop right" "blank3 down blank4";gap:6px}.dpad .up{grid-area:up}.dpad .left{grid-area:left}.dpad .stop-center{grid-area:stop;min-height:54px;background:#26343b;border-color:#617681}.stop-center small{display:block;color:#9bb0b8;font-size:10px;margin-top:2px}.dpad .right{grid-area:right}.dpad .down{grid-area:down}.depthgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.anglegrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.move-button{min-height:54px;touch-action:none;position:relative}.move-button small{display:block;color:#86a5af;font-size:10px;margin-top:2px}.move-button.held{background:var(--cyan);border-color:var(--cyan);color:#041014;box-shadow:0 0 16px #2cd2e855}.move-button.held small{color:#0a5260}.control-readout{display:flex;align-items:center;gap:7px;margin-top:10px;color:var(--muted);font-size:11px}.control-readout i{width:7px;height:7px;border-radius:50%;background:#536a73}.control-readout.moving{color:var(--green)}.control-readout.moving i{background:var(--green);box-shadow:0 0 10px #42e49b99}
     .hint{color:var(--muted);font-size:12px;margin-top:9px}.hidden{display:none}.arm.active,.autonomy.active{background:var(--cyan);color:#041014;border-color:var(--cyan)}
-    .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}
+    .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}.patient-access{width:100%;min-height:38px;margin-top:8px;background:#963f46;border-color:#cf737a;color:#fff;text-align:left}.patient-access.open{background:#183c33;border-color:#3b7a67;color:#baf6df}.patient-access:disabled{cursor:not-allowed;opacity:.8}
     .supervision{border-color:#356475;background:linear-gradient(135deg,#0d2731,#09171e)}.supervision-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.supervision-state b{color:var(--cyan)}.cue{min-height:32px;margin-top:9px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#9fc0c9;font-size:11px}
     .safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.safety-metric{padding:8px;background:#061219;border:1px solid #1c3742}.safety-metric b{display:block;color:var(--green);font:15px ui-monospace,monospace}.safety-metric span{color:var(--muted);font-size:9px}
     .stapler-cell{padding:12px;border:1px solid #5d6140;border-radius:11px;background:linear-gradient(135deg,#252417,#151b1f)}#staplerCell.hidden{display:none!important}.stapler-cell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}.stapler-cell-head b{display:block;color:#f1e6c1;font-size:14px}.stapler-cell-head small{display:block;margin-top:2px;color:#aaa58d;font-size:9px}.stapler-phase{padding:4px 7px;border-radius:5px;background:#393622;color:#f0cf77;font:800 8px ui-monospace,monospace;text-transform:uppercase}.stapler-metrics{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}.stapler-metric{padding:7px;border:1px solid #4c4930;border-radius:6px;background:#181b18}.stapler-metric b{display:block;color:#e9d98e;font:14px ui-monospace,monospace}.stapler-metric span{color:#928f7d;font-size:7px;letter-spacing:.05em}.stapler-progress{height:5px;margin-top:7px;overflow:hidden;border-radius:4px;background:#111411}.stapler-progress i{display:block;width:0;height:100%;background:#d8b750;transition:width .25s ease}.stapler-controls{display:grid;grid-template-columns:.8fr 1.6fr .8fr repeat(3,1fr);gap:6px;margin-top:8px}#closureRobotCell .stapler-controls{grid-template-columns:repeat(3,1fr)}.stapler-target{display:grid;grid-column:span 3;grid-template-columns:1fr auto;align-items:center;gap:4px 8px;padding:6px 8px;border:1px solid #4c4930;border-radius:7px;background:#181b18}.stapler-target b{color:#d9d3b6;font-size:9px}.stapler-target output{color:#e9d98e;font:12px ui-monospace,monospace}.stapler-target input{grid-column:1/-1;width:100%;accent-color:#d8b750}.stapler-controls button{min-height:42px;background:#29291d;border-color:#565135;font-size:9px}.stapler-controls button.primary{background:#d8b750;border-color:#d8b750;color:#221f10}.stapler-controls button:disabled{cursor:not-allowed;opacity:.45}.stapler-boundary{margin:7px 0 0;color:#8f8c7f;font-size:8px}
@@ -569,7 +579,7 @@ APP_HTML = r"""<!doctype html>
       <p class="stapler-boundary">The tissue is a live PhysX FEM body. Each cycle first approximates both wound edges, then a collision-enabled rigid staple retains two local FEM attachment bands after release. The backend does not cut tissue or model needle penetration, metal plastic forming, calibrated pullout strength or clinical performance.</p>
     </section>
     <details class="session-details"><summary>Procedure details and session tools</summary><div class="session-details-grid">
-      <section class="session-section"><h2>Procedure</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div></div></section>
+      <section class="session-section"><h2>Procedure</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div><button id="patientCutButton" class="patient-access hidden" data-shortcut="F11" onclick="cutOpenPatient()"><b>F11 · Cut open abdomen</b><br><small>Record modeled laparotomy and expose the cavity</small></button></div></section>
       <section class="session-section"><h2>Guidance</h2><div class="card supervision"><div class="supervision-state"><span>Control</span><b id="autonomyState">Manual</b></div><div class="grid two"><button id="manualMode" class="autonomy active" data-shortcut="⇧G" onclick="setAutonomy('manual')">Manual <kbd>⇧G</kbd></button><button id="guidedMode" class="autonomy" data-shortcut="G" onclick="setAutonomy('guided')">Guided <kbd>G</kbd></button></div><div id="coachingCue" class="cue">You command every movement. Dr.Anmar records telemetry for coaching.</div></div></section>
       <section class="session-section"><h2>Live signals</h2><div class="card"><div class="safety-grid"><div class="safety-metric"><b id="forceMetric">—</b><span>CONTACT N</span></div><div class="safety-metric"><b id="deformMetric">—</b><span>TISSUE MM</span></div><div class="safety-metric"><b id="stressMetric">—</b><span>STRESS PA</span></div></div></div></section>
       <section class="session-section"><h2>Session</h2><div class="card"><div class="grid two"><button data-shortcut="T" onclick="recording(false)">Stop & save <kbd>T</kbd></button><button data-shortcut="R" onclick="replay()">Replay last <kbd>R</kbd></button><button data-shortcut="Delete" onclick="resetScene()">Reset scene <kbd>Delete</kbd></button></div><div class="hint" id="lastDemo">Robot state and camera observations are saved together.</div></div></section>
@@ -588,7 +598,7 @@ APP_HTML = r"""<!doctype html>
   <div class="shortcut-group"><h3>CONTROL FEEL + SAFETY</h3><div class="shortcut-line"><kbd>Tap movement</kbd><span>Micro-nudge</span></div><div class="shortcut-line"><kbd>Hold movement</kbd><span>Smooth acceleration</span></div><div class="shortcut-line"><kbd>1 / 2 / 3</kbd><span>Left fine / normal / fast</span></div><div class="shortcut-line"><kbd>8 / 9 / 0</kbd><span>Right fine / normal / fast</span></div><div class="shortcut-line"><kbd>Backspace / Esc</kbd><span>Stop both robots</span></div><div class="shortcut-line"><kbd>[ / ]</kbd><span>Select pointer-control robot</span></div></div>
   <div class="shortcut-group"><h3>SURGICAL COMBINATIONS</h3><div class="shortcut-line"><kbd>Q/E + Z/X</kbd><span>Left advance/retract + roll</span></div><div class="shortcut-line"><kbd>U/O + N/M</kbd><span>Right advance/retract + roll</span></div><div class="shortcut-line"><kbd>Both hand clusters</kbd><span>True simultaneous bimanual motion</span></div><div class="shortcut-line"><kbd>F12</kbd><span>Bounded context assist</span></div><div class="shortcut-line"><kbd>Space / Enter</kbd><span>Independent grippers</span></div></div>
   <div class="shortcut-group"><h3>CAMERAS</h3><div class="shortcut-line"><kbd>4 / 5</kbd><span>Stereo left / right</span></div><div class="shortcut-line"><kbd>6 / 7</kbd><span>Wrist 1 / 2</span></div><div class="shortcut-line"><kbd>F1 / F2 / F3</kbd><span>Operative / close / wide</span></div><div class="shortcut-line"><kbd>F4–F7</kbd><span>Overhead / oblique / opposite</span></div><div class="shortcut-line"><kbd>F8 / Home</kbd><span>Free camera / reset</span></div><div class="shortcut-line"><kbd>Drag / ⇧Drag / Wheel</kbd><span>Orbit / pan / zoom</span></div><div class="shortcut-line"><kbd>C / ⇧C</kbd><span>Next sensor / next angle</span></div></div>
-  <div class="shortcut-group"><h3>EXPERT + SESSION</h3><div class="shortcut-line"><kbd>F9 / F10</kbd><span>Run / pause expert</span></div><div class="shortcut-line"><kbd>Y / T</kbd><span>Start / stop + save</span></div><div class="shortcut-line"><kbd>R / H</kbd><span>Replay / path guide</span></div><div class="shortcut-line"><kbd>G / Shift+G</kbd><span>Guided / manual</span></div><div class="shortcut-line"><kbd>Delete</kbd><span>Reset scene</span></div></div>
+  <div class="shortcut-group"><h3>EXPERT + SESSION</h3><div class="shortcut-line"><kbd>F9 / F10</kbd><span>Run / pause expert</span></div><div class="shortcut-line"><kbd>F11</kbd><span>Modeled abdominal access</span></div><div class="shortcut-line"><kbd>Y / T</kbd><span>Start / stop + save</span></div><div class="shortcut-line"><kbd>R / H</kbd><span>Replay / path guide</span></div><div class="shortcut-line"><kbd>G / Shift+G</kbd><span>Guided / manual</span></div><div class="shortcut-line"><kbd>Delete</kbd><span>Reset scene</span></div></div>
   <div class="shortcut-group"><h3>XBOX · BIMANUAL</h3><div class="shortcut-line"><kbd>Left / right stick</kbd><span>Move left / right robot</span></div><div class="shortcut-line"><kbd>Hold X + sticks</kbd><span>Depth + roll both wrists</span></div><div class="shortcut-line"><kbd>Hold Y + sticks</kbd><span>Pitch + yaw both wrists</span></div><div class="shortcut-line"><kbd>LB / LT</kbd><span>Close / open left gripper</span></div><div class="shortcut-line"><kbd>RB / RT</kbd><span>Close / open right gripper</span></div><div class="shortcut-line"><kbd>L3 / R3</kbd><span>Precision for that robot</span></div><div class="shortcut-line"><kbd>A / B</kbd><span>Smart assist / emergency stop</span></div></div>
   <div class="shortcut-group"><h3>XBOX · CAMERA + SESSION</h3><div class="shortcut-line"><kbd>Hold View</kbd><span>Camera control layer</span></div><div class="shortcut-line"><kbd>Camera: sticks</kbd><span>Pan / orbit</span></div><div class="shortcut-line"><kbd>Camera: LT / RT</kbd><span>Zoom out / in</span></div><div class="shortcut-line"><kbd>Camera: LB / RB</kbd><span>Sensor / angle</span></div><div class="shortcut-line"><kbd>D-pad ↑ / ↓</kbd><span>Faster / slower tools</span></div><div class="shortcut-line"><kbd>Hold Menu</kbd><span>Session layer</span></div><div class="shortcut-line"><kbd>Menu + A / X / Y</kbd><span>Record / expert / guidance</span></div><div class="shortcut-line"><kbd>Menu + ↑ / ↓</kbd><span>Replay / reset scene</span></div></div>
   <div class="shortcut-group"><h3>VOICE CONTROL</h3><div class="shortcut-line"><kbd>Hold `</kbd><span>Push to talk</span></div><div class="shortcut-line"><kbd>Say: left robot up</kbd><span>Bounded robot nudge</span></div><div class="shortcut-line"><kbd>Say: right robot toward</kbd><span>Choose robot + direction</span></div><div class="shortcut-line"><kbd>Say: close left gripper</kbd><span>Explicit jaw command</span></div><div class="shortcut-line"><kbd>Say: camera overhead</kbd><span>Switch view</span></div><div class="shortcut-line"><kbd>Say: stop</kbd><span>Stop both robots</span></div><div class="shortcut-line"><kbd>Type + ↵</kbd><span>Works without microphone support</span></div></div>
@@ -685,6 +695,7 @@ function cycleSensorCamera(){const buttons=[...document.querySelectorAll('[data-
 async function annotatePhase(phase){try{const x=await post('/api/annotation',{phase});toast(x.message)}catch(e){toast(e.message)}}
 async function annotateEvent(event){try{const x=await post('/api/annotation',{event});toast('Procedure event saved')}catch(e){toast(e.message)}}
 async function resetScene(){try{await post('/api/reset');toast('Scene reset')}catch(e){toast(e.message)}}
+async function cutOpenPatient(source='operator'){const button=document.getElementById('patientCutButton');if(button.classList.contains('hidden')||button.disabled)return;button.disabled=true;try{const result=await post('/api/patient/access',{action:'cut_open',source});toast(result.already_open?'Surgical access is already open':result.already_requested?'Modeled laparotomy already requested':'Modeled laparotomy requested')}catch(e){button.disabled=false;toast(e.message)}}
 async function setAutonomy(mode){try{const x=await post('/api/autonomy',{mode});toast(x.message)}catch(e){toast(e.message)}}
 async function takeControl(){stopDrive(false);try{const x=await post('/api/handoff');toast(x.message)}catch(e){toast(e.message)}}
 async function startExpert(){try{const x=await post('/api/expert/start');toast(x.message)}catch(e){toast(e.message)}}
@@ -717,7 +728,7 @@ function handleDiscreteShortcut(event){const {code}=event;if(code==='Slash'&&eve
   Space:['Space','Instrument 1 gripper',()=>toggleGrip(0)],Enter:['Enter','Instrument 2 gripper',()=>toggleGrip((latestStatus?.arms||1)>1?1:0)],NumpadEnter:['Enter','Instrument 2 gripper',()=>toggleGrip((latestStatus?.arms||1)>1?1:0)],Backspace:null,Escape:null,
   BracketLeft:['[','Pointer controls · instrument 1',()=>setArm(0)],BracketRight:[']','Pointer controls · instrument 2',()=>setArm(1)],KeyC:[event.shiftKey?'⇧C':'C',event.shiftKey?'Next camera view':'Next camera sensor',()=>event.shiftKey?cycleCameraView():cycleSensorCamera()],
   Comma:[',','Pointer precision speed',()=>setSpeedShortcut(.35)],Period:['.','Pointer normal speed',()=>setSpeedShortcut(1)],Slash:['/','Pointer fast speed',()=>setSpeedShortcut(1.7)],
-  KeyG:[event.shiftKey?'⇧G':'G',event.shiftKey?'Manual control':'Guided control',()=>setAutonomy(event.shiftKey?'manual':'guided')],KeyH:['H','Toggle clinician path',()=>toggleReferenceGhost()],F9:['F9','Run live expert',()=>startExpert()],F10:['F10','Pause or resume expert',()=>toggleExpertPause()],F12:['F12','Smart context action',()=>smartAction()],
+  KeyG:[event.shiftKey?'⇧G':'G',event.shiftKey?'Manual control':'Guided control',()=>setAutonomy(event.shiftKey?'manual':'guided')],KeyH:['H','Toggle clinician path',()=>toggleReferenceGhost()],F9:['F9','Run live expert',()=>startExpert()],F10:['F10','Pause or resume expert',()=>toggleExpertPause()],F11:['F11','Cut open abdomen',()=>cutOpenPatient('keyboard')],F12:['F12','Smart context action',()=>smartAction()],
   KeyY:['Y','Start recording',()=>recording(true)],KeyT:['T','Stop and save',()=>recording(false)],KeyR:['R','Replay last',()=>replay()],Delete:['Delete','Reset scene',()=>resetScene()]
 };if(code==='Backspace'||code==='Escape'){if(!event.repeat)emergencyStop();return true}const command=commands[code];if(!command)return false;if(!event.repeat)runShortcut(...command);return true}
 document.addEventListener('keydown',event=>{if(event.code==='Backquote'&&!isTypingTarget(event.target)&&!event.metaKey&&!event.ctrlKey){event.preventDefault();if(!event.repeat)startVoiceInput();return}if(isTypingTarget(event.target)||event.metaKey||event.ctrlKey)return;const helpOpen=!document.getElementById('keyboardHelp').classList.contains('hidden');if(helpOpen&&event.code!=='Slash'&&event.code!=='Escape'&&event.code!=='Backspace'){event.preventDefault();return}if(event.code==='ShiftLeft'||event.code==='ShiftRight'){event.preventDefault();heldModifiers.add(event.code==='ShiftLeft'?'rotate-left':'rotate-right');showKeyAction(event.code==='ShiftLeft'?'L⇧':'R⇧',`${event.code==='ShiftLeft'?'Left':'Right'} wrist angle mode`,true);syncKeyVisuals();updateDrive();return}if(event.code==='AltLeft'||event.code==='AltRight'){event.preventDefault();const modifier=event.code==='AltLeft'?'precision-left':'precision-right';heldModifiers.add(modifier);showKeyAction(event.code==='AltLeft'?'L⌥':'R⌥',`${event.code==='AltLeft'?'Left':'Right'} precision clutch`,true);syncKeyVisuals();updateDrive();return}if(handleDiscreteShortcut(event)){event.preventDefault();if((event.code==='Escape'||event.code==='Backspace')&&helpOpen)toggleKeyboardHelp(false);return}if(!dualMovementCodes.has(event.code))return;event.preventDefault();inputSource='keyboard_pointer';if(!heldKeys.has(event.code))heldKeyStartedAt.set(event.code,performance.now());heldKeys.add(event.code);updateDrive();showKeyAction(event.key.length===1?event.key.toUpperCase():event.key,activeDriveLabel(),true)});
@@ -732,7 +743,7 @@ cameraView.addEventListener('pointerup',finishCameraDrag);cameraView.addEventLis
 function targetDirections(offset){if(!offset)return'';const choices=[];if(Math.abs(offset[2])>.004)choices.push([Math.abs(offset[2]),offset[2]>0?'Up':'Down']);if(Math.abs(offset[1])>.004)choices.push([Math.abs(offset[1]),offset[1]>0?'Left':'Right']);if(Math.abs(offset[0])>.004)choices.push([Math.abs(offset[0]),offset[0]<0?'Toward':'Away']);return choices.sort((a,b)=>b[0]-a[0]).slice(0,2).map(x=>x[1]).join(' + ')}
 async function refresh(){if(refreshInFlight||pageDisposed||document.hidden)return;refreshInFlight=true;try{
   const s=await requestJson('/api/status/live',{cache:'no-store'},2500);if(workerInstanceId&&s.instance_id!==workerInstanceId){location.reload();return}workerInstanceId=s.instance_id;latestStatus=s;if(activeArm>=s.arms){activeArm=0;document.getElementById('arm0').classList.add('active');document.getElementById('arm1').classList.remove('active')}document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';const contactPad=standardGamepads()[0];for(let arm=0;arm<2;arm++){const contact=!!s.native_grasp_contact_active?.[arm];if(contact&&!previousGamepadContacts[arm])gamepadHaptic(contactPad,{duration:95,weak:arm===0 ? .48 : .12,strong:arm===1 ? .48 : .12});previousGamepadContacts[arm]=contact}
-  const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;const procedureMarkup=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join(''),procedureSteps=document.getElementById('procedureSteps');if(procedureSteps.dataset.markup!==procedureMarkup){procedureSteps.innerHTML=procedureMarkup;procedureSteps.dataset.markup=procedureMarkup}
+  const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;const procedureMarkup=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join(''),procedureSteps=document.getElementById('procedureSteps');if(procedureSteps.dataset.markup!==procedureMarkup){procedureSteps.innerHTML=procedureMarkup;procedureSteps.dataset.markup=procedureMarkup}const patient=s.dynamic_patient||{},patientCutButton=document.getElementById('patientCutButton'),patientRoom=patient.access_state==='intact'||patient.access_state==='open',patientCutPending=!!patient.access_pending,sessionDetails=document.querySelector('.session-details');if(patientRoom&&!sessionDetails.dataset.patientRoomShown){sessionDetails.open=true;sessionDetails.dataset.patientRoomShown='true'}patientCutButton.classList.toggle('hidden',!patientRoom);patientCutButton.classList.toggle('open',patient.access_state==='open');patientCutButton.disabled=patient.access_state==='open'||patientCutPending;patientCutButton.innerHTML=patient.access_state==='open'?'<b>Access open</b><br><small>Modeled laparotomy event recorded</small>':patientCutPending?'<b>Opening access…</b><br><small>Hold instruments clear during transition</small>':'<b>F11 · Cut open abdomen</b><br><small>Record modeled laparotomy and expose the cavity</small>';
   document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('rightInstrumentControls').classList.toggle('hidden',s.arms<2);document.getElementById('instrumentGrid').classList.toggle('single',s.arms<2);document.querySelectorAll('.gripper-control').forEach(button=>button.classList.toggle('hidden',!s.has_grippers));
   currentViewMode=s.camera_view_mode||currentViewMode;renderFreeCamera(selectedCameraAdjustment(s));document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',!cameraAdjustMode&&x.dataset.viewMode===currentViewMode));
   document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record')?.classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[0]===false);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[(s.arms||1)>1?1:0]===false);
@@ -868,6 +879,11 @@ class ProcedureAnnotationRequest(BaseModel):
     phase: str | None = None
     event: str | None = None
     note: str = ""
+
+
+class PatientAccessRequest(BaseModel):
+    action: str = "cut_open"
+    source: str = "operator"
 
 
 @dataclass
@@ -1016,6 +1032,10 @@ class SharedState:
     procedure_event_code: int = 0
     procedure_event_sequence: int = 0
     procedure_events: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=4096))
+    dynamic_patient_access_state: str = ""
+    dynamic_patient_access_request: str | None = None
+    dynamic_patient_access_source: str = "operator"
+    dynamic_patient_cut_events: int = 0
     procedure_waypoints_total: int = 0
     procedure_waypoints_completed: int = 0
     procedure_motion_seen: bool = False
@@ -1249,6 +1269,16 @@ class SharedState:
                 "openusd_scene_loaded": self.openusd_scene_loaded,
                 "anatomy_collision_meshes": self.anatomy_collision_meshes,
                 "procedure": procedure_status,
+                "dynamic_patient": {
+                    "access_state": self.dynamic_patient_access_state or None,
+                    "access_pending": self.dynamic_patient_access_request == "open",
+                    "cut_events": self.dynamic_patient_cut_events,
+                    "active_deformables": list(
+                        self.procedure.get(
+                            "dynamic_patient_active_deformables", ()
+                        )
+                    ),
+                },
                 "upstream_task_success": self.upstream_task_success,
                 "performance_timings_ms": dict(self.performance_timings_ms),
                 "simulation_profile": dict(self.simulation_profile),
@@ -1437,6 +1467,9 @@ class SharedState:
                 bool(cell.get("closure_complete"))
                 and not bool(cell.get("cycle_running"))
             )
+        elif kind == "dynamic_abdominal_patient":
+            completed = int(self.camera_nonblank_seen)
+            completed += int(self.dynamic_patient_access_state == "open")
         elif kind == "native_suturing_bench":
             # This dry-lab room deliberately avoids synthetic completion
             # predicates.  Only an observed physical grasp and subsequent
@@ -2455,6 +2488,44 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.coaching_cue = scenario["doctor_focus"]
         state.wake_event.set()
         return {"ok": True, "scenario": scenario, "seed": request.seed, "message": f"{scenario['title']} loaded"}
+
+    @app.post("/api/patient/access")
+    def patient_access(request: PatientAccessRequest) -> dict[str, Any]:
+        if state.procedure.get("guide_kind") != "dynamic_abdominal_patient":
+            raise HTTPException(409, "This room does not contain the dynamic patient")
+        if request.action != "cut_open":
+            raise HTTPException(400, "Supported patient access action: cut_open")
+        request_source = "".join(
+            character for character in request.source.strip() if character.isprintable()
+        )[:64] or "operator"
+        with state.lock:
+            if state.dynamic_patient_access_state == "open":
+                return {
+                    "ok": True,
+                    "access_state": "open",
+                    "already_open": True,
+                    "cut_events": state.dynamic_patient_cut_events,
+                }
+            if state.dynamic_patient_access_request == "open":
+                return {
+                    "ok": True,
+                    "access_state": "intact",
+                    "requested": "open",
+                    "already_requested": True,
+                }
+            state.dynamic_patient_access_request = "open"
+            state.dynamic_patient_access_source = request_source
+            state.coaching_cue = (
+                "Modeled laparotomy cut requested. Hold both instruments clear "
+                "while the coordinated access layers open."
+            )
+        state.wake_event.set()
+        return {
+            "ok": True,
+            "access_state": "intact",
+            "requested": "open",
+            "already_open": False,
+        }
 
     @app.post("/api/evaluate")
     def evaluate(request: EvaluationRequest) -> dict[str, Any]:
@@ -4505,9 +4576,24 @@ def main() -> None:
                 "NVIDIA bench psm_root_spacing_m must be between 0.12 and 0.40 m"
             )
         psm_root_half_spacing_m = psm_root_spacing_m / 2.0
+        psm_root_height_m = float(
+            procedure.get("psm_root_height_m", 0.15)
+        )
+        if not 0.12 <= psm_root_height_m <= 0.40:
+            raise ValueError(
+                "NVIDIA bench psm_root_height_m must be between 0.12 and 0.40 m"
+            )
         psm_root_positions = {
-            "robot_1": (psm_root_half_spacing_m, 0.0, 0.15),
-            "robot_2": (-psm_root_half_spacing_m, 0.0, 0.15),
+            "robot_1": (
+                psm_root_half_spacing_m,
+                0.0,
+                psm_root_height_m,
+            ),
+            "robot_2": (
+                -psm_root_half_spacing_m,
+                0.0,
+                psm_root_height_m,
+            ),
         }
         for robot_name, root_position in psm_root_positions.items():
             robot_cfg = getattr(env_cfg.scene, robot_name)
@@ -4677,10 +4763,10 @@ def main() -> None:
             )
         if dynamic_abdominal_patient_enabled:
             env_cfg.scene.replicate_physics = False
-            # The patient starts with overlapping anatomical envelopes. Keep
-            # enough CUDA collision-stack headroom for external tool contacts;
-            # the spawn callback separately filters uncalibrated organ-on-organ
-            # contacts that otherwise produce a pathological all-pairs set.
+            # Keep bounded CUDA headroom for the single permitted deformable
+            # lane and external tool contacts. Multi-component deformable
+            # contact is intentionally rejected below until it has native
+            # evidence on the target PhysX/CUDA stack.
             dynamic_patient_physx = {
                 "gpu_collision_stack_size": 2**30,
                 "gpu_heap_capacity": 2**28,
@@ -4696,10 +4782,10 @@ def main() -> None:
                     "dynamic_patient_active_deformables", ()
                 )
             )
-            if not dynamic_patient_active_deformables:
+            if len(dynamic_patient_active_deformables) != 1:
                 raise ValueError(
-                    "The dynamic patient room requires at least one explicitly "
-                    "selected solver-active deformable component"
+                    "The current dynamic patient safety boundary requires exactly one "
+                    "explicitly selected solver-active deformable component"
                 )
             patient_access_state = str(
                 procedure.get("dynamic_patient_access_state", "open")
@@ -4729,8 +4815,8 @@ def main() -> None:
                     **kwargs,
                 )
                 from orbit.surgical.assets.dynamic_abdominal_patient import (
+                    NATIVE_DEFORMABLE_ROUTES,
                     apply_patient_deformables,
-                    configure_patient_internal_collision_filter,
                 )
 
                 mechanics_routes = apply_patient_deformables(
@@ -4740,23 +4826,17 @@ def main() -> None:
                 failed_routes = {
                     component: result
                     for component, result in mechanics_routes.items()
-                    if result["route"]
-                    in {"not_applied", "unsupported_mechanics_contract"}
+                    if result["route"] not in NATIVE_DEFORMABLE_ROUTES
                 }
                 if failed_routes:
                     raise RuntimeError(
                         "Dynamic abdominal patient mechanics failed closed: "
                         f"{failed_routes}"
                     )
-                if len(dynamic_patient_active_deformables) > 1:
-                    collision_filter = configure_patient_internal_collision_filter(
-                        str(patient_root.GetPath())
-                    )
-                else:
-                    collision_filter = {
-                        "patient_path": str(patient_root.GetPath()),
-                        "policy": "not_required_for_single_active_deformable",
-                    }
+                collision_filter = {
+                    "patient_path": str(patient_root.GetPath()),
+                    "policy": "not_required_for_single_active_deformable",
+                }
                 print(
                     "[DR_ANMAR_DYNAMIC_PATIENT_MECHANICS] "
                     + json.dumps(
@@ -4772,10 +4852,26 @@ def main() -> None:
                 return patient_root
 
             dynamic_patient_spawn.func = spawn_dynamic_abdominal_patient
+            dynamic_patient_position_raw = tuple(
+                procedure.get(
+                    "dynamic_patient_position_m", (0.0, 0.0, 0.0)
+                )
+            )
+            if len(dynamic_patient_position_raw) != 3:
+                raise ValueError(
+                    "dynamic_patient_position_m must contain exactly three values"
+                )
+            dynamic_patient_position = tuple(
+                float(value) for value in dynamic_patient_position_raw
+            )
+            if not all(math.isfinite(value) for value in dynamic_patient_position):
+                raise ValueError(
+                    "dynamic_patient_position_m values must all be finite"
+                )
             env_cfg.scene.dynamic_abdominal_patient = AssetBaseCfg(
                 prim_path="{ENV_REGEX_NS}/DynamicAbdominalPatient",
                 init_state=AssetBaseCfg.InitialStateCfg(
-                    pos=(0.0, 0.0, 0.12),
+                    pos=dynamic_patient_position,
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=dynamic_patient_spawn,
@@ -7800,6 +7896,11 @@ def main() -> None:
         ),
         openusd_environment=str(openusd_environment) if openusd_environment else "",
         procedure=procedure,
+        dynamic_patient_access_state=(
+            str(procedure.get("dynamic_patient_access_state", "intact"))
+            if dynamic_abdominal_patient_enabled
+            else ""
+        ),
         openusd_scene_loaded=bool(
             nvidia_native_bench
             or native_deformable_enabled
@@ -8747,6 +8848,30 @@ def main() -> None:
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
+        if dynamic_abdominal_patient_enabled:
+            patient_prim = suture_stage.GetPrimAtPath(
+                "/World/envs/env_0/DynamicAbdominalPatient"
+            )
+            if not patient_prim.IsValid():
+                raise RuntimeError(
+                    "Dynamic patient reset failed closed: patient prim is missing"
+                )
+            initial_access_state = str(
+                procedure.get("dynamic_patient_access_state", "intact")
+            )
+            access_variant = patient_prim.GetVariantSets().GetVariantSet(
+                "access_state"
+            )
+            if (
+                not access_variant.IsValid()
+                or not access_variant.SetVariantSelection(
+                    initial_access_state
+                )
+            ):
+                raise RuntimeError(
+                    "Dynamic patient reset failed closed: "
+                    f"{initial_access_state}"
+                )
         if stapler_test_cell_enabled:
             if suture_stage.GetPrimAtPath(
                 stapler_visual_root_path
@@ -8884,6 +9009,11 @@ def main() -> None:
             state.needle_entry_direction = None
             state.adaptive_precision_active = False
             state.native_telemetry = {}
+            if dynamic_abdominal_patient_enabled:
+                state.dynamic_patient_access_state = initial_access_state
+                state.dynamic_patient_access_request = None
+                state.dynamic_patient_access_source = "operator"
+                state.dynamic_patient_cut_events = 0
             if skin_adhesive_enabled:
                 state.skin_adhesive_target = 0.0
                 state.skin_adhesive_system.update(
@@ -9032,6 +9162,13 @@ def main() -> None:
                 state.closure_robot_command_request
             )
             state.closure_robot_command_request = None
+            dynamic_patient_access_request = (
+                state.dynamic_patient_access_request
+            )
+            state.dynamic_patient_access_request = None
+            dynamic_patient_access_source = (
+                state.dynamic_patient_access_source
+            )
             scenario_id = state.scenario_id
             scenario_seed = state.scenario_seed
             camera_view_request = state.camera_view_request
@@ -9108,6 +9245,65 @@ def main() -> None:
         if reset_requested:
             with torch.inference_mode():
                 reset_environment(scenario_id, scenario_seed)
+            # Reset owns the whole episode boundary. Do not replay a request
+            # copied from the pre-reset state into the freshly reset patient.
+            dynamic_patient_access_request = None
+
+        if dynamic_patient_access_request is not None:
+            patient_prim = suture_stage.GetPrimAtPath(
+                "/World/envs/env_0/DynamicAbdominalPatient"
+            )
+            if not patient_prim.IsValid():
+                raise RuntimeError(
+                    "Dynamic patient access transition failed closed: "
+                    "patient prim is missing"
+                )
+            access_variant = patient_prim.GetVariantSets().GetVariantSet(
+                "access_state"
+            )
+            if (
+                not access_variant.IsValid()
+                or dynamic_patient_access_request not in {"intact", "open"}
+                or not access_variant.SetVariantSelection(
+                    dynamic_patient_access_request
+                )
+            ):
+                raise RuntimeError(
+                    "Dynamic patient access transition failed closed: "
+                    f"{dynamic_patient_access_request}"
+                )
+            with state.lock:
+                state.dynamic_patient_access_state = (
+                    dynamic_patient_access_request
+                )
+                if dynamic_patient_access_request == "open":
+                    state.dynamic_patient_cut_events += 1
+                    state.intervention_count += 1
+                    state.procedure_phase = "access"
+                    state.procedure_event_code = PROCEDURE_EVENTS[
+                        "laparotomy_cut_open"
+                    ]
+                    state.procedure_event_sequence += 1
+                    state.procedure_events.append(
+                        {
+                            "time": datetime.now(timezone.utc).isoformat(),
+                            "recorded_frame": state.recorded_frames,
+                            "frame_alignment": "next_control_frame_index",
+                            "sim_step": state.sim_step,
+                            "phase": "access",
+                            "event": "laparotomy_cut_open",
+                            "event_sequence": state.procedure_event_sequence,
+                            "note": (
+                                "Coordinated access-state transition requested by "
+                                f"{dynamic_patient_access_source}; not calibrated "
+                                "continuous cutting"
+                            ),
+                        }
+                    )
+                    state.coaching_cue = (
+                        "Surgical access is open. Confirm the incision margins "
+                        "and exposed anatomy before advancing an instrument."
+                    )
 
         stapler_target_deg = 0.0
         stapler_cycle_phase = "disabled"

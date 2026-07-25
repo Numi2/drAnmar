@@ -67,8 +67,10 @@ def test_repository_contract_is_complete_and_registered_once() -> None:
 
     room = PROCEDURES_BY_ID["dr-anmar-dynamic-abdominal-patient"]
     assert room["dynamic_abdominal_patient"] is True
-    assert room["dynamic_patient_access_state"] == "open"
-    assert room["dynamic_patient_active_deformables"] == ("peritoneum",)
+    assert room["dynamic_patient_access_state"] == "intact"
+    assert room["dynamic_patient_active_deformables"] == ("mesentery",)
+    assert room["dynamic_patient_position_m"] == (0.0, 0.0, 0.0)
+    assert room["psm_root_height_m"] == 0.22
     assert room["nvidia_native_bench"] is True
     assert room["hide_anatomy"] is True
 
@@ -328,7 +330,7 @@ def test_patient_collision_group_filters_only_internal_pairs(
     assert FakeCollisionGroupSchema.group.filtered.targets == [group_path]
 
 
-def test_hierarchical_volume_does_not_apply_legacy_mesh_only_api(
+def test_current_volume_does_not_apply_legacy_mesh_only_api(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class FakeRegistry:
@@ -369,7 +371,6 @@ def test_hierarchical_volume_does_not_apply_legacy_mesh_only_api(
         prim,
         {"mass_kg": 1.0},
         surface=False,
-        hierarchical_volume=True,
     )
 
     assert "OmniPhysicsDeformableBodyAPI" in prim.applied

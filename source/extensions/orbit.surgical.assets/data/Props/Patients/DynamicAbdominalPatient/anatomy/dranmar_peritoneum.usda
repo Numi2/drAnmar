@@ -1640,23 +1640,29 @@ def Xform "DrAnmarPeritoneum" (
 
     variantSet "access_state" = {
         "intact" {
-            over "Visual"
+            over "Geometry"
             {
-                token visibility = "inherited"
-            }
-            over "OpenVisual"
-            {
-                token visibility = "invisible"
+                over "Visual"
+                {
+                    token visibility = "inherited"
+                }
+                over "OpenVisual"
+                {
+                    token visibility = "invisible"
+                }
             }
         }
         "open" {
-            over "Visual"
+            over "Geometry"
             {
-                token visibility = "invisible"
-            }
-            over "OpenVisual"
-            {
-                token visibility = "inherited"
+                over "Visual"
+                {
+                    token visibility = "invisible"
+                }
+                over "OpenVisual"
+                {
+                    token visibility = "inherited"
+                }
             }
         }
     }

@@ -212,6 +212,14 @@ def _static_payload_checks() -> dict[str, Any]:
     tet_metrics: dict[str, Any] = {}
     volume_cooking_sources: dict[str, Any] = {}
     deformable_hierarchy_roots: dict[str, bool] = {}
+    access_layer_variant_paths: dict[str, bool] = {}
+    access_layers = {
+        "skin",
+        "subcutaneous_fat",
+        "fascia",
+        "abdominal_wall",
+        "peritoneum",
+    }
     for component in anatomy["components"]:
         component_path = ASSET_ROOT / component["asset_path"]
         component_text = component_path.read_text(encoding="utf-8")
@@ -229,6 +237,20 @@ def _static_payload_checks() -> dict[str, Any]:
             if not hierarchy_ok:
                 raise AssertionError(
                     f"{component_path.name}: deformable Geometry root is not an Xform"
+                )
+
+        if component["id"] in access_layers:
+            hierarchy_targets_geometry = (
+                'variantSet "access_state"' in component_text
+                and component_text.count('over "Geometry"') >= 2
+                and component_text.count('over "Visual"') >= 2
+                and component_text.count('over "OpenVisual"') >= 2
+            )
+            access_layer_variant_paths[component["id"]] = hierarchy_targets_geometry
+            if not hierarchy_targets_geometry:
+                raise AssertionError(
+                    f"{component_path.name}: access_state variants must target "
+                    "Geometry/Visual and Geometry/OpenVisual"
                 )
 
         if int(component.get("tetrahedra", 0)) > 0:
@@ -296,6 +318,7 @@ def _static_payload_checks() -> dict[str, Any]:
         "usd_sources": source_checks,
         "glb_metrics": glb_metrics,
         "tet_metrics": tet_metrics,
+        "access_layer_variant_paths": access_layer_variant_paths,
         "deformable_hierarchy_roots": deformable_hierarchy_roots,
         "volume_cooking_sources": volume_cooking_sources,
         "relative_references_complete": True,
@@ -482,8 +505,13 @@ def validate() -> dict[str, Any]:
         "asset_id": "dranmar-dynamic-abdominal-patient-v1",
         "version": "0.1.0",
         "passed": True,
+        "passed_scope": "checks_executed_by_this_validator_only",
+        "overall_qualified": False,
         "static": static,
         "physiology": physiology,
+        # Retain this key for report consumers. These gates are not executed by
+        # this script even if a separate, retained native evidence artifact is
+        # added later.
         "not_executed": [
             "OpenUSD runtime parse",
             "Isaac Sim execution",
@@ -514,7 +542,17 @@ def main() -> None:
     args.output.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    print(json.dumps({"passed": True, "output": str(args.output)}, indent=2))
+    print(
+        json.dumps(
+            {
+                "passed": report["passed"],
+                "passed_scope": report["passed_scope"],
+                "overall_qualified": report["overall_qualified"],
+                "output": str(args.output),
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":
