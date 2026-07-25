@@ -1,0 +1,99 @@
+{
+  "asset_id": "dranmar-dynamic-abdominal-patient-v1",
+  "constructors": [
+    "DynamicSurgicalPatient",
+    "DynamicPhysiologicalSurgicalPatient"
+  ],
+  "event_contract": {
+    "event_fields": [
+      "time_s",
+      "kind",
+      "payload",
+      "source"
+    ],
+    "intervention_method": "patient.interventions.apply(event)",
+    "subscription_method": "patient.event_bus.subscribe(kind, callback)",
+    "typed_robot_adapter": "patient.robot"
+  },
+  "patient_variants": {
+    "body_habitus": [
+      "lean",
+      "baseline",
+      "increased_visceral_fat"
+    ],
+    "conditions": [
+      "healthy",
+      "hemorrhage",
+      "bowel_ischemia",
+      "bile_leak",
+      "ureter_injury",
+      "liver_tumor",
+      "dense_adhesions",
+      "postoperative"
+    ],
+    "procedure_stages": [
+      "closed",
+      "access_open",
+      "exposed",
+      "dissection",
+      "hemostasis",
+      "division",
+      "reconstruction",
+      "closure",
+      "dressed"
+    ]
+  },
+  "required_attributes": [
+    "patient.respiration",
+    "patient.perfusion",
+    "patient.bleeding",
+    "patient.vital_signs",
+    "patient.tissue_state",
+    "patient.organ_motion",
+    "patient.damage",
+    "patient.interventions",
+    "patient.robot",
+    "patient.event_bus",
+    "patient.fluids"
+  ],
+  "research_only": true,
+  "schema": "dr.anmar.dynamic-patient-runtime.v1",
+  "snapshot_contract": {
+    "includes": [
+      "vital_signs",
+      "regional_perfusion",
+      "active_bleeding",
+      "fluid_balance",
+      "damage",
+      "tissue_state",
+      "intervention_history",
+      "event_stream",
+      "condition",
+      "procedure_stage"
+    ],
+    "methods": [
+      "patient.snapshot()",
+      "patient.observation()",
+      "patient.save_snapshot(path)"
+    ],
+    "serializable": true
+  },
+  "step_contract": {
+    "method": "patient.step(dt_s)",
+    "order": [
+      "respiration",
+      "cardiovascular",
+      "bleeding",
+      "fluid_balance",
+      "perfusion",
+      "oxygen_delivery",
+      "temperature",
+      "coagulation",
+      "renal",
+      "biliary",
+      "organ_motion",
+      "vital_signs",
+      "event_bus"
+    ]
+  }
+}

@@ -1,0 +1,78 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarDynamicAbdominalPatientOperatingScene"
+    doc = "Unified DrAnmar abdominal procedure scene containing the patient, operating support, tool docks, and shared task frames."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarDynamicAbdominalPatientOperatingScene" (
+    kind = "assembly"
+)
+{
+    def Xform "Patient" (
+        prepend references = @./dranmar_dynamic_abdominal_patient.usda@</DrAnmarDynamicAbdominalPatient>
+    )
+    {
+    }
+    def Cube "OperatingTable"
+    {
+        double size = 1
+        double3 xformOp:translate = (0, 0, -0.19)
+        double3 xformOp:scale = (0.70, 1.20, 0.06)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+    def Cube "Mattress"
+    {
+        double size = 1
+        double3 xformOp:translate = (0, 0, -0.135)
+        double3 xformOp:scale = (0.55, 0.88, 0.07)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+    def Scope "RobotStations"
+    {
+        def Xform "FrankaPrimary"
+        {
+            custom string drAnmar:role = "primary_robot_base"
+            double3 xformOp:translate = (-0.48, -0.06, -0.12)
+            quatf xformOp:orient = (0.9238795, 0, 0, 0.3826834)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+        }
+        def Xform "FrankaSecondary"
+        {
+            custom string drAnmar:role = "secondary_robot_base"
+            double3 xformOp:translate = (0.48, -0.06, -0.12)
+            quatf xformOp:orient = (0.9238795, 0, 0, -0.3826834)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+        }
+    }
+    def Scope "ToolDocks"
+    {
+        def Xform "ExposureDock"
+        {
+            double3 xformOp:translate = (-0.34, 0.28, 0.02)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "DissectionDock"
+        {
+            double3 xformOp:translate = (-0.17, 0.28, 0.02)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "HemostasisDock"
+        {
+            double3 xformOp:translate = (0.00, 0.28, 0.02)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "ReconstructionDock"
+        {
+            double3 xformOp:translate = (0.17, 0.28, 0.02)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "ClosureDock"
+        {
+            double3 xformOp:translate = (0.34, 0.28, 0.02)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+}

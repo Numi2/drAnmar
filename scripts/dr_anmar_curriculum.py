@@ -187,6 +187,23 @@ COURSES = [
         "description": "Break research procedures into observable phases before building a safe supervised-autonomy task.",
         "lessons": [
             {
+                "id": "dynamic-abdominal-patient-live",
+                "title": "Dr.Anmar dynamic abdominal patient",
+                "eyebrow": "Runnable whole-procedure research room · 45 min",
+                "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
+                "procedure_id": "dr-anmar-dynamic-abdominal-patient",
+                "video": None,
+                "mode": "live",
+                "summary": "Carry one persistent patient state through exposure, dissection, hemostasis, reconstruction, assessment, closure, and dressing.",
+                "goal": "Keep mechanics, physiology, damage, fluid, intervention, and evidence state synchronized without crossing the native-runtime or clinical qualification boundary.",
+                "concepts": [
+                    "shared physiology",
+                    "persistent damage",
+                    "fluid conservation",
+                    "fail-closed mechanics",
+                ],
+            },
+            {
                 "id": "tissue-retraction",
                 "title": "Tissue retraction",
                 "eyebrow": "SuFIA-BC research reference · organ scene",
@@ -398,6 +415,23 @@ COURSES.extend(
 # before moving on.  Detailed physics/procedure truth remains owned by the
 # corresponding native room definition.
 LESSON_GUIDES = {
+    "dynamic-abdominal-patient-live": {
+        "notice": "This is a reduced-order research patient with provisional parameters. Native deformable creation must succeed before stepping, and no simulation state is a clinical threshold.",
+        "practice": "Inspect the open patient, establish exposure, apply typed intervention events, reassess perfusion and bleeding, then close and save the final snapshot.",
+        "steps": [
+            "Confirm all requested volume and surface deformable routes were created.",
+            "Use the robot adapter for exposure, treatment, and assessment events.",
+            "Monitor vital signs, regional perfusion, blood loss, damage, and fluid ledgers together.",
+            "Close the access layers, apply the dressing, and serialize the event history.",
+        ],
+        "success_checks": [
+            "All native mechanics routes pass or the room stops before simulation.",
+            "Physiology remains finite and blood loss never exceeds available circulation.",
+            "Every damage and intervention transition remains chronologically reconstructable.",
+            "The final snapshot records research-only status and unpassed qualification gates.",
+        ],
+        "reflection": "Which result came from native solver evidence, which came from a reduced-order state model, and which still requires physical or clinical validation?",
+    },
     "psm-precision-reach": {
         "notice": "Watch how a small hand command changes both tool-tip position and orientation in the camera view.",
         "practice": "Move in one axis at a time, slow near the target, then settle without a corrective wobble.",

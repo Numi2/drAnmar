@@ -4112,6 +4112,9 @@ def main() -> None:
         procedure.get("single_active_camera_renderer", True)
     )
     nvidia_native_bench = bool(procedure.get("nvidia_native_bench"))
+    dynamic_abdominal_patient_enabled = bool(
+        procedure.get("dynamic_abdominal_patient")
+    )
     stapler_test_cell_enabled = bool(procedure.get("stapler_test_cell"))
     selected_bench_assets: set[str] = set()
     bench_asset_paths: dict[str, Path] = {}
@@ -4217,6 +4220,19 @@ def main() -> None:
                 "The operating-room bench is missing required assets: "
                 + "; ".join(missing_bench_assets)
             )
+    dynamic_abdominal_patient_path = (
+        REPOSITORY_ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/Patients"
+        / "DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda"
+    )
+    if (
+        dynamic_abdominal_patient_enabled
+        and not dynamic_abdominal_patient_path.is_file()
+    ):
+        raise RuntimeError(
+            "The dynamic abdominal patient room is missing its primary asset: "
+            f"{dynamic_abdominal_patient_path}"
+        )
     bench_dr_anmar_suture_enabled = bool(
         nvidia_native_bench
         and "dr_anmar_needle_suture" in selected_bench_assets
@@ -4658,6 +4674,64 @@ def main() -> None:
                 spawn=sim_utils.UsdFileCfg(
                     usd_path=str(featured_robot_system_paths["auxiliary"]),
                 ),
+            )
+        if dynamic_abdominal_patient_enabled:
+            env_cfg.scene.replicate_physics = False
+            patient_access_state = str(
+                procedure.get("dynamic_patient_access_state", "open")
+            )
+            if patient_access_state not in {"intact", "open"}:
+                raise ValueError(
+                    "dynamic_patient_access_state must be 'intact' or 'open'"
+                )
+            dynamic_patient_spawn = sim_utils.UsdFileCfg(
+                usd_path=str(dynamic_abdominal_patient_path),
+                variants={"access_state": patient_access_state},
+            )
+            source_dynamic_patient_spawn = dynamic_patient_spawn.func
+
+            def spawn_dynamic_abdominal_patient(
+                prim_path: str,
+                cfg: sim_utils.UsdFileCfg,
+                translation=None,
+                orientation=None,
+                **kwargs: Any,
+            ) -> Any:
+                patient_root = source_dynamic_patient_spawn(
+                    prim_path,
+                    cfg,
+                    translation=translation,
+                    orientation=orientation,
+                    **kwargs,
+                )
+                from orbit.surgical.assets.dynamic_abdominal_patient import (
+                    apply_patient_deformables,
+                )
+
+                mechanics_routes = apply_patient_deformables(
+                    str(patient_root.GetPath())
+                )
+                failed_routes = {
+                    component: result
+                    for component, result in mechanics_routes.items()
+                    if result["route"]
+                    in {"not_applied", "unsupported_mechanics_contract"}
+                }
+                if failed_routes:
+                    raise RuntimeError(
+                        "Dynamic abdominal patient mechanics failed closed: "
+                        f"{failed_routes}"
+                    )
+                return patient_root
+
+            dynamic_patient_spawn.func = spawn_dynamic_abdominal_patient
+            env_cfg.scene.dynamic_abdominal_patient = AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/DynamicAbdominalPatient",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    pos=(0.0, 0.0, 0.12),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=dynamic_patient_spawn,
             )
         env_cfg.scene.table.spawn.usd_path = str(bench_asset_paths["table"])
         env_cfg.scene.table.init_state.pos = (0.0, 0.0, -0.457)

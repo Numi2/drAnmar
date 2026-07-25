@@ -1,0 +1,61 @@
+{
+  "anatomy": {
+    "body_dimensions_m": [
+      0.38,
+      0.54,
+      0.22
+    ],
+    "component_count": 23,
+    "explicit_tet_component_count": 7,
+    "visual_triangle_count": 54976,
+    "visual_vertex_count": 27656
+  },
+  "clinical_validation": false,
+  "deployment": {
+    "doctor_room_id": "dr-anmar-dynamic-abdominal-patient",
+    "default_access_state": "open",
+    "mechanics_policy": "fail_closed_if_any_requested_native_route_is_not_applied",
+    "validation_report": "physics_next/benchmarks/dranmar-dynamic-abdominal-patient-validation.json"
+  },
+  "id": "dranmar-dynamic-abdominal-patient-v1",
+  "mechanics": {
+    "fluid": "PBD particle carriers plus reduced-order ledgers",
+    "organ_deformation": "mixed volume surface and segmented representations",
+    "pulsation": "regional vessel expansion target",
+    "respiration": "partial kinematic organ displacement",
+    "topology": "removable bridge and attachment contracts"
+  },
+  "physiology": {
+    "biliary": "liver perfusion and duct injury dependent",
+    "bleeding": "pressure and defect area orifice model with coagulation",
+    "cardiovascular": "baroreflex coupled lumped circulation",
+    "oxygen": "cardiac output times arterial oxygen content",
+    "perfusion": "regional resistance and compression model",
+    "renal": "MAP and renal perfusion dependent",
+    "temperature": "core compartment"
+  },
+  "qualification_boundary": [
+    "not a clinical digital twin",
+    "no patient-specific calibration",
+    "no medical-device control",
+    "no clinical decision thresholds",
+    "no validated injury biomechanics",
+    "no biological healing"
+  ],
+  "runtime_contract": [
+    "respiration",
+    "perfusion",
+    "bleeding",
+    "vital_signs",
+    "tissue_state",
+    "organ_motion",
+    "damage",
+    "interventions",
+    "robot",
+    "event_bus",
+    "fluids"
+  ],
+  "schema": "dr.anmar.dynamic-abdominal-patient-profile.v1",
+  "status": "research_informed_engineering_platform_pending_runtime_physical_sensor_and_clinical_validation",
+  "version": "0.1.0"
+}

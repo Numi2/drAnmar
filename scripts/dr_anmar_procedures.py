@@ -295,6 +295,68 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
 
 ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
     {
+        "id": "dr-anmar-dynamic-abdominal-patient",
+        "title": "Dynamic abdominal patient",
+        "category": "Whole-procedure patient simulation",
+        "difficulty": "Advanced research",
+        "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
+        "anatomy_scene": "",
+        "anatomy_focus": "Dr.Anmar open dynamic abdominal patient",
+        "robot": "Dual dVRK PSM with Dr.Anmar robot-adapter portfolio",
+        "instrument": "Procedure-dependent surgical instruments",
+        "objective": "Use one persistent abdominal patient state across exposure, dissection, hemostasis, division, reconstruction, closure, dressing, and perfusion assessment.",
+        "interaction": "Dr.Anmar-authored modular anatomy and solver-independent physiology are composed with fail-closed PhysX volume and surface deformable routes. Host-controlled cutting, puncture, attachments, sutures, staples, seals, and fluid events remain explicit intervention contracts.",
+        "guide_kind": "dynamic_abdominal_patient",
+        "nvidia_native_bench": True,
+        "dynamic_abdominal_patient": True,
+        "dynamic_patient_access_state": "open",
+        "required_nvidia_assets": (
+            "Robots/dVRK/PSM/psm.usd",
+            "Props/SutureNeedle/needle_sdf.usd",
+            "Props/Table/table.usd",
+        ),
+        "required_repository_assets": (
+            "source/extensions/orbit.surgical.assets/data/Props/Patients/"
+            "DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda",
+            "source/extensions/orbit.surgical.assets/orbit/surgical/assets/"
+            "dynamic_abdominal_patient.py",
+            "physics_next/dynamic-patient/"
+            "dranmar-dynamic-abdominal-patient-v1.json",
+        ),
+        "bench_core_assets": (
+            {"id": "dual_psm", "title": "Dual dVRK PSMs"},
+            {"id": "patient", "title": "Dr.Anmar dynamic abdominal patient"},
+        ),
+        "bench_asset_catalog": (),
+        "psm_root_spacing_m": 0.20,
+        "hide_anatomy": True,
+        "show_waypoint_markers": False,
+        "interactive_camera_width_px": 960,
+        "interactive_camera_height_px": 640,
+        "interactive_camera_eye_m": (0.58, -0.62, 0.48),
+        "interactive_camera_target_m": (0.0, 0.0, 0.10),
+        "interactive_rgb_only": True,
+        "interactive_multiview": True,
+        "single_active_camera_renderer": True,
+        "steps": [
+            step("inspect", "Inspect patient", "Confirm the open access layers, target anatomy, pathology, and protected structures before moving an instrument.", "patient and target visibility"),
+            step("expose", "Establish exposure", "Retract only through the typed patient adapter and monitor regional compression and perfusion.", "exposure and perfusion state"),
+            step("treat", "Perform the procedure", "Apply dissection, hemostasis, division, or reconstruction events while preserving the chronological damage and intervention record.", "intervention and damage stream"),
+            step("assess", "Assess viability", "Run a perfusion scan and reconcile regional flow, active bleeding, fluid balance, and vital-sign state.", "shared physiology observation"),
+            step("close", "Close and dress", "Restore the abdominal wall and skin access state, apply the dressing, and save the final patient snapshot.", "closure and serializable evidence"),
+        ],
+        "success_metrics": [
+            "native deformable route creation",
+            "finite physiology",
+            "bounded blood loss",
+            "regional perfusion",
+            "damage chronology",
+            "intervention chronology",
+            "closure state",
+            "serializable final snapshot",
+        ],
+    },
+    {
         "id": "dr-anmar-stapler-test-cell",
         "title": "Dr.Anmar stapler test cell",
         "category": "Closure-device qualification",

@@ -296,6 +296,19 @@
       "native_gpu_qualification": "passed_v0_1_1_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_rtx_4090_standalone_loaded_franka_and_serialized_six_camera_depth_matrix",
       "physical_qualification": "reduced_order_research_model_pending_sensor_calibration_flow_bench_and_tissue_validation",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-dynamic-abdominal-patient-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda",
+      "rigid_proxy": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_rigid_proxy.usda",
+      "operating_scene": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_operating_scene.usda",
+      "profile": "physics_next/dynamic-patient/dranmar-dynamic-abdominal-patient-v1.json",
+      "runtime": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/dynamic_abdominal_patient.py",
+      "live_integration": "unified_procedure_patient_for_all_dranmar_surgical_robots",
+      "deployment": "enabled_for_research_iteration",
+      "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
+      "physical_qualification": "provisional_anatomy_mechanics_and_physiology_parameters_active",
+      "clinical_validation": false
     }
   ],
   "validation": {

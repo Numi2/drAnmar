@@ -1,0 +1,1858 @@
+{
+  "additional_essential_components": [
+    "colon",
+    "pancreas",
+    "spleen",
+    "kidneys",
+    "bladder",
+    "diaphragm",
+    "mesentery"
+  ],
+  "asset_id": "dranmar-dynamic-abdominal-patient-v1",
+  "components": [
+    {
+      "access_variants": [
+        "intact",
+        "open"
+      ],
+      "asset_path": "anatomy/dranmar_skin.usda",
+      "category": "body_layer",
+      "damping_seed": 0.15,
+      "density_kg_m3": 1080,
+      "display_name": "Skin",
+      "frames": {
+        "center": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "role": "skin_center"
+        }
+      },
+      "id": "skin",
+      "labels": [
+        "skin",
+        "abdominal_patient",
+        "body_layer"
+      ],
+      "mass_kg": 1.0439214445195268,
+      "material": "Skin",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.02,
+      "poissons_ratio_seed": 0.46,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.0,
+        0.0015
+      ],
+      "root_prim": "DrAnmarSkin",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0,
+        0,
+        0.105
+      ],
+      "visual_triangles": 512,
+      "visual_vertices": 258,
+      "youngs_modulus_pa_seed": 75000
+    },
+    {
+      "access_variants": [
+        "intact",
+        "open"
+      ],
+      "asset_path": "anatomy/dranmar_subcutaneous_fat.usda",
+      "category": "body_layer",
+      "damping_seed": 0.15,
+      "density_kg_m3": 920,
+      "display_name": "Subcutaneous Fat",
+      "frames": {
+        "center": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "role": "subcutaneous_fat_center"
+        }
+      },
+      "id": "subcutaneous_fat",
+      "labels": [
+        "subcutaneous_fat",
+        "abdominal_patient",
+        "body_layer"
+      ],
+      "mass_kg": 3.3468430821353667,
+      "material": "Fat",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.01,
+      "poissons_ratio_seed": 0.46,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.0,
+        0.0015
+      ],
+      "root_prim": "DrAnmarSubcutaneousFat",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0,
+        0,
+        0.088
+      ],
+      "visual_triangles": 512,
+      "visual_vertices": 258,
+      "youngs_modulus_pa_seed": 18000
+    },
+    {
+      "access_variants": [
+        "intact",
+        "open"
+      ],
+      "asset_path": "anatomy/dranmar_fascia.usda",
+      "category": "body_layer",
+      "damping_seed": 0.15,
+      "density_kg_m3": 1120,
+      "display_name": "Anterior Fascia",
+      "frames": {
+        "center": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "role": "fascia_center"
+        }
+      },
+      "id": "fascia",
+      "labels": [
+        "fascia",
+        "abdominal_patient",
+        "body_layer"
+      ],
+      "mass_kg": 0.4782861421216428,
+      "material": "Fascia",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.01,
+      "poissons_ratio_seed": 0.46,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.0,
+        0.0015
+      ],
+      "root_prim": "DrAnmarFascia",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0,
+        0,
+        0.071
+      ],
+      "visual_triangles": 512,
+      "visual_vertices": 258,
+      "youngs_modulus_pa_seed": 850000
+    },
+    {
+      "access_variants": [
+        "intact",
+        "open"
+      ],
+      "asset_path": "anatomy/dranmar_abdominal_wall.usda",
+      "category": "body_layer",
+      "damping_seed": 0.15,
+      "density_kg_m3": 1060,
+      "display_name": "Abdominal Wall",
+      "frames": {
+        "center": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "role": "abdominal_wall_center"
+        }
+      },
+      "id": "abdominal_wall",
+      "labels": [
+        "abdominal_wall",
+        "abdominal_patient",
+        "body_layer"
+      ],
+      "mass_kg": 3.9594922245019273,
+      "material": "Muscle",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.01,
+      "poissons_ratio_seed": 0.46,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.0,
+        0.0015
+      ],
+      "root_prim": "DrAnmarAbdominalWall",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0,
+        0,
+        0.052
+      ],
+      "visual_triangles": 512,
+      "visual_vertices": 258,
+      "youngs_modulus_pa_seed": 160000
+    },
+    {
+      "access_variants": [
+        "intact",
+        "open"
+      ],
+      "asset_path": "anatomy/dranmar_peritoneum.usda",
+      "category": "body_layer",
+      "damping_seed": 0.15,
+      "density_kg_m3": 1080,
+      "display_name": "Peritoneum",
+      "frames": {
+        "center": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "role": "peritoneum_center"
+        }
+      },
+      "id": "peritoneum",
+      "labels": [
+        "peritoneum",
+        "abdominal_patient",
+        "body_layer"
+      ],
+      "mass_kg": 0.2155767377695791,
+      "material": "Peritoneum",
+      "mechanics": "surface_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.01,
+      "poissons_ratio_seed": 0.46,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.0,
+        0.0015
+      ],
+      "root_prim": "DrAnmarPeritoneum",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0,
+        0,
+        0.034
+      ],
+      "visual_triangles": 512,
+      "visual_vertices": 258,
+      "youngs_modulus_pa_seed": 1100000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_liver.usda",
+      "category": "organ",
+      "damping_seed": 0.18,
+      "density_kg_m3": 1060,
+      "display_name": "Liver",
+      "frames": {
+        "hilum": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.01,
+            -0.045,
+            -0.005
+          ],
+          "role": "liver_hilum"
+        },
+        "resection_target": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.055,
+            0.005,
+            0.02
+          ],
+          "role": "liver_lesion_target"
+        }
+      },
+      "id": "liver",
+      "labels": [
+        "liver",
+        "solid_organ",
+        "perfused"
+      ],
+      "mass_kg": 1.45,
+      "material": "Liver",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.25,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.002,
+      "respiration_coupling_m": [
+        0.002,
+        0.004,
+        0.014
+      ],
+      "root_prim": "DrAnmarLiver",
+      "tet_vertices": 274,
+      "tetrahedra": 1152,
+      "translation_m": [
+        0.035,
+        0.062,
+        0.0
+      ],
+      "visual_triangles": 4736,
+      "visual_vertices": 2370,
+      "youngs_modulus_pa_seed": 18000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_gallbladder.usda",
+      "category": "organ",
+      "damping_seed": 0.18,
+      "density_kg_m3": 1030,
+      "display_name": "Gallbladder",
+      "frames": {
+        "cystic_pedicle": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0.043,
+            0
+          ],
+          "role": "cystic_duct_and_artery_target"
+        },
+        "fundus": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            -0.038,
+            0
+          ],
+          "role": "gallbladder_fundus"
+        }
+      },
+      "id": "gallbladder",
+      "labels": [
+        "gallbladder",
+        "biliary_organ",
+        "hollow_organ"
+      ],
+      "mass_kg": 0.065,
+      "material": "Gallbladder",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        0.985,
+        0,
+        0,
+        0.174
+      ],
+      "perfusion_fraction": 0.004,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.001,
+        0.003,
+        0.01
+      ],
+      "root_prim": "DrAnmarGallbladder",
+      "tet_vertices": 208,
+      "tetrahedra": 804,
+      "translation_m": [
+        0.07,
+        0.01,
+        0.01
+      ],
+      "visual_triangles": 4736,
+      "visual_vertices": 2370,
+      "youngs_modulus_pa_seed": 22000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_stomach.usda",
+      "category": "organ",
+      "damping_seed": 0.2,
+      "density_kg_m3": 1040,
+      "display_name": "Stomach",
+      "frames": {
+        "greater_curvature": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.05,
+            -0.005,
+            -0.004
+          ],
+          "role": "stomach_greater_curvature"
+        },
+        "pylorus": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.0,
+            -0.045,
+            -0.018
+          ],
+          "role": "pylorus"
+        }
+      },
+      "id": "stomach",
+      "labels": [
+        "stomach",
+        "hollow_organ",
+        "digestive"
+      ],
+      "mass_kg": 0.45,
+      "material": "Stomach",
+      "mechanics": "volume_deformable_cooked_from_surface",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.04,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        -0.001,
+        0.002,
+        0.01
+      ],
+      "root_prim": "DrAnmarStomach",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0,
+        0,
+        0
+      ],
+      "visual_triangles": 288,
+      "visual_vertices": 146,
+      "youngs_modulus_pa_seed": 32000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_small_bowel.usda",
+      "category": "organ",
+      "damping_seed": 0.22,
+      "density_kg_m3": 1035,
+      "display_name": "Small Bowel",
+      "frames": {
+        "mesenteric_root": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0.005,
+            -0.045
+          ],
+          "role": "mesenteric_root"
+        },
+        "resection_target": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.02,
+            -0.045,
+            -0.025
+          ],
+          "role": "bowel_resection_target"
+        }
+      },
+      "id": "small_bowel",
+      "labels": [
+        "small_bowel",
+        "hollow_organ",
+        "digestive"
+      ],
+      "mass_kg": 0.75,
+      "material": "SmallBowel",
+      "mechanics": "segmented_surface_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.15,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.001,
+        0.005
+      ],
+      "root_prim": "DrAnmarSmallBowel",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visual_triangles": 1848,
+      "visual_vertices": 936,
+      "youngs_modulus_pa_seed": 28000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_colon.usda",
+      "category": "organ",
+      "damping_seed": 0.22,
+      "density_kg_m3": 1035,
+      "display_name": "Colon",
+      "frames": {
+        "sigmoid_target": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.095,
+            -0.075,
+            -0.025
+          ],
+          "role": "sigmoid_target"
+        },
+        "transverse_target": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0.09,
+            0
+          ],
+          "role": "transverse_colon_target"
+        }
+      },
+      "id": "colon",
+      "labels": [
+        "colon",
+        "hollow_organ",
+        "digestive"
+      ],
+      "mass_kg": 0.55,
+      "material": "Colon",
+      "mechanics": "segmented_surface_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.08,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.001,
+        0.004
+      ],
+      "root_prim": "DrAnmarColon",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visual_triangles": 324,
+      "visual_vertices": 164,
+      "youngs_modulus_pa_seed": 35000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_pancreas.usda",
+      "category": "organ",
+      "damping_seed": 0.18,
+      "density_kg_m3": 1050,
+      "display_name": "Pancreas",
+      "frames": {
+        "head": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.055,
+            0,
+            0
+          ],
+          "role": "pancreas_head"
+        }
+      },
+      "id": "pancreas",
+      "labels": [
+        "pancreas",
+        "solid_organ",
+        "digestive"
+      ],
+      "mass_kg": 0.09,
+      "material": "Pancreas",
+      "mechanics": "volume_deformable_cooked_from_surface",
+      "orientation_wxyz": [
+        0.966,
+        0,
+        0,
+        0.259
+      ],
+      "perfusion_fraction": 0.03,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.002,
+        0.006
+      ],
+      "root_prim": "DrAnmarPancreas",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        -0.01,
+        0.026,
+        -0.027
+      ],
+      "visual_triangles": 4736,
+      "visual_vertices": 2370,
+      "youngs_modulus_pa_seed": 30000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_spleen.usda",
+      "category": "organ",
+      "damping_seed": 0.2,
+      "density_kg_m3": 1055,
+      "display_name": "Spleen",
+      "frames": {
+        "hilum": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.025,
+            -0.01,
+            0
+          ],
+          "role": "spleen_hilum"
+        }
+      },
+      "id": "spleen",
+      "labels": [
+        "spleen",
+        "solid_organ",
+        "perfused"
+      ],
+      "mass_kg": 0.17,
+      "material": "Spleen",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        0.976,
+        0,
+        0,
+        -0.216
+      ],
+      "perfusion_fraction": 0.05,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        -0.001,
+        0.003,
+        0.011
+      ],
+      "root_prim": "DrAnmarSpleen",
+      "tet_vertices": 214,
+      "tetrahedra": 786,
+      "translation_m": [
+        -0.115,
+        0.048,
+        -0.005
+      ],
+      "visual_triangles": 4736,
+      "visual_vertices": 2370,
+      "youngs_modulus_pa_seed": 20000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_left_kidney.usda",
+      "category": "organ",
+      "damping_seed": 0.18,
+      "density_kg_m3": 1050,
+      "display_name": "Left Kidney",
+      "frames": {
+        "hilum": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.02,
+            0,
+            0
+          ],
+          "role": "left_renal_hilum"
+        }
+      },
+      "id": "left_kidney",
+      "labels": [
+        "kidney",
+        "urinary_organ",
+        "perfused",
+        "left"
+      ],
+      "mass_kg": 0.15,
+      "material": "Kidney",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        0.996,
+        0,
+        0,
+        0.087
+      ],
+      "perfusion_fraction": 0.1,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.001,
+        0.004
+      ],
+      "root_prim": "DrAnmarLeftKidney",
+      "tet_vertices": 214,
+      "tetrahedra": 764,
+      "translation_m": [
+        -0.08,
+        0.0,
+        -0.064
+      ],
+      "visual_triangles": 4736,
+      "visual_vertices": 2370,
+      "youngs_modulus_pa_seed": 25000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_right_kidney.usda",
+      "category": "organ",
+      "damping_seed": 0.18,
+      "density_kg_m3": 1050,
+      "display_name": "Right Kidney",
+      "frames": {
+        "hilum": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.02,
+            0,
+            0
+          ],
+          "role": "right_renal_hilum"
+        }
+      },
+      "id": "right_kidney",
+      "labels": [
+        "kidney",
+        "urinary_organ",
+        "perfused",
+        "right"
+      ],
+      "mass_kg": 0.15,
+      "material": "Kidney",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        0.996,
+        0,
+        0,
+        -0.087
+      ],
+      "perfusion_fraction": 0.1,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.0,
+        0.001,
+        0.004
+      ],
+      "root_prim": "DrAnmarRightKidney",
+      "tet_vertices": 214,
+      "tetrahedra": 764,
+      "translation_m": [
+        0.08,
+        0.0,
+        -0.064
+      ],
+      "visual_triangles": 4736,
+      "visual_vertices": 2370,
+      "youngs_modulus_pa_seed": 25000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_bladder.usda",
+      "category": "organ",
+      "damping_seed": 0.24,
+      "density_kg_m3": 1020,
+      "display_name": "Urinary Bladder",
+      "frames": {
+        "dome": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0.032
+          ],
+          "role": "bladder_dome"
+        }
+      },
+      "id": "bladder",
+      "labels": [
+        "urinary_bladder",
+        "hollow_organ",
+        "urinary"
+      ],
+      "mass_kg": 0.16,
+      "material": "Bladder",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.01,
+      "poissons_ratio_seed": 0.48,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0,
+        0,
+        0.001
+      ],
+      "root_prim": "DrAnmarBladder",
+      "tet_vertices": 210,
+      "tetrahedra": 704,
+      "translation_m": [
+        0,
+        -0.155,
+        -0.06
+      ],
+      "visual_triangles": 4736,
+      "visual_vertices": 2370,
+      "youngs_modulus_pa_seed": 20000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_diaphragm.usda",
+      "category": "organ",
+      "damping_seed": 0.16,
+      "density_kg_m3": 1060,
+      "display_name": "Diaphragm",
+      "frames": {
+        "center": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "role": "diaphragm_center"
+        }
+      },
+      "id": "diaphragm",
+      "labels": [
+        "diaphragm",
+        "respiratory_muscle",
+        "surface_deformable"
+      ],
+      "mass_kg": 0.55,
+      "material": "Diaphragm",
+      "mechanics": "surface_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.02,
+      "poissons_ratio_seed": 0.46,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0,
+        0,
+        0.025
+      ],
+      "root_prim": "DrAnmarDiaphragm",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0,
+        0.135,
+        0.025
+      ],
+      "visual_triangles": 2520,
+      "visual_vertices": 1297,
+      "youngs_modulus_pa_seed": 120000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_mesentery.usda",
+      "category": "membrane",
+      "damping_seed": 0.2,
+      "density_kg_m3": 1040,
+      "display_name": "Mesentery",
+      "frames": {
+        "root": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0.035,
+            -0.052
+          ],
+          "role": "mesenteric_root"
+        }
+      },
+      "id": "mesentery",
+      "labels": [
+        "mesentery",
+        "membrane",
+        "vascular_support"
+      ],
+      "mass_kg": 0.08,
+      "material": "Mesentery",
+      "mechanics": "surface_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.03,
+      "poissons_ratio_seed": 0.46,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0,
+        0.001,
+        0.004
+      ],
+      "root_prim": "DrAnmarMesentery",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visual_triangles": 864,
+      "visual_vertices": 475,
+      "youngs_modulus_pa_seed": 55000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_major_vessels.usda",
+      "category": "vascular",
+      "damping_seed": 0.14,
+      "density_kg_m3": 1060,
+      "display_name": "Major Abdominal Vessels",
+      "frames": {
+        "aortic_inlet": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0.12,
+            -0.06
+          ],
+          "role": "arterial_inlet"
+        },
+        "portal_hilum": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.018,
+            0.09,
+            -0.005
+          ],
+          "role": "portal_hilum"
+        },
+        "venous_outlet": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.025,
+            0.12,
+            -0.057
+          ],
+          "role": "venous_outlet"
+        }
+      },
+      "id": "major_vessels",
+      "labels": [
+        "major_vessels",
+        "vascular_network",
+        "perfused"
+      ],
+      "mass_kg": 0.18,
+      "material": "Artery",
+      "mechanics": "segmented_volume_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 1.0,
+      "poissons_ratio_seed": 0.48,
+      "pulsation_fraction": 0.035,
+      "respiration_coupling_m": [
+        0,
+        0.001,
+        0.003
+      ],
+      "root_prim": "DrAnmarMajorVessels",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visual_triangles": 656,
+      "visual_vertices": 338,
+      "youngs_modulus_pa_seed": 420000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_ureters.usda",
+      "category": "urinary",
+      "damping_seed": 0.18,
+      "density_kg_m3": 1050,
+      "display_name": "Bilateral Ureters",
+      "frames": {
+        "left_ureter_target": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.048,
+            -0.08,
+            -0.075
+          ],
+          "role": "left_ureter_target"
+        },
+        "right_ureter_target": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.048,
+            -0.08,
+            -0.075
+          ],
+          "role": "right_ureter_target"
+        }
+      },
+      "id": "ureters",
+      "labels": [
+        "ureter",
+        "urinary_tract",
+        "protected_structure"
+      ],
+      "mass_kg": 0.012,
+      "material": "Ureter",
+      "mechanics": "segmented_rod",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.002,
+      "poissons_ratio_seed": 0.47,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0,
+        0,
+        0.002
+      ],
+      "root_prim": "DrAnmarUreters",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visual_triangles": 192,
+      "visual_vertices": 100,
+      "youngs_modulus_pa_seed": 260000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_nerves.usda",
+      "category": "neural",
+      "damping_seed": 0.14,
+      "density_kg_m3": 1040,
+      "display_name": "Abdominal Autonomic Nerves",
+      "frames": {
+        "pelvic_plexus": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            -0.09,
+            -0.088
+          ],
+          "role": "pelvic_nerve_plexus"
+        }
+      },
+      "id": "nerves",
+      "labels": [
+        "nerve",
+        "protected_structure",
+        "autonomic"
+      ],
+      "mass_kg": 0.006,
+      "material": "Nerve",
+      "mechanics": "segmented_rod",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.001,
+      "poissons_ratio_seed": 0.45,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0,
+        0,
+        0.001
+      ],
+      "root_prim": "DrAnmarNerves",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visual_triangles": 220,
+      "visual_vertices": 116,
+      "youngs_modulus_pa_seed": 500000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_liver_tumor.usda",
+      "category": "pathology",
+      "damping_seed": 0.16,
+      "density_kg_m3": 1080,
+      "display_name": "Liver Tumor",
+      "frames": {
+        "center": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "role": "tumor_center"
+        }
+      },
+      "id": "liver_tumor",
+      "labels": [
+        "tumor",
+        "liver_lesion",
+        "pathology"
+      ],
+      "mass_kg": 0.025,
+      "material": "Tumor",
+      "mechanics": "volume_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.012,
+      "poissons_ratio_seed": 0.46,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0.001,
+        0.004,
+        0.014
+      ],
+      "root_prim": "DrAnmarLiverTumor",
+      "tet_vertices": 189,
+      "tetrahedra": 596,
+      "translation_m": [
+        0.082,
+        0.064,
+        0.015
+      ],
+      "visual_triangles": 4736,
+      "visual_vertices": 2370,
+      "youngs_modulus_pa_seed": 65000
+    },
+    {
+      "access_variants": [],
+      "asset_path": "anatomy/dranmar_bowel_lesion.usda",
+      "category": "pathology",
+      "damping_seed": 0.16,
+      "density_kg_m3": 1070,
+      "display_name": "Bowel Lesion",
+      "frames": {
+        "center": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "role": "bowel_lesion_center"
+        }
+      },
+      "id": "bowel_lesion",
+      "labels": [
+        "bowel_lesion",
+        "pathology",
+        "resection_target"
+      ],
+      "mass_kg": 0.006,
+      "material": "Lesion",
+      "mechanics": "attached_rigid_or_deformable",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.002,
+      "poissons_ratio_seed": 0.46,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0,
+        0.001,
+        0.005
+      ],
+      "root_prim": "DrAnmarBowelLesion",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0.022,
+        -0.045,
+        -0.02
+      ],
+      "visual_triangles": 4736,
+      "visual_vertices": 2370,
+      "youngs_modulus_pa_seed": 75000
+    },
+    {
+      "access_variants": [],
+      "adhesion_specs": [
+        {
+          "cut_required": true,
+          "hydro_release_ml": 0.12,
+          "id": "adhesion_00",
+          "kind": "gallbladder_liver",
+          "point0_m": [
+            0.064,
+            0.01,
+            0.02
+          ],
+          "point1_m": [
+            0.072,
+            0.025,
+            0.036
+          ],
+          "release_work_j": 0.004
+        },
+        {
+          "cut_required": false,
+          "hydro_release_ml": 0.16,
+          "id": "adhesion_01",
+          "kind": "bowel_peritoneum",
+          "point0_m": [
+            0.04,
+            -0.03,
+            -0.012
+          ],
+          "point1_m": [
+            0.05,
+            -0.028,
+            0.034
+          ],
+          "release_work_j": 0.0055
+        },
+        {
+          "cut_required": false,
+          "hydro_release_ml": 0.2,
+          "id": "adhesion_02",
+          "kind": "bowel_peritoneum",
+          "point0_m": [
+            -0.04,
+            -0.045,
+            -0.018
+          ],
+          "point1_m": [
+            -0.055,
+            -0.045,
+            0.032
+          ],
+          "release_work_j": 0.007
+        },
+        {
+          "cut_required": true,
+          "hydro_release_ml": 0.12,
+          "id": "adhesion_03",
+          "kind": "colon_wall",
+          "point0_m": [
+            0.09,
+            -0.02,
+            -0.018
+          ],
+          "point1_m": [
+            0.135,
+            -0.015,
+            0.045
+          ],
+          "release_work_j": 0.0085
+        },
+        {
+          "cut_required": true,
+          "hydro_release_ml": 0.16,
+          "id": "adhesion_04",
+          "kind": "colon_wall",
+          "point0_m": [
+            -0.09,
+            -0.02,
+            -0.018
+          ],
+          "point1_m": [
+            -0.135,
+            -0.015,
+            0.045
+          ],
+          "release_work_j": 0.004
+        },
+        {
+          "cut_required": false,
+          "hydro_release_ml": 0.2,
+          "id": "adhesion_05",
+          "kind": "mesentery_peritoneum",
+          "point0_m": [
+            0.03,
+            0.01,
+            -0.025
+          ],
+          "point1_m": [
+            0.025,
+            0.018,
+            0.03
+          ],
+          "release_work_j": 0.0055
+        },
+        {
+          "cut_required": false,
+          "hydro_release_ml": 0.12,
+          "id": "adhesion_06",
+          "kind": "mesentery_peritoneum",
+          "point0_m": [
+            -0.02,
+            0.005,
+            -0.03
+          ],
+          "point1_m": [
+            -0.015,
+            0.02,
+            0.032
+          ],
+          "release_work_j": 0.007
+        },
+        {
+          "cut_required": false,
+          "hydro_release_ml": 0.16,
+          "id": "adhesion_07",
+          "kind": "bowel_wall",
+          "point0_m": [
+            0.07,
+            -0.06,
+            -0.025
+          ],
+          "point1_m": [
+            0.095,
+            -0.06,
+            0.038
+          ],
+          "release_work_j": 0.0085
+        },
+        {
+          "cut_required": false,
+          "hydro_release_ml": 0.2,
+          "id": "adhesion_08",
+          "kind": "bowel_wall",
+          "point0_m": [
+            -0.07,
+            -0.06,
+            -0.025
+          ],
+          "point1_m": [
+            -0.095,
+            -0.06,
+            0.038
+          ],
+          "release_work_j": 0.004
+        },
+        {
+          "cut_required": true,
+          "hydro_release_ml": 0.12,
+          "id": "adhesion_09",
+          "kind": "bowel_liver",
+          "point0_m": [
+            0.02,
+            0.05,
+            -0.018
+          ],
+          "point1_m": [
+            0.03,
+            0.06,
+            0.03
+          ],
+          "release_work_j": 0.0055
+        },
+        {
+          "cut_required": false,
+          "hydro_release_ml": 0.16,
+          "id": "adhesion_10",
+          "kind": "stomach_peritoneum",
+          "point0_m": [
+            -0.045,
+            0.04,
+            -0.01
+          ],
+          "point1_m": [
+            -0.06,
+            0.045,
+            0.03
+          ],
+          "release_work_j": 0.007
+        },
+        {
+          "cut_required": false,
+          "hydro_release_ml": 0.2,
+          "id": "adhesion_11",
+          "kind": "bowel_peritoneum",
+          "point0_m": [
+            0.0,
+            -0.08,
+            -0.025
+          ],
+          "point1_m": [
+            0.0,
+            -0.09,
+            0.03
+          ],
+          "release_work_j": 0.0085
+        }
+      ],
+      "asset_path": "anatomy/dranmar_abdominal_adhesions.usda",
+      "category": "pathology",
+      "damping_seed": 0.16,
+      "density_kg_m3": 1050,
+      "display_name": "Abdominal Adhesions",
+      "frames": {
+        "bridge_00": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.068,
+            0.0175,
+            0.027999999999999997
+          ],
+          "role": "gallbladder_liver"
+        },
+        "bridge_01": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.045,
+            -0.028999999999999998,
+            0.011000000000000001
+          ],
+          "role": "bowel_peritoneum"
+        },
+        "bridge_02": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.0475,
+            -0.045,
+            0.007000000000000001
+          ],
+          "role": "bowel_peritoneum"
+        },
+        "bridge_03": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.1125,
+            -0.0175,
+            0.0135
+          ],
+          "role": "colon_wall"
+        },
+        "bridge_04": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.1125,
+            -0.0175,
+            0.0135
+          ],
+          "role": "colon_wall"
+        },
+        "bridge_05": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.0275,
+            0.013999999999999999,
+            0.0024999999999999988
+          ],
+          "role": "mesentery_peritoneum"
+        },
+        "bridge_06": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.0175,
+            0.0125,
+            0.0010000000000000009
+          ],
+          "role": "mesentery_peritoneum"
+        },
+        "bridge_07": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.0825,
+            -0.06,
+            0.006499999999999999
+          ],
+          "role": "bowel_wall"
+        },
+        "bridge_08": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.0825,
+            -0.06,
+            0.006499999999999999
+          ],
+          "role": "bowel_wall"
+        },
+        "bridge_09": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.025,
+            0.055,
+            0.006
+          ],
+          "role": "bowel_liver"
+        },
+        "bridge_10": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            -0.0525,
+            0.042499999999999996,
+            0.009999999999999998
+          ],
+          "role": "stomach_peritoneum"
+        },
+        "bridge_11": {
+          "orientation_wxyz": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0.0,
+            -0.08499999999999999,
+            0.0024999999999999988
+          ],
+          "role": "bowel_peritoneum"
+        }
+      },
+      "id": "adhesions",
+      "labels": [
+        "adhesion",
+        "breakable_bridge",
+        "pathology"
+      ],
+      "mass_kg": 0.01,
+      "material": "Adhesion",
+      "mechanics": "breakable_attachment_graph",
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "perfusion_fraction": 0.001,
+      "poissons_ratio_seed": 0.45,
+      "pulsation_fraction": 0.0,
+      "respiration_coupling_m": [
+        0,
+        0,
+        0.003
+      ],
+      "root_prim": "DrAnmarAbdominalAdhesions",
+      "tet_vertices": 0,
+      "tetrahedra": 0,
+      "translation_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visual_triangles": 2880,
+      "visual_vertices": 1464,
+      "youngs_modulus_pa_seed": 180000
+    }
+  ],
+  "coordinate_system": "x_left_right_y_caudal_cranial_z_posterior_anterior",
+  "required_user_layers": [
+    "skin",
+    "subcutaneous_fat",
+    "fascia",
+    "abdominal_wall",
+    "peritoneum",
+    "small_bowel",
+    "liver",
+    "gallbladder",
+    "stomach",
+    "major_vessels",
+    "ureters",
+    "nerves",
+    "tumors_or_lesions",
+    "adhesions"
+  ],
+  "research_only": true,
+  "schema": "dr.anmar.dynamic-abdominal-anatomy.v1",
+  "units": "m_kg_s",
+  "version": "0.1.0"
+}

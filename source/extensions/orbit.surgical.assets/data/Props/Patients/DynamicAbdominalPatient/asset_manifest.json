@@ -1,0 +1,484 @@
+{
+  "asset_id": "dranmar-dynamic-abdominal-patient-v1",
+  "files": [
+    {
+      "bytes": 537,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/LICENSE.txt",
+      "sha256": "12e7da34b2cb5b5719d421bbe0030e2528d57086c0cd17215856210cb6251554"
+    },
+    {
+      "bytes": 242998,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_abdominal_adhesions.usda",
+      "sha256": "177ff9e301ffc95e2a5c352f52a5a7b2851f0b446253f68010c8f6de8c2e5986"
+    },
+    {
+      "bytes": 119596,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_abdominal_wall.usda",
+      "sha256": "363c107783f2a414cde17669cc454acab0d2a51d26855bfd77760641308fe8fd"
+    },
+    {
+      "bytes": 439752,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_bladder.usda",
+      "sha256": "e706ba05aef109d7d5c731f4d97cc5382ab4e4f53971326741f1033f8a71c313"
+    },
+    {
+      "bytes": 399843,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_bowel_lesion.usda",
+      "sha256": "135568e2b77d7f7a62ce312e8224f1e590972b7edf3d859d73155b7f29ee84fb"
+    },
+    {
+      "bytes": 28549,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_colon.usda",
+      "sha256": "0a1a08d22ea81a01ecb7c7062c1a30670c5902b6e35aaab71d5d4e5bd7373085"
+    },
+    {
+      "bytes": 210037,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_diaphragm.usda",
+      "sha256": "540986b0c11739c3377ec04147f34186017d33501230f521a65734aed91bda9c"
+    },
+    {
+      "bytes": 120355,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_fascia.usda",
+      "sha256": "ff1b08096e655b4725bed8cb8def8f892b52c4c92a124121c16f9e2296468776"
+    },
+    {
+      "bytes": 444740,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_gallbladder.usda",
+      "sha256": "860b92bd0cf61d1073d5749a5a0185acaa7b312fb8a15bd0fcefd6aa096e1466"
+    },
+    {
+      "bytes": 442577,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_left_kidney.usda",
+      "sha256": "1546c93f2cc71d05930b0dce2ff1b5024279fe60edc3e3ab7742267d284226fe"
+    },
+    {
+      "bytes": 462204,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_liver.usda",
+      "sha256": "db637c6b463877b615837e0bc82951ac999d2159ee99572dd3dcbef9ccc5c782"
+    },
+    {
+      "bytes": 436369,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_liver_tumor.usda",
+      "sha256": "27abc38ced699c9d1ae034122cfe061b4f088031599072905d2c08eb33eb1063"
+    },
+    {
+      "bytes": 56308,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_major_vessels.usda",
+      "sha256": "c33f72e25538770334224b746243d82b86932fa341139e2dae5707d82366a267"
+    },
+    {
+      "bytes": 75594,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_mesentery.usda",
+      "sha256": "697b9a2f42ec4fb418e957448b7903979299c245c4b8ba672ac2f7c461436b38"
+    },
+    {
+      "bytes": 20277,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_nerves.usda",
+      "sha256": "a92459ee3d14673e8e39f2201d510328f9950f17e8fbea1eb285332cf8495583"
+    },
+    {
+      "bytes": 397047,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_pancreas.usda",
+      "sha256": "9291b0bcd354cf841f8a1f7cd34122726a94035c7904a78c36092b0603b4bc52"
+    },
+    {
+      "bytes": 120556,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_peritoneum.usda",
+      "sha256": "a4c080da8a630e2ccdbbb412cad1e2f3338fc3eceef635b9e34a31830295141b"
+    },
+    {
+      "bytes": 442587,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_right_kidney.usda",
+      "sha256": "06d7498d6c6a4e8453e9f55df104bc6bb124bd194d95d6d3a5fa9cd6bc600289"
+    },
+    {
+      "bytes": 119424,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_skin.usda",
+      "sha256": "ffc035b645d66376465ad0988b8e1b476e88139b273171f454ca8123b1dacd34"
+    },
+    {
+      "bytes": 154103,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_small_bowel.usda",
+      "sha256": "2127d59823c8389461bf6078e6ee7173936ce099934c5e0b3c6ba01cf6db96bb"
+    },
+    {
+      "bytes": 441720,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_spleen.usda",
+      "sha256": "ec34dd5007edb460ea6cde63bedb1f53b2da49455b12e1bad1f73faa38859067"
+    },
+    {
+      "bytes": 25957,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_stomach.usda",
+      "sha256": "bfa0106f8bd6a50525801ef9301e88bb0b3e2d663fcb6cf742c21b0226a4e3b6"
+    },
+    {
+      "bytes": 119560,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_subcutaneous_fat.usda",
+      "sha256": "a14d26a42e5671c46bcdc7f2abbeb48d2a2904ce49beba9c7b3cd4093a3f9d0d"
+    },
+    {
+      "bytes": 18315,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_ureters.usda",
+      "sha256": "02236ee47ae7dd6b1cc3089220b3e1dafa69ede5d6799d29476c71a904f549f9"
+    },
+    {
+      "bytes": 39857,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy_manifest.json",
+      "sha256": "32236baca588bc7daf2cb1dbdde6cf485e5e8f5aae7e4fbd434096812e986f8c"
+    },
+    {
+      "bytes": 14204,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda",
+      "sha256": "89a70156d058a61fbd6b2e77b9941bb028cf893f2cd5b419166cc071f7217a1c"
+    },
+    {
+      "bytes": 2628,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_operating_scene.usda",
+      "sha256": "c2e002a66202f5a9db977296b1b8d51f343ff13b0a135564ee67869a82dd8724"
+    },
+    {
+      "bytes": 4530455,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_rigid_proxy.usda",
+      "sha256": "3e0c8d4c60fe763bdcf9774352fbc363a9865e8c7d8be64d4fb63f78c5abec5e"
+    },
+    {
+      "bytes": 27007,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/fluids/bile_particle.usda",
+      "sha256": "788ecf35b82b5e050a1acd26f01984751817eeb2ec9ad3020af14ef5e29bf827"
+    },
+    {
+      "bytes": 26920,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/fluids/blood_particle.usda",
+      "sha256": "4ec88ef53138de482d4d2491172ba20a85aca0a273633d630fcba46f36346965"
+    },
+    {
+      "bytes": 27003,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/fluids/irrigation_particle.usda",
+      "sha256": "024a80a63c36c5cf1dfd0e0616c6627d5f5b364ed5df8201c2032b990552258f"
+    },
+    {
+      "bytes": 27015,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/fluids/urine_particle.usda",
+      "sha256": "b7485f247da056b7f550abfa9216136490ef6c2fe98e71782437c5dce7a37620"
+    },
+    {
+      "bytes": 11288,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/abdominal_wall.glb",
+      "sha256": "111be92c17ad874a1d8b427fc3781fb3d5403eda06b4333a324a620af01373c7"
+    },
+    {
+      "bytes": 58984,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/adhesions.glb",
+      "sha256": "e02485310301e990818d4e834cb70b27f045455ed5a75dab30036af6163f90ba"
+    },
+    {
+      "bytes": 95764,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/bladder.glb",
+      "sha256": "9b2033e0fb4d02927f28b8fd1e5f7722b2e241fb1a3743b9b5f6a02e219c6f44"
+    },
+    {
+      "bytes": 95776,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/bowel_lesion.glb",
+      "sha256": "81259f3f2f6ba5db6579285b19a47d7f5e7896c4d4ee86c3a636ebf7d0979208"
+    },
+    {
+      "bytes": 7508,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/colon.glb",
+      "sha256": "c4c494273326bd862b57228181545b7ac59e3d5e6de3cf61a1d605a050f4bc9f"
+    },
+    {
+      "bytes": 51984,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/diaphragm.glb",
+      "sha256": "8a9a4aeee95796d64579a7ad471fc949fba5c4fa18b0da12eaff93b6bc516782"
+    },
+    {
+      "bytes": 56740,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_body_layers_debug.glb",
+      "sha256": "358ac5667e8435371b41c7aca0df67b412849a72512018ff40951f415026b6ae"
+    },
+    {
+      "bytes": 242336,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_bowel_scenario.glb",
+      "sha256": "af03085613825e111012c6d9794c1c99c00ae1045c22f33033c7347ad0195eec"
+    },
+    {
+      "bytes": 655920,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_end_expiration.glb",
+      "sha256": "c7638a766b71df420988a8ff4094731fefa6e9d133d18748cc62b13059e6519d"
+    },
+    {
+      "bytes": 655940,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_end_inspiration.glb",
+      "sha256": "2c689ac015021a4d4ea4e32831bc4217bc83eae7249ab789acbe87a0bb340954"
+    },
+    {
+      "bytes": 212324,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_gallbladder_scenario.glb",
+      "sha256": "b500e65354a6ba74d5cc77d83c0f74c7d3f112ccda449e6715773a2b24c7ef41"
+    },
+    {
+      "bytes": 493612,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_intact.glb",
+      "sha256": "506a08dc26cae7d89d7fb3798868c4882105d66ceaa21ae25a63ca87525c87c3"
+    },
+    {
+      "bytes": 245620,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_liver_scenario.glb",
+      "sha256": "6d160bbe2747685d94201865350c8610b1f2405c44eedcbe6a49e5922542d33a"
+    },
+    {
+      "bytes": 520080,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_open_abdomen.glb",
+      "sha256": "25996b51f36bd72fa9ad00ecf834934d6059b24ee744c1bc20d23e21113b2b42"
+    },
+    {
+      "bytes": 657732,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_operating_scene.glb",
+      "sha256": "5307047c21fc28f5a550466be0c6e071dc6cb6139fd7aabd4c0f0ce9bac68893"
+    },
+    {
+      "bytes": 420884,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_organs_debug.glb",
+      "sha256": "265199ceaff19761ddb51a2c35654b5fb789d29d7461b3aeab39bffa1aac7331"
+    },
+    {
+      "bytes": 655928,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_pathology.glb",
+      "sha256": "ba8eb14ddae11816152c0efc6f6d3750c25ee13f2bd857ac5f426e2aa308523f"
+    },
+    {
+      "bytes": 193048,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_pathology_debug.glb",
+      "sha256": "6c1175682e34e6da6352d125161d8f3ae622525b4a6c174ee7ba67c20a84b680"
+    },
+    {
+      "bytes": 24160,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/dranmar_patient_vasculature_debug.glb",
+      "sha256": "5d031073a1b95ab2d08862059d0bd21575efe5a86434886fdc20bed5ad42cf9c"
+    },
+    {
+      "bytes": 11276,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/fascia.glb",
+      "sha256": "ddadd2c4434162a9d657e356a7f75b0b0432e635e8b2689f84b300edd79c1e84"
+    },
+    {
+      "bytes": 95772,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/gallbladder.glb",
+      "sha256": "9bc36bfe06f7437d003755163fec801df1e4d4ce3fcacd7ead3af7866ea6d5ba"
+    },
+    {
+      "bytes": 95772,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/left_kidney.glb",
+      "sha256": "87230c5a8172300eea6b5f3b002c51371a3eb03a45c50b0c35dd27cc2057fa23"
+    },
+    {
+      "bytes": 95744,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/liver.glb",
+      "sha256": "7430e896f6157e7ff726f774d1fdf974f8148441f6e95c75058f44dcd445798e"
+    },
+    {
+      "bytes": 95776,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/liver_tumor.glb",
+      "sha256": "a8420e3ede3cf52c7b560ec49b3f0fe298a2d30e4ac930e01e44a2623731cfca"
+    },
+    {
+      "bytes": 14280,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/major_vessels.glb",
+      "sha256": "26198ed3484ea921f3cdb59e864706e9583eeb8cd2c87990257ed77e97226b1f"
+    },
+    {
+      "bytes": 18968,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/mesentery.glb",
+      "sha256": "7b86d9b5166e08b5cc19d046338980fcec63de074b1d6692d6aa1367d10bbeb7"
+    },
+    {
+      "bytes": 5480,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/nerves.glb",
+      "sha256": "b0f901e5d256bd18fb1108a03b475b7dd37d13779c4bed0543dd8a3c9edc05ce"
+    },
+    {
+      "bytes": 95772,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/pancreas.glb",
+      "sha256": "7fef94932b6a5779e870808378d84edc246d87d8285d5d1125dfd1a0b6e95d04"
+    },
+    {
+      "bytes": 11284,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/peritoneum.glb",
+      "sha256": "fb766c0ee1cdbe662ad3155f79823c1ed05544f72818fb06e57082aa33d930da"
+    },
+    {
+      "bytes": 95776,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/right_kidney.glb",
+      "sha256": "828468add6a9696ccf834c49ddca71201ce3e052a205e21cc19760ae07350965"
+    },
+    {
+      "bytes": 11272,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/skin.glb",
+      "sha256": "64ff21e4675117982e18d886b48ed3670c0294afe51758c37496a2725c1360f2"
+    },
+    {
+      "bytes": 38156,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/small_bowel.glb",
+      "sha256": "73e41250c4e9a0c7cb57a15681c97d8cca1d613494ba1fdf96fd400ac1e79f5b"
+    },
+    {
+      "bytes": 95764,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/spleen.glb",
+      "sha256": "e198b63222c83a7985c9b03f805200be08a0a793388cd5c6fa689c0228f0195a"
+    },
+    {
+      "bytes": 6796,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/stomach.glb",
+      "sha256": "66a3285ec9a9da70113dc944dc7254562586183d3733212448fe541a140aaf19"
+    },
+    {
+      "bytes": 11292,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/subcutaneous_fat.glb",
+      "sha256": "f025d4ae595ca503249793c2d56547a30ea6d4584263506ea929beb378428ac1"
+    },
+    {
+      "bytes": 4892,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/glb/ureters.glb",
+      "sha256": "7be6131a81a8941f1821495d0bb00a4859204a3fba82890caf886a058d6b05a8"
+    },
+    {
+      "bytes": 2535,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/mechanics_contract.json",
+      "sha256": "51644ffa9870713fb56bfb49c30b7903801db01b97b6ef364272b07d1164f420"
+    },
+    {
+      "bytes": 2136,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/patient_runtime_contract.json",
+      "sha256": "0c6d33f445ceb858c7d3bf9e3b62b96f18780afaeeacde30cbd82e8bf8c02da1"
+    },
+    {
+      "bytes": 3770,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/physiology_network.json",
+      "sha256": "d62c83520b16f147dd9ea7e526a424516f578c0ec58d340935d9129a6c2afb44"
+    },
+    {
+      "bytes": 2244,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/procedure_scenarios.json",
+      "sha256": "960a3fc48caf235039eaaa06efafd7a0e782e6f77d2bb13ebabb60b4af17ba23"
+    },
+    {
+      "bytes": 2462,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/robot_compatibility.json",
+      "sha256": "9be118aa9f3b2b91a5167d15b6293077bd7c8c13299793923d62348ceb9a07c1"
+    },
+    {
+      "bytes": 433227,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/textures/fascia_fibres.png",
+      "sha256": "3afd733149958c289a9a188bec361b2b8faa0ff82642400b4f3536698de18ddb"
+    },
+    {
+      "bytes": 516944,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/textures/fat_detail.png",
+      "sha256": "07afd44e4254d2eedfdd7a1892668872921bef361061cacb800e7fa28acdf648"
+    },
+    {
+      "bytes": 481427,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/textures/muscle_detail.png",
+      "sha256": "0f80afc04fb01ae10a0cd4d3c42cdfe1d7aa7e7469f5a69cf08eed8721bb0ee9"
+    },
+    {
+      "bytes": 457792,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/textures/organ_microtexture.png",
+      "sha256": "61b07051b63f5d2a787a65fa13103656170cec11e505305f09ee72bb135c4ca8"
+    },
+    {
+      "bytes": 500786,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/textures/skin_detail.png",
+      "sha256": "c997dd0eaae3b14c52ade3cd23a56a3e029fee732d3ceafd99741e9889968794"
+    },
+    {
+      "bytes": 558879,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/textures/tissue_normal.png",
+      "sha256": "97259c5e86cf6f6721331c2a1e9183a445919c4974bfbd847e4c66662dcd2e5e"
+    },
+    {
+      "bytes": 186298,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/textures/tissue_roughness.png",
+      "sha256": "0d163bdf41ff131200cd2fc404f5f9e496eff880c81effcd1ff2cc6147d6e83d"
+    },
+    {
+      "bytes": 543541,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/textures/tumor_heterogeneity.png",
+      "sha256": "ec05a44dd1a66a730c1a66533bf82bd5e1a0bded6f89cbcb7e6c82fc6962af9a"
+    },
+    {
+      "bytes": 575,
+      "path": "docs/ARCHITECTURE.md",
+      "sha256": "eb2ac3e1faf246d2737d15790a19f3cd27c7816412c5912512b6c690774d4cfc"
+    },
+    {
+      "bytes": 478,
+      "path": "docs/MECHANICS.md",
+      "sha256": "d887af7f6db74b0924fb39d7a352ed43d01ded1f9b75fb91367427f4bcb617f9"
+    },
+    {
+      "bytes": 446,
+      "path": "docs/PHYSIOLOGY_MODEL.md",
+      "sha256": "e2625e753267fce8e0b3a28532471f675c3147378cbba32ca2af8b9abaab35eb"
+    },
+    {
+      "bytes": 313,
+      "path": "docs/PROCEDURE_ENVIRONMENT.md",
+      "sha256": "f46cb73ddaba7e7f2bc24b996f4411df81d679421746652f04cda0f851c83cd0"
+    },
+    {
+      "bytes": 1011,
+      "path": "docs/README.md",
+      "sha256": "2c91c2815562cd423d99c926ed98978f42b691b4043da26031ee514856fbb183"
+    },
+    {
+      "bytes": 441,
+      "path": "docs/ROBOT_INTEGRATION.md",
+      "sha256": "1fc8ef58e93bdae24ab8573f63d2adbadd131702d6b1211e3a2f996e3d4ae1b7"
+    },
+    {
+      "bytes": 343,
+      "path": "docs/VALIDATION_BOUNDARY.md",
+      "sha256": "2f42dd87951a54b20a5325e5e7431840982873c3326556d7d39c188c4d380dfc"
+    },
+    {
+      "bytes": 756,
+      "path": "examples/dynamic_abdominal_patient_scene.py",
+      "sha256": "d9f646db2ebcc6ef59bc2c28b55d0ceac504cd44ec4fb0a10fab1b77386581a4"
+    },
+    {
+      "bytes": 1114,
+      "path": "examples/end_to_end_procedure.py",
+      "sha256": "7b2e14870623d416791f49f87d413d5d2b5534d524ac5a0a05dba6170d91b194"
+    },
+    {
+      "bytes": 1738,
+      "path": "physics_next/dynamic-patient/dranmar-dynamic-abdominal-patient-v1.json",
+      "sha256": "36ba5a5d2103483aa39a067b02fb4831f8b1ad9dff695451b081fad10b4ef3e1"
+    },
+    {
+      "bytes": 212390,
+      "path": "previews/dranmar_dynamic_abdominal_patient_anatomy_preview.png",
+      "sha256": "56259dbc43f8ac47c94f010737b92e81c255df9eda892efeeb8a67fab0ba33de"
+    },
+    {
+      "bytes": 337488,
+      "path": "previews/dranmar_dynamic_abdominal_patient_preview.png",
+      "sha256": "f2021765a85f557183005520cbb4b3600c7c1d94d221077b20aa2376cd44e2c6"
+    },
+    {
+      "bytes": 100659,
+      "path": "previews/dranmar_dynamic_abdominal_patient_procedure_scene_preview.png",
+      "sha256": "9ce2f01129aebd3c1c2d9a7da73c6cc0135dac3c708cccdd0ebdb817e0881341"
+    },
+    {
+      "bytes": 3322,
+      "path": "scripts/install_into_dranmar.py",
+      "sha256": "4019da6eacfd312047140a2eedde20c7bf6f9c7c028b8a6793198ddc97822925"
+    }
+  ],
+  "license": "Apache-2.0",
+  "research_only": true,
+  "schema": "dr.anmar.asset-manifest.v1",
+  "version": "0.1.0"
+}
