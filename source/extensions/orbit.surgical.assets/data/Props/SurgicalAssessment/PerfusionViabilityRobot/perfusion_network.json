@@ -1,0 +1,1733 @@
+{
+  "boundary_nodes": {
+    "arterial_inlet": "A0",
+    "venous_outlet": "V0"
+  },
+  "conditions": {
+    "anastomotic_stenosis": {
+      "description": "focal arterial reconstruction stenosis with distal hypoperfusion",
+      "edge_multipliers": {
+        "AT2": 0.14
+      },
+      "leak_edges": {},
+      "region_compression": {}
+    },
+    "arterial_occlusion": {
+      "description": "near-complete central arterial inflow occlusion",
+      "edge_multipliers": {
+        "AT2": 0.015
+      },
+      "leak_edges": {},
+      "region_compression": {}
+    },
+    "branch_leak": {
+      "description": "regional vascular branch leak and tracer extravasation",
+      "edge_multipliers": {},
+      "leak_edges": {
+        "CP14": 0.1
+      },
+      "region_compression": {}
+    },
+    "dressing_compression": {
+      "description": "localized external dressing pressure",
+      "edge_multipliers": {},
+      "leak_edges": {},
+      "region_compression": {
+        "12": 0.28,
+        "13": 0.22,
+        "18": 0.24,
+        "19": 0.18
+      }
+    },
+    "healthy": {
+      "description": "unobstructed arterial inflow and venous outflow",
+      "edge_multipliers": {},
+      "leak_edges": {},
+      "region_compression": {}
+    },
+    "recovered": {
+      "description": "post-intervention reperfusion",
+      "edge_multipliers": {
+        "AT2": 0.92,
+        "VT1": 0.94
+      },
+      "leak_edges": {},
+      "region_compression": {}
+    },
+    "retraction_ischemia": {
+      "description": "localized compression from retraction",
+      "edge_multipliers": {},
+      "leak_edges": {},
+      "region_compression": {
+        "10": 0.22,
+        "11": 0.16,
+        "4": 0.18,
+        "5": 0.12
+      }
+    },
+    "venous_congestion": {
+      "description": "severe venous outflow restriction",
+      "edge_multipliers": {
+        "VT1": 0.035
+      },
+      "leak_edges": {},
+      "region_compression": {}
+    }
+  },
+  "edges": [
+    {
+      "from": "A0",
+      "id": "AT0",
+      "radius_m": 0.00175,
+      "resistance_kpa_s_ml": 0.075,
+      "to": "A1",
+      "type": "artery"
+    },
+    {
+      "from": "V1",
+      "id": "VT0",
+      "radius_m": 0.0021,
+      "resistance_kpa_s_ml": 0.04,
+      "to": "V0",
+      "type": "vein"
+    },
+    {
+      "from": "A1",
+      "id": "AT1",
+      "radius_m": 0.00168,
+      "resistance_kpa_s_ml": 0.08299999999999999,
+      "to": "A2",
+      "type": "artery"
+    },
+    {
+      "from": "V2",
+      "id": "VT1",
+      "radius_m": 0.0020499999999999997,
+      "resistance_kpa_s_ml": 0.044,
+      "to": "V1",
+      "type": "vein"
+    },
+    {
+      "from": "A2",
+      "id": "AT2",
+      "radius_m": 0.00161,
+      "resistance_kpa_s_ml": 0.091,
+      "to": "A3",
+      "type": "artery"
+    },
+    {
+      "from": "V3",
+      "id": "VT2",
+      "radius_m": 0.002,
+      "resistance_kpa_s_ml": 0.048,
+      "to": "V2",
+      "type": "vein"
+    },
+    {
+      "from": "A3",
+      "id": "AT3",
+      "radius_m": 0.0015400000000000001,
+      "resistance_kpa_s_ml": 0.099,
+      "to": "A4",
+      "type": "artery"
+    },
+    {
+      "from": "V4",
+      "id": "VT3",
+      "radius_m": 0.00195,
+      "resistance_kpa_s_ml": 0.052000000000000005,
+      "to": "V3",
+      "type": "vein"
+    },
+    {
+      "from": "A4",
+      "id": "AT4",
+      "radius_m": 0.00147,
+      "resistance_kpa_s_ml": 0.107,
+      "to": "A5",
+      "type": "artery"
+    },
+    {
+      "from": "V5",
+      "id": "VT4",
+      "radius_m": 0.0018999999999999998,
+      "resistance_kpa_s_ml": 0.056,
+      "to": "V4",
+      "type": "vein"
+    },
+    {
+      "from": "A0",
+      "id": "AB00",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R00A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R00A",
+      "id": "CP00",
+      "radius_m": 0.00042,
+      "region": 0,
+      "resistance_kpa_s_ml": 2.7,
+      "to": "R00V",
+      "type": "capillary"
+    },
+    {
+      "from": "R00V",
+      "id": "VB00",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V0",
+      "type": "venule"
+    },
+    {
+      "from": "A0",
+      "id": "AB06",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R06A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R06A",
+      "id": "CP06",
+      "radius_m": 0.00042,
+      "region": 6,
+      "resistance_kpa_s_ml": 2.8600000000000003,
+      "to": "R06V",
+      "type": "capillary"
+    },
+    {
+      "from": "R06V",
+      "id": "VB06",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V0",
+      "type": "venule"
+    },
+    {
+      "from": "A0",
+      "id": "AB12",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R12A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R12A",
+      "id": "CP12",
+      "radius_m": 0.00042,
+      "region": 12,
+      "resistance_kpa_s_ml": 3.02,
+      "to": "R12V",
+      "type": "capillary"
+    },
+    {
+      "from": "R12V",
+      "id": "VB12",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V0",
+      "type": "venule"
+    },
+    {
+      "from": "A0",
+      "id": "AB18",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R18A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R18A",
+      "id": "CP18",
+      "radius_m": 0.00042,
+      "region": 18,
+      "resistance_kpa_s_ml": 2.7,
+      "to": "R18V",
+      "type": "capillary"
+    },
+    {
+      "from": "R18V",
+      "id": "VB18",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V0",
+      "type": "venule"
+    },
+    {
+      "from": "A1",
+      "id": "AB01",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R01A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R01A",
+      "id": "CP01",
+      "radius_m": 0.00042,
+      "region": 1,
+      "resistance_kpa_s_ml": 2.8600000000000003,
+      "to": "R01V",
+      "type": "capillary"
+    },
+    {
+      "from": "R01V",
+      "id": "VB01",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V1",
+      "type": "venule"
+    },
+    {
+      "from": "A1",
+      "id": "AB07",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R07A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R07A",
+      "id": "CP07",
+      "radius_m": 0.00042,
+      "region": 7,
+      "resistance_kpa_s_ml": 3.02,
+      "to": "R07V",
+      "type": "capillary"
+    },
+    {
+      "from": "R07V",
+      "id": "VB07",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V1",
+      "type": "venule"
+    },
+    {
+      "from": "A1",
+      "id": "AB13",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R13A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R13A",
+      "id": "CP13",
+      "radius_m": 0.00042,
+      "region": 13,
+      "resistance_kpa_s_ml": 2.7,
+      "to": "R13V",
+      "type": "capillary"
+    },
+    {
+      "from": "R13V",
+      "id": "VB13",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V1",
+      "type": "venule"
+    },
+    {
+      "from": "A1",
+      "id": "AB19",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R19A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R19A",
+      "id": "CP19",
+      "radius_m": 0.00042,
+      "region": 19,
+      "resistance_kpa_s_ml": 2.8600000000000003,
+      "to": "R19V",
+      "type": "capillary"
+    },
+    {
+      "from": "R19V",
+      "id": "VB19",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V1",
+      "type": "venule"
+    },
+    {
+      "from": "A2",
+      "id": "AB02",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R02A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R02A",
+      "id": "CP02",
+      "radius_m": 0.00042,
+      "region": 2,
+      "resistance_kpa_s_ml": 3.02,
+      "to": "R02V",
+      "type": "capillary"
+    },
+    {
+      "from": "R02V",
+      "id": "VB02",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V2",
+      "type": "venule"
+    },
+    {
+      "from": "A2",
+      "id": "AB08",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R08A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R08A",
+      "id": "CP08",
+      "radius_m": 0.00042,
+      "region": 8,
+      "resistance_kpa_s_ml": 2.7,
+      "to": "R08V",
+      "type": "capillary"
+    },
+    {
+      "from": "R08V",
+      "id": "VB08",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V2",
+      "type": "venule"
+    },
+    {
+      "from": "A2",
+      "id": "AB14",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R14A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R14A",
+      "id": "CP14",
+      "radius_m": 0.00042,
+      "region": 14,
+      "resistance_kpa_s_ml": 2.8600000000000003,
+      "to": "R14V",
+      "type": "capillary"
+    },
+    {
+      "from": "R14V",
+      "id": "VB14",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V2",
+      "type": "venule"
+    },
+    {
+      "from": "A2",
+      "id": "AB20",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R20A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R20A",
+      "id": "CP20",
+      "radius_m": 0.00042,
+      "region": 20,
+      "resistance_kpa_s_ml": 3.02,
+      "to": "R20V",
+      "type": "capillary"
+    },
+    {
+      "from": "R20V",
+      "id": "VB20",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V2",
+      "type": "venule"
+    },
+    {
+      "from": "A3",
+      "id": "AB03",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R03A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R03A",
+      "id": "CP03",
+      "radius_m": 0.00042,
+      "region": 3,
+      "resistance_kpa_s_ml": 2.7,
+      "to": "R03V",
+      "type": "capillary"
+    },
+    {
+      "from": "R03V",
+      "id": "VB03",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V3",
+      "type": "venule"
+    },
+    {
+      "from": "A3",
+      "id": "AB09",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R09A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R09A",
+      "id": "CP09",
+      "radius_m": 0.00042,
+      "region": 9,
+      "resistance_kpa_s_ml": 2.8600000000000003,
+      "to": "R09V",
+      "type": "capillary"
+    },
+    {
+      "from": "R09V",
+      "id": "VB09",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V3",
+      "type": "venule"
+    },
+    {
+      "from": "A3",
+      "id": "AB15",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R15A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R15A",
+      "id": "CP15",
+      "radius_m": 0.00042,
+      "region": 15,
+      "resistance_kpa_s_ml": 3.02,
+      "to": "R15V",
+      "type": "capillary"
+    },
+    {
+      "from": "R15V",
+      "id": "VB15",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V3",
+      "type": "venule"
+    },
+    {
+      "from": "A3",
+      "id": "AB21",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R21A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R21A",
+      "id": "CP21",
+      "radius_m": 0.00042,
+      "region": 21,
+      "resistance_kpa_s_ml": 2.7,
+      "to": "R21V",
+      "type": "capillary"
+    },
+    {
+      "from": "R21V",
+      "id": "VB21",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V3",
+      "type": "venule"
+    },
+    {
+      "from": "A4",
+      "id": "AB04",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R04A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R04A",
+      "id": "CP04",
+      "radius_m": 0.00042,
+      "region": 4,
+      "resistance_kpa_s_ml": 2.8600000000000003,
+      "to": "R04V",
+      "type": "capillary"
+    },
+    {
+      "from": "R04V",
+      "id": "VB04",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V4",
+      "type": "venule"
+    },
+    {
+      "from": "A4",
+      "id": "AB10",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R10A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R10A",
+      "id": "CP10",
+      "radius_m": 0.00042,
+      "region": 10,
+      "resistance_kpa_s_ml": 3.02,
+      "to": "R10V",
+      "type": "capillary"
+    },
+    {
+      "from": "R10V",
+      "id": "VB10",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V4",
+      "type": "venule"
+    },
+    {
+      "from": "A4",
+      "id": "AB16",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R16A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R16A",
+      "id": "CP16",
+      "radius_m": 0.00042,
+      "region": 16,
+      "resistance_kpa_s_ml": 2.7,
+      "to": "R16V",
+      "type": "capillary"
+    },
+    {
+      "from": "R16V",
+      "id": "VB16",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V4",
+      "type": "venule"
+    },
+    {
+      "from": "A4",
+      "id": "AB22",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R22A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R22A",
+      "id": "CP22",
+      "radius_m": 0.00042,
+      "region": 22,
+      "resistance_kpa_s_ml": 2.8600000000000003,
+      "to": "R22V",
+      "type": "capillary"
+    },
+    {
+      "from": "R22V",
+      "id": "VB22",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V4",
+      "type": "venule"
+    },
+    {
+      "from": "A5",
+      "id": "AB05",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R05A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R05A",
+      "id": "CP05",
+      "radius_m": 0.00042,
+      "region": 5,
+      "resistance_kpa_s_ml": 3.02,
+      "to": "R05V",
+      "type": "capillary"
+    },
+    {
+      "from": "R05V",
+      "id": "VB05",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V5",
+      "type": "venule"
+    },
+    {
+      "from": "A5",
+      "id": "AB11",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R11A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R11A",
+      "id": "CP11",
+      "radius_m": 0.00042,
+      "region": 11,
+      "resistance_kpa_s_ml": 2.7,
+      "to": "R11V",
+      "type": "capillary"
+    },
+    {
+      "from": "R11V",
+      "id": "VB11",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V5",
+      "type": "venule"
+    },
+    {
+      "from": "A5",
+      "id": "AB17",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.5800000000000001,
+      "to": "R17A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R17A",
+      "id": "CP17",
+      "radius_m": 0.00042,
+      "region": 17,
+      "resistance_kpa_s_ml": 2.8600000000000003,
+      "to": "R17V",
+      "type": "capillary"
+    },
+    {
+      "from": "R17V",
+      "id": "VB17",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.445,
+      "to": "V5",
+      "type": "venule"
+    },
+    {
+      "from": "A5",
+      "id": "AB23",
+      "radius_m": 0.00072,
+      "resistance_kpa_s_ml": 0.64,
+      "to": "R23A",
+      "type": "arteriole"
+    },
+    {
+      "from": "R23A",
+      "id": "CP23",
+      "radius_m": 0.00042,
+      "region": 23,
+      "resistance_kpa_s_ml": 3.02,
+      "to": "R23V",
+      "type": "capillary"
+    },
+    {
+      "from": "R23V",
+      "id": "VB23",
+      "radius_m": 0.00082,
+      "resistance_kpa_s_ml": 0.495,
+      "to": "V5",
+      "type": "venule"
+    }
+  ],
+  "nodes": {
+    "A0": {
+      "position_m": [
+        -0.075,
+        -0.052,
+        -0.0024
+      ],
+      "type": "arterial_trunk"
+    },
+    "A1": {
+      "position_m": [
+        -0.045,
+        -0.052,
+        -0.0024
+      ],
+      "type": "arterial_trunk"
+    },
+    "A2": {
+      "position_m": [
+        -0.015,
+        -0.052,
+        -0.0024
+      ],
+      "type": "arterial_trunk"
+    },
+    "A3": {
+      "position_m": [
+        0.015,
+        -0.052,
+        -0.0024
+      ],
+      "type": "arterial_trunk"
+    },
+    "A4": {
+      "position_m": [
+        0.045,
+        -0.052,
+        -0.0024
+      ],
+      "type": "arterial_trunk"
+    },
+    "A5": {
+      "position_m": [
+        0.075,
+        -0.052,
+        -0.0024
+      ],
+      "type": "arterial_trunk"
+    },
+    "R00A": {
+      "position_m": [
+        -0.075,
+        -0.051,
+        -0.0017
+      ],
+      "region": 0,
+      "type": "arteriole"
+    },
+    "R00V": {
+      "position_m": [
+        -0.075,
+        -0.039,
+        -0.0015
+      ],
+      "region": 0,
+      "type": "venule"
+    },
+    "R01A": {
+      "position_m": [
+        -0.045,
+        -0.051,
+        -0.0017
+      ],
+      "region": 1,
+      "type": "arteriole"
+    },
+    "R01V": {
+      "position_m": [
+        -0.045,
+        -0.039,
+        -0.0015
+      ],
+      "region": 1,
+      "type": "venule"
+    },
+    "R02A": {
+      "position_m": [
+        -0.015,
+        -0.051,
+        -0.0017
+      ],
+      "region": 2,
+      "type": "arteriole"
+    },
+    "R02V": {
+      "position_m": [
+        -0.015,
+        -0.039,
+        -0.0015
+      ],
+      "region": 2,
+      "type": "venule"
+    },
+    "R03A": {
+      "position_m": [
+        0.015,
+        -0.051,
+        -0.0017
+      ],
+      "region": 3,
+      "type": "arteriole"
+    },
+    "R03V": {
+      "position_m": [
+        0.015,
+        -0.039,
+        -0.0015
+      ],
+      "region": 3,
+      "type": "venule"
+    },
+    "R04A": {
+      "position_m": [
+        0.045,
+        -0.051,
+        -0.0017
+      ],
+      "region": 4,
+      "type": "arteriole"
+    },
+    "R04V": {
+      "position_m": [
+        0.045,
+        -0.039,
+        -0.0015
+      ],
+      "region": 4,
+      "type": "venule"
+    },
+    "R05A": {
+      "position_m": [
+        0.075,
+        -0.051,
+        -0.0017
+      ],
+      "region": 5,
+      "type": "arteriole"
+    },
+    "R05V": {
+      "position_m": [
+        0.075,
+        -0.039,
+        -0.0015
+      ],
+      "region": 5,
+      "type": "venule"
+    },
+    "R06A": {
+      "position_m": [
+        -0.075,
+        -0.020999999999999998,
+        -0.0017
+      ],
+      "region": 6,
+      "type": "arteriole"
+    },
+    "R06V": {
+      "position_m": [
+        -0.075,
+        -0.009,
+        -0.0015
+      ],
+      "region": 6,
+      "type": "venule"
+    },
+    "R07A": {
+      "position_m": [
+        -0.045,
+        -0.020999999999999998,
+        -0.0017
+      ],
+      "region": 7,
+      "type": "arteriole"
+    },
+    "R07V": {
+      "position_m": [
+        -0.045,
+        -0.009,
+        -0.0015
+      ],
+      "region": 7,
+      "type": "venule"
+    },
+    "R08A": {
+      "position_m": [
+        -0.015,
+        -0.020999999999999998,
+        -0.0017
+      ],
+      "region": 8,
+      "type": "arteriole"
+    },
+    "R08V": {
+      "position_m": [
+        -0.015,
+        -0.009,
+        -0.0015
+      ],
+      "region": 8,
+      "type": "venule"
+    },
+    "R09A": {
+      "position_m": [
+        0.015,
+        -0.020999999999999998,
+        -0.0017
+      ],
+      "region": 9,
+      "type": "arteriole"
+    },
+    "R09V": {
+      "position_m": [
+        0.015,
+        -0.009,
+        -0.0015
+      ],
+      "region": 9,
+      "type": "venule"
+    },
+    "R10A": {
+      "position_m": [
+        0.045,
+        -0.020999999999999998,
+        -0.0017
+      ],
+      "region": 10,
+      "type": "arteriole"
+    },
+    "R10V": {
+      "position_m": [
+        0.045,
+        -0.009,
+        -0.0015
+      ],
+      "region": 10,
+      "type": "venule"
+    },
+    "R11A": {
+      "position_m": [
+        0.075,
+        -0.020999999999999998,
+        -0.0017
+      ],
+      "region": 11,
+      "type": "arteriole"
+    },
+    "R11V": {
+      "position_m": [
+        0.075,
+        -0.009,
+        -0.0015
+      ],
+      "region": 11,
+      "type": "venule"
+    },
+    "R12A": {
+      "position_m": [
+        -0.075,
+        0.009,
+        -0.0017
+      ],
+      "region": 12,
+      "type": "arteriole"
+    },
+    "R12V": {
+      "position_m": [
+        -0.075,
+        0.020999999999999998,
+        -0.0015
+      ],
+      "region": 12,
+      "type": "venule"
+    },
+    "R13A": {
+      "position_m": [
+        -0.045,
+        0.009,
+        -0.0017
+      ],
+      "region": 13,
+      "type": "arteriole"
+    },
+    "R13V": {
+      "position_m": [
+        -0.045,
+        0.020999999999999998,
+        -0.0015
+      ],
+      "region": 13,
+      "type": "venule"
+    },
+    "R14A": {
+      "position_m": [
+        -0.015,
+        0.009,
+        -0.0017
+      ],
+      "region": 14,
+      "type": "arteriole"
+    },
+    "R14V": {
+      "position_m": [
+        -0.015,
+        0.020999999999999998,
+        -0.0015
+      ],
+      "region": 14,
+      "type": "venule"
+    },
+    "R15A": {
+      "position_m": [
+        0.015,
+        0.009,
+        -0.0017
+      ],
+      "region": 15,
+      "type": "arteriole"
+    },
+    "R15V": {
+      "position_m": [
+        0.015,
+        0.020999999999999998,
+        -0.0015
+      ],
+      "region": 15,
+      "type": "venule"
+    },
+    "R16A": {
+      "position_m": [
+        0.045,
+        0.009,
+        -0.0017
+      ],
+      "region": 16,
+      "type": "arteriole"
+    },
+    "R16V": {
+      "position_m": [
+        0.045,
+        0.020999999999999998,
+        -0.0015
+      ],
+      "region": 16,
+      "type": "venule"
+    },
+    "R17A": {
+      "position_m": [
+        0.075,
+        0.009,
+        -0.0017
+      ],
+      "region": 17,
+      "type": "arteriole"
+    },
+    "R17V": {
+      "position_m": [
+        0.075,
+        0.020999999999999998,
+        -0.0015
+      ],
+      "region": 17,
+      "type": "venule"
+    },
+    "R18A": {
+      "position_m": [
+        -0.075,
+        0.039,
+        -0.0017
+      ],
+      "region": 18,
+      "type": "arteriole"
+    },
+    "R18V": {
+      "position_m": [
+        -0.075,
+        0.051,
+        -0.0015
+      ],
+      "region": 18,
+      "type": "venule"
+    },
+    "R19A": {
+      "position_m": [
+        -0.045,
+        0.039,
+        -0.0017
+      ],
+      "region": 19,
+      "type": "arteriole"
+    },
+    "R19V": {
+      "position_m": [
+        -0.045,
+        0.051,
+        -0.0015
+      ],
+      "region": 19,
+      "type": "venule"
+    },
+    "R20A": {
+      "position_m": [
+        -0.015,
+        0.039,
+        -0.0017
+      ],
+      "region": 20,
+      "type": "arteriole"
+    },
+    "R20V": {
+      "position_m": [
+        -0.015,
+        0.051,
+        -0.0015
+      ],
+      "region": 20,
+      "type": "venule"
+    },
+    "R21A": {
+      "position_m": [
+        0.015,
+        0.039,
+        -0.0017
+      ],
+      "region": 21,
+      "type": "arteriole"
+    },
+    "R21V": {
+      "position_m": [
+        0.015,
+        0.051,
+        -0.0015
+      ],
+      "region": 21,
+      "type": "venule"
+    },
+    "R22A": {
+      "position_m": [
+        0.045,
+        0.039,
+        -0.0017
+      ],
+      "region": 22,
+      "type": "arteriole"
+    },
+    "R22V": {
+      "position_m": [
+        0.045,
+        0.051,
+        -0.0015
+      ],
+      "region": 22,
+      "type": "venule"
+    },
+    "R23A": {
+      "position_m": [
+        0.075,
+        0.039,
+        -0.0017
+      ],
+      "region": 23,
+      "type": "arteriole"
+    },
+    "R23V": {
+      "position_m": [
+        0.075,
+        0.051,
+        -0.0015
+      ],
+      "region": 23,
+      "type": "venule"
+    },
+    "V0": {
+      "position_m": [
+        -0.075,
+        0.052,
+        -0.002
+      ],
+      "type": "venous_trunk"
+    },
+    "V1": {
+      "position_m": [
+        -0.045,
+        0.052,
+        -0.002
+      ],
+      "type": "venous_trunk"
+    },
+    "V2": {
+      "position_m": [
+        -0.015,
+        0.052,
+        -0.002
+      ],
+      "type": "venous_trunk"
+    },
+    "V3": {
+      "position_m": [
+        0.015,
+        0.052,
+        -0.002
+      ],
+      "type": "venous_trunk"
+    },
+    "V4": {
+      "position_m": [
+        0.045,
+        0.052,
+        -0.002
+      ],
+      "type": "venous_trunk"
+    },
+    "V5": {
+      "position_m": [
+        0.075,
+        0.052,
+        -0.002
+      ],
+      "type": "venous_trunk"
+    }
+  },
+  "reference_pressures_kpa": {
+    "arterial": 13.3,
+    "venous": 1.2
+  },
+  "regions": [
+    {
+      "arteriole_edge": "AB00",
+      "capillary_edge": "CP00",
+      "center_m": [
+        -0.075,
+        -0.045,
+        0.0045
+      ],
+      "grid": [
+        0,
+        0
+      ],
+      "index": 0,
+      "metabolic_consumption_ml_o2_min_100g": 4.0,
+      "optical_depth": 0.65,
+      "thermal_capacity_j_k": 2.2,
+      "venule_edge": "VB00"
+    },
+    {
+      "arteriole_edge": "AB06",
+      "capillary_edge": "CP06",
+      "center_m": [
+        -0.075,
+        -0.015,
+        0.0045
+      ],
+      "grid": [
+        1,
+        0
+      ],
+      "index": 6,
+      "metabolic_consumption_ml_o2_min_100g": 4.35,
+      "optical_depth": 0.7000000000000001,
+      "thermal_capacity_j_k": 2.2,
+      "venule_edge": "VB06"
+    },
+    {
+      "arteriole_edge": "AB12",
+      "capillary_edge": "CP12",
+      "center_m": [
+        -0.075,
+        0.015,
+        0.0045
+      ],
+      "grid": [
+        2,
+        0
+      ],
+      "index": 12,
+      "metabolic_consumption_ml_o2_min_100g": 4.7,
+      "optical_depth": 0.75,
+      "thermal_capacity_j_k": 2.2,
+      "venule_edge": "VB12"
+    },
+    {
+      "arteriole_edge": "AB18",
+      "capillary_edge": "CP18",
+      "center_m": [
+        -0.075,
+        0.045,
+        0.0045
+      ],
+      "grid": [
+        3,
+        0
+      ],
+      "index": 18,
+      "metabolic_consumption_ml_o2_min_100g": 5.05,
+      "optical_depth": 0.8,
+      "thermal_capacity_j_k": 2.2,
+      "venule_edge": "VB18"
+    },
+    {
+      "arteriole_edge": "AB01",
+      "capillary_edge": "CP01",
+      "center_m": [
+        -0.045,
+        -0.045,
+        0.0045
+      ],
+      "grid": [
+        0,
+        1
+      ],
+      "index": 1,
+      "metabolic_consumption_ml_o2_min_100g": 4.35,
+      "optical_depth": 0.65,
+      "thermal_capacity_j_k": 2.3000000000000003,
+      "venule_edge": "VB01"
+    },
+    {
+      "arteriole_edge": "AB07",
+      "capillary_edge": "CP07",
+      "center_m": [
+        -0.045,
+        -0.015,
+        0.0045
+      ],
+      "grid": [
+        1,
+        1
+      ],
+      "index": 7,
+      "metabolic_consumption_ml_o2_min_100g": 4.7,
+      "optical_depth": 0.7000000000000001,
+      "thermal_capacity_j_k": 2.3000000000000003,
+      "venule_edge": "VB07"
+    },
+    {
+      "arteriole_edge": "AB13",
+      "capillary_edge": "CP13",
+      "center_m": [
+        -0.045,
+        0.015,
+        0.0045
+      ],
+      "grid": [
+        2,
+        1
+      ],
+      "index": 13,
+      "metabolic_consumption_ml_o2_min_100g": 5.05,
+      "optical_depth": 0.75,
+      "thermal_capacity_j_k": 2.3000000000000003,
+      "venule_edge": "VB13"
+    },
+    {
+      "arteriole_edge": "AB19",
+      "capillary_edge": "CP19",
+      "center_m": [
+        -0.045,
+        0.045,
+        0.0045
+      ],
+      "grid": [
+        3,
+        1
+      ],
+      "index": 19,
+      "metabolic_consumption_ml_o2_min_100g": 4.0,
+      "optical_depth": 0.8,
+      "thermal_capacity_j_k": 2.3000000000000003,
+      "venule_edge": "VB19"
+    },
+    {
+      "arteriole_edge": "AB02",
+      "capillary_edge": "CP02",
+      "center_m": [
+        -0.015,
+        -0.045,
+        0.0045
+      ],
+      "grid": [
+        0,
+        2
+      ],
+      "index": 2,
+      "metabolic_consumption_ml_o2_min_100g": 4.7,
+      "optical_depth": 0.65,
+      "thermal_capacity_j_k": 2.4000000000000004,
+      "venule_edge": "VB02"
+    },
+    {
+      "arteriole_edge": "AB08",
+      "capillary_edge": "CP08",
+      "center_m": [
+        -0.015,
+        -0.015,
+        0.0045
+      ],
+      "grid": [
+        1,
+        2
+      ],
+      "index": 8,
+      "metabolic_consumption_ml_o2_min_100g": 5.05,
+      "optical_depth": 0.7000000000000001,
+      "thermal_capacity_j_k": 2.4000000000000004,
+      "venule_edge": "VB08"
+    },
+    {
+      "arteriole_edge": "AB14",
+      "capillary_edge": "CP14",
+      "center_m": [
+        -0.015,
+        0.015,
+        0.0045
+      ],
+      "grid": [
+        2,
+        2
+      ],
+      "index": 14,
+      "metabolic_consumption_ml_o2_min_100g": 4.0,
+      "optical_depth": 0.75,
+      "thermal_capacity_j_k": 2.4000000000000004,
+      "venule_edge": "VB14"
+    },
+    {
+      "arteriole_edge": "AB20",
+      "capillary_edge": "CP20",
+      "center_m": [
+        -0.015,
+        0.045,
+        0.0045
+      ],
+      "grid": [
+        3,
+        2
+      ],
+      "index": 20,
+      "metabolic_consumption_ml_o2_min_100g": 4.35,
+      "optical_depth": 0.8,
+      "thermal_capacity_j_k": 2.4000000000000004,
+      "venule_edge": "VB20"
+    },
+    {
+      "arteriole_edge": "AB03",
+      "capillary_edge": "CP03",
+      "center_m": [
+        0.015,
+        -0.045,
+        0.0045
+      ],
+      "grid": [
+        0,
+        3
+      ],
+      "index": 3,
+      "metabolic_consumption_ml_o2_min_100g": 5.05,
+      "optical_depth": 0.65,
+      "thermal_capacity_j_k": 2.5,
+      "venule_edge": "VB03"
+    },
+    {
+      "arteriole_edge": "AB09",
+      "capillary_edge": "CP09",
+      "center_m": [
+        0.015,
+        -0.015,
+        0.0045
+      ],
+      "grid": [
+        1,
+        3
+      ],
+      "index": 9,
+      "metabolic_consumption_ml_o2_min_100g": 4.0,
+      "optical_depth": 0.7000000000000001,
+      "thermal_capacity_j_k": 2.5,
+      "venule_edge": "VB09"
+    },
+    {
+      "arteriole_edge": "AB15",
+      "capillary_edge": "CP15",
+      "center_m": [
+        0.015,
+        0.015,
+        0.0045
+      ],
+      "grid": [
+        2,
+        3
+      ],
+      "index": 15,
+      "metabolic_consumption_ml_o2_min_100g": 4.35,
+      "optical_depth": 0.75,
+      "thermal_capacity_j_k": 2.5,
+      "venule_edge": "VB15"
+    },
+    {
+      "arteriole_edge": "AB21",
+      "capillary_edge": "CP21",
+      "center_m": [
+        0.015,
+        0.045,
+        0.0045
+      ],
+      "grid": [
+        3,
+        3
+      ],
+      "index": 21,
+      "metabolic_consumption_ml_o2_min_100g": 4.7,
+      "optical_depth": 0.8,
+      "thermal_capacity_j_k": 2.5,
+      "venule_edge": "VB21"
+    },
+    {
+      "arteriole_edge": "AB04",
+      "capillary_edge": "CP04",
+      "center_m": [
+        0.045,
+        -0.045,
+        0.0045
+      ],
+      "grid": [
+        0,
+        4
+      ],
+      "index": 4,
+      "metabolic_consumption_ml_o2_min_100g": 4.0,
+      "optical_depth": 0.65,
+      "thermal_capacity_j_k": 2.6,
+      "venule_edge": "VB04"
+    },
+    {
+      "arteriole_edge": "AB10",
+      "capillary_edge": "CP10",
+      "center_m": [
+        0.045,
+        -0.015,
+        0.0045
+      ],
+      "grid": [
+        1,
+        4
+      ],
+      "index": 10,
+      "metabolic_consumption_ml_o2_min_100g": 4.35,
+      "optical_depth": 0.7000000000000001,
+      "thermal_capacity_j_k": 2.6,
+      "venule_edge": "VB10"
+    },
+    {
+      "arteriole_edge": "AB16",
+      "capillary_edge": "CP16",
+      "center_m": [
+        0.045,
+        0.015,
+        0.0045
+      ],
+      "grid": [
+        2,
+        4
+      ],
+      "index": 16,
+      "metabolic_consumption_ml_o2_min_100g": 4.7,
+      "optical_depth": 0.75,
+      "thermal_capacity_j_k": 2.6,
+      "venule_edge": "VB16"
+    },
+    {
+      "arteriole_edge": "AB22",
+      "capillary_edge": "CP22",
+      "center_m": [
+        0.045,
+        0.045,
+        0.0045
+      ],
+      "grid": [
+        3,
+        4
+      ],
+      "index": 22,
+      "metabolic_consumption_ml_o2_min_100g": 5.05,
+      "optical_depth": 0.8,
+      "thermal_capacity_j_k": 2.6,
+      "venule_edge": "VB22"
+    },
+    {
+      "arteriole_edge": "AB05",
+      "capillary_edge": "CP05",
+      "center_m": [
+        0.075,
+        -0.045,
+        0.0045
+      ],
+      "grid": [
+        0,
+        5
+      ],
+      "index": 5,
+      "metabolic_consumption_ml_o2_min_100g": 4.35,
+      "optical_depth": 0.65,
+      "thermal_capacity_j_k": 2.7,
+      "venule_edge": "VB05"
+    },
+    {
+      "arteriole_edge": "AB11",
+      "capillary_edge": "CP11",
+      "center_m": [
+        0.075,
+        -0.015,
+        0.0045
+      ],
+      "grid": [
+        1,
+        5
+      ],
+      "index": 11,
+      "metabolic_consumption_ml_o2_min_100g": 4.7,
+      "optical_depth": 0.7000000000000001,
+      "thermal_capacity_j_k": 2.7,
+      "venule_edge": "VB11"
+    },
+    {
+      "arteriole_edge": "AB17",
+      "capillary_edge": "CP17",
+      "center_m": [
+        0.075,
+        0.015,
+        0.0045
+      ],
+      "grid": [
+        2,
+        5
+      ],
+      "index": 17,
+      "metabolic_consumption_ml_o2_min_100g": 5.05,
+      "optical_depth": 0.75,
+      "thermal_capacity_j_k": 2.7,
+      "venule_edge": "VB17"
+    },
+    {
+      "arteriole_edge": "AB23",
+      "capillary_edge": "CP23",
+      "center_m": [
+        0.075,
+        0.045,
+        0.0045
+      ],
+      "grid": [
+        3,
+        5
+      ],
+      "index": 23,
+      "metabolic_consumption_ml_o2_min_100g": 4.0,
+      "optical_depth": 0.8,
+      "thermal_capacity_j_k": 2.7,
+      "venule_edge": "VB23"
+    }
+  ],
+  "schema": "dr.anmar.perfusion-network.v1",
+  "units": {
+    "flow": "ml_s",
+    "length": "m",
+    "pressure": "kPa"
+  }
+}

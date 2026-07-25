@@ -25,6 +25,7 @@ EXPECTED_SYSTEM_IDS = (
     "adaptive_anastomosis_robot",
     "adaptive_seal_divide_robot",
     "safeplane_dissection_robot",
+    "perfusion_viability_robot",
 )
 
 

@@ -250,6 +250,9 @@ from orbit.surgical.assets.adaptive_seal_divide_robot import (
 from orbit.surgical.assets.safeplane_dissection_robot import (
     make_tool_cfg as make_safeplane_dissection_tool_cfg,
 )
+from orbit.surgical.assets.perfusion_viability_robot import (
+    make_tool_cfg as make_perfusion_viability_tool_cfg,
+)
 from orbit.surgical.assets.skin_stapler import (
     ClosureLine,
     FIRE_THRESHOLD_DEG,
@@ -271,6 +274,7 @@ BENCH_ROBOT_SYSTEM_FACTORIES = {
     "adaptive_anastomosis_robot": make_adaptive_anastomosis_tool_cfg,
     "adaptive_seal_divide_robot": make_adaptive_seal_divide_tool_cfg,
     "safeplane_dissection_robot": make_safeplane_dissection_tool_cfg,
+    "perfusion_viability_robot": make_perfusion_viability_tool_cfg,
 }
 
 from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
@@ -4406,6 +4410,12 @@ def main() -> None:
         # below, so custom assets never disable live robot articulation.
         use_fabric=not args_cli.disable_fabric,
     )
+    # Isaac Lab otherwise shares /tmp/isaaclab across workstation accounts.
+    # Keep each Dr.Anmar installation's logs inside its configured writable
+    # data root so Numi qualification cannot collide with another account.
+    isaaclab_log_dir = DATA_ROOT / "logs" / "isaaclab"
+    isaaclab_log_dir.mkdir(parents=True, exist_ok=True)
+    env_cfg.sim.log_dir = str(isaaclab_log_dir)
     # Every interactive PSM room inherits its control/physics cadence from the
     # released ORBIT needle-handover configuration that already works in the
     # NVIDIA native bench. Rooms may compose different OpenUSD assets, but

@@ -56,6 +56,11 @@
       "id": "safeplane_dissection_robot",
       "live_frame_id": 5,
       "passed": true
+    },
+    {
+      "id": "perfusion_viability_robot",
+      "live_frame_id": 189,
+      "passed": true
     }
   ],
   "assertions_per_case": [
@@ -75,7 +80,7 @@
     "doctor_studio_javascript_syntax": "passed",
     "ruff": "passed"
   },
-  "result": "passed_6_of_6",
+  "result": "passed_7_of_7",
   "boundaries": [
     "This qualifies bench selection, file resolution, articulation creation, substrate composition, stepping and camera visibility.",
     "The generic bench station does not run each package's complete procedure controller or runtime deformable-cooking route.",

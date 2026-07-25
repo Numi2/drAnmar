@@ -203,6 +203,37 @@ BENCH_ROBOT_SYSTEM_CATALOG: tuple[dict[str, Any], ...] = (
         "state": "inspection_ready",
         "default": False,
     },
+    {
+        "id": "perfusion_viability_robot",
+        "title": "Perfusion and viability robot",
+        "description": (
+            "Articulated registered RGB, ICG, speckle, thermal, Doppler and "
+            "ultrasound assessment system with its perfused-tissue substrate."
+        ),
+        "path": (
+            "Props/SurgicalAssessment/PerfusionViabilityRobot/"
+            "dranmar_perfusion_viability_tool_standalone.usda"
+        ),
+        "payload_path": (
+            "Props/SurgicalAssessment/PerfusionViabilityRobot/"
+            "dranmar_perfusion_viability_tool_payload.usda"
+        ),
+        "rigid_proxy_path": (
+            "Props/SurgicalAssessment/PerfusionViabilityRobot/"
+            "dranmar_perfusion_viability_tool_rigid_proxy.usda"
+        ),
+        "auxiliary_path": (
+            "Props/SurgicalAssessment/PerfusionViabilityRobot/"
+            "dranmar_perfused_tissue_demo.usda"
+        ),
+        "provider": "dr_anmar",
+        "catalog_section": "robot_systems",
+        "bench_kind": "robot_system",
+        "exclusive_group": FEATURED_ROBOT_EXCLUSIVE_GROUP,
+        "representation": "standalone_articulation_with_task_substrate",
+        "state": "assessment_ready",
+        "default": False,
+    },
 )
 
 BENCH_ROBOT_SYSTEMS_BY_ID = {

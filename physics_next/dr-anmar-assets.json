@@ -279,13 +279,30 @@
       "native_gpu_qualification": "passed_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_rtx_4090_standalone_and_franka_cuda_matrix",
       "physical_qualification": "provisional_parameters_pending_instrumented_dissection_bench",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-perfusion-viability-robot-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_standalone.usda",
+      "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_payload.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfused_tissue_demo.usda",
+      "profile": "physics_next/surgical-assessment/dranmar-perfusion-viability-v1.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/interaction_frames.json",
+      "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/perfusion_viability_task_contract.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/asset_manifest.json",
+      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/qualification_report.json",
+      "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_perfused_tissue_station",
+      "live_behavior": "shared_resistive_vascular_flow_and_tracer_state_registered_multimodal_maps_sensor_disagreement_cause_classification_intervention_and_closed_loop_rescan",
+      "deployment": "enabled_as_optional_bench_system",
+      "native_gpu_qualification": "passed_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_rtx_4090_standalone_and_franka_cuda_matrix",
+      "physical_qualification": "reduced_order_research_model_pending_sensor_calibration_flow_bench_and_tissue_validation",
+      "clinical_validation": false
     }
   ],
   "validation": {
     "deterministic_contracts": "automated_in_ci",
     "openusd_parse": "required_before_release",
     "native_gpu_results": "required_for_native_capability_promotion",
-    "bench_compositor": "passed_6_of_6_on_numi_rtx_4090_2026_07_25",
+    "bench_compositor": "passed_7_of_7_on_numi_rtx_4090_2026_07_25",
     "bench_compositor_report": "physics_next/benchmarks/dr-anmar-bench-robot-system-matrix.json",
     "physical_bench_results": "required_for_biomechanical_promotion",
     "clinical_use": "blocked"

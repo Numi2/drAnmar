@@ -1,0 +1,351 @@
+{
+  "asset_id": "dranmar-perfusion-viability-robot-v1",
+  "frames": {
+    "contact_guard_force": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "ContactGuard",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "contact_guard_force_reference"
+    },
+    "contact_guard_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.174
+      ],
+      "role": "atraumatic_guard_center"
+    },
+    "count_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.035
+      ],
+      "role": "inventory_count_reference"
+    },
+    "depth_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "OpticalFocus",
+      "position": [
+        0,
+        0,
+        0.012
+      ],
+      "role": "depth_and_surface_normal_reference"
+    },
+    "doppler_beam_axis": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "DopplerGimbal",
+      "position": [
+        0,
+        0,
+        0.082
+      ],
+      "role": "doppler_beam_axis"
+    },
+    "doppler_probe_tip": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "DopplerGimbal",
+      "position": [
+        0,
+        0,
+        0.076
+      ],
+      "role": "doppler_contact_tip"
+    },
+    "gel_dispense_exit": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "UltrasoundCarriage",
+      "position": [
+        0.018,
+        0,
+        0.046
+      ],
+      "role": "ultrasound_coupling_gel_exit"
+    },
+    "handover_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.07,
+        0.065
+      ],
+      "role": "handover_reference"
+    },
+    "multispectral_camera": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "SensorTurret",
+      "position": [
+        0.0,
+        -0.044,
+        0.055
+      ],
+      "role": "surface_oxygenation_camera"
+    },
+    "nir_fluorescence_camera": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "SensorTurret",
+      "position": [
+        -0.034,
+        -0.002,
+        0.033
+      ],
+      "role": "nir_icg_camera"
+    },
+    "optical_scan_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "SensorTurret",
+      "position": [
+        0,
+        0,
+        0.07
+      ],
+      "role": "registered_optical_scan_origin"
+    },
+    "panda_link8_mount": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "fixed_mount_to_panda_link8"
+    },
+    "perfusion_tcp": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.205
+      ],
+      "role": "primary_assessment_tcp"
+    },
+    "rgb_left_camera": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "SensorTurret",
+      "position": [
+        -0.034,
+        -0.044,
+        0.033
+      ],
+      "role": "stereo_rgb_left"
+    },
+    "rgb_right_camera": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "SensorTurret",
+      "position": [
+        0.034,
+        -0.044,
+        0.033
+      ],
+      "role": "stereo_rgb_right"
+    },
+    "roi_center": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.205
+      ],
+      "role": "perfusion_region_of_interest"
+    },
+    "speckle_camera": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "SensorTurret",
+      "position": [
+        0.0,
+        -0.002,
+        0.033
+      ],
+      "role": "laser_speckle_camera"
+    },
+    "speckle_projection_center": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "SpeckleMirrorY",
+      "position": [
+        0,
+        0,
+        0.012
+      ],
+      "role": "laser_speckle_projection_center"
+    },
+    "structured_light_projector": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "OpticalFocus",
+      "position": [
+        0.05,
+        0,
+        0.01
+      ],
+      "role": "structured_light_projector"
+    },
+    "thermal_camera": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "SensorTurret",
+      "position": [
+        0.034,
+        -0.002,
+        0.033
+      ],
+      "role": "thermal_camera"
+    },
+    "ultrasound_force_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "UltrasoundCompliance",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "ultrasound_contact_force_reference"
+    },
+    "ultrasound_probe_axis": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "UltrasoundCompliance",
+      "position": [
+        0,
+        0,
+        0.012
+      ],
+      "role": "ultrasound_beam_axis"
+    },
+    "ultrasound_probe_face": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "UltrasoundCompliance",
+      "position": [
+        0,
+        0,
+        0.003
+      ],
+      "role": "ultrasound_contact_face"
+    }
+  },
+  "schema": "dr.anmar.interaction-frames.v1"
+}

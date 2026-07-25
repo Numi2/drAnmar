@@ -1,0 +1,52 @@
+{
+  "flow": {
+    "arterial_pressure_kpa_seed": 13.3,
+    "conservation_required": true,
+    "model": "linear_resistive_network_with_boundary_pressure_obstruction_compression_and_leak_sinks",
+    "venous_pressure_kpa_seed": 1.2
+  },
+  "id": "dranmar-perfusion-viability-robot-v1",
+  "modalities": {
+    "depth": "RTX_camera_or_host_depth_route",
+    "doppler": "projected_edge_velocity",
+    "laser_speckle": "shared_region_flow",
+    "nir_icg": "shared_tracer_state",
+    "rgb": "RTX_camera_context",
+    "surface_oxygenation": "delivery_consumption_proxy",
+    "thermal": "perfusion_heat_proxy",
+    "ultrasound": "synthetic_b_mode_plus_color_flow_or_i4h_bridge"
+  },
+  "qualification_boundary": [
+    "no clinical perfusion thresholds",
+    "no pharmacokinetic dosing claim",
+    "no calibrated optical transport",
+    "no calibrated laser speckle decorrelation",
+    "no validated thermal physiology",
+    "no clinical Doppler calibration",
+    "no diagnostic ultrasound claim",
+    "no patient-care decision support"
+  ],
+  "schema": "dr.anmar.perfusion-viability-profile.v1",
+  "status": "research_informed_engineering_model_pending_runtime_physical_sensor_and_clinical_validation",
+  "tissue": {
+    "depth_m": 0.12,
+    "region_count": 24,
+    "thickness_m": 0.008,
+    "vascular_edge_count": 82,
+    "vascular_node_count": 60,
+    "width_m": 0.18
+  },
+  "tool": {
+    "joint_count": 12,
+    "mass_estimate_kg": 2.55,
+    "mount": "panda_link8_hand_replacement",
+    "work_plane_z_m": 0.205
+  },
+  "tracer": {
+    "injection_time_s": 1.0,
+    "input_peak_time_s": 4.5,
+    "model": "edge_cstr_advection_with_region_exchange_and_extravascular_leak_compartments",
+    "not_a_dose_model": true
+  },
+  "version": "0.1.0"
+}

@@ -10,6 +10,9 @@ All notable changes to Dr.Anmar will be documented here.
 - Doctor Studio browser interface, guided curriculum, anatomy library, demonstrations, and training lab.
 - Seven-scene resumable anatomy installer and default liver operating-room showcase.
 - Public contribution, security, provenance, and automated repository-hygiene documentation.
+- Selectable Franka-compatible perfusion and tissue-viability assessment robot
+  with a shared vascular-flow/tracer model, registered multimodal sensing,
+  closed-loop rescanning, and a perfused-tissue bench station.
 
 ### Changed
 

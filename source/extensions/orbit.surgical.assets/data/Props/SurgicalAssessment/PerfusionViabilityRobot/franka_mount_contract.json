@@ -1,0 +1,27 @@
+{
+  "disabled_prims": [
+    "panda_hand_joint",
+    "panda_hand",
+    "panda_finger_joint1",
+    "panda_finger_joint2",
+    "panda_leftfinger",
+    "panda_rightfinger"
+  ],
+  "local_rotation_axis_angle": {
+    "axis": [
+      0,
+      0,
+      1
+    ],
+    "degrees": -45.0
+  },
+  "local_translation_m": [
+    0,
+    0,
+    0
+  ],
+  "parent_link": "panda_link8",
+  "payload_mount_link": "Links/Mount",
+  "payload_root": "DrAnmarPerfusionViabilityTool",
+  "schema": "dr.anmar.franka-mount.v1"
+}

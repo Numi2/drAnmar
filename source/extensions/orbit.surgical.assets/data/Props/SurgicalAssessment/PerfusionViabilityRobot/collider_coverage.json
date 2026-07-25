@@ -1,0 +1,241 @@
+{
+  "asset_id": "dranmar-perfusion-viability-robot-v1",
+  "links": {
+    "ContactGuard": {
+      "axis_coverage_ratio": [
+        0.8870967741935484,
+        0.9821428571428572,
+        0.7272727272727272
+      ],
+      "collider_count": 1,
+      "collider_envelope_m": [
+        0.11,
+        0.11,
+        0.008
+      ],
+      "visual_envelope_m": [
+        0.124,
+        0.11199999999999999,
+        0.011000000000000001
+      ]
+    },
+    "DopplerCarriage": {
+      "axis_coverage_ratio": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "collider_count": 1,
+      "collider_envelope_m": [
+        0.034,
+        0.038,
+        0.05
+      ],
+      "visual_envelope_m": [
+        0.034,
+        0.038,
+        0.05
+      ]
+    },
+    "DopplerGimbal": {
+      "axis_coverage_ratio": [
+        0.8,
+        0.5333333333333333,
+        0.8588235294117647
+      ],
+      "collider_count": 2,
+      "collider_envelope_m": [
+        0.016,
+        0.016,
+        0.07300000000000001
+      ],
+      "visual_envelope_m": [
+        0.02,
+        0.03,
+        0.08500000000000002
+      ]
+    },
+    "FilterWheel": {
+      "axis_coverage_ratio": [
+        1.0,
+        0.8000000000000004,
+        1.0
+      ],
+      "collider_count": 1,
+      "collider_envelope_m": [
+        0.036,
+        0.004000000000000003,
+        0.036
+      ],
+      "visual_envelope_m": [
+        0.036,
+        0.005000000000000001,
+        0.036
+      ]
+    },
+    "GelValve": {
+      "axis_coverage_ratio": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "collider_count": 1,
+      "collider_envelope_m": [
+        0.02,
+        0.008,
+        0.008000000000000002
+      ],
+      "visual_envelope_m": [
+        0.02,
+        0.008,
+        0.008000000000000002
+      ]
+    },
+    "Mount": {
+      "axis_coverage_ratio": [
+        0.9552238805970149,
+        0.8130081300813009,
+        0.5126760563380282
+      ],
+      "collider_count": 2,
+      "collider_envelope_m": [
+        0.128,
+        0.1,
+        0.091
+      ],
+      "visual_envelope_m": [
+        0.134,
+        0.123,
+        0.1775
+      ]
+    },
+    "OpticalFocus": {
+      "axis_coverage_ratio": [
+        0.7587548638132295,
+        0.9558823529411765,
+        0.4
+      ],
+      "collider_count": 1,
+      "collider_envelope_m": [
+        0.078,
+        0.078,
+        0.006
+      ],
+      "visual_envelope_m": [
+        0.1028,
+        0.08159999999999999,
+        0.015
+      ]
+    },
+    "SensorTurret": {
+      "axis_coverage_ratio": [
+        0.9460737937559129,
+        1.0,
+        0.6901408450704226
+      ],
+      "collider_count": 2,
+      "collider_envelope_m": [
+        0.1,
+        0.094,
+        0.049
+      ],
+      "visual_envelope_m": [
+        0.1057,
+        0.094,
+        0.071
+      ]
+    },
+    "SpeckleMirrorX": {
+      "axis_coverage_ratio": [
+        1.0,
+        1.0,
+        0.9999999999999998
+      ],
+      "collider_count": 1,
+      "collider_envelope_m": [
+        0.018,
+        0.014,
+        0.004
+      ],
+      "visual_envelope_m": [
+        0.018,
+        0.014,
+        0.004000000000000001
+      ]
+    },
+    "SpeckleMirrorY": {
+      "axis_coverage_ratio": [
+        1.0,
+        1.0,
+        0.9999999999999998
+      ],
+      "collider_count": 1,
+      "collider_envelope_m": [
+        0.018,
+        0.014,
+        0.004
+      ],
+      "visual_envelope_m": [
+        0.018,
+        0.014,
+        0.004000000000000001
+      ]
+    },
+    "UltrasoundCarriage": {
+      "axis_coverage_ratio": [
+        0.9113924050632912,
+        1.0,
+        0.7692307692307692
+      ],
+      "collider_count": 1,
+      "collider_envelope_m": [
+        0.036,
+        0.04,
+        0.055
+      ],
+      "visual_envelope_m": [
+        0.03949999999999999,
+        0.04,
+        0.07150000000000001
+      ]
+    },
+    "UltrasoundCompliance": {
+      "axis_coverage_ratio": [
+        1.0,
+        1.0,
+        0.7999999999999996
+      ],
+      "collider_count": 1,
+      "collider_envelope_m": [
+        0.03,
+        0.048,
+        0.004
+      ],
+      "visual_envelope_m": [
+        0.03,
+        0.048,
+        0.005000000000000003
+      ]
+    },
+    "UltrasoundGimbal": {
+      "axis_coverage_ratio": [
+        1.0,
+        1.0,
+        0.6567164179104477
+      ],
+      "collider_count": 2,
+      "collider_envelope_m": [
+        0.032,
+        0.052,
+        0.044
+      ],
+      "visual_envelope_m": [
+        0.032,
+        0.052,
+        0.067
+      ]
+    }
+  },
+  "note": "coverage ratios are local-link envelopes; deliberate probe-face insets reduce ghost contact",
+  "schema": "dr.anmar.collider-coverage.v1"
+}

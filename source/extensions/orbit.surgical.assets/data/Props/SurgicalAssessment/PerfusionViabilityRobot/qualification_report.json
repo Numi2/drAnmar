@@ -1,0 +1,121 @@
+{
+  "schema": "dranmar.perfusion-viability-qualification-report.v1",
+  "asset": "dranmar-perfusion-viability-robot-v1",
+  "version": "0.1.0",
+  "status": "pass",
+  "qualification_date": "2026-07-25",
+  "ownership": "DrAnmar",
+  "runtime_host": "numi",
+  "platform": {
+    "operating_system": "Ubuntu 24.04.4 LTS",
+    "kernel": "7.0.0-28-generic",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_memory_mib": 24564,
+    "driver": "580.159.03",
+    "isaac_lab": "6.1.16",
+    "isaac_sim": "6.0.1.0",
+    "device": "cuda:0",
+    "nvidia_eula_accepted_by_user": true
+  },
+  "static_gates": {
+    "cpu_controller_tests": {
+      "status": "pass",
+      "tests": 13
+    },
+    "perfusion_and_bench_tests": {
+      "status": "pass",
+      "tests": 22
+    },
+    "strict_openusd_parse": {
+      "status": "pass",
+      "checker": "pxr.Usd.Stage.Open",
+      "pxr_version": "0.25.11",
+      "primary_usda": 7,
+      "execution_host": "numi"
+    },
+    "glb_structure": {
+      "status": "pass",
+      "files": 23
+    },
+    "png_structure": {
+      "status": "pass",
+      "textures": 8
+    },
+    "json_contracts": {
+      "status": "pass",
+      "files": 11
+    },
+    "python_compilation": {
+      "status": "pass",
+      "files": 7
+    }
+  },
+  "matrix": [
+    {
+      "representation": "standalone",
+      "status": "pass",
+      "steps": 130,
+      "joint_count": 12,
+      "finite_joint_state": true,
+      "engine_error_count": 0,
+      "registered_camera_count": 6,
+      "tissue_registration_error_m": 4.768371530960991e-10,
+      "phases_checked": 13,
+      "maximum_flow_conservation_error_ml_s": 2.5579538487363607e-13
+    },
+    {
+      "representation": "franka",
+      "status": "pass",
+      "steps": 130,
+      "joint_count": 19,
+      "arm_joint_count": 7,
+      "tool_joint_count": 12,
+      "finite_joint_state": true,
+      "engine_error_count": 0,
+      "registered_camera_count": 6,
+      "tissue_registration_error_m": 2.6702880795426154e-08,
+      "phases_checked": 13,
+      "maximum_flow_conservation_error_ml_s": 2.5579538487363607e-13,
+      "franka_mount": {
+        "body0": "/World/Robot/panda_link8",
+        "stock_hand_frame_preserved": true,
+        "local_z_rotation_deg": -45.0
+      }
+    }
+  ],
+  "closed_loop_evidence": {
+    "arterial_occlusion_viability_gain": 0.37360250599395073,
+    "venous_congestion_viability_gain": 0.30856757165073323,
+    "anastomotic_stenosis_viability_gain": 0.12420954341560986,
+    "branch_leak_viability_gain": 0.005703163200329486,
+    "retraction_ischemia_viability_gain": 0.08101430052407965,
+    "dressing_compression_viability_gain": 0.052057038439385694,
+    "all_six_intervention_rescans_improved": true
+  },
+  "bench_compositor": {
+    "status": "pass",
+    "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
+    "procedure": "nvidia-native-surgical-bench",
+    "active_bench_assets": [
+      "perfusion_viability_robot"
+    ],
+    "featured_robot_system": "perfusion_viability_robot",
+    "fatal_error": null,
+    "live_frame_id": 189,
+    "endoscope_left_jpeg": {
+      "bytes": 34132,
+      "width": 960,
+      "height": 640,
+      "mode": "RGB"
+    },
+    "worker_stopped_cleanly": true,
+    "test_port_released": true
+  },
+  "boundaries": {
+    "clinical_validation": false,
+    "medical_device": false,
+    "patient_care_approved": false,
+    "physical_calibration": false,
+    "claims": "Native simulation qualification only; no optical, thermal, Doppler, ultrasound, tracer, vascular-flow, viability, diagnostic, interventional, or clinical calibration."
+  }
+}
