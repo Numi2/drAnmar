@@ -4677,6 +4677,19 @@ def main() -> None:
             )
         if dynamic_abdominal_patient_enabled:
             env_cfg.scene.replicate_physics = False
+            # The patient starts with overlapping anatomical envelopes. Keep
+            # enough CUDA collision-stack headroom for external tool contacts;
+            # the spawn callback separately filters uncalibrated organ-on-organ
+            # contacts that otherwise produce a pathological all-pairs set.
+            dynamic_patient_physx = {
+                "gpu_collision_stack_size": 2**30,
+                "gpu_heap_capacity": 2**28,
+                "gpu_temp_buffer_capacity": 2**26,
+                "gpu_max_soft_body_contacts": 2**20,
+            }
+            for setting, value in dynamic_patient_physx.items():
+                if hasattr(env_cfg.sim.physx, setting):
+                    setattr(env_cfg.sim.physx, setting, value)
             patient_access_state = str(
                 procedure.get("dynamic_patient_access_state", "open")
             )
@@ -4706,6 +4719,7 @@ def main() -> None:
                 )
                 from orbit.surgical.assets.dynamic_abdominal_patient import (
                     apply_patient_deformables,
+                    configure_patient_internal_collision_filter,
                 )
 
                 mechanics_routes = apply_patient_deformables(
@@ -4722,6 +4736,20 @@ def main() -> None:
                         "Dynamic abdominal patient mechanics failed closed: "
                         f"{failed_routes}"
                     )
+                collision_filter = configure_patient_internal_collision_filter(
+                    str(patient_root.GetPath())
+                )
+                print(
+                    "[DR_ANMAR_DYNAMIC_PATIENT_MECHANICS] "
+                    + json.dumps(
+                        {
+                            "collision_filter": collision_filter,
+                            "routes": mechanics_routes,
+                        },
+                        sort_keys=True,
+                    ),
+                    flush=True,
+                )
                 return patient_root
 
             dynamic_patient_spawn.func = spawn_dynamic_abdominal_patient

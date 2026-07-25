@@ -230,3 +230,98 @@ def test_codeless_usd_apis_are_applied_only_when_registered(
     assert prim.applied == ["AvailableAPI"]
     with pytest.raises(RuntimeError, match="Required USD API schema"):
         runtime._apply_registered_api(prim, "MissingAPI")
+
+
+def test_patient_collision_group_filters_only_internal_pairs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeRelationship:
+        def __init__(self):
+            self.targets: list[str] = []
+
+        def AddTarget(self, path: str) -> None:
+            self.targets.append(str(path))
+
+    class FakeAttribute:
+        def __init__(self):
+            self.value = None
+
+        def Set(self, value: str) -> None:
+            self.value = value
+
+    class FakePrim:
+        def __init__(self, path: str, valid: bool = True):
+            self.path = path
+            self.valid = valid
+
+        def IsValid(self) -> bool:
+            return self.valid
+
+    class FakeStage:
+        def __init__(self):
+            self.prims = {
+                "/World/envs/env_0/Patient": FakePrim("/World/envs/env_0/Patient")
+            }
+
+        def GetPrimAtPath(self, path: str) -> FakePrim:
+            return self.prims.get(str(path), FakePrim(str(path), valid=False))
+
+    class FakeCollisionGroup:
+        def __init__(self, path: str):
+            self.prim = FakePrim(path)
+            self.filtered = FakeRelationship()
+
+        def GetPrim(self) -> FakePrim:
+            return self.prim
+
+        def CreateFilteredGroupsRel(self) -> FakeRelationship:
+            return self.filtered
+
+    class FakeCollisionGroupSchema:
+        group: FakeCollisionGroup | None = None
+
+        @classmethod
+        def Define(cls, _stage: FakeStage, path: str) -> FakeCollisionGroup:
+            cls.group = FakeCollisionGroup(str(path))
+            return cls.group
+
+    class FakeCollection:
+        instance: "FakeCollection | None" = None
+
+        def __init__(self):
+            self.expansion = FakeAttribute()
+            self.includes = FakeRelationship()
+
+        @classmethod
+        def Apply(cls, _prim: FakePrim, _name: str) -> "FakeCollection":
+            cls.instance = cls()
+            return cls.instance
+
+        def CreateExpansionRuleAttr(self) -> FakeAttribute:
+            return self.expansion
+
+        def CreateIncludesRel(self) -> FakeRelationship:
+            return self.includes
+
+    fake_pxr = SimpleNamespace(
+        Sdf=SimpleNamespace(Path=lambda value: value),
+        Usd=SimpleNamespace(
+            Tokens=SimpleNamespace(expandPrims="expandPrims"),
+            CollectionAPI=FakeCollection,
+        ),
+        UsdPhysics=SimpleNamespace(CollisionGroup=FakeCollisionGroupSchema),
+    )
+    monkeypatch.setitem(sys.modules, "pxr", fake_pxr)
+
+    result = runtime.configure_patient_internal_collision_filter(
+        "/World/envs/env_0/Patient",
+        stage=FakeStage(),
+    )
+
+    group_path = "/World/envs/env_0/DynamicAbdominalPatientInternalCollisionGroup"
+    assert result["collision_group_path"] == group_path
+    assert FakeCollection.instance is not None
+    assert FakeCollection.instance.includes.targets == ["/World/envs/env_0/Patient"]
+    assert FakeCollection.instance.expansion.value == "expandPrims"
+    assert FakeCollisionGroupSchema.group is not None
+    assert FakeCollisionGroupSchema.group.filtered.targets == [group_path]

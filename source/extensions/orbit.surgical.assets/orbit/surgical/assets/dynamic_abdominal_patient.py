@@ -2630,6 +2630,50 @@ def apply_patient_deformables(
     return results
 
 
+def configure_patient_internal_collision_filter(
+    patient_path: str,
+    *,
+    stage=None,
+    collision_group_path: str | None = None,
+) -> dict[str, str]:
+    """Disable patient-on-patient contacts while retaining tool contacts.
+
+    The authored organs overlap in their undeformed anatomical pose. Treating
+    every pair as a collision pair creates a pathological broad-phase contact
+    set before calibrated inter-organ contact layers exist. A self-filtered USD
+    collision group removes only contacts between members below the patient
+    root; instruments and other scene geometry remain outside the group.
+    """
+    if stage is None:
+        import omni.usd
+
+        stage = omni.usd.get_context().get_stage()
+
+    from pxr import Sdf, Usd, UsdPhysics
+
+    normalized_patient_path = patient_path.rstrip("/")
+    if not normalized_patient_path.startswith("/"):
+        raise ValueError("patient_path must be an absolute USD prim path")
+    if not stage.GetPrimAtPath(normalized_patient_path).IsValid():
+        raise RuntimeError(f"Patient prim does not exist: {normalized_patient_path}")
+
+    environment_path = normalized_patient_path.rsplit("/", 1)[0]
+    group_path = (
+        collision_group_path
+        or f"{environment_path}/DynamicAbdominalPatientInternalCollisionGroup"
+    )
+    collision_group = UsdPhysics.CollisionGroup.Define(stage, Sdf.Path(group_path))
+    colliders = Usd.CollectionAPI.Apply(collision_group.GetPrim(), "colliders")
+    colliders.CreateExpansionRuleAttr().Set(Usd.Tokens.expandPrims)
+    colliders.CreateIncludesRel().AddTarget(Sdf.Path(normalized_patient_path))
+    collision_group.CreateFilteredGroupsRel().AddTarget(Sdf.Path(group_path))
+    return {
+        "patient_path": normalized_patient_path,
+        "collision_group_path": group_path,
+        "policy": "filter_internal_patient_pairs_preserve_external_tool_contacts",
+    }
+
+
 def create_auto_deformable_attachment(
     stage,
     attachment_path: str,
