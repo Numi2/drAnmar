@@ -12,14 +12,14 @@
       "sha256": "177ff9e301ffc95e2a5c352f52a5a7b2851f0b446253f68010c8f6de8c2e5986"
     },
     {
-      "bytes": 119596,
+      "bytes": 119776,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_abdominal_wall.usda",
-      "sha256": "363c107783f2a414cde17669cc454acab0d2a51d26855bfd77760641308fe8fd"
+      "sha256": "80c2f1626ac53ba26c1cdd5f4bea179632a1e35d8d26ec4b4ec8f6bf503b1d84"
     },
     {
-      "bytes": 439752,
+      "bytes": 440434,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_bladder.usda",
-      "sha256": "e706ba05aef109d7d5c731f4d97cc5382ab4e4f53971326741f1033f8a71c313"
+      "sha256": "042b255989a52e7cbb56dac101660050381b335cee1a9265eea8574b5225ccb0"
     },
     {
       "bytes": 399843,
@@ -37,9 +37,9 @@
       "sha256": "540986b0c11739c3377ec04147f34186017d33501230f521a65734aed91bda9c"
     },
     {
-      "bytes": 120355,
+      "bytes": 120535,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_fascia.usda",
-      "sha256": "ff1b08096e655b4725bed8cb8def8f892b52c4c92a124121c16f9e2296468776"
+      "sha256": "272823f5507285434fb39fe0fc9ccb54c9d47497bbb4536a401209e966be52bd"
     },
     {
       "bytes": 444740,
@@ -47,14 +47,19 @@
       "sha256": "860b92bd0cf61d1073d5749a5a0185acaa7b312fb8a15bd0fcefd6aa096e1466"
     },
     {
+      "bytes": 1400386,
+      "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_laparotomy_wound.usda",
+      "sha256": "9b403d5a68183745ca293f0a251a8e488affb01506c7626ddf01e52ea6b63add"
+    },
+    {
       "bytes": 442577,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_left_kidney.usda",
       "sha256": "1546c93f2cc71d05930b0dce2ff1b5024279fe60edc3e3ab7742267d284226fe"
     },
     {
-      "bytes": 462204,
+      "bytes": 459458,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_liver.usda",
-      "sha256": "db637c6b463877b615837e0bc82951ac999d2159ee99572dd3dcbef9ccc5c782"
+      "sha256": "42cd827730b22dd1d7f0bca475252066c59af6f4382484023be3064dea19c5cd"
     },
     {
       "bytes": 436369,
@@ -62,9 +67,9 @@
       "sha256": "27abc38ced699c9d1ae034122cfe061b4f088031599072905d2c08eb33eb1063"
     },
     {
-      "bytes": 56308,
+      "bytes": 56285,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_major_vessels.usda",
-      "sha256": "c33f72e25538770334224b746243d82b86932fa341139e2dae5707d82366a267"
+      "sha256": "73c327aa4a5fa820b0cefa8521290048bb942a25413a95941e3f1be5a809002c"
     },
     {
       "bytes": 75594,
@@ -77,9 +82,9 @@
       "sha256": "a92459ee3d14673e8e39f2201d510328f9950f17e8fbea1eb285332cf8495583"
     },
     {
-      "bytes": 397047,
+      "bytes": 899106,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_pancreas.usda",
-      "sha256": "9291b0bcd354cf841f8a1f7cd34122726a94035c7904a78c36092b0603b4bc52"
+      "sha256": "a12d96fe5741e1cde860999e9005d38187cb94d8f653813fd64c1b3a45f97ccc"
     },
     {
       "bytes": 120556,
@@ -92,9 +97,9 @@
       "sha256": "06d7498d6c6a4e8453e9f55df104bc6bb124bd194d95d6d3a5fa9cd6bc600289"
     },
     {
-      "bytes": 119424,
+      "bytes": 119604,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_skin.usda",
-      "sha256": "ffc035b645d66376465ad0988b8e1b476e88139b273171f454ca8123b1dacd34"
+      "sha256": "ba8348680228db77443420104d09d38137ff057280778a8d52f4af729f2d6cc7"
     },
     {
       "bytes": 154103,
@@ -107,14 +112,14 @@
       "sha256": "ec34dd5007edb460ea6cde63bedb1f53b2da49455b12e1bad1f73faa38859067"
     },
     {
-      "bytes": 25957,
+      "bytes": 73839,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_stomach.usda",
-      "sha256": "bfa0106f8bd6a50525801ef9301e88bb0b3e2d663fcb6cf742c21b0226a4e3b6"
+      "sha256": "bf58cdd28ffcf545d3d9baa7db20ce6cba696b350c50deb585e1f8e2c9d0fbd9"
     },
     {
-      "bytes": 119560,
+      "bytes": 119740,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_subcutaneous_fat.usda",
-      "sha256": "a14d26a42e5671c46bcdc7f2abbeb48d2a2904ce49beba9c7b3cd4093a3f9d0d"
+      "sha256": "f33b8b5c1384b11aa9b5662ab8809d0b6acde9a540d4013a6c7f5020996a9472"
     },
     {
       "bytes": 18315,
@@ -122,14 +127,14 @@
       "sha256": "02236ee47ae7dd6b1cc3089220b3e1dafa69ede5d6799d29476c71a904f549f9"
     },
     {
-      "bytes": 39857,
+      "bytes": 39901,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/anatomy_manifest.json",
-      "sha256": "32236baca588bc7daf2cb1dbdde6cf485e5e8f5aae7e4fbd434096812e986f8c"
+      "sha256": "6f20b9140a134fb9f7f14b41ce6523ba1d4dad61c1315d1e9110882267150a92"
     },
     {
-      "bytes": 14204,
+      "bytes": 14794,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda",
-      "sha256": "89a70156d058a61fbd6b2e77b9941bb028cf893f2cd5b419166cc071f7217a1c"
+      "sha256": "7dc1081cda8657a1426406bbb45162b606ecebe9012ec30ccf5276ef60709d65"
     },
     {
       "bytes": 2628,
@@ -342,9 +347,9 @@
       "sha256": "7be6131a81a8941f1821495d0bb00a4859204a3fba82890caf886a058d6b05a8"
     },
     {
-      "bytes": 2535,
+      "bytes": 2658,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/mechanics_contract.json",
-      "sha256": "51644ffa9870713fb56bfb49c30b7903801db01b97b6ef364272b07d1164f420"
+      "sha256": "60ae8f29691c8aff0f5cd9f6a3a313ebf68ada0b53c0096568846b94b77f972d"
     },
     {
       "bytes": 2136,
@@ -412,9 +417,14 @@
       "sha256": "eb2ac3e1faf246d2737d15790a19f3cd27c7816412c5912512b6c690774d4cfc"
     },
     {
-      "bytes": 478,
+      "bytes": 3135,
+      "path": "docs/LAPAROTOMY.md",
+      "sha256": "1dfbbeac03b5d6c0cef678a003d7c21c81e95e2a4012d78b37c8322dec246623"
+    },
+    {
+      "bytes": 1363,
       "path": "docs/MECHANICS.md",
-      "sha256": "d887af7f6db74b0924fb39d7a352ed43d01ded1f9b75fb91367427f4bcb617f9"
+      "sha256": "7cbe6c2cb84ba1b13dad352eacb528886366a661611e9012014ccac1fb6a5c5f"
     },
     {
       "bytes": 446,
@@ -427,9 +437,9 @@
       "sha256": "f46cb73ddaba7e7f2bc24b996f4411df81d679421746652f04cda0f851c83cd0"
     },
     {
-      "bytes": 1011,
+      "bytes": 3356,
       "path": "docs/README.md",
-      "sha256": "2c91c2815562cd423d99c926ed98978f42b691b4043da26031ee514856fbb183"
+      "sha256": "ff8b3d25eb2887d0aebad25d75b89ae7130863e332c403b7411457f18844485f"
     },
     {
       "bytes": 441,
@@ -437,14 +447,14 @@
       "sha256": "1fc8ef58e93bdae24ab8573f63d2adbadd131702d6b1211e3a2f996e3d4ae1b7"
     },
     {
-      "bytes": 343,
+      "bytes": 2066,
       "path": "docs/VALIDATION_BOUNDARY.md",
-      "sha256": "2f42dd87951a54b20a5325e5e7431840982873c3326556d7d39c188c4d380dfc"
+      "sha256": "4b39bb760d77be8c7d9b7ec3f417d2510f3d8202e3e2f537586d990ad88616b2"
     },
     {
-      "bytes": 756,
+      "bytes": 8277,
       "path": "examples/dynamic_abdominal_patient_scene.py",
-      "sha256": "d9f646db2ebcc6ef59bc2c28b55d0ceac504cd44ec4fb0a10fab1b77386581a4"
+      "sha256": "0767c43fcfacd0d38df71c791045176e7159cf755c39d3041ce59cb09fae5e7d"
     },
     {
       "bytes": 1114,

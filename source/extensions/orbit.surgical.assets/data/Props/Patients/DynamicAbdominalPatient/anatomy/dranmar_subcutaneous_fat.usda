@@ -22,7 +22,7 @@ def Xform "DrAnmarSubcutaneousFat" (
 {
     custom string drAnmar:assetId = "dranmar-dynamic-abdominal-patient-v1:subcutaneous_fat"
     custom string drAnmar:category = "body_layer"
-    custom string drAnmar:mechanics = "volume_deformable"
+    custom string drAnmar:mechanics = "host_controlled_presegmented_laparotomy"
     custom float drAnmar:densityKgM3 = 920
     custom float drAnmar:massKg = 3.346843082
     custom float drAnmar:youngsModulusPa = 18000

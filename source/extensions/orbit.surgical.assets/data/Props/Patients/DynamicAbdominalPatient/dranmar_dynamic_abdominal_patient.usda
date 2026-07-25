@@ -22,6 +22,14 @@ def Xform "DrAnmarDynamicAbdominalPatient" (
     custom string drAnmar:runtimeContract = "patient.respiration patient.perfusion patient.bleeding patient.vital_signs patient.tissue_state patient.organ_motion patient.damage patient.interventions patient.robot patient.event_bus patient.fluids"
     custom string drAnmar:status = "research_informed_engineering_model_pending_runtime_physical_and_clinical_validation"
     custom bool drAnmar:clinicalValidation = false
+    def Scope "AccessMechanics"
+    {
+        def Xform "LaparotomyWound" (
+            prepend references = @./anatomy/dranmar_laparotomy_wound.usda@</DrAnmarLaparotomyWound>
+        )
+        {
+        }
+    }
     def Scope "Anatomy"
     {
         def Xform "skin" (
@@ -292,6 +300,13 @@ def Xform "DrAnmarDynamicAbdominalPatient" (
     variantSet "access_state" = {
         "intact"
         {
+            over "AccessMechanics"
+            {
+                over "LaparotomyWound"
+                {
+                    token visibility = "invisible"
+                }
+            }
             over "Anatomy"
             {
                 over "skin" (
@@ -323,6 +338,13 @@ def Xform "DrAnmarDynamicAbdominalPatient" (
         }
         "open"
         {
+            over "AccessMechanics"
+            {
+                over "LaparotomyWound"
+                {
+                    token visibility = "inherited"
+                }
+            }
             over "Anatomy"
             {
                 over "skin" (

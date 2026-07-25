@@ -17,7 +17,7 @@ def Xform "DrAnmarMajorVessels" (
 {
     custom string drAnmar:assetId = "dranmar-dynamic-abdominal-patient-v1:major_vessels"
     custom string drAnmar:category = "vascular"
-    custom string drAnmar:mechanics = "segmented_volume_deformable"
+    custom string drAnmar:mechanics = "segmented_rod"
     custom float drAnmar:densityKgM3 = 1060
     custom float drAnmar:massKg = 0.18
     custom float drAnmar:youngsModulusPa = 420000

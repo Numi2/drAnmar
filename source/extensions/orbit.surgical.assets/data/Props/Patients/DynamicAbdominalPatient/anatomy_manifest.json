@@ -44,7 +44,7 @@
       ],
       "mass_kg": 1.0439214445195268,
       "material": "Skin",
-      "mechanics": "volume_deformable",
+      "mechanics": "host_controlled_presegmented_laparotomy",
       "orientation_wxyz": [
         1.0,
         0.0,
@@ -105,7 +105,7 @@
       ],
       "mass_kg": 3.3468430821353667,
       "material": "Fat",
-      "mechanics": "volume_deformable",
+      "mechanics": "host_controlled_presegmented_laparotomy",
       "orientation_wxyz": [
         1.0,
         0.0,
@@ -166,7 +166,7 @@
       ],
       "mass_kg": 0.4782861421216428,
       "material": "Fascia",
-      "mechanics": "volume_deformable",
+      "mechanics": "host_controlled_presegmented_laparotomy",
       "orientation_wxyz": [
         1.0,
         0.0,
@@ -227,7 +227,7 @@
       ],
       "mass_kg": 3.9594922245019273,
       "material": "Muscle",
-      "mechanics": "volume_deformable",
+      "mechanics": "host_controlled_presegmented_laparotomy",
       "orientation_wxyz": [
         1.0,
         0.0,
@@ -376,8 +376,8 @@
         0.014
       ],
       "root_prim": "DrAnmarLiver",
-      "tet_vertices": 274,
-      "tetrahedra": 1152,
+      "tet_vertices": 297,
+      "tetrahedra": 1066,
       "translation_m": [
         0.035,
         0.062,
@@ -504,7 +504,7 @@
       ],
       "mass_kg": 0.45,
       "material": "Stomach",
-      "mechanics": "volume_deformable_cooked_from_surface",
+      "mechanics": "volume_deformable",
       "orientation_wxyz": [
         1.0,
         0.0,
@@ -520,8 +520,8 @@
         0.01
       ],
       "root_prim": "DrAnmarStomach",
-      "tet_vertices": 0,
-      "tetrahedra": 0,
+      "tet_vertices": 220,
+      "tetrahedra": 781,
       "translation_m": [
         0,
         0,
@@ -706,7 +706,7 @@
       ],
       "mass_kg": 0.09,
       "material": "Pancreas",
-      "mechanics": "volume_deformable_cooked_from_surface",
+      "mechanics": "volume_deformable",
       "orientation_wxyz": [
         0.966,
         0,
@@ -722,8 +722,8 @@
         0.006
       ],
       "root_prim": "DrAnmarPancreas",
-      "tet_vertices": 0,
-      "tetrahedra": 0,
+      "tet_vertices": 2257,
+      "tetrahedra": 8390,
       "translation_m": [
         -0.01,
         0.026,
@@ -956,8 +956,8 @@
         0.001
       ],
       "root_prim": "DrAnmarBladder",
-      "tet_vertices": 210,
-      "tetrahedra": 704,
+      "tet_vertices": 215,
+      "tetrahedra": 751,
       "translation_m": [
         0,
         -0.155,
@@ -1142,7 +1142,7 @@
       ],
       "mass_kg": 0.18,
       "material": "Artery",
-      "mechanics": "segmented_volume_deformable",
+      "mechanics": "segmented_rod",
       "orientation_wxyz": [
         1.0,
         0.0,

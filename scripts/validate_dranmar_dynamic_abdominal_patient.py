@@ -121,6 +121,58 @@ def _validate_tet_asset(
     }
 
 
+def _validate_laparotomy_wound(path: Path) -> dict[str, Any]:
+    text = path.read_text(encoding="utf-8")
+    starts = [
+        match.start()
+        for match in re.finditer(
+            r'def TetMesh "SimulationTetMesh"',
+            text,
+        )
+    ]
+    if len(starts) != 10:
+        raise AssertionError(
+            f"{path.name}: expected 10 wound-margin TetMeshes, got "
+            f"{len(starts)}"
+        )
+    minimum_volume = math.inf
+    total_tetrahedra = 0
+    for start in starts:
+        points = _parse_vec3(
+            _extract_array(text, "point3f[] points =", start)
+        )
+        tets = _parse_int4(
+            _extract_array(text, "int4[] tetVertexIndices =", start)
+        )
+        if len(points) != 350 or len(tets) != 864:
+            raise AssertionError(
+                f"{path.name}: each wound margin must contain 350 points "
+                f"and 864 tetrahedra, got {len(points)} and {len(tets)}"
+            )
+        a = points[tets[:, 0]]
+        b = points[tets[:, 1]]
+        c = points[tets[:, 2]]
+        d = points[tets[:, 3]]
+        signed = (
+            np.einsum("ij,ij->i", b - a, np.cross(c - a, d - a))
+            / 6.0
+        )
+        if not np.all(np.isfinite(signed)) or np.any(signed <= 1.0e-16):
+            raise AssertionError(
+                f"{path.name}: wound TetMesh contains a non-positive or "
+                "non-finite tetrahedron"
+            )
+        minimum_volume = min(minimum_volume, float(signed.min()))
+        total_tetrahedra += len(tets)
+    return {
+        "body_count": len(starts),
+        "points_per_body": 350,
+        "tetrahedra_per_body": 864,
+        "total_tetrahedra": total_tetrahedra,
+        "minimum_signed_volume_m3": minimum_volume,
+    }
+
+
 def _static_payload_checks() -> dict[str, Any]:
     usda_files = sorted(ASSET_ROOT.rglob("*.usda"))
     json_files = sorted(ASSET_ROOT.rglob("*.json")) + [PROFILE_PATH]
@@ -129,6 +181,7 @@ def _static_payload_checks() -> dict[str, Any]:
     python_files = [
         RUNTIME_PATH,
         Path(__file__).resolve(),
+        REPOSITORY_ROOT / "scripts/generate_dranmar_laparotomy_wound.py",
         REPOSITORY_ROOT / "examples/dynamic_abdominal_patient_scene.py",
         REPOSITORY_ROOT / "examples/end_to_end_procedure.py",
     ]
@@ -139,6 +192,7 @@ def _static_payload_checks() -> dict[str, Any]:
         ASSET_ROOT / "dranmar_dynamic_abdominal_patient_operating_scene.usda",
         PROFILE_PATH,
         RUNTIME_PATH,
+        REPOSITORY_ROOT / "docs/DYNAMIC_PATIENT_LAPAROTOMY.md",
         REPOSITORY_ROOT / "docs/DYNAMIC_PATIENT_README.md",
         *python_files[1:],
     ]
@@ -278,6 +332,9 @@ def _static_payload_checks() -> dict[str, Any]:
     main_text = (ASSET_ROOT / "dranmar_dynamic_abdominal_patient.usda").read_text(
         encoding="utf-8"
     )
+    laparotomy_metrics = _validate_laparotomy_wound(
+        ASSET_ROOT / "anatomy/dranmar_laparotomy_wound.usda"
+    )
     required_variant_tokens = [
         'prepend variantSets = "access_state"',
         'variants = { string access_state = "intact" }',
@@ -318,6 +375,7 @@ def _static_payload_checks() -> dict[str, Any]:
         "usd_sources": source_checks,
         "glb_metrics": glb_metrics,
         "tet_metrics": tet_metrics,
+        "laparotomy_wound_metrics": laparotomy_metrics,
         "access_layer_variant_paths": access_layer_variant_paths,
         "deformable_hierarchy_roots": deformable_hierarchy_roots,
         "volume_cooking_sources": volume_cooking_sources,

@@ -12,6 +12,7 @@ The module exposes a shared physiology contract for all DrAnmar surgical robots:
     patient.organ_motion
     patient.damage
     patient.interventions
+    patient.incision
 
 Extended integration surfaces are available as ``patient.robot``,
 ``patient.event_bus`` and ``patient.fluids``.
@@ -40,6 +41,9 @@ ASSET_DATA_ROOT = (
 )
 ASSET_ROOT = ASSET_DATA_ROOT / CATALOG_SUBPATH
 PATIENT_USD = ASSET_ROOT / "dranmar_dynamic_abdominal_patient.usda"
+LAPAROTOMY_WOUND_USD = (
+    ASSET_ROOT / "anatomy/dranmar_laparotomy_wound.usda"
+)
 PATIENT_RIGID_PROXY_USD = (
     ASSET_ROOT / "dranmar_dynamic_abdominal_patient_rigid_proxy.usda"
 )
@@ -116,13 +120,54 @@ VALID_CONDITIONS = frozenset(
 VALID_HABITUS = frozenset({"baseline", "lean", "increased_visceral_fat"})
 NATIVE_DEFORMABLE_ROUTES = frozenset(
     {
-        "current_direct_explicit_tetmesh_volume",
-        "current_auto_cooked_volume_hierarchy",
+        "current_explicit_tetmesh_volume_hierarchy",
         "current_surface_deformable",
-        "legacy_cooked_volume",
         "legacy_surface_deformable",
     }
 )
+
+LAPAROTOMY_WOUND_LAYER_CONFIGS: dict[str, dict[str, float | str]] = {
+    "skin": {
+        "youngs_modulus_pa_seed": 75_000.0,
+        "poissons_ratio_seed": 0.46,
+        "density_kg_m3": 1_080.0,
+        "mass_kg": 0.1877904,
+        "damping_seed": 0.16,
+        "dynamic_friction": 0.48,
+    },
+    "subcutaneous_fat": {
+        "youngs_modulus_pa_seed": 18_000.0,
+        "poissons_ratio_seed": 0.47,
+        "density_kg_m3": 920.0,
+        "mass_kg": 0.6398784,
+        "damping_seed": 0.20,
+        "dynamic_friction": 0.35,
+    },
+    "fascia": {
+        "youngs_modulus_pa_seed": 850_000.0,
+        "poissons_ratio_seed": 0.44,
+        "density_kg_m3": 1_120.0,
+        "mass_kg": 0.0973728,
+        "damping_seed": 0.14,
+        "dynamic_friction": 0.42,
+    },
+    "abdominal_wall": {
+        "youngs_modulus_pa_seed": 160_000.0,
+        "poissons_ratio_seed": 0.46,
+        "density_kg_m3": 1_060.0,
+        "mass_kg": 0.8600904,
+        "damping_seed": 0.18,
+        "dynamic_friction": 0.44,
+    },
+    "peritoneum": {
+        "youngs_modulus_pa_seed": 1_100_000.0,
+        "poissons_ratio_seed": 0.45,
+        "density_kg_m3": 1_080.0,
+        "mass_kg": 0.05007744,
+        "damping_seed": 0.14,
+        "dynamic_friction": 0.38,
+    },
+}
 
 
 def tensor_value(value: Any):
@@ -990,6 +1035,285 @@ class TissueStateRegistry:
         )
 
 
+LAPAROTOMY_LAYERS = (
+    "skin",
+    "subcutaneous_fat",
+    "fascia",
+    "abdominal_wall",
+    "peritoneum",
+)
+
+
+@dataclass(frozen=True)
+class LaparotomyIncisionCalibration:
+    """Research-informed gates for a staged midline laparotomy.
+
+    The force envelope is deliberately identified as a surrogate.  It is based
+    on ex-vivo porcine aorta scalpel experiments reporting 4--12 N break-in
+    force and 2--4 N continuous force (Hu, Sun & Zhang, 2013,
+    doi:10.1016/j.jmbbm.2012.10.017).  The 30 mm/s nominal travel is based on
+    abdominal-skin simulant cutting work.  These values have not been fitted to
+    this patient's abdominal layers and are not clinical limits.
+    """
+
+    incision_length_m: float = 0.18
+    bridges_per_layer: int = 24
+    initiation_force_n: float = 4.0
+    propagation_force_n: float = 2.0
+    maximum_research_force_n: float = 12.0
+    nominal_speed_m_s: float = 0.03
+    minimum_speed_m_s: float = 0.001
+    maximum_speed_m_s: float = 0.06
+    maximum_alignment_error_deg: float = 20.0
+    break_in_distance_m: float = 0.005
+    source_dois: tuple[str, ...] = (
+        "10.1016/j.jmbbm.2012.10.017",
+        "10.1088/0957-0233/20/4/045801",
+    )
+    calibration_status: str = (
+        "cross_tissue_research_envelope_pending_abdominal_layer_bench"
+    )
+
+    def __post_init__(self) -> None:
+        positive = {
+            "incision_length_m": self.incision_length_m,
+            "bridges_per_layer": float(self.bridges_per_layer),
+            "initiation_force_n": self.initiation_force_n,
+            "propagation_force_n": self.propagation_force_n,
+            "maximum_research_force_n": self.maximum_research_force_n,
+            "nominal_speed_m_s": self.nominal_speed_m_s,
+            "minimum_speed_m_s": self.minimum_speed_m_s,
+            "maximum_speed_m_s": self.maximum_speed_m_s,
+            "break_in_distance_m": self.break_in_distance_m,
+        }
+        for name, value in positive.items():
+            if not math.isfinite(value) or value <= 0.0:
+                raise ValueError(f"{name} must be finite and positive")
+        if self.maximum_research_force_n < self.initiation_force_n:
+            raise ValueError(
+                "maximum_research_force_n must cover initiation_force_n"
+            )
+        if not (
+            self.minimum_speed_m_s
+            <= self.nominal_speed_m_s
+            <= self.maximum_speed_m_s
+        ):
+            raise ValueError("nominal incision speed is outside its gate")
+        if self.bridges_per_layer < 2:
+            raise ValueError("bridges_per_layer must be at least two")
+
+
+@dataclass(frozen=True)
+class IncisionContactSample:
+    blade_contact: bool
+    normal_force_n: float
+    tangential_force_n: float
+    advancement_m: float
+    speed_m_s: float
+    alignment_error_deg: float
+    source_robot: str = "scalpel"
+
+
+class PhysicalLaparotomyIncision:
+    """Contact-gated controller for removable midline continuity bridges.
+
+    PhysX does not mutate a deformable mesh's topology during a run.  The
+    supported physical representation is therefore two pre-segmented wound
+    flaps joined by ordered, removable continuity elements.  This controller
+    releases those elements only after contact, force, speed, alignment,
+    distance and cutting-work gates all pass.
+    """
+
+    def __init__(
+        self,
+        patient: "DynamicSurgicalPatient",
+        calibration: LaparotomyIncisionCalibration | None = None,
+    ):
+        self.patient = patient
+        self.calibration = calibration or LaparotomyIncisionCalibration()
+        self.layer_index = 0
+        self.bridge_index = 0
+        self.layer_advancement_m = 0.0
+        self.layer_work_j = 0.0
+        self.break_in_advancement_m = 0.0
+        self.started = False
+        self.complete = False
+        self.released_bridge_ids: list[str] = []
+        self.rejected_samples = 0
+        self.overload_samples = 0
+
+    @property
+    def active_layer(self) -> str | None:
+        if self.complete:
+            return None
+        return LAPAROTOMY_LAYERS[self.layer_index]
+
+    @property
+    def bridge_length_m(self) -> float:
+        return (
+            self.calibration.incision_length_m
+            / self.calibration.bridges_per_layer
+        )
+
+    @property
+    def progress_fraction(self) -> float:
+        completed = (
+            self.layer_index * self.calibration.bridges_per_layer
+            + self.bridge_index
+        )
+        total = len(LAPAROTOMY_LAYERS) * self.calibration.bridges_per_layer
+        return _clamp(completed / total, 0.0, 1.0)
+
+    def _reject(self, reason: str) -> dict[str, Any]:
+        self.rejected_samples += 1
+        return {
+            "accepted": False,
+            "reason": reason,
+            "active_layer": self.active_layer,
+            "progress_fraction": self.progress_fraction,
+            "released_bridge_ids": [],
+        }
+
+    def advance(self, sample: IncisionContactSample) -> dict[str, Any]:
+        if self.complete:
+            return self._reject("incision_complete")
+        normal_force = _nonnegative(sample.normal_force_n, "normal_force_n")
+        tangential_force = _nonnegative(
+            sample.tangential_force_n,
+            "tangential_force_n",
+        )
+        advancement = _nonnegative(sample.advancement_m, "advancement_m")
+        speed = _nonnegative(sample.speed_m_s, "speed_m_s")
+        alignment = _nonnegative(
+            sample.alignment_error_deg,
+            "alignment_error_deg",
+        )
+        if not sample.blade_contact:
+            return self._reject("no_blade_contact")
+        if alignment > self.calibration.maximum_alignment_error_deg:
+            return self._reject("blade_alignment_outside_gate")
+        if not (
+            self.calibration.minimum_speed_m_s
+            <= speed
+            <= self.calibration.maximum_speed_m_s
+        ):
+            return self._reject("blade_speed_outside_gate")
+        if advancement <= 0.0:
+            return self._reject("no_forward_advancement")
+
+        resultant_force = math.hypot(normal_force, tangential_force)
+        force_gate = (
+            self.calibration.initiation_force_n
+            if not self.started
+            else self.calibration.propagation_force_n
+        )
+        if resultant_force < force_gate:
+            return self._reject("cutting_force_below_gate")
+        overloaded = (
+            resultant_force > self.calibration.maximum_research_force_n
+        )
+        if overloaded:
+            self.overload_samples += 1
+
+        self.break_in_advancement_m += advancement
+        if (
+            not self.started
+            and self.break_in_advancement_m
+            < self.calibration.break_in_distance_m
+        ):
+            return {
+                "accepted": True,
+                "reason": "break_in_accumulating",
+                "active_layer": self.active_layer,
+                "progress_fraction": self.progress_fraction,
+                "released_bridge_ids": [],
+                "overload": overloaded,
+            }
+        self.started = True
+        self.layer_advancement_m += advancement
+        self.layer_work_j += tangential_force * advancement
+
+        released: list[str] = []
+        work_per_bridge_j = (
+            self.calibration.propagation_force_n * self.bridge_length_m
+        )
+        distance_limited = int(
+            self.layer_advancement_m / self.bridge_length_m
+        )
+        work_limited = int(self.layer_work_j / work_per_bridge_j)
+        target_bridge_count = min(
+            self.calibration.bridges_per_layer,
+            distance_limited,
+            work_limited,
+        )
+        while self.bridge_index < target_bridge_count:
+            bridge_id = (
+                f"{LAPAROTOMY_LAYERS[self.layer_index]}:"
+                f"{self.bridge_index:03d}"
+            )
+            self.released_bridge_ids.append(bridge_id)
+            released.append(bridge_id)
+            self.bridge_index += 1
+
+        completed_layer = None
+        if self.bridge_index == self.calibration.bridges_per_layer:
+            completed_layer = LAPAROTOMY_LAYERS[self.layer_index]
+            self.patient.tissue_state.cut(
+                completed_layer,
+                severity=1.0 / len(LAPAROTOMY_LAYERS),
+            )
+            self.layer_index += 1
+            self.bridge_index = 0
+            self.layer_advancement_m = 0.0
+            self.layer_work_j = 0.0
+            self.break_in_advancement_m = 0.0
+            self.started = False
+            if self.layer_index == len(LAPAROTOMY_LAYERS):
+                self.complete = True
+                self.patient.tissue_state.set_access_state("open")
+                self.patient.set_procedure_stage("access_open")
+
+        self.patient.tissue_state.wound_open_fraction = self.progress_fraction
+        event = {
+            "accepted": True,
+            "reason": "continuity_released" if released else "propagating",
+            "active_layer": self.active_layer,
+            "completed_layer": completed_layer,
+            "progress_fraction": self.progress_fraction,
+            "released_bridge_ids": released,
+            "resultant_force_n": resultant_force,
+            "overload": overloaded,
+            "calibration_status": self.calibration.calibration_status,
+        }
+        if released:
+            self.patient.event_bus.emit(
+                PatientEvent(
+                    self.patient.time_s,
+                    "physical_incision_progress",
+                    dict(event),
+                    source=sample.source_robot,
+                )
+            )
+        return event
+
+    def snapshot(self) -> dict[str, Any]:
+        return {
+            "representation": (
+                "presegmented_deformable_flaps_with_removable_continuity"
+            ),
+            "active_layer": self.active_layer,
+            "layer_index": self.layer_index,
+            "bridge_index": self.bridge_index,
+            "progress_fraction": self.progress_fraction,
+            "complete": self.complete,
+            "released_bridge_ids": list(self.released_bridge_ids),
+            "rejected_samples": self.rejected_samples,
+            "overload_samples": self.overload_samples,
+            "calibration": asdict(self.calibration),
+            "clinical_validation": False,
+        }
+
+
 @dataclass
 class DamageEvent:
     id: str
@@ -1702,6 +2026,7 @@ class DynamicSurgicalPatient:
         self.biliary = BiliaryModel(bile_flow_ml_h=float(baseline["bile_flow_ml_h"]))
         organ_ids = [str(c["id"]) for c in self.anatomy["components"]]
         self.tissue_state = TissueStateRegistry(organ_ids)
+        self.incision = PhysicalLaparotomyIncision(self)
         self.organ_motion = OrganMotionModel(self.anatomy["components"])
         self.damage = DamageRegistry()
         self.perfusion = PerfusionModel(
@@ -2101,6 +2426,7 @@ class DynamicSurgicalPatient:
                 "pulsation_scale": self.organ_motion.pulsation_scale,
             },
             "damage": {key: asdict(value) for key, value in self.damage.events.items()},
+            "incision": self.incision.snapshot(),
             "interventions": [asdict(value) for value in self.interventions.history],
             "events": self.event_bus.snapshot(),
             "released_adhesions": sorted(self.released_adhesions),
@@ -2444,6 +2770,415 @@ def _configure_deformable_body(
     )
 
 
+def _set_explicit_volume_deformable_hierarchy(
+    stage: Any,
+    *,
+    root_path: str,
+    tet_path: str,
+    visual_path: str,
+) -> bool:
+    """Bind an authored TetMesh and render mesh as one volume body.
+
+    Isaac Sim 5.1 updates visible geometry only when the deformable body owns a
+    hierarchy containing a simulation TetMesh plus bind-pose geometry. Applying
+    the body API directly to the TetMesh can step tetrahedra, but it leaves the
+    separately authored organ render mesh static and is therefore not a valid
+    patient representation.
+    """
+    from pxr import Sdf, Usd, UsdGeom, UsdPhysics
+
+    root_prim = stage.GetPrimAtPath(root_path)
+    tet_prim = stage.GetPrimAtPath(tet_path)
+    visual_prim = stage.GetPrimAtPath(visual_path)
+    if (
+        not root_prim
+        or not root_prim.IsValid()
+        or root_prim.IsA(UsdGeom.Gprim)
+        or not tet_prim
+        or not tet_prim.IsValid()
+        or not tet_prim.IsA(UsdGeom.TetMesh)
+        or not visual_prim
+        or not visual_prim.IsValid()
+        or not visual_prim.IsA(UsdGeom.PointBased)
+    ):
+        return False
+    if tet_prim.GetPath().GetParentPath() != root_prim.GetPath():
+        return False
+
+    if not root_prim.ApplyAPI("OmniPhysicsDeformableBodyAPI"):
+        return False
+    if not tet_prim.ApplyAPI("OmniPhysicsVolumeDeformableSimAPI"):
+        return False
+
+    tetmesh = UsdGeom.TetMesh(tet_prim)
+    tet_prim.GetAttribute("omniphysics:restShapePoints").Set(
+        tetmesh.GetPointsAttr().Get()
+    )
+    tet_prim.GetAttribute("omniphysics:restTetVtxIndices").Set(
+        tetmesh.GetTetVertexIndicesAttr().Get()
+    )
+    if not UsdPhysics.CollisionAPI.Apply(tet_prim):
+        return False
+    tetmesh.GetSurfaceFaceVertexIndicesAttr().Set(
+        UsdGeom.TetMesh.ComputeSurfaceFaces(
+            tetmesh,
+            Usd.TimeCode.Default(),
+        )
+    )
+
+    if not visual_prim.ApplyAPI("OmniPhysicsDeformablePoseAPI", "default"):
+        return False
+    visual_prim.CreateAttribute(
+        "deformablePose:default:omniphysics:purposes",
+        Sdf.ValueTypeNames.TokenArray,
+    ).Set(["bindPose"])
+    visual_prim.CreateAttribute(
+        "deformablePose:default:omniphysics:points",
+        Sdf.ValueTypeNames.Point3fArray,
+    ).Set(UsdGeom.PointBased(visual_prim).GetPointsAttr().Get())
+    return True
+
+
+def laparotomy_wound_edge_paths(
+    patient_path: str,
+) -> dict[str, dict[str, str]]:
+    """Return the explicit TetMesh paths for the real patient wound margins."""
+    root = (
+        f"{patient_path.rstrip('/')}/AccessMechanics/"
+        "LaparotomyWound/Layers"
+    )
+    return {
+        layer: {
+            side: (
+                f"{root}/{layer}/{side.capitalize()}Edge/"
+                "Geometry/SimulationTetMesh"
+            )
+            for side in ("left", "right")
+        }
+        for layer in LAPAROTOMY_LAYERS
+    }
+
+
+def _create_vertex_xform_attachment(
+    stage: Any,
+    *,
+    attachment_path: str,
+    source_path: str,
+    target_path: str,
+    vertex_indices: Sequence[int],
+) -> str:
+    """Bind selected simulation vertices to an xformable without snapping."""
+    from pxr import Gf, Sdf, Usd, UsdGeom, Vt
+
+    source_prim = stage.GetPrimAtPath(source_path)
+    target_prim = stage.GetPrimAtPath(target_path)
+    if (
+        not source_prim
+        or not source_prim.IsValid()
+        or not source_prim.IsA(UsdGeom.PointBased)
+    ):
+        raise RuntimeError(
+            f"Attachment source is not a point-based simulation mesh: "
+            f"{source_path}"
+        )
+    if (
+        not target_prim
+        or not target_prim.IsValid()
+        or not UsdGeom.Xformable(target_prim)
+    ):
+        raise RuntimeError(
+            f"Attachment target is not xformable: {target_path}"
+        )
+    unique_indices = tuple(dict.fromkeys(int(value) for value in vertex_indices))
+    points = list(UsdGeom.PointBased(source_prim).GetPointsAttr().Get() or [])
+    if not unique_indices or any(
+        value < 0 or value >= len(points) for value in unique_indices
+    ):
+        raise RuntimeError(
+            f"Attachment vertex selection is invalid for {source_path}"
+        )
+
+    source_to_world = UsdGeom.Xformable(
+        source_prim
+    ).ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+    world_to_target = (
+        UsdGeom.Xformable(target_prim)
+        .ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+        .GetInverse()
+    )
+    local_positions = [
+        Gf.Vec3f(
+            world_to_target.Transform(
+                source_to_world.Transform(Gf.Vec3d(points[index]))
+            )
+        )
+        for index in unique_indices
+    ]
+
+    parent_path = str(Sdf.Path(attachment_path).GetParentPath())
+    if not stage.GetPrimAtPath(parent_path).IsValid():
+        stage.DefinePrim(parent_path, "Scope")
+    existing = stage.GetPrimAtPath(attachment_path)
+    if existing and existing.IsValid():
+        stage.RemovePrim(attachment_path)
+    attachment = stage.DefinePrim(
+        attachment_path, "OmniPhysicsVtxXformAttachment"
+    )
+    attachment.CreateRelationship("omniphysics:src0").SetTargets(
+        [Sdf.Path(source_path)]
+    )
+    attachment.CreateRelationship("omniphysics:src1").SetTargets(
+        [Sdf.Path(target_path)]
+    )
+    attachment.CreateAttribute(
+        "omniphysics:vtxIndicesSrc0", Sdf.ValueTypeNames.IntArray
+    ).Set(Vt.IntArray(unique_indices))
+    attachment.CreateAttribute(
+        "omniphysics:localPositionsSrc1",
+        Sdf.ValueTypeNames.Point3fArray,
+    ).Set(Vt.Vec3fArray(local_positions))
+    attachment.CreateAttribute(
+        "omniphysics:attachmentEnabled", Sdf.ValueTypeNames.Bool
+    ).Set(True)
+    return attachment_path
+
+
+def _wound_edge_band_indices(
+    stage: Any,
+    tet_path: str,
+    *,
+    inner: bool,
+) -> list[int]:
+    from pxr import UsdGeom
+
+    prim = stage.GetPrimAtPath(tet_path)
+    points = list(UsdGeom.PointBased(prim).GetPointsAttr().Get() or [])
+    if not points:
+        raise RuntimeError(f"Wound edge has no TetMesh points: {tet_path}")
+    rows: dict[tuple[float, float], list[int]] = {}
+    z_layer_size = len(points) // 2
+    for index, point in enumerate(points):
+        rows.setdefault(
+            (
+                round(float(point[1]), 7),
+                0 if index < z_layer_size else 1,
+            ),
+            [],
+        ).append(index)
+    selected = []
+    for indices in rows.values():
+        selected.append(
+            min(
+                indices,
+                key=(
+                    (lambda index: abs(float(points[index][0])))
+                    if inner
+                    else (lambda index: -abs(float(points[index][0])))
+                ),
+            )
+        )
+    if len(selected) < 12:
+        raise RuntimeError(
+            f"Wound edge band selection is too sparse at {tet_path}: "
+            f"{len(selected)}"
+        )
+    return selected
+
+
+def apply_laparotomy_wound_deformables(
+    patient_path: str,
+    *,
+    stage=None,
+) -> dict[str, Any]:
+    """Activate the full-thickness bilateral wound edges in the real patient.
+
+    Each abdominal layer uses an authored TetMesh hierarchy. The lateral band
+    is fixed in the patient frame; the medial band remains free for Dr.Anmar's
+    exposure tool. Material values are provisional engineering seeds.
+    """
+    if stage is None:
+        import omni.usd
+
+        stage = omni.usd.get_context().get_stage()
+    from pxr import UsdGeom, UsdShade
+
+    normalized = patient_path.rstrip("/")
+    patient_prim = stage.GetPrimAtPath(normalized)
+    wound_root = stage.GetPrimAtPath(
+        f"{normalized}/AccessMechanics/LaparotomyWound"
+    )
+    if not patient_prim.IsValid() or not wound_root.IsValid():
+        raise RuntimeError(
+            f"Patient laparotomy wound asset is missing below {normalized}"
+        )
+    if (
+        UsdGeom.Imageable(wound_root).ComputeVisibility()
+        == UsdGeom.Tokens.invisible
+    ):
+        raise RuntimeError(
+            "Laparotomy mechanics require access_state='open' before "
+            "deformable initialization"
+        )
+
+    paths = laparotomy_wound_edge_paths(normalized)
+    results: dict[str, Any] = {}
+    for layer, cfg_seed in LAPAROTOMY_WOUND_LAYER_CONFIGS.items():
+        cfg = {"id": f"laparotomy_{layer}", **cfg_seed}
+        material_path = (
+            f"/World/Materials/DrAnmarPatient/LaparotomyWound/{layer}"
+        )
+        material = _create_deformable_material(
+            stage, material_path, cfg, surface=False
+        )
+        results[layer] = {}
+        for side, tet_path in paths[layer].items():
+            geometry_path = str(
+                stage.GetPrimAtPath(tet_path).GetPath().GetParentPath()
+            )
+            visual_path = f"{geometry_path}/Visual"
+            if not _set_explicit_volume_deformable_hierarchy(
+                stage,
+                root_path=geometry_path,
+                tet_path=tet_path,
+                visual_path=visual_path,
+            ):
+                raise RuntimeError(
+                    f"Unable to activate laparotomy TetMesh hierarchy: "
+                    f"{geometry_path}"
+                )
+            body_prim = stage.GetPrimAtPath(geometry_path)
+            tet_prim = stage.GetPrimAtPath(tet_path)
+            _configure_deformable_body(
+                body_prim,
+                cfg,
+                surface=False,
+                legacy_volume=False,
+            )
+            for prim in (body_prim, tet_prim):
+                UsdShade.MaterialBindingAPI.Apply(prim).Bind(
+                    material,
+                    UsdShade.Tokens.weakerThanDescendants,
+                    "physics",
+                )
+            edge_path = str(
+                body_prim.GetPath().GetParentPath()
+            )
+            outer_indices = _wound_edge_band_indices(
+                stage, tet_path, inner=False
+            )
+            anchor_path = (
+                f"{edge_path}/Attachments/OuterPatientAnchor"
+            )
+            _create_vertex_xform_attachment(
+                stage,
+                attachment_path=anchor_path,
+                source_path=tet_path,
+                target_path=normalized,
+                vertex_indices=outer_indices,
+            )
+            results[layer][side] = {
+                "route": "current_explicit_tetmesh_volume_hierarchy",
+                "body_prim_path": geometry_path,
+                "simulation_mesh_path": tet_path,
+                "outer_anchor_path": anchor_path,
+                "outer_anchor_vertex_count": len(outer_indices),
+                "clinical_validation": False,
+            }
+    return results
+
+
+def capture_laparotomy_wound_edges(
+    patient_path: str,
+    tool_path: str,
+    *,
+    stage=None,
+) -> list[str]:
+    """Capture both full-thickness wound margins with the real exposure pads.
+
+    Six independently releasable capture cells are authored per pad and per
+    layer. Local attachment coordinates preserve the current pose, avoiding a
+    discontinuous snap when capture is requested.
+    """
+    if stage is None:
+        import omni.usd
+
+        stage = omni.usd.get_context().get_stage()
+    normalized_patient = patient_path.rstrip("/")
+    normalized_tool = tool_path.rstrip("/")
+    paths = laparotomy_wound_edge_paths(normalized_patient)
+    attachments: list[str] = []
+    for layer in LAPAROTOMY_LAYERS:
+        for side in ("left", "right"):
+            tet_path = paths[layer][side]
+            selected = _wound_edge_band_indices(
+                stage, tet_path, inner=True
+            )
+            point_attr = stage.GetPrimAtPath(tet_path).GetAttribute("points")
+            points = list(point_attr.Get() or [])
+            by_y: dict[float, list[int]] = {}
+            for index in selected:
+                by_y.setdefault(
+                    round(float(points[index][1]), 7), []
+                ).append(index)
+            y_values = sorted(by_y)
+            for cell in range(6):
+                begin = cell * len(y_values) // 6
+                end = (cell + 1) * len(y_values) // 6
+                cell_indices = [
+                    index
+                    for y_value in y_values[begin:end]
+                    for index in by_y[y_value]
+                ]
+                side_title = side.capitalize()
+                target_path = (
+                    f"{normalized_tool}/Links/{side_title}Pad/"
+                    f"Collisions/TissueCaptureCell_{cell:02d}"
+                )
+                attachment_path = (
+                    f"{normalized_patient}/AccessMechanics/"
+                    "LaparotomyWound/RuntimeAttachments/"
+                    f"{side_title}/{layer}/Capture_{cell:02d}"
+                )
+                attachments.append(
+                    _create_vertex_xform_attachment(
+                        stage,
+                        attachment_path=attachment_path,
+                        source_path=tet_path,
+                        target_path=target_path,
+                        vertex_indices=cell_indices,
+                    )
+                )
+    return attachments
+
+
+def release_laparotomy_wound_edges(
+    patient_path: str,
+    *,
+    stage=None,
+) -> int:
+    """Disable active wound-edge capture bonds without deleting the anatomy."""
+    if stage is None:
+        import omni.usd
+
+        stage = omni.usd.get_context().get_stage()
+    root_path = (
+        f"{patient_path.rstrip('/')}/AccessMechanics/"
+        "LaparotomyWound/RuntimeAttachments"
+    )
+    root = stage.GetPrimAtPath(root_path)
+    if not root or not root.IsValid():
+        return 0
+    released = 0
+    for prim in stage.Traverse():
+        if not prim.GetPath().HasPrefix(root.GetPath()):
+            continue
+        attribute = prim.GetAttribute("omniphysics:attachmentEnabled")
+        if attribute and attribute.IsValid() and bool(attribute.Get()):
+            attribute.Set(False)
+            released += 1
+    return released
+
+
 def apply_component_deformable(
     stage: Any,
     component_path: str,
@@ -2454,16 +3189,16 @@ def apply_component_deformable(
     """Apply the best available PhysX representation to one patient component.
 
     Current Isaac generations use a true deformable hierarchy for volumes so the
-    detailed render mesh follows either an authored TetMesh or a runtime-cooked
-    simulation TetMesh. Surface components simulate the selected triangular mesh
-    directly. Legacy soft-body cooking remains as a fallback for Isaac Sim 5.1.
+    detailed render mesh follows an authored TetMesh. Surface components simulate
+    the selected triangular mesh directly. Runtime volume cooking is deliberately
+    not used by the authored patient route because it was unstable in the
+    tested Isaac Sim 5.1 environment.
     """
     mechanics = str(component_cfg.get("mechanics", ""))
     component_path = component_path.rstrip("/")
     geometry_root_path = f"{component_path}/Geometry"
     visual_path = _selected_visual_mesh_path(stage, component_path)
     tet_path = f"{geometry_root_path}/SimulationTetMesh"
-    auto_tet_path = f"{geometry_root_path}/AutoSimulationTetMesh"
     surface = "surface" in mechanics
     volume = "volume" in mechanics
     if material_path is None:
@@ -2480,6 +3215,7 @@ def apply_component_deformable(
         "segmented_rod",
         "breakable_attachment_graph",
         "attached_rigid_or_deformable",
+        "host_controlled_presegmented_laparotomy",
     }:
         result["route"] = "host_controlled_" + mechanics
         return result
@@ -2500,54 +3236,23 @@ def apply_component_deformable(
         ok: Any = False
 
         explicit_tet = volume and stage.GetPrimAtPath(tet_path).IsValid()
-        if explicit_tet and hasattr(
-            deformableUtils, "set_physics_volume_deformable_body"
-        ):
-            ok = deformableUtils.set_physics_volume_deformable_body(
-                stage, stage.GetPrimAtPath(tet_path).GetPath()
-            )
-            body_prim = stage.GetPrimAtPath(tet_path)
-            collision_prim = body_prim
-            result["simulation_mesh_path"] = tet_path
-            result["route"] = "current_direct_explicit_tetmesh_volume"
-            result["cooking_triggered"] = False
-        elif volume and hasattr(
-            deformableUtils, "create_auto_volume_deformable_hierarchy"
-        ):
-            simulation_path = auto_tet_path
-            ok = deformableUtils.create_auto_volume_deformable_hierarchy(
+        if explicit_tet:
+            ok = _set_explicit_volume_deformable_hierarchy(
                 stage,
-                root_prim_path=geometry_root_path,
-                simulation_tetmesh_path=simulation_path,
-                collision_tetmesh_path=simulation_path,
-                cooking_src_mesh_path=visual_path,
-                simulation_hex_mesh_enabled=False,
-                cooking_src_simplification_enabled=True,
-                set_visibility_with_guide_purpose=True,
+                root_path=geometry_root_path,
+                tet_path=tet_path,
+                visual_path=visual_path,
             )
             body_prim = stage.GetPrimAtPath(geometry_root_path)
-            collision_prim = stage.GetPrimAtPath(simulation_path)
-            result["simulation_mesh_path"] = simulation_path
-            result["route"] = "current_auto_cooked_volume_hierarchy"
-            if ok is not False:
-                try:
-                    from omni.physx import get_physx_cooking_interface
-
-                    result["cooking_triggered"] = bool(
-                        get_physx_cooking_interface().cook_auto_deformable_body(
-                            geometry_root_path
-                        )
-                    )
-                except (
-                    ImportError,
-                    ModuleNotFoundError,
-                    AttributeError,
-                    RuntimeError,
-                ) as cooking_exc:
-                    # Cooking is guaranteed before simulation start even when an immediate
-                    # synchronous cook is unavailable.
-                    result["cooking_triggered"] = False
-                    result["cooking_note"] = str(cooking_exc)
+            collision_prim = stage.GetPrimAtPath(tet_path)
+            result["simulation_mesh_path"] = tet_path
+            result["route"] = "current_explicit_tetmesh_volume_hierarchy"
+            result["cooking_triggered"] = False
+        elif volume:
+            raise RuntimeError(
+                "volume component has no authored SimulationTetMesh; "
+                "runtime auto-cooking is outside the authored patient route"
+            )
         elif surface and hasattr(
             deformableUtils, "set_physics_surface_deformable_body"
         ):
@@ -2558,33 +3263,6 @@ def apply_component_deformable(
             collision_prim = body_prim
             result["simulation_mesh_path"] = visual_path
             result["route"] = "current_surface_deformable"
-        elif volume and hasattr(deformableUtils, "add_physx_deformable_body"):
-            ok = deformableUtils.add_physx_deformable_body(
-                stage,
-                stage.GetPrimAtPath(visual_path).GetPath(),
-                simulation_hexahedral_resolution=10,
-                solver_position_iteration_count=24,
-                vertex_velocity_damping=float(component_cfg.get("damping_seed", 0.12)),
-                self_collision=False,
-            )
-            if hasattr(deformableUtils, "add_deformable_body_material"):
-                deformableUtils.add_deformable_body_material(
-                    stage,
-                    material_path,
-                    density=float(component_cfg.get("density_kg_m3", 1050.0)),
-                    dynamic_friction=float(component_cfg.get("dynamic_friction", 0.38)),
-                    elasticity_damping=float(component_cfg.get("damping_seed", 0.16)),
-                    poissons_ratio=float(
-                        component_cfg.get("poissons_ratio_seed", 0.46)
-                    ),
-                    youngs_modulus=float(
-                        component_cfg.get("youngs_modulus_pa_seed", 100_000.0)
-                    ),
-                )
-            body_prim = stage.GetPrimAtPath(visual_path)
-            collision_prim = body_prim
-            result["simulation_mesh_path"] = visual_path
-            result["route"] = "legacy_cooked_volume"
         elif surface and hasattr(deformableUtils, "add_physx_deformable_surface"):
             ok = deformableUtils.add_physx_deformable_surface(
                 stage,
@@ -2621,7 +3299,7 @@ def apply_component_deformable(
             body_prim,
             component_cfg,
             surface=surface,
-            legacy_volume=result["route"] == "legacy_cooked_volume",
+            legacy_volume=False,
         )
         UsdShade.MaterialBindingAPI.Apply(body_prim).Bind(
             material, UsdShade.Tokens.weakerThanDescendants, "physics"
@@ -2657,6 +3335,7 @@ def apply_patient_deformables(
     patient_path: str,
     *,
     include: Sequence[str] | None = None,
+    include_laparotomy_wound: bool = True,
     stage=None,
 ) -> dict[str, Any]:
     """Apply mechanics routes after the patient and access variant are spawned.
@@ -2707,6 +3386,23 @@ def apply_patient_deformables(
             continue
         path = f"{patient_path.rstrip('/')}/Anatomy/{cfg['id']}"
         results[cfg["id"]] = apply_component_deformable(stage, path, cfg)
+    if wanted is None and include_laparotomy_wound:
+        from pxr import UsdGeom
+
+        wound_prim = stage.GetPrimAtPath(
+            f"{patient_path.rstrip('/')}/AccessMechanics/LaparotomyWound"
+        )
+        if (
+            wound_prim
+            and wound_prim.IsValid()
+            and UsdGeom.Imageable(wound_prim).ComputeVisibility()
+            != UsdGeom.Tokens.invisible
+        ):
+            results["laparotomy_wound"] = (
+                apply_laparotomy_wound_deformables(
+                    patient_path, stage=stage
+                )
+            )
     return results
 
 

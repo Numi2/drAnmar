@@ -22,7 +22,7 @@ def Xform "DrAnmarFascia" (
 {
     custom string drAnmar:assetId = "dranmar-dynamic-abdominal-patient-v1:fascia"
     custom string drAnmar:category = "body_layer"
-    custom string drAnmar:mechanics = "volume_deformable"
+    custom string drAnmar:mechanics = "host_controlled_presegmented_laparotomy"
     custom float drAnmar:densityKgM3 = 1120
     custom float drAnmar:massKg = 0.4782861421
     custom float drAnmar:youngsModulusPa = 850000

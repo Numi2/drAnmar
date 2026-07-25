@@ -7,7 +7,7 @@
   },
   "capabilities": {
     "arterial_pulsation": "vessel radial state and optional nodal targets",
-    "cutting": "removable bridges and component continuity contracts; arbitrary fracture remains backend-specific",
+    "cutting": "contact-gated ordered removal of pre-authored continuity bridges between presegmented laparotomy flaps; arbitrary fracture and live topology mutation are not claimed",
     "fluid_interaction": "PBD particle carriers and conservative ledgers for blood, bile, urine, and irrigation",
     "layer_separation": "independent body-layer components plus removable attachments",
     "organ_deformation": "PhysX or Newton volume deformable where available; surface or segmented proxy otherwise",
@@ -42,11 +42,13 @@
       "diaphragm",
       "mesentery"
     ],
-    "volume_deformable": [
+    "host_controlled_presegmented_laparotomy": [
       "skin",
       "subcutaneous_fat",
       "fascia",
-      "abdominal_wall",
+      "abdominal_wall"
+    ],
+    "volume_deformable": [
       "liver",
       "gallbladder",
       "stomach",

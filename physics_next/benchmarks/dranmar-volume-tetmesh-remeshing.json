@@ -1,0 +1,131 @@
+{
+  "schema": "dr.anmar.explicit-volume-remeshing.v1",
+  "status": "pass",
+  "clinical_validation": false,
+  "components": [
+    {
+      "component": "liver",
+      "source_surface": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/glb/liver.glb",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_liver.usda",
+      "tetgen": {
+        "solver_surface": "regular_icosphere_subdivision_2",
+        "solver_surface_faces": 320,
+        "solver_radii_m": [
+          0.115,
+          0.072,
+          0.035
+        ],
+        "solver_center_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "solver_pitch_m": null,
+        "minratio": 1.1,
+        "mindihedral_deg": 10.0,
+        "maximum_tetrahedron_volume_m3": 2e-07
+      },
+      "quality": {
+        "point_count": 297,
+        "tetrahedron_count": 1066,
+        "minimum_signed_volume_m3": 2.480302523411239e-08,
+        "median_signed_volume_m3": 7.149570065459182e-07,
+        "maximum_condition_number": 48.543015403707315,
+        "condition_number_p99": 35.91324576825011
+      }
+    },
+    {
+      "component": "bladder",
+      "source_surface": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/glb/bladder.glb",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_bladder.usda",
+      "tetgen": {
+        "solver_surface": "regular_icosphere_subdivision_2",
+        "solver_surface_faces": 320,
+        "solver_radii_m": [
+          0.042,
+          0.037,
+          0.029
+        ],
+        "solver_center_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "solver_pitch_m": null,
+        "minratio": 1.1,
+        "mindihedral_deg": 10.0,
+        "maximum_tetrahedron_volume_m3": 1e-07
+      },
+      "quality": {
+        "point_count": 215,
+        "tetrahedron_count": 751,
+        "minimum_signed_volume_m3": 4.255147345205252e-08,
+        "median_signed_volume_m3": 1.8363078127974678e-07,
+        "maximum_condition_number": 10.50004738735239,
+        "condition_number_p99": 8.912149890063144
+      }
+    },
+    {
+      "component": "stomach",
+      "source_surface": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/glb/stomach.glb",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_stomach.usda",
+      "tetgen": {
+        "solver_surface": "regular_icosphere_subdivision_2",
+        "solver_surface_faces": 320,
+        "solver_radii_m": [
+          0.04759774,
+          0.07049008,
+          0.03955537
+        ],
+        "solver_center_m": [
+          -0.04416688,
+          -0.00538743,
+          -0.00358315
+        ],
+        "solver_pitch_m": null,
+        "minratio": 1.1,
+        "mindihedral_deg": 10.0,
+        "maximum_tetrahedron_volume_m3": 1e-07
+      },
+      "quality": {
+        "point_count": 220,
+        "tetrahedron_count": 781,
+        "minimum_signed_volume_m3": 3.69899382875175e-08,
+        "median_signed_volume_m3": 5.698746043631922e-07,
+        "maximum_condition_number": 62.75421228044542,
+        "condition_number_p99": 13.024285499276228
+      }
+    },
+    {
+      "component": "pancreas",
+      "source_surface": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/glb/pancreas.glb",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_pancreas.usda",
+      "tetgen": {
+        "solver_surface": "watertight_voxel_ellipsoid",
+        "solver_surface_faces": 3344,
+        "solver_radii_m": [
+          0.072,
+          0.018,
+          0.012
+        ],
+        "solver_center_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "solver_pitch_m": 0.003,
+        "minratio": 1.1,
+        "mindihedral_deg": 10.0,
+        "maximum_tetrahedron_volume_m3": 2e-08
+      },
+      "quality": {
+        "point_count": 2257,
+        "tetrahedron_count": 8390,
+        "minimum_signed_volume_m3": 6.4164365532436e-10,
+        "median_signed_volume_m3": 5.733274050673536e-09,
+        "maximum_condition_number": 31.873817506822697,
+        "condition_number_p99": 8.615272742596488
+      }
+    }
+  ]
+}

@@ -15,6 +15,7 @@ patient.tissue_state
 patient.organ_motion
 patient.damage
 patient.interventions
+patient.incision
 patient.robot
 patient.event_bus
 patient.fluids
@@ -25,6 +26,7 @@ patient.fluids
 - `dranmar_dynamic_abdominal_patient.usda`
 - `dranmar_dynamic_abdominal_patient_rigid_proxy.usda`
 - `dranmar_dynamic_abdominal_patient_operating_scene.usda`
+- `anatomy/dranmar_laparotomy_wound.usda`
 - `anatomy/` modular component assets
 - `fluids/` blood, bile, urine, and irrigation carriers
 - `anatomy_manifest.json`
@@ -41,17 +43,21 @@ The access-state variant must be selected before deformable views initialize:
 
 ```python
 spawn_patient("/World/Patient", access_state="open")
-routes = apply_patient_deformables(
+routes = apply_laparotomy_wound_deformables("/World/Patient")
+capture_paths = capture_laparotomy_wound_edges(
     "/World/Patient",
-    include=("peritoneum",),
+    "/World/DrAnmarAtraumaticExposureTool",
 )
 ```
 
-Any `not_applied` mechanics route is a failed native-runtime gate, not a
-successful fallback. The current guarded workstation boundary permits exactly
-one explicitly selected solver-active surface component. Omitting `include`
-is useful for route inspection, but it requests all component mechanics and is
-not an approved workstation configuration.
+The open variant composes five bilateral wound layers: skin, subcutaneous fat,
+fascia, abdominal wall, and peritoneum. Each margin is an authored volume
+TetMesh. The exposure tool captures six longitudinal cells per pad per layer,
+for 60 distributed attachments across both full-thickness margins. The intact
+variant hides this mechanics asset.
+
+The complete implementation and limits are documented in
+`DYNAMIC_PATIENT_LAPAROTOMY.md`.
 
 ## Validation
 
@@ -59,6 +65,8 @@ The physiology and contract regression suite has no geometry dependencies:
 
 ```bash
 pytest -q tests/test_dynamic_abdominal_patient.py
+pytest -q tests/test_dynamic_patient_laparotomy_asset.py
+pytest -q tests/test_dynamic_patient_laparotomy_incision.py
 python examples/end_to_end_procedure.py
 ```
 
@@ -76,10 +84,15 @@ The generated report is written to:
 Run the native scene only from the repository's Isaac Lab environment:
 
 ```bash
-./isaaclab.sh -p examples/dynamic_abdominal_patient_scene.py --device cuda:0
+./dr_anmar.sh laparotomy
 ```
 
-That run must load the OpenUSD stage, create the explicitly requested
-deformable route, step on CUDA, and remain finite before that route can be
-promoted. Qualification of one route does not qualify other organs or a
-multi-deformable patient.
+For a bounded headless run with an RTX frame:
+
+```bash
+./dr_anmar.sh laparotomy 720 /tmp/dranmar-laparotomy.png
+```
+
+Successful execution demonstrates that the authored scene ran in that exact
+software and hardware environment. It is not constitutive, grasp-force,
+incision, clinical, or medical-device validation.

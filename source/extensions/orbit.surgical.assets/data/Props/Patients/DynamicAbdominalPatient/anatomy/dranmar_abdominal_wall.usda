@@ -22,7 +22,7 @@ def Xform "DrAnmarAbdominalWall" (
 {
     custom string drAnmar:assetId = "dranmar-dynamic-abdominal-patient-v1:abdominal_wall"
     custom string drAnmar:category = "body_layer"
-    custom string drAnmar:mechanics = "volume_deformable"
+    custom string drAnmar:mechanics = "host_controlled_presegmented_laparotomy"
     custom float drAnmar:densityKgM3 = 1060
     custom float drAnmar:massKg = 3.959492225
     custom float drAnmar:youngsModulusPa = 160000

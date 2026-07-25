@@ -106,8 +106,25 @@ case "${command}" in
     doctor)
         exec "${PYTHON}" scripts/dr_anmar_doctor.py
         ;;
+    laparotomy)
+        steps="${2:-0}"
+        capture_path="${3:-}"
+        if [[ -n "${capture_path}" ]]; then
+            exec "${PYTHON}" examples/dynamic_abdominal_patient_scene.py \
+                --headless \
+                --enable_cameras \
+                --device cuda:0 \
+                --steps "${steps}" \
+                --capture_path "${capture_path}" \
+                --kit_args "--portable-root ${PORTABLE_ROOT}"
+        fi
+        exec "${PYTHON}" examples/dynamic_abdominal_patient_scene.py \
+            --device cuda:0 \
+            --steps "${steps}" \
+            --kit_args "--portable-root ${PORTABLE_ROOT}"
+        ;;
     *)
-        echo "Usage: $0 {list|catalog|doctor|smoke [TASK] [STEPS]|workstation [PORT] [TASK]|anatomy-viewer [PORT] [SCENE] [ROOM_ID] [ROOM_TITLE]}" >&2
+        echo "Usage: $0 {list|catalog|doctor|smoke [TASK] [STEPS]|workstation [PORT] [TASK]|anatomy-viewer [PORT] [SCENE] [ROOM_ID] [ROOM_TITLE]|laparotomy [STEPS] [CAPTURE_PNG]}" >&2
         exit 2
         ;;
 esac
