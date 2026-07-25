@@ -262,6 +262,23 @@
       "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1",
       "physical_qualification": "provisional_parameters_pending_instrumented_seal_divide_bench",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-safeplane-dissection-robot-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_standalone.usda",
+      "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_payload.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_tissue_demo.usda",
+      "profile": "physics_next/surgical-dissection/dranmar-safeplane-dissection-v1.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/interaction_frames.json",
+      "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/safeplane_dissection_task_contract.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/asset_manifest.json",
+      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/qualification_report.json",
+      "live_integration": "franka_verified_stock_hand_frame_replacement_and_standalone_articulation",
+      "live_behavior": "surface_deformables_fixture_grounding_distributed_traction_adhesion_bridge_release_guarded_multimodal_dissection_protected_structure_continuity_and_conserved_pbd_fluid",
+      "deployment": "enabled_for_research_iteration",
+      "native_gpu_qualification": "passed_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_rtx_4090_standalone_and_franka_cuda_matrix",
+      "physical_qualification": "provisional_parameters_pending_instrumented_dissection_bench",
+      "clinical_validation": false
     }
   ],
   "validation": {

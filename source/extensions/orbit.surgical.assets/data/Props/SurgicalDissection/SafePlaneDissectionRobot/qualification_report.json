@@ -1,0 +1,142 @@
+{
+  "schema": "dranmar.safeplane-dissection-qualification-report.v1",
+  "asset": "dranmar-safeplane-dissection-robot-v1",
+  "version": "0.1.0",
+  "status": "pass",
+  "qualification_date": "2026-07-25",
+  "ownership": "DrAnmar",
+  "runtime_host": "numi",
+  "platform": {
+    "operating_system": "Ubuntu 24.04.4 LTS",
+    "kernel": "7.0.0-28-generic",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_memory_mib": 24564,
+    "driver": "580.159.03",
+    "isaac_lab": "6.1.16",
+    "isaac_sim": "6.0.1.0",
+    "device": "cuda:0",
+    "nvidia_eula_accepted_by_user": true
+  },
+  "static_gates": {
+    "cpu_controller_tests": {
+      "status": "pass",
+      "tests": 7
+    },
+    "strict_openusd_parse": {
+      "status": "pass",
+      "checker": "/usr/bin/usdchecker",
+      "primary_usda": 13,
+      "execution_host": "local_macos",
+      "remote_checker_available": false
+    },
+    "glb_structure": {
+      "status": "pass",
+      "files": 25
+    },
+    "png_structure": {
+      "status": "pass",
+      "package_resources_and_previews": 24
+    },
+    "hashed_manifest": {
+      "status": "pass",
+      "files": 80
+    },
+    "archives": {
+      "status": "pass",
+      "count": 3,
+      "crc_and_sha256": true,
+      "deterministic_timestamps": true
+    }
+  },
+  "matrix": [
+    {
+      "representation": "standalone",
+      "status": "pass",
+      "steps": 120,
+      "joint_count": 17,
+      "finite_joint_state": true,
+      "engine_error_count": 0,
+      "cooked_surface_deformables": 2,
+      "surface_self_collision": false,
+      "tissue_tcp_registration_error_m": 2.9802321721561503e-10,
+      "fixture_attachment_count": 2,
+      "traction_attachment_count": 8,
+      "bridge_attachment_count": 56,
+      "protected_structure_attachment_count": 6,
+      "retained_attachment_count_after_traction_release": 64,
+      "attachment_type": "OmniPhysicsVtxXformAttachment",
+      "corrected_adhesion_joint_count": 28,
+      "released_bridge_count": 28,
+      "protected_structures_intact": true,
+      "blocked_energy_interlock": true,
+      "blocked_scissors_interlock": true,
+      "completion_passed": true,
+      "emitted_particle_count": 140,
+      "captured_particle_count": 7,
+      "fluid_balance_error_ml": 0.0
+    },
+    {
+      "representation": "franka",
+      "status": "pass",
+      "steps": 120,
+      "joint_count": 24,
+      "arm_joint_count": 7,
+      "tool_joint_count": 17,
+      "finite_joint_state": true,
+      "engine_error_count": 0,
+      "cooked_surface_deformables": 2,
+      "surface_self_collision": false,
+      "tissue_tcp_registration_correction_m": 0.04619402521386863,
+      "tissue_tcp_registration_error_m": 0.0,
+      "fixture_attachment_count": 2,
+      "traction_attachment_count": 8,
+      "bridge_attachment_count": 56,
+      "protected_structure_attachment_count": 6,
+      "retained_attachment_count_after_traction_release": 64,
+      "attachment_type": "OmniPhysicsVtxXformAttachment",
+      "corrected_adhesion_joint_count": 28,
+      "released_bridge_count": 28,
+      "protected_structures_intact": true,
+      "blocked_energy_interlock": true,
+      "blocked_scissors_interlock": true,
+      "completion_passed": true,
+      "emitted_particle_count": 140,
+      "captured_particle_count": 7,
+      "fluid_balance_error_ml": 0.0,
+      "franka_mount": {
+        "body0": "/World/Robot/panda_link8",
+        "local_rotation_wxyz": [
+          0.9238795042037964,
+          0.0,
+          0.0,
+          -0.3826834261417389
+        ],
+        "stock_hand_frame_preserved": true
+      }
+    }
+  ],
+  "modality_release_evidence": {
+    "blunt_spreading": 9,
+    "hydrodissection": 10,
+    "low_energy_dissection": 3,
+    "guarded_scissors": 6
+  },
+  "safety_reroutes": [
+    {
+      "bridge_index": 5,
+      "blocked_modality": "low_energy_dissection",
+      "selected_modality": "hydrodissection",
+      "nearest_structure": "vessel",
+      "distance_m": 0.004180648005489506,
+      "required_energy_clearance_m": 0.007,
+      "protected_structure_injury": false
+    }
+  ],
+  "boundaries": {
+    "clinical_validation": false,
+    "medical_device": false,
+    "patient_care_approved": false,
+    "physical_calibration": false,
+    "claims": "Native simulation qualification only; no calibrated tissue selectivity, hydro pressure, traction force, cutting, thermal spread, injury prediction, or clinical safe-plane claim."
+  }
+}

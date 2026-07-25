@@ -1,0 +1,62 @@
+{
+  "asset": "dranmar-safeplane-dissection-robot-v1",
+  "clinical_validation": false,
+  "failure_states": [
+    "traction_overload",
+    "pad_capture_loss",
+    "residual_adhesion",
+    "wrong_plane_dissection",
+    "vessel_injury",
+    "nerve_injury",
+    "duct_injury",
+    "hydro_overpressure_proxy",
+    "energy_overtemperature",
+    "unguarded_scissor_command",
+    "incomplete_smoke_evacuation"
+  ],
+  "medical_device": false,
+  "metrics": [
+    "released_bridge_fraction",
+    "residual_bridge_count",
+    "release_mode_distribution",
+    "left_traction_force_n",
+    "right_traction_force_n",
+    "traction_force_asymmetry_n",
+    "blunt_work_j",
+    "hydro_volume_ml",
+    "energy_j",
+    "scissor_cut_count",
+    "minimum_vessel_clearance_m",
+    "minimum_nerve_clearance_m",
+    "minimum_duct_clearance_m",
+    "blood_loss_ml",
+    "duct_leak_ml",
+    "nerve_conduction_fraction",
+    "roi_visibility_fraction",
+    "procedure_time_s",
+    "safety_interlock_violations"
+  ],
+  "procedure": [
+    "inspect",
+    "capture",
+    "traction",
+    "blunt",
+    "hydro",
+    "guarded_scissors",
+    "low_energy",
+    "irrigate_and_evacuate",
+    "verify_connectivity",
+    "release",
+    "complete"
+  ],
+  "required_success_conditions": [
+    "all_target_adhesion_bridges_released",
+    "vessel_continuity_intact",
+    "nerve_continuity_intact",
+    "duct_continuity_intact",
+    "roi_visibility_fraction_at_least_0_90",
+    "traction_stable",
+    "no_uncommanded_scissor_or_energy_action_inside_protected_clearance"
+  ],
+  "schema": "dranmar.safeplane-dissection-task.v1"
+}

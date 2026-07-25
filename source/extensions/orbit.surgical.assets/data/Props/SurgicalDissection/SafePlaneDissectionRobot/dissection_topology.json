@@ -1,0 +1,712 @@
+{
+  "adhesion_bridges": [
+    {
+      "bridge_class": "dense_fibrous_band",
+      "clearance_m": 0.04951767361255979,
+      "continuity_joint_path": "AdhesionBridges/Bridge_00/ContinuityJoint",
+      "index": 0,
+      "lower_anchor_path": "AdhesionBridges/Bridge_00/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        -0.036,
+        -0.048,
+        0.025
+      ],
+      "recommended_mode": "guarded_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.6,
+        "hydro_volume_ml": 0.55,
+        "mechanical_work_j": 0.026
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_00/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.03605551275463989,
+      "continuity_joint_path": "AdhesionBridges/Bridge_01/ContinuityJoint",
+      "index": 1,
+      "lower_anchor_path": "AdhesionBridges/Bridge_01/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        -0.011999999999999997,
+        -0.048,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_01/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.0360555127546399,
+      "continuity_joint_path": "AdhesionBridges/Bridge_02/ContinuityJoint",
+      "index": 2,
+      "lower_anchor_path": "AdhesionBridges/Bridge_02/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        0.01200000000000001,
+        -0.048,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_02/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.04951767361255979,
+      "continuity_joint_path": "AdhesionBridges/Bridge_03/ContinuityJoint",
+      "index": 3,
+      "lower_anchor_path": "AdhesionBridges/Bridge_03/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        0.036000000000000004,
+        -0.048,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_03/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.06896375859826667,
+      "continuity_joint_path": "AdhesionBridges/Bridge_04/ContinuityJoint",
+      "index": 4,
+      "lower_anchor_path": "AdhesionBridges/Bridge_04/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        0.06,
+        -0.048,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_04/UpperAnchor"
+    },
+    {
+      "bridge_class": "vascularized_adhesion",
+      "clearance_m": 0.057786244037833084,
+      "continuity_joint_path": "AdhesionBridges/Bridge_05/ContinuityJoint",
+      "index": 5,
+      "lower_anchor_path": "AdhesionBridges/Bridge_05/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        -0.056999999999999995,
+        -0.0235,
+        0.025
+      ],
+      "recommended_mode": "low_energy_or_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.15,
+        "hydro_volume_ml": 0.42,
+        "mechanical_work_j": 0.018
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_05/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.034340209667385546,
+      "continuity_joint_path": "AdhesionBridges/Bridge_06/ContinuityJoint",
+      "index": 6,
+      "lower_anchor_path": "AdhesionBridges/Bridge_06/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        -0.032999999999999995,
+        -0.0235,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_06/UpperAnchor"
+    },
+    {
+      "bridge_class": "dense_fibrous_band",
+      "clearance_m": 0.013086252328302399,
+      "continuity_joint_path": "AdhesionBridges/Bridge_07/ContinuityJoint",
+      "index": 7,
+      "lower_anchor_path": "AdhesionBridges/Bridge_07/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        -0.008999999999999998,
+        -0.0235,
+        0.025
+      ],
+      "recommended_mode": "guarded_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.6,
+        "hydro_volume_ml": 0.55,
+        "mechanical_work_j": 0.026
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_07/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.017755280904564713,
+      "continuity_joint_path": "AdhesionBridges/Bridge_08/ContinuityJoint",
+      "index": 8,
+      "lower_anchor_path": "AdhesionBridges/Bridge_08/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        0.01500000000000001,
+        -0.0235,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_08/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.040140378672852604,
+      "continuity_joint_path": "AdhesionBridges/Bridge_09/ContinuityJoint",
+      "index": 9,
+      "lower_anchor_path": "AdhesionBridges/Bridge_09/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        0.03900000000000001,
+        -0.0235,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_09/UpperAnchor"
+    },
+    {
+      "bridge_class": "vascularized_adhesion",
+      "clearance_m": 0.0637122437212817,
+      "continuity_joint_path": "AdhesionBridges/Bridge_10/ContinuityJoint",
+      "index": 10,
+      "lower_anchor_path": "AdhesionBridges/Bridge_10/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        0.063,
+        -0.0235,
+        0.025
+      ],
+      "recommended_mode": "low_energy_or_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.15,
+        "hydro_volume_ml": 0.42,
+        "mechanical_work_j": 0.018
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_10/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.06184658438426491,
+      "continuity_joint_path": "AdhesionBridges/Bridge_11/ContinuityJoint",
+      "index": 11,
+      "lower_anchor_path": "AdhesionBridges/Bridge_11/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        -0.06,
+        0.0010000000000000009,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_11/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.039,
+      "continuity_joint_path": "AdhesionBridges/Bridge_12/ContinuityJoint",
+      "index": 12,
+      "lower_anchor_path": "AdhesionBridges/Bridge_12/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        -0.036,
+        0.0010000000000000009,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_12/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.019209372712298545,
+      "continuity_joint_path": "AdhesionBridges/Bridge_13/ContinuityJoint",
+      "index": 13,
+      "lower_anchor_path": "AdhesionBridges/Bridge_13/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        -0.011999999999999997,
+        0.0010000000000000009,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_13/UpperAnchor"
+    },
+    {
+      "bridge_class": "dense_fibrous_band",
+      "clearance_m": 0.019209372712298552,
+      "continuity_joint_path": "AdhesionBridges/Bridge_14/ContinuityJoint",
+      "index": 14,
+      "lower_anchor_path": "AdhesionBridges/Bridge_14/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        0.01200000000000001,
+        0.0010000000000000009,
+        0.025
+      ],
+      "recommended_mode": "guarded_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.6,
+        "hydro_volume_ml": 0.55,
+        "mechanical_work_j": 0.026
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_14/UpperAnchor"
+    },
+    {
+      "bridge_class": "vascularized_adhesion",
+      "clearance_m": 0.039,
+      "continuity_joint_path": "AdhesionBridges/Bridge_15/ContinuityJoint",
+      "index": 15,
+      "lower_anchor_path": "AdhesionBridges/Bridge_15/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        0.036000000000000004,
+        0.0010000000000000009,
+        0.025
+      ],
+      "recommended_mode": "low_energy_or_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.15,
+        "hydro_volume_ml": 0.42,
+        "mechanical_work_j": 0.018
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_15/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.06184658438426491,
+      "continuity_joint_path": "AdhesionBridges/Bridge_16/ContinuityJoint",
+      "index": 16,
+      "lower_anchor_path": "AdhesionBridges/Bridge_16/LowerAnchor",
+      "nearest_structure": "vessel",
+      "position_m": [
+        0.06,
+        0.0010000000000000009,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_16/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.05726473609473809,
+      "continuity_joint_path": "AdhesionBridges/Bridge_17/ContinuityJoint",
+      "index": 17,
+      "lower_anchor_path": "AdhesionBridges/Bridge_17/LowerAnchor",
+      "nearest_structure": "nerve",
+      "position_m": [
+        -0.056999999999999995,
+        0.02550000000000001,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_17/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.0334551939166402,
+      "continuity_joint_path": "AdhesionBridges/Bridge_18/ContinuityJoint",
+      "index": 18,
+      "lower_anchor_path": "AdhesionBridges/Bridge_18/LowerAnchor",
+      "nearest_structure": "nerve",
+      "position_m": [
+        -0.032999999999999995,
+        0.02550000000000001,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_18/UpperAnchor"
+    },
+    {
+      "bridge_class": "dense_fibrous_band",
+      "clearance_m": 0.010547511554864495,
+      "continuity_joint_path": "AdhesionBridges/Bridge_19/ContinuityJoint",
+      "index": 19,
+      "lower_anchor_path": "AdhesionBridges/Bridge_19/LowerAnchor",
+      "nearest_structure": "nerve",
+      "position_m": [
+        -0.008999999999999998,
+        0.02550000000000001,
+        0.025
+      ],
+      "recommended_mode": "guarded_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.6,
+        "hydro_volume_ml": 0.55,
+        "mechanical_work_j": 0.026
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_19/UpperAnchor"
+    },
+    {
+      "bridge_class": "dense_fibrous_band",
+      "clearance_m": 0.013829316685939329,
+      "continuity_joint_path": "AdhesionBridges/Bridge_20/ContinuityJoint",
+      "index": 20,
+      "lower_anchor_path": "AdhesionBridges/Bridge_20/LowerAnchor",
+      "nearest_structure": "duct",
+      "position_m": [
+        0.01500000000000001,
+        0.02550000000000001,
+        0.025
+      ],
+      "recommended_mode": "guarded_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.6,
+        "hydro_volume_ml": 0.55,
+        "mechanical_work_j": 0.026
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_20/UpperAnchor"
+    },
+    {
+      "bridge_class": "dense_fibrous_band",
+      "clearance_m": 0.03463018914184559,
+      "continuity_joint_path": "AdhesionBridges/Bridge_21/ContinuityJoint",
+      "index": 21,
+      "lower_anchor_path": "AdhesionBridges/Bridge_21/LowerAnchor",
+      "nearest_structure": "duct",
+      "position_m": [
+        0.03900000000000001,
+        0.02550000000000001,
+        0.025
+      ],
+      "recommended_mode": "guarded_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.6,
+        "hydro_volume_ml": 0.55,
+        "mechanical_work_j": 0.026
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_21/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.057959037259084974,
+      "continuity_joint_path": "AdhesionBridges/Bridge_22/ContinuityJoint",
+      "index": 22,
+      "lower_anchor_path": "AdhesionBridges/Bridge_22/LowerAnchor",
+      "nearest_structure": "duct",
+      "position_m": [
+        0.063,
+        0.02550000000000001,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_22/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.0670820393249937,
+      "continuity_joint_path": "AdhesionBridges/Bridge_23/ContinuityJoint",
+      "index": 23,
+      "lower_anchor_path": "AdhesionBridges/Bridge_23/LowerAnchor",
+      "nearest_structure": "nerve",
+      "position_m": [
+        -0.06,
+        0.05,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_23/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.04427188724235731,
+      "continuity_joint_path": "AdhesionBridges/Bridge_24/ContinuityJoint",
+      "index": 24,
+      "lower_anchor_path": "AdhesionBridges/Bridge_24/LowerAnchor",
+      "nearest_structure": "duct",
+      "position_m": [
+        -0.036,
+        0.05,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_24/UpperAnchor"
+    },
+    {
+      "bridge_class": "vascularized_adhesion",
+      "clearance_m": 0.02280350850198276,
+      "continuity_joint_path": "AdhesionBridges/Bridge_25/ContinuityJoint",
+      "index": 25,
+      "lower_anchor_path": "AdhesionBridges/Bridge_25/LowerAnchor",
+      "nearest_structure": "duct",
+      "position_m": [
+        -0.011999999999999997,
+        0.05,
+        0.025
+      ],
+      "recommended_mode": "low_energy_or_scissors",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 1.15,
+        "hydro_volume_ml": 0.42,
+        "mechanical_work_j": 0.018
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_25/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.015231546211727825,
+      "continuity_joint_path": "AdhesionBridges/Bridge_26/ContinuityJoint",
+      "index": 26,
+      "lower_anchor_path": "AdhesionBridges/Bridge_26/LowerAnchor",
+      "nearest_structure": "duct",
+      "position_m": [
+        0.01200000000000001,
+        0.05,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_26/UpperAnchor"
+    },
+    {
+      "bridge_class": "loose_connective_fibre",
+      "clearance_m": 0.033105890714493706,
+      "continuity_joint_path": "AdhesionBridges/Bridge_27/ContinuityJoint",
+      "index": 27,
+      "lower_anchor_path": "AdhesionBridges/Bridge_27/LowerAnchor",
+      "nearest_structure": "duct",
+      "position_m": [
+        0.036000000000000004,
+        0.05,
+        0.025
+      ],
+      "recommended_mode": "blunt_or_hydro",
+      "target": true,
+      "thresholds": {
+        "energy_dose_j": 0.75,
+        "hydro_volume_ml": 0.18,
+        "mechanical_work_j": 0.008
+      },
+      "upper_anchor_path": "AdhesionBridges/Bridge_27/UpperAnchor"
+    }
+  ],
+  "asset": "dranmar-safeplane-tissue-demo-v1",
+  "protected_structures": {
+    "duct": {
+      "centerline_m": [
+        [
+          -0.068,
+          0.048,
+          0.018
+        ],
+        [
+          -0.03,
+          0.041,
+          0.02
+        ],
+        [
+          0.006,
+          0.036,
+          0.019
+        ],
+        [
+          0.043,
+          0.043,
+          0.018
+        ],
+        [
+          0.072,
+          0.052,
+          0.017
+        ]
+      ],
+      "nominal_radius_m": 0.0026,
+      "safety_clearance_m": {
+        "blunt": 0.0025,
+        "energy": 0.007,
+        "hydro": 0.003,
+        "scissors": 0.005
+      }
+    },
+    "nerve": {
+      "centerline_m": [
+        [
+          -0.075,
+          0.022,
+          0.019
+        ],
+        [
+          -0.035,
+          0.016,
+          0.021
+        ],
+        [
+          0.0,
+          0.02,
+          0.02
+        ],
+        [
+          0.04,
+          0.028,
+          0.019
+        ],
+        [
+          0.078,
+          0.034,
+          0.018
+        ]
+      ],
+      "nominal_radius_m": 0.0021,
+      "safety_clearance_m": {
+        "blunt": 0.0025,
+        "energy": 0.007,
+        "hydro": 0.003,
+        "scissors": 0.005
+      }
+    },
+    "vessel": {
+      "centerline_m": [
+        [
+          -0.075,
+          -0.028,
+          0.02
+        ],
+        [
+          -0.035,
+          -0.02,
+          0.022
+        ],
+        [
+          0.0,
+          -0.014,
+          0.021
+        ],
+        [
+          0.038,
+          -0.006,
+          0.019
+        ],
+        [
+          0.078,
+          0.006,
+          0.018
+        ]
+      ],
+      "nominal_radius_m": 0.0031,
+      "safety_clearance_m": {
+        "blunt": 0.0025,
+        "energy": 0.007,
+        "hydro": 0.003,
+        "scissors": 0.005
+      }
+    }
+  },
+  "safe_plane": {
+    "completion_rule": "all_target_bridge_continuity_joints_released_and_all_protected_structures_intact",
+    "reference_z_m": 0.025,
+    "superficial_surface_path": "Anatomy/SuperficialFlap",
+    "target_bed_path": "Anatomy/TargetBed",
+    "target_bridge_count": 28
+  },
+  "schema": "dranmar.safeplane-dissection-topology.v1",
+  "units": "metres"
+}

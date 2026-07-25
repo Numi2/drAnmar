@@ -1,0 +1,600 @@
+{
+  "asset": "dranmar-safeplane-dissection-robot-v1",
+  "links": [
+    {
+      "axis_coverage_ratio": [
+        0.9767441860465116,
+        1.0217391304347827,
+        0.9680851063829787
+      ],
+      "collider_bounds_m": [
+        [
+          -0.063,
+          -0.094,
+          0.0
+        ],
+        [
+          0.063,
+          0.094,
+          0.182
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "Mount",
+      "visual_bounds_m": [
+        [
+          -0.063,
+          -0.092,
+          0.0
+        ],
+        [
+          0.066,
+          0.092,
+          0.188
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0588235294117645,
+        1.03125,
+        1.0425531914893618
+      ],
+      "collider_bounds_m": [
+        [
+          -0.018,
+          -0.017,
+          -0.013
+        ],
+        [
+          0.018,
+          0.049,
+          0.036000000000000004
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "LeftTractionCarriage",
+      "visual_bounds_m": [
+        [
+          -0.017,
+          -0.016,
+          -0.012
+        ],
+        [
+          0.017,
+          0.048,
+          0.035
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0588235294117645,
+        1.1111111111111112,
+        1.0416666666666665
+      ],
+      "collider_bounds_m": [
+        [
+          -0.018,
+          -0.01,
+          -0.006000000000000001
+        ],
+        [
+          0.018,
+          0.01,
+          0.019
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "LeftPadPivot",
+      "visual_bounds_m": [
+        [
+          -0.017,
+          -0.009,
+          -0.006000000000000001
+        ],
+        [
+          0.017,
+          0.009,
+          0.018000000000000002
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0526315789473684,
+        1.090909090909091,
+        1.2017543859649122
+      ],
+      "collider_bounds_m": [
+        [
+          -0.02,
+          -0.012,
+          0.0005000000000000004
+        ],
+        [
+          0.02,
+          0.012,
+          0.0142
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "LeftTractionPad",
+      "visual_bounds_m": [
+        [
+          -0.019,
+          -0.011,
+          -6.735557395310442e-19
+        ],
+        [
+          0.019,
+          0.011,
+          0.0114
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0588235294117645,
+        1.03125,
+        1.0425531914893618
+      ],
+      "collider_bounds_m": [
+        [
+          -0.018,
+          -0.049,
+          -0.013
+        ],
+        [
+          0.018,
+          0.017,
+          0.036000000000000004
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "RightTractionCarriage",
+      "visual_bounds_m": [
+        [
+          -0.017,
+          -0.048,
+          -0.012
+        ],
+        [
+          0.017,
+          0.016,
+          0.035
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0588235294117645,
+        1.1111111111111112,
+        1.0416666666666665
+      ],
+      "collider_bounds_m": [
+        [
+          -0.018,
+          -0.01,
+          -0.006000000000000001
+        ],
+        [
+          0.018,
+          0.01,
+          0.019
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "RightPadPivot",
+      "visual_bounds_m": [
+        [
+          -0.017,
+          -0.009,
+          -0.006000000000000001
+        ],
+        [
+          0.017,
+          0.009,
+          0.018000000000000002
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0526315789473684,
+        1.090909090909091,
+        1.2017543859649122
+      ],
+      "collider_bounds_m": [
+        [
+          -0.02,
+          -0.012,
+          0.0005000000000000004
+        ],
+        [
+          0.02,
+          0.012,
+          0.0142
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "RightTractionPad",
+      "visual_bounds_m": [
+        [
+          -0.019,
+          -0.011,
+          -6.735557395310442e-19
+        ],
+        [
+          0.019,
+          0.011,
+          0.0114
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.7,
+        1.0588235294117645,
+        1.1090909090909091
+      ],
+      "collider_bounds_m": [
+        [
+          -0.007,
+          -0.007999999999999998,
+          0.007500000000000001
+        ],
+        [
+          0.007,
+          0.027999999999999997,
+          0.038
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "LeftSpreader",
+      "visual_bounds_m": [
+        [
+          -0.01,
+          -0.007000000000000001,
+          0.008
+        ],
+        [
+          0.01,
+          0.027000000000000003,
+          0.0355
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.7,
+        1.0588235294117645,
+        1.1090909090909091
+      ],
+      "collider_bounds_m": [
+        [
+          -0.007,
+          -0.027999999999999997,
+          0.007500000000000001
+        ],
+        [
+          0.007,
+          0.007999999999999998,
+          0.038
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "RightSpreader",
+      "visual_bounds_m": [
+        [
+          -0.01,
+          -0.027000000000000003,
+          0.008
+        ],
+        [
+          0.01,
+          0.007000000000000001,
+          0.0355
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.05,
+        0.825242718446602,
+        0.825242718446602
+      ],
+      "collider_bounds_m": [
+        [
+          -0.0105,
+          -0.0085,
+          -0.0085
+        ],
+        [
+          0.0105,
+          0.0085,
+          0.0085
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "HydroGimbal",
+      "visual_bounds_m": [
+        [
+          -0.01,
+          -0.0103,
+          -0.0103
+        ],
+        [
+          0.01,
+          0.0103,
+          0.0103
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.5454545454545454,
+        0.5454545454545454,
+        0.953125
+      ],
+      "collider_bounds_m": [
+        [
+          -0.0042,
+          -0.0042,
+          0.0
+        ],
+        [
+          0.0042,
+          0.0042,
+          0.061
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "HydroNozzle",
+      "visual_bounds_m": [
+        [
+          -0.007699999999999999,
+          -0.007699999999999999,
+          0.0005000000000000004
+        ],
+        [
+          0.007699999999999999,
+          0.007699999999999999,
+          0.0645
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0833333333333333,
+        1.0344827586206895,
+        0.9848484848484851
+      ],
+      "collider_bounds_m": [
+        [
+          -0.013,
+          -0.015,
+          -0.01
+        ],
+        [
+          0.013,
+          0.015,
+          0.05500000000000001
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "ScissorCarriage",
+      "visual_bounds_m": [
+        [
+          -0.012,
+          -0.015000000000000001,
+          -0.009
+        ],
+        [
+          0.012,
+          0.014,
+          0.056999999999999995
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.125,
+        1.1111111111111112,
+        1.0666666666666667
+      ],
+      "collider_bounds_m": [
+        [
+          -0.009,
+          -0.01,
+          -0.006
+        ],
+        [
+          0.009,
+          0.01,
+          0.026000000000000002
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "ScissorGuard",
+      "visual_bounds_m": [
+        [
+          -0.008,
+          -0.009,
+          -0.004999999999999999
+        ],
+        [
+          0.008,
+          0.009,
+          0.025
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.2016935566644629,
+        1.1435909234442194,
+        0.9767441860465116
+      ],
+      "collider_bounds_m": [
+        [
+          0.0009,
+          -0.005,
+          0.0009999999999999974
+        ],
+        [
+          0.0031000000000000003,
+          0.005,
+          0.043
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "MovingScissorBlade",
+      "visual_bounds_m": [
+        [
+          0.0010846251992452495,
+          -0.00403035181310692,
+          0.0
+        ],
+        [
+          0.002915374800754751,
+          0.004714033784045616,
+          0.043
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.6923076923076923,
+        1.0843373493975903,
+        1.0674157303370786
+      ],
+      "collider_bounds_m": [
+        [
+          -0.0045,
+          -0.0045,
+          0.0
+        ],
+        [
+          0.0045,
+          0.0045,
+          0.047499999999999994
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "EnergyTip",
+      "visual_bounds_m": [
+        [
+          -0.0065,
+          -0.0045000000000000005,
+          0.0
+        ],
+        [
+          0.0065,
+          0.0038,
+          0.0445
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.2,
+        1.0999999999999999,
+        1.1666666666666667
+      ],
+      "collider_bounds_m": [
+        [
+          -0.006,
+          -0.011,
+          -0.007
+        ],
+        [
+          0.006,
+          0.011,
+          0.007
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "SuctionValve",
+      "visual_bounds_m": [
+        [
+          -0.005,
+          -0.01,
+          -0.006
+        ],
+        [
+          0.005,
+          0.01,
+          0.006
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.2,
+        1.0999999999999999,
+        1.1666666666666667
+      ],
+      "collider_bounds_m": [
+        [
+          -0.006,
+          -0.011,
+          -0.007
+        ],
+        [
+          0.006,
+          0.011,
+          0.007
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "HydroValve",
+      "visual_bounds_m": [
+        [
+          -0.005,
+          -0.01,
+          -0.006
+        ],
+        [
+          0.005,
+          0.01,
+          0.006
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.2,
+        1.0999999999999999,
+        1.1666666666666667
+      ],
+      "collider_bounds_m": [
+        [
+          -0.006,
+          -0.011,
+          -0.007
+        ],
+        [
+          0.006,
+          0.011,
+          0.007
+        ]
+      ],
+      "deliberate_insets": "sharp_blade_edges_and_sensor_optics_use_inset_colliders_to_avoid_ghost_contact",
+      "link": "IrrigationValve",
+      "visual_bounds_m": [
+        [
+          -0.005,
+          -0.01,
+          -0.006
+        ],
+        [
+          0.005,
+          0.01,
+          0.006
+        ]
+      ]
+    }
+  ],
+  "schema": "dranmar.collider-coverage.v1"
+}

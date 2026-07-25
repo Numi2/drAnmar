@@ -1,0 +1,507 @@
+{
+  "asset": "dranmar-safeplane-dissection-robot-v1",
+  "coordinate_contract": {
+    "quaternion_order": "wxyz",
+    "safe_plane_normal": "+Z in tool-local frame",
+    "tool_forward_axis": "+Z from wrist toward tissue",
+    "units": "metres"
+  },
+  "frames": {
+    "count_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.055,
+        0.043,
+        0.052
+      ],
+      "role": "inventory_count_reference"
+    },
+    "depth_camera": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.059,
+        0.101
+      ],
+      "role": "depth_camera_optical_frame"
+    },
+    "disposal_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.072,
+        0.0,
+        0.04
+      ],
+      "role": "disposal_reference"
+    },
+    "energy_axis": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "EnergyTip",
+      "position": [
+        0,
+        0,
+        0.038
+      ],
+      "role": "energy_delivery_axis"
+    },
+    "energy_tip": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "EnergyTip",
+      "position": [
+        0,
+        0,
+        0.043
+      ],
+      "role": "low_energy_dissection_tip"
+    },
+    "fluorescence_camera": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        -0.032,
+        -0.058,
+        0.1
+      ],
+      "role": "fluorescence_camera_optical_frame"
+    },
+    "hydro_axis": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "HydroNozzle",
+      "position": [
+        0,
+        0,
+        0.058
+      ],
+      "role": "hydrodissection_jet_axis"
+    },
+    "hydro_nozzle_tip": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "HydroNozzle",
+      "position": [
+        0,
+        0,
+        0.064
+      ],
+      "role": "hydrodissection_nozzle_tip"
+    },
+    "irrigation_center": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.184
+      ],
+      "role": "field_irrigation_center"
+    },
+    "left_capture_cell_0": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "LeftTractionPad",
+      "position": [
+        -0.0135,
+        0,
+        0.01
+      ],
+      "role": "left_traction_capture_cell"
+    },
+    "left_capture_cell_1": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "LeftTractionPad",
+      "position": [
+        -0.0045000000000000005,
+        0,
+        0.01
+      ],
+      "role": "left_traction_capture_cell"
+    },
+    "left_capture_cell_2": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "LeftTractionPad",
+      "position": [
+        0.004499999999999999,
+        0,
+        0.01
+      ],
+      "role": "left_traction_capture_cell"
+    },
+    "left_capture_cell_3": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "LeftTractionPad",
+      "position": [
+        0.013499999999999996,
+        0,
+        0.01
+      ],
+      "role": "left_traction_capture_cell"
+    },
+    "left_spreader_tip": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "LeftSpreader",
+      "position": [
+        0,
+        0.02,
+        0.031
+      ],
+      "role": "left_blunt_spreader_tip"
+    },
+    "left_traction_pad": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "LeftTractionPad",
+      "position": [
+        0,
+        0,
+        0.01
+      ],
+      "role": "left_traction_contact"
+    },
+    "panda_link8_mount": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "franka_wrist_mount"
+    },
+    "protected_structure_probe": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.20099999999999998
+      ],
+      "role": "protected_structure_proximity_probe"
+    },
+    "right_capture_cell_0": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "RightTractionPad",
+      "position": [
+        -0.0135,
+        0,
+        0.01
+      ],
+      "role": "right_traction_capture_cell"
+    },
+    "right_capture_cell_1": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "RightTractionPad",
+      "position": [
+        -0.0045000000000000005,
+        0,
+        0.01
+      ],
+      "role": "right_traction_capture_cell"
+    },
+    "right_capture_cell_2": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "RightTractionPad",
+      "position": [
+        0.004499999999999999,
+        0,
+        0.01
+      ],
+      "role": "right_traction_capture_cell"
+    },
+    "right_capture_cell_3": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "RightTractionPad",
+      "position": [
+        0.013499999999999996,
+        0,
+        0.01
+      ],
+      "role": "right_traction_capture_cell"
+    },
+    "right_spreader_tip": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "RightSpreader",
+      "position": [
+        0,
+        -0.02,
+        0.031
+      ],
+      "role": "right_blunt_spreader_tip"
+    },
+    "right_traction_pad": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "RightTractionPad",
+      "position": [
+        0,
+        0,
+        0.01
+      ],
+      "role": "right_traction_contact"
+    },
+    "roi_center": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.207
+      ],
+      "role": "dissection_roi_center"
+    },
+    "safe_plane_reference": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.205
+      ],
+      "role": "safe_dissection_plane_reference"
+    },
+    "safeplane_tcp": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.205
+      ],
+      "role": "primary_dissection_tcp"
+    },
+    "scissor_cut_plane": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "ScissorCarriage",
+      "position": [
+        0,
+        0,
+        0.056
+      ],
+      "role": "guarded_scissor_cut_plane"
+    },
+    "scissor_guard_tip": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "ScissorGuard",
+      "position": [
+        0,
+        0,
+        0.026
+      ],
+      "role": "scissor_guard_tip"
+    },
+    "scissor_pivot": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "ScissorCarriage",
+      "position": [
+        0,
+        0,
+        0.018
+      ],
+      "role": "micro_scissor_pivot"
+    },
+    "stereo_left": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        -0.02,
+        -0.059,
+        0.086
+      ],
+      "role": "left_rgb_camera_optical_frame"
+    },
+    "stereo_right": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.02,
+        -0.059,
+        0.086
+      ],
+      "role": "right_rgb_camera_optical_frame"
+    },
+    "suction_center": {
+      "orientation_wxyz": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.184
+      ],
+      "role": "annular_suction_center"
+    },
+    "thermal_camera": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.032,
+        -0.058,
+        0.1
+      ],
+      "role": "thermal_camera_optical_frame"
+    }
+  },
+  "schema": "dranmar.interaction-frames.v1"
+}

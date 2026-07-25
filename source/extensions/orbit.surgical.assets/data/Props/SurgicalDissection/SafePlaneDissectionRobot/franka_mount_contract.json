@@ -1,0 +1,30 @@
+{
+  "asset": "dranmar-safeplane-dissection-robot-v1",
+  "composable_asset_compatibility": "reconstruct_fixed_panda_link8_when_nvidia_asset_collapses_terminal_link_into_panda_link7_to_hand_joint",
+  "deactivated_stock_prims": [
+    "panda_hand_joint",
+    "panda_hand",
+    "panda_finger_joint1",
+    "panda_finger_joint2",
+    "panda_leftfinger",
+    "panda_rightfinger"
+  ],
+  "local_rotation": {
+    "axis": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "degrees": -45.0
+  },
+  "local_translation_m": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "nested_articulation_in_payload": false,
+  "parent_link": "panda_link8",
+  "payload_link": "DrAnmarSafePlaneDissectionTool/Links/Mount",
+  "schema": "dranmar.franka-hand-replacement.v1",
+  "standalone_articulation_available": true
+}

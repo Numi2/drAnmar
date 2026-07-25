@@ -1,0 +1,105 @@
+{
+  "clinical_validation": false,
+  "guarded_scissors": {
+    "blade_closure_deg": 34.0,
+    "cut_contract": "nearest_unreleased_bridge_continuity_joint_removed_only_after_guard_and_clearance_interlocks_pass",
+    "guard_retraction_m": 0.01,
+    "minimum_protected_structure_clearance_m": 0.005
+  },
+  "hydrodissection": {
+    "bridge_dose_model": "distance_weighted_volume_threshold_proxy",
+    "jet_count": 7,
+    "nominal_jet_speed_m_s": 1.35,
+    "particle_radius_m": 0.00072,
+    "qualification": "provisional_unmeasured_not_a_clinical_pressure_or_flow_setting",
+    "reservoir_capacity_ml": 35.0
+  },
+  "id": "dranmar-safeplane-dissection-robot-v1",
+  "low_energy_dissection": {
+    "maximum_power_w": 22.0,
+    "maximum_temperature_c": 95.0,
+    "model": "lumped_thermal_dose_proxy",
+    "qualification": "not_electrosurgical_tissue_physics",
+    "target_temperature_c": 72.0
+  },
+  "protected_structures": {
+    "duct": {
+      "injury_consequence": "continuity_joint_removed_and_duct_leak_ledger_activated",
+      "radius_m": 0.0026
+    },
+    "nerve": {
+      "injury_consequence": "continuity_joint_removed_and_conduction_fraction_set_to_zero",
+      "radius_m": 0.0021
+    },
+    "vessel": {
+      "injury_consequence": "continuity_joint_removed_and_blood_loss_ledger_activated",
+      "radius_m": 0.0031
+    }
+  },
+  "runtime_platforms": [
+    "OpenUSD",
+    "NVIDIA PhysX",
+    "NVIDIA Isaac Lab"
+  ],
+  "runtime_validation": "qualified_headless_cuda_matrix_report_in_catalog",
+  "schema": "dranmar.safeplane-dissection-profile.v1",
+  "status": "research_informed_engineering_model_pending_runtime_metrology_and_clinical_validation",
+  "tissue_substrate": {
+    "adhesion_bridge_count": 28,
+    "bridge_classes": [
+      "dense_fibrous_band",
+      "loose_connective_fibre",
+      "vascularized_adhesion"
+    ],
+    "physics_contract": "two_deformable_surfaces_each_bridge_uses_two_rigid_anchors_and_one_removable_continuity_joint",
+    "superficial_mesh": {
+      "triangles": 864,
+      "vertices": 475
+    },
+    "surface_parameters": {
+      "superficial": {
+        "dynamic_friction": 0.48,
+        "poissons_ratio": 0.36,
+        "surface_thickness_m": 0.0045,
+        "youngs_modulus_pa": 95000.0
+      },
+      "target_bed": {
+        "dynamic_friction": 0.52,
+        "poissons_ratio": 0.38,
+        "surface_thickness_m": 0.0055,
+        "youngs_modulus_pa": 145000.0
+      }
+    },
+    "target_bed_mesh": {
+      "triangles": 1040,
+      "vertices": 567
+    }
+  },
+  "tool": {
+    "approximate_mass_kg": 1.1,
+    "joint_count": 17,
+    "modalities": [
+      "blunt_spreading",
+      "hydrodissection",
+      "guarded_scissors",
+      "low_energy_dissection"
+    ],
+    "mount": "panda_link8_hand_replacement",
+    "traction_cell_count": 8,
+    "travel": {
+      "energy_extension_m": 0.048,
+      "hydro_extension_m": 0.05,
+      "scissor_extension_m": 0.052,
+      "spreader_m": 0.022,
+      "traction_m": 0.036
+    }
+  },
+  "traction": {
+    "hard_release_limit_per_pad_n": 5.0,
+    "nominal_force_per_pad_n": 1.4,
+    "qualification": "provisional_unmeasured",
+    "soft_force_limit_per_pad_n": 3.0
+  },
+  "units": "metres_kilograms_seconds",
+  "version": "0.1.0"
+}
