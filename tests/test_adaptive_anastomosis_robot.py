@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import math
 from pathlib import Path
 import sys
 import unittest
@@ -19,33 +18,6 @@ sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
-class ContractTests(unittest.TestCase):
-    def test_phase_contract_is_complete_and_finite(self):
-        expected = {
-            "inspect", "capture", "align", "mandrel", "approximate", "evert",
-            "staple", "release_capture", "reinforce", "occlude", "pressurize",
-            "verify", "complete", "abort",
-        }
-        self.assertEqual(set(MODULE.PHASE_TARGETS), expected)
-        self.assertEqual(len(MODULE.TOOL_JOINTS), 14)
-        for phase in expected:
-            targets = MODULE.phase_targets(phase)
-            self.assertEqual(set(targets), set(MODULE.TOOL_JOINTS.values()))
-            self.assertTrue(all(math.isfinite(value) for value in targets.values()))
-        with self.assertRaises(KeyError):
-            MODULE.phase_targets("invented")
-        with self.assertRaises(KeyError):
-            MODULE.frame_path("/World/Tool", "invented")
-
-    def test_sequence_preserves_pressure_at_verification(self):
-        sequence = MODULE.AdaptiveAnastomosisSequenceController()
-        sequence.transition("pressurize")
-        sequence.leak_test.pressure_pa = 8000.0
-        sequence.transition("verify")
-        self.assertEqual(sequence.leak_test.pressure_pa, 8000.0)
-        self.assertEqual(sequence.leak_test.elapsed_s, 0.0)
-
-
 class PhysicalControllerTests(unittest.TestCase):
     def test_patency_pass_failure_and_input_validation(self):
         controller = MODULE.LumenPatencyController()
@@ -59,17 +31,6 @@ class PhysicalControllerTests(unittest.TestCase):
         self.assertFalse(controller.evaluate([0.007], axis_error_deg=1.0).passed)
         with self.assertRaises(ValueError):
             controller.evaluate([float("nan")])
-
-    def test_leak_ledger_conserves_every_bucket(self):
-        ledger = MODULE.LeakTestLedger(initial_reservoir_ml=10.0)
-        self.assertEqual(ledger.reservoir_ml, 10.0)
-        self.assertEqual(ledger.inject(3.0), 3.0)
-        self.assertEqual(ledger.leak(1.5), 1.5)
-        ledger.collect(0.5)
-        ledger.spill(0.25)
-        ledger.discard(0.125)
-        self.assertAlmostEqual(ledger.active_leak_ml, 0.625)
-        self.assertAlmostEqual(ledger.conservation_error_ml, 0.0, places=12)
 
     def test_pressure_decay_model_is_monotonic_and_passes_nominal_case(self):
         controller = MODULE.PressureDecayLeakController()

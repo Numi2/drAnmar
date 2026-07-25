@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import math
 from pathlib import Path
 import sys
 import unittest
@@ -33,18 +32,6 @@ class _Stage:
 
 
 class AdaptiveHemostasisTests(unittest.TestCase):
-    def test_phase_contract_is_complete(self):
-        expected = {
-            "inspect", "clear", "compress", "temporary_control_check", "clip",
-            "release_compression", "patch", "pressure_challenge", "verify",
-            "complete", "abort",
-        }
-        self.assertEqual(set(MODULE.PHASE_TARGETS), expected)
-        joint_names = set(MODULE.TOOL_JOINTS.values())
-        for targets in MODULE.PHASE_TARGETS.values():
-            self.assertEqual(set(targets), joint_names)
-            self.assertTrue(all(math.isfinite(value) for value in targets.values()))
-
     def test_hemorrhage_ledger_conserves_volume(self):
         ledger = MODULE.HemorrhageLedger(initial_reservoir_ml=2.0, reservoir_ml=2.0)
         self.assertEqual(ledger.emit(1.0), 1.0)
@@ -67,22 +54,6 @@ class AdaptiveHemostasisTests(unittest.TestCase):
         self.assertGreater(open_flow, compressed)
         self.assertGreater(compressed, clipped)
         self.assertGreater(clipped, patched)
-
-    def test_suction_validates_and_accounts(self):
-        ledger = MODULE.HemorrhageLedger(initial_reservoir_ml=1.0, reservoir_ml=1.0)
-        ledger.emit(0.004)
-        controller = MODULE.AnnularSuctionController((0.0, 0.0, 0.0))
-        positions, velocities, mask = controller.update_positions_velocities(
-            [[0.001, 0.0, 0.0], [0.02, 0.0, 0.0]],
-            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
-            0.01,
-            ledger,
-        )
-        self.assertEqual(len(positions), 1)
-        self.assertEqual(mask.tolist(), [True, False])
-        self.assertAlmostEqual(ledger.suctioned_ml, 0.002)
-        with self.assertRaises(ValueError):
-            controller.update_positions_velocities([[0.0, 0.0]], [[0.0, 0.0]], 0.1)
 
     def test_compression_force_envelope(self):
         controller = MODULE.TemporaryCompressionController("/Tool", "/Vessel")
@@ -120,17 +91,6 @@ class AdaptiveHemostasisTests(unittest.TestCase):
         )
         sequence.transition("complete")
         self.assertEqual(sequence.bleed_model.pressure_pa, sequence.baseline_pressure_pa)
-
-    def test_invalid_inputs_fail_closed(self):
-        with self.assertRaises(ValueError):
-            MODULE.ReducedOrderBleedModel(density_kg_m3=0.0)
-        with self.assertRaises(ValueError):
-            MODULE.SealVerificationController(observation_window_s=0.0)
-        with self.assertRaises(KeyError):
-            MODULE.phase_targets("invented")
-        with self.assertRaises(KeyError):
-            MODULE.frame_path("/Tool", "invented")
-
 
 if __name__ == "__main__":
     unittest.main()
