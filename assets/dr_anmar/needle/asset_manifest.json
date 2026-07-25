@@ -1,0 +1,23 @@
+{
+  "schema": "dr.anmar.asset-unit.v1",
+  "id": "dr-anmar-needle-v1",
+  "title": "Dr.Anmar layered suture needle",
+  "version": "1.0.0",
+  "provider": "dr_anmar_repository",
+  "license": "BSD-3-Clause",
+  "license_file": "../../../LICENSE",
+  "entrypoints": {
+    "needle_and_suture": "DrAnmarNeedle.usda",
+    "needle_only": "DrAnmarNeedleOnly.usda",
+    "interactive": "DrAnmarNeedle_interactive.usda"
+  },
+  "layers": [
+    "DrAnmarNeedle_base.usda",
+    "DrAnmarNeedle_geometry.usd",
+    "DrAnmarNeedle_materials.usda",
+    "DrAnmarNeedle_physics.usda",
+    "DrAnmarNeedle_physx.usda"
+  ],
+  "physics_profile": "../../../physics_next/needles/dr-anmar-needle-v1.json",
+  "clinical_validation": false
+}

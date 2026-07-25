@@ -1,0 +1,18 @@
+{
+  "schema": "dr.anmar.asset-unit.v1",
+  "id": "dr-anmar-suture-4-0-braided-v1",
+  "title": "Dr.Anmar braided 4-0 suture",
+  "version": "1.0.0",
+  "provider": "dr_anmar_repository",
+  "license": "BSD-3-Clause",
+  "license_file": "../../../LICENSE",
+  "entrypoints": {
+    "composed": "DrAnmarSuture4_0.usda",
+    "base": "DrAnmarSuture4_0_base.usda",
+    "physics": "DrAnmarSuture4_0_physics.usda",
+    "physx": "DrAnmarSuture4_0_physx.usda"
+  },
+  "physics_profile": "../../../physics_next/sutures/dr-anmar-suture-4-0.json",
+  "gpu_qualification": "../../../physics_next/benchmarks/dr-anmar-warp-suture-qualification.json",
+  "clinical_validation": false
+}

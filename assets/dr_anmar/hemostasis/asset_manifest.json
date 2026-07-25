@@ -1,0 +1,17 @@
+{
+  "schema": "dr.anmar.asset-unit.v1",
+  "id": "dr-anmar-hemostasis-v1",
+  "title": "Dr.Anmar vessel and vascular clip",
+  "version": "1.0.0",
+  "provider": "dr_anmar_repository",
+  "license": "BSD-3-Clause",
+  "license_file": "../../../LICENSE",
+  "entrypoints": {
+    "vessel": "DrAnmarVessel.usda",
+    "vessel_tetmesh": "DrAnmarVessel.tet.usda",
+    "vascular_clip": "DrAnmarVascularClip.usda"
+  },
+  "physics_profile": "../../../physics_next/vessels/dr-anmar-hemostasis-v1.json",
+  "validation_report": "DrAnmarHemostasis.validation.json",
+  "clinical_validation": false
+}

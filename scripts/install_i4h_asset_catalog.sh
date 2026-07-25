@@ -10,10 +10,25 @@ if [[ -f "${project_root}/.env" ]]; then
 fi
 
 app_root="${DR_ANMAR_ROOT:-$HOME/.local/share/dr-anmar}"
-release="${DR_ANMAR_I4H_ASSET_CATALOG_RELEASE:-v0.7.0}"
-release_commit="${DR_ANMAR_I4H_ASSET_CATALOG_COMMIT:-b0b7ad39f26490d58d12407cfa74b3c9ad861769}"
-asset_version="${DR_ANMAR_I4H_ASSET_VERSION:-0.7.0}"
-asset_hash="${DR_ANMAR_I4H_ASSET_HASH:-724f82e}"
+policy_path="${project_root}/config/dranmar_asset_catalog.json"
+read -r policy_release policy_commit policy_version policy_hash < <(
+  python3 - "${policy_path}" <<'PY'
+import json
+import sys
+
+provider = json.load(open(sys.argv[1], encoding="utf-8"))["providers"]["nvidia_i4h"]
+print(
+    provider["release"],
+    provider["catalog_commit"],
+    provider["asset_version"],
+    provider["content_hash"],
+)
+PY
+)
+release="${DR_ANMAR_I4H_ASSET_CATALOG_RELEASE:-${policy_release}}"
+release_commit="${DR_ANMAR_I4H_ASSET_CATALOG_COMMIT:-${policy_commit}}"
+asset_version="${DR_ANMAR_I4H_ASSET_VERSION:-${policy_version}}"
+asset_hash="${DR_ANMAR_I4H_ASSET_HASH:-${policy_hash}}"
 vendor_root="${app_root}/vendor"
 root="${DR_ANMAR_I4H_ASSET_CATALOG_INSTALL_ROOT:-${vendor_root}/i4h-asset-catalog-${release}}"
 active_link="${DR_ANMAR_I4H_ASSET_CATALOG_ACTIVE_LINK:-${vendor_root}/i4h-asset-catalog-current}"

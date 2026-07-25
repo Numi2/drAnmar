@@ -1,0 +1,17 @@
+{
+  "schema": "dr.anmar.asset-unit.v1",
+  "id": "nvidia-needle-dr-anmar-suture-v1",
+  "title": "ORBIT-Surgical needle with Dr.Anmar 4-0 suture",
+  "version": "1.0.0",
+  "provider": "dr_anmar_repository",
+  "license": "BSD-3-Clause",
+  "license_file": "../../../LICENSE",
+  "notice_file": "../../../NOTICE.md",
+  "entrypoints": {
+    "physx": "NvidiaNeedleDrAnmarSuture.usda",
+    "interactive": "NvidiaNeedleDrAnmarSuture_interactive.usda"
+  },
+  "external_geometry_dependency": "../../../source/extensions/orbit.surgical.assets/data/Props/Surgical_needle/needle_sdf.usd",
+  "suture_dependency": "../suture/DrAnmarSuture4_0.usda",
+  "clinical_validation": false
+}

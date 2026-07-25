@@ -29,11 +29,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from dr_anmar_catalog import CATALOG, PRIMARY_TASKS, TASKS_BY_ID
+from dr_anmar_asset_registry import provider_roots, resolve_provider_asset
 from dr_anmar_bench_systems import (
     related_asset_paths as related_bench_asset_paths,
     resolve_featured_robot_system,
 )
+from dr_anmar_catalog import CATALOG, PRIMARY_TASKS, TASKS_BY_ID
 from dr_anmar_curriculum import curriculum_payload
 from dr_anmar_i4h_adapter import (
     I4H_ROOT,
@@ -163,36 +164,33 @@ def missing_required_bench_assets(
     """Return missing NVIDIA or DrAnmar paths from a room's asset contract."""
 
     content_root = I4H_ASSET_DOWNLOAD_DIR / I4H_ASSET_HASH
-    required: list[tuple[Path, str]] = [
-        (content_root, str(path))
+    roots = provider_roots(args.root, i4h_content_root=content_root)
+    required: list[tuple[str, str]] = [
+        ("nvidia_i4h", str(path))
         for path in procedure.get("required_nvidia_assets", ())
     ]
     required.extend(
-        (args.root, str(path))
+        ("dr_anmar_repository", str(path))
         for path in procedure.get("required_repository_assets", ())
     )
     selected = set(bench_assets or ())
-    provider_roots = {
-        "nvidia_i4h": content_root,
-        "dr_anmar": args.root / "source/extensions/orbit.surgical.assets/data",
-        "dr_anmar_repository": args.root,
-    }
     for item in procedure.get("bench_asset_catalog", ()):
         if str(item["id"]) not in selected:
             continue
         provider = str(item.get("provider", "nvidia_i4h"))
-        root = provider_roots.get(provider)
-        if root is None:
-            raise RuntimeError(f"Unknown operating-room asset provider: {provider}")
-        required.append((root, str(item["path"])))
+        required.append((provider, str(item["path"])))
         required.extend(
-            (root, relative_path)
+            (provider, relative_path)
             for relative_path in related_bench_asset_paths(item)
         )
     return [
         str(relative_path)
-        for root, relative_path in required
-        if not (root / relative_path).is_file()
+        for provider, relative_path in required
+        if not resolve_provider_asset(
+            provider,
+            relative_path,
+            roots,
+        ).is_file()
     ]
 
 

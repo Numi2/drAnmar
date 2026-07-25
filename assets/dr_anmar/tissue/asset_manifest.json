@@ -1,0 +1,18 @@
+{
+  "schema": "dr.anmar.asset-unit.v1",
+  "id": "dr-anmar-suturable-tissue-v1",
+  "title": "Dr.Anmar suturable tissue",
+  "version": "1.0.0",
+  "provider": "dr_anmar_repository",
+  "license": "BSD-3-Clause",
+  "license_file": "../../../LICENSE",
+  "entrypoints": {
+    "intact": "DrAnmarSuturableTissue.usda",
+    "left": "DrAnmarSuturableTissue.left.usda",
+    "right": "DrAnmarSuturableTissue.right.usda",
+    "tetmesh": "DrAnmarSuturableTissue.tet.usda"
+  },
+  "physics_profile": "../../../physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+  "validation_report": "DrAnmarSuturableTissue.report.json",
+  "clinical_validation": false
+}

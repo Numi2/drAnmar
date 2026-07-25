@@ -28,15 +28,20 @@ from typing import Any
 
 from isaaclab.app import AppLauncher
 
+from dr_anmar_asset_layout import asset_landing as dr_anmar_asset_landing
+from dr_anmar_asset_registry import provider_roots, resolve_provider_asset
 from dr_anmar_bench_systems import (
     BENCH_ROBOT_SYSTEMS_BY_ID,
     FEATURED_ROBOT_POSITION_M,
     FEATURED_SUBSTRATE_POSITION_M,
     resolve_featured_robot_system,
 )
-from dr_anmar_procedures import PROCEDURES_BY_ID
+from dr_anmar_hemostasis_model import (
+    sample_hemostasis_episode_parameters,
+    stable_physx_vessel_proxy_parameters,
+)
 from dr_anmar_native_rooms import resolve_native_room
-from dr_anmar_asset_layout import asset_landing as dr_anmar_asset_landing
+from dr_anmar_procedures import PROCEDURES_BY_ID
 from dr_anmar_psm_gripper import (
     CANONICAL_PSM_GRIPPER_PROFILE,
     apply_psm_gripper_action_profile,
@@ -58,10 +63,6 @@ from dr_anmar_suture_model import (
 from dr_anmar_tissue_model import (
     sample_tissue_episode_parameters,
     stable_physx_proxy_parameters,
-)
-from dr_anmar_hemostasis_model import (
-    sample_hemostasis_episode_parameters,
-    stable_physx_vessel_proxy_parameters,
 )
 
 
@@ -4219,18 +4220,26 @@ def main() -> None:
             if str(item["id"]) in selected_bench_assets
         ]
         procedure["featured_robot_system"] = featured_robot_system_id
+        bench_asset_provider_roots = provider_roots(
+            REPOSITORY_ROOT,
+            i4h_content_root=I4H_ASSET_CONTENT_ROOT,
+        )
         core_bench_assets = {
-            "psm": I4H_ASSET_CONTENT_ROOT / "Robots/dVRK/PSM/psm.usd",
-            "needle_runtime": I4H_ASSET_CONTENT_ROOT
-            / "Props/SutureNeedle/needle_sdf.usd",
-            "table": I4H_ASSET_CONTENT_ROOT / "Props/Table/table.usd",
-        }
-        bench_asset_provider_roots = {
-            "nvidia_i4h": I4H_ASSET_CONTENT_ROOT,
-            "dr_anmar": (
-                REPOSITORY_ROOT / "source/extensions/orbit.surgical.assets/data"
+            "psm": resolve_provider_asset(
+                "nvidia_i4h",
+                "Robots/dVRK/PSM/psm.usd",
+                bench_asset_provider_roots,
             ),
-            "dr_anmar_repository": REPOSITORY_ROOT,
+            "needle_runtime": resolve_provider_asset(
+                "nvidia_i4h",
+                "Props/SutureNeedle/needle_sdf.usd",
+                bench_asset_provider_roots,
+            ),
+            "table": resolve_provider_asset(
+                "nvidia_i4h",
+                "Props/Table/table.usd",
+                bench_asset_provider_roots,
+            ),
         }
         unknown_bench_providers = sorted(
             {
@@ -4248,10 +4257,11 @@ def main() -> None:
         bench_asset_paths = {
             **core_bench_assets,
             **{
-                str(item["id"]): bench_asset_provider_roots[
-                    str(item.get("provider", "nvidia_i4h"))
-                ]
-                / str(item["path"])
+                str(item["id"]): resolve_provider_asset(
+                    str(item.get("provider", "nvidia_i4h")),
+                    str(item["path"]),
+                    bench_asset_provider_roots,
+                )
                 for item in bench_catalog
                 if str(item["id"]) in selected_bench_assets
             },
@@ -4263,11 +4273,15 @@ def main() -> None:
             featured_robot_system_paths = {
                 "standalone": bench_asset_paths[featured_robot_system_id],
                 **{
-                    key.removesuffix("_path"): (
-                        bench_asset_provider_roots[
-                            str(featured_robot_spec.get("provider", "nvidia_i4h"))
-                        ]
-                        / str(featured_robot_spec[key])
+                    key.removesuffix("_path"): resolve_provider_asset(
+                        str(
+                            featured_robot_spec.get(
+                                "provider",
+                                "nvidia_i4h",
+                            )
+                        ),
+                        str(featured_robot_spec[key]),
+                        bench_asset_provider_roots,
                     )
                     for key in (
                         "payload_path",

@@ -1,0 +1,83 @@
+# Dr.Anmar asset catalog
+
+Dr.Anmar uses one catalog contract for its bundled OpenUSD assets and the
+external NVIDIA Isaac for Healthcare asset provider. The contract is designed
+to keep simulation assets portable, reviewable, and reproducible without
+loading Isaac Sim merely to inspect the tree.
+
+## What is authoritative
+
+- `config/dranmar_asset_catalog.json` pins the i4h Git release, full commit,
+  content version, content hash, supported download bundles, local provider
+  roots, and minimum metadata policy.
+- `scripts/dr_anmar_asset_registry.py` resolves provider-relative paths,
+  inventories every local asset family, verifies JSON and textual USDA
+  dependencies, and generates deterministic release locks.
+- Each modern asset family lives under a stable category path such as
+  `Props/SurgicalClosure/SkinStapler` or
+  `Props/Patients/DynamicAbdominalPatient`.
+- The existing per-asset manifests, physics profiles, interaction frames,
+  qualification reports, licenses, and notices remain the detailed source of
+  truth. The registry does not replace physics-specific qualification.
+
+The catalog structure follows the useful parts of the upstream
+[`i4h-asset-catalog`](https://github.com/isaac-for-healthcare/i4h-asset-catalog):
+stable relative paths, an explicit provider release and content hash, lazy
+subpath retrieval, deterministic folder hashing, and simulator-independent
+tests.
+
+## Commands
+
+Run the fast structural and runtime-reference gate:
+
+```bash
+python3 scripts/dr_anmar_asset_registry.py verify
+```
+
+Inspect every bundled asset unit:
+
+```bash
+python3 scripts/dr_anmar_asset_registry.py inventory
+```
+
+Resolve a path exactly as the hub and workstation do:
+
+```bash
+python3 scripts/dr_anmar_asset_registry.py resolve \
+  dr_anmar \
+  Props/SurgicalClosure/SkinStapler/skin_stapler_rigid_proxy.usda \
+  --require
+```
+
+Create a release lock after the asset tree has passed its physics and visual
+qualification:
+
+```bash
+python3 scripts/dr_anmar_asset_registry.py lock \
+  --output build/dranmar-asset-catalog.lock.json
+python3 scripts/dr_anmar_asset_registry.py verify \
+  --lock build/dranmar-asset-catalog.lock.json
+```
+
+The lock includes one deterministic SHA-256 per asset family. It is a release
+integrity artifact, not evidence that an asset is clinically validated or that
+its Isaac/PhysX behavior passed a GPU qualification.
+
+## Adding or importing an asset
+
+1. Place it under a stable category path. Do not make a loose root-level asset.
+2. Keep all USD-relative dependencies inside the repository and use relative
+   references. Absolute workstation paths fail the catalog gate.
+3. Add the applicable license or preserve the provider notice.
+4. Add a manifest, physics profile, mechanics contract, or qualification
+   report at the asset-family root.
+5. Add a README describing entrypoints, representations, supported simulator
+   lanes, state variants, known limits, and the non-clinical boundary.
+6. Register room-visible entrypoints with a known provider:
+   `dr_anmar`, `dr_anmar_repository`, or `nvidia_i4h`.
+7. Run the structural gate, asset-specific tests, and the relevant native
+   Isaac/PhysX qualification before updating a release lock.
+
+External i4h payloads are downloaded separately and retain their own license
+terms. In particular, research-only or non-commercial assets must never be
+silently promoted into a commercial Dr.Anmar release.

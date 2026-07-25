@@ -1,0 +1,17 @@
+{
+  "schema": "dr.anmar.asset-unit.v1",
+  "id": "dr-anmar-laparotomy-sponge-v1",
+  "title": "Dr.Anmar laparotomy sponge",
+  "version": "1.0.0",
+  "provider": "dr_anmar",
+  "license": "Apache-2.0",
+  "license_file": "LICENSE.txt",
+  "notice_file": "NOTICE.txt",
+  "entrypoints": {
+    "unfolded": "lap_sponge_unfolded.usda",
+    "folded_rigid_proxy": "lap_sponge_folded_proxy.usda"
+  },
+  "physics_profile": "../../../../../../../physics_next/surgical-count/dr-anmar-laparotomy-sponge-v1.json",
+  "gpu_qualification": "../../../../../../../physics_next/benchmarks/dr-anmar-laparotomy-sponge-validation.json",
+  "clinical_validation": false
+}
