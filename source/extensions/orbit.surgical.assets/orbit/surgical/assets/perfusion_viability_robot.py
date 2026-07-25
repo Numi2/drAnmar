@@ -30,6 +30,16 @@ PERFUSION_GRAPH_PATH = ASSET_ROOT / "perfusion_network.json"
 VALID_CONTRAST_STATES = frozenset({"full", "empty"})
 VALID_GEL_STATES = frozenset({"full", "empty"})
 VALID_SENSOR_STATES = frozenset({"ready", "degraded", "fault"})
+VALID_SENSOR_MODALITIES = frozenset({
+    "stereo_rgb",
+    "nir_icg",
+    "laser_speckle",
+    "thermal",
+    "surface_oxygenation",
+    "depth",
+    "doppler",
+    "ultrasound",
+})
 VALID_CONDITIONS = frozenset({
     "healthy", "arterial_occlusion", "venous_congestion", "anastomotic_stenosis",
     "branch_leak", "retraction_ischemia", "dressing_compression", "recovered",
@@ -116,6 +126,152 @@ def _finite(value: float, label: str) -> float:
     if not math.isfinite(result):
         raise ValueError(f"{label} must be finite")
     return result
+
+
+def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
+    return max(low, min(high, float(value)))
+
+
+@dataclass
+class SensorConsumableLedger:
+    """Conserve contrast and coupling gel across repeated acquisitions."""
+
+    initial_contrast_ml: float = 6.0
+    initial_gel_ml: float = 12.0
+    contrast_remaining_ml: float | None = None
+    gel_remaining_ml: float | None = None
+    contrast_consumed_ml: float = 0.0
+    gel_consumed_ml: float = 0.0
+
+    def __post_init__(self) -> None:
+        self.initial_contrast_ml = _finite(
+            self.initial_contrast_ml, "initial_contrast_ml"
+        )
+        self.initial_gel_ml = _finite(self.initial_gel_ml, "initial_gel_ml")
+        if self.initial_contrast_ml < 0.0 or self.initial_gel_ml < 0.0:
+            raise ValueError("initial consumable volumes must be non-negative")
+        if self.contrast_remaining_ml is None:
+            self.contrast_remaining_ml = self.initial_contrast_ml
+        if self.gel_remaining_ml is None:
+            self.gel_remaining_ml = self.initial_gel_ml
+        self.contrast_remaining_ml = _finite(
+            self.contrast_remaining_ml, "contrast_remaining_ml"
+        )
+        self.gel_remaining_ml = _finite(
+            self.gel_remaining_ml, "gel_remaining_ml"
+        )
+        if not 0.0 <= self.contrast_remaining_ml <= self.initial_contrast_ml:
+            raise ValueError("contrast_remaining_ml is outside the ledger")
+        if not 0.0 <= self.gel_remaining_ml <= self.initial_gel_ml:
+            raise ValueError("gel_remaining_ml is outside the ledger")
+
+    def consume(self, *, contrast_ml: float = 0.0, gel_ml: float = 0.0) -> dict[str, float]:
+        contrast_request = _finite(contrast_ml, "contrast_ml")
+        gel_request = _finite(gel_ml, "gel_ml")
+        if contrast_request < 0.0 or gel_request < 0.0:
+            raise ValueError("consumable requests must be non-negative")
+        contrast_used = min(contrast_request, self.contrast_remaining_ml)
+        gel_used = min(gel_request, self.gel_remaining_ml)
+        self.contrast_remaining_ml -= contrast_used
+        self.gel_remaining_ml -= gel_used
+        self.contrast_consumed_ml += contrast_used
+        self.gel_consumed_ml += gel_used
+        return {
+            "contrast_requested_ml": contrast_request,
+            "contrast_used_ml": contrast_used,
+            "gel_requested_ml": gel_request,
+            "gel_used_ml": gel_used,
+        }
+
+    @property
+    def conservation_error_ml(self) -> float:
+        contrast_error = (
+            self.initial_contrast_ml
+            - self.contrast_remaining_ml
+            - self.contrast_consumed_ml
+        )
+        gel_error = (
+            self.initial_gel_ml - self.gel_remaining_ml - self.gel_consumed_ml
+        )
+        return float(contrast_error + gel_error)
+
+
+@dataclass(frozen=True)
+class SensorOperatingState:
+    """Runtime health and registration state supplied by the sensor host."""
+
+    sensor_state: str = "ready"
+    failed_modalities: frozenset[str] = frozenset()
+    registration_error_m: float = 0.0
+    timestamp_skew_s: float = 0.0
+    ultrasound_preload_n: float = 1.2
+    doppler_preload_n: float = 0.35
+
+    def __post_init__(self) -> None:
+        _check(self.sensor_state, VALID_SENSOR_STATES, "sensor_state")
+        unknown = set(self.failed_modalities).difference(VALID_SENSOR_MODALITIES)
+        if unknown:
+            raise ValueError(f"Unknown failed modalities: {sorted(unknown)}")
+        for label in (
+            "registration_error_m",
+            "timestamp_skew_s",
+            "ultrasound_preload_n",
+            "doppler_preload_n",
+        ):
+            value = _finite(getattr(self, label), label)
+            if value < 0.0:
+                raise ValueError(f"{label} must be non-negative")
+
+
+@dataclass(frozen=True)
+class ProbeContactOutput:
+    target_extension_delta_m: float
+    coupled: bool
+    overload: bool
+    abort: bool
+    force_error_n: float
+
+
+@dataclass
+class ProbeContactController:
+    """Bounded outer loop for host-reported ultrasound or Doppler preload."""
+
+    target_preload_n: float = 1.2
+    minimum_coupled_force_n: float = 0.25
+    soft_force_limit_n: float = 2.5
+    hard_force_limit_n: float = 4.0
+    position_gain_m_per_n: float = 0.0008
+    maximum_step_m: float = 0.0015
+
+    def update(self, *, measured_force_n: float, dt_s: float) -> ProbeContactOutput:
+        force = _finite(measured_force_n, "measured_force_n")
+        dt = _finite(dt_s, "dt_s")
+        if force < 0.0:
+            raise ValueError("measured_force_n must be non-negative")
+        if dt <= 0.0:
+            raise ValueError("dt_s must be positive")
+        error = self.target_preload_n - force
+        overload = force >= self.soft_force_limit_n
+        abort = force >= self.hard_force_limit_n
+        if abort:
+            delta = -self.maximum_step_m
+        else:
+            delta = _clamp(
+                self.position_gain_m_per_n * error * min(dt * 120.0, 1.0),
+                -self.maximum_step_m,
+                self.maximum_step_m,
+            )
+        return ProbeContactOutput(
+            target_extension_delta_m=float(delta),
+            coupled=bool(
+                self.minimum_coupled_force_n
+                <= force
+                < self.soft_force_limit_n
+            ),
+            overload=overload,
+            abort=abort,
+            force_error_n=float(error),
+        )
 
 
 def load_perfusion_graph(path: Path = PERFUSION_GRAPH_PATH) -> dict[str, Any]:
@@ -374,6 +530,172 @@ def spawn_tissue_demo(
     return cfg.func(prim_path, cfg, translation=translation, orientation=orientation_wxyz)
 
 
+def apply_perfused_tissue_surface_deformable(
+    root_path: str,
+    *,
+    self_collision: bool = False,
+    youngs_modulus_pa: float = 125_000.0,
+    poissons_ratio: float = 0.38,
+    thickness_m: float = 0.008,
+    stage=None,
+) -> dict[str, Any]:
+    """Cook and bind the tissue surface using current PhysX surface schemas."""
+
+    from omni.physx.scripts import deformableUtils
+    from pxr import Sdf, UsdShade
+
+    if stage is None:
+        import omni.usd
+
+        stage = omni.usd.get_context().get_stage()
+    mesh_path = f"{root_path.rstrip('/')}/Geometry/TissueSurface"
+    mesh = stage.GetPrimAtPath(mesh_path)
+    if not mesh or not mesh.IsValid():
+        raise ValueError(f"No perfused tissue surface at {mesh_path}")
+    success = deformableUtils.set_physics_surface_deformable_body(
+        stage, mesh.GetPath()
+    )
+    if success is False:
+        raise RuntimeError(f"Failed to cook surface deformable at {mesh_path}")
+    mesh.ApplyAPI("PhysxSurfaceDeformableBodyAPI")
+    if mesh.HasAPI("PhysxSurfaceDeformableBodyAPI"):
+        mesh.GetAttribute("physxDeformableBody:selfCollision").Set(
+            bool(self_collision)
+        )
+    material_path = f"{root_path.rstrip('/')}/RuntimeMaterials/PerfusedTissue"
+    material = UsdShade.Material.Define(stage, material_path)
+    material_prim = material.GetPrim()
+    youngs_modulus = _finite(youngs_modulus_pa, "youngs_modulus_pa")
+    poisson = _finite(poissons_ratio, "poissons_ratio")
+    thickness = _finite(thickness_m, "thickness_m")
+    if youngs_modulus <= 0.0 or thickness <= 0.0:
+        raise ValueError("surface modulus and thickness must be positive")
+    if not -1.0 < poisson < 0.5:
+        raise ValueError("poissons_ratio must be between -1 and 0.5")
+    for schema in (
+        "OmniPhysicsSurfaceDeformableMaterialAPI",
+        "PhysxSurfaceDeformableMaterialAPI",
+    ):
+        try:
+            material_prim.ApplyAPI(schema)
+        except Exception:
+            pass
+    attributes = {
+        "omniphysics:dynamicFriction": 0.48,
+        "omniphysics:density": 1060.0,
+        "omniphysics:youngsModulus": youngs_modulus,
+        "omniphysics:poissonsRatio": poisson,
+        "omniphysics:surfaceThickness": thickness,
+        "omniphysics:surfaceBendStiffness": 0.0,
+        "physxDeformableMaterial:elasticityDamping": 0.16,
+        "physxDeformableMaterial:bendDamping": 0.18,
+    }
+    for name, value in attributes.items():
+        attribute = material_prim.GetAttribute(name)
+        if not attribute:
+            attribute = material_prim.CreateAttribute(
+                name, Sdf.ValueTypeNames.Float
+            )
+        attribute.Set(value)
+    UsdShade.MaterialBindingAPI.Apply(mesh).Bind(
+        material, UsdShade.Tokens.weakerThanDescendants, "physics"
+    )
+    return {
+        "root_path": root_path,
+        "mesh_path": mesh_path,
+        "material_path": material_path,
+        "self_collision": bool(self_collision),
+    }
+
+
+def create_perfused_tissue_fixture_attachment(
+    deformable_path: str,
+    target_path: str,
+    attachment_path: str,
+    *,
+    maximum_vertices: int = 16,
+    stage=None,
+) -> str:
+    """Attach the nearest populated surface vertices to a fixture target."""
+
+    from pxr import Gf, Sdf, Usd, UsdGeom, Vt
+
+    if stage is None:
+        import omni.usd
+
+        stage = omni.usd.get_context().get_stage()
+    if stage.GetPrimAtPath(attachment_path).IsValid():
+        stage.RemovePrim(attachment_path)
+    definition = Usd.SchemaRegistry().FindConcretePrimDefinition(
+        "OmniPhysicsVtxXformAttachment"
+    )
+    if not definition:
+        raise RuntimeError(
+            "OmniPhysicsVtxXformAttachment is unavailable in this runtime"
+        )
+    deformable = stage.GetPrimAtPath(deformable_path)
+    target = stage.GetPrimAtPath(target_path)
+    mesh = UsdGeom.Mesh(deformable)
+    points = list(mesh.GetPointsAttr().Get() or [])
+    if not deformable.IsValid() or not mesh or not points:
+        raise ValueError(f"Attachment source is not a mesh: {deformable_path}")
+    if not target.IsValid() or not UsdGeom.Xformable(target):
+        raise ValueError(f"Attachment target is not xformable: {target_path}")
+    mesh_to_world = UsdGeom.Xformable(deformable).ComputeLocalToWorldTransform(
+        Usd.TimeCode.Default()
+    )
+    target_to_world = UsdGeom.Xformable(target).ComputeLocalToWorldTransform(
+        Usd.TimeCode.Default()
+    )
+    world_to_target = target_to_world.GetInverse()
+    bounds = UsdGeom.BBoxCache(
+        Usd.TimeCode.Default(), [UsdGeom.Tokens.default_]
+    ).ComputeWorldBound(target).ComputeAlignedRange()
+    minimum, maximum = bounds.GetMin(), bounds.GetMax()
+    center = (minimum + maximum) * 0.5
+    ranked = []
+    for index, point in enumerate(points):
+        world = mesh_to_world.Transform(Gf.Vec3d(point))
+        delta = world - center
+        overlaps = all(
+            minimum[axis] - 0.003 <= world[axis] <= maximum[axis] + 0.003
+            for axis in range(3)
+        )
+        ranked.append((float(Gf.Dot(delta, delta)), index, world, overlaps))
+    ranked.sort(key=lambda item: item[0])
+    selected = [item for item in ranked if item[3]][:maximum_vertices]
+    if len(selected) < 4:
+        selected = ranked[: min(maximum_vertices, len(ranked))]
+    if not selected:
+        raise RuntimeError(f"No fixture vertices available for {attachment_path}")
+    attachment = stage.DefinePrim(
+        attachment_path, "OmniPhysicsVtxXformAttachment"
+    )
+    attachment.CreateRelationship("omniphysics:src0").SetTargets(
+        [Sdf.Path(deformable_path)]
+    )
+    attachment.CreateRelationship("omniphysics:src1").SetTargets(
+        [Sdf.Path(target_path)]
+    )
+    attachment.CreateAttribute(
+        "omniphysics:vtxIndicesSrc0", Sdf.ValueTypeNames.IntArray
+    ).Set(Vt.IntArray([item[1] for item in selected]))
+    attachment.CreateAttribute(
+        "omniphysics:localPositionsSrc1", Sdf.ValueTypeNames.Point3fArray
+    ).Set(
+        Vt.Vec3fArray(
+            [
+                Gf.Vec3f(world_to_target.Transform(item[2]))
+                for item in selected
+            ]
+        )
+    )
+    attachment.CreateAttribute(
+        "omniphysics:attachmentEnabled", Sdf.ValueTypeNames.Bool
+    ).Set(True)
+    return "OmniPhysicsVtxXformAttachment"
+
+
 def spawn_coupling_pad(prim_path: str, *, translation=(0,0,0), orientation_wxyz=(1,0,0,0)):
     import isaaclab.sim as sim_utils
     cfg = sim_utils.UsdFileCfg(usd_path=str(COUPLING_PAD_USD))
@@ -407,6 +729,12 @@ def attach_camera_prims(stage, tool_path: str) -> dict[str, str]:
     for name, (focal, aperture, near, far) in specs.items():
         path = f"{frame_path(tool_path, name)}/Camera"
         camera = UsdGeom.Camera.Define(stage, path)
+        camera_xform = UsdGeom.Xformable(camera)
+        camera_xform.ClearXformOpOrder()
+        # USD cameras observe along local -Z. The authored modality frames use
+        # local +Z as the tissue-facing optical axis, so bridge the conventions
+        # explicitly instead of leaving some sensors aimed into the turret.
+        camera_xform.AddOrientOp().Set(Gf.Quatf(0.0, 0.0, 1.0, 0.0))
         camera.CreateFocalLengthAttr(float(focal))
         camera.CreateHorizontalApertureAttr(float(aperture))
         camera.CreateClippingRangeAttr(Gf.Vec2f(float(near), float(far)))
@@ -442,11 +770,13 @@ def sensor_runtime_contract(tool_path: str) -> dict[str, Any]:
 @dataclass(frozen=True)
 class VascularFlowResult:
     condition: str
+    recovery_fraction: float
     node_pressures_kpa: dict[str, float]
     edge_flows_ml_s: dict[str, float]
     edge_velocities_m_s: dict[str, float]
     region_flows_ml_s: dict[int, float]
     leak_flows_ml_s: dict[str, float]
+    leak_fractions: dict[str, float]
     total_inflow_ml_s: float
     total_outflow_ml_s: float
     conservation_error_ml_s: float
@@ -468,10 +798,46 @@ class VascularFlowSolver:
             multiplier *= float(condition.get("region_compression", {}).get(str(region), 1.0))
         return max(multiplier, 1.0e-6)
 
-    def solve(self, condition: str = "healthy", *, arterial_pressure_kpa: float | None = None, venous_pressure_kpa: float | None = None) -> VascularFlowResult:
+    def _blended_condition(
+        self, condition: str, recovery_fraction: float
+    ) -> dict[str, Any]:
+        base = self.graph["conditions"][condition]
+        recovered = self.graph["conditions"]["recovered"]
+        progress = _clamp(recovery_fraction)
+
+        def blend_map(key: str) -> dict[str, float]:
+            base_values = base.get(key, {})
+            recovered_values = recovered.get(key, {})
+            names = set(base_values) | set(recovered_values)
+            default = 0.0 if key == "leak_edges" else 1.0
+            return {
+                name: (
+                    (1.0 - progress) * float(base_values.get(name, default))
+                    + progress * float(recovered_values.get(name, default))
+                )
+                for name in names
+            }
+
+        return {
+            "edge_multipliers": blend_map("edge_multipliers"),
+            "region_compression": blend_map("region_compression"),
+            "leak_edges": blend_map("leak_edges"),
+        }
+
+    def solve(
+        self,
+        condition: str = "healthy",
+        *,
+        recovery_fraction: float = 0.0,
+        arterial_pressure_kpa: float | None = None,
+        venous_pressure_kpa: float | None = None,
+    ) -> VascularFlowResult:
         import numpy as np
         _check(condition, VALID_CONDITIONS, "condition")
-        condition_cfg = self.graph["conditions"][condition]
+        recovery = _finite(recovery_fraction, "recovery_fraction")
+        if not 0.0 <= recovery <= 1.0:
+            raise ValueError("recovery_fraction must be between zero and one")
+        condition_cfg = self._blended_condition(condition, recovery)
         p_ref = self.graph["reference_pressures_kpa"]
         arterial_pressure = _finite(
             p_ref["arterial"] if arterial_pressure_kpa is None else arterial_pressure_kpa,
@@ -533,7 +899,23 @@ class VascularFlowSolver:
         total_in = sum(q for edge_id, q in edge_flows.items() if self.edge_by_id[edge_id]["from"] == inlet) - sum(q for edge_id, q in edge_flows.items() if self.edge_by_id[edge_id]["to"] == inlet)
         total_out = sum(q for edge_id, q in edge_flows.items() if self.edge_by_id[edge_id]["to"] == outlet) - sum(q for edge_id, q in edge_flows.items() if self.edge_by_id[edge_id]["from"] == outlet)
         conservation = total_in - total_out - sum(leak_flows.values())
-        return VascularFlowResult(condition, pressure, edge_flows, edge_velocities, region_flows, leak_flows, float(total_in), float(total_out), float(conservation))
+        return VascularFlowResult(
+            condition=condition,
+            recovery_fraction=recovery,
+            node_pressures_kpa=pressure,
+            edge_flows_ml_s=edge_flows,
+            edge_velocities_m_s=edge_velocities,
+            region_flows_ml_s=region_flows,
+            leak_flows_ml_s=leak_flows,
+            leak_fractions={
+                edge_id: float(value)
+                for edge_id, value in condition_cfg.get("leak_edges", {}).items()
+                if float(value) > 0.0
+            },
+            total_inflow_ml_s=float(total_in),
+            total_outflow_ml_s=float(total_out),
+            conservation_error_ml_s=float(conservation),
+        )
 
 
 @dataclass
@@ -547,17 +929,27 @@ class TracerFrame:
 
 class ICGTracerTransport:
     """Stable edge-compartment transport driven by the solved vascular flows."""
-    def __init__(self, graph: Mapping[str, Any] | None = None, *, injection_time_s: float = 1.0, peak_input_time_s: float = 4.5):
+    def __init__(
+        self,
+        graph: Mapping[str, Any] | None = None,
+        *,
+        injection_time_s: float = 1.0,
+        peak_input_time_s: float = 4.5,
+        input_scale: float = 1.0,
+    ):
         self.graph = dict(graph or load_perfusion_graph())
         self.nodes = dict(self.graph["nodes"])
         self.edges = list(self.graph["edges"])
         self.edge_by_id = {e["id"]: e for e in self.edges}
         self.injection_time_s = _finite(injection_time_s, "injection_time_s")
         self.peak_input_time_s = _finite(peak_input_time_s, "peak_input_time_s")
+        self.input_scale = _finite(input_scale, "input_scale")
         if self.injection_time_s < 0.0:
             raise ValueError("injection_time_s must be non-negative")
         if self.peak_input_time_s <= 0.0:
             raise ValueError("peak_input_time_s must be positive")
+        if not 0.0 <= self.input_scale <= 1.0:
+            raise ValueError("input_scale must be between zero and one")
         self.time_s = 0.0
         self.edge_c = {e["id"]: 0.0 for e in self.edges}
         self.region_c = {int(r["index"]): 0.0 for r in self.graph["regions"]}
@@ -584,7 +976,11 @@ class ICGTracerTransport:
         alpha = 3.4
         tp = self.peak_input_time_s
         ratio = x / tp
-        return float((ratio**alpha) * math.exp(alpha * (1.0 - ratio)))
+        return float(
+            self.input_scale
+            * (ratio**alpha)
+            * math.exp(alpha * (1.0 - ratio))
+        )
 
     def step(self, flow: VascularFlowResult, dt_s: float) -> TracerFrame:
         dt = _finite(dt_s, "dt_s")
@@ -620,7 +1016,7 @@ class ICGTracerTransport:
             clearance = math.exp(-0.012 * dt)
             new_edge[edge["id"]] = max(0.0, (node_c[src] + (self.edge_c[edge["id"]] - node_c[src]) * retention) * clearance)
         self.edge_c = new_edge
-        leak_cfg = self.graph["conditions"][flow.condition].get("leak_edges", {})
+        leak_cfg = flow.leak_fractions
         for region in self.graph["regions"]:
             idx = int(region["index"])
             cap = self.edge_c[region["capillary_edge"]]
@@ -673,12 +1069,19 @@ class PerfusionTimeSeries:
         wash_in = float(slopes[:max(1, peak_i)].max(initial=0.0))
         post = slopes[peak_i:] if peak_i < len(slopes) else np.asarray([], dtype=float)
         washout = float(post.min(initial=0.0))
-        auc = float(np.trapezoid(y, t))
+        integrate = getattr(np, "trapezoid", None)
+        if integrate is None:
+            # Isaac Sim 6 currently ships a NumPy 1.x environment, while
+            # ``numpy.trapezoid`` was introduced in NumPy 2.0.
+            integrate = np.trapz
+        auc = float(integrate(y, t))
         return RegionICGMetrics(arrival, wash_in, float(t[peak_i]), peak, washout, auc)
 
 
 @dataclass(frozen=True)
 class MultimodalMaps:
+    # ``flow_index`` is retained as simulator truth for evaluation and plotting.
+    # The diagnostic estimator must never consume it as a sensor observation.
     flow_index: Any
     icg_intensity: Any
     icg_extravascular: Any
@@ -688,6 +1091,11 @@ class MultimodalMaps:
     doppler_speed_m_s: Any
     ultrasound_patency: Any
     confidence: Any
+    modality_validity: Mapping[str, bool]
+    registration_error_m: float
+    timestamp_skew_s: float
+    sensor_state: str
+    faults: tuple[str, ...]
 
 
 class MultimodalSensorModel:
@@ -698,6 +1106,9 @@ class MultimodalSensorModel:
         self.rng = np.random.default_rng(seed)
         self.rows = 4
         self.cols = 6
+        self.edge_by_id = {
+            edge["id"]: edge for edge in self.graph["edges"]
+        }
 
     def _grid(self, values: Mapping[int, float]):
         import numpy as np
@@ -707,21 +1118,71 @@ class MultimodalSensorModel:
             out[int(r), int(c)] = float(values.get(idx, 0.0))
         return out
 
-    def observe(self, flow: VascularFlowResult, tracer: TracerFrame, *, healthy_reference: VascularFlowResult | None = None) -> MultimodalMaps:
+    def observe(
+        self,
+        flow: VascularFlowResult,
+        tracer: TracerFrame,
+        *,
+        healthy_reference: VascularFlowResult | None = None,
+        operating_state: SensorOperatingState | None = None,
+        contrast_available: bool = True,
+        gel_available: bool = True,
+    ) -> MultimodalMaps:
         import numpy as np
+        state = operating_state or SensorOperatingState()
         if healthy_reference is None:
             healthy_reference = VascularFlowSolver(self.graph).solve("healthy")
         flow_norm = {i: flow.region_flows_ml_s.get(i,0.0) / max(healthy_reference.region_flows_ml_s.get(i,1.0e-9),1.0e-9) for i in range(24)}
         flow_grid = np.clip(self._grid(flow_norm), 0.0, 1.8)
+        validity = {name: True for name in VALID_SENSOR_MODALITIES}
+        faults = set(state.failed_modalities)
+        if not contrast_available:
+            faults.add("nir_icg")
+        if not gel_available or not 0.25 <= state.ultrasound_preload_n < 2.5:
+            faults.add("ultrasound")
+        if not 0.05 <= state.doppler_preload_n < 2.5:
+            faults.add("doppler")
+        if state.sensor_state == "fault":
+            faults.update(VALID_SENSOR_MODALITIES)
+        for name in faults:
+            validity[name] = False
+
         icg = self._grid(tracer.region_concentration)
         extra = self._grid(tracer.extravascular_concentration)
-        speckle = np.clip(flow_grid + self.rng.normal(0.0,0.025,flow_grid.shape),0.0,1.8)
+        if not validity["nir_icg"]:
+            icg.fill(0.0)
+            extra.fill(0.0)
+
+        noise_scale = 0.025 if state.sensor_state == "ready" else 0.10
+        speckle = np.clip(
+            flow_grid + self.rng.normal(0.0, noise_scale, flow_grid.shape),
+            0.0,
+            1.8,
+        )
         # Perfusion warms tissue toward blood temperature; low flow cools gradually.
         temperature = 31.8 + 4.5 * (flow_grid / (0.28 + flow_grid))
-        congestion = np.zeros_like(flow_grid)
-        if flow.condition == "venous_congestion":
-            congestion[:,2:] = 0.12
-        oxygenation = np.clip(0.34 + 0.61 * (flow_grid/(0.22+flow_grid)) - congestion,0.20,0.98)
+        venous_pressure = np.asarray(
+            [
+                flow.node_pressures_kpa[
+                    self.edge_by_id[region["venule_edge"]]["from"]
+                ]
+                for region in self.graph["regions"]
+            ],
+            dtype=float,
+        ).reshape(self.rows, self.cols)
+        venous_reference = float(
+            self.graph["reference_pressures_kpa"]["venous"]
+        )
+        congestion = np.clip(
+            (venous_pressure - venous_reference) / 20.0, 0.0, 0.18
+        )
+        oxygenation = np.clip(
+            0.34
+            + 0.61 * (flow_grid / (0.22 + flow_grid))
+            - congestion,
+            0.20,
+            0.98,
+        )
         doppler = {}
         patency = {}
         for region in self.graph["regions"]:
@@ -731,8 +1192,45 @@ class MultimodalSensorModel:
             patency[idx]=min(1.0,max(0.0,flow_norm[idx]))
         doppler_grid=self._grid(doppler)
         patency_grid=self._grid(patency)
-        confidence=np.clip(0.92 - 0.10*np.abs(flow_grid-speckle) - 0.08*(extra>0.05),0.35,0.99)
-        return MultimodalMaps(flow_grid,icg,extra,speckle,temperature,oxygenation,doppler_grid,patency_grid,confidence)
+        if not validity["laser_speckle"]:
+            speckle.fill(0.0)
+        if not validity["thermal"]:
+            temperature.fill(0.0)
+        if not validity["surface_oxygenation"]:
+            oxygenation.fill(0.0)
+        if not validity["doppler"]:
+            doppler_grid.fill(0.0)
+        if not validity["ultrasound"]:
+            patency_grid.fill(0.0)
+        degradation_penalty = 0.28 if state.sensor_state == "degraded" else 0.0
+        fault_fraction = sum(not value for value in validity.values()) / len(validity)
+        confidence=np.clip(
+            0.92
+            - 0.10*np.abs(flow_grid-speckle)
+            - 0.08*(extra>0.05)
+            - degradation_penalty
+            - 0.55*fault_fraction
+            - min(0.45, state.registration_error_m * 80.0)
+            - min(0.35, state.timestamp_skew_s * 4.0),
+            0.02,
+            0.99,
+        )
+        return MultimodalMaps(
+            flow_index=flow_grid,
+            icg_intensity=icg,
+            icg_extravascular=extra,
+            speckle_perfusion=speckle,
+            temperature_c=temperature,
+            oxygenation_fraction=oxygenation,
+            doppler_speed_m_s=doppler_grid,
+            ultrasound_patency=patency_grid,
+            confidence=confidence,
+            modality_validity=validity,
+            registration_error_m=float(state.registration_error_m),
+            timestamp_skew_s=float(state.timestamp_skew_s),
+            sensor_state=state.sensor_state,
+            faults=tuple(sorted(faults)),
+        )
 
     def synthetic_bmode(self, flow: VascularFlowResult, *, width_px: int=256, depth_px: int=192, include_color_doppler: bool=True):
         import numpy as np
@@ -785,46 +1283,174 @@ class RegionAssessment:
 
 @dataclass(frozen=True)
 class PerfusionAssessment:
-    condition: str
+    condition: str | None
     global_viability_score: float
     nonperfused_fraction: float
     asymmetry: float
     sensor_disagreement: float
     likely_cause: str
     recommended_action: str
+    diagnostic_confidence: float
+    abstained: bool
+    usable_modalities: tuple[str, ...]
     regions: tuple[RegionAssessment, ...]
 
 
 class MultimodalPerfusionEstimator:
-    """Fuse registered modalities and preserve disagreement as an output."""
+    """Fuse registered observations without access to simulator ground truth."""
     WEIGHTS = {
-        "flow":0.22,"icg":0.20,"speckle":0.16,"thermal":0.10,
-        "oxygenation":0.14,"doppler":0.10,"ultrasound":0.08,
+        "icg": 0.22,
+        "speckle": 0.22,
+        "thermal": 0.12,
+        "oxygenation": 0.16,
+        "doppler": 0.14,
+        "ultrasound": 0.14,
     }
-    def estimate(self, condition: str, maps: MultimodalMaps, *, icg_metrics: Mapping[int, RegionICGMetrics] | None=None) -> PerfusionAssessment:
+
+    @staticmethod
+    def _metric_grid(
+        metrics: Mapping[int, RegionICGMetrics],
+        getter,
+        *,
+        default: float = 0.0,
+    ):
         import numpy as np
-        arrays={
-            "flow":np.clip(maps.flow_index/1.0,0,1),
-            "icg":np.clip(maps.icg_intensity/max(float(np.max(maps.icg_intensity)),1.0e-6),0,1),
-            "speckle":np.clip(maps.speckle_perfusion,0,1),
-            "thermal":np.clip((maps.temperature_c-31.5)/4.2,0,1),
-            "oxygenation":np.clip((maps.oxygenation_fraction-0.25)/0.65,0,1),
-            "doppler":np.clip(maps.doppler_speed_m_s/max(float(np.percentile(maps.doppler_speed_m_s,90)),1.0e-6),0,1),
-            "ultrasound":np.clip(maps.ultrasound_patency,0,1),
+
+        return np.asarray(
+            [
+                float(default if getter(metrics[index]) is None else getter(metrics[index]))
+                for index in range(24)
+            ],
+            dtype=float,
+        ).reshape(4, 6)
+
+    def _icg_observation(
+        self,
+        maps: MultimodalMaps,
+        metrics: Mapping[int, RegionICGMetrics] | None,
+    ):
+        import numpy as np
+
+        final = np.asarray(maps.icg_intensity, dtype=float)
+        final_norm = final / max(float(np.max(final)), 1.0e-6)
+        if not metrics:
+            return np.clip(final_norm, 0.0, 1.0)
+        peak = self._metric_grid(metrics, lambda item: item.peak_intensity)
+        arrival = self._metric_grid(
+            metrics, lambda item: item.arrival_time_s, default=30.0
+        )
+        wash_in = self._metric_grid(
+            metrics, lambda item: item.wash_in_slope_per_s
+        )
+        washout = np.abs(
+            self._metric_grid(metrics, lambda item: item.washout_slope_per_s)
+        )
+        peak_norm = peak / max(float(np.percentile(peak, 95)), 1.0e-6)
+        arrival_score = np.exp(-np.maximum(arrival - 2.5, 0.0) / 3.0)
+        wash_in_norm = wash_in / max(
+            float(np.percentile(wash_in, 95)), 1.0e-6
+        )
+        washout_norm = washout / max(
+            float(np.percentile(washout, 95)), 1.0e-6
+        )
+        return np.clip(
+            0.30 * final_norm
+            + 0.30 * peak_norm
+            + 0.20 * arrival_score
+            + 0.12 * wash_in_norm
+            + 0.08 * washout_norm,
+            0.0,
+            1.0,
+        )
+
+    def estimate(
+        self,
+        observations: MultimodalMaps | str,
+        maps: MultimodalMaps | None = None,
+        *,
+        icg_metrics: Mapping[int, RegionICGMetrics] | None = None,
+        scenario_label: str | None = None,
+    ) -> PerfusionAssessment:
+        import numpy as np
+
+        # Backward-compatible argument parsing deliberately discards the old
+        # leading condition string. It may be retained only as an evaluation
+        # label and can never influence fusion or classification.
+        if isinstance(observations, str):
+            if maps is None:
+                raise TypeError("maps are required after a legacy scenario label")
+            if scenario_label is None:
+                scenario_label = observations
+            observed = maps
+        else:
+            if maps is not None:
+                raise TypeError("maps must not be supplied twice")
+            observed = observations
+
+        icg = self._icg_observation(observed, icg_metrics)
+        doppler_scale = max(
+            float(np.percentile(observed.doppler_speed_m_s, 90)), 1.0e-6
+        )
+        arrays = {
+            "icg": icg,
+            "speckle": np.clip(observed.speckle_perfusion, 0.0, 1.0),
+            "thermal": np.clip((observed.temperature_c - 31.5) / 4.2, 0.0, 1.0),
+            "oxygenation": np.clip(
+                (observed.oxygenation_fraction - 0.25) / 0.65, 0.0, 1.0
+            ),
+            "doppler": np.clip(
+                observed.doppler_speed_m_s / doppler_scale, 0.0, 1.0
+            ),
+            "ultrasound": np.clip(observed.ultrasound_patency, 0.0, 1.0),
         }
-        fused=np.zeros_like(maps.flow_index,dtype=float)
-        stack=[]
-        for name,w in self.WEIGHTS.items():
-            fused += w*arrays[name]
+        validity_names = {
+            "icg": "nir_icg",
+            "speckle": "laser_speckle",
+            "thermal": "thermal",
+            "oxygenation": "surface_oxygenation",
+            "doppler": "doppler",
+            "ultrasound": "ultrasound",
+        }
+        usable = tuple(
+            name
+            for name in self.WEIGHTS
+            if observed.modality_validity.get(validity_names[name], False)
+        )
+        usable_weight = sum(self.WEIGHTS[name] for name in usable)
+        fused = np.zeros_like(observed.flow_index, dtype=float)
+        stack = []
+        for name in usable:
+            normalized_weight = self.WEIGHTS[name] / max(usable_weight, 1.0e-9)
+            fused += normalized_weight * arrays[name]
             stack.append(arrays[name])
         # Extravascular tracer is a hazard signal rather than evidence of useful
         # tissue perfusion. Penalize the fused score locally so an active leak
         # cannot receive a better global viability result than an intact state.
-        leak_penalty=0.22*np.clip(maps.icg_extravascular/0.20,0.0,1.0)
-        fused=np.clip(fused-leak_penalty,0.0,1.0)
-        disagreement=np.std(np.stack(stack,axis=0),axis=0)
-        regions=[]
-        cause=self._classify(condition,maps,icg_metrics)
+        leak_penalty = (
+            0.22 * np.clip(observed.icg_extravascular / 0.20, 0.0, 1.0)
+            if observed.modality_validity.get("nir_icg", False)
+            else np.zeros_like(fused)
+        )
+        fused = np.clip(fused - leak_penalty, 0.0, 1.0)
+        disagreement = (
+            np.std(np.stack(stack, axis=0), axis=0)
+            if len(stack) >= 2
+            else np.ones_like(fused)
+        )
+        regions = []
+        cause, diagnostic_confidence = self._classify(
+            observed, icg, usable
+        )
+        mean_confidence = float(np.mean(observed.confidence))
+        abstained = bool(
+            usable_weight < 0.50
+            or observed.registration_error_m > 0.003
+            or observed.timestamp_skew_s > 0.050
+            or mean_confidence < 0.30
+            or diagnostic_confidence < 0.48
+        )
+        if abstained:
+            cause = "mixed_or_uncertain"
         action={
             "arterial_inflow_obstruction":"remove_or_reposition_occluder_or_clip",
             "venous_outflow_obstruction":"release_venous_compression_or_revise_outflow",
@@ -834,59 +1460,196 @@ class MultimodalPerfusionEstimator:
             "normal_perfusion":"no_action",
             "mixed_or_uncertain":"repeat_scan_and_inspect_sensor_registration",
         }[cause]
-        flat=fused.reshape(-1); conf=np.asarray(maps.confidence).reshape(-1); dis=disagreement.reshape(-1)
+        flat=fused.reshape(-1)
+        conf=np.asarray(observed.confidence).reshape(-1)
+        dis=disagreement.reshape(-1)
         for i,score in enumerate(flat):
             status="viable" if score>=0.68 else "borderline" if score>=0.45 else "nonperfused"
             regions.append(RegionAssessment(i,float(score),float(conf[i]),float(dis[i]),status,cause))
         global_score=float(np.mean(flat)); nonperf=float(np.mean(flat<0.45))
         left=float(np.mean(fused[:,:3])); right=float(np.mean(fused[:,3:])); asym=abs(left-right)
-        return PerfusionAssessment(condition,global_score,nonperf,asym,float(np.mean(disagreement)),cause,action,tuple(regions))
+        return PerfusionAssessment(
+            condition=scenario_label,
+            global_viability_score=global_score,
+            nonperfused_fraction=nonperf,
+            asymmetry=asym,
+            sensor_disagreement=float(np.mean(disagreement)),
+            likely_cause=cause,
+            recommended_action=action,
+            diagnostic_confidence=float(diagnostic_confidence),
+            abstained=abstained,
+            usable_modalities=tuple(validity_names[name] for name in usable),
+            regions=tuple(regions),
+        )
 
-    def _classify(self, condition: str, maps: MultimodalMaps, metrics: Mapping[int,RegionICGMetrics] | None) -> str:
+    def _classify(
+        self,
+        maps: MultimodalMaps,
+        icg_observation,
+        usable: Sequence[str],
+    ) -> tuple[str, float]:
         import numpy as np
-        if float(np.max(maps.icg_extravascular)) > 0.05:
-            return "active_branch_leak"
-        right=float(np.mean(maps.flow_index[:,3:])); left=float(np.mean(maps.flow_index[:,:3]))
-        if condition=="venous_congestion":
-            return "venous_outflow_obstruction"
-        # Explicit state identity takes precedence over a morphology heuristic.
-        # Both inflow occlusion and anastomotic stenosis can create asymmetric
-        # maps, but their corrective actions differ.
-        if condition=="arterial_occlusion":
-            return "arterial_inflow_obstruction"
-        if condition=="anastomotic_stenosis" or (right<0.55*left and float(np.max(maps.doppler_speed_m_s))>0.12):
-            return "anastomotic_stenosis"
-        if right<0.40*left:
-            return "arterial_inflow_obstruction"
-        localized=np.mean(maps.flow_index<0.45)
-        if condition in {"retraction_ischemia","dressing_compression"} or (0.05<localized<0.45):
-            return "external_compression"
-        if float(np.mean(maps.flow_index))>0.78 and float(np.mean(maps.oxygenation_fraction))>0.70:
-            return "normal_perfusion"
-        return "mixed_or_uncertain"
+        if (
+            "icg" in usable
+            and float(np.max(maps.icg_extravascular)) > 0.05
+        ):
+            return "active_branch_leak", 0.96
+        proxies = []
+        if "speckle" in usable:
+            proxies.append(np.clip(maps.speckle_perfusion, 0.0, 1.5))
+        if "ultrasound" in usable:
+            proxies.append(np.clip(maps.ultrasound_patency, 0.0, 1.5))
+        if "icg" in usable:
+            proxies.append(np.clip(icg_observation, 0.0, 1.5))
+        if not proxies:
+            return "mixed_or_uncertain", 0.0
+        perfusion = np.mean(np.stack(proxies, axis=0), axis=0)
+        left = float(np.mean(perfusion[:, :3]))
+        right = float(np.mean(perfusion[:, 3:]))
+        mean = float(np.mean(perfusion))
+        minimum = float(np.min(perfusion))
+        ratio = right / max(left, 1.0e-6)
+        localized = float(np.mean(perfusion < 0.45))
+        oxygenation = (
+            float(np.mean(maps.oxygenation_fraction))
+            if "oxygenation" in usable
+            else 0.0
+        )
+        if minimum < 0.55 and mean > 0.80 and (
+            localized > 0.0 or ratio < 0.92 or ratio > 1.08
+        ):
+            return "external_compression", 0.84
+        if ratio < 0.42 and mean < 0.68 and minimum < 0.36:
+            return "arterial_inflow_obstruction", 0.92
+        if mean < 0.72 and 0.42 <= ratio < 0.75:
+            return "venous_outflow_obstruction", 0.86
+        if ratio < 0.72 and right < 0.72 and mean > 0.68:
+            return "anastomotic_stenosis", 0.78
+        if mean > 0.80 and (
+            "oxygenation" not in usable or oxygenation > 0.68
+        ):
+            return "normal_perfusion", 0.86
+        return "mixed_or_uncertain", 0.35
+
+
+@dataclass(frozen=True)
+class InterventionEvidence:
+    """Host-reported mechanical evidence for one intervention update."""
+
+    action: str
+    elapsed_s: float
+    displacement_m: float = 0.0
+    contact_force_n: float = 0.0
+    lumen_gain_fraction: float = 0.0
+    seal_fraction: float = 0.0
+
+    def __post_init__(self) -> None:
+        for label in (
+            "elapsed_s",
+            "displacement_m",
+            "contact_force_n",
+            "lumen_gain_fraction",
+            "seal_fraction",
+        ):
+            value = _finite(getattr(self, label), label)
+            if value < 0.0:
+                raise ValueError(f"{label} must be non-negative")
+        if self.lumen_gain_fraction > 1.0 or self.seal_fraction > 1.0:
+            raise ValueError("fractional intervention evidence cannot exceed one")
+
+
+@dataclass(frozen=True)
+class InterventionUpdate:
+    action: str
+    recovery_fraction: float
+    completed: bool
+    accepted: bool
+    reason: str
 
 
 class PerfusionConditionController:
-    """Apply reversible research interventions to the shared state contract."""
-    def __init__(self, condition: str="healthy"):
-        self.condition=_check(condition,VALID_CONDITIONS,"condition")
-        self.history=[self.condition]
+    """Convert measured intervention mechanics into continuous recovery."""
 
-    def apply(self, action: str) -> str:
-        mapping={
-            "remove_or_reposition_occluder_or_clip":"recovered",
-            "release_venous_compression_or_revise_outflow":"recovered",
-            "revise_anastomosis":"recovered",
-            "control_branch_leak":"recovered",
-            "release_retraction_or_reduce_dressing_pressure":"recovered",
-            "no_action":self.condition,
-            "repeat_scan_and_inspect_sensor_registration":self.condition,
-        }
-        if action not in mapping:
-            raise ValueError(f"Unknown intervention {action!r}")
-        self.condition=mapping[action]
-        self.history.append(self.condition)
-        return self.condition
+    EXPECTED_ACTION = {
+        "arterial_occlusion": "remove_or_reposition_occluder_or_clip",
+        "venous_congestion": "release_venous_compression_or_revise_outflow",
+        "anastomotic_stenosis": "revise_anastomosis",
+        "branch_leak": "control_branch_leak",
+        "retraction_ischemia": "release_retraction_or_reduce_dressing_pressure",
+        "dressing_compression": "release_retraction_or_reduce_dressing_pressure",
+        "healthy": "no_action",
+        "recovered": "no_action",
+    }
+
+    def __init__(self, condition: str = "healthy"):
+        self.condition = _check(condition, VALID_CONDITIONS, "condition")
+        self.recovery_fraction = 1.0 if condition == "recovered" else 0.0
+        self.history: list[InterventionUpdate] = []
+
+    def update(self, evidence: InterventionEvidence) -> InterventionUpdate:
+        expected = self.EXPECTED_ACTION[self.condition]
+        if evidence.action in {
+            "repeat_scan_and_inspect_sensor_registration",
+            "no_action",
+        }:
+            accepted = evidence.action == expected
+            progress = self.recovery_fraction
+            reason = "no_mechanical_change"
+        elif evidence.action != expected:
+            accepted = False
+            progress = self.recovery_fraction
+            reason = f"expected_{expected}"
+        else:
+            accepted = True
+            if evidence.action == "remove_or_reposition_occluder_or_clip":
+                progress = evidence.displacement_m / 0.006
+                reason = "occluder_retraction"
+            elif evidence.action == "release_venous_compression_or_revise_outflow":
+                progress = evidence.displacement_m / 0.005
+                reason = "venous_release_travel"
+            elif evidence.action == "revise_anastomosis":
+                progress = evidence.lumen_gain_fraction
+                reason = "measured_lumen_gain"
+            elif evidence.action == "control_branch_leak":
+                force_window = 0.4 <= evidence.contact_force_n <= 4.0
+                dwell = _clamp(evidence.elapsed_s / 2.0)
+                progress = min(evidence.seal_fraction, dwell) if force_window else 0.0
+                reason = (
+                    "seal_contact_and_dwell"
+                    if force_window
+                    else "seal_contact_force_outside_window"
+                )
+            else:
+                progress = evidence.displacement_m / 0.008
+                reason = "external_compression_release_travel"
+            progress = max(self.recovery_fraction, _clamp(progress))
+        if accepted:
+            self.recovery_fraction = progress
+        update = InterventionUpdate(
+            action=evidence.action,
+            recovery_fraction=float(self.recovery_fraction),
+            completed=bool(self.recovery_fraction >= 0.95),
+            accepted=accepted,
+            reason=reason,
+        )
+        self.history.append(update)
+        return update
+
+    def apply(
+        self,
+        action: str,
+        evidence: InterventionEvidence | None = None,
+    ) -> InterventionUpdate:
+        """Compatibility entry point that refuses evidence-free recovery."""
+
+        if evidence is None:
+            raise ValueError(
+                "physical intervention evidence is required; "
+                "use update(InterventionEvidence(...))"
+            )
+        if evidence.action != action:
+            raise ValueError("action and evidence.action differ")
+        return self.update(evidence)
 
 
 @dataclass(frozen=True)
@@ -896,6 +1659,68 @@ class ScanResult:
     final_tracer: TracerFrame
     maps: MultimodalMaps
     assessment: PerfusionAssessment
+    icg_metrics: Mapping[int, RegionICGMetrics]
+    consumable_usage: Mapping[str, float]
+    consumable_conservation_error_ml: float
+
+
+@dataclass(frozen=True)
+class RegisteredSensorPacket:
+    timestamp_s: float
+    camera_frames: Mapping[str, Any]
+    depth_frame: Any
+    maps: MultimodalMaps
+    valid: bool
+    errors: tuple[str, ...]
+
+
+def build_registered_sensor_packet(
+    *,
+    timestamp_s: float,
+    camera_frames: Mapping[str, Any],
+    depth_frame: Any,
+    maps: MultimodalMaps,
+) -> RegisteredSensorPacket:
+    """Validate host-rendered frames against the registered model packet."""
+
+    import numpy as np
+
+    timestamp = _finite(timestamp_s, "timestamp_s")
+    errors = []
+    expected_cameras = {
+        "rgb_left_camera",
+        "rgb_right_camera",
+        "nir_fluorescence_camera",
+        "speckle_camera",
+        "thermal_camera",
+        "multispectral_camera",
+    }
+    missing = sorted(expected_cameras.difference(camera_frames))
+    if missing:
+        errors.append("missing_camera_frames:" + ",".join(missing))
+    for name, value in camera_frames.items():
+        frame = np.asarray(value)
+        if frame.ndim != 3 or frame.shape[2] not in (3, 4):
+            errors.append(f"{name}:invalid_shape:{tuple(frame.shape)}")
+        elif frame.size == 0 or not np.isfinite(frame).all():
+            errors.append(f"{name}:nonfinite_or_empty")
+    depth = np.asarray(depth_frame)
+    if depth.ndim != 2 or depth.size == 0:
+        errors.append(f"depth:invalid_shape:{tuple(depth.shape)}")
+    elif not np.isfinite(depth).any():
+        errors.append("depth:no_finite_samples")
+    if maps.registration_error_m > 0.003:
+        errors.append("registration_error_exceeds_3mm")
+    if maps.timestamp_skew_s > 0.050:
+        errors.append("timestamp_skew_exceeds_50ms")
+    return RegisteredSensorPacket(
+        timestamp_s=timestamp,
+        camera_frames=dict(camera_frames),
+        depth_frame=depth_frame,
+        maps=maps,
+        valid=not errors,
+        errors=tuple(errors),
+    )
 
 
 class ClosedLoopPerfusionVerifier:
@@ -906,35 +1731,142 @@ class ClosedLoopPerfusionVerifier:
         self.estimator=MultimodalPerfusionEstimator()
         self.healthy_reference=self.flow_solver.solve("healthy")
 
-    def scan(self, condition: str, *, duration_s: float=24.0, dt_s: float=0.10) -> ScanResult:
+    def scan(
+        self,
+        condition: str,
+        *,
+        duration_s: float = 24.0,
+        dt_s: float = 0.10,
+        recovery_fraction: float = 0.0,
+        consumables: SensorConsumableLedger | None = None,
+        operating_state: SensorOperatingState | None = None,
+        contrast_per_scan_ml: float = 0.35,
+        gel_per_scan_ml: float = 0.50,
+    ) -> ScanResult:
         duration = _finite(duration_s, "duration_s")
         dt = _finite(dt_s, "dt_s")
         if duration <= 0.0:
             raise ValueError("duration_s must be positive")
         if dt <= 0.0:
             raise ValueError("dt_s must be positive")
-        flow=self.flow_solver.solve(condition)
-        tracer=ICGTracerTransport(self.graph)
+        state = operating_state or SensorOperatingState()
+        ledger = consumables or SensorConsumableLedger()
+        if state.sensor_state == "fault":
+            usage = ledger.consume()
+        else:
+            usage = ledger.consume(
+                contrast_ml=contrast_per_scan_ml,
+                gel_ml=gel_per_scan_ml,
+            )
+        contrast_available = (
+            usage["contrast_used_ml"] >= usage["contrast_requested_ml"] > 0.0
+        )
+        gel_available = usage["gel_used_ml"] >= usage["gel_requested_ml"] > 0.0
+        flow=self.flow_solver.solve(
+            condition, recovery_fraction=recovery_fraction
+        )
+        tracer=ICGTracerTransport(
+            self.graph, input_scale=1.0 if contrast_available else 0.0
+        )
         history=PerfusionTimeSeries(len(self.graph["regions"]))
         frame=TracerFrame(0.0,0.0,{}, {i:0.0 for i in range(24)}, {i:0.0 for i in range(24)})
         steps=max(1,int(math.ceil(duration/dt)))
         for _ in range(steps):
             frame=tracer.step(flow,dt); history.append(frame)
-        maps=self.sensor_model.observe(flow,frame,healthy_reference=self.healthy_reference)
+        maps=self.sensor_model.observe(
+            flow,
+            frame,
+            healthy_reference=self.healthy_reference,
+            operating_state=state,
+            contrast_available=contrast_available,
+            gel_available=gel_available,
+        )
         metrics={i:history.metrics(i) for i in range(24)}
-        assessment=self.estimator.estimate(condition,maps,icg_metrics=metrics)
-        return ScanResult(flow,history,frame,maps,assessment)
+        assessment=self.estimator.estimate(
+            maps, icg_metrics=metrics, scenario_label=condition
+        )
+        return ScanResult(
+            flow=flow,
+            time_series=history,
+            final_tracer=frame,
+            maps=maps,
+            assessment=assessment,
+            icg_metrics=metrics,
+            consumable_usage=usage,
+            consumable_conservation_error_ml=ledger.conservation_error_ml,
+        )
 
-    def scan_intervene_rescan(self, condition: str, *, duration_s: float=24.0, dt_s: float=0.10) -> dict[str,Any]:
-        before=self.scan(condition,duration_s=duration_s,dt_s=dt_s)
+    @staticmethod
+    def _research_evidence_profile(action: str) -> tuple[InterventionEvidence, ...]:
+        samples = []
+        for index in range(1, 6):
+            progress = index / 5.0
+            common = {"action": action, "elapsed_s": 0.5 * index}
+            if action == "remove_or_reposition_occluder_or_clip":
+                common["displacement_m"] = 0.006 * progress
+            elif action == "release_venous_compression_or_revise_outflow":
+                common["displacement_m"] = 0.005 * progress
+            elif action == "revise_anastomosis":
+                common["lumen_gain_fraction"] = progress
+            elif action == "control_branch_leak":
+                common["contact_force_n"] = 1.4
+                common["seal_fraction"] = progress
+            elif action == "release_retraction_or_reduce_dressing_pressure":
+                common["displacement_m"] = 0.008 * progress
+            samples.append(InterventionEvidence(**common))
+        return tuple(samples)
+
+    def scan_intervene_rescan(
+        self,
+        condition: str,
+        *,
+        duration_s: float = 24.0,
+        dt_s: float = 0.10,
+        intervention_evidence: Sequence[InterventionEvidence] | None = None,
+        consumables: SensorConsumableLedger | None = None,
+        operating_state: SensorOperatingState | None = None,
+    ) -> dict[str,Any]:
+        ledger = consumables or SensorConsumableLedger()
+        before=self.scan(
+            condition,
+            duration_s=duration_s,
+            dt_s=dt_s,
+            consumables=ledger,
+            operating_state=operating_state,
+        )
         controller=PerfusionConditionController(condition)
-        after_condition=controller.apply(before.assessment.recommended_action)
-        after=self.scan(after_condition,duration_s=duration_s,dt_s=dt_s)
+        action = before.assessment.recommended_action
+        evidence = tuple(
+            intervention_evidence
+            if intervention_evidence is not None
+            else self._research_evidence_profile(action)
+        )
+        updates = [controller.update(item) for item in evidence]
+        after=self.scan(
+            condition,
+            duration_s=duration_s,
+            dt_s=dt_s,
+            recovery_fraction=controller.recovery_fraction,
+            consumables=ledger,
+            operating_state=operating_state,
+        )
         return {
             "before":before,
-            "action":before.assessment.recommended_action,
-            "after_condition":after_condition,
+            "action":action,
+            "after_condition":(
+                "recovered"
+                if controller.recovery_fraction >= 0.95
+                else condition
+            ),
             "after":after,
+            "intervention_updates":tuple(updates),
+            "recovery_fraction":controller.recovery_fraction,
+            "intervention_completed":controller.recovery_fraction >= 0.95,
+            "evidence_source":(
+                "caller"
+                if intervention_evidence is not None
+                else "deterministic_research_fixture"
+            ),
             "viability_gain":after.assessment.global_viability_score-before.assessment.global_viability_score,
             "nonperfused_fraction_reduction":before.assessment.nonperfused_fraction-after.assessment.nonperfused_fraction,
         }
@@ -943,13 +1875,34 @@ class ClosedLoopPerfusionVerifier:
 class PerfusionScanPlanner:
     """Generate registered optical raster and contact-probe waypoints."""
     def optical_raster(self, *, center=(0.0,0.0,0.205), width_m=0.160, depth_m=0.100, rows=5, cols=7, standoff_m=0.090):
+        center_values = tuple(float(value) for value in center)
+        if len(center_values) != 3 or not all(
+            math.isfinite(value) for value in center_values
+        ):
+            raise ValueError("center must contain three finite values")
+        width = _finite(width_m, "width_m")
+        depth = _finite(depth_m, "depth_m")
+        standoff = _finite(standoff_m, "standoff_m")
+        if width <= 0.0 or depth <= 0.0 or standoff <= 0.0:
+            raise ValueError("scan dimensions and standoff must be positive")
+        if not isinstance(rows, int) or not isinstance(cols, int) or rows < 1 or cols < 1:
+            raise ValueError("rows and cols must be positive integers")
         waypoints=[]
         for r in range(rows):
-            y=center[1]-depth_m/2+depth_m*r/max(rows-1,1)
-            xs=[center[0]-width_m/2+width_m*c/max(cols-1,1) for c in range(cols)]
+            y=center_values[1]-depth/2+depth*r/max(rows-1,1)
+            xs=[
+                center_values[0]-width/2+width*c/max(cols-1,1)
+                for c in range(cols)
+            ]
             if r%2: xs.reverse()
             for x in xs:
-                waypoints.append({"position_m":[x,y,center[2]-standoff_m],"target_m":list(center),"mode":"optical"})
+                waypoints.append(
+                    {
+                        "position_m":[x,y,center_values[2]-standoff],
+                        "target_m":list(center_values),
+                        "mode":"optical",
+                    }
+                )
         return waypoints
 
     def contact_probe_waypoints(self, *, modality: str, region_centers: Sequence[Sequence[float]] | None=None, preload_n: float=1.2):
@@ -981,7 +1934,9 @@ def _joint_targets(**overrides: float) -> dict[str, float]:
     unknown = set(overrides).difference(targets)
     if unknown:
         raise KeyError(f"Unknown perfusion joint targets: {sorted(unknown)}")
-    targets.update({name: float(value) for name, value in overrides.items()})
+    targets.update(
+        {name: _finite(value, f"{name}_target") for name, value in overrides.items()}
+    )
     return targets
 
 

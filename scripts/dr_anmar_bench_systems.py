@@ -10,10 +10,11 @@ from typing import Any
 
 FEATURED_ROBOT_EXCLUSIVE_GROUP = "featured_robot_system"
 # The standalone mechanisms are authored upward from their mount interfaces.
-# This side station keeps the largest system inside the NVIDIA table footprint
-# and out of the two PSMs' neutral shared handoff corridor.
-FEATURED_ROBOT_POSITION_M = (0.08, 0.08, 0.015)
-FEATURED_SUBSTRATE_POSITION_M = (0.08, 0.08, 0.001)
+# This side station keeps the largest system inside the NVIDIA table footprint,
+# in the primary endoscope frustum, and just outside the two PSMs' neutral
+# shared handoff corridor.
+FEATURED_ROBOT_POSITION_M = (0.04, 0.04, 0.015)
+FEATURED_SUBSTRATE_POSITION_M = (0.04, 0.04, 0.001)
 
 
 BENCH_ROBOT_SYSTEM_CATALOG: tuple[dict[str, Any], ...] = (

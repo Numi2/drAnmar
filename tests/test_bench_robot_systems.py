@@ -13,6 +13,8 @@ sys.path.insert(0, str(SCRIPTS))
 from dr_anmar_bench_systems import (
     BENCH_ROBOT_SYSTEM_CATALOG,
     BENCH_ROBOT_SYSTEMS_BY_ID,
+    FEATURED_ROBOT_POSITION_M,
+    FEATURED_SUBSTRATE_POSITION_M,
     related_asset_paths,
     resolve_featured_robot_system,
 )
@@ -62,3 +64,9 @@ def test_featured_robot_station_is_exclusive_and_generator_safe() -> None:
     )
     with pytest.raises(ValueError, match="Choose one featured"):
         resolve_featured_robot_system(EXPECTED_SYSTEM_IDS[:2])
+
+
+def test_featured_robot_and_substrate_share_the_centered_bench_station() -> None:
+    assert FEATURED_ROBOT_POSITION_M[:2] == FEATURED_SUBSTRATE_POSITION_M[:2]
+    assert FEATURED_ROBOT_POSITION_M[:2] == (0.04, 0.04)
+    assert FEATURED_ROBOT_POSITION_M[2] > FEATURED_SUBSTRATE_POSITION_M[2]

@@ -1,5 +1,16 @@
 {
+  "consumables": {
+    "contrast": "conserved requested_used_remaining ledger",
+    "coupling_gel": "conserved requested_used_remaining ledger",
+    "empty_state_disables_dependent_measurement": true
+  },
   "dynamic_scene_note": "use USD RTX camera route for deforming tissue; Warp ray-caster geometry route is only for compatible static meshes",
+  "failed_modality_policy": "exclude failed modalities, renormalize valid weights, and abstain when evidence is insufficient",
+  "fault_states": [
+    "ready",
+    "degraded",
+    "fault"
+  ],
   "modalities": [
     {
       "frames": [
@@ -72,6 +83,12 @@
     }
   ],
   "registration": "all_outputs_map_to_24_region_tissue_grid_and_common_world_timestamp",
+  "runtime_quality_gates": {
+    "explicit_abstention": true,
+    "minimum_usable_modalities": 3,
+    "registration_error_m_max": 0.003,
+    "timestamp_skew_s_max": 0.05
+  },
   "schema": "dr.anmar.multimodal-sensor-contract.v1",
   "shared_state": "perfusion_network.json plus ICGTracerTransport"
 }

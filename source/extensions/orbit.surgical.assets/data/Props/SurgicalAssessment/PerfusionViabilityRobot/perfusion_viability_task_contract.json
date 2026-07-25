@@ -18,6 +18,15 @@
     "dressing_compression",
     "recovered"
   ],
+  "diagnostic_input_boundary": "inference consumes only registered observable modality maps and temporal ICG metrics; scenario labels and latent flow fields are evaluation-only",
+  "intervention_evidence": [
+    "reported_displacement_m",
+    "reported_lumen_gain_fraction",
+    "reported_contact_force_n",
+    "reported_seal_fraction",
+    "reported_dwell_s"
+  ],
+  "intervention_rule": "recovery advances continuously from physical evidence; evidence-free success transitions are rejected",
   "outputs": [
     "arrival_time_s",
     "wash_in_slope_per_s",
@@ -31,6 +40,9 @@
     "surface_oxygenation_fraction",
     "sensor_disagreement",
     "confidence",
+    "diagnostic_confidence",
+    "abstained",
+    "usable_modalities",
     "likely_cause",
     "recommended_action"
   ],

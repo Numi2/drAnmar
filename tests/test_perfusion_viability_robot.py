@@ -4,6 +4,7 @@ import importlib.util
 import json
 import math
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -122,6 +123,15 @@ def test_closed_loop_scan_identifies_and_improves_reversible_faults(
     assert result["before"].assessment.likely_cause == cause
     assert result["action"] == action
     assert result["after_condition"] == "recovered"
+    assert result["intervention_completed"] is True
+    assert result["recovery_fraction"] == pytest.approx(1.0)
+    assert result["evidence_source"] == "deterministic_research_fixture"
+    assert all(update.accepted for update in result["intervention_updates"])
+    assert [
+        update.recovery_fraction for update in result["intervention_updates"]
+    ] == sorted(
+        update.recovery_fraction for update in result["intervention_updates"]
+    )
     assert result["viability_gain"] > 0.0
     assert result["nonperfused_fraction_reduction"] >= 0.0
     assert (
@@ -172,6 +182,10 @@ def test_sensor_outputs_and_planner_inputs_are_bounded() -> None:
         planner.contact_probe_waypoints(
             modality="doppler", region_centers=[(0.0, 0.0)]
         )
+    with pytest.raises(ValueError, match="positive"):
+        planner.optical_raster(width_m=-0.1)
+    with pytest.raises(ValueError, match="positive integers"):
+        planner.optical_raster(rows=0)
 
 
 @requires_numpy
@@ -189,3 +203,185 @@ def test_scan_rejects_invalid_time_contract(duration_s: float, dt_s: float) -> N
         runtime.ClosedLoopPerfusionVerifier().scan(
             "healthy", duration_s=duration_s, dt_s=dt_s
         )
+
+
+@requires_numpy
+@pytest.mark.parametrize(
+    "condition",
+    (
+        "arterial_occlusion",
+        "venous_congestion",
+        "anastomotic_stenosis",
+        "branch_leak",
+        "retraction_ischemia",
+        "dressing_compression",
+    ),
+)
+def test_diagnosis_is_blind_to_scenario_label_and_latent_flow(condition: str) -> None:
+    verifier = runtime.ClosedLoopPerfusionVerifier()
+    scan = verifier.scan(condition, duration_s=18.0, dt_s=0.15)
+    expected = scan.assessment
+
+    wrong_label = verifier.estimator.estimate(
+        "healthy",
+        scan.maps,
+        icg_metrics=scan.icg_metrics,
+    )
+    impossible_latent_truth = replace(
+        scan.maps, flow_index=np.full((4, 6), 42.0)
+    )
+    altered_truth = verifier.estimator.estimate(
+        impossible_latent_truth,
+        icg_metrics=scan.icg_metrics,
+        scenario_label="deliberately_wrong",
+    )
+
+    assert wrong_label.likely_cause == expected.likely_cause
+    assert altered_truth.likely_cause == expected.likely_cause
+    assert altered_truth.global_viability_score == pytest.approx(
+        expected.global_viability_score
+    )
+    assert wrong_label.condition == "healthy"
+    assert altered_truth.condition == "deliberately_wrong"
+
+
+@requires_numpy
+def test_sensor_faults_consumables_and_registration_drive_abstention() -> None:
+    verifier = runtime.ClosedLoopPerfusionVerifier()
+    ledger = runtime.SensorConsumableLedger(
+        initial_contrast_ml=0.1,
+        initial_gel_ml=0.1,
+    )
+    depleted = verifier.scan(
+        "healthy",
+        duration_s=4.0,
+        dt_s=0.2,
+        consumables=ledger,
+    )
+    assert {"nir_icg", "ultrasound"}.issubset(depleted.maps.faults)
+    assert "nir_icg" not in depleted.assessment.usable_modalities
+    assert "ultrasound" not in depleted.assessment.usable_modalities
+    assert ledger.conservation_error_ml == pytest.approx(0.0)
+
+    faulted = verifier.scan(
+        "healthy",
+        duration_s=4.0,
+        dt_s=0.2,
+        operating_state=runtime.SensorOperatingState(sensor_state="fault"),
+    )
+    assert faulted.assessment.abstained is True
+    assert faulted.assessment.likely_cause == "mixed_or_uncertain"
+    assert (
+        faulted.assessment.recommended_action
+        == "repeat_scan_and_inspect_sensor_registration"
+    )
+
+    misregistered = verifier.scan(
+        "healthy",
+        duration_s=4.0,
+        dt_s=0.2,
+        operating_state=runtime.SensorOperatingState(
+            registration_error_m=0.004
+        ),
+    )
+    assert misregistered.assessment.abstained is True
+
+
+@requires_numpy
+def test_degraded_sensor_state_reduces_confidence() -> None:
+    ready = runtime.ClosedLoopPerfusionVerifier().scan(
+        "healthy", duration_s=4.0, dt_s=0.2
+    )
+    degraded = runtime.ClosedLoopPerfusionVerifier().scan(
+        "healthy",
+        duration_s=4.0,
+        dt_s=0.2,
+        operating_state=runtime.SensorOperatingState(sensor_state="degraded"),
+    )
+    assert float(np.mean(degraded.maps.confidence)) < float(
+        np.mean(ready.maps.confidence)
+    )
+
+
+@requires_numpy
+def test_intervention_requires_mechanical_evidence_and_progresses_continuously() -> None:
+    controller = runtime.PerfusionConditionController("arterial_occlusion")
+    with pytest.raises(ValueError, match="physical intervention evidence"):
+        controller.apply("remove_or_reposition_occluder_or_clip")
+
+    partial = controller.update(
+        runtime.InterventionEvidence(
+            action="remove_or_reposition_occluder_or_clip",
+            elapsed_s=0.5,
+            displacement_m=0.003,
+        )
+    )
+    assert partial.accepted is True
+    assert partial.completed is False
+    assert partial.recovery_fraction == pytest.approx(0.5)
+
+    solver = runtime.VascularFlowSolver()
+    untreated = solver.solve("arterial_occlusion")
+    intermediate = solver.solve("arterial_occlusion", recovery_fraction=0.5)
+    treated = solver.solve("arterial_occlusion", recovery_fraction=1.0)
+    assert (
+        untreated.region_flows_ml_s[23]
+        < intermediate.region_flows_ml_s[23]
+        < treated.region_flows_ml_s[23]
+    )
+    assert abs(intermediate.conservation_error_ml_s) < 1.0e-8
+
+
+def test_probe_contact_controller_has_coupling_and_overload_states() -> None:
+    controller = runtime.ProbeContactController()
+    coupled = controller.update(measured_force_n=1.2, dt_s=1.0 / 120.0)
+    assert coupled.coupled is True
+    assert coupled.abort is False
+    overloaded = controller.update(measured_force_n=4.2, dt_s=1.0 / 120.0)
+    assert overloaded.overload is True
+    assert overloaded.abort is True
+    assert overloaded.target_extension_delta_m < 0.0
+
+
+@requires_numpy
+def test_registered_sensor_packet_rejects_missing_or_bad_frames() -> None:
+    scan = runtime.ClosedLoopPerfusionVerifier().scan(
+        "healthy", duration_s=4.0, dt_s=0.2
+    )
+    names = (
+        "rgb_left_camera",
+        "rgb_right_camera",
+        "nir_fluorescence_camera",
+        "speckle_camera",
+        "thermal_camera",
+        "multispectral_camera",
+    )
+    frames = {
+        name: np.zeros((24, 32, 4), dtype=np.uint8) for name in names
+    }
+    packet = runtime.build_registered_sensor_packet(
+        timestamp_s=scan.final_tracer.time_s,
+        camera_frames=frames,
+        depth_frame=np.ones((24, 32), dtype=float),
+        maps=scan.maps,
+    )
+    assert packet.valid is True
+    broken = runtime.build_registered_sensor_packet(
+        timestamp_s=scan.final_tracer.time_s,
+        camera_frames={"rgb_left_camera": np.zeros((24, 32), dtype=np.uint8)},
+        depth_frame=np.full((24, 32), np.nan),
+        maps=scan.maps,
+    )
+    assert broken.valid is False
+    assert broken.errors
+
+
+@requires_numpy
+def test_temporal_icg_metrics_support_isaac_numpy_1_x(monkeypatch) -> None:
+    history = runtime.PerfusionTimeSeries(region_count=1)
+    history.append(runtime.TracerFrame(0.0, 0.0, {}, {0: 0.0}, {0: 0.0}))
+    history.append(runtime.TracerFrame(1.0, 0.0, {}, {0: 2.0}, {0: 0.0}))
+
+    monkeypatch.delattr(np, "trapezoid", raising=False)
+
+    assert history.metrics(0).area_under_curve == pytest.approx(1.0)

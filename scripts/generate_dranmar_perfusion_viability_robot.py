@@ -14,6 +14,7 @@ import argparse
 import json
 import math
 import os
+import re
 import shutil
 import sys
 import textwrap
@@ -67,7 +68,7 @@ from dranmar_asset_authoring import (
     zip_tree,
 )
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 ASSET_NAME = "DrAnmar Multimodal Perfusion and Tissue-Viability Robot"
 CATALOG_SUBPATH = Path("Props/SurgicalAssessment/PerfusionViabilityRobot")
 ROOT_PRIM = "DrAnmarPerfusionViabilityTool"
@@ -1152,6 +1153,19 @@ def sensor_contract(bundle: ToolBundle) -> dict[str,Any]:
         ],
         "registration":"all_outputs_map_to_24_region_tissue_grid_and_common_world_timestamp",
         "shared_state":"perfusion_network.json plus ICGTracerTransport",
+        "runtime_quality_gates":{
+            "registration_error_m_max":0.003,
+            "timestamp_skew_s_max":0.050,
+            "minimum_usable_modalities":3,
+            "explicit_abstention":True,
+        },
+        "consumables":{
+            "contrast":"conserved requested_used_remaining ledger",
+            "coupling_gel":"conserved requested_used_remaining ledger",
+            "empty_state_disables_dependent_measurement":True,
+        },
+        "fault_states":["ready","degraded","fault"],
+        "failed_modality_policy":"exclude failed modalities, renormalize valid weights, and abstain when evidence is insufficient",
         "dynamic_scene_note":"use USD RTX camera route for deforming tissue; Warp ray-caster geometry route is only for compatible static meshes",
     }
 
@@ -1162,8 +1176,11 @@ def task_contract(bundle: ToolBundle) -> dict[str,Any]:
         "asset_id":"dranmar-perfusion-viability-robot-v1",
         "phases":["inspect","rgb","icg","speckle","thermal","oxygenation","doppler","ultrasound","fuse","diagnose","intervene","rescan","verify"],
         "conditions":list(bundle.graph["conditions"]),
-        "outputs":["arrival_time_s","wash_in_slope_per_s","time_to_peak_s","peak_intensity","washout_slope_per_s","perfusion_asymmetry","nonperfused_fraction","vessel_flow_direction","surface_temperature_c","surface_oxygenation_fraction","sensor_disagreement","confidence","likely_cause","recommended_action"],
+        "outputs":["arrival_time_s","wash_in_slope_per_s","time_to_peak_s","peak_intensity","washout_slope_per_s","perfusion_asymmetry","nonperfused_fraction","vessel_flow_direction","surface_temperature_c","surface_oxygenation_fraction","sensor_disagreement","confidence","diagnostic_confidence","abstained","usable_modalities","likely_cause","recommended_action"],
         "closed_loop_actions":["remove_or_reposition_occluder_or_clip","release_venous_compression_or_revise_outflow","revise_anastomosis","control_branch_leak","release_retraction_or_reduce_dressing_pressure","no_action"],
+        "diagnostic_input_boundary":"inference consumes only registered observable modality maps and temporal ICG metrics; scenario labels and latent flow fields are evaluation-only",
+        "intervention_evidence":["reported_displacement_m","reported_lumen_gain_fraction","reported_contact_force_n","reported_seal_fraction","reported_dwell_s"],
+        "intervention_rule":"recovery advances continuously from physical evidence; evidence-free success transitions are rejected",
         "success":"post_intervention_scan_improves_global_viability_and_reduces_nonperfused_fraction_without_new_leak_or_sensor_disagreement_fault",
         "research_only":True,
     }
@@ -1172,13 +1189,14 @@ def task_contract(bundle: ToolBundle) -> dict[str,Any]:
 def physics_profile(bundle: ToolBundle) -> dict[str,Any]:
     return {
         "schema":"dr.anmar.perfusion-viability-profile.v1","id":"dranmar-perfusion-viability-robot-v1","version":VERSION,
-        "status":"research_informed_engineering_model_pending_runtime_physical_sensor_and_clinical_validation",
-        "tool":{"joint_count":len(bundle.joints),"mass_estimate_kg":2.55,"mount":"panda_link8_hand_replacement","work_plane_z_m":WORK_PLANE_Z},
+        "status":"runtime_qualified_research_engineering_model_pending_physical_sensor_and_clinical_validation",
+        "tool":{"joint_count":len(bundle.joints),"authored_mass_kg":2.537,"mount":"panda_link8_hand_replacement","work_plane_z_m":WORK_PLANE_Z},
         "tissue":{"width_m":TISSUE_WIDTH_M,"depth_m":TISSUE_DEPTH_M,"thickness_m":TISSUE_THICKNESS_M,"region_count":REGION_COUNT,"vascular_node_count":len(bundle.graph["nodes"]),"vascular_edge_count":len(bundle.graph["edges"])},
         "flow":{"model":"linear_resistive_network_with_boundary_pressure_obstruction_compression_and_leak_sinks","arterial_pressure_kpa_seed":13.3,"venous_pressure_kpa_seed":1.2,"conservation_required":True},
         "tracer":{"model":"edge_cstr_advection_with_region_exchange_and_extravascular_leak_compartments","injection_time_s":1.0,"input_peak_time_s":4.5,"not_a_dose_model":True},
         "modalities":{"rgb":"RTX_camera_context","nir_icg":"shared_tracer_state","laser_speckle":"shared_region_flow","thermal":"perfusion_heat_proxy","doppler":"projected_edge_velocity","ultrasound":"synthetic_b_mode_plus_color_flow_or_i4h_bridge","surface_oxygenation":"delivery_consumption_proxy","depth":"RTX_camera_or_host_depth_route"},
-        "qualification_boundary":["no clinical perfusion thresholds","no pharmacokinetic dosing claim","no calibrated optical transport","no calibrated laser speckle decorrelation","no validated thermal physiology","no clinical Doppler calibration","no diagnostic ultrasound claim","no patient-care decision support"],
+        "runtime_qualification":{"host":"numi","gpu":"NVIDIA GeForce RTX 4090","isaac_sim":"6.0.1.0","isaac_lab":"6.1.16","representations":["standalone","franka"],"rendered_registered_cameras":6,"rendered_depth":True,"loaded_arm_sweep":True,"surface_deformable_fixture_attachments":2},
+        "qualification_boundary":["no clinical perfusion thresholds","no pharmacokinetic dosing claim","no calibrated optical transport","no calibrated laser speckle decorrelation","no validated thermal physiology","no clinical Doppler calibration","no diagnostic ultrasound claim","no physical payload or contact calibration","no patient-care decision support"],
     }
 
 
@@ -1242,16 +1260,16 @@ if __name__=="__main__":
 
 def docs() -> dict[str,str]:
     return {
-        "MECHANISM.md":"""# Mechanism\n\nThe end effector replaces the Panda hand and registers optical, Doppler, and ultrasound sensing around one assessment TCP. Twelve driven joints position the spectral filter wheel, optical focus, speckle mirrors, ultrasound probe, Doppler probe, gel valve, and compliant guard.\n\nThe instrument is category-level and manufacturer-neutral. Dimensions, drive gains, contact settings, and masses are provisional research values.\n""",
-        "SHARED_PHYSIOLOGY_MODEL.md":"""# Shared physiology model\n\nAll modalities consume one vascular state defined by `perfusion_network.json`. The model solves nodal pressures and edge flows from arterial and venous boundary pressures, edge resistance, obstruction multipliers, regional compression, and leak sinks. The same flow state drives tracer advection, thermal response, oxygenation, Doppler velocity, ultrasound patency, and viability fusion.\n\nThe network is a reduced-order simulation contract. It is not CFD, pharmacokinetics, or patient-specific physiology.\n""",
-        "MULTIMODAL_SENSOR_MODEL.md":"""# Multimodal sensor model\n\nRGB cameras provide scene context. ICG-like fluorescence is generated from a graph-transport tracer. Laser speckle reads normalized regional flow. Thermal output uses a perfusion heat-transfer proxy. Surface oxygenation uses an oxygen-delivery and consumption proxy. Doppler projects solved edge velocity onto the probe beam. Ultrasound can use the supplied synthetic B-mode generator or bridge to the NVIDIA Isaac for Healthcare robotic-ultrasound application using the authored probe pose.\n\nEvery map carries confidence and disagreement rather than hiding cross-sensor inconsistency.\n""",
-        "CLOSED_LOOP_VERIFICATION.md":"""# Closed-loop verification\n\nThe canonical research task is `scan → identify cause → intervene → rescan → verify recovery`. Causes include arterial inflow obstruction, venous outflow obstruction, anastomotic stenosis, branch leakage, retraction ischemia, and dressing compression. Suggested actions mutate the shared condition contract and produce a second scan for objective comparison.\n\nNo generated score is a clinical diagnosis or treatment recommendation.\n""",
-        "FRANKA_INTEGRATION.md":"""# Franka integration\n\nUse `make_franka_perfusion_viability_robot_cfg()` to load the standard Isaac Lab Franka, deactivate the Panda hand and finger prims, reference the payload, and attach its `Mount` link to `panda_link8`. State variants are selected before physics views initialize.\n\nDynamic tissue should use the USD RTX camera route for image generation. The host may bridge the ultrasound probe pose into the i4h robotic-ultrasound ray-tracing application.\n""",
+        "MECHANISM.md":"""# Mechanism\n\nThe end effector replaces the Panda hand and registers optical, Doppler, and ultrasound sensing around one assessment TCP. Twelve driven joints position the spectral filter wheel, optical focus, speckle mirrors, ultrasound probe, Doppler probe, gel valve, and compliant guard. The authored payload mass is 2.537 kg.\n\n`ProbeContactController` couples ultrasound and Doppler acquisition to reported contact force, retracts on overload, and exposes an abort state. The tissue demo can be cooked as a current PhysX surface deformable and retained by two explicit edge-fixture attachments.\n\nThe instrument is category-level and manufacturer-neutral. Dimensions, drive gains, contact settings, masses, and tissue parameters are provisional research values.\n""",
+        "SHARED_PHYSIOLOGY_MODEL.md":"""# Shared physiology model\n\nAll synthetic modalities consume one vascular state defined by `perfusion_network.json`. The model solves nodal pressures and edge flows from arterial and venous boundary pressures, edge resistance, obstruction multipliers, regional compression, and leak sinks. The same flow state drives tracer advection, thermal response, oxygenation, Doppler velocity, ultrasound patency, and viability fusion.\n\nCorrective actions change a continuous recovery fraction rather than replacing the scenario label. Flow parameters blend monotonically toward the recovered state and every solve retains the mass-conservation check.\n\nThe network is a reduced-order simulation contract. It is not CFD, pharmacokinetics, or patient-specific physiology.\n""",
+        "MULTIMODAL_SENSOR_MODEL.md":"""# Multimodal sensor model\n\nRGB cameras provide scene context. ICG-like fluorescence is generated from graph-transport tracer history. Laser speckle reads normalized regional flow. Thermal output uses a perfusion heat-transfer proxy. Surface oxygenation uses an oxygen-delivery and consumption proxy. Doppler projects solved edge velocity onto the probe beam. Ultrasound can use the supplied synthetic B-mode generator or bridge to the NVIDIA Isaac for Healthcare robotic-ultrasound application using the authored probe pose.\n\nThe estimator receives registered observable maps and temporal ICG metrics only. Scenario labels and latent flow fields are excluded from inference and may be supplied only as evaluation annotations. Failed modalities are removed and remaining weights are renormalized. Registration error, timestamp skew, insufficient modality coverage, or low diagnostic confidence produces an explicit abstention.\n\nContrast and coupling gel use conservative ledgers. Empty consumables disable dependent outputs; `ready`, `degraded`, and `fault` operating states alter measurement validity and confidence rather than only changing visuals.\n""",
+        "CLOSED_LOOP_VERIFICATION.md":"""# Closed-loop verification\n\nThe canonical research task is `scan → identify cause → intervene → rescan → verify recovery`. Causes include arterial inflow obstruction, venous outflow obstruction, anastomotic stenosis, branch leakage, retraction ischemia, and dressing compression.\n\nDiagnosis is blind to the authored scenario label. Intervention progress is derived from caller-reported displacement, lumen gain, seal contact, force, and dwell evidence. Evidence-free completion is rejected. The bundled deterministic evidence profile is a test fixture, is identified as such in results, and is not a physical measurement.\n\nNo generated score is a clinical diagnosis or treatment recommendation.\n""",
+        "FRANKA_INTEGRATION.md":"""# Franka integration\n\nUse `make_franka_perfusion_viability_robot_cfg()` to load the standard Isaac Lab Franka, deactivate the Panda hand and finger prims, reference the payload, and attach its `Mount` link to `panda_link8`. State variants are selected before physics views initialize.\n\nDynamic tissue uses the USD RTX camera route for image generation. USD camera optical -Z is explicitly rotated onto the authored tissue-facing +Z sensor axis. The CUDA qualification captures nonconstant RGB from all six camera frames and depth from the left camera with one live RTX camera pipeline at a time. Each frame is timestamped; operational fusion must buffer or interpolate to a common time and apply the 50 ms skew gate. The loaded-arm gate then drives the 2.537 kg payload through neutral, left, and right poses. The host may bridge the ultrasound probe pose into the i4h robotic-ultrasound ray-tracing application.\n\nFor low-latency operation, prewarm and reuse one camera/render-product pipeline and its output buffers, then bind or schedule the six registered views serially. Do not construct all six pipelines concurrently. The qualification script intentionally destroys each pipeline before creating the next one to prove cleanup and maximum concurrency of one; that destructive lifecycle is a strong resource gate, not the recommended per-frame production loop.\n""",
     }
 
 
 def readme() -> str:
-    return f'''# {ASSET_NAME}\n\nResearch-only Franka hand-replacement for registered RGB, NIR/ICG, laser-speckle, thermal, Doppler, ultrasound, depth, and surface-oxygenation assessment.\n\n## Catalog path\n\n`{CATALOG_SUBPATH.as_posix()}`\n\n## Primary contract\n\nOne vascular-flow and tracer state drives all modality outputs, confidence, disagreement, cause classification, and closed-loop rescan tasks.\n\nThis package is not clinically validated and is not approved for patient care.\n'''
+    return f'''# {ASSET_NAME} v{VERSION}\n\nDr.Anmar-owned, research-only Franka hand-replacement for registered RGB, NIR/ICG, laser-speckle, thermal, Doppler, ultrasound, depth, and surface-oxygenation assessment.\n\n## Catalog path\n\n`{CATALOG_SUBPATH.as_posix()}`\n\n## Primary contract\n\nOne vascular-flow and tracer state drives the synthetic modality outputs. Diagnostic inference is blind to scenario labels and latent flow fields, carries temporal ICG evidence, excludes failed modalities, and explicitly abstains on insufficient registration, timing, coverage, or confidence. Conserved contrast and gel ledgers, force-coupled probe contact, physical intervention evidence, surface-deformable fixtures, rendered camera/depth evidence, and loaded-Franka qualification are included.\n\nThis package is not clinically validated and is not approved for patient care.\n'''
 
 
 def installer_source() -> str:
@@ -1282,7 +1300,7 @@ def main():
     portfolio=repo/"physics_next/dr-anmar-assets.json"
     if portfolio.exists():
         data=json.loads(portfolio.read_text(encoding="utf-8"))
-        entry={"id":"dranmar-perfusion-viability-robot-v1","asset":"source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_standalone.usda","payload_asset":"source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_payload.usda","auxiliary_asset":"source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfused_tissue_demo.usda","profile":"physics_next/surgical-assessment/dranmar-perfusion-viability-v1.json","live_behavior":"shared_flow_tracer_state_driving_rgb_icg_speckle_thermal_doppler_ultrasound_oxygenation_sensor_fusion_and_closed_loop_rescan","deployment":"enabled_for_research_iteration","native_gpu_qualification":"pending_isaac_sim_cuda_execution","physical_qualification":"provisional_parameters_pending_instrumented_multimodal_bench","clinical_validation":False}
+        entry={"id":"dranmar-perfusion-viability-robot-v1","asset":"source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_standalone.usda","payload_asset":"source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_payload.usda","auxiliary_asset":"source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfused_tissue_demo.usda","profile":"physics_next/surgical-assessment/dranmar-perfusion-viability-v1.json","live_behavior":"blind_registered_multimodal_fusion_with_consumable_fault_contact_intervention_and_closed_loop_rescan_contracts","deployment":"enabled_for_research_iteration","native_gpu_qualification":"passed_isaac_sim_6_0_1_isaac_lab_6_1_16_rtx4090_standalone_and_loaded_franka","physical_qualification":"provisional_parameters_pending_instrumented_multimodal_bench","clinical_validation":False}
         assets=[x for x in data.get("assets",[]) if x.get("id")!=entry["id"]];assets.append(entry);data["assets"]=assets
         portfolio.write_text(json.dumps(data,indent=2)+"\\n",encoding="utf-8")
     print(f"Installed into {repo}")
@@ -1297,14 +1315,56 @@ def sync_extension_data() -> None:
 
 
 def build_overlay() -> Path:
-    overlay=PACKAGE_ROOT.parent/"dranmar_perfusion_viability_robot_repo_overlay_v0.1.0"
+    overlay=PACKAGE_ROOT.parent/f"dranmar_perfusion_viability_robot_repo_overlay_v{VERSION}"
     if overlay.exists(): shutil.rmtree(overlay)
     for rel in ("source","physics_next","docs","examples","scripts"):
         src=PACKAGE_ROOT/rel
         if src.exists(): shutil.copytree(src,overlay/rel)
-    zip_path=PACKAGE_ROOT.parent/"dranmar_perfusion_viability_robot_repo_overlay_v0.1.0.zip"
+    zip_path=PACKAGE_ROOT.parent/f"dranmar_perfusion_viability_robot_repo_overlay_v{VERSION}.zip"
     if zip_path.exists(): zip_path.unlink()
     zip_tree(overlay,zip_path); shutil.rmtree(overlay); return zip_path
+
+
+def duplicate_sibling_opinions(text: str) -> list[dict[str,Any]]:
+    """Return repeated direct `over` names in the same lexical scope."""
+
+    declaration = re.compile(
+        r'^\s*(def|class|over|variantSet|variant)\s+(?:\w+\s+)?"([^"]+)"'
+    )
+    scopes: list[dict[str,Any]] = []
+    pending: tuple[str,str] | None = None
+    duplicates = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        match = declaration.match(line)
+        if match:
+            pending = (match.group(1), match.group(2))
+            if match.group(1) == "over" and scopes:
+                name = match.group(2)
+                seen = scopes[-1]["over_names"]
+                if name in seen:
+                    duplicates.append(
+                        {
+                            "line":line_number,
+                            "scope":"/".join(scope["name"] for scope in scopes),
+                            "name":name,
+                        }
+                    )
+                seen.add(name)
+        opens = line.count("{")
+        closes = line.count("}")
+        for index in range(opens):
+            if index == 0 and pending is not None:
+                kind, name = pending
+                scopes.append({"kind":kind,"name":name,"over_names":set()})
+                pending = None
+            else:
+                scopes.append({"kind":"block","name":"{}","over_names":set()})
+        for _ in range(closes):
+            if scopes:
+                scopes.pop()
+        if opens == 0 and match is None and line.strip():
+            pending = None
+    return duplicates
 
 
 def static_report(files: Sequence[Path]) -> dict[str,Any]:
@@ -1312,12 +1372,21 @@ def static_report(files: Sequence[Path]) -> dict[str,Any]:
     results={}
     for path in usd_files:
         text=path.read_text(encoding="utf-8",errors="ignore")
-        results[path.relative_to(PACKAGE_ROOT).as_posix()]={
+        duplicates=duplicate_sibling_opinions(text)
+        checks={
             "balanced_braces":text.count("{")==text.count("}"),
-            "flat_quaternion_declarations": "(1, (" not in text,
-            "one_line_over_absent":not any(line.strip().startswith("over ") and "{" in line and "}" in line for line in text.splitlines()),
+            "flat_quaternion_declarations":not re.search(r"quat[fd]\s+\w+\s*=\s*\([^()]*,\s*\([^()]+\)\)",text),
+            "one_line_over_absent":not re.search(r'^\s*over\s+"[^"]+"\s*\{[^}\n]*\}\s*$',text,re.MULTILINE),
+            "one_line_custom_data_absent":not re.search(r"customData\s*=\s*\{[^}\n]+\}",text),
+            "duplicate_sibling_opinions_absent":not duplicates,
         }
-    return {"schema":"dr.anmar.static-build-report.v1","asset_id":"dranmar-perfusion-viability-robot-v1","usd":results,"file_count":len(files)}
+        results[path.relative_to(PACKAGE_ROOT).as_posix()]={
+            **checks,
+            "duplicate_sibling_opinions":duplicates,
+            "status":"pass" if all(checks.values()) else "fail",
+        }
+    status="pass" if all(item["status"]=="pass" for item in results.values()) else "fail"
+    return {"schema":"dr.anmar.static-build-report.v1","asset_id":"dranmar-perfusion-viability-robot-v1","version":VERSION,"status":status,"usd":results,"file_count":len(files)}
 
 
 def grouped_over(
@@ -1389,14 +1458,27 @@ def generate() -> dict[str,Any]:
     files += [p for p in (EXTENSION_ROOT/"data"/CATALOG_SUBPATH).rglob("*") if p.is_file()]
     files += [INTEGRATION_PATH]
     report=static_report(files)
+    if report["status"] != "pass":
+        raise RuntimeError("strict static USDA validation failed")
     static_path=PACKAGE_ROOT/"static_build_report.json";write_json(static_path,report);files.append(static_path)
-    # Internal payload hashes.
-    hashes={p.relative_to(PACKAGE_ROOT).as_posix():sha256(p) for p in sorted(set(files)) if p.exists() and p.is_file()}
+    for cache in PACKAGE_ROOT.rglob("__pycache__"):
+        shutil.rmtree(cache)
+    for bytecode in PACKAGE_ROOT.rglob("*.pyc"):
+        bytecode.unlink()
+    # Hash the complete development package, not only generated payloads.
+    hashes={
+        p.relative_to(PACKAGE_ROOT).as_posix():sha256(p)
+        for p in sorted(PACKAGE_ROOT.rglob("*"))
+        if p.is_file()
+        and p.name != "SHA256SUMS.json"
+        and "__pycache__" not in p.parts
+        and p.suffix != ".pyc"
+    }
     write_json(PACKAGE_ROOT/"SHA256SUMS.json",hashes)
-    dev_zip=PACKAGE_ROOT.parent/"dranmar_perfusion_viability_robot_v0.1.0.zip"
+    dev_zip=PACKAGE_ROOT.parent/f"dranmar_perfusion_viability_robot_v{VERSION}.zip"
     if dev_zip.exists():dev_zip.unlink()
     zip_tree(PACKAGE_ROOT,dev_zip)
-    catalog_zip=PACKAGE_ROOT.parent/"dranmar_perfusion_viability_robot_catalog_v0.1.0.zip"
+    catalog_zip=PACKAGE_ROOT.parent/f"dranmar_perfusion_viability_robot_catalog_v{VERSION}.zip"
     if catalog_zip.exists():catalog_zip.unlink()
     catalog_parent=PACKAGE_ROOT.parent/"_perfusion_catalog_stage"
     if catalog_parent.exists():shutil.rmtree(catalog_parent)
@@ -1409,9 +1491,9 @@ def generate() -> dict[str,Any]:
         "development_package":str(dev_zip),"catalog_package":str(catalog_zip),"repository_overlay":str(overlay_zip),
         "file_count":len(hashes),"primary_usda_count":7,"glb_count":len(list(GLB_ROOT.glob("*.glb"))),
         "vascular_node_count":len(graph["nodes"]),"vascular_edge_count":len(graph["edges"]),"region_count":REGION_COUNT,
-        "runtime_validation":"delegated_to_user_isaac_physx_cuda_stack","clinical_validation":False,
+        "runtime_validation":"passed_on_numi_rtx4090_isaac_sim_6_0_1_isaac_lab_6_1_16_for_standalone_and_loaded_franka","clinical_validation":False,
     }
-    release_path=PACKAGE_ROOT.parent/"dranmar_perfusion_viability_robot_release_v0.1.0.json";write_json(release_path,release)
+    release_path=PACKAGE_ROOT.parent/f"dranmar_perfusion_viability_robot_release_v{VERSION}.json";write_json(release_path,release)
     return {"dev_zip":dev_zip,"catalog_zip":catalog_zip,"overlay_zip":overlay_zip,"release":release_path,"preview":PREVIEW_ROOT/"dranmar_perfusion_viability_robot_preview.png"}
 
 

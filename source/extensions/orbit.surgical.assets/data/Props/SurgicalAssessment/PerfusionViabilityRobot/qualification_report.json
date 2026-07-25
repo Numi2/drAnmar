@@ -1,7 +1,7 @@
 {
   "schema": "dranmar.perfusion-viability-qualification-report.v1",
   "asset": "dranmar-perfusion-viability-robot-v1",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "status": "pass",
   "qualification_date": "2026-07-25",
   "ownership": "DrAnmar",
@@ -18,19 +18,25 @@
     "nvidia_eula_accepted_by_user": true
   },
   "static_gates": {
-    "cpu_controller_tests": {
+    "focused_controller_tests": {
       "status": "pass",
-      "tests": 13
-    },
-    "perfusion_and_bench_tests": {
-      "status": "pass",
-      "tests": 22
+      "tests": 25,
+      "blind_fault_classes": 6,
+      "scenario_label_invariance": true,
+      "latent_flow_field_invariance": true,
+      "sensor_depletion_fault_and_registration_abstention": true,
+      "continuous_evidence_based_intervention": true,
+      "probe_contact_overload_abort": true
     },
     "strict_openusd_parse": {
       "status": "pass",
       "checker": "pxr.Usd.Stage.Open",
       "pxr_version": "0.25.11",
-      "primary_usda": 7,
+      "primary_usda": 14,
+      "mirrors": [
+        "assets",
+        "source/extensions/orbit.surgical.assets/data"
+      ],
       "execution_host": "numi"
     },
     "glb_structure": {
@@ -43,39 +49,99 @@
     },
     "json_contracts": {
       "status": "pass",
-      "files": 11
+      "files": 12
     },
     "python_compilation": {
       "status": "pass",
-      "files": 7
+      "files": 8
     }
   },
   "matrix": [
     {
       "representation": "standalone",
       "status": "pass",
-      "steps": 130,
+      "steps": 260,
       "joint_count": 12,
       "finite_joint_state": true,
       "engine_error_count": 0,
       "registered_camera_count": 6,
+      "rendered_registered_camera_count": 6,
+      "rendered_rgb_shape": [
+        120,
+        160,
+        3
+      ],
+      "rendered_depth_shape": [
+        120,
+        160
+      ],
+      "rendered_depth_finite_fraction": 1.0,
+      "camera_acquisition_policy": {
+        "mode": "serialized_one_camera_at_a_time",
+        "maximum_concurrent_camera_pipelines": 1,
+        "render_steps_per_camera": 4,
+        "estimated_serial_span_s": 0.2,
+        "fusion_requirement": "timestamped buffering or interpolation to a common time followed by the 50 ms skew gate"
+      },
       "tissue_registration_error_m": 4.768371530960991e-10,
       "phases_checked": 13,
-      "maximum_flow_conservation_error_ml_s": 2.5579538487363607e-13
+      "maximum_flow_conservation_error_ml_s": 2.5579538487363607e-13,
+      "surface_deformable_fixture_attachments": 2,
+      "payload_mass_kg": 2.537
     },
     {
       "representation": "franka",
       "status": "pass",
-      "steps": 130,
+      "steps": 260,
       "joint_count": 19,
       "arm_joint_count": 7,
       "tool_joint_count": 12,
       "finite_joint_state": true,
       "engine_error_count": 0,
       "registered_camera_count": 6,
+      "rendered_registered_camera_count": 6,
+      "rendered_rgb_shape": [
+        120,
+        160,
+        3
+      ],
+      "rendered_depth_shape": [
+        120,
+        160
+      ],
+      "rendered_depth_finite_fraction": 1.0,
+      "camera_acquisition_policy": {
+        "mode": "serialized_one_camera_at_a_time",
+        "maximum_concurrent_camera_pipelines": 1,
+        "render_steps_per_camera": 4,
+        "estimated_serial_span_s": 0.2,
+        "fusion_requirement": "timestamped buffering or interpolation to a common time followed by the 50 ms skew gate"
+      },
       "tissue_registration_error_m": 2.6702880795426154e-08,
       "phases_checked": 13,
       "maximum_flow_conservation_error_ml_s": 2.5579538487363607e-13,
+      "surface_deformable_fixture_attachments": 2,
+      "payload_mass_kg": 2.537,
+      "loaded_arm_motion": {
+        "neutral": {
+          "steps": 48,
+          "maximum_arm_joint_error_rad": 0.25015902519226074,
+          "maximum_applied_arm_torque_nm": 20.438926696777344,
+          "minimum_tcp_height_m": 1.1309999990463258
+        },
+        "left_sweep": {
+          "steps": 48,
+          "maximum_arm_joint_error_rad": 0.2635054588317871,
+          "maximum_applied_arm_torque_nm": 28.316070556640625,
+          "minimum_tcp_height_m": 1.1309999990463258
+        },
+        "right_sweep": {
+          "steps": 48,
+          "maximum_arm_joint_error_rad": 0.24988901615142822,
+          "maximum_applied_arm_torque_nm": 32.55519485473633,
+          "minimum_tcp_height_m": 1.1309999990463258
+        }
+      },
       "franka_mount": {
         "body0": "/World/Robot/panda_link8",
         "stock_hand_frame_preserved": true,
@@ -84,13 +150,16 @@
     }
   ],
   "closed_loop_evidence": {
-    "arterial_occlusion_viability_gain": 0.37360250599395073,
-    "venous_congestion_viability_gain": 0.30856757165073323,
-    "anastomotic_stenosis_viability_gain": 0.12420954341560986,
-    "branch_leak_viability_gain": 0.005703163200329486,
-    "retraction_ischemia_viability_gain": 0.08101430052407965,
-    "dressing_compression_viability_gain": 0.052057038439385694,
-    "all_six_intervention_rescans_improved": true
+    "arterial_occlusion_viability_gain": 0.27314355631085574,
+    "venous_congestion_viability_gain": 0.23819023007318396,
+    "anastomotic_stenosis_viability_gain": 0.09214755117731654,
+    "branch_leak_viability_gain": 0.006637273952736722,
+    "retraction_ischemia_viability_gain": 0.057510482050687095,
+    "dressing_compression_viability_gain": 0.03966510418167668,
+    "all_six_blind_diagnoses_correct": true,
+    "all_six_intervention_rescans_improved": true,
+    "intervention_evidence_source": "deterministic_research_fixture",
+    "evidence_free_completion_rejected": true
   },
   "bench_compositor": {
     "status": "pass",
@@ -101,13 +170,26 @@
     ],
     "featured_robot_system": "perfusion_viability_robot",
     "fatal_error": null,
-    "live_frame_id": 189,
+    "live_frame_id": 22,
     "endoscope_left_jpeg": {
-      "bytes": 34132,
+      "bytes": 40245,
       "width": 960,
       "height": 640,
       "mode": "RGB"
     },
+    "featured_station_position_m": [
+      0.04,
+      0.04,
+      0.015
+    ],
+    "featured_substrate_position_m": [
+      0.04,
+      0.04,
+      0.001
+    ],
+    "framing": "complete featured mechanism and procedure substrate inside the primary endoscope image",
+    "single_featured_system_policy": true,
+    "single_active_camera_renderer": true,
     "worker_stopped_cleanly": true,
     "test_port_released": true
   },
@@ -116,6 +198,6 @@
     "medical_device": false,
     "patient_care_approved": false,
     "physical_calibration": false,
-    "claims": "Native simulation qualification only; no optical, thermal, Doppler, ultrasound, tracer, vascular-flow, viability, diagnostic, interventional, or clinical calibration."
+    "claims": "Native simulation qualification only; rendered images prove camera registration and acquisition, not calibrated modality physics. No optical, thermal, Doppler, ultrasound, tracer, vascular-flow, viability, diagnostic, interventional, payload, contact, or clinical calibration."
   }
 }

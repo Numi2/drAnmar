@@ -39,7 +39,7 @@ within the exact asset revision, software stack, hardware, scenario, and measure
 
 ## New Dr.Anmar robot systems
 
-Five procedure-specific systems were added and qualified on 25 July 2026. Each system is provided as:
+Seven procedure-specific systems were added and qualified on 25 July 2026. Each system is provided as:
 
 - a standalone articulated mechanism for isolated development;
 - a composable payload mounted to an Isaac Lab Franka articulation;
@@ -131,6 +131,42 @@ temporary compression attachments, four retained seal-band attachments, interloc
 constraints, exact joint counts, finite state for 120 steps, and zero engine errors in both standalone and
 Franka-mounted representations. See
 [`docs/adaptive_seal_divide_robot/VALIDATION.md`](docs/adaptive_seal_divide_robot/VALIDATION.md).
+
+### SafePlane dissection robot
+
+The SafePlane system combines bilateral distributed traction with blunt
+spreading, seven-port hydrodissection, guarded articulated micro-scissors, and
+a retractable low-energy spatula. Independent vessel, nerve, and duct assets
+retain explicit continuity and modality-specific clearance interlocks; an
+override produces inspectable simulated injury state rather than bypassing the
+physical model.
+
+Its CUDA matrix covers the 17-DoF standalone mechanism and 24-DoF Franka
+assembly, two cooked tissue surfaces, target-bed fixtures, traction and bridge
+attachments, all 28 releasable adhesion bridges, protected-structure
+continuity, conserved PBD fluid, finite state for 120 steps, and zero engine
+errors. See
+[`docs/safeplane_dissection_robot/VALIDATION.md`](docs/safeplane_dissection_robot/VALIDATION.md).
+
+### Perfusion and tissue-viability robot
+
+<p align="center">
+  <img src="docs/screenshots/robots/perfusion-viability-overview.png" width="800" alt="Dr.Anmar multimodal perfusion and tissue-viability robot with registered sensing and regional viability maps">
+</p>
+
+The perfusion system registers stereo RGB, NIR/ICG, laser speckle, thermal,
+surface oxygenation, depth, Doppler, and ultrasound sensing around one TCP.
+Its estimator is blind to scenario labels and latent flow state, fuses
+temporal ICG evidence, removes failed modalities, tracks conserved contrast and
+coupling gel, and explicitly abstains on invalid registration, timing,
+coverage, or confidence.
+
+The v0.1.1 CUDA matrix covers both the 12-DoF standalone mechanism and 19-DoF
+Franka assembly for 260 steps, six nonconstant rendered camera streams, finite
+depth, a cooked tissue surface with two fixtures, blind diagnosis of six
+modeled faults, force-coupled probe contact, evidence-based intervention, and
+three loaded-arm poses with the authored 2.537 kg payload. See
+[`docs/perfusion_viability_robot/VALIDATION.md`](docs/perfusion_viability_robot/VALIDATION.md).
 
 ## Platform architecture
 
@@ -266,9 +302,10 @@ python3 -m unittest -v tests/test_wound_preparation_robot.py
   --headless --device cuda:0 --representation franka
 ```
 
-Equivalent validators and runtime programs are included for the exposure, hemostasis, anastomosis, and
-seal-and-divide systems. Do not transfer a passing result between robot revisions, representations, simulator
-versions, GPUs, or physics configurations.
+Equivalent validators and runtime programs are included for the exposure,
+hemostasis, anastomosis, seal-and-divide, SafePlane dissection, and perfusion
+viability systems. Do not transfer a passing result between robot revisions,
+representations, simulator versions, GPUs, or physics configurations.
 
 The Isaac Lab documentation GIFs can be regenerated with:
 
