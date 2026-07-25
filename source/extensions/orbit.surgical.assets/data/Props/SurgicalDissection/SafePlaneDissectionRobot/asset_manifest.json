@@ -49,69 +49,69 @@
       "sha256": "1f5fd56f29c46bf247f0e1201e6d7012ef319035757044ee9b86b3c29f4a139b"
     },
     {
-      "bytes": 99769,
+      "bytes": 99751,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_adhesion_bridge.usda",
-      "sha256": "b1d6fee9a3e857ffd21b4e29e3fe53ea58dea394b754e292d110216e99808f68"
+      "sha256": "b57ea60456aae4301821afa3e10909be87fb320008283ef9c164ee69e15a7695"
     },
     {
-      "bytes": 51738,
+      "bytes": 51729,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_dissection_blood_particle.usda",
-      "sha256": "dbde1e8cb4c8e3f27b31e2474192206bfccfdf39360f21922d60b9365e2dd607"
+      "sha256": "fca5d8f8e5329d56e11b4d545ea448ec1caba48707a108fdcf169532beb56667"
     },
     {
-      "bytes": 51636,
+      "bytes": 51627,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_dissection_smoke_particle.usda",
-      "sha256": "5aaa7ba82da920987a626bab7e5203290f6987244cb2b3b2f0f8bddf3207e2dc"
+      "sha256": "a42e7a13d6f479d79e003ac0fadfd4baf6867130be30e2292792ee0ac240dbf1"
     },
     {
-      "bytes": 51367,
+      "bytes": 51358,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_duct_leak_particle.usda",
-      "sha256": "a2410c314a6d26814a5de610d15b927a86790dce2faad70ed3c0318085569274"
+      "sha256": "2e8b2b130c11dfab3047f6f7393320a150a37f7dd652b1d06b9db5054ad5f55a"
     },
     {
-      "bytes": 51642,
+      "bytes": 51633,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_hydrodissection_particle.usda",
-      "sha256": "d9d3cccab16e45a31756aeb95e1506f554b59397fd8fe7a51bb4d29ff7bedf49"
+      "sha256": "4d91c6dbb894c1964531b8c425a9b841a3b0b924d35980c646f9351bd0f937e9"
     },
     {
-      "bytes": 66095,
+      "bytes": 66086,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_micro_scissors_cartridge.usda",
-      "sha256": "21a04c56a1e97d3be88326d5a37ef300328581b7f7a6c7111afa61059c985bea"
+      "sha256": "eaba3e457b8928c39fae842c8374e16429b2f5e7b5911b6dc63a6bfaec4d4191"
     },
     {
-      "bytes": 455305,
+      "bytes": 455287,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_protected_duct_branch.usda",
-      "sha256": "ea1c8b5645ca360c060f50d97b7173f490a6365721bf5a0fe4d8237120db208c"
+      "sha256": "c7d71f5777fb9851b8c63068141ffed20ea1affd63fb6fa3909312637527de70"
     },
     {
-      "bytes": 456012,
+      "bytes": 455994,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_protected_nerve_branch.usda",
-      "sha256": "26092fe4e3313486023b872665822624f6013d69a6e18d813bc298b2ef3a3018"
+      "sha256": "0013e78900d5af5d1aff3e1a20b8d566870e41ca6f4a29d935217abf2b41846e"
     },
     {
-      "bytes": 459116,
+      "bytes": 459098,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_protected_vessel_branch.usda",
-      "sha256": "52bbfb0fe774b138a75711738170226eb131fdbbf58399bcdebfefb7fd862a4b"
+      "sha256": "9a592019b44f78388ddf183eb5e765a2937beba98d2145b66a57a3ce58a9e2fb"
     },
     {
-      "bytes": 2419228,
+      "bytes": 2418355,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_payload.usda",
-      "sha256": "56bfdaad7f2d4a6b192c0d88891d8c13b62ccaa9da49026d281d64874428c796"
+      "sha256": "a8807008347e665bbff9284f7a2fe75fb3a7943e9e8e26309928f101b9ba5bc4"
     },
     {
-      "bytes": 2208255,
+      "bytes": 2207382,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_rigid_proxy.usda",
-      "sha256": "be56b6cefd79f3596d8a68a9fbe2e7b347778250da6ac9667141321534180fbe"
+      "sha256": "1d711e7734349fcbeb8d989e2f1156908fe4bcebcad868074f6e8bd045ff5c54"
     },
     {
-      "bytes": 2421533,
+      "bytes": 2420660,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_standalone.usda",
-      "sha256": "62850ee65779ae8689781ac4f0800574c61364b197014d5731a22b803edc685e"
+      "sha256": "d55eca76c9f2a07391b64e36cfefa3f7146c4b921484c4317e31d7a52b3b3bc6"
     },
     {
-      "bytes": 2460158,
+      "bytes": 2459618,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_tissue_demo.usda",
-      "sha256": "068ffbfbcf75b5732fbd5504bb94a3e98f9d998a2029df473182b3c8e29bec4b"
+      "sha256": "70f31732f07f86568973212b8ca86fc844e731aaa7370a3ce13b8652670d54f8"
     },
     {
       "bytes": 770,
@@ -249,14 +249,14 @@
       "sha256": "bc4dacdb2bdce1ac873eb6a346736dd6824c3b1aa457731296e36fe7e35d68b0"
     },
     {
-      "bytes": 3195,
+      "bytes": 3196,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/physics_profile.json",
-      "sha256": "881d8286df95b04ce8d66bb6e1120ae722fc43e131b4ed77525f2b5cb4e7f0ce"
+      "sha256": "e10e0defd50c444a5784eeaa742346e634e90d37427fb775c7714f267ff79782"
     },
     {
-      "bytes": 4370,
+      "bytes": 886,
       "path": "assets/Props/SurgicalDissection/SafePlaneDissectionRobot/qualification_report.json",
-      "sha256": "7ee68fca0a10a0d6715e43c043f7b1c70a80ca2ed852719c498ee24a38ce3428"
+      "sha256": "5406a55ff8f984450e622276d9ea78bbf704d9927c86e066a7f13a1c0e2e6291"
     },
     {
       "bytes": 1579,
@@ -344,9 +344,9 @@
       "sha256": "8fc1347f0ac2f9acb21a817d4911b5e132ee6b0acb45b86b682f16c97b31b310"
     },
     {
-      "bytes": 950,
+      "bytes": 776,
       "path": "docs/safeplane_dissection_robot/VALIDATION.md",
-      "sha256": "9c2fcf7eac5759506a0f0c7fee5471a6d0c90fe7069559ac1996e5fa93836910"
+      "sha256": "5e8844e16c19419eeeefdb9e9444886428a5e994b5f86a82f0ee7f48fe3b2931"
     },
     {
       "bytes": 1378,
@@ -354,14 +354,14 @@
       "sha256": "0aa1466ab22bd4ad6682b55ba76a7876b0164b4372907e57c8a7b789e7d12829"
     },
     {
-      "bytes": 21804,
+      "bytes": 22351,
       "path": "examples/validate_safeplane_dissection_runtime.py",
-      "sha256": "92bf0b4f6dfbc68daecf974aceadfdd6b3766da1edf5e73d9d25d9a56382dbef"
+      "sha256": "60e9a04463241be31e1b7ae4d7ff8cd3aafbbf2d3a1cf8c8af7d3da65e298358"
     },
     {
-      "bytes": 3195,
+      "bytes": 3196,
       "path": "physics_next/surgical-dissection/dranmar-safeplane-dissection-v1.json",
-      "sha256": "881d8286df95b04ce8d66bb6e1120ae722fc43e131b4ed77525f2b5cb4e7f0ce"
+      "sha256": "e10e0defd50c444a5784eeaa742346e634e90d37427fb775c7714f267ff79782"
     },
     {
       "bytes": 102213,
@@ -374,9 +374,9 @@
       "sha256": "9e7a6a8c636df4b4579e0745fdbaec26876203fe7dca802cd41ba7e79251b45b"
     },
     {
-      "bytes": 206389,
+      "bytes": 205934,
       "path": "scripts/generate_dranmar_safeplane_dissection_robot.py",
-      "sha256": "7c5f90198fed4cf5f3a3eed0020386d10c45d20951ca46763ab532136931a999"
+      "sha256": "79b269aaf0b140dd4cb20cee21953918075332c7f03b4ece4917105ce95c9514"
     },
     {
       "bytes": 5789,
@@ -389,14 +389,14 @@
       "sha256": "db70e38e4b0bfe5aa07fa3b64fc1a317c450e6832a6194b7868a665a7c04cf86"
     },
     {
-      "bytes": 14912,
+      "bytes": 15047,
       "path": "scripts/validate_dranmar_safeplane_dissection_robot.py",
-      "sha256": "5b49f3b918eceddabbbd3047bf88eecdf144a38a95b3edcb019f41016cda6acf"
+      "sha256": "0ebd71897a2dc19f802485d3d640f599453d4c3bbef8f80a88a2c94f38ce5768"
     },
     {
-      "bytes": 67460,
+      "bytes": 69468,
       "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/safeplane_dissection_robot.py",
-      "sha256": "94521795d9a7d3a8dda7a9e0bdef164a7df009f2541aa1eff66c105274a2106e"
+      "sha256": "d84377cfdb3eff384666c26e9967344a62aecfe0e5aa90de6c07395728a4709c"
     },
     {
       "bytes": 8771,
@@ -404,6 +404,8 @@
       "sha256": "7601824e4a9fbebd4233710fee9276b5189963171c7e128ca25e1e7208f25734"
     }
   ],
+  "installed_overlay_entries_refreshed": 72,
+  "installed_overlay_hash_contract": "sha256 of exact current repository file bytes",
   "schema": "dranmar.asset-manifest.v1",
   "version": "0.1.0"
 }

@@ -19,7 +19,7 @@
   "payload_mount_link": "Links/Mount",
   "payload_root": "DrAnmarAtraumaticExposureTool",
   "schema": "dr.anmar.franka-mount.v1",
-  "status": "qualified_in_complete_franka_representation_on_isaac_sim_6_0_1_0",
+  "status": "composition_observed_physical_effect_unqualified",
   "translation_m": [
     0,
     0,

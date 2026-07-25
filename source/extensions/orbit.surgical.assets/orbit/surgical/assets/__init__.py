@@ -30,6 +30,7 @@ from .ecm import *
 from .closure_robot import *
 from .laparotomy_sponge import *
 from .dranmar_asset_catalog import *
+from .dranmar_camera_scheduler import *
 from .needle_thread import *
 from .psm import *
 from .skin_adhesive import *

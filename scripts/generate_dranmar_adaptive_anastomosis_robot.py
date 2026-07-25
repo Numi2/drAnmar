@@ -674,7 +674,7 @@ def mesh_usda(visual: Visual, material_path: str, indent: str = "               
 {indent}    point3f[] points = [
 {points}
 {indent}    ]
-{indent}    normal3f[] primvars:normals = [
+{indent}    normal3f[] normals = [
 {normals}
 {indent}    ] (
 {indent}        interpolation = "vertex"
@@ -1037,11 +1037,7 @@ def tool_usda(bundle: ToolBundle, articulation_root: bool) -> str:
     root_path=f"/{root}"
     schemas='prepend apiSchemas = ["PhysicsArticulationRootAPI"]' if articulation_root else ''
     schema_line=f"    {schemas}\n" if schemas else ""
-    runtime_status=(
-        "qualified_headless_cuda_standalone_and_franka"
-        if (ASSET_ROOT/"qualification_report.json").exists()
-        else "research_only_pending_runtime_and_physical_calibration"
-    )
+    runtime_status="research_only_runtime_observed_physical_effect_unqualified"
     links="\n\n".join(link_usda(link,root_path,bundle.frames) for link in bundle.links.values())
     joints="\n\n".join(joint_usda(j,root_path) for j in bundle.joints)
     return f'''#usda 1.0
@@ -1813,11 +1809,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str,object]:
         "id":"dranmar-adaptive-anastomosis-robot-v1",
         "name":ASSET_NAME,
         "version":VERSION,
-        "status":(
-            "qualified_headless_cuda_standalone_and_franka_pending_physical_metrology_and_clinical_validation"
-            if (ASSET_ROOT/"qualification_report.json").exists()
-            else "research_only_pending_isaac_runtime_physical_metrology_and_clinical_validation"
-        ),
+        "status":"research_only_runtime_observed_physical_effect_unqualified",
         "units":"metres-kilograms-seconds",
         "mechanism":{
             "active_joint_count":sum(1 for j in bundle.joints if j.type!="fixed"),
@@ -2530,18 +2522,20 @@ Use `make_franka_adaptive_anastomosis_robot_cfg()` for the combined robot, `make
 
 
 def docs_validation() -> str:
-    return '''# Validation and qualification
+    return '''# Integrity and runtime boundaries
 
-Run the deterministic generator from an isolated environment using `scripts/requirements_adaptive_anastomosis_generation.txt`, then run:
+Static gates cover deterministic assets, dependency closure, controller
+invariants, fail-closed attachment overlap, leak-ledger conservation, and
+source/container integrity. The optional Isaac script is diagnostic only.
 
-```bash
-PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
-python scripts/validate_dranmar_adaptive_anastomosis_robot.py --require-usdchecker
-```
+Articulation motion, attachment creation, staple count, collar sectors, and
+nominal reduced-order inputs do not establish patency, edge apposition, or a
+pressure-tight seam. Patency and leak status may be promoted only from measured
+runtime lumen/seam geometry and calibrated pressure/flow sensing.
 
-The native runtime matrix uses `examples/validate_adaptive_anastomosis_runtime.py` twice, once for the standalone 14-DOF mechanism and once for the combined 21-DOF Franka assembly. Each case cooks both tissue surfaces, authors current attachment schemas, anchors both distal ends, creates and releases 12 capture attachments, retains 16 independent staples through 32 leg attachments, cures 32 collar-sector attachments, emits conserved PBD leak particles, evaluates patency, performs an 8-second pressure-decay challenge, and advances at least 120 CUDA simulation steps.
-
-Passing this matrix qualifies software integration on the recorded hardware and software stack only. It does not qualify tissue mechanics, staple penetration or plasticity, collar adhesion, patency measurement, leak calibration, clinical thresholds, sterility, safety, or patient use.
+No current record qualifies staple penetration or plasticity, collar adhesion,
+anastomosis efficacy, physical calibration, clinical performance, or patient
+use.
 '''
 
 
@@ -2764,12 +2758,7 @@ def static_report(files: Sequence[Path]) -> dict[str,object]:
     for path in usda:
         text=path.read_text(encoding="utf-8")
         checks.append({"path":path.relative_to(PACKAGE_ROOT).as_posix(),"balanced_braces":text.count("{")==text.count("}"),"flat_quaternion_count":text.count("quatf "),"nested_quaternion_pattern_absent":"(1, (" not in text,"one_line_over_absent":all(not(line.strip().startswith("over ") and "{" in line and "}" in line) for line in text.splitlines())})
-    qualification=ASSET_ROOT/"qualification_report.json"
-    runtime_status=(
-        "qualified_headless_cuda_matrix_report_in_catalog"
-        if qualification.exists()
-        else "not_run_user_owned_iteration"
-    )
+    runtime_status="archived_smoke_record_not_physical_qualification"
     return {
         "schema":"dranmar.static-build-report.v1",
         "asset":"dranmar-adaptive-anastomosis-robot-v1",

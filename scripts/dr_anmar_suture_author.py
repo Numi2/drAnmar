@@ -145,7 +145,7 @@ def swage_interface_geometry_block(
         point3f[] points = [
             {points}
         ]
-        normal3f[] primvars:normals = [
+        normal3f[] normals = [
             {normals}
         ] (
             interpolation = "vertex"
@@ -203,7 +203,7 @@ def braided_segment_geometry_block(
         point3f[] points = [
             {points}
         ]
-        normal3f[] primvars:normals = [
+        normal3f[] normals = [
             {normals}
         ] (
             interpolation = "faceVarying"
@@ -1058,7 +1058,7 @@ over "{DR_ANMAR_NEEDLE_ROOT_PRIM}"
             point3f[] points = [
             {mesh_points}
             ]
-            normal3f[] primvars:normals = [
+            normal3f[] normals = [
             {mesh_normals}
             ] (
                 interpolation = "faceVarying"

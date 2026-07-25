@@ -1,20 +1,14 @@
-# Validation and qualification
+# Integrity and runtime boundaries
 
-The release gate has three layers:
+Static gates cover deterministic assets, dependency closure, controller
+invariants, fail-closed attachment overlap, blade interlocks, and
+source/container integrity. The optional Isaac script is diagnostic only.
 
-1. deterministic generation, Python compilation, JSON parsing, PNG and GLB
-   structural checks, archive CRC checks, checksums, and strict `usdchecker`;
-2. CPU unit tests for energy maturity and faults, leak monotonicity, force
-   envelopes, blade interlocks, division ordering, and phase contracts;
-3. headless CUDA qualification in both standalone-tool and Franka-mounted
-   representations.
+The current surface-shell vessel does not resolve calibrated through-thickness
+compression. Measured generalized jaw effort below the authored force envelope
+must keep the blade interlock closed; the threshold must not be lowered and a
+synthetic force must not be injected to obtain a pass.
 
-The CUDA matrix must prove two cooked vessel surface deformables, two distal
-fixture attachments, sixteen bridge attachments, four temporary jaw
-compression attachments, four retained seal-band attachments, successful
-interlocked division, release of all bridge and compression attachments, exact
-joint counts, finite state for 120 simulation steps, and zero engine errors.
-
-A `qualification_report.json` in the catalog records the exact runtime,
-machine, GPU, driver, commands, and results. This is simulation qualification,
-not physical calibration or clinical validation.
+Seal efficacy, thermal fusion, burst pressure, division quality, physical
+calibration, clinical performance, and patient use remain unqualified pending
+a calibrated volumetric vessel/material and instrumented bench data.

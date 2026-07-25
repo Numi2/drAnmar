@@ -23,49 +23,49 @@
       "sha256": "7ebf1dcd9afe5498002ae430714fc4773b592751f1e62ab4fce66f38bdede3b6"
     },
     {
-      "bytes": 704199,
+      "bytes": 704190,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_debridement_brush_cartridge.usda",
-      "sha256": "a8a2b43a5e7bc5d706e5e5cc308dbfb544ad84353c65a483e959df92473947a4"
+      "sha256": "d4db40b5c3f039c756ecb93478fd7fd6249e6aeb40c1d4f61013d851e9815806"
     },
     {
-      "bytes": 262711,
+      "bytes": 262702,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_debridement_curette_cartridge.usda",
-      "sha256": "b1894d1b4a227d4d61f8f906e237851e06e938c314aad6a709fdeb85f2e254e6"
+      "sha256": "6ab67851d89a53627cdcd09066e01db4bb7e65c35c56d70edaeb290e8ada4809"
     },
     {
-      "bytes": 157141,
+      "bytes": 157132,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_debridement_fragment.usda",
-      "sha256": "724479426b613244d5969c0ae4c8bc4b2bbfb58ef6f53024fd56d0055efc05cc"
+      "sha256": "825732740714e07066557dd051793a351ee8739cf27a54e5adc3fc3aeb190a01"
     },
     {
-      "bytes": 351329,
+      "bytes": 351320,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_debridement_pad_cartridge.usda",
-      "sha256": "418b3fc2213589f7023e10e177f30a69a0641498824585c5c68a6eb3b074f6ac"
+      "sha256": "e01cc7d8618eded18702a13c1855b31d340d467f7a195fd90fdcb5e60809b154"
     },
     {
-      "bytes": 155227,
+      "bytes": 155218,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_irrigation_droplet.usda",
-      "sha256": "fa3d72c289c49487050079b51e35ba153dae43245580baea7f2bcddb6a01a326"
+      "sha256": "0d4cbf4434ca517e66f4efaa33e0455422f79149c5f25f917b3f0942134d9b41"
     },
     {
-      "bytes": 1593484,
+      "bytes": 1593403,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_bed_demo.usda",
-      "sha256": "edc61c35f29df8b3af773c981387907745a5ba385c92ac154ea4bc06026a0e5d"
+      "sha256": "4927e7e9f12abcd85d8a47318d51e759317dc40855566886e4da6720928f4a29"
     },
     {
-      "bytes": 4822315,
+      "bytes": 4821622,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_payload.usda",
-      "sha256": "e71c03a784e3b19a3ca010f7c43df73e1ac5fdd88a3566c1c33d809211d19323"
+      "sha256": "06882b86ac3cddc9a2b88e38b066eb4f97e12a9f7c8bb49c3cfecef9a8bfc5dd"
     },
     {
-      "bytes": 4375054,
+      "bytes": 4375045,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_rigid_proxy.usda",
-      "sha256": "f2bbd69c98fb8b7f0999c5f3074a76b891d3b51378d06df66b017073505abf0d"
+      "sha256": "44a7aa4ef9966563170e4c88f96537e933825ab8c8f9c3ad028816a47a38ec7f"
     },
     {
-      "bytes": 4822345,
+      "bytes": 4821652,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_standalone.usda",
-      "sha256": "1973b18ad056799f0a929c0083947d27d4b43cb7c9e4be5442bd948a3d55a9ab"
+      "sha256": "7aaa8a9dce3c8f6daf712617c1965dbe44e964a609f67b6fa99d572fe893a01f"
     },
     {
       "bytes": 705,
@@ -238,9 +238,9 @@
       "sha256": "91facd852776edf440ffc9976491302bf7106ba1ec29c49402e2e8e149f57720"
     },
     {
-      "bytes": 2317,
+      "bytes": 1154,
       "path": "docs/VALIDATION.md",
-      "sha256": "99ddda5f24c0ee3c1d723e85018e1103eabbf8cc14bbcb30198188aa8613343c"
+      "sha256": "9470b18059404e45ed73b1b7a855dd960ccc614e24ab40d9c9b2997b5ce22ced"
     },
     {
       "bytes": 2053,
@@ -248,9 +248,9 @@
       "sha256": "a76739d594b3b4085335fbe33cf0b2d3ec805f8858cf3ba4e7081c8378f8df2a"
     },
     {
-      "bytes": 7941,
+      "bytes": 10839,
       "path": "examples/validate_wound_preparation_runtime.py",
-      "sha256": "e514b5d8e0cb4f35b336707d94ffbd543ff67a7b388e299a88b939fd70cd65ec"
+      "sha256": "ca01821de03794af79817ddf22d030302e6bc67f8197bdf27268ff291e524e50"
     },
     {
       "bytes": 4688,
@@ -268,9 +268,9 @@
       "sha256": "1b5807e67acb57d1d81defc52dfd551ec11683a92e938b5fa91bf5a2990756b1"
     },
     {
-      "bytes": 156295,
+      "bytes": 156829,
       "path": "scripts/generate_dranmar_wound_preparation_robot.py",
-      "sha256": "f870a79dd9effeb2143e6e30551049a5f9c1bafdd648c3c350b5afe52230a641"
+      "sha256": "9c3ecbae9f4e5a777a63f9fb3fbfaaa4e5774bf19c9030fae4933ac742b64b2f"
     },
     {
       "bytes": 5747,
@@ -283,9 +283,9 @@
       "sha256": "60013a16b7fe04464f855077fe292b098cb17ef17a03c9b3efb1afa37d806705"
     },
     {
-      "bytes": 13517,
+      "bytes": 12910,
       "path": "scripts/validate_dranmar_wound_preparation_robot.py",
-      "sha256": "f55cebaa0e44bb9c1982506e64f5711ea5ae268862d225fd78e6ac1809cab97e"
+      "sha256": "e90566851444316b182e4b79b19a5bbfc2c568ca5f4d728b54ddd327c7dd1a1f"
     },
     {
       "bytes": 91,
@@ -303,49 +303,49 @@
       "sha256": "7ebf1dcd9afe5498002ae430714fc4773b592751f1e62ab4fce66f38bdede3b6"
     },
     {
-      "bytes": 704199,
+      "bytes": 704190,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_debridement_brush_cartridge.usda",
-      "sha256": "a8a2b43a5e7bc5d706e5e5cc308dbfb544ad84353c65a483e959df92473947a4"
+      "sha256": "d4db40b5c3f039c756ecb93478fd7fd6249e6aeb40c1d4f61013d851e9815806"
     },
     {
-      "bytes": 262711,
+      "bytes": 262702,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_debridement_curette_cartridge.usda",
-      "sha256": "b1894d1b4a227d4d61f8f906e237851e06e938c314aad6a709fdeb85f2e254e6"
+      "sha256": "6ab67851d89a53627cdcd09066e01db4bb7e65c35c56d70edaeb290e8ada4809"
     },
     {
-      "bytes": 157141,
+      "bytes": 157132,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_debridement_fragment.usda",
-      "sha256": "724479426b613244d5969c0ae4c8bc4b2bbfb58ef6f53024fd56d0055efc05cc"
+      "sha256": "825732740714e07066557dd051793a351ee8739cf27a54e5adc3fc3aeb190a01"
     },
     {
-      "bytes": 351329,
+      "bytes": 351320,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_debridement_pad_cartridge.usda",
-      "sha256": "418b3fc2213589f7023e10e177f30a69a0641498824585c5c68a6eb3b074f6ac"
+      "sha256": "e01cc7d8618eded18702a13c1855b31d340d467f7a195fd90fdcb5e60809b154"
     },
     {
-      "bytes": 155227,
+      "bytes": 155218,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_irrigation_droplet.usda",
-      "sha256": "fa3d72c289c49487050079b51e35ba153dae43245580baea7f2bcddb6a01a326"
+      "sha256": "0d4cbf4434ca517e66f4efaa33e0455422f79149c5f25f917b3f0942134d9b41"
     },
     {
-      "bytes": 1593484,
+      "bytes": 1593403,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_bed_demo.usda",
-      "sha256": "edc61c35f29df8b3af773c981387907745a5ba385c92ac154ea4bc06026a0e5d"
+      "sha256": "4927e7e9f12abcd85d8a47318d51e759317dc40855566886e4da6720928f4a29"
     },
     {
-      "bytes": 4822315,
+      "bytes": 4821622,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_payload.usda",
-      "sha256": "e71c03a784e3b19a3ca010f7c43df73e1ac5fdd88a3566c1c33d809211d19323"
+      "sha256": "06882b86ac3cddc9a2b88e38b066eb4f97e12a9f7c8bb49c3cfecef9a8bfc5dd"
     },
     {
-      "bytes": 4375054,
+      "bytes": 4375045,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_rigid_proxy.usda",
-      "sha256": "f2bbd69c98fb8b7f0999c5f3074a76b891d3b51378d06df66b017073505abf0d"
+      "sha256": "44a7aa4ef9966563170e4c88f96537e933825ab8c8f9c3ad028816a47a38ec7f"
     },
     {
-      "bytes": 4822345,
+      "bytes": 4821652,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_standalone.usda",
-      "sha256": "1973b18ad056799f0a929c0083947d27d4b43cb7c9e4be5442bd948a3d55a9ab"
+      "sha256": "7aaa8a9dce3c8f6daf712617c1965dbe44e964a609f67b6fa99d572fe893a01f"
     },
     {
       "bytes": 705,
@@ -498,16 +498,18 @@
       "sha256": "f4f2e843c3aeaffa3646991cced6eaa28baa6f63f71568785abfa3a7efb39af4"
     },
     {
-      "bytes": 44820,
+      "bytes": 45944,
       "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/wound_preparation_robot.py",
-      "sha256": "6c0de32dc518b7fe2fc8c5c6f0982d5fc3070edd48f998cdd36ee2b691cfef04"
+      "sha256": "f5ab6bcc88cdbcd112871f0063bd3e714446f5d84f3e1e3888f007fadb1bdcf4"
     },
     {
-      "bytes": 4729,
+      "bytes": 5183,
       "path": "tests/test_wound_preparation_robot.py",
-      "sha256": "b29866e0eb5860a6fbc7e8087c49dca83dafea9ef391e7e6c81ec0487e4c8d2d"
+      "sha256": "f93c77c92d44eaee0bc6726e42525a5d95caa40e77d86a816694e47cf20005cf"
     }
   ],
+  "installed_overlay_entries_refreshed": 97,
+  "installed_overlay_hash_contract": "sha256 of exact current repository file bytes",
   "schema": "dr.anmar.asset-manifest.v1",
   "version": "0.1.0"
 }

@@ -191,8 +191,8 @@
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/asset_manifest.json",
       "live_integration": "franka_panda_link8_replacement_plus_optional_main_bench_standalone_articulation_and_wound_bed_station",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
-      "physical_qualification": "provisional_unmeasured_parameters_active",
+      "native_gpu_qualification": "runtime_smoke_only_physical_effect_unqualified",
+      "physical_qualification": "blocked_pending_contact_derived_debridement_work_fluid_capture_and_instrumented_calibration",
       "clinical_validation": false
     },
     {
@@ -208,8 +208,8 @@
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_exposure_substrate_station",
       "live_behavior": "distributed_tissue_capture_independent_retraction_compliance_force_estimation_progressive_release_and_roi_visibility_control",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_four_case_matrix",
-      "physical_qualification": "provisional_parameters_pending_instrumented_retraction_bench",
+      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
+      "physical_qualification": "blocked_pending_scene_measured_pad_contact_force_capture_quality_and_instrumented_retraction_bench",
       "clinical_validation": false
     },
     {
@@ -223,10 +223,10 @@
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/asset_manifest.json",
       "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/qualification_report.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_bleeding_vessel_station",
-      "live_behavior": "blood_particles_fixture_and_pad_attachments_retained_clip_patch_bonds_pressure_challenge_and_residual_flow_verification",
+      "live_behavior": "blood_particles_fixture_and_pad_attachments_retained_clip_patch_bonds_and_fail_closed_reduced_order_flow_controller",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1",
-      "physical_qualification": "provisional_parameters_pending_instrumented_hemostasis_bench",
+      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
+      "physical_qualification": "blocked_pending_scene_measured_occlusion_patch_seal_residual_flow_and_instrumented_hemostasis_bench",
       "clinical_validation": false
     },
     {
@@ -240,10 +240,10 @@
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/asset_manifest.json",
       "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/qualification_report.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_hollow_tissue_station",
-      "live_behavior": "bilateral_surface_deformables_distal_fixtures_temporary_capture_retained_staple_ring_collar_sector_bonds_patency_particles_and_pressure_decay",
+      "live_behavior": "bilateral_surface_deformables_distal_fixtures_temporary_capture_retained_staple_ring_collar_sector_bonds_and_fail_closed_patency_leak_controllers",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1",
-      "physical_qualification": "provisional_parameters_pending_instrumented_anastomosis_bench",
+      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
+      "physical_qualification": "blocked_pending_scene_measured_lumen_seam_leak_and_instrumented_anastomosis_bench",
       "clinical_validation": false
     },
     {
@@ -257,10 +257,10 @@
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/asset_manifest.json",
       "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/qualification_report.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_vessel_station",
-      "live_behavior": "dual_surface_deformables_distal_fixtures_bridge_cells_jaw_compression_retained_seal_bands_energy_interlock_division_and_stump_leak_proxy",
+      "live_behavior": "dual_surface_deformables_distal_fixtures_bridge_cells_fail_closed_compression_and_blade_interlocks_and_research_thermal_leak_controllers",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1",
-      "physical_qualification": "provisional_parameters_pending_instrumented_seal_divide_bench",
+      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
+      "physical_qualification": "blocked_surface_shell_cannot_resolve_through_thickness_compression_pending_volumetric_material_and_instrumented_bench",
       "clinical_validation": false
     },
     {
@@ -274,10 +274,10 @@
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/asset_manifest.json",
       "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/qualification_report.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_safeplane_tissue_station",
-      "live_behavior": "surface_deformables_fixture_grounding_distributed_traction_adhesion_bridge_release_guarded_multimodal_dissection_protected_structure_continuity_and_conserved_pbd_fluid",
+      "live_behavior": "surface_deformables_fixture_grounding_distributed_traction_guarded_multimodal_controller_protected_structure_interlocks_and_capacity_safe_pbd_fluid",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "passed_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_rtx_4090_standalone_and_franka_cuda_matrix",
-      "physical_qualification": "provisional_parameters_pending_instrumented_dissection_bench",
+      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
+      "physical_qualification": "blocked_pending_contact_derived_bridge_work_scene_measured_release_and_instrumented_dissection_bench",
       "clinical_validation": false
     },
     {

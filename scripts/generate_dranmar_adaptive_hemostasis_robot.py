@@ -560,7 +560,7 @@ def mesh_usda(visual: Visual, material_path: str, indent: str = "               
 {indent}    point3f[] points = [
 {points}
 {indent}    ]
-{indent}    normal3f[] primvars:normals = [
+{indent}    normal3f[] normals = [
 {normals}
 {indent}    ] (
 {indent}        interpolation = "vertex"
@@ -930,7 +930,7 @@ def Xform "{root}" (
         string drAnmarAssetVersion = "{VERSION}"
         bool drAnmarClinicalValidation = false
         bool drAnmarMedicalDevice = false
-        string drAnmarStatus = "research_only_runtime_qualified_physical_calibration_pending"
+        string drAnmarStatus = "research_only_runtime_observed_physical_effect_unqualified"
         string drAnmarMount = "replaces_panda_hand_at_panda_link8"
         int drAnmarClipCapacity = {CLIP_CAPACITY}
         int drAnmarPatchCapacity = {PATCH_CAPACITY}
@@ -1492,7 +1492,7 @@ def task_contract() -> dict[str,object]:
 
 def physics_profile(bundle: ToolBundle) -> dict[str,object]:
     return {
-        "schema":"dranmar.adaptive-hemostasis-profile.v1","id":"dranmar-adaptive-hemostasis-robot-v1","version":VERSION,"status":"research_only_runtime_qualified_physical_calibration_pending",
+        "schema":"dranmar.adaptive-hemostasis-profile.v1","id":"dranmar-adaptive-hemostasis-robot-v1","version":VERSION,"status":"research_only_runtime_observed_physical_effect_unqualified",
         "tool":{"mount":"panda_link8","joint_count":len(bundle.joints),"clip_capacity":CLIP_CAPACITY,"patch_capacity":PATCH_CAPACITY,"suction_ports":SUCTION_PORT_COUNT,"irrigation_ports":IRRIGATION_PORT_COUNT},
         "compression":{"target_force_per_pad_n":1.8,"soft_limit_n":4.0,"hard_release_n":7.0,"maximum_travel_m":0.030},
         "clip":{"open_gap_m":0.0060,"formed_gap_m":0.0011,"reference_closing_force_n":5.0,"provisional_retention_force_n":2.8,"plastic_forming_not_simulated":True},
@@ -2132,7 +2132,7 @@ def static_report(files: Sequence[Path]) -> dict[str,object]:
     checks=[]
     for p in usda:
         text=p.read_text(encoding="utf-8");checks.append({"file":p.relative_to(PACKAGE_ROOT).as_posix(),"brace_balance":text.count("{")==text.count("}"),"flat_quaternion_count":text.count("quatf "),"nested_quaternion_suspect":"(1, (" in text,"one_line_over_suspect":any(line.strip().startswith("over ") and "{" in line and "}" in line for line in text.splitlines())})
-    return {"schema":"dranmar.static-build-report.v1","asset":"dranmar-adaptive-hemostasis-robot-v1","usda_checks":checks,"runtime_validation":"headless_cuda_qualification_supplied_separately"}
+    return {"schema":"dranmar.static-build-report.v1","asset":"dranmar-adaptive-hemostasis-robot-v1","usda_checks":checks,"runtime_observation":"optional_headless_cuda_smoke_script_supplied_separately","physical_effect_qualified":False}
 
 
 def generate() -> dict[str,object]:
@@ -2153,7 +2153,7 @@ def generate() -> dict[str,object]:
     catalog=PACKAGE_ROOT.parent/"dranmar_adaptive_hemostasis_robot_catalog_v0.1.0.zip";zip_tree(ASSET_ROOT,catalog,prefix=CATALOG_SUBPATH.as_posix())
     overlay=build_overlay()
     for p in (dev,catalog,overlay):write_checksum(p)
-    release={"schema":"dranmar.release.v1","asset":"dranmar-adaptive-hemostasis-robot-v1","version":VERSION,"catalog_subpath":CATALOG_SUBPATH.as_posix(),"development_package":{"path":str(dev),"sha256":sha256(dev)},"catalog_package":{"path":str(catalog),"sha256":sha256(catalog)},"repository_overlay":{"path":str(overlay),"sha256":sha256(overlay)},"primary_assets":[str(ASSET_ROOT/n) for n in ("dranmar_adaptive_hemostasis_tool_payload.usda","dranmar_adaptive_hemostasis_tool_standalone.usda","dranmar_adaptive_hemostasis_tool_rigid_proxy.usda","dranmar_hemostatic_clip.usda","dranmar_hemostatic_patch.usda","dranmar_hemostatic_patch_rigid_proxy.usda","dranmar_bleeding_vessel_demo.usda","dranmar_blood_droplet.usda")],"runtime_validation":"qualified_headless_cuda_matrix_report_in_catalog","clinical_validation":False}
+    release={"schema":"dranmar.release.v1","asset":"dranmar-adaptive-hemostasis-robot-v1","version":VERSION,"catalog_subpath":CATALOG_SUBPATH.as_posix(),"development_package":{"path":str(dev),"sha256":sha256(dev)},"catalog_package":{"path":str(catalog),"sha256":sha256(catalog)},"repository_overlay":{"path":str(overlay),"sha256":sha256(overlay)},"primary_assets":[str(ASSET_ROOT/n) for n in ("dranmar_adaptive_hemostasis_tool_payload.usda","dranmar_adaptive_hemostasis_tool_standalone.usda","dranmar_adaptive_hemostasis_tool_rigid_proxy.usda","dranmar_hemostatic_clip.usda","dranmar_hemostatic_patch.usda","dranmar_hemostatic_patch_rigid_proxy.usda","dranmar_bleeding_vessel_demo.usda","dranmar_blood_droplet.usda")],"runtime_observation":"archived_smoke_record_not_physical_qualification","clinical_validation":False}
     release_path=PACKAGE_ROOT.parent/"dranmar_adaptive_hemostasis_robot_release_v0.1.0.json";write_json(release_path,release)
     return release
 

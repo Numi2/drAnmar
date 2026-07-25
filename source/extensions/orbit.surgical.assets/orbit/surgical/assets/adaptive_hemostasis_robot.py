@@ -47,7 +47,13 @@ TOOL_FRAME_PATHS = {
     "left_compression_contact":"Links/LeftPad/Frames/left_compression_contact","right_compression_contact":"Links/RightPad/Frames/right_compression_contact",
     "left_clip_contact":"Links/LeftClipJaw/Frames/left_clip_contact","right_clip_contact":"Links/RightClipJaw/Frames/right_clip_contact",
     "flow_probe":"Links/Mount/Frames/flow_probe","count_reference":"Links/Mount/Frames/count_reference","disposal_reference":"Links/Mount/Frames/disposal_reference",
+    "fluorescence_camera":"Links/Mount/Frames/fluorescence_camera",
+    "rgb_camera_left":"Links/Mount/Frames/rgb_camera_left",
+    "rgb_camera_right":"Links/Mount/Frames/rgb_camera_right",
 }
+REGISTERED_CAMERA_FRAMES = (
+    "rgb_camera_left", "rgb_camera_right", "fluorescence_camera",
+)
 
 
 def frame_path(tool_path: str, name: str) -> str:
@@ -58,6 +64,14 @@ def frame_path(tool_path: str, name: str) -> str:
 
 def tensor_value(value: Any):
     return value.torch if hasattr(value,"torch") else value
+
+
+def _xyzw_from_wxyz(orientation_wxyz) -> tuple[float, float, float, float]:
+    values=tuple(float(value) for value in orientation_wxyz)
+    if len(values)!=4 or not all(math.isfinite(value) for value in values):raise ValueError("orientation_wxyz must contain four finite values")
+    if abs(math.sqrt(sum(value*value for value in values))-1.0)>1.0e-4:raise ValueError("orientation_wxyz must be a unit quaternion")
+    w,x,y,z=values
+    return x,y,z,w
 
 
 def _check(value: str, allowed: frozenset[str], label: str) -> str:
@@ -73,7 +87,7 @@ def make_tool_cfg(prim_path: str="/World/DrAnmarAdaptiveHemostasisTool", *, clip
     return ArticulationCfg(
         prim_path=prim_path,
         spawn=sim_utils.UsdFileCfg(usd_path=str(TOOL_STANDALONE_USD),variants={"clip_state":clip_state,"patch_state":patch_state,"irrigation_state":irrigation_state,"collection_state":collection_state},activate_contact_sensors=True,articulation_props=sim_utils.ArticulationRootPropertiesCfg(enabled_self_collisions=False,solver_position_iteration_count=20,solver_velocity_iteration_count=6)),
-        init_state=ArticulationCfg.InitialStateCfg(pos=position,rot=orientation_wxyz,joint_pos={name:0.0 for name in TOOL_JOINTS.values()}),
+        init_state=ArticulationCfg.InitialStateCfg(pos=position,rot=_xyzw_from_wxyz(orientation_wxyz),joint_pos={name:0.0 for name in TOOL_JOINTS.values()}),
         actuators={
             "compression":ImplicitActuatorCfg(joint_names_expr=[".*compression_joint",".*pad_compliance_joint"],effort_limit_sim=120.0,velocity_limit_sim=0.18,stiffness=5200.0,damping=190.0),
             "clip":ImplicitActuatorCfg(joint_names_expr=[".*clip_jaw_joint","clip_driver_joint"],effort_limit_sim=240.0,velocity_limit_sim=0.30,stiffness=14000.0,damping=300.0),
@@ -86,7 +100,7 @@ def make_tool_cfg(prim_path: str="/World/DrAnmarAdaptiveHemostasisTool", *, clip
 def make_rigid_proxy_cfg(prim_path="/World/DrAnmarAdaptiveHemostasisProxy", *, position=(0,0,0.35), orientation_wxyz=(1,0,0,0)):
     import isaaclab.sim as sim_utils
     from isaaclab.assets import RigidObjectCfg
-    return RigidObjectCfg(prim_path=prim_path,spawn=sim_utils.UsdFileCfg(usd_path=str(TOOL_RIGID_PROXY_USD),activate_contact_sensors=True),init_state=RigidObjectCfg.InitialStateCfg(pos=position,rot=orientation_wxyz))
+    return RigidObjectCfg(prim_path=prim_path,spawn=sim_utils.UsdFileCfg(usd_path=str(TOOL_RIGID_PROXY_USD),activate_contact_sensors=True),init_state=RigidObjectCfg.InitialStateCfg(pos=position,rot=_xyzw_from_wxyz(orientation_wxyz)))
 
 
 def _spawn_single_franka_with_tool(prim_path: str, cfg: Any, translation=None, orientation=None, **kwargs):
@@ -193,7 +207,7 @@ def _current_stage(stage=None):
 
 def spawn_vessel_demo(prim_path="/World/DrAnmarBleedingVessel", *, translation=(0,0,0), orientation_wxyz=(1,0,0,0)):
     import isaaclab.sim as sim_utils
-    cfg=sim_utils.UsdFileCfg(usd_path=str(VESSEL_USD));return cfg.func(prim_path,cfg,translation=translation,orientation=orientation_wxyz)
+    cfg=sim_utils.UsdFileCfg(usd_path=str(VESSEL_USD));return cfg.func(prim_path,cfg,translation=translation,orientation=_xyzw_from_wxyz(orientation_wxyz))
 
 
 def apply_vessel_surface_deformable(root_path: str, *, self_collision=True, stage=None):
@@ -233,7 +247,8 @@ def create_deformable_attachment(deformable_path: str, target_path: str, attachm
         )
         world_to_target = target_to_world.GetInverse()
         bounds = UsdGeom.BBoxCache(
-            Usd.TimeCode.Default(), [UsdGeom.Tokens.default_]
+            Usd.TimeCode.Default(),
+            [UsdGeom.Tokens.default_, UsdGeom.Tokens.guide],
         ).ComputeWorldBound(target).ComputeAlignedRange()
         minimum, maximum = bounds.GetMin(), bounds.GetMax()
         center = (minimum + maximum) * 0.5
@@ -249,9 +264,12 @@ def create_deformable_attachment(deformable_path: str, target_path: str, attachm
         ranked.sort(key=lambda item: item[0])
         selected = [item for item in ranked if item[3]][:12]
         if len(selected) < 4:
-            selected = ranked[:min(4, len(ranked))]
-        if not selected:
-            raise RuntimeError(f"No vertices available for {attachment_path}")
+            raise RuntimeError(
+                f"Attachment capture volume does not overlap enough deformable "
+                f"vertices for {attachment_path}: source={deformable_path}, "
+                f"target={target_path}, overlapping={len(selected)}, "
+                "required=4, overlap_margin_m=0.0025"
+            )
         attachment = stage.DefinePrim(
             attachment_path, "OmniPhysicsVtxXformAttachment"
         )
@@ -490,9 +508,53 @@ class AnnularSuctionController:
         if pos.ndim!=2 or pos.shape[1]!=3 or vel.shape!=pos.shape:raise ValueError("positions and velocities must be matching Nx3 arrays")
         if not np.isfinite(pos).all() or not np.isfinite(vel).all():raise ValueError("positions and velocities must be finite")
         center=np.asarray(self.center_world,dtype=float);delta=center-pos;dist=np.linalg.norm(delta,axis=-1);direction=delta/np.maximum(dist[...,None],1e-9);mask=dist<self.attraction_radius_m;vel[mask]+=direction[mask]*self.acceleration_m_s2*_nonnegative_finite(dt,"dt");captured=dist<self.capture_radius_m
+        if ledger is not None:
+            maximum_captures=int(math.floor((ledger.active_particle_ml+1.0e-12)/self.particle_volume_ml))
+            candidate_indices=np.flatnonzero(captured)
+            if len(candidate_indices)>maximum_captures:
+                captured[:]=False
+                captured[candidate_indices[:maximum_captures]]=True
         count=int(np.count_nonzero(captured))
-        if ledger is not None and count:ledger.suction(count*self.particle_volume_ml)
+        if ledger is not None and count:
+            requested=count*self.particle_volume_ml
+            accounted=ledger.suction(requested)
+            if not math.isclose(accounted,requested,rel_tol=0.0,abs_tol=1.0e-12):
+                raise RuntimeError(
+                    "Particle removal and hemorrhage ledger diverged: "
+                    f"removed_ml={requested}, accounted_ml={accounted}"
+                )
         return pos[~captured],vel[~captured],captured
+    def update_particle_set(self,dt: float,ledger: HemorrhageLedger,*,stage=None,particles_path="/World/DrAnmarBlood/Particles"):
+        from pxr import UsdGeom,Vt
+        stage=_current_stage(stage);points=UsdGeom.Points(stage.GetPrimAtPath(particles_path))
+        if not points:
+            raise ValueError(f"No blood particle set at {particles_path}")
+        positions=list(points.GetPointsAttr().Get() or [])
+        velocities=list(points.GetVelocitiesAttr().Get() or [])
+        if len(velocities)!=len(positions):
+            raise RuntimeError(
+                f"Blood particle position/velocity count mismatch at {particles_path}: "
+                f"positions={len(positions)}, velocities={len(velocities)}"
+            )
+        widths=list(points.GetWidthsAttr().Get() or [BLOOD_PARTICLE_RADIUS_M*2.0]*len(positions))
+        if len(widths)!=len(positions):
+            raise RuntimeError(
+                f"Blood particle position/width count mismatch at {particles_path}: "
+                f"positions={len(positions)}, widths={len(widths)}"
+            )
+        kept_positions,kept_velocities,captured=self.update_positions_velocities(
+            positions,velocities,dt,ledger
+        )
+        kept_widths=[width for width,was_captured in zip(widths,captured) if not was_captured]
+        points.GetPointsAttr().Set(Vt.Vec3fArray(kept_positions))
+        points.GetVelocitiesAttr().Set(Vt.Vec3fArray(kept_velocities))
+        points.GetWidthsAttr().Set(kept_widths)
+        return {
+            "active_particle_count":len(kept_positions),
+            "captured_particle_count":int(captured.sum()),
+            "suctioned_ml":int(captured.sum())*self.particle_volume_ml,
+            "particles_path":particles_path,
+        }
 
 
 @dataclass

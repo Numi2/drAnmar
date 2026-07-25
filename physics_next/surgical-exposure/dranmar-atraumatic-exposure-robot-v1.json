@@ -39,9 +39,9 @@
   },
   "medical_device": false,
   "runtime": {
-    "franka_mount": "verified stock panda_hand_joint frame with unique panda_link8 compatibility fallback",
-    "qualification": "four_case_cuda_matrix_on_numi_rtx_4090_2026_07_25",
-    "qualified_lane": "Isaac Sim 6.0.1.0 / Isaac Lab distribution 6.1.16 surface-deformable attachments"
+    "franka_mount": "stock panda_hand_joint frame with unique panda_link8 compatibility fallback",
+    "observed_stack": "Isaac Sim 6.0.1.0 / Isaac Lab distribution 6.1.16",
+    "status": "composition_observed_physical_effect_unqualified"
   },
   "schema": "dr.anmar.atraumatic-exposure-profile.v1",
   "status": "research_informed_engineering_model_pending_physical_and_clinical_validation",

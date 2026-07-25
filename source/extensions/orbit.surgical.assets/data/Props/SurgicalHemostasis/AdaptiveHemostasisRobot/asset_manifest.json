@@ -22,44 +22,44 @@
       "sha256": "d9ef17cdc8a72b5b9a1613000662ec55e9b1ba0a5be70dfb1cd80c54473a9b4b"
     },
     {
-      "bytes": 3137831,
+      "bytes": 3137091,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_payload.usda",
-      "sha256": "4161f30debcd70a45ce20c2166e01f7be6c6b442ed8d82b8cebd64f33a3c4332"
+      "sha256": "b28374eaf463600aae0d402b37f5b51f4f576ac6ee2d850a5b86cfbf024dc0e9"
     },
     {
-      "bytes": 2775138,
+      "bytes": 2774400,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_rigid_proxy.usda",
-      "sha256": "e8727f0429c7916f0e9581b27e0777672de84415afd0364e6af5d5730fbe6c4c"
+      "sha256": "ed9eba2e9ceb9b997f54bf2f3b4785e571c77fc661ea7a9537cecc36405110c7"
     },
     {
-      "bytes": 3139477,
+      "bytes": 3138737,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_standalone.usda",
-      "sha256": "8c18de379d03aa0042d108617bfe64166883001aba27918269ba9605c7a4097b"
+      "sha256": "ad1187346ea1806993c60ffddc7894c0210ec75003eb34061259d81331b9b77a"
     },
     {
-      "bytes": 1606276,
+      "bytes": 1606231,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_bleeding_vessel_demo.usda",
-      "sha256": "283a0ed40d56b5959ef4946fb42614966cf847e599ec16304cef7cc5aadfdfd8"
+      "sha256": "2fc5695922e534d823af72ce529439adc8083b1b6042d220431d8fbe06ea4e42"
     },
     {
-      "bytes": 44694,
+      "bytes": 44685,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_blood_droplet.usda",
-      "sha256": "69d94d4b95c5bf9e23160e4baff9af2ebeeb6989ee391e0a995c06c74b83e60b"
+      "sha256": "bf191af15016508bf3605281bb51caeeea1a7838c9726726c769cdec101eb881"
     },
     {
-      "bytes": 300213,
+      "bytes": 300195,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_hemostatic_clip.usda",
-      "sha256": "d2cade5224366d6d7f7c7f757009a4a3dd91dc12d62a0ed30688077174b8fedc"
+      "sha256": "dc4f9266a74d79ce8a0cc4389da6c5954d7157196a08408a92c45efa68c31bd2"
     },
     {
-      "bytes": 127380,
+      "bytes": 127371,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_hemostatic_patch.usda",
-      "sha256": "deafd3b6ca98438342a204c775d6cac1403b0eb71164f84dffac4c0e959ec6fc"
+      "sha256": "6e5dae4d825df2bc8d115f854fbd77b7ad369f12ab09cbf89138e2acc50e4ec3"
     },
     {
-      "bytes": 142179,
+      "bytes": 142170,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_hemostatic_patch_rigid_proxy.usda",
-      "sha256": "6fb776fb5e402f37dfd035f2ea8917ba51094849427f5538cd00d58804ab84a0"
+      "sha256": "af67792362ffaccbe44969d2ff42f732bbf224be75089aa907ed784cd93aff3d"
     },
     {
       "bytes": 668,
@@ -152,14 +152,14 @@
       "sha256": "f5197729d655bbf3926d6d6f2332eabb85bd965a06e97b7ca0c092b5be987490"
     },
     {
-      "bytes": 1599,
+      "bytes": 1597,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/physics_profile.json",
-      "sha256": "18da9c9d3d467e7486706786d62ec12238dd83cbeb9a438c83caa604cdf85a9a"
+      "sha256": "fe984f627d896d1399e4553fbc996f8ddc704e35eaec1f7b4b201e8f310fba44"
     },
     {
-      "bytes": 2081,
+      "bytes": 889,
       "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/qualification_report.json",
-      "sha256": "e66ebdf1103a0ff5178ad987401bafb9675a764247bd1283a6f94e636b65bf8a"
+      "sha256": "589aa0008ee7c195590f4f04e1e51129bc5f670e97bedd2f942f19ccca68d048"
     },
     {
       "bytes": 477603,
@@ -212,9 +212,9 @@
       "sha256": "43968a12894a2e44bed012f05c15dd02403fb2606232d59761b2f497178178e1"
     },
     {
-      "bytes": 1092,
+      "bytes": 798,
       "path": "docs/adaptive_hemostasis_robot/VALIDATION.md",
-      "sha256": "fa8f4757b08001e86fc0121c4d58b2ed883d085df818fa17d80b348a967c3df3"
+      "sha256": "c14863363301a2cae35cf738799a6d4deb7b7fa5f6bfa790666119ae51cbc0f3"
     },
     {
       "bytes": 1131,
@@ -222,14 +222,14 @@
       "sha256": "8a6ff84dca81b69feca1c3ad4c2d2398f301f771e146c59a043f2233cedc95f9"
     },
     {
-      "bytes": 10609,
+      "bytes": 13717,
       "path": "examples/validate_adaptive_hemostasis_runtime.py",
-      "sha256": "5e3746c18200daf79576f28955e46dd017b381cac2ac4bbfd6b80bc482a0d707"
+      "sha256": "14bbdbdbd3273a2cb7495d927170e848a56b74eee1b637b15d66710e34a17899"
     },
     {
-      "bytes": 1599,
+      "bytes": 1597,
       "path": "physics_next/surgical-hemostasis/dranmar-adaptive-hemostasis-v1.json",
-      "sha256": "18da9c9d3d467e7486706786d62ec12238dd83cbeb9a438c83caa604cdf85a9a"
+      "sha256": "fe984f627d896d1399e4553fbc996f8ddc704e35eaec1f7b4b201e8f310fba44"
     },
     {
       "bytes": 93237,
@@ -242,9 +242,9 @@
       "sha256": "b178577b0079d59a6c5bd9fca52d802c09b9e57e70cf76665551830ee68072ad"
     },
     {
-      "bytes": 116497,
+      "bytes": 116528,
       "path": "scripts/generate_dranmar_adaptive_hemostasis_robot.py",
-      "sha256": "a1b5d1d469f98a6fb4223d2f191e0fcd495b0a1107fb15c02d2e140b1c2e04de"
+      "sha256": "d1f0b7f72d2f9ba6ff14ee3f7f743761d0c5f3116232d7b6119a35b41f8c6f4f"
     },
     {
       "bytes": 5661,
@@ -262,16 +262,18 @@
       "sha256": "9e5037882451f9d2019123c76d1641814c4d8c1b397a17a72cb0dc92542c4f04"
     },
     {
-      "bytes": 43321,
+      "bytes": 46757,
       "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/adaptive_hemostasis_robot.py",
-      "sha256": "f5efd0a3e1b714009269f8255b1cf09cf9cd2d8b4bd9fe25c806ae7678176c08"
+      "sha256": "7ce8447082abe11c408d66921e177f9a88bfea59efb78b140a86bf0ebec5b599"
     },
     {
-      "bytes": 5599,
+      "bytes": 6527,
       "path": "tests/test_adaptive_hemostasis_robot.py",
-      "sha256": "1a1ae046f94f071acfd0e6a047a0ae0ac2c95c73b32d083f6522bc4c29e1c0e0"
+      "sha256": "a86e789a0aadafde12181d71fc9bc6949b6b438b586fc2716abb0bbaed0724a7"
     }
   ],
+  "installed_overlay_entries_refreshed": 51,
+  "installed_overlay_hash_contract": "sha256 of exact current repository file bytes",
   "schema": "dranmar.asset-manifest.v1",
   "version": "0.1.0"
 }

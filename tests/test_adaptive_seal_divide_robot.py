@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -58,6 +59,48 @@ class FakeBridge:
 
 
 class AdaptiveSealDivideSafetyTests(unittest.TestCase):
+    def test_phase_contract_is_complete_and_exact(self):
+        self.assertEqual(
+            list(MODULE.PHASE_TARGETS),
+            [
+                "inspect", "center", "compress", "seal", "verify_seal",
+                "retract_guard", "divide", "release", "verify_stumps",
+                "complete", "abort",
+            ],
+        )
+        expected = set(MODULE.TOOL_JOINTS.values())
+        for phase in MODULE.PHASE_TARGETS:
+            targets = MODULE.phase_targets(phase)
+            self.assertEqual(set(targets), expected)
+            self.assertTrue(
+                all(math.isfinite(value) for value in targets.values())
+            )
+        with self.assertRaises(KeyError):
+            MODULE.phase_targets("unknown")
+        self.assertEqual(MODULE.REGISTERED_CAMERA_FRAMES, ("thermal_camera",))
+
+    def test_energy_reaches_maturity_and_rejects_nonfinite_inputs(self):
+        energy = qualified_energy()
+        self.assertLess(energy.left.temperature_c, energy.maximum_temperature_c)
+        self.assertLess(energy.right.temperature_c, energy.maximum_temperature_c)
+        with self.assertRaises(ValueError):
+            energy.update(float("nan"), 9.0, 9.0)
+        with self.assertRaises(ValueError):
+            energy.update(0.01, -1.0, 9.0)
+
+    def test_leak_model_is_monotonic_and_finite(self):
+        model = MODULE.DualStumpLeakModel()
+        open_flow = model.flow_ml_min(model.left)
+        model.left.maturity = 0.95
+        model.left.residual_gap_fraction = 0.25
+        sealed_flow = model.flow_ml_min(model.left)
+        model.left.damage = 1.0
+        damaged_flow = model.flow_ml_min(model.left)
+        self.assertTrue(0.0 <= sealed_flow < damaged_flow < open_flow)
+        model.left.maturity = float("nan")
+        with self.assertRaises(ValueError):
+            model.flow_ml_min(model.left)
+
     def test_energy_overtemperature_latches_fault(self):
         energy = MODULE.AdaptiveSealEnergyController(maximum_temperature_c=40.0)
         for _ in range(100):
@@ -72,10 +115,19 @@ class AdaptiveSealDivideSafetyTests(unittest.TestCase):
         energy = qualified_energy()
         leak = qualified_leak(energy)
         interlock = MODULE.BladeInterlockController()
-        blocked = interlock.evaluate(energy, leak, 9.0, 9.0, False)
+        blocked = interlock.evaluate(
+            energy, leak, 9.0, 9.0, False, tissue_centered=True
+        )
         self.assertFalse(blocked["authorized"])
         self.assertIn("blade_guard_not_retracted", blocked["reasons"])
-        allowed = interlock.evaluate(energy, leak, 9.0, 9.0, True)
+        off_center = interlock.evaluate(
+            energy, leak, 9.0, 9.0, True, tissue_centered=False
+        )
+        self.assertFalse(off_center["authorized"])
+        self.assertIn("tissue_not_centered", off_center["reasons"])
+        allowed = interlock.evaluate(
+            energy, leak, 9.0, 9.0, True, tissue_centered=True
+        )
         self.assertTrue(allowed["authorized"])
         self.assertEqual(allowed["reasons"], [])
 
@@ -91,6 +143,16 @@ class AdaptiveSealDivideSafetyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             controller.update_force(float("inf"), 1.0)
 
+    def test_seal_band_break_force_progresses(self):
+        controller = MODULE.TissueSealBandController()
+        bond = MODULE.SealBandBond("/Band", "/Vessel", [])
+        fresh = controller.break_force_n(bond)
+        bond.maturity = 1.0
+        mature = controller.break_force_n(bond)
+        self.assertAlmostEqual(fresh, 0.6)
+        self.assertAlmostEqual(mature, 7.5)
+        self.assertGreater(mature, fresh)
+
     def test_division_does_not_advance_before_authorization(self):
         energy = qualified_energy()
         leak = qualified_leak(energy)
@@ -98,13 +160,15 @@ class AdaptiveSealDivideSafetyTests(unittest.TestCase):
         division = MODULE.TissueDivisionController(bridge)
         blocked = division.advance(
             0.5, energy=energy, leak=leak, upper_force_n=9.0,
-            lower_force_n=9.0, guard_retracted=False, stage=FakeStage(),
+            lower_force_n=9.0, guard_retracted=False, tissue_centered=True,
+            stage=FakeStage(),
         )
         self.assertEqual(blocked["blade_progress"], 0.0)
         self.assertEqual(division.violations, 1)
         allowed = division.advance(
             1.0, energy=energy, leak=leak, upper_force_n=9.0,
-            lower_force_n=9.0, guard_retracted=True, stage=FakeStage(),
+            lower_force_n=9.0, guard_retracted=True, tissue_centered=True,
+            stage=FakeStage(),
         )
         self.assertTrue(allowed["authorized"])
         self.assertTrue(allowed["division_complete"])

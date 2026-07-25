@@ -38,7 +38,7 @@
     ]
   },
   "schema": "dranmar.adaptive-hemostasis-profile.v1",
-  "status": "research_only_runtime_qualified_physical_calibration_pending",
+  "status": "research_only_runtime_observed_physical_effect_unqualified",
   "tool": {
     "clip_capacity": 8,
     "irrigation_ports": 8,

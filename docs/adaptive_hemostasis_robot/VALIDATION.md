@@ -1,23 +1,15 @@
-# Validation
+# Integrity and runtime boundaries
 
-The release gate combines deterministic regeneration, `usdchecker` parsing of all
-eight primary OpenUSD assets, GLB/PNG/JSON/container checks, manifest and mirror
-hash verification, controller unit tests, and headless CUDA execution in both the
-standalone-tool and Franka-mounted representations.
+Static gates cover deterministic assets, dependency closure, controller
+invariants, fail-closed attachment overlap, particle-ledger conservation, and
+source/container integrity. The optional Isaac script is diagnostic only.
 
-Runtime qualification verifies:
+It can report articulation motion, surface-deformable schema application,
+physical attachment objects, PBD blood movement through the annular-suction
+ledger, and registered camera output. Attachment counts do not measure vessel
+occlusion or patch sealing. Those effectiveness inputs therefore remain zero
+unless a calibrated scene measurement supplies them, and residual-flow
+verification fails closed.
 
-- current Isaac surface-deformable schemas on the vessel wall;
-- two fixture, two temporary-compression, two retained-clip, and eight patch-bond
-  vertex attachments;
-- all eleven tool joints and, in the combined representation, all seven Franka
-  arm joints;
-- finite articulation state after stepping;
-- conserved particle-volume bookkeeping and annular suction capture;
-- provisional clip-retention and patch-cure thresholds;
-- pressure-challenge residual-flow integration;
-- zero captured engine errors.
-
-This is software and simulation-stack qualification only. It does not establish
-clinical performance, calibrated vessel damage, clip plasticity, biochemical
-coagulation, patient safety, regulatory suitability, or physical-bench validity.
+No current record qualifies clip plasticity, patch adhesion, hemostasis,
+physical calibration, clinical performance, or patient use.

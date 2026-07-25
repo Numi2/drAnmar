@@ -454,7 +454,11 @@ def build_tool() -> ToolBundle:
         ],0.060,("atraumatic_tissue_centering_finger",))
 
     # Upper and lower seal jaws are symmetric and keep a physical blade channel at X=0.
-    for jaw_name,sign in (("UpperJaw",-1),("LowerJaw",1)):
+    # Positive local Z points from the upper jaw toward the tissue plane;
+    # negative local Z points from the lower jaw toward that same plane.
+    # Keep every electrode, pressure rail, and contact volume on the
+    # tissue-facing side of its jaw.
+    for jaw_name,sign in (("UpperJaw",1),("LowerJaw",-1)):
         face_z=sign*0.0060
         jaw_visuals=[
             Visual("JawBody",box_mesh((0.056,0.030,0.009),(0,0,0)),"JawMetal",("seal_jaw",)),
@@ -645,7 +649,7 @@ def mesh_usda(visual: Visual, material_path: str, indent: str = "            ") 
 {indent}    point3f[] points = [
 {points}
 {indent}    ]
-{indent}    normal3f[] primvars:normals = [
+{indent}    normal3f[] normals = [
 {normal_values}
 {indent}    ] (
 {indent}        interpolation = "vertex"
@@ -2081,10 +2085,10 @@ def integration_module() -> str:
         "inspect":{{"left_centering_joint":0.0,"right_centering_joint":0.0,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.0,"irrigation_valve_joint":0.0}},
         "center":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.002,"irrigation_valve_joint":0.0}},
         "compress":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.004,"irrigation_valve_joint":0.0}},
-        "seal":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.013,"lower_jaw_joint":-0.013,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.005,"irrigation_valve_joint":0.0}},
-        "verify_seal":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.013,"lower_jaw_joint":-0.013,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.003,"irrigation_valve_joint":0.0}},
-        "retract_guard":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.013,"lower_jaw_joint":-0.013,"blade_guard_joint":-0.011,"blade_joint":0.0,"suction_valve_joint":0.004,"irrigation_valve_joint":0.0}},
-        "divide":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.013,"lower_jaw_joint":-0.013,"blade_guard_joint":-0.011,"blade_joint":0.041,"suction_valve_joint":0.006,"irrigation_valve_joint":0.0}},
+        "seal":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.005,"irrigation_valve_joint":0.0}},
+        "verify_seal":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.003,"irrigation_valve_joint":0.0}},
+        "retract_guard":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":-0.011,"blade_joint":0.0,"suction_valve_joint":0.004,"irrigation_valve_joint":0.0}},
+        "divide":{{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":-0.011,"blade_joint":0.041,"suction_valve_joint":0.006,"irrigation_valve_joint":0.0}},
         "release":{{"left_centering_joint":0.0,"right_centering_joint":0.0,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.003,"irrigation_valve_joint":0.003}},
         "verify_stumps":{{"left_centering_joint":0.0,"right_centering_joint":0.0,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.002,"irrigation_valve_joint":0.0}},
         "complete":{{"left_centering_joint":0.0,"right_centering_joint":0.0,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.0,"irrigation_valve_joint":0.0}},
@@ -2261,26 +2265,20 @@ This package is not clinically validated, is not a medical device, and is not ap
 
 
 def docs_validation() -> str:
-    return '''# Validation and qualification
+    return '''# Integrity and runtime boundaries
 
-The release gate has three layers:
+Static gates cover deterministic assets, dependency closure, controller
+invariants, fail-closed attachment overlap, blade interlocks, and
+source/container integrity. The optional Isaac script is diagnostic only.
 
-1. deterministic generation, Python compilation, JSON parsing, PNG and GLB
-   structural checks, archive CRC checks, checksums, and strict `usdchecker`;
-2. CPU unit tests for energy maturity and faults, leak monotonicity, force
-   envelopes, blade interlocks, division ordering, and phase contracts;
-3. headless CUDA qualification in both standalone-tool and Franka-mounted
-   representations.
+The current surface-shell vessel does not resolve calibrated through-thickness
+compression. Measured generalized jaw effort below the authored force envelope
+must keep the blade interlock closed; the threshold must not be lowered and a
+synthetic force must not be injected to obtain a pass.
 
-The CUDA matrix must prove two cooked vessel surface deformables, two distal
-fixture attachments, sixteen bridge attachments, four temporary jaw
-compression attachments, four retained seal-band attachments, successful
-interlocked division, release of all bridge and compression attachments, exact
-joint counts, finite state for 120 simulation steps, and zero engine errors.
-
-A `qualification_report.json` in the catalog records the exact runtime,
-machine, GPU, driver, commands, and results. This is simulation qualification,
-not physical calibration or clinical validation.
+Seal efficacy, thermal fusion, burst pressure, division quality, physical
+calibration, clinical performance, and patient use remain unqualified pending
+a calibrated volumetric vessel/material and instrumented bench data.
 '''
 
 
@@ -2492,7 +2490,6 @@ def static_report(files: Sequence[Path]) -> dict[str,object]:
             "one_line_over_suspect":any(line.strip().startswith("over ") and "{" in line and "}" in line for line in text.splitlines()),
             "flat_quaternion_count":text.count("quatf "),
         })
-    qualification=ASSET_ROOT/"qualification_report.json"
     return {
         "schema":"dranmar.static-build-report.v1",
         "asset":"dranmar-adaptive-seal-divide-robot-v1",
@@ -2501,11 +2498,8 @@ def static_report(files: Sequence[Path]) -> dict[str,object]:
             p.relative_to(PACKAGE_ROOT).as_posix()
             for p in files if p.suffix==".py"
         ],
-        "runtime_validation":(
-            "qualified_headless_cuda_matrix_report_in_catalog"
-            if qualification.exists()
-            else "not_run_user_owned_iteration"
-        ),
+        "runtime_observation":"archived_smoke_record_not_physical_qualification",
+        "physical_effect_qualified":False,
     }
 
 

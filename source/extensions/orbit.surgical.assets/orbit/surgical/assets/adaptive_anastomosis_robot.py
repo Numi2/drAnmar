@@ -78,6 +78,7 @@ TOOL_FRAME_PATHS = {
     "staple_crown_reference":"Links/StapleDriver/Frames/staple_crown_reference",
     "collar_application":"Links/CollarApplicator/Frames/collar_application",
 }
+REGISTERED_CAMERA_FRAMES = ("camera_left", "camera_right")
 
 
 def frame_path(tool_path: str, name: str) -> str:
@@ -88,6 +89,14 @@ def frame_path(tool_path: str, name: str) -> str:
 
 def tensor_value(value: Any):
     return value.torch if hasattr(value,"torch") else value
+
+
+def _xyzw_from_wxyz(orientation_wxyz) -> tuple[float, float, float, float]:
+    values=tuple(float(value) for value in orientation_wxyz)
+    if len(values)!=4 or not all(math.isfinite(value) for value in values):raise ValueError("orientation_wxyz must contain four finite values")
+    if abs(math.sqrt(sum(value*value for value in values))-1.0)>1.0e-4:raise ValueError("orientation_wxyz must be a unit quaternion")
+    w,x,y,z=values
+    return x,y,z,w
 
 
 def _check(value: str, allowed: frozenset[str], label: str) -> str:
@@ -121,7 +130,7 @@ def make_tool_cfg(
             activate_contact_sensors=True,
             articulation_props=sim_utils.ArticulationRootPropertiesCfg(enabled_self_collisions=False,solver_position_iteration_count=24,solver_velocity_iteration_count=8),
         ),
-        init_state=ArticulationCfg.InitialStateCfg(pos=position,rot=orientation_wxyz,joint_pos={name:0.0 for name in TOOL_JOINTS.values()}),
+        init_state=ArticulationCfg.InitialStateCfg(pos=position,rot=_xyzw_from_wxyz(orientation_wxyz),joint_pos={name:0.0 for name in TOOL_JOINTS.values()}),
         actuators={
             "approximation":ImplicitActuatorCfg(joint_names_expr=[".*approximation_joint"],effort_limit_sim=180.0,velocity_limit_sim=0.16,stiffness=9000.0,damping=260.0),
             "capture_eversion":ImplicitActuatorCfg(joint_names_expr=[".*capture_joint",".*eversion_joint"],effort_limit_sim=130.0,velocity_limit_sim=0.14,stiffness=6800.0,damping=205.0),
@@ -139,7 +148,7 @@ def make_rigid_proxy_cfg(prim_path="/World/DrAnmarAdaptiveAnastomosisProxy", *, 
     return RigidObjectCfg(
         prim_path=prim_path,
         spawn=sim_utils.UsdFileCfg(usd_path=str(TOOL_RIGID_PROXY_USD),activate_contact_sensors=True),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=position,rot=orientation_wxyz),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=position,rot=_xyzw_from_wxyz(orientation_wxyz)),
     )
 
 
@@ -259,7 +268,7 @@ def spawn_hollow_tissue_demo(prim_path="/World/DrAnmarHollowTissue", *, state="i
     _check(state,VALID_TISSUE_STATES,"state")
     import isaaclab.sim as sim_utils
     cfg=sim_utils.UsdFileCfg(usd_path=str(TISSUE_USD),variants={"state":state})
-    return cfg.func(prim_path,cfg,translation=translation,orientation=orientation_wxyz)
+    return cfg.func(prim_path,cfg,translation=translation,orientation=_xyzw_from_wxyz(orientation_wxyz))
 
 
 def _create_surface_material(stage, material_path: str):
@@ -321,7 +330,8 @@ def create_deformable_attachment(deformable_path: str,target_path: str,attachmen
         )
         world_to_target=target_to_world.GetInverse()
         bounds=UsdGeom.BBoxCache(
-            Usd.TimeCode.Default(),[UsdGeom.Tokens.default_]
+            Usd.TimeCode.Default(),
+            [UsdGeom.Tokens.default_,UsdGeom.Tokens.guide],
         ).ComputeWorldBound(target).ComputeAlignedRange()
         minimum,maximum=bounds.GetMin(),bounds.GetMax()
         center=(minimum+maximum)*0.5
@@ -337,9 +347,12 @@ def create_deformable_attachment(deformable_path: str,target_path: str,attachmen
         ranked.sort(key=lambda item:item[0])
         selected=[item for item in ranked if item[3]][:12]
         if len(selected)<4:
-            selected=ranked[:min(4,len(ranked))]
-        if not selected:
-            raise RuntimeError(f"No vertices available for {attachment_path}")
+            raise RuntimeError(
+                f"Attachment capture volume does not overlap enough deformable "
+                f"vertices for {attachment_path}: source={deformable_path}, "
+                f"target={target_path}, overlapping={len(selected)}, "
+                "required=4, overlap_margin_m=0.0025"
+            )
         attachment=stage.DefinePrim(
             attachment_path,"OmniPhysicsVtxXformAttachment"
         )
@@ -705,6 +718,95 @@ class LumenPatencyController:
         area_fraction=min(1.0,(minimum/self.reference_radius_m)**2)
         passed=minimum>=self.minimum_accepted_radius_m and abs(offset)<=self.maximum_centerline_offset_m and abs(axis_error)<=self.maximum_axis_error_deg
         return PatencyReport(minimum,mean,area_fraction,offset,axis_error,passed)
+
+
+def measure_lumen_seam_geometry(
+    left_points_world: Sequence[Sequence[float]],
+    right_points_world: Sequence[Sequence[float]],
+) -> dict[str, Any]:
+    """Measure lumen radii, coaxiality, and edge gap from live tissue nodes.
+
+    The calculation is geometric: principal axes and seam rings come directly
+    from the supplied world-space simulation nodes. It does not infer a
+    successful seam from staple or collar state.
+    """
+
+    import numpy as np
+
+    left=np.asarray(tensor_value(left_points_world),dtype=float)
+    right=np.asarray(tensor_value(right_points_world),dtype=float)
+    if (
+        left.ndim!=2 or right.ndim!=2 or left.shape[1:]!=(3,)
+        or right.shape[1:]!=(3,) or len(left)<16 or len(right)<16
+    ):
+        raise ValueError("left and right tissue nodes must be populated Nx3 arrays")
+    if not np.isfinite(left).all() or not np.isfinite(right).all():
+        raise ValueError("tissue nodes must be finite")
+
+    def principal_axis(points):
+        centered=points-points.mean(axis=0)
+        values,vectors=np.linalg.eigh(centered.T@centered/max(1,len(points)-1))
+        return vectors[:,int(np.argmax(values))]
+
+    left_axis=principal_axis(left)
+    right_axis=principal_axis(right)
+    if float(np.dot(left_axis,right_axis))<0.0:right_axis=-right_axis
+    axis=left_axis+right_axis
+    axis_norm=float(np.linalg.norm(axis))
+    if axis_norm<=1.0e-12:
+        axis=principal_axis(np.concatenate((left,right),axis=0))
+    else:
+        axis=axis/axis_norm
+    center_delta=right.mean(axis=0)-left.mean(axis=0)
+    if float(np.dot(axis,center_delta))<0.0:axis=-axis
+    if float(np.dot(left_axis,axis))<0.0:left_axis=-left_axis
+    if float(np.dot(right_axis,axis))<0.0:right_axis=-right_axis
+
+    left_projection=left@axis
+    right_projection=right@axis
+    left_tolerance=max(1.0e-5,0.01*float(np.ptp(left_projection)))
+    right_tolerance=max(1.0e-5,0.01*float(np.ptp(right_projection)))
+    left_seam=left[left_projection>=left_projection.max()-left_tolerance]
+    right_seam=right[right_projection<=right_projection.min()+right_tolerance]
+    if len(left_seam)<8 or len(right_seam)<8:
+        raise RuntimeError(
+            "Could not resolve populated seam rings from tissue nodes: "
+            f"left={len(left_seam)}, right={len(right_seam)}"
+        )
+
+    left_center=left_seam.mean(axis=0)
+    right_center=right_seam.mean(axis=0)
+
+    def inner_radius_samples(points,center):
+        radial=points-center
+        radial-=np.outer(radial@axis,axis)
+        radii=np.linalg.norm(radial,axis=1)
+        # The hollow wall contributes equal inner and outer seam rings.
+        # Select the lower radial cluster without using an authored radius.
+        ordered=np.sort(radii)
+        return ordered[:max(4,len(ordered)//2)]
+
+    left_radii=inner_radius_samples(left_seam,left_center)
+    right_radii=inner_radius_samples(right_seam,right_center)
+    radial_samples=np.concatenate((left_radii,right_radii))
+    seam_delta=right_center-left_center
+    axial_gap=max(0.0,float(np.dot(seam_delta,axis)))
+    perpendicular=seam_delta-np.dot(seam_delta,axis)*axis
+    centerline_offset=float(np.linalg.norm(perpendicular))
+    cosine=float(np.clip(np.dot(left_axis,right_axis),-1.0,1.0))
+    axis_error_deg=float(math.degrees(math.acos(cosine)))
+    return {
+        "radial_samples_m":[float(value) for value in radial_samples],
+        "minimum_radius_m":float(radial_samples.min()),
+        "mean_radius_m":float(radial_samples.mean()),
+        "centerline_offset_m":centerline_offset,
+        "axis_error_deg":axis_error_deg,
+        "edge_gap_m":axial_gap,
+        "axis_world":[float(value) for value in axis],
+        "left_seam_node_count":int(len(left_seam)),
+        "right_seam_node_count":int(len(right_seam)),
+        "source":"live_world_space_simulation_nodes",
+    }
 
 
 @dataclass

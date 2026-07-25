@@ -505,7 +505,7 @@ def mesh_usda(visual: Visual, material_path: str, indent: str = "               
 {indent}    point3f[] points = [
 {points}
 {indent}    ]
-{indent}    normal3f[] primvars:normals = [
+{indent}    normal3f[] normals = [
 {normals}
 {indent}    ] (
 {indent}        interpolation = "vertex"
@@ -1298,7 +1298,7 @@ def interaction_frames(bundle: ToolBundle) -> dict[str,object]:
 
 
 def mount_contract() -> dict[str,object]:
-    return {"schema":"dr.anmar.franka-mount.v1","parent_link":"resolved_from_stock_panda_hand_joint_body0_with_unique_panda_link8_fallback","disabled_stock_prims":["panda_hand_joint","panda_hand","panda_finger_joint1","panda_finger_joint2","panda_leftfinger","panda_rightfinger"],"payload_root":"DrAnmarAtraumaticExposureTool","payload_mount_link":"Links/Mount","fixed_joint":"dranmar_exposure_mount_joint","frame_source":"stock_panda_hand_joint_local_frame","fallback_local_rotation_wxyz":[math.cos(math.radians(-45)/2),0,0,math.sin(math.radians(-45)/2)],"translation_m":[0,0,0],"status":"qualified_in_complete_franka_representation_on_isaac_sim_6_0_1_0"}
+    return {"schema":"dr.anmar.franka-mount.v1","parent_link":"resolved_from_stock_panda_hand_joint_body0_with_unique_panda_link8_fallback","disabled_stock_prims":["panda_hand_joint","panda_hand","panda_finger_joint1","panda_finger_joint2","panda_leftfinger","panda_rightfinger"],"payload_root":"DrAnmarAtraumaticExposureTool","payload_mount_link":"Links/Mount","fixed_joint":"dranmar_exposure_mount_joint","frame_source":"stock_panda_hand_joint_local_frame","fallback_local_rotation_wxyz":[math.cos(math.radians(-45)/2),0,0,math.sin(math.radians(-45)/2)],"translation_m":[0,0,0],"status":"composition_observed_physical_effect_unqualified"}
 
 
 def task_contract() -> dict[str,object]:
@@ -1306,45 +1306,33 @@ def task_contract() -> dict[str,object]:
 
 
 def physics_profile(bundle: ToolBundle) -> dict[str,object]:
-    return {"schema":"dr.anmar.atraumatic-exposure-profile.v1","id":"dranmar-atraumatic-exposure-robot-v1","version":VERSION,"status":"research_informed_engineering_model_pending_physical_and_clinical_validation","units":"MKS","mechanism":{"lateral_retraction_range_m":0.040,"independent_lift_range_m":[-0.025,0.030],"pad_pitch_ranges_deg":{"left":[-42,72],"right":[-72,42]},"compliance_travel_m":0.006,"compliance_stiffness_n_m":1250.0,"compliance_damping_n_s_m":38.0,"capture_cells_per_pad":PAD_CAPTURE_CELL_COUNT,"pad_contact_area_m2_seed":0.0015},"force_control":{"nominal_target_force_per_pad_n":1.25,"soft_limit_force_per_pad_n":2.5,"hard_release_force_per_pad_n":4.0,"maximum_force_asymmetry_n":1.0,"controller":"independent_force_limited_impedance_plus_roi_visibility_outer_loop","all_values":"provisional_engineering_seeds"},"capture":{"fenestrated":"geometric_trapping_plus_distributed_overlap_attachments","microcup":"distributed_low_vacuum_proxy_plus_overlap_attachments","attachment_cells":"independent_runtime_deformable_attachments","release":"progressive_outer_cell_release_then_full_release_on_hard_overload"},"tissue":{"representation":"two portable triangle surfaces cooked at runtime by the current surface-deformable route","youngs_modulus_pa_seed":60000.0,"poissons_ratio_seed":0.45,"surface_thickness_m_seed":0.006,"density_kg_m3_seed":1050.0,"self_collision":True},"runtime":{"qualified_lane":"Isaac Sim 6.0.1.0 / Isaac Lab distribution 6.1.16 surface-deformable attachments","franka_mount":"verified stock panda_hand_joint frame with unique panda_link8 compatibility fallback","qualification":"four_case_cuda_matrix_on_numi_rtx_4090_2026_07_25"},"clinical_validation":False,"medical_device":False}
+    return {"schema":"dr.anmar.atraumatic-exposure-profile.v1","id":"dranmar-atraumatic-exposure-robot-v1","version":VERSION,"status":"research_informed_engineering_model_pending_physical_and_clinical_validation","units":"MKS","mechanism":{"lateral_retraction_range_m":0.040,"independent_lift_range_m":[-0.025,0.030],"pad_pitch_ranges_deg":{"left":[-42,72],"right":[-72,42]},"compliance_travel_m":0.006,"compliance_stiffness_n_m":1250.0,"compliance_damping_n_s_m":38.0,"capture_cells_per_pad":PAD_CAPTURE_CELL_COUNT,"pad_contact_area_m2_seed":0.0015},"force_control":{"nominal_target_force_per_pad_n":1.25,"soft_limit_force_per_pad_n":2.5,"hard_release_force_per_pad_n":4.0,"maximum_force_asymmetry_n":1.0,"controller":"independent_force_limited_impedance_plus_roi_visibility_outer_loop","all_values":"provisional_engineering_seeds"},"capture":{"fenestrated":"geometric_trapping_plus_distributed_overlap_attachments","microcup":"distributed_low_vacuum_proxy_plus_overlap_attachments","attachment_cells":"independent_runtime_deformable_attachments","release":"progressive_outer_cell_release_then_full_release_on_hard_overload"},"tissue":{"representation":"two portable triangle surfaces cooked at runtime by the current surface-deformable route","youngs_modulus_pa_seed":60000.0,"poissons_ratio_seed":0.45,"surface_thickness_m_seed":0.006,"density_kg_m3_seed":1050.0,"self_collision":True},"runtime":{"observed_stack":"Isaac Sim 6.0.1.0 / Isaac Lab distribution 6.1.16","franka_mount":"stock panda_hand_joint frame with unique panda_link8 compatibility fallback","status":"composition_observed_physical_effect_unqualified"},"clinical_validation":False,"medical_device":False}
 
 
 def qualification_report() -> dict[str,object]:
     return {
-        "schema": "dr.anmar.atraumatic-exposure-qualification.v1",
-        "status": "pass",
-        "date": "2026-07-25",
-        "host": "Numi",
-        "gpu": "NVIDIA GeForce RTX 4090",
-        "device": "cuda:0",
-        "isaaclab_distribution_version": "6.1.16",
-        "isaacsim_distribution_version": "6.0.1.0",
-        "cases": [
-            {"representation": representation, "pad_type": pad_type, "steps": 120, "status": "pass"}
-            for representation in ("standalone", "franka")
-            for pad_type in ("fenestrated", "microcup")
-        ],
-        "requirements_verified": {
-            "finite_joint_state": True,
-            "tool_joint_count": 8,
-            "franka_arm_joint_count": 7,
-            "surface_deformable_flap_count": 2,
-            "anchor_attachment_count": 2,
-            "capture_attachment_count": 12,
-            "attachment_type": "OmniPhysicsVtxXformAttachment",
-            "controller_output_finite_and_bounded": True,
-            "engine_error_count": 0,
-            "gpu_max_deformable_surface_contacts": 8388608,
+        "schema": "dr.anmar.runtime-observation-record.v2",
+        "asset": "dranmar-atraumatic-exposure-robot-v1",
+        "status": "archived_not_qualification_evidence",
+        "historical_observation": {
+            "date": "2026-07-25",
+            "host": "Numi",
+            "gpu": "NVIDIA GeForce RTX 4090",
+            "stack": "Isaac Lab 6.1.16 / Isaac Sim 6.0.1.0",
+            "observed": "standalone and Franka compositions stepped with finite joint state",
         },
-        "qualification_scope": "bounded_composition_and_execution_on_reported_stack",
-        "not_qualified": [
-            "contact_tuning",
-            "tissue_mechanics",
-            "capture_pressure",
-            "physical_metrology",
-            "clinical_efficacy",
-            "regulatory_status",
-            "patient_use",
+        "usable_evidence": [
+            "asset composition and articulation discovery",
+            "surface-deformable schema application",
+            "fail-closed attachment authoring",
+            "bounded controller outputs",
+        ],
+        "not_evidence_for": [
+            "pad contact force",
+            "capture quality",
+            "tissue safety",
+            "exposure efficacy",
+            "clinical or regulatory performance",
         ],
         "clinical_validation": False,
         "medical_device": False,
@@ -1418,6 +1406,7 @@ TOOL_FRAME_PATHS = {
     "left_force_sensor": "Links/LeftPad/Frames/left_force_sensor",
     "right_force_sensor": "Links/RightPad/Frames/right_force_sensor",
 }
+REGISTERED_CAMERA_FRAMES = ("roi_camera",)
 for _side in ("left", "right"):
     for _index in range(CAPTURE_CELL_COUNT):
         TOOL_FRAME_PATHS[f"{_side}_capture_{_index:02d}"] = (
@@ -1823,7 +1812,8 @@ def create_deformable_attachment(
         )
         world_to_rigid = rigid_to_world.GetInverse()
         bounds = UsdGeom.BBoxCache(
-            Usd.TimeCode.Default(), [UsdGeom.Tokens.default_]
+            Usd.TimeCode.Default(),
+            [UsdGeom.Tokens.default_, UsdGeom.Tokens.guide],
         ).ComputeWorldBound(rigid_prim).ComputeAlignedRange()
         minimum, maximum = bounds.GetMin(), bounds.GetMax()
         center = (minimum + maximum) * 0.5
@@ -1841,9 +1831,12 @@ def create_deformable_attachment(
         ranked.sort(key=lambda item: item[0])
         selected = [item for item in ranked if item[3]][:12]
         if len(selected) < 4:
-            selected = ranked[: min(4, len(ranked))]
-        if not selected:
-            raise RuntimeError(f"No deformable vertices available for {attachment_path}")
+            raise RuntimeError(
+                f"Attachment capture volume does not overlap enough deformable "
+                f"vertices for {attachment_path}: source={deformable_prim_path}, "
+                f"target={rigid_prim_path}, overlapping={len(selected)}, "
+                "required=4, overlap_margin_m=0.0025"
+            )
 
         attachment = stage.DefinePrim(attachment_path, "OmniPhysicsVtxXformAttachment")
         attachment.CreateRelationship("omniphysics:src0").SetTargets(
@@ -2082,6 +2075,7 @@ class ForceControlledRetractionController:
     force_gain_m_per_n: float = 0.0018
     integral_gain_m_per_fraction_s: float = 0.0012
     max_integral_m: float = 0.008
+    nominal_update_hz: float = 120.0
     left_carriage_m: float = 0.006
     right_carriage_m: float = -0.006
     left_lift_m: float = 0.017
@@ -2107,7 +2101,14 @@ class ForceControlledRetractionController:
         left_force_n: float,
         right_force_n: float,
     ) -> ForceControlOutput:
-        dt = max(1e-5, _finite(dt, "dt"))
+        dt = _finite(dt, "dt")
+        if dt <= 0.0:
+            raise ValueError("dt must be positive")
+        update_scale = dt * _nonnegative_finite(
+            self.nominal_update_hz, "nominal_update_hz"
+        )
+        if update_scale <= 0.0:
+            raise ValueError("nominal_update_hz must be positive")
         visible = self._clamp(_finite(visible_fraction, "visible_fraction"), 0.0, 1.0)
         left_force = _nonnegative_finite(left_force_n, "left_force_n")
         right_force = _nonnegative_finite(right_force_n, "right_force_n")
@@ -2125,10 +2126,11 @@ class ForceControlledRetractionController:
 
         if hard_left or hard_right:
             # Immediate commanded unloading; capture controller handles bond release.
-            self.left_carriage_m = max(0.0, self.left_carriage_m - 0.004)
-            self.right_carriage_m = min(0.0, self.right_carriage_m + 0.004)
-            self.left_lift_m = min(0.030, self.left_lift_m + 0.004)
-            self.right_lift_m = min(0.030, self.right_lift_m + 0.004)
+            relief_step = 0.004 * update_scale
+            self.left_carriage_m = max(0.0, self.left_carriage_m - relief_step)
+            self.right_carriage_m = min(0.0, self.right_carriage_m + relief_step)
+            self.left_lift_m = min(0.030, self.left_lift_m + relief_step)
+            self.right_lift_m = min(0.030, self.right_lift_m + relief_step)
             mode = "hard_overload_relief"
         else:
             visibility_step = (
@@ -2137,25 +2139,54 @@ class ForceControlledRetractionController:
             )
             left_force_error = self.target_force_per_pad_n - left_force
             right_force_error = self.target_force_per_pad_n - right_force
-            left_step = visibility_step + self.force_gain_m_per_n * left_force_error
-            right_step = visibility_step + self.force_gain_m_per_n * right_force_error
+            left_step = (
+                visibility_step + self.force_gain_m_per_n * left_force_error
+            ) * update_scale
+            right_step = (
+                visibility_step + self.force_gain_m_per_n * right_force_error
+            ) * update_scale
             if left_over:
-                left_step = min(left_step, -self.force_gain_m_per_n * (left_force - self.soft_force_limit_n))
+                left_step = min(
+                    left_step,
+                    -self.force_gain_m_per_n
+                    * (left_force - self.soft_force_limit_n)
+                    * update_scale,
+                )
             if right_over:
-                right_step = min(right_step, -self.force_gain_m_per_n * (right_force - self.soft_force_limit_n))
+                right_step = min(
+                    right_step,
+                    -self.force_gain_m_per_n
+                    * (right_force - self.soft_force_limit_n)
+                    * update_scale,
+                )
             self.left_carriage_m = self._clamp(self.left_carriage_m + left_step, 0.0, 0.040)
             self.right_carriage_m = self._clamp(self.right_carriage_m - right_step, -0.040, 0.0)
 
             # Lift assists exposure but unloads a pad that is already force limited.
-            lift_step = self.lift_gain_m_per_fraction * exposure_error
-            self.left_lift_m = self._clamp(self.left_lift_m - lift_step + (0.002 if left_over else 0.0), -0.025, 0.030)
-            self.right_lift_m = self._clamp(self.right_lift_m - lift_step + (0.002 if right_over else 0.0), -0.025, 0.030)
+            lift_step = (
+                self.lift_gain_m_per_fraction * exposure_error * update_scale
+            )
+            overload_lift_step = 0.002 * update_scale
+            self.left_lift_m = self._clamp(
+                self.left_lift_m
+                - lift_step
+                + (overload_lift_step if left_over else 0.0),
+                -0.025,
+                0.030,
+            )
+            self.right_lift_m = self._clamp(
+                self.right_lift_m
+                - lift_step
+                + (overload_lift_step if right_over else 0.0),
+                -0.025,
+                0.030,
+            )
             mode = "force_limited_exposure_control"
 
         # Differential correction reduces excessive bilateral force asymmetry.
         asymmetry = left_force - right_force
         if abs(asymmetry) > self.max_force_asymmetry_n:
-            correction = min(0.0025, 0.0012 * abs(asymmetry))
+            correction = min(0.0025, 0.0012 * abs(asymmetry)) * update_scale
             if asymmetry > 0:
                 self.left_carriage_m = max(0.0, self.left_carriage_m - correction)
             else:
@@ -2400,9 +2431,10 @@ def readme() -> str:
 
     ## Validation
 
-    Static validation, controller tests, and the four-case headless CUDA matrix
-    are documented in `docs/atraumatic_exposure_robot/VALIDATION.md`. The runtime validator qualifies each
-    pad geometry in standalone and complete Franka-mounted representations.
+    Static integrity gates and the optional headless CUDA diagnostic are
+    documented in `docs/atraumatic_exposure_robot/VALIDATION.md`. Runtime smoke
+    observations do not qualify pad contact, tissue capture, or exposure
+    efficacy.
 
     ## Research boundary
 

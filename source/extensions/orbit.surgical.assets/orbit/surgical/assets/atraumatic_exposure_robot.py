@@ -52,6 +52,7 @@ TOOL_FRAME_PATHS = {
     "left_force_sensor": "Links/LeftPad/Frames/left_force_sensor",
     "right_force_sensor": "Links/RightPad/Frames/right_force_sensor",
 }
+REGISTERED_CAMERA_FRAMES = ("roi_camera",)
 for _side in ("left", "right"):
     for _index in range(CAPTURE_CELL_COUNT):
         TOOL_FRAME_PATHS[f"{_side}_capture_{_index:02d}"] = (
@@ -70,6 +71,16 @@ def frame_path(tool_path: str, name: str) -> str:
 def tensor_value(value: Any):
     """Return a native tensor from Isaac 6 tensor proxy objects when required."""
     return value.torch if hasattr(value, "torch") else value
+
+
+def _xyzw_from_wxyz(orientation_wxyz) -> tuple[float, float, float, float]:
+    values = tuple(float(value) for value in orientation_wxyz)
+    if len(values) != 4 or not all(math.isfinite(value) for value in values):
+        raise ValueError("orientation_wxyz must contain four finite values")
+    if abs(math.sqrt(sum(value * value for value in values)) - 1.0) > 1.0e-4:
+        raise ValueError("orientation_wxyz must be a unit quaternion")
+    w, x, y, z = values
+    return x, y, z, w
 
 
 def _check(value: str, allowed: frozenset[str], label: str) -> str:
@@ -119,7 +130,7 @@ def make_tool_cfg(
         ),
         init_state=ArticulationCfg.InitialStateCfg(
             pos=position,
-            rot=orientation_wxyz,
+            rot=_xyzw_from_wxyz(orientation_wxyz),
             joint_pos={
                 "left_carriage_joint": 0.0,
                 "right_carriage_joint": 0.0,
@@ -178,7 +189,9 @@ def make_rigid_proxy_cfg(
             usd_path=str(TOOL_RIGID_PROXY_USD),
             activate_contact_sensors=True,
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=position, rot=orientation_wxyz),
+        init_state=RigidObjectCfg.InitialStateCfg(
+            pos=position, rot=_xyzw_from_wxyz(orientation_wxyz)
+        ),
     )
 
 
@@ -341,7 +354,10 @@ def spawn_exposure_tissue_demo(
 ):
     import isaaclab.sim as sim_utils
     cfg = sim_utils.UsdFileCfg(usd_path=str(TISSUE_DEMO_USD))
-    return cfg.func(prim_path, cfg, translation=translation, orientation=orientation_wxyz)
+    return cfg.func(
+        prim_path, cfg, translation=translation,
+        orientation=_xyzw_from_wxyz(orientation_wxyz),
+    )
 
 
 def _current_stage(stage=None):
@@ -457,7 +473,8 @@ def create_deformable_attachment(
         )
         world_to_rigid = rigid_to_world.GetInverse()
         bounds = UsdGeom.BBoxCache(
-            Usd.TimeCode.Default(), [UsdGeom.Tokens.default_]
+            Usd.TimeCode.Default(),
+            [UsdGeom.Tokens.default_, UsdGeom.Tokens.guide],
         ).ComputeWorldBound(rigid_prim).ComputeAlignedRange()
         minimum, maximum = bounds.GetMin(), bounds.GetMax()
         center = (minimum + maximum) * 0.5
@@ -475,9 +492,12 @@ def create_deformable_attachment(
         ranked.sort(key=lambda item: item[0])
         selected = [item for item in ranked if item[3]][:12]
         if len(selected) < 4:
-            selected = ranked[: min(4, len(ranked))]
-        if not selected:
-            raise RuntimeError(f"No deformable vertices available for {attachment_path}")
+            raise RuntimeError(
+                f"Attachment capture volume does not overlap enough deformable "
+                f"vertices for {attachment_path}: source={deformable_prim_path}, "
+                f"target={rigid_prim_path}, overlapping={len(selected)}, "
+                "required=4, overlap_margin_m=0.0025"
+            )
 
         attachment = stage.DefinePrim(attachment_path, "OmniPhysicsVtxXformAttachment")
         attachment.CreateRelationship("omniphysics:src0").SetTargets(
@@ -716,6 +736,7 @@ class ForceControlledRetractionController:
     force_gain_m_per_n: float = 0.0018
     integral_gain_m_per_fraction_s: float = 0.0012
     max_integral_m: float = 0.008
+    nominal_update_hz: float = 120.0
     left_carriage_m: float = 0.006
     right_carriage_m: float = -0.006
     left_lift_m: float = 0.017
@@ -741,7 +762,14 @@ class ForceControlledRetractionController:
         left_force_n: float,
         right_force_n: float,
     ) -> ForceControlOutput:
-        dt = max(1e-5, _finite(dt, "dt"))
+        dt = _finite(dt, "dt")
+        if dt <= 0.0:
+            raise ValueError("dt must be positive")
+        update_scale = dt * _nonnegative_finite(
+            self.nominal_update_hz, "nominal_update_hz"
+        )
+        if update_scale <= 0.0:
+            raise ValueError("nominal_update_hz must be positive")
         visible = self._clamp(_finite(visible_fraction, "visible_fraction"), 0.0, 1.0)
         left_force = _nonnegative_finite(left_force_n, "left_force_n")
         right_force = _nonnegative_finite(right_force_n, "right_force_n")
@@ -759,10 +787,11 @@ class ForceControlledRetractionController:
 
         if hard_left or hard_right:
             # Immediate commanded unloading; capture controller handles bond release.
-            self.left_carriage_m = max(0.0, self.left_carriage_m - 0.004)
-            self.right_carriage_m = min(0.0, self.right_carriage_m + 0.004)
-            self.left_lift_m = min(0.030, self.left_lift_m + 0.004)
-            self.right_lift_m = min(0.030, self.right_lift_m + 0.004)
+            relief_step = 0.004 * update_scale
+            self.left_carriage_m = max(0.0, self.left_carriage_m - relief_step)
+            self.right_carriage_m = min(0.0, self.right_carriage_m + relief_step)
+            self.left_lift_m = min(0.030, self.left_lift_m + relief_step)
+            self.right_lift_m = min(0.030, self.right_lift_m + relief_step)
             mode = "hard_overload_relief"
         else:
             visibility_step = (
@@ -771,25 +800,54 @@ class ForceControlledRetractionController:
             )
             left_force_error = self.target_force_per_pad_n - left_force
             right_force_error = self.target_force_per_pad_n - right_force
-            left_step = visibility_step + self.force_gain_m_per_n * left_force_error
-            right_step = visibility_step + self.force_gain_m_per_n * right_force_error
+            left_step = (
+                visibility_step + self.force_gain_m_per_n * left_force_error
+            ) * update_scale
+            right_step = (
+                visibility_step + self.force_gain_m_per_n * right_force_error
+            ) * update_scale
             if left_over:
-                left_step = min(left_step, -self.force_gain_m_per_n * (left_force - self.soft_force_limit_n))
+                left_step = min(
+                    left_step,
+                    -self.force_gain_m_per_n
+                    * (left_force - self.soft_force_limit_n)
+                    * update_scale,
+                )
             if right_over:
-                right_step = min(right_step, -self.force_gain_m_per_n * (right_force - self.soft_force_limit_n))
+                right_step = min(
+                    right_step,
+                    -self.force_gain_m_per_n
+                    * (right_force - self.soft_force_limit_n)
+                    * update_scale,
+                )
             self.left_carriage_m = self._clamp(self.left_carriage_m + left_step, 0.0, 0.040)
             self.right_carriage_m = self._clamp(self.right_carriage_m - right_step, -0.040, 0.0)
 
             # Lift assists exposure but unloads a pad that is already force limited.
-            lift_step = self.lift_gain_m_per_fraction * exposure_error
-            self.left_lift_m = self._clamp(self.left_lift_m - lift_step + (0.002 if left_over else 0.0), -0.025, 0.030)
-            self.right_lift_m = self._clamp(self.right_lift_m - lift_step + (0.002 if right_over else 0.0), -0.025, 0.030)
+            lift_step = (
+                self.lift_gain_m_per_fraction * exposure_error * update_scale
+            )
+            overload_lift_step = 0.002 * update_scale
+            self.left_lift_m = self._clamp(
+                self.left_lift_m
+                - lift_step
+                + (overload_lift_step if left_over else 0.0),
+                -0.025,
+                0.030,
+            )
+            self.right_lift_m = self._clamp(
+                self.right_lift_m
+                - lift_step
+                + (overload_lift_step if right_over else 0.0),
+                -0.025,
+                0.030,
+            )
             mode = "force_limited_exposure_control"
 
         # Differential correction reduces excessive bilateral force asymmetry.
         asymmetry = left_force - right_force
         if abs(asymmetry) > self.max_force_asymmetry_n:
-            correction = min(0.0025, 0.0012 * abs(asymmetry))
+            correction = min(0.0025, 0.0012 * abs(asymmetry)) * update_scale
             if asymmetry > 0:
                 self.left_carriage_m = max(0.0, self.left_carriage_m - correction)
             else:

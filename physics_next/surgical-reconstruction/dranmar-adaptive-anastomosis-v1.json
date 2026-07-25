@@ -534,7 +534,7 @@
     "provisional_pullout_force_per_staple_n": 1.4,
     "representation": "sixteen_independent_rigid_formed_staples_with_left_and_right_attachment_regions"
   },
-  "status": "qualified_headless_cuda_standalone_and_franka_pending_physical_metrology_and_clinical_validation",
+  "status": "research_only_runtime_observed_physical_effect_unqualified",
   "tissue_demo": {
     "constitutive_parameters": "provisional_category_level_seeds",
     "initial_gap_m": 0.02,

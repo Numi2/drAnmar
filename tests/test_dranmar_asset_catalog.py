@@ -16,6 +16,7 @@ MODULE_PATH = ROOT / (
     "source/extensions/orbit.surgical.assets/orbit/surgical/assets/"
     "dranmar_asset_catalog.py"
 )
+INDEX_GENERATOR_PATH = ROOT / "scripts/generate_dranmar_asset_catalog_index.py"
 
 
 def load_catalog():
@@ -69,3 +70,62 @@ def test_catalog_resolution_fails_closed(monkeypatch, tmp_path):
         catalog.asset_data_root()
     with pytest.raises(KeyError):
         catalog.asset_directory("not-an-asset")
+
+
+def test_catalog_index_is_deterministic_and_dependency_complete():
+    spec = importlib.util.spec_from_file_location(
+        "dranmar_asset_catalog_index_test_module", INDEX_GENERATOR_PATH
+    )
+    assert spec is not None and spec.loader is not None
+    generator = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = generator
+    spec.loader.exec_module(generator)
+    first = generator.build_index()
+    second = generator.build_index()
+    assert first == second
+    assert first["asset_count"] == len(first["assets"]) == 8
+    assert all(
+        len(asset["sha256"]) == 64
+        and asset["file_count"] > 0
+        and asset["usd_references_checked"] >= 0
+        for asset in first["assets"].values()
+    )
+
+
+def test_installed_manifest_entries_match_current_repository_bytes():
+    import json
+
+    refresher_path = ROOT / "scripts/refresh_dranmar_installed_manifest_entries.py"
+    spec = importlib.util.spec_from_file_location(
+        "dranmar_manifest_refresh_test_module", refresher_path
+    )
+    assert spec is not None and spec.loader is not None
+    refresher = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = refresher
+    spec.loader.exec_module(refresher)
+    for relative in refresher.MANIFESTS:
+        manifest = json.loads((ROOT / relative).read_text(encoding="utf-8"))
+        checked = 0
+        for entry in manifest["files"]:
+            source = refresher.installed_overlay_source(entry["path"])
+            if source is None:
+                continue
+            checked += 1
+            assert entry["bytes"] == source.stat().st_size
+            assert entry["sha256"] == refresher.sha256(source)
+        assert checked == manifest["installed_overlay_entries_refreshed"]
+        assert checked > 0
+
+
+def test_usd_mesh_normals_use_the_schema_attribute_not_a_primvar_alias():
+    props_root = ROOT / (
+        "source/extensions/orbit.surgical.assets/data/Props"
+    )
+    offenders = [
+        path.relative_to(ROOT).as_posix()
+        for path in props_root.rglob("*.usda")
+        if "normal3f[] primvars:normals" in path.read_text(
+            encoding="utf-8"
+        )
+    ]
+    assert offenders == []

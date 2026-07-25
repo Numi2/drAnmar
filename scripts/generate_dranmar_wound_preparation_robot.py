@@ -606,7 +606,7 @@ def mesh_usda(visual: Visual, material_path: str, indent: str = "               
 {indent}    point3f[] points = [
 {points}
 {indent}    ]
-{indent}    normal3f[] primvars:normals = [
+{indent}    normal3f[] normals = [
 {normals}
 {indent}    ] (
 {indent}        interpolation = "vertex"
@@ -1852,6 +1852,9 @@ TOOL_FRAME_PATHS = {
     "service_reference": "Links/Mount/Frames/service_reference",
     "count_reference": "Links/Mount/Frames/count_reference",
 }
+REGISTERED_CAMERA_FRAMES = (
+    "camera_left", "camera_right", "depth_camera", "fluorescence_camera",
+)
 
 
 def frame_path(tool_path: str, name: str) -> str:
@@ -1924,9 +1927,13 @@ def make_tool_cfg(
                 joint_names_expr=["debridement_rotor_joint"], effort_limit_sim=0.32,
                 velocity_limit_sim=90.0, stiffness=0.0, damping=0.018,
             ),
-            "fluid_valves": ImplicitActuatorCfg(
-                joint_names_expr=[".*_valve_joint"], effort_limit_sim=25.0,
+            "irrigation_valve": ImplicitActuatorCfg(
+                joint_names_expr=["irrigation_valve_joint"], effort_limit_sim=25.0,
                 velocity_limit_sim=2.5, stiffness=1800.0, damping=45.0,
+            ),
+            "suction_valve": ImplicitActuatorCfg(
+                joint_names_expr=["suction_valve_joint"], effort_limit_sim=2.0,
+                velocity_limit_sim=2.5, stiffness=8.0, damping=0.45,
             ),
         },
     )
@@ -2185,7 +2192,8 @@ def create_deformable_attachment(
         )
         world_to_rigid = rigid_to_world.GetInverse()
         bounds = UsdGeom.BBoxCache(
-            Usd.TimeCode.Default(), [UsdGeom.Tokens.default_]
+            Usd.TimeCode.Default(),
+            [UsdGeom.Tokens.default_, UsdGeom.Tokens.guide],
         ).ComputeWorldBound(rigid_prim).ComputeAlignedRange()
         minimum, maximum = bounds.GetMin(), bounds.GetMax()
         center = (minimum + maximum) * 0.5
@@ -2203,9 +2211,12 @@ def create_deformable_attachment(
         ranked.sort(key=lambda item: item[0])
         selected = [item for item in ranked if item[3]][:12]
         if len(selected) < 4:
-            selected = ranked[: min(4, len(ranked))]
-        if not selected:
-            raise RuntimeError(f"No deformable vertices available for {attachment_path}")
+            raise RuntimeError(
+                f"Attachment capture volume does not overlap enough deformable "
+                f"vertices for {attachment_path}: source={deformable_prim_path}, "
+                f"target={rigid_prim_path}, overlapping={len(selected)}, "
+                "required=4, overlap_margin_m=0.0025"
+            )
 
         attachment = stage.DefinePrim(attachment_path, "OmniPhysicsVtxXformAttachment")
         attachment.CreateRelationship("omniphysics:src0").SetTargets(
@@ -2837,9 +2848,9 @@ python3 -m unittest -v tests/test_wound_preparation_robot.py
 
 The validator checks OpenUSD parsing, mirrored asset integrity, manifest hashes,
 JSON contracts, GLB/PNG containers, Python syntax, release inventory, and
-non-portable build-artifact exclusion. Bounded Isaac Sim/PhysX CUDA smoke
-execution is recorded in `docs/VALIDATION.md`; physical calibration remains a
-separate promotion gate.
+non-portable build-artifact exclusion. The optional Isaac Sim/PhysX CUDA script
+is a diagnostic smoke only; `docs/VALIDATION.md` defines the physical effects
+that remain unqualified.
 
 ## Deterministic regeneration
 

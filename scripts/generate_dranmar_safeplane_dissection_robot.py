@@ -982,7 +982,7 @@ def mesh_usda(visual: Visual, material_path: str, indent: str = "            ") 
 {indent}    point3f[] points = [
 {points}
 {indent}    ]
-{indent}    normal3f[] primvars:normals = [
+{indent}    normal3f[] normals = [
 {normal_values}
 {indent}    ] (
 {indent}        interpolation = "vertex"
@@ -3749,11 +3749,7 @@ def physics_profile(bundle: ToolBundle) -> dict[str, object]:
             "duct": {"radius_m": 0.0026, "injury_consequence": "continuity_joint_removed_and_duct_leak_ledger_activated"},
         },
         "runtime_platforms": ["OpenUSD", "NVIDIA PhysX", "NVIDIA Isaac Lab"],
-        "runtime_validation": (
-            "qualified_headless_cuda_matrix_report_in_catalog"
-            if (ASSET_ROOT / "qualification_report.json").exists()
-            else "pending_native_runtime_qualification"
-        ),
+        "runtime_observation": "archived_smoke_record_not_physical_qualification",
         "clinical_validation": False,
     }
 
@@ -3925,23 +3921,21 @@ The rigid proxy is available for perception, synthetic data, collision-aware pla
 
 
 def docs_validation() -> str:
-    return '''# Validation and qualification
+    return '''# Integrity and runtime boundaries
 
-The release gate combines deterministic generation, strict OpenUSD parsing,
-hashed manifests, archive CRC/checksum validation, CPU controller tests, and
-headless CUDA qualification in standalone and Franka-mounted representations.
+Static gates cover deterministic assets, dependency closure, controller
+invariants, protected-structure interlocks, capacity-safe fluid accounting,
+fail-closed attachment overlap, and source/container integrity. The optional
+Isaac script is diagnostic only.
 
-The CUDA matrix must prove 17 tool joints (24 with the Franka arm), two cooked
-surface deformables, two target-bed fixture attachments, eight traction
-attachments, 56 bridge-anchor attachments, six protected-structure
-attachments, all 28 continuity joints released through guarded modalities,
-protected vessel/nerve/duct continuity retained, conserved PBD fluid emission
-and suction capture, finite articulation state for 120 steps, and zero engine
-errors.
+Injecting threshold-plus-margin work or fluid at an exact authored bridge
+coordinate is a controller unit test, not physical release evidence. Physical
+bridge release may be promoted only when the accumulated work or delivered
+volume is derived from tool contact and the live simulation state.
 
-This is simulation qualification. It is not evidence that an anatomical plane
-is clinically safe, nor is it physical calibration of traction, pressure,
-energy delivery, thermal spread, cutting, or protected-structure avoidance.
+No current record qualifies safe-plane identification, tissue selectivity,
+traction, hydro pressure, cutting, thermal spread, physical calibration,
+clinical performance, or patient use.
 '''
 
 
@@ -4263,7 +4257,6 @@ def static_report(files: Sequence[Path]) -> dict[str, object]:
                 "absolute_external_asset_reference_count": sum(1 for line in text.splitlines() if "@/" in line),
             }
         )
-    qualification = ASSET_ROOT / "qualification_report.json"
     return {
         "schema": "dranmar.static-build-report.v1",
         "asset": "dranmar-safeplane-dissection-robot-v1",
@@ -4272,11 +4265,8 @@ def static_report(files: Sequence[Path]) -> dict[str, object]:
             path.relative_to(PACKAGE_ROOT).as_posix()
             for path in files if path.suffix == ".py"
         ],
-        "runtime_validation": (
-            "qualified_headless_cuda_matrix_report_in_catalog"
-            if qualification.exists()
-            else "not_run_user_owned_iteration"
-        ),
+        "runtime_observation": "archived_smoke_record_not_physical_qualification",
+        "physical_effect_qualified": False,
     }
 
 

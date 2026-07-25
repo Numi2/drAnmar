@@ -206,7 +206,7 @@ def resolve_layout(root: Path) -> tuple[bool, Path, Path]:
     installed_asset = (
         root / "source/extensions/orbit.surgical.assets/data" / CATALOG_SUBPATH
     )
-    if package_asset.is_dir():
+    if package_asset.is_dir() and not (root / ".git").exists():
         return True, package_asset, installed_asset
     require(installed_asset.is_dir(), f"cannot locate catalog below {root}")
     return False, installed_asset, installed_asset
@@ -313,12 +313,16 @@ def main() -> int:
     qualification = asset_root / "qualification_report.json"
     if qualification.exists():
         report = json.loads(qualification.read_text(encoding="utf-8"))
-        require(report.get("status") == "pass", "qualification report does not pass")
-        matrix = report.get("matrix", [])
         require(
-            {entry.get("representation") for entry in matrix} == {"standalone", "franka"}
-            and all(entry.get("status") == "pass" for entry in matrix),
-            "qualification matrix is incomplete",
+            report.get("schema") == "dr.anmar.runtime-observation-record.v2"
+            and report.get("status") == "archived_not_qualification_evidence",
+            "runtime observation must not claim physical qualification",
+        )
+        require(
+            "contact-derived adhesion work" in report.get(
+                "not_evidence_for", []
+            ),
+            "SafePlane observation boundary omits contact-derived work",
         )
 
     archive_count = validate_archives(root) if package_mode else 0

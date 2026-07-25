@@ -261,21 +261,7 @@ def validate(root: Path, *, require_checker: bool) -> dict[str, Any]:
     python_checked = validate_python(root)
     usd_result = validate_usda(asset_root, require_checker=require_checker)
 
-    if package_mode:
-        bytecode_candidates = root.rglob("*.pyc")
-    else:
-        bytecode_candidates = (
-            path
-            for path in root.rglob("*.pyc")
-            if (
-                path.name.startswith("wound_preparation_robot.")
-                or path.name.startswith("test_wound_preparation_robot.")
-                or path.name.startswith("generate_dranmar_wound_preparation_robot.")
-                or path.name.startswith("validate_dranmar_wound_preparation_robot.")
-                or path.name.startswith("franka_wound_preparation_scene.")
-                or path.name.startswith("validate_wound_preparation_runtime.")
-            )
-        )
+    bytecode_candidates = root.rglob("*.pyc") if package_mode else ()
     forbidden = [
         path.relative_to(root).as_posix()
         for path in bytecode_candidates

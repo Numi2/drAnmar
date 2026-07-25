@@ -1,17 +1,15 @@
-# Validation and qualification
+# Integrity and runtime boundaries
 
-The release gate combines deterministic generation, strict OpenUSD parsing,
-hashed manifests, archive CRC/checksum validation, CPU controller tests, and
-headless CUDA qualification in standalone and Franka-mounted representations.
+Static gates cover deterministic assets, dependency closure, controller
+invariants, protected-structure interlocks, capacity-safe fluid accounting,
+fail-closed attachment overlap, and source/container integrity. The optional
+Isaac script is diagnostic only.
 
-The CUDA matrix must prove 17 tool joints (24 with the Franka arm), two cooked
-surface deformables, two target-bed fixture attachments, eight traction
-attachments, 56 bridge-anchor attachments, six protected-structure
-attachments, all 28 continuity joints released through guarded modalities,
-protected vessel/nerve/duct continuity retained, conserved PBD fluid emission
-and suction capture, finite articulation state for 120 steps, and zero engine
-errors.
+Injecting threshold-plus-margin work or fluid at an exact authored bridge
+coordinate is a controller unit test, not physical release evidence. Physical
+bridge release may be promoted only when the accumulated work or delivered
+volume is derived from tool contact and the live simulation state.
 
-This is simulation qualification. It is not evidence that an anatomical plane
-is clinically safe, nor is it physical calibration of traction, pressure,
-energy delivery, thermal spread, cutting, or protected-structure avoidance.
+No current record qualifies safe-plane identification, tissue selectivity,
+traction, hydro pressure, cutting, thermal spread, physical calibration,
+clinical performance, or patient use.

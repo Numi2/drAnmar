@@ -482,8 +482,11 @@ def main() -> int:
         raise RuntimeError("Isaac runtime emitted engine errors:\n" + "\n".join(engine_errors))
 
     result = {
-        "schema": "dranmar.safeplane-dissection-cuda-qualification.v1",
-        "status": "pass",
+        "schema": "dranmar.safeplane-dissection-runtime-diagnostic.v2",
+        "status": "controller_exercise_only",
+        "qualification_scope": (
+            "composition_interlocks_ledgers_and_controller_threshold_logic"
+        ),
         "representation": args.representation,
         "steps": args.steps,
         "device": args.device,
@@ -508,6 +511,10 @@ def main() -> int:
         "retained_attachment_count": len(active_attachment_paths),
         "corrected_adhesion_joint_count": len(corrected_joint_frames),
         "released_bridge_count": released_count,
+        "physical_bridge_release_qualified": False,
+        "bridge_release_input_source": (
+            "direct_controller_threshold_injection_at_authored_coordinates"
+        ),
         "release_modes": release_modes,
         "safety_reroutes": safety_reroutes,
         "protected_structures_intact": all(
@@ -518,6 +525,11 @@ def main() -> int:
         "completion": completion,
         "fluid_emission": emission,
         "fluid_suction": suction,
+        "physical_hydro_suction_qualified": False,
+        "fluid_capture_input_source": (
+            "emitted_particle_positions_moved_to_authored_throat_for_"
+            "capacity_and_ledger_controller_exercise"
+        ),
         "fluid_ledger": ledger.snapshot(),
         "franka_mount_contract": mount_contract,
         "clinical_validation": False,

@@ -65,6 +65,9 @@ TOOL_FRAME_PATHS = {
     "service_reference": "Links/Mount/Frames/service_reference",
     "count_reference": "Links/Mount/Frames/count_reference",
 }
+REGISTERED_CAMERA_FRAMES = (
+    "camera_left", "camera_right", "depth_camera", "fluorescence_camera",
+)
 
 
 def frame_path(tool_path: str, name: str) -> str:
@@ -78,6 +81,16 @@ def frame_path(tool_path: str, name: str) -> str:
 def tensor_value(value: Any):
     """Return the underlying torch tensor for Isaac 6 proxy tensors."""
     return value.torch if hasattr(value, "torch") else value
+
+
+def _xyzw_from_wxyz(orientation_wxyz) -> tuple[float, float, float, float]:
+    values = tuple(float(value) for value in orientation_wxyz)
+    if len(values) != 4 or not all(math.isfinite(value) for value in values):
+        raise ValueError("orientation_wxyz must contain four finite values")
+    if abs(math.sqrt(sum(value * value for value in values)) - 1.0) > 1.0e-4:
+        raise ValueError("orientation_wxyz must be a unit quaternion")
+    w, x, y, z = values
+    return x, y, z, w
 
 
 def _check(value: str, allowed: frozenset[str], label: str) -> str:
@@ -115,7 +128,7 @@ def make_tool_cfg(
         ),
         init_state=ArticulationCfg.InitialStateCfg(
             pos=position,
-            rot=orientation_wxyz,
+            rot=_xyzw_from_wxyz(orientation_wxyz),
             joint_pos={
                 "contact_guard_joint": 0.0,
                 "debridement_extension_joint": 0.0,
@@ -137,9 +150,13 @@ def make_tool_cfg(
                 joint_names_expr=["debridement_rotor_joint"], effort_limit_sim=0.32,
                 velocity_limit_sim=90.0, stiffness=0.0, damping=0.018,
             ),
-            "fluid_valves": ImplicitActuatorCfg(
-                joint_names_expr=[".*_valve_joint"], effort_limit_sim=25.0,
+            "irrigation_valve": ImplicitActuatorCfg(
+                joint_names_expr=["irrigation_valve_joint"], effort_limit_sim=25.0,
                 velocity_limit_sim=2.5, stiffness=1800.0, damping=45.0,
+            ),
+            "suction_valve": ImplicitActuatorCfg(
+                joint_names_expr=["suction_valve_joint"], effort_limit_sim=2.0,
+                velocity_limit_sim=2.5, stiffness=8.0, damping=0.45,
             ),
         },
     )
@@ -154,7 +171,9 @@ def make_rigid_proxy_cfg(
     return RigidObjectCfg(
         prim_path=prim_path,
         spawn=sim_utils.UsdFileCfg(usd_path=str(TOOL_RIGID_PROXY_USD), activate_contact_sensors=True),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=position, rot=orientation_wxyz),
+        init_state=RigidObjectCfg.InitialStateCfg(
+            pos=position, rot=_xyzw_from_wxyz(orientation_wxyz)
+        ),
     )
 
 
@@ -302,7 +321,10 @@ def spawn_wound_bed_demo(
 ):
     import isaaclab.sim as sim_utils
     cfg = sim_utils.UsdFileCfg(usd_path=str(WOUND_BED_USD), activate_contact_sensors=True)
-    return cfg.func(prim_path, cfg, translation=translation, orientation=orientation_wxyz)
+    return cfg.func(
+        prim_path, cfg, translation=translation,
+        orientation=_xyzw_from_wxyz(orientation_wxyz),
+    )
 
 
 def _current_stage(stage=None):
@@ -398,7 +420,8 @@ def create_deformable_attachment(
         )
         world_to_rigid = rigid_to_world.GetInverse()
         bounds = UsdGeom.BBoxCache(
-            Usd.TimeCode.Default(), [UsdGeom.Tokens.default_]
+            Usd.TimeCode.Default(),
+            [UsdGeom.Tokens.default_, UsdGeom.Tokens.guide],
         ).ComputeWorldBound(rigid_prim).ComputeAlignedRange()
         minimum, maximum = bounds.GetMin(), bounds.GetMax()
         center = (minimum + maximum) * 0.5
@@ -416,9 +439,12 @@ def create_deformable_attachment(
         ranked.sort(key=lambda item: item[0])
         selected = [item for item in ranked if item[3]][:12]
         if len(selected) < 4:
-            selected = ranked[: min(4, len(ranked))]
-        if not selected:
-            raise RuntimeError(f"No deformable vertices available for {attachment_path}")
+            raise RuntimeError(
+                f"Attachment capture volume does not overlap enough deformable "
+                f"vertices for {attachment_path}: source={deformable_prim_path}, "
+                f"target={rigid_prim_path}, overlapping={len(selected)}, "
+                "required=4, overlap_margin_m=0.0025"
+            )
 
         attachment = stage.DefinePrim(attachment_path, "OmniPhysicsVtxXformAttachment")
         attachment.CreateRelationship("omniphysics:src0").SetTargets(

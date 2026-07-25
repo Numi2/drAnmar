@@ -33,39 +33,39 @@
       "sha256": "532a2a643d57d9ace0e58e479bdd49755f61d585a1b3e7457d8ae9b79599ed99"
     },
     {
-      "bytes": 8653977,
+      "bytes": 8653500,
       "path": "assets/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_payload.usda",
-      "sha256": "270213df26cfb4b09d313bf9f49f5625d8a6708d254e5abf259c9b852af551e7"
+      "sha256": "e1b91e79a7a338553229eaf62a8f67bce36dc74e8017fe577ff0caa041fd5990"
     },
     {
-      "bytes": 5576195,
+      "bytes": 5575736,
       "path": "assets/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_rigid_proxy.usda",
-      "sha256": "fbcbaebb29911002a52156cae2a794950eb2815424784fc5df69ea2bc8d407bb"
+      "sha256": "b3fea0309c0d1ea3e0908a8dca64e0d74702d3a60499085d9b8ff1f646801164"
     },
     {
-      "bytes": 8654007,
+      "bytes": 8653530,
       "path": "assets/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_standalone.usda",
-      "sha256": "bcdee88f4b2dfacb86cf7a9c7b5bccf6bd5a62a1245ed97aa5b7a6225f1aa074"
+      "sha256": "76aa78215118b964fc43ddac50c945f6b6594dfac3bc569dfea8dff5985eae54"
     },
     {
-      "bytes": 784298,
+      "bytes": 784262,
       "path": "assets/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_exposure_tissue_demo.usda",
-      "sha256": "0469f536cbc9212957f881ee87ec8a14fac1ae456c4b76f1e4d884f17735ca76"
+      "sha256": "05b7ddef892152b0d6e4868d73e3160075bec34b5f1bcc9396ac84523e6378bd"
     },
     {
-      "bytes": 1663384,
+      "bytes": 1663366,
       "path": "assets/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_fenestrated_retraction_pad.usda",
-      "sha256": "3ff37839fb585538d68a7ecc502a28a2a37c075eba785503553231f6044d9400"
+      "sha256": "23046c62a0eb06fb56b4c860d18df763880431b8ffb213a59957a6625bdd2b0d"
     },
     {
-      "bytes": 1115265,
+      "bytes": 1115247,
       "path": "assets/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_microcup_retraction_pad.usda",
-      "sha256": "06576ee894d1ff5c95af5583c554bca61b95629b0090ba895e5a9b7b4e482cca"
+      "sha256": "aa7b15cc1e754f99fbeeaa8e53de2103c47d933b1f9a29c3cbe1e9ceccf02a1b"
     },
     {
-      "bytes": 740,
+      "bytes": 724,
       "path": "assets/Props/SurgicalExposure/AtraumaticExposureRobot/franka_mount_contract.json",
-      "sha256": "ebb4576f4bb4e95fa76463b31860c293e9b0b35775abf674aba6c57644cfd466"
+      "sha256": "ef2ee609cce5c0862ad16dffe5d813914cda8deebe691022f189072a8710e88b"
     },
     {
       "bytes": 157880,
@@ -138,14 +138,14 @@
       "sha256": "aad7f1c0961e87e6e90471d08b963143077d0a31a5726ebd29a214ee975a4c76"
     },
     {
-      "bytes": 2005,
+      "bytes": 1957,
       "path": "assets/Props/SurgicalExposure/AtraumaticExposureRobot/physics_profile.json",
-      "sha256": "93552f97431a4375f45a37cad682d3332992d6763be99ed86c981e5c7d9304c1"
+      "sha256": "ac210fdbed5cc17f46b8a0697926a1b25e81d830415c78b48550c62874e6c4b5"
     },
     {
-      "bytes": 1537,
+      "bytes": 837,
       "path": "assets/Props/SurgicalExposure/AtraumaticExposureRobot/qualification_report.json",
-      "sha256": "e4c68689eb7d9d18aae50bf4f3391dc972704bfa7311f680c07e81d81f57ca6f"
+      "sha256": "f254ceaa2a2117173ed00fede64310946a11ba1fe664eec2d77990645740828d"
     },
     {
       "bytes": 835,
@@ -213,9 +213,9 @@
       "sha256": "75376e14959ad661361a4f5405daba07de4b243dc09c5d46e43c705fd21fa9ca"
     },
     {
-      "bytes": 2334,
+      "bytes": 799,
       "path": "docs/atraumatic_exposure_robot/VALIDATION.md",
-      "sha256": "0136c3f379daa0cd61e9434fa1737ac8fe2b20dfb4e7083e02cde22ee5c932a1"
+      "sha256": "9f9619b5d323180485cd95bd2db8f678fb119258f4b3c09f38b55c91c85ff538"
     },
     {
       "bytes": 1279,
@@ -223,14 +223,14 @@
       "sha256": "3376daf619b7da2fcc542977655594797374333f1eb11edc954e091db4d43b75"
     },
     {
-      "bytes": 9103,
+      "bytes": 12553,
       "path": "examples/validate_atraumatic_exposure_runtime.py",
-      "sha256": "4c433c081a1e6c0dae26eb6e90e6e9c563fa72a179d09cc9617374a513a8414a"
+      "sha256": "3e9764ee234d037259e8a220f5fcc5ca1b041c03aaf3b6bdafd00bf8b19c3ee5"
     },
     {
-      "bytes": 2005,
+      "bytes": 1957,
       "path": "physics_next/surgical-exposure/dranmar-atraumatic-exposure-robot-v1.json",
-      "sha256": "93552f97431a4375f45a37cad682d3332992d6763be99ed86c981e5c7d9304c1"
+      "sha256": "ac210fdbed5cc17f46b8a0697926a1b25e81d830415c78b48550c62874e6c4b5"
     },
     {
       "bytes": 126467,
@@ -243,9 +243,9 @@
       "sha256": "5f5dec7d0600dcb0a54bfa7d83cc42d9387f5eb8243d41dbd77f0ad2ea2b1e5d"
     },
     {
-      "bytes": 126359,
+      "bytes": 127069,
       "path": "scripts/generate_dranmar_atraumatic_exposure_robot.py",
-      "sha256": "ce6316e427f154a19a2c48edab51ce0b5e098d4f2445be91c5f4ca2d91fe044d"
+      "sha256": "649138dfe7b81aaefbe01ef68e021fc9c505b285efe3968a798d135ab5d43796"
     },
     {
       "bytes": 6151,
@@ -278,39 +278,39 @@
       "sha256": "532a2a643d57d9ace0e58e479bdd49755f61d585a1b3e7457d8ae9b79599ed99"
     },
     {
-      "bytes": 8653977,
+      "bytes": 8653500,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_payload.usda",
-      "sha256": "270213df26cfb4b09d313bf9f49f5625d8a6708d254e5abf259c9b852af551e7"
+      "sha256": "e1b91e79a7a338553229eaf62a8f67bce36dc74e8017fe577ff0caa041fd5990"
     },
     {
-      "bytes": 5576195,
+      "bytes": 5575736,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_rigid_proxy.usda",
-      "sha256": "fbcbaebb29911002a52156cae2a794950eb2815424784fc5df69ea2bc8d407bb"
+      "sha256": "b3fea0309c0d1ea3e0908a8dca64e0d74702d3a60499085d9b8ff1f646801164"
     },
     {
-      "bytes": 8654007,
+      "bytes": 8653530,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_standalone.usda",
-      "sha256": "bcdee88f4b2dfacb86cf7a9c7b5bccf6bd5a62a1245ed97aa5b7a6225f1aa074"
+      "sha256": "76aa78215118b964fc43ddac50c945f6b6594dfac3bc569dfea8dff5985eae54"
     },
     {
-      "bytes": 784298,
+      "bytes": 784262,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_exposure_tissue_demo.usda",
-      "sha256": "0469f536cbc9212957f881ee87ec8a14fac1ae456c4b76f1e4d884f17735ca76"
+      "sha256": "05b7ddef892152b0d6e4868d73e3160075bec34b5f1bcc9396ac84523e6378bd"
     },
     {
-      "bytes": 1663384,
+      "bytes": 1663366,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_fenestrated_retraction_pad.usda",
-      "sha256": "3ff37839fb585538d68a7ecc502a28a2a37c075eba785503553231f6044d9400"
+      "sha256": "23046c62a0eb06fb56b4c860d18df763880431b8ffb213a59957a6625bdd2b0d"
     },
     {
-      "bytes": 1115265,
+      "bytes": 1115247,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_microcup_retraction_pad.usda",
-      "sha256": "06576ee894d1ff5c95af5583c554bca61b95629b0090ba895e5a9b7b4e482cca"
+      "sha256": "aa7b15cc1e754f99fbeeaa8e53de2103c47d933b1f9a29c3cbe1e9ceccf02a1b"
     },
     {
-      "bytes": 740,
+      "bytes": 724,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/franka_mount_contract.json",
-      "sha256": "ebb4576f4bb4e95fa76463b31860c293e9b0b35775abf674aba6c57644cfd466"
+      "sha256": "ef2ee609cce5c0862ad16dffe5d813914cda8deebe691022f189072a8710e88b"
     },
     {
       "bytes": 157880,
@@ -383,14 +383,14 @@
       "sha256": "aad7f1c0961e87e6e90471d08b963143077d0a31a5726ebd29a214ee975a4c76"
     },
     {
-      "bytes": 2005,
+      "bytes": 1957,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/physics_profile.json",
-      "sha256": "93552f97431a4375f45a37cad682d3332992d6763be99ed86c981e5c7d9304c1"
+      "sha256": "ac210fdbed5cc17f46b8a0697926a1b25e81d830415c78b48550c62874e6c4b5"
     },
     {
-      "bytes": 1537,
+      "bytes": 837,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/qualification_report.json",
-      "sha256": "e4c68689eb7d9d18aae50bf4f3391dc972704bfa7311f680c07e81d81f57ca6f"
+      "sha256": "f254ceaa2a2117173ed00fede64310946a11ba1fe664eec2d77990645740828d"
     },
     {
       "bytes": 835,
@@ -438,16 +438,18 @@
       "sha256": "ae3f766da4060405a154428e181eb891d1ad5384275106000525e929e4dca14f"
     },
     {
-      "bytes": 41657,
+      "bytes": 43532,
       "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/atraumatic_exposure_robot.py",
-      "sha256": "d7a47076bbe9d724411623d681a39aeeb4189e720b3d2597fdab7b7f8b7d8e68"
+      "sha256": "eb572a8ea27c3192da9ad2c8579ae79da60978e58784fc2d6a2d15fa75405fc7"
     },
     {
-      "bytes": 5308,
+      "bytes": 5404,
       "path": "tests/test_atraumatic_exposure_robot.py",
-      "sha256": "9db7f57e35ea062860c269e4152413eeaa81284d62773b7d50b48388a297cbae"
+      "sha256": "804d290280f39b4cb214e192053e331072d6785e0ff1178411126e2cc9df0f2e"
     }
   ],
+  "installed_overlay_entries_refreshed": 83,
+  "installed_overlay_hash_contract": "sha256 of exact current repository file bytes",
   "schema": "dr.anmar.asset-manifest.v1",
   "version": "0.1.0"
 }

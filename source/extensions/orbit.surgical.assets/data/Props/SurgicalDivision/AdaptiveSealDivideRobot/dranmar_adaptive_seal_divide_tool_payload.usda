@@ -680,7 +680,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.03187823034, -0.002788983768, 0),
                     (0.03187823034, -0.002788983768, 0.012)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, 0, -1),
                     (0.7166630748, 3.025721623e-17, -0.6974195561),
                     (0.7166630748, 2.612497914e-17, 0.6974195561),
@@ -1850,7 +1850,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.0292587059, -0.002559805076, 0.01165450555),
                     (0.03008797543, -0.002632356758, 0.01269834878)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (1, 3.527726278e-17, -1.246558735e-15),
                     (0.90211958, 1.524467787e-16, 0.4314861102),
                     (0.6272391023, 1.505409475e-16, 0.7788267513),
@@ -3517,7 +3517,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.05315159286, -0.006241246411, 0.06248397893),
                     (-0.05301236949, -0.01252102095, 0.055)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.4685530622, 0.8834353558, -1.64143784e-18),
                     (0.4685530622, 0.8834353558, 1.045445913e-18),
                     (-0.4685530622, -0.8834353558, 1.045445913e-18),
@@ -4183,7 +4183,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.052, 0.042, 0.032),
                     (0.052, 0.042, 0.084)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -4216,7 +4216,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.019, 0.077, 0.103),
                     (0.019, 0.077, 0.121)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -4249,7 +4249,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.04, 0.025, 0.096),
                     (0.04, 0.025, 0.154)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -4282,7 +4282,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.018, 0.036, 0.075),
                     (-0.018, 0.036, 0.105)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -4315,7 +4315,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.0535, 0.025, 0.075),
                     (0.0535, 0.025, 0.135)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -5348,7 +5348,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.03374158204, -0.002952005918, 0.1636545056),
                     (0.03457085157, -0.003024557601, 0.1646983488)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (1, 3.049417048e-17, -1.514185545e-17),
                     (0.90211958, 1.862687682e-16, 0.4314861102),
                     (0.6272391023, 2.961852449e-17, 0.7788267513),
@@ -7237,7 +7237,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.02465581878, -0.002157104633, 0.1677009619),
                     (0.02520276763, -0.002204956457, 0.16825)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (1, 3.494741334e-17, 1.08235349e-17),
                     (0.8678005571, 2.444659254e-16, 0.4969126615),
                     (0.5053535685, 4.972513427e-17, 0.8629123773),
@@ -8126,7 +8126,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.027, -0.036, 0.078),
                     (0.027, -0.036, 0.094)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -8225,7 +8225,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.008272922786, -0.055, 0.08483351125),
                     (-0.008272922786, -0.051, 0.08483351125)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, -1, 0),
                     (0.7257049357, -0.6880060656, 5.087651895e-18),
                     (0.7257049357, 0.6880060656, -1.042260257e-17),
@@ -8390,7 +8390,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.01772707721, -0.055, 0.08483351125),
                     (0.01772707721, -0.051, 0.08483351125)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, -1, 0),
                     (0.7257049357, -0.6880060656, 5.087651895e-18),
                     (0.7257049357, 0.6880060656, -1.042260257e-17),
@@ -8555,7 +8555,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.004136192563, -0.055, 0.09872932235),
                     (0.004136192563, -0.051, 0.09872932235)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, -1, 0),
                     (0.7257049357, -0.6880060656, 8.34955553e-18),
                     (0.7257049357, 0.6880060656, -1.107753819e-17),
@@ -8654,7 +8654,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.027, -0.0424, 0.086),
                     (-0.027, -0.0424, 0.096)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -8687,7 +8687,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.006, -0.0424, 0.086),
                     (-0.006, -0.0424, 0.096)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -8720,7 +8720,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.016, -0.0424, 0.086),
                     (0.016, -0.0424, 0.096)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -8843,7 +8843,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.04186311778, 0.019, 0.06008841908),
                     (0.04186311778, 0.057, 0.06008841908)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, -1, 0),
                     (0.7212469239, -0.6926780456, -1.594957407e-16),
                     (0.7212469239, 0.6926780456, -1.652641952e-16),
@@ -9056,7 +9056,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.03938450563, 0.022, 0.05976210359),
                     (0.03938450563, 0.054, 0.05976210359)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, -1, 0),
                     (0.7212469239, -0.6926780456, -1.070548093e-16),
                     (0.7212469239, 0.6926780456, -1.658648819e-16),
@@ -9269,7 +9269,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.004153992495, 0.017, 0.06034947146),
                     (-0.004153992495, 0.059, 0.06034947146)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, -1, 0),
                     (0.7212469239, -0.6926780456, 4.151739728e-16),
                     (0.7212469239, 0.6926780456, 2.885585326e-16),
@@ -9482,7 +9482,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.007128327079, 0.046, 0.05995789288),
                     (-0.007128327079, 0.058, 0.05995789288)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, -1, 0),
                     (0.7212469239, -0.6926780456, 1.41368749e-16),
                     (0.7212469239, 0.6926780456, 1.690787444e-16),
@@ -9604,7 +9604,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.027, -0.0464, 0.0405),
                     (0.027, -0.0464, 0.0635)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -9683,7 +9683,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.032, 0, 0.168),
                     (0.032, 0, 0.176)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7728915514, 2.324757032e-16, -0.634538139),
                     (0.7504327276, 0.184965055, -0.634538139),
                     (0.6843614814, 0.3591806134, -0.634538139),
@@ -9808,7 +9808,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.022627417, 0.022627417, 0.168),
                     (0.022627417, 0.022627417, 0.176)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7728915514, -1.151819336e-16, -0.634538139),
                     (0.7504327276, 0.184965055, -0.634538139),
                     (0.6843614814, 0.3591806134, -0.634538139),
@@ -9933,7 +9933,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (1.959434879e-18, 0.032, 0.168),
                     (1.959434879e-18, 0.032, 0.176)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7728915514, -8.564212276e-17, -0.634538139),
                     (0.7504327276, 0.184965055, -0.634538139),
                     (0.6843614814, 0.3591806134, -0.634538139),
@@ -10058,7 +10058,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.022627417, 0.022627417, 0.168),
                     (-0.022627417, 0.022627417, 0.176)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7728915514, -5.599292139e-17, -0.634538139),
                     (0.7504327276, 0.184965055, -0.634538139),
                     (0.6843614814, 0.3591806134, -0.634538139),
@@ -10183,7 +10183,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.032, 3.918869757e-18, 0.168),
                     (-0.032, 3.918869757e-18, 0.176)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7728915514, -1.206257698e-16, -0.634538139),
                     (0.7504327276, 0.184965055, -0.634538139),
                     (0.6843614814, 0.3591806134, -0.634538139),
@@ -10308,7 +10308,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.022627417, -0.022627417, 0.168),
                     (-0.022627417, -0.022627417, 0.176)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7728915514, -5.599292139e-17, -0.634538139),
                     (0.7504327276, 0.184965055, -0.634538139),
                     (0.6843614814, 0.3591806134, -0.634538139),
@@ -10433,7 +10433,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-5.878304636e-18, -0.032, 0.168),
                     (-5.878304636e-18, -0.032, 0.176)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7728915514, -8.564212276e-17, -0.634538139),
                     (0.7504327276, 0.184965055, -0.634538139),
                     (0.6843614814, 0.3591806134, -0.634538139),
@@ -10558,7 +10558,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.022627417, -0.022627417, 0.168),
                     (0.022627417, -0.022627417, 0.176)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7728915514, -1.151819336e-16, -0.634538139),
                     (0.7504327276, 0.184965055, -0.634538139),
                     (0.6843614814, 0.3591806134, -0.634538139),
@@ -10679,7 +10679,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.02078460969, 0.012, 0.1695),
                     (0.02078460969, 0.012, 0.1765)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7713466068, -1.504297064e-16, -0.6364152827),
                     (0.7450636086, 0.1996391922, -0.6364152827),
                     (0.6680057567, 0.3856733034, -0.6364152827),
@@ -10796,7 +10796,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (1.469576159e-18, 0.024, 0.1695),
                     (1.469576159e-18, 0.024, 0.1765)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7713466068, 1.660921868e-16, -0.6364152827),
                     (0.7450636086, 0.1996391922, -0.6364152827),
                     (0.6680057567, 0.3856733034, -0.6364152827),
@@ -10913,7 +10913,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.02078460969, 0.012, 0.1695),
                     (-0.02078460969, 0.012, 0.1765)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7713466068, -1.504297064e-16, -0.6364152827),
                     (0.7450636086, 0.1996391922, -0.6364152827),
                     (0.6680057567, 0.3856733034, -0.6364152827),
@@ -11030,7 +11030,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.02078460969, -0.012, 0.1695),
                     (-0.02078460969, -0.012, 0.1765)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7713466068, -1.504297064e-16, -0.6364152827),
                     (0.7450636086, 0.1996391922, -0.6364152827),
                     (0.6680057567, 0.3856733034, -0.6364152827),
@@ -11147,7 +11147,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-4.408728477e-18, -0.024, 0.1695),
                     (-4.408728477e-18, -0.024, 0.1765)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7713466068, 1.660921868e-16, -0.6364152827),
                     (0.7450636086, 0.1996391922, -0.6364152827),
                     (0.6680057567, 0.3856733034, -0.6364152827),
@@ -11264,7 +11264,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.02078460969, -0.012, 0.1695),
                     (0.02078460969, -0.012, 0.1765)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0.7713466068, -1.504297064e-16, -0.6364152827),
                     (0.7450636086, 0.1996391922, -0.6364152827),
                     (0.6680057567, 0.3856733034, -0.6364152827),
@@ -11546,7 +11546,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.015, 0.015, -0.0115),
                     (0.015, 0.015, 0.0115)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -11579,7 +11579,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.007, 0.031, 0.014),
                     (0.007, 0.031, 0.026)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -12246,7 +12246,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.009663925974, 0.01707045266, 0.03210058514),
                     (-0.009638612635, 0.01613516709, 0.031)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.3998866313, 0.9165646088, 9.036549241e-17),
                     (0.3998866313, 0.9165646088, 9.928446694e-17),
                     (-0.3998866313, -0.9165646088, 9.175406173e-17),
@@ -12913,7 +12913,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.007, 0.0156, -0.0005),
                     (0.007, 0.0156, 0.0045)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -13032,7 +13032,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.015, 0.015, -0.0115),
                     (0.015, 0.015, 0.0115)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -13065,7 +13065,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.007, 0.013, 0.014),
                     (0.007, 0.013, 0.026)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -13732,7 +13732,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.009663925974, -0.01892954734, 0.03210058514),
                     (-0.009638612635, -0.01986483291, 0.031)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.3998866313, 0.9165646088, 1.185109853e-16),
                     (0.3998866313, 0.9165646088, 9.175406173e-17),
                     (-0.3998866313, -0.9165646088, 9.928446694e-17),
@@ -14399,7 +14399,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.007, -0.0144, -0.0005),
                     (0.007, -0.0144, 0.0045)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14518,7 +14518,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.028, 0.015, -0.0045),
                     (0.028, 0.015, 0.0045)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14551,7 +14551,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.026, 0.012, -0.0075),
                     (0.026, 0.012, -0.0045)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14584,7 +14584,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.00425, 0.0105, -0.0086),
                     (-0.00425, 0.0105, -0.0074)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14617,7 +14617,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.00875, 0.0105, -0.0086),
                     (0.00875, 0.0105, -0.0074)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14650,7 +14650,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.0115, 0.011, -0.008),
                     (-0.0115, 0.011, -0.007)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14683,7 +14683,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.0145, 0.011, -0.008),
                     (0.0145, 0.011, -0.007)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14716,7 +14716,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (-0.0009, 0.012, -0.0075),
                     (-0.0009, 0.012, -0.0065)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14749,7 +14749,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.0019, 0.012, -0.0075),
                     (0.0019, 0.012, -0.0065)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14782,7 +14782,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.01, -0.0149, 0.001),
                     (0.01, -0.0149, 0.005)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -14809,424 +14809,6 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                 float physxCollision:contactOffset = 0.00035
                 float physxCollision:restOffset = 0
                 double3 xformOp:translate = (0, 0, 0.001)
-                quatf xformOp:orient = (1, 0, 0, 0)
-                double size = 1
-                double3 xformOp:scale = (0.058, 0.032, 0.008)
-                uniform token purpose = "guide"
-                token visibility = "invisible"
-                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-            }
-            def Cube "LeftSealContact" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
-            )
-            {
-                custom string drAnmar:role = "left_seal_contact"
-                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/ElectrodePhysics>
-                bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 0.00035
-                float physxCollision:restOffset = 0
-                double3 xformOp:translate = (-0.0065, 0, -0.0075)
-                quatf xformOp:orient = (1, 0, 0, 0)
-                double size = 1
-                double3 xformOp:scale = (0.005, 0.022, 0.0025)
-                uniform token purpose = "guide"
-                token visibility = "invisible"
-                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-            }
-            def Cube "RightSealContact" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
-            )
-            {
-                custom string drAnmar:role = "right_seal_contact"
-                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/ElectrodePhysics>
-                bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 0.00035
-                float physxCollision:restOffset = 0
-                double3 xformOp:translate = (0.0065, 0, -0.0075)
-                quatf xformOp:orient = (1, 0, 0, 0)
-                double size = 1
-                double3 xformOp:scale = (0.005, 0.022, 0.0025)
-                uniform token purpose = "guide"
-                token visibility = "invisible"
-                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-            }
-            def Cube "LeftPressureContact" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
-            )
-            {
-                custom string drAnmar:role = "jaw_pressure_contact"
-                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/PadContactPhysics>
-                bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 0.00035
-                float physxCollision:restOffset = 0
-                double3 xformOp:translate = (-0.013, 0, -0.0073)
-                quatf xformOp:orient = (1, 0, 0, 0)
-                double size = 1
-                double3 xformOp:scale = (0.0032, 0.023, 0.0022)
-                uniform token purpose = "guide"
-                token visibility = "invisible"
-                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-            }
-            def Cube "RightPressureContact" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
-            )
-            {
-                custom string drAnmar:role = "jaw_pressure_contact"
-                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/PadContactPhysics>
-                bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 0.00035
-                float physxCollision:restOffset = 0
-                double3 xformOp:translate = (0.013, 0, -0.0073)
-                quatf xformOp:orient = (1, 0, 0, 0)
-                double size = 1
-                double3 xformOp:scale = (0.0032, 0.023, 0.0022)
-                uniform token purpose = "guide"
-                token visibility = "invisible"
-                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
-            }
-        }
-        def Scope "Frames"
-        {
-            def Xform "upper_jaw_contact"
-            {
-                custom string drAnmar:role = "upper_jaw_contact"
-                double3 xformOp:translate = (0, 0, 0.008)
-                quatf xformOp:orient = (1, 0, 0, 0)
-                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
-            }
-        }
-    }
-
-    def Xform "LowerJaw" (
-        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
-    )
-    {
-        double3 xformOp:translate = (0, 0, 0.208)
-        uniform token[] xformOpOrder = ["xformOp:translate"]
-        custom token[] drAnmar:labels = ["dual_zone_seal_jaw"]
-        bool physics:rigidBodyEnabled = true
-        bool physics:kinematicEnabled = false
-        float physics:mass = 0.09
-        point3f physics:centerOfMass = (0, -0.00055, 0.0018)
-        vector3f physics:diagonalInertia = (8.641275e-06, 2.49072e-05, 3.0774075e-05)
-        quatf physics:principalAxes = (1, 0, 0, 0)
-        bool physxRigidBody:enableCCD = true
-        float physxRigidBody:linearDamping = 0.04
-        float physxRigidBody:angularDamping = 0.06
-        int physxRigidBody:solverPositionIterationCount = 20
-        int physxRigidBody:solverVelocityIterationCount = 6
-        def Scope "Visuals"
-        {
-            def Mesh "JawBody" (
-                prepend apiSchemas = ["MaterialBindingAPI"]
-            )
-            {
-                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/JawMetal>
-                custom token[] drAnmar:labels = ["seal_jaw"]
-                float3[] extent = [(-0.028, -0.015, -0.0045), (0.028, 0.015, 0.0045)]
-                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
-                point3f[] points = [
-                    (-0.028, -0.015, -0.0045),
-                    (-0.028, -0.015, 0.0045),
-                    (-0.028, 0.015, -0.0045),
-                    (-0.028, 0.015, 0.0045),
-                    (0.028, -0.015, -0.0045),
-                    (0.028, -0.015, 0.0045),
-                    (0.028, 0.015, -0.0045),
-                    (0.028, 0.015, 0.0045)
-                ]
-                normal3f[] primvars:normals = [
-                    (-0.5773502692, -0.5773502692, -0.5773502692),
-                    (-0.5773502692, -0.5773502692, 0.5773502692),
-                    (-0.5773502692, 0.5773502692, -0.5773502692),
-                    (-0.5773502692, 0.5773502692, 0.5773502692),
-                    (0.5773502692, -0.5773502692, -0.5773502692),
-                    (0.5773502692, -0.5773502692, 0.5773502692),
-                    (0.5773502692, 0.5773502692, -0.5773502692),
-                    (0.5773502692, 0.5773502692, 0.5773502692)
-                ] (
-                    interpolation = "vertex"
-                )
-                uniform token subdivisionScheme = "none"
-            }
-            def Mesh "CeramicInsulator" (
-                prepend apiSchemas = ["MaterialBindingAPI"]
-            )
-            {
-                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/CeramicWhite>
-                custom token[] drAnmar:labels = ["electrical_insulator"]
-                float3[] extent = [(-0.026, -0.012, 0.0045), (0.026, 0.012, 0.0075)]
-                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
-                point3f[] points = [
-                    (-0.026, -0.012, 0.0045),
-                    (-0.026, -0.012, 0.0075),
-                    (-0.026, 0.012, 0.0045),
-                    (-0.026, 0.012, 0.0075),
-                    (0.026, -0.012, 0.0045),
-                    (0.026, -0.012, 0.0075),
-                    (0.026, 0.012, 0.0045),
-                    (0.026, 0.012, 0.0075)
-                ]
-                normal3f[] primvars:normals = [
-                    (-0.5773502692, -0.5773502692, -0.5773502692),
-                    (-0.5773502692, -0.5773502692, 0.5773502692),
-                    (-0.5773502692, 0.5773502692, -0.5773502692),
-                    (-0.5773502692, 0.5773502692, 0.5773502692),
-                    (0.5773502692, -0.5773502692, -0.5773502692),
-                    (0.5773502692, -0.5773502692, 0.5773502692),
-                    (0.5773502692, 0.5773502692, -0.5773502692),
-                    (0.5773502692, 0.5773502692, 0.5773502692)
-                ] (
-                    interpolation = "vertex"
-                )
-                uniform token subdivisionScheme = "none"
-            }
-            def Mesh "LeftElectrode" (
-                prepend apiSchemas = ["MaterialBindingAPI"]
-            )
-            {
-                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/ElectrodeCopper>
-                custom token[] drAnmar:labels = ["left_seal_electrode"]
-                float3[] extent = [(-0.00875, -0.0105, 0.0074), (-0.00425, 0.0105, 0.0086)]
-                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
-                point3f[] points = [
-                    (-0.00875, -0.0105, 0.0074),
-                    (-0.00875, -0.0105, 0.0086),
-                    (-0.00875, 0.0105, 0.0074),
-                    (-0.00875, 0.0105, 0.0086),
-                    (-0.00425, -0.0105, 0.0074),
-                    (-0.00425, -0.0105, 0.0086),
-                    (-0.00425, 0.0105, 0.0074),
-                    (-0.00425, 0.0105, 0.0086)
-                ]
-                normal3f[] primvars:normals = [
-                    (-0.5773502692, -0.5773502692, -0.5773502692),
-                    (-0.5773502692, -0.5773502692, 0.5773502692),
-                    (-0.5773502692, 0.5773502692, -0.5773502692),
-                    (-0.5773502692, 0.5773502692, 0.5773502692),
-                    (0.5773502692, -0.5773502692, -0.5773502692),
-                    (0.5773502692, -0.5773502692, 0.5773502692),
-                    (0.5773502692, 0.5773502692, -0.5773502692),
-                    (0.5773502692, 0.5773502692, 0.5773502692)
-                ] (
-                    interpolation = "vertex"
-                )
-                uniform token subdivisionScheme = "none"
-            }
-            def Mesh "RightElectrode" (
-                prepend apiSchemas = ["MaterialBindingAPI"]
-            )
-            {
-                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/ElectrodeCopper>
-                custom token[] drAnmar:labels = ["right_seal_electrode"]
-                float3[] extent = [(0.00425, -0.0105, 0.0074), (0.00875, 0.0105, 0.0086)]
-                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
-                point3f[] points = [
-                    (0.00425, -0.0105, 0.0074),
-                    (0.00425, -0.0105, 0.0086),
-                    (0.00425, 0.0105, 0.0074),
-                    (0.00425, 0.0105, 0.0086),
-                    (0.00875, -0.0105, 0.0074),
-                    (0.00875, -0.0105, 0.0086),
-                    (0.00875, 0.0105, 0.0074),
-                    (0.00875, 0.0105, 0.0086)
-                ]
-                normal3f[] primvars:normals = [
-                    (-0.5773502692, -0.5773502692, -0.5773502692),
-                    (-0.5773502692, -0.5773502692, 0.5773502692),
-                    (-0.5773502692, 0.5773502692, -0.5773502692),
-                    (-0.5773502692, 0.5773502692, 0.5773502692),
-                    (0.5773502692, -0.5773502692, -0.5773502692),
-                    (0.5773502692, -0.5773502692, 0.5773502692),
-                    (0.5773502692, 0.5773502692, -0.5773502692),
-                    (0.5773502692, 0.5773502692, 0.5773502692)
-                ] (
-                    interpolation = "vertex"
-                )
-                uniform token subdivisionScheme = "none"
-            }
-            def Mesh "LeftPressureRail" (
-                prepend apiSchemas = ["MaterialBindingAPI"]
-            )
-            {
-                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/PadElastomer>
-                custom token[] drAnmar:labels = ["pressure_distribution_rail"]
-                float3[] extent = [(-0.0145, -0.011, 0.007), (-0.0115, 0.011, 0.008)]
-                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
-                point3f[] points = [
-                    (-0.0145, -0.011, 0.007),
-                    (-0.0145, -0.011, 0.008),
-                    (-0.0145, 0.011, 0.007),
-                    (-0.0145, 0.011, 0.008),
-                    (-0.0115, -0.011, 0.007),
-                    (-0.0115, -0.011, 0.008),
-                    (-0.0115, 0.011, 0.007),
-                    (-0.0115, 0.011, 0.008)
-                ]
-                normal3f[] primvars:normals = [
-                    (-0.5773502692, -0.5773502692, -0.5773502692),
-                    (-0.5773502692, -0.5773502692, 0.5773502692),
-                    (-0.5773502692, 0.5773502692, -0.5773502692),
-                    (-0.5773502692, 0.5773502692, 0.5773502692),
-                    (0.5773502692, -0.5773502692, -0.5773502692),
-                    (0.5773502692, -0.5773502692, 0.5773502692),
-                    (0.5773502692, 0.5773502692, -0.5773502692),
-                    (0.5773502692, 0.5773502692, 0.5773502692)
-                ] (
-                    interpolation = "vertex"
-                )
-                uniform token subdivisionScheme = "none"
-            }
-            def Mesh "RightPressureRail" (
-                prepend apiSchemas = ["MaterialBindingAPI"]
-            )
-            {
-                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/PadElastomer>
-                custom token[] drAnmar:labels = ["pressure_distribution_rail"]
-                float3[] extent = [(0.0115, -0.011, 0.007), (0.0145, 0.011, 0.008)]
-                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
-                point3f[] points = [
-                    (0.0115, -0.011, 0.007),
-                    (0.0115, -0.011, 0.008),
-                    (0.0115, 0.011, 0.007),
-                    (0.0115, 0.011, 0.008),
-                    (0.0145, -0.011, 0.007),
-                    (0.0145, -0.011, 0.008),
-                    (0.0145, 0.011, 0.007),
-                    (0.0145, 0.011, 0.008)
-                ]
-                normal3f[] primvars:normals = [
-                    (-0.5773502692, -0.5773502692, -0.5773502692),
-                    (-0.5773502692, -0.5773502692, 0.5773502692),
-                    (-0.5773502692, 0.5773502692, -0.5773502692),
-                    (-0.5773502692, 0.5773502692, 0.5773502692),
-                    (0.5773502692, -0.5773502692, -0.5773502692),
-                    (0.5773502692, -0.5773502692, 0.5773502692),
-                    (0.5773502692, 0.5773502692, -0.5773502692),
-                    (0.5773502692, 0.5773502692, 0.5773502692)
-                ] (
-                    interpolation = "vertex"
-                )
-                uniform token subdivisionScheme = "none"
-            }
-            def Mesh "BladeSlotLeft" (
-                prepend apiSchemas = ["MaterialBindingAPI"]
-            )
-            {
-                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/DarkPolymer>
-                custom token[] drAnmar:labels = ["blade_channel"]
-                float3[] extent = [(-0.0019, -0.012, 0.0065), (-0.0009, 0.012, 0.0075)]
-                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
-                point3f[] points = [
-                    (-0.0019, -0.012, 0.0065),
-                    (-0.0019, -0.012, 0.0075),
-                    (-0.0019, 0.012, 0.0065),
-                    (-0.0019, 0.012, 0.0075),
-                    (-0.0009, -0.012, 0.0065),
-                    (-0.0009, -0.012, 0.0075),
-                    (-0.0009, 0.012, 0.0065),
-                    (-0.0009, 0.012, 0.0075)
-                ]
-                normal3f[] primvars:normals = [
-                    (-0.5773502692, -0.5773502692, -0.5773502692),
-                    (-0.5773502692, -0.5773502692, 0.5773502692),
-                    (-0.5773502692, 0.5773502692, -0.5773502692),
-                    (-0.5773502692, 0.5773502692, 0.5773502692),
-                    (0.5773502692, -0.5773502692, -0.5773502692),
-                    (0.5773502692, -0.5773502692, 0.5773502692),
-                    (0.5773502692, 0.5773502692, -0.5773502692),
-                    (0.5773502692, 0.5773502692, 0.5773502692)
-                ] (
-                    interpolation = "vertex"
-                )
-                uniform token subdivisionScheme = "none"
-            }
-            def Mesh "BladeSlotRight" (
-                prepend apiSchemas = ["MaterialBindingAPI"]
-            )
-            {
-                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/DarkPolymer>
-                custom token[] drAnmar:labels = ["blade_channel"]
-                float3[] extent = [(0.0009, -0.012, 0.0065), (0.0019, 0.012, 0.0075)]
-                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
-                point3f[] points = [
-                    (0.0009, -0.012, 0.0065),
-                    (0.0009, -0.012, 0.0075),
-                    (0.0009, 0.012, 0.0065),
-                    (0.0009, 0.012, 0.0075),
-                    (0.0019, -0.012, 0.0065),
-                    (0.0019, -0.012, 0.0075),
-                    (0.0019, 0.012, 0.0065),
-                    (0.0019, 0.012, 0.0075)
-                ]
-                normal3f[] primvars:normals = [
-                    (-0.5773502692, -0.5773502692, -0.5773502692),
-                    (-0.5773502692, -0.5773502692, 0.5773502692),
-                    (-0.5773502692, 0.5773502692, -0.5773502692),
-                    (-0.5773502692, 0.5773502692, 0.5773502692),
-                    (0.5773502692, -0.5773502692, -0.5773502692),
-                    (0.5773502692, -0.5773502692, 0.5773502692),
-                    (0.5773502692, 0.5773502692, -0.5773502692),
-                    (0.5773502692, 0.5773502692, 0.5773502692)
-                ] (
-                    interpolation = "vertex"
-                )
-                uniform token subdivisionScheme = "none"
-            }
-            def Mesh "TemperatureStrip" (
-                prepend apiSchemas = ["MaterialBindingAPI"]
-            )
-            {
-                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/ThermalGlass>
-                custom token[] drAnmar:labels = ["jaw_temperature_sensor"]
-                float3[] extent = [(-0.01, -0.0161, -0.005), (0.01, -0.0149, -0.001)]
-                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
-                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
-                point3f[] points = [
-                    (-0.01, -0.0161, -0.005),
-                    (-0.01, -0.0161, -0.001),
-                    (-0.01, -0.0149, -0.005),
-                    (-0.01, -0.0149, -0.001),
-                    (0.01, -0.0161, -0.005),
-                    (0.01, -0.0161, -0.001),
-                    (0.01, -0.0149, -0.005),
-                    (0.01, -0.0149, -0.001)
-                ]
-                normal3f[] primvars:normals = [
-                    (-0.5773502692, -0.5773502692, -0.5773502692),
-                    (-0.5773502692, -0.5773502692, 0.5773502692),
-                    (-0.5773502692, 0.5773502692, -0.5773502692),
-                    (-0.5773502692, 0.5773502692, 0.5773502692),
-                    (0.5773502692, -0.5773502692, -0.5773502692),
-                    (0.5773502692, -0.5773502692, 0.5773502692),
-                    (0.5773502692, 0.5773502692, -0.5773502692),
-                    (0.5773502692, 0.5773502692, 0.5773502692)
-                ] (
-                    interpolation = "vertex"
-                )
-                uniform token subdivisionScheme = "none"
-            }
-        }
-        def Scope "Collisions"
-        {
-            def Cube "JawBackCollider" (
-                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
-            )
-            {
-                custom string drAnmar:role = "collision"
-                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/MetalPhysics>
-                bool physics:collisionEnabled = true
-                float physxCollision:contactOffset = 0.00035
-                float physxCollision:restOffset = 0
-                double3 xformOp:translate = (0, 0, -0.001)
                 quatf xformOp:orient = (1, 0, 0, 0)
                 double size = 1
                 double3 xformOp:scale = (0.058, 0.032, 0.008)
@@ -15305,6 +14887,424 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
         }
         def Scope "Frames"
         {
+            def Xform "upper_jaw_contact"
+            {
+                custom string drAnmar:role = "upper_jaw_contact"
+                double3 xformOp:translate = (0, 0, 0.008)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+        }
+    }
+
+    def Xform "LowerJaw" (
+        prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "PhysxRigidBodyAPI"]
+    )
+    {
+        double3 xformOp:translate = (0, 0, 0.208)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+        custom token[] drAnmar:labels = ["dual_zone_seal_jaw"]
+        bool physics:rigidBodyEnabled = true
+        bool physics:kinematicEnabled = false
+        float physics:mass = 0.09
+        point3f physics:centerOfMass = (0, -0.00055, 0.0018)
+        vector3f physics:diagonalInertia = (8.641275e-06, 2.49072e-05, 3.0774075e-05)
+        quatf physics:principalAxes = (1, 0, 0, 0)
+        bool physxRigidBody:enableCCD = true
+        float physxRigidBody:linearDamping = 0.04
+        float physxRigidBody:angularDamping = 0.06
+        int physxRigidBody:solverPositionIterationCount = 20
+        int physxRigidBody:solverVelocityIterationCount = 6
+        def Scope "Visuals"
+        {
+            def Mesh "JawBody" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/JawMetal>
+                custom token[] drAnmar:labels = ["seal_jaw"]
+                float3[] extent = [(-0.028, -0.015, -0.0045), (0.028, 0.015, 0.0045)]
+                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+                point3f[] points = [
+                    (-0.028, -0.015, -0.0045),
+                    (-0.028, -0.015, 0.0045),
+                    (-0.028, 0.015, -0.0045),
+                    (-0.028, 0.015, 0.0045),
+                    (0.028, -0.015, -0.0045),
+                    (0.028, -0.015, 0.0045),
+                    (0.028, 0.015, -0.0045),
+                    (0.028, 0.015, 0.0045)
+                ]
+                normal3f[] normals = [
+                    (-0.5773502692, -0.5773502692, -0.5773502692),
+                    (-0.5773502692, -0.5773502692, 0.5773502692),
+                    (-0.5773502692, 0.5773502692, -0.5773502692),
+                    (-0.5773502692, 0.5773502692, 0.5773502692),
+                    (0.5773502692, -0.5773502692, -0.5773502692),
+                    (0.5773502692, -0.5773502692, 0.5773502692),
+                    (0.5773502692, 0.5773502692, -0.5773502692),
+                    (0.5773502692, 0.5773502692, 0.5773502692)
+                ] (
+                    interpolation = "vertex"
+                )
+                uniform token subdivisionScheme = "none"
+            }
+            def Mesh "CeramicInsulator" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/CeramicWhite>
+                custom token[] drAnmar:labels = ["electrical_insulator"]
+                float3[] extent = [(-0.026, -0.012, 0.0045), (0.026, 0.012, 0.0075)]
+                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+                point3f[] points = [
+                    (-0.026, -0.012, 0.0045),
+                    (-0.026, -0.012, 0.0075),
+                    (-0.026, 0.012, 0.0045),
+                    (-0.026, 0.012, 0.0075),
+                    (0.026, -0.012, 0.0045),
+                    (0.026, -0.012, 0.0075),
+                    (0.026, 0.012, 0.0045),
+                    (0.026, 0.012, 0.0075)
+                ]
+                normal3f[] normals = [
+                    (-0.5773502692, -0.5773502692, -0.5773502692),
+                    (-0.5773502692, -0.5773502692, 0.5773502692),
+                    (-0.5773502692, 0.5773502692, -0.5773502692),
+                    (-0.5773502692, 0.5773502692, 0.5773502692),
+                    (0.5773502692, -0.5773502692, -0.5773502692),
+                    (0.5773502692, -0.5773502692, 0.5773502692),
+                    (0.5773502692, 0.5773502692, -0.5773502692),
+                    (0.5773502692, 0.5773502692, 0.5773502692)
+                ] (
+                    interpolation = "vertex"
+                )
+                uniform token subdivisionScheme = "none"
+            }
+            def Mesh "LeftElectrode" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/ElectrodeCopper>
+                custom token[] drAnmar:labels = ["left_seal_electrode"]
+                float3[] extent = [(-0.00875, -0.0105, 0.0074), (-0.00425, 0.0105, 0.0086)]
+                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+                point3f[] points = [
+                    (-0.00875, -0.0105, 0.0074),
+                    (-0.00875, -0.0105, 0.0086),
+                    (-0.00875, 0.0105, 0.0074),
+                    (-0.00875, 0.0105, 0.0086),
+                    (-0.00425, -0.0105, 0.0074),
+                    (-0.00425, -0.0105, 0.0086),
+                    (-0.00425, 0.0105, 0.0074),
+                    (-0.00425, 0.0105, 0.0086)
+                ]
+                normal3f[] normals = [
+                    (-0.5773502692, -0.5773502692, -0.5773502692),
+                    (-0.5773502692, -0.5773502692, 0.5773502692),
+                    (-0.5773502692, 0.5773502692, -0.5773502692),
+                    (-0.5773502692, 0.5773502692, 0.5773502692),
+                    (0.5773502692, -0.5773502692, -0.5773502692),
+                    (0.5773502692, -0.5773502692, 0.5773502692),
+                    (0.5773502692, 0.5773502692, -0.5773502692),
+                    (0.5773502692, 0.5773502692, 0.5773502692)
+                ] (
+                    interpolation = "vertex"
+                )
+                uniform token subdivisionScheme = "none"
+            }
+            def Mesh "RightElectrode" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/ElectrodeCopper>
+                custom token[] drAnmar:labels = ["right_seal_electrode"]
+                float3[] extent = [(0.00425, -0.0105, 0.0074), (0.00875, 0.0105, 0.0086)]
+                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+                point3f[] points = [
+                    (0.00425, -0.0105, 0.0074),
+                    (0.00425, -0.0105, 0.0086),
+                    (0.00425, 0.0105, 0.0074),
+                    (0.00425, 0.0105, 0.0086),
+                    (0.00875, -0.0105, 0.0074),
+                    (0.00875, -0.0105, 0.0086),
+                    (0.00875, 0.0105, 0.0074),
+                    (0.00875, 0.0105, 0.0086)
+                ]
+                normal3f[] normals = [
+                    (-0.5773502692, -0.5773502692, -0.5773502692),
+                    (-0.5773502692, -0.5773502692, 0.5773502692),
+                    (-0.5773502692, 0.5773502692, -0.5773502692),
+                    (-0.5773502692, 0.5773502692, 0.5773502692),
+                    (0.5773502692, -0.5773502692, -0.5773502692),
+                    (0.5773502692, -0.5773502692, 0.5773502692),
+                    (0.5773502692, 0.5773502692, -0.5773502692),
+                    (0.5773502692, 0.5773502692, 0.5773502692)
+                ] (
+                    interpolation = "vertex"
+                )
+                uniform token subdivisionScheme = "none"
+            }
+            def Mesh "LeftPressureRail" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/PadElastomer>
+                custom token[] drAnmar:labels = ["pressure_distribution_rail"]
+                float3[] extent = [(-0.0145, -0.011, 0.007), (-0.0115, 0.011, 0.008)]
+                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+                point3f[] points = [
+                    (-0.0145, -0.011, 0.007),
+                    (-0.0145, -0.011, 0.008),
+                    (-0.0145, 0.011, 0.007),
+                    (-0.0145, 0.011, 0.008),
+                    (-0.0115, -0.011, 0.007),
+                    (-0.0115, -0.011, 0.008),
+                    (-0.0115, 0.011, 0.007),
+                    (-0.0115, 0.011, 0.008)
+                ]
+                normal3f[] normals = [
+                    (-0.5773502692, -0.5773502692, -0.5773502692),
+                    (-0.5773502692, -0.5773502692, 0.5773502692),
+                    (-0.5773502692, 0.5773502692, -0.5773502692),
+                    (-0.5773502692, 0.5773502692, 0.5773502692),
+                    (0.5773502692, -0.5773502692, -0.5773502692),
+                    (0.5773502692, -0.5773502692, 0.5773502692),
+                    (0.5773502692, 0.5773502692, -0.5773502692),
+                    (0.5773502692, 0.5773502692, 0.5773502692)
+                ] (
+                    interpolation = "vertex"
+                )
+                uniform token subdivisionScheme = "none"
+            }
+            def Mesh "RightPressureRail" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/PadElastomer>
+                custom token[] drAnmar:labels = ["pressure_distribution_rail"]
+                float3[] extent = [(0.0115, -0.011, 0.007), (0.0145, 0.011, 0.008)]
+                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+                point3f[] points = [
+                    (0.0115, -0.011, 0.007),
+                    (0.0115, -0.011, 0.008),
+                    (0.0115, 0.011, 0.007),
+                    (0.0115, 0.011, 0.008),
+                    (0.0145, -0.011, 0.007),
+                    (0.0145, -0.011, 0.008),
+                    (0.0145, 0.011, 0.007),
+                    (0.0145, 0.011, 0.008)
+                ]
+                normal3f[] normals = [
+                    (-0.5773502692, -0.5773502692, -0.5773502692),
+                    (-0.5773502692, -0.5773502692, 0.5773502692),
+                    (-0.5773502692, 0.5773502692, -0.5773502692),
+                    (-0.5773502692, 0.5773502692, 0.5773502692),
+                    (0.5773502692, -0.5773502692, -0.5773502692),
+                    (0.5773502692, -0.5773502692, 0.5773502692),
+                    (0.5773502692, 0.5773502692, -0.5773502692),
+                    (0.5773502692, 0.5773502692, 0.5773502692)
+                ] (
+                    interpolation = "vertex"
+                )
+                uniform token subdivisionScheme = "none"
+            }
+            def Mesh "BladeSlotLeft" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/DarkPolymer>
+                custom token[] drAnmar:labels = ["blade_channel"]
+                float3[] extent = [(-0.0019, -0.012, 0.0065), (-0.0009, 0.012, 0.0075)]
+                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+                point3f[] points = [
+                    (-0.0019, -0.012, 0.0065),
+                    (-0.0019, -0.012, 0.0075),
+                    (-0.0019, 0.012, 0.0065),
+                    (-0.0019, 0.012, 0.0075),
+                    (-0.0009, -0.012, 0.0065),
+                    (-0.0009, -0.012, 0.0075),
+                    (-0.0009, 0.012, 0.0065),
+                    (-0.0009, 0.012, 0.0075)
+                ]
+                normal3f[] normals = [
+                    (-0.5773502692, -0.5773502692, -0.5773502692),
+                    (-0.5773502692, -0.5773502692, 0.5773502692),
+                    (-0.5773502692, 0.5773502692, -0.5773502692),
+                    (-0.5773502692, 0.5773502692, 0.5773502692),
+                    (0.5773502692, -0.5773502692, -0.5773502692),
+                    (0.5773502692, -0.5773502692, 0.5773502692),
+                    (0.5773502692, 0.5773502692, -0.5773502692),
+                    (0.5773502692, 0.5773502692, 0.5773502692)
+                ] (
+                    interpolation = "vertex"
+                )
+                uniform token subdivisionScheme = "none"
+            }
+            def Mesh "BladeSlotRight" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/DarkPolymer>
+                custom token[] drAnmar:labels = ["blade_channel"]
+                float3[] extent = [(0.0009, -0.012, 0.0065), (0.0019, 0.012, 0.0075)]
+                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+                point3f[] points = [
+                    (0.0009, -0.012, 0.0065),
+                    (0.0009, -0.012, 0.0075),
+                    (0.0009, 0.012, 0.0065),
+                    (0.0009, 0.012, 0.0075),
+                    (0.0019, -0.012, 0.0065),
+                    (0.0019, -0.012, 0.0075),
+                    (0.0019, 0.012, 0.0065),
+                    (0.0019, 0.012, 0.0075)
+                ]
+                normal3f[] normals = [
+                    (-0.5773502692, -0.5773502692, -0.5773502692),
+                    (-0.5773502692, -0.5773502692, 0.5773502692),
+                    (-0.5773502692, 0.5773502692, -0.5773502692),
+                    (-0.5773502692, 0.5773502692, 0.5773502692),
+                    (0.5773502692, -0.5773502692, -0.5773502692),
+                    (0.5773502692, -0.5773502692, 0.5773502692),
+                    (0.5773502692, 0.5773502692, -0.5773502692),
+                    (0.5773502692, 0.5773502692, 0.5773502692)
+                ] (
+                    interpolation = "vertex"
+                )
+                uniform token subdivisionScheme = "none"
+            }
+            def Mesh "TemperatureStrip" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarAdaptiveSealDivideTool/Looks/ThermalGlass>
+                custom token[] drAnmar:labels = ["jaw_temperature_sensor"]
+                float3[] extent = [(-0.01, -0.0161, -0.005), (0.01, -0.0149, -0.001)]
+                int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+                int[] faceVertexIndices = [1, 3, 0, 4, 1, 0, 0, 3, 2, 2, 4, 0, 1, 7, 3, 5, 1, 4, 5, 7, 1, 3, 7, 2, 6, 4, 2, 2, 7, 6, 6, 5, 4, 7, 5, 6]
+                point3f[] points = [
+                    (-0.01, -0.0161, -0.005),
+                    (-0.01, -0.0161, -0.001),
+                    (-0.01, -0.0149, -0.005),
+                    (-0.01, -0.0149, -0.001),
+                    (0.01, -0.0161, -0.005),
+                    (0.01, -0.0161, -0.001),
+                    (0.01, -0.0149, -0.005),
+                    (0.01, -0.0149, -0.001)
+                ]
+                normal3f[] normals = [
+                    (-0.5773502692, -0.5773502692, -0.5773502692),
+                    (-0.5773502692, -0.5773502692, 0.5773502692),
+                    (-0.5773502692, 0.5773502692, -0.5773502692),
+                    (-0.5773502692, 0.5773502692, 0.5773502692),
+                    (0.5773502692, -0.5773502692, -0.5773502692),
+                    (0.5773502692, -0.5773502692, 0.5773502692),
+                    (0.5773502692, 0.5773502692, -0.5773502692),
+                    (0.5773502692, 0.5773502692, 0.5773502692)
+                ] (
+                    interpolation = "vertex"
+                )
+                uniform token subdivisionScheme = "none"
+            }
+        }
+        def Scope "Collisions"
+        {
+            def Cube "JawBackCollider" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                custom string drAnmar:role = "collision"
+                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/MetalPhysics>
+                bool physics:collisionEnabled = true
+                float physxCollision:contactOffset = 0.00035
+                float physxCollision:restOffset = 0
+                double3 xformOp:translate = (0, 0, -0.001)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                double size = 1
+                double3 xformOp:scale = (0.058, 0.032, 0.008)
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+            }
+            def Cube "LeftSealContact" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                custom string drAnmar:role = "left_seal_contact"
+                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/ElectrodePhysics>
+                bool physics:collisionEnabled = true
+                float physxCollision:contactOffset = 0.00035
+                float physxCollision:restOffset = 0
+                double3 xformOp:translate = (-0.0065, 0, -0.0075)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                double size = 1
+                double3 xformOp:scale = (0.005, 0.022, 0.0025)
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+            }
+            def Cube "RightSealContact" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                custom string drAnmar:role = "right_seal_contact"
+                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/ElectrodePhysics>
+                bool physics:collisionEnabled = true
+                float physxCollision:contactOffset = 0.00035
+                float physxCollision:restOffset = 0
+                double3 xformOp:translate = (0.0065, 0, -0.0075)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                double size = 1
+                double3 xformOp:scale = (0.005, 0.022, 0.0025)
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+            }
+            def Cube "LeftPressureContact" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                custom string drAnmar:role = "jaw_pressure_contact"
+                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/PadContactPhysics>
+                bool physics:collisionEnabled = true
+                float physxCollision:contactOffset = 0.00035
+                float physxCollision:restOffset = 0
+                double3 xformOp:translate = (-0.013, 0, -0.0073)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                double size = 1
+                double3 xformOp:scale = (0.0032, 0.023, 0.0022)
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+            }
+            def Cube "RightPressureContact" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "PhysxCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                custom string drAnmar:role = "jaw_pressure_contact"
+                rel material:binding:physics = </DrAnmarAdaptiveSealDivideTool/PhysicsMaterials/PadContactPhysics>
+                bool physics:collisionEnabled = true
+                float physxCollision:contactOffset = 0.00035
+                float physxCollision:restOffset = 0
+                double3 xformOp:translate = (0.013, 0, -0.0073)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                double size = 1
+                double3 xformOp:scale = (0.0032, 0.023, 0.0022)
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
+            }
+        }
+        def Scope "Frames"
+        {
             def Xform "lower_jaw_contact"
             {
                 custom string drAnmar:role = "lower_jaw_contact"
@@ -15354,7 +15354,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.005, 0.014, -0.017),
                     (0.005, 0.014, 0.017)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -15387,7 +15387,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.002, 0.01, -0.01),
                     (0.002, 0.01, 0.018)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -15420,7 +15420,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.003, -0.0139, -0.013),
                     (0.003, -0.0139, -0.007)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -15523,7 +15523,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.008, 0.015, -0.026),
                     (0.008, 0.015, 0.014)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -15558,7 +15558,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0, -0.011, 0.034),
                     (0, 0.011, 0.034)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (0.5773502692, -0.5773502692, -0.5773502692),
                     (0.5773502692, 0.5773502692, -0.5773502692),
@@ -15593,7 +15593,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.0045, -0.0149, -0.0155),
                     (0.0045, -0.0149, -0.0085)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -15626,7 +15626,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.0045, -0.0149, -0.0155),
                     (0.0045, -0.0149, -0.0085)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -15795,7 +15795,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.004431634889, -0.012, 0.0007814167995),
                     (0.004431634889, 0.012, 0.0007814167995)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, -1, 0),
                     (0.7257049357, -0.6880060656, -4.638910835e-17),
                     (0.7257049357, 0.6880060656, 3.223313903e-17),
@@ -15893,7 +15893,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.007, 0.015, -0.005),
                     (0.007, 0.015, 0.005)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),
@@ -16040,7 +16040,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.004431634889, -0.012, 0.0007814167995),
                     (0.004431634889, 0.012, 0.0007814167995)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (0, -1, 0),
                     (0.7257049357, -0.6880060656, -4.638910835e-17),
                     (0.7257049357, 0.6880060656, 3.223313903e-17),
@@ -16138,7 +16138,7 @@ def Xform "DrAnmarAdaptiveSealDivideTool" (
                     (0.007, -0.009, -0.005),
                     (0.007, -0.009, 0.005)
                 ]
-                normal3f[] primvars:normals = [
+                normal3f[] normals = [
                     (-0.5773502692, -0.5773502692, -0.5773502692),
                     (-0.5773502692, -0.5773502692, 0.5773502692),
                     (-0.5773502692, 0.5773502692, -0.5773502692),

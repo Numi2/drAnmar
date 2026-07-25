@@ -22793,7 +22793,7 @@ def Xform "DrAnmarWoundPreparationToolRigidProxy" (
             (0.038, 0.022, 0.089),
             (0.038, 0.022, 0.093)
             ]
-            normal3f[] primvars:normals = [
+            normal3f[] normals = [
             (0, 0, -1),
             (0.7178209854, 0, -0.6962277163),
             (0.7178209854, 0, 0.6962277163),

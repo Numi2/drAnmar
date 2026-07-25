@@ -1,82 +1,27 @@
 {
-  "schema": "dranmar.runtime-qualification.v1",
+  "schema": "dr.anmar.runtime-observation-record.v2",
   "asset": "dranmar-adaptive-seal-divide-robot-v1",
-  "version": "0.1.0",
-  "status": "passed",
-  "qualified_at_utc": "2026-07-25T14:30:40Z",
-  "ownership": "DrAnmar",
-  "runtime_provider": "NVIDIA Isaac",
-  "host": {
-    "name": "numi",
-    "operating_system": "Ubuntu 24.04",
-    "kernel": "Linux 7.0.0-28-generic x86_64",
+  "status": "archived_not_qualification_evidence",
+  "historical_observation": {
+    "date": "2026-07-25",
+    "host": "Numi",
     "gpu": "NVIDIA GeForce RTX 4090",
-    "driver_version": "580.159.03"
+    "stack": "Isaac Lab 6.1.16 / Isaac Sim 6.0.1.0",
+    "observed": "articulation, deformable vessel, and registered cameras executed"
   },
-  "runtime": {
-    "isaac_lab_distribution_version": "6.1.16",
-    "isaac_sim_distribution_version": "6.0.1.0",
-    "device": "cuda:0",
-    "physics_dt_s": 0.008333333333333333,
-    "gpu_max_deformable_surface_contacts": 16777216,
-    "nvidia_eula_accepted_by_user": true
-  },
-  "matrix": [
-    {
-      "representation": "standalone",
-      "command": "isaaclab.sh -p examples/validate_adaptive_seal_divide_runtime.py --representation standalone --steps 120 --device cuda:0 --headless",
-      "result_sha256": "9633eb517a2a19da99509c3f13976db2ae5d7e8f63b8fc3b6bf5922bc84bb0fa",
-      "status": "pass",
-      "steps": 120,
-      "joint_count": 8,
-      "finite_joint_state": true,
-      "engine_error_count": 0
-    },
-    {
-      "representation": "franka",
-      "command": "isaaclab.sh -p examples/validate_adaptive_seal_divide_runtime.py --representation franka --steps 120 --device cuda:0 --headless",
-      "result_sha256": "48f048ff766469dc33acdc1b518405d6d7a5a32784e8e304d39e8860cbe8987b",
-      "status": "pass",
-      "steps": 120,
-      "joint_count": 15,
-      "finite_joint_state": true,
-      "engine_error_count": 0
-    }
+  "usable_evidence": [
+    "asset composition and articulation discovery",
+    "surface-deformable stability in the observed setup",
+    "fail-closed blade interlock including tissue centering",
+    "measured generalized effort below the authored compression threshold"
   ],
-  "shared_physical_evidence": {
-    "cooked_surface_deformables": 2,
-    "self_collision": false,
-    "fixture_attachments": 2,
-    "bridge_attachments_created": 16,
-    "bridge_attachments_released": 16,
-    "temporary_compression_attachments_created": 4,
-    "temporary_compression_released": true,
-    "retained_seal_band_attachments": 4,
-    "active_attachments_after_division": 6,
-    "attachment_type": "OmniPhysicsVtxXformAttachment",
-    "left_seal_maturity": 0.9708761898563115,
-    "right_seal_maturity": 0.9708761898563115,
-    "left_predicted_stump_flow_ml_min": 0.09946158437321959,
-    "right_predicted_stump_flow_ml_min": 0.09946158437321959,
-    "blade_interlock_authorized": true,
-    "blade_progress": 1.0,
-    "bridge_release_fraction": 1.0,
-    "division_complete": true
-  },
-  "static_evidence": {
-    "primary_usda": 7,
-    "primary_glb": 18,
-    "primary_textures": 7,
-    "usdchecker": "passed_on_macos_host",
-    "unit_tests": "8_passed"
-  },
-  "boundaries": [
-    "simulation qualification only",
-    "no calibrated electrosurgical generator waveform",
-    "no spatial thermal spread or collateral injury model",
-    "no continuous tissue fracture or histology model",
-    "no instrumented physical bench calibration",
-    "no clinical validation",
-    "not approved for patient care"
-  ]
+  "not_evidence_for": [
+    "through-thickness vessel compression",
+    "thermal fusion",
+    "burst pressure",
+    "division efficacy",
+    "clinical or regulatory performance"
+  ],
+  "clinical_validation": false,
+  "medical_device": false
 }

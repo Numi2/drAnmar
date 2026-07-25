@@ -27,6 +27,20 @@ SEAL_BAND_USD = ROOT / "dranmar_tissue_seal_band.usda"
 BLADE_USD = ROOT / "dranmar_division_blade_cartridge.usda"
 VAPOR_USD = ROOT / "dranmar_seal_vapor_particle.usda"
 
+# Isotropic small-strain research baseline for the demo vessel shell.  The
+# modulus is the reported fresh ex-vivo porcine aorta mechanical-test mean
+# (202.4 kPa), Poisson ratio 0.35 is the midpoint of the measured 0.3-0.4
+# in-plane porcine arterial-wall range, and density 1060 kg/m^3 follows a
+# published isotropic arterial-wall structural model.  This is not a
+# calibrated patient, vessel-type, or electrosurgical tissue model.
+VESSEL_SURFACE_MATERIAL = {
+    "density_kg_m3":1060.0,
+    "youngs_modulus_pa":202_400.0,
+    "poissons_ratio":0.35,
+    "surface_thickness_m":0.00068,
+    "dynamic_friction":0.40,
+}
+
 VALID_CARTRIDGE_STATES = frozenset({"fresh", "spent"})
 VALID_SALINE_STATES = frozenset({"full", "empty"})
 VALID_COLLECTION_STATES = frozenset({"empty", "partial", "full"})
@@ -64,6 +78,7 @@ TOOL_FRAME_PATHS = {
     "count_reference":"Links/Mount/Frames/count_reference",
     "disposal_reference":"Links/Mount/Frames/disposal_reference",
 }
+REGISTERED_CAMERA_FRAMES = ("thermal_camera",)
 
 def frame_path(tool_path: str, name: str) -> str:
     try:
@@ -74,6 +89,15 @@ def frame_path(tool_path: str, name: str) -> str:
 
 def tensor_value(value: Any):
     return value.torch if hasattr(value, "torch") else value
+
+
+def _xyzw_from_wxyz(orientation_wxyz) -> tuple[float, float, float, float]:
+    values=tuple(float(value) for value in orientation_wxyz)
+    if len(values)!=4 or not all(math.isfinite(value) for value in values):raise ValueError("orientation_wxyz must contain four finite values")
+    if abs(math.sqrt(sum(value*value for value in values))-1.0)>1.0e-4:raise ValueError("orientation_wxyz must be a unit quaternion")
+    w,x,y,z=values
+    return x,y,z,w
+
 
 def _check(value: str, allowed: frozenset[str], label: str) -> str:
     if value not in allowed:
@@ -119,7 +143,7 @@ def make_tool_cfg(
             activate_contact_sensors=True,
             articulation_props=sim_utils.ArticulationRootPropertiesCfg(enabled_self_collisions=False,solver_position_iteration_count=24,solver_velocity_iteration_count=8),
         ),
-        init_state=ArticulationCfg.InitialStateCfg(pos=position,rot=orientation_wxyz,joint_pos={name:0.0 for name in TOOL_JOINTS.values()}),
+        init_state=ArticulationCfg.InitialStateCfg(pos=position,rot=_xyzw_from_wxyz(orientation_wxyz),joint_pos={name:0.0 for name in TOOL_JOINTS.values()}),
         actuators={
             "centering":ImplicitActuatorCfg(joint_names_expr=[".*centering_joint"],effort_limit_sim=90.0,velocity_limit_sim=0.16,stiffness=4200.0,damping=145.0),
             "seal_jaws":ImplicitActuatorCfg(joint_names_expr=[".*jaw_joint"],effort_limit_sim=360.0,velocity_limit_sim=0.10,stiffness=18000.0,damping=420.0),
@@ -131,7 +155,7 @@ def make_tool_cfg(
 def make_rigid_proxy_cfg(prim_path="/World/DrAnmarAdaptiveSealDivideProxy", *, position=(0,0,0.35), orientation_wxyz=(1,0,0,0)):
     import isaaclab.sim as sim_utils
     from isaaclab.assets import RigidObjectCfg
-    return RigidObjectCfg(prim_path=prim_path,spawn=sim_utils.UsdFileCfg(usd_path=str(TOOL_RIGID_PROXY_USD),activate_contact_sensors=True),init_state=RigidObjectCfg.InitialStateCfg(pos=position,rot=orientation_wxyz))
+    return RigidObjectCfg(prim_path=prim_path,spawn=sim_utils.UsdFileCfg(usd_path=str(TOOL_RIGID_PROXY_USD),activate_contact_sensors=True),init_state=RigidObjectCfg.InitialStateCfg(pos=position,rot=_xyzw_from_wxyz(orientation_wxyz)))
 
 def _spawn_single_franka_with_tool(prim_path: str, cfg: Any, translation=None, orientation=None, **kwargs):
     from isaaclab.sim.spawners.from_files.from_files import spawn_from_usd
@@ -224,24 +248,99 @@ def _current_stage(stage=None):
 
 def spawn_vessel_demo(prim_path="/World/DrAnmarSealDivideVessel", *, translation=(0,0,0), orientation_wxyz=(1,0,0,0)):
     import isaaclab.sim as sim_utils
-    cfg=sim_utils.UsdFileCfg(usd_path=str(VESSEL_USD));return cfg.func(prim_path,cfg,translation=translation,orientation=orientation_wxyz)
+    cfg=sim_utils.UsdFileCfg(usd_path=str(VESSEL_USD));return cfg.func(prim_path,cfg,translation=translation,orientation=_xyzw_from_wxyz(orientation_wxyz))
 
 def apply_vessel_surface_deformables(root_path: str, *, self_collision=False, stage=None):
     stage=_current_stage(stage);results=[]
     from omni.physx.scripts import deformableUtils
+    from pxr import Sdf,UsdPhysics,UsdShade
+    root_path=root_path.rstrip("/")
+    material_path=f"{root_path}/RuntimeMaterials/VesselWallSurface"
+    material=UsdShade.Material.Define(stage,material_path)
+    material_prim=material.GetPrim()
+    for schema in (
+        "OmniPhysicsBaseMaterialAPI",
+        "OmniPhysicsDeformableMaterialAPI",
+        "OmniPhysicsSurfaceDeformableMaterialAPI",
+        "PhysxDeformableMaterialAPI",
+        "PhysxSurfaceDeformableMaterialAPI",
+    ):
+        if schema not in material_prim.GetAppliedSchemas():
+            material_prim.AddAppliedSchema(schema)
+    values=VESSEL_SURFACE_MATERIAL
+    material_prim.CreateAttribute(
+        "omniphysics:density",Sdf.ValueTypeNames.Float
+    ).Set(values["density_kg_m3"])
+    material_prim.CreateAttribute(
+        "omniphysics:dynamicFriction",Sdf.ValueTypeNames.Float
+    ).Set(values["dynamic_friction"])
+    material_prim.CreateAttribute(
+        "omniphysics:youngsModulus",Sdf.ValueTypeNames.Float
+    ).Set(values["youngs_modulus_pa"])
+    material_prim.CreateAttribute(
+        "omniphysics:poissonsRatio",Sdf.ValueTypeNames.Float
+    ).Set(values["poissons_ratio"])
+    material_prim.CreateAttribute(
+        "omniphysics:surfaceThickness",Sdf.ValueTypeNames.Float
+    ).Set(values["surface_thickness_m"])
+    material_prim.CreateAttribute(
+        "omniphysics:surfaceBendStiffness",Sdf.ValueTypeNames.Float
+    ).Set(
+        values["youngs_modulus_pa"]
+        /(12.0*(1.0-values["poissons_ratio"]**2))
+    )
     for child in ("LeftVesselWall","RightVesselWall"):
-        mesh_path=f"{root_path.rstrip('/')}/{child}";mesh=stage.GetPrimAtPath(mesh_path)
+        mesh_path=f"{root_path}/{child}";mesh=stage.GetPrimAtPath(mesh_path)
         if not mesh or not mesh.IsValid():raise ValueError(f"No vessel wall at {mesh_path}")
+        UsdShade.MaterialBindingAPI.Apply(mesh).Bind(
+            material,UsdShade.Tokens.weakerThanDescendants,"physics"
+        )
         ok=deformableUtils.set_physics_surface_deformable_body(stage,mesh.GetPath())
         if ok is False:raise RuntimeError(f"Failed to cook vessel surface deformable at {mesh_path}")
+        mesh.CreateAttribute(
+            "omniphysics:restBendAnglesDefault",Sdf.ValueTypeNames.Token
+        ).Set("restShapeDefault")
         mesh.ApplyAPI("PhysxSurfaceDeformableBodyAPI")
-        if mesh.HasAPI("PhysxSurfaceDeformableBodyAPI"):mesh.GetAttribute("physxDeformableBody:selfCollision").Set(bool(self_collision))
+        if mesh.HasAPI("PhysxSurfaceDeformableBodyAPI"):
+            mesh.GetAttribute("physxDeformableBody:selfCollision").Set(
+                bool(self_collision)
+            )
+            # The two vessel halves are only 0.4 mm apart.  Keep the contact
+            # envelope below half that authored clearance so the solver does
+            # not begin by depenetrating otherwise separated stump surfaces.
+            mesh.CreateAttribute(
+                "physxCollision:contactOffset",Sdf.ValueTypeNames.Float
+            ).Set(0.0001)
+            mesh.CreateAttribute(
+                "physxCollision:restOffset",Sdf.ValueTypeNames.Float
+            ).Set(0.0)
         results.append(mesh_path)
+    # NVIDIA documents that element-level collision filtering is not
+    # supported between two surface deformables.  These halves meet at an
+    # attached seam, so use the supported prim-pair filter and let their
+    # explicit bridge attachments carry the cross-seam load.
+    left_prim=stage.GetPrimAtPath(f"{root_path}/LeftVesselWall")
+    UsdPhysics.FilteredPairsAPI.Apply(left_prim).CreateFilteredPairsRel().AddTarget(
+        f"{root_path}/RightVesselWall"
+    )
     return {"root_path":root_path,"mesh_paths":results,"self_collision":bool(self_collision)}
 
-def create_deformable_attachment(deformable_path: str,target_path: str,attachment_path: str,*,stage=None):
+def create_deformable_attachment(
+    deformable_path: str,
+    target_path: str,
+    attachment_path: str,
+    *,
+    stage=None,
+    deformable_points_world=None,
+    target_to_world=None,
+    attachment_frame_path=None,
+    attachment_frame_to_world=None,
+    excluded_vertex_indices=None,
+    maximum_vertices=12,
+    selected_vertex_indices_out=None,
+):
     """Create and verify an overlap-prioritized attachment across Isaac versions."""
-    from pxr import Gf,Sdf,Usd,UsdGeom,Vt
+    from pxr import Gf,Sdf,Usd,UsdGeom,UsdPhysics,Vt
     stage=_current_stage(stage)
     if stage.GetPrimAtPath(attachment_path).IsValid():
         stage.RemovePrim(attachment_path)
@@ -257,21 +356,79 @@ def create_deformable_attachment(deformable_path: str,target_path: str,attachmen
             raise ValueError(f"Attachment source is not a populated mesh: {deformable_path}")
         if not target.IsValid() or not UsdGeom.Xformable(target):
             raise ValueError(f"Attachment target is not xformable: {target_path}")
+        runtime_geometry=(
+            deformable_points_world is not None
+            or target_to_world is not None
+            or attachment_frame_to_world is not None
+        )
+        if runtime_geometry and (
+            deformable_points_world is None
+            or target_to_world is None
+            or attachment_frame_to_world is None
+        ):
+            raise ValueError(
+                "Runtime attachment selection requires current deformable "
+                "world points, target-to-world, and attachment-frame-to-world"
+            )
+        if attachment_frame_path is None:
+            frame=target
+            while frame.IsValid() and not frame.HasAPI(UsdPhysics.RigidBodyAPI):
+                frame=frame.GetParent()
+            if not frame.IsValid():
+                raise RuntimeError(
+                    f"Attachment target has no rigid-body frame: {target_path}"
+                )
+            attachment_frame_path=str(frame.GetPath())
+        attachment_frame=stage.GetPrimAtPath(attachment_frame_path)
+        if not attachment_frame.IsValid():
+            raise RuntimeError(
+                f"Attachment frame is missing: {attachment_frame_path}"
+            )
         mesh_to_world=UsdGeom.Xformable(deformable).ComputeLocalToWorldTransform(
             Usd.TimeCode.Default()
         )
-        target_to_world=UsdGeom.Xformable(target).ComputeLocalToWorldTransform(
-            Usd.TimeCode.Default()
-        )
-        world_to_target=target_to_world.GetInverse()
-        bounds=UsdGeom.BBoxCache(
-            Usd.TimeCode.Default(),[UsdGeom.Tokens.default_]
-        ).ComputeWorldBound(target).ComputeAlignedRange()
+        if target_to_world is None:
+            target_to_world=UsdGeom.Xformable(target).ComputeLocalToWorldTransform(
+                Usd.TimeCode.Default()
+            )
+            bounds=UsdGeom.BBoxCache(
+                Usd.TimeCode.Default(),
+                [UsdGeom.Tokens.default_,UsdGeom.Tokens.guide],
+            ).ComputeWorldBound(target).ComputeAlignedRange()
+        else:
+            untransformed=UsdGeom.BBoxCache(
+                Usd.TimeCode.Default(),
+                [UsdGeom.Tokens.default_,UsdGeom.Tokens.guide],
+            ).ComputeUntransformedBound(target)
+            untransformed.Transform(target_to_world)
+            bounds=untransformed.ComputeAlignedRange()
+        if attachment_frame_to_world is None:
+            attachment_frame_to_world=UsdGeom.Xformable(
+                attachment_frame
+            ).ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+        world_to_attachment_frame=attachment_frame_to_world.GetInverse()
         minimum,maximum=bounds.GetMin(),bounds.GetMax()
         center=(minimum+maximum)*0.5
+        if deformable_points_world is not None:
+            if len(deformable_points_world)!=len(points):
+                raise RuntimeError(
+                    f"Runtime deformable topology changed for {deformable_path}: "
+                    f"usd_vertices={len(points)}, simulation_vertices="
+                    f"{len(deformable_points_world)}"
+                )
+            world_points=[
+                Gf.Vec3d(float(point[0]),float(point[1]),float(point[2]))
+                for point in deformable_points_world
+            ]
+        else:
+            world_points=[
+                mesh_to_world.Transform(Gf.Vec3d(point)) for point in points
+            ]
+        if maximum_vertices<4:
+            raise ValueError("maximum_vertices must be at least four")
+        excluded=set(excluded_vertex_indices or ())
         ranked=[]
-        for index,point in enumerate(points):
-            world=mesh_to_world.Transform(Gf.Vec3d(point))
+        for index,world in enumerate(world_points):
             delta=world-center
             overlaps=all(
                 minimum[axis]-0.0025<=world[axis]<=maximum[axis]+0.0025
@@ -279,9 +436,32 @@ def create_deformable_attachment(deformable_path: str,target_path: str,attachmen
             )
             ranked.append((float(Gf.Dot(delta,delta)),index,world,overlaps))
         ranked.sort(key=lambda item:item[0])
-        selected=[item for item in ranked if item[3]][:12]
-        if len(selected)<4:selected=ranked[:min(4,len(ranked))]
-        if not selected:raise RuntimeError(f"No vertices available for {attachment_path}")
+        selected=[
+            item for item in ranked if item[3] and item[1] not in excluded
+        ][:maximum_vertices]
+        if len(selected)<4:
+            nearest_center_distance_m=(
+                math.sqrt(ranked[0][0]) if ranked else math.inf
+            )
+            source_min=tuple(
+                min(point[axis] for point in world_points) for axis in range(3)
+            )
+            source_max=tuple(
+                max(point[axis] for point in world_points) for axis in range(3)
+            )
+            nearest_world=(
+                tuple(ranked[0][2]) if ranked else None
+            )
+            raise RuntimeError(
+                f"Attachment capture volume does not overlap enough deformable "
+                f"vertices for {attachment_path}: source={deformable_path}, "
+                f"target={target_path}, overlapping={len(selected)}, "
+                f"required=4, overlap_margin_m=0.0025, "
+                f"target_bounds_world=({tuple(minimum)}, {tuple(maximum)}), "
+                f"source_bounds_world=({source_min}, {source_max}), "
+                f"nearest_vertex_world={nearest_world}, "
+                f"nearest_vertex_to_target_center_m={nearest_center_distance_m}"
+            )
         attachment=stage.DefinePrim(
             attachment_path,"OmniPhysicsVtxXformAttachment"
         )
@@ -289,7 +469,7 @@ def create_deformable_attachment(deformable_path: str,target_path: str,attachmen
             [Sdf.Path(deformable_path)]
         )
         attachment.CreateRelationship("omniphysics:src1").SetTargets(
-            [Sdf.Path(target_path)]
+            [Sdf.Path(attachment_frame_path)]
         )
         attachment.CreateAttribute(
             "omniphysics:vtxIndicesSrc0",Sdf.ValueTypeNames.IntArray
@@ -297,8 +477,11 @@ def create_deformable_attachment(deformable_path: str,target_path: str,attachmen
         attachment.CreateAttribute(
             "omniphysics:localPositionsSrc1",Sdf.ValueTypeNames.Point3fArray
         ).Set(Vt.Vec3fArray([
-            Gf.Vec3f(world_to_target.Transform(item[2])) for item in selected
+            Gf.Vec3f(world_to_attachment_frame.Transform(item[2]))
+            for item in selected
         ]))
+        if selected_vertex_indices_out is not None:
+            selected_vertex_indices_out.extend(item[1] for item in selected)
         attachment.CreateAttribute(
             "omniphysics:attachmentEnabled",Sdf.ValueTypeNames.Bool
         ).Set(True)
@@ -347,10 +530,12 @@ def remove_prims(paths: Iterable[str], *, stage=None):
 
 def anchor_vessel_distal_ends(root_path: str,*,stage=None) -> list[str]:
     """Attach both cooked vessel halves to explicit kinematic fixtures."""
-    from pxr import UsdPhysics
+    from pxr import Gf,Usd,UsdGeom,UsdPhysics
     stage=_current_stage(stage);root_path=root_path.rstrip("/")
     attachments_root=f"{root_path}/RuntimeFixtureAttachments"
-    stage.DefinePrim(attachments_root,"Scope");created=[]
+    frames_root=f"{root_path}/RuntimeFixtureFrames"
+    stage.DefinePrim(attachments_root,"Scope")
+    stage.DefinePrim(frames_root,"Scope");created=[]
     try:
         for label,vessel,target in (
             ("left","LeftVesselWall","LeftFixtureAnchor"),
@@ -360,12 +545,30 @@ def anchor_vessel_distal_ends(root_path: str,*,stage=None) -> list[str]:
             target_prim=stage.GetPrimAtPath(target_path)
             if not target_prim.IsValid():
                 raise ValueError(f"Vessel fixture anchor is missing: {target_path}")
-            rigid=UsdPhysics.RigidBodyAPI.Apply(target_prim)
+            frame_path=f"{frames_root}/{label}"
+            frame=UsdGeom.Xform.Define(stage,frame_path)
+            root_to_world=UsdGeom.Xformable(
+                stage.GetPrimAtPath(root_path)
+            ).ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+            target_to_world=UsdGeom.Xformable(
+                target_prim
+            ).ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+            frame_to_world=Gf.Matrix4d(1.0)
+            frame_to_world.SetRotate(target_to_world.ExtractRotationMatrix())
+            frame_to_world.SetTranslateOnly(target_to_world.ExtractTranslation())
+            frame.MakeMatrixXform().Set(
+                frame_to_world*root_to_world.GetInverse()
+            )
+            rigid=UsdPhysics.RigidBodyAPI.Apply(frame.GetPrim())
             rigid.CreateRigidBodyEnabledAttr(True)
             rigid.CreateKinematicEnabledAttr(True)
             attachment_path=f"{attachments_root}/{label}"
             create_deformable_attachment(
-                f"{root_path}/{vessel}",target_path,attachment_path,stage=stage
+                f"{root_path}/{vessel}",
+                target_path,
+                attachment_path,
+                stage=stage,
+                attachment_frame_path=frame_path,
             )
             created.append(attachment_path)
     except Exception:
@@ -383,7 +586,7 @@ class DualZoneCompressionController:
     hard_release_limit_n: float=45.0
     attachment_paths: list[str]=field(default_factory=list)
     engaged: bool=False
-    def engage(self,*,stage=None):
+    def engage(self,*,stage=None,runtime_geometry=None):
         stage=_current_stage(stage)
         parent=f"{self.vessel_root}/RuntimeJawCompressionAttachments"
         stage.DefinePrim(parent,"Scope");created=[]
@@ -395,10 +598,14 @@ class DualZoneCompressionController:
                 ("right_lower","RightVesselWall","LowerJaw/Collisions/RightSealContact"),
             ):
                 attachment=f"{parent}/{side}"
+                geometry=(
+                    {} if runtime_geometry is None
+                    else runtime_geometry.get(side,{})
+                )
                 create_deformable_attachment(
                     f"{self.vessel_root}/{vessel}",
                     f"{self.tool_root}/Links/{contact}",
-                    attachment,stage=stage,
+                    attachment,stage=stage,**geometry,
                 )
                 created.append(attachment)
         except Exception:
@@ -444,11 +651,21 @@ class BridgeAttachmentController:
             raise ValueError("release_order must contain each bridge index exactly once")
         stage=_current_stage(stage);stage.DefinePrim(f"{self.vessel_root}/RuntimeBridgeAttachments","Scope");created=[];cells=[]
         left=f"{self.vessel_root}/LeftVesselWall";right=f"{self.vessel_root}/RightVesselWall"
+        used_vertices={"left":set(),"right":set()}
         try:
             for i in range(BRIDGE_PIN_COUNT):
                 pin=f"{self.vessel_root}/BridgePins/BridgePin_{i:02d}/Capture";paths=[]
                 for side,actor in (("left",left),("right",right)):
-                    ap=f"{self.vessel_root}/RuntimeBridgeAttachments/pin_{i:02d}_{side}";create_deformable_attachment(actor,pin,ap,stage=stage);paths.append(ap);created.append(ap)
+                    ap=f"{self.vessel_root}/RuntimeBridgeAttachments/pin_{i:02d}_{side}"
+                    selected=[]
+                    create_deformable_attachment(
+                        actor,pin,ap,stage=stage,
+                        excluded_vertex_indices=used_vertices[side],
+                        maximum_vertices=4,
+                        selected_vertex_indices_out=selected,
+                    )
+                    used_vertices[side].update(selected)
+                    paths.append(ap);created.append(ap)
                 cells.append(BridgeCell(i,pin,paths))
         except Exception:
             remove_prims(created,stage=stage);raise
@@ -594,8 +811,9 @@ class BladeInterlockController:
     minimum_jaw_force_n: float=8.0
     maximum_jaw_force_n: float=32.0
     maximum_stump_flow_ml_min: float=0.1
-    def evaluate(self,energy: AdaptiveSealEnergyController,leak: DualStumpLeakModel,upper_force_n: float,lower_force_n: float,guard_retracted: bool):
+    def evaluate(self,energy: AdaptiveSealEnergyController,leak: DualStumpLeakModel,upper_force_n: float,lower_force_n: float,guard_retracted: bool,*,tissue_centered: bool):
         reasons=[]
+        if tissue_centered is not True:reasons.append("tissue_not_centered")
         total=_finite_nonnegative(upper_force_n,"upper_force_n")+_finite_nonnegative(lower_force_n,"lower_force_n")
         if total<self.minimum_jaw_force_n:reasons.append("insufficient_compression")
         if total>self.maximum_jaw_force_n:reasons.append("excess_compression")
@@ -605,7 +823,7 @@ class BladeInterlockController:
         if flows["left_ml_min"]>self.maximum_stump_flow_ml_min:reasons.append("left_predicted_leak")
         if flows["right_ml_min"]>self.maximum_stump_flow_ml_min:reasons.append("right_predicted_leak")
         if not guard_retracted:reasons.append("blade_guard_not_retracted")
-        return {"authorized":not reasons,"reasons":reasons,"predicted_flows":flows}
+        return {"authorized":not reasons,"reasons":reasons,"predicted_flows":flows,"tissue_centered":tissue_centered is True}
 
 @dataclass
 class TissueDivisionController:
@@ -613,8 +831,8 @@ class TissueDivisionController:
     interlock: BladeInterlockController=field(default_factory=BladeInterlockController)
     blade_progress: float=0.0
     violations: int=0
-    def advance(self,progress: float,*,energy: AdaptiveSealEnergyController,leak: DualStumpLeakModel,upper_force_n: float,lower_force_n: float,guard_retracted: bool,stage=None):
-        result=self.interlock.evaluate(energy,leak,upper_force_n,lower_force_n,guard_retracted)
+    def advance(self,progress: float,*,energy: AdaptiveSealEnergyController,leak: DualStumpLeakModel,upper_force_n: float,lower_force_n: float,guard_retracted: bool,tissue_centered: bool,stage=None):
+        result=self.interlock.evaluate(energy,leak,upper_force_n,lower_force_n,guard_retracted,tissue_centered=tissue_centered)
         requested=max(0.0,min(1.0,_finite(progress,"progress")))
         if requested>self.blade_progress and not result["authorized"]:
             self.violations+=1;return {**result,"blade_progress":self.blade_progress,"bridge_release_fraction":self.bridge.released_fraction}
@@ -625,10 +843,13 @@ PHASE_TARGETS={
     "inspect":{"left_centering_joint":0.0,"right_centering_joint":0.0,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.0,"irrigation_valve_joint":0.0},
     "center":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.002,"irrigation_valve_joint":0.0},
     "compress":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.004,"irrigation_valve_joint":0.0},
-    "seal":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.013,"lower_jaw_joint":-0.013,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.005,"irrigation_valve_joint":0.0},
-    "verify_seal":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.013,"lower_jaw_joint":-0.013,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.003,"irrigation_valve_joint":0.0},
-    "retract_guard":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.013,"lower_jaw_joint":-0.013,"blade_guard_joint":-0.011,"blade_joint":0.0,"suction_valve_joint":0.004,"irrigation_valve_joint":0.0},
-    "divide":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.013,"lower_jaw_joint":-0.013,"blade_guard_joint":-0.011,"blade_joint":0.041,"suction_valve_joint":0.006,"irrigation_valve_joint":0.0},
+    # The inward electrode faces meet at +/-10 mm jaw travel.  Holding that
+    # geometry through seal and division avoids the former 3 mm per-jaw
+    # crossover, which pulled captured tissue apart instead of compressing it.
+    "seal":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.005,"irrigation_valve_joint":0.0},
+    "verify_seal":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.003,"irrigation_valve_joint":0.0},
+    "retract_guard":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":-0.011,"blade_joint":0.0,"suction_valve_joint":0.004,"irrigation_valve_joint":0.0},
+    "divide":{"left_centering_joint":0.022,"right_centering_joint":-0.022,"upper_jaw_joint":0.010,"lower_jaw_joint":-0.010,"blade_guard_joint":-0.011,"blade_joint":0.041,"suction_valve_joint":0.006,"irrigation_valve_joint":0.0},
     "release":{"left_centering_joint":0.0,"right_centering_joint":0.0,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.003,"irrigation_valve_joint":0.003},
     "verify_stumps":{"left_centering_joint":0.0,"right_centering_joint":0.0,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.002,"irrigation_valve_joint":0.0},
     "complete":{"left_centering_joint":0.0,"right_centering_joint":0.0,"upper_jaw_joint":0.0,"lower_jaw_joint":0.0,"blade_guard_joint":0.0,"blade_joint":0.0,"suction_valve_joint":0.0,"irrigation_valve_joint":0.0},

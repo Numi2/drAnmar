@@ -82,6 +82,10 @@ TOOL_FRAME_PATHS = {
     "count_reference": "Links/Mount/Frames/count_reference",
     "disposal_reference": "Links/Mount/Frames/disposal_reference",
 }
+REGISTERED_CAMERA_FRAMES = (
+    "stereo_left", "stereo_right", "depth_camera",
+    "fluorescence_camera", "thermal_camera",
+)
 for _side in ("left", "right"):
     for _index in range(4):
         TOOL_FRAME_PATHS[f"{_side}_capture_cell_{_index}"] = f"Links/{_side.title()}TractionPad/Frames/{_side}_capture_cell_{_index}"
@@ -100,6 +104,16 @@ def frame_path(tool_path: str, name: str) -> str:
 
 def tensor_value(value: Any):
     return value.torch if hasattr(value, "torch") else value
+
+
+def _xyzw_from_wxyz(orientation_wxyz) -> tuple[float, float, float, float]:
+    values = tuple(float(value) for value in orientation_wxyz)
+    if len(values) != 4 or not all(math.isfinite(value) for value in values):
+        raise ValueError("orientation_wxyz must contain four finite values")
+    if abs(math.sqrt(sum(value * value for value in values)) - 1.0) > 1.0e-4:
+        raise ValueError("orientation_wxyz must be a unit quaternion")
+    w, x, y, z = values
+    return x, y, z, w
 
 
 def _check(value: str, allowed: frozenset[str], label: str) -> str:
@@ -162,7 +176,7 @@ def make_tool_cfg(
         ),
         init_state=ArticulationCfg.InitialStateCfg(
             pos=position,
-            rot=orientation_wxyz,
+            rot=_xyzw_from_wxyz(orientation_wxyz),
             joint_pos={name: 0.0 for name in TOOL_JOINTS.values()},
         ),
         actuators={
@@ -212,7 +226,9 @@ def make_rigid_proxy_cfg(
         spawn=sim_utils.UsdFileCfg(
             usd_path=str(TOOL_RIGID_PROXY_USD), activate_contact_sensors=True,
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=position, rot=orientation_wxyz),
+        init_state=RigidObjectCfg.InitialStateCfg(
+            pos=position, rot=_xyzw_from_wxyz(orientation_wxyz)
+        ),
     )
 
 
@@ -415,7 +431,10 @@ def spawn_tissue_demo(
 ):
     import isaaclab.sim as sim_utils
     cfg = sim_utils.UsdFileCfg(usd_path=str(TISSUE_DEMO_USD))
-    return cfg.func(prim_path, cfg, translation=translation, orientation=orientation_wxyz)
+    return cfg.func(
+        prim_path, cfg, translation=translation,
+        orientation=_xyzw_from_wxyz(orientation_wxyz),
+    )
 
 
 def _create_surface_material(
@@ -508,7 +527,8 @@ def create_deformable_attachment(deformable_path: str, target_path: str, attachm
         )
         world_to_target = target_to_world.GetInverse()
         bounds = UsdGeom.BBoxCache(
-            Usd.TimeCode.Default(), [UsdGeom.Tokens.default_]
+            Usd.TimeCode.Default(),
+            [UsdGeom.Tokens.default_, UsdGeom.Tokens.guide],
         ).ComputeWorldBound(target).ComputeAlignedRange()
         minimum, maximum = bounds.GetMin(), bounds.GetMax()
         center = (minimum + maximum) * 0.5
@@ -524,9 +544,12 @@ def create_deformable_attachment(deformable_path: str, target_path: str, attachm
         ranked.sort(key=lambda item: item[0])
         selected = [item for item in ranked if item[3]][:12]
         if len(selected) < 4:
-            selected = ranked[:min(4, len(ranked))]
-        if not selected:
-            raise RuntimeError(f"No vertices available for {attachment_path}")
+            raise RuntimeError(
+                f"Attachment capture volume does not overlap enough deformable "
+                f"vertices for {attachment_path}: source={deformable_path}, "
+                f"target={target_path}, overlapping={len(selected)}, "
+                "required=4, overlap_margin_m=0.0025"
+            )
         attachment = stage.DefinePrim(
             attachment_path, "OmniPhysicsVtxXformAttachment"
         )
@@ -1207,8 +1230,21 @@ class SuctionFieldController:
         capture_transform = _world_transform(stage, frame_path(tool_path, "suction_center"))
         inverse = capture_transform.GetInverse()
         throat = capture_transform.ExtractTranslation()
+        remaining_collection_ml = max(
+            0.0, ledger.collection_capacity_ml - ledger.aspirated_ml
+        )
+        removable_particle_count = int(
+            math.floor(
+                (
+                    min(ledger.active_particle_ml, remaining_collection_ml)
+                    + 1.0e-12
+                )
+                / PARTICLE_VOLUME_ML
+            )
+        )
         kept_positions, kept_velocities, kept_widths = [], [], []
         captured = 0
+        capacity_blocked = 0
         for position, velocity, width in zip(positions, velocities, widths):
             world = Gf.Vec3d(position)
             local = inverse.Transform(world)
@@ -1216,8 +1252,10 @@ class SuctionFieldController:
             to_throat = throat - world
             distance = max(float(to_throat.GetLength()), 1.0e-8)
             if opening > 0 and distance <= self.throat_radius_m:
-                captured += 1
-                continue
+                if captured < removable_particle_count:
+                    captured += 1
+                    continue
+                capacity_blocked += 1
             new_velocity = Gf.Vec3d(velocity)
             if radial <= self.capture_radius_m and abs(local[2]) <= self.capture_depth_m and opening > 0:
                 new_velocity += to_throat / distance * (opening * self.max_acceleration_m_s2 * max(0.0, dt))
@@ -1228,7 +1266,21 @@ class SuctionFieldController:
         points.GetVelocitiesAttr().Set(Vt.Vec3fArray(kept_velocities))
         points.GetWidthsAttr().Set(kept_widths)
         aspirated = ledger.aspirate(captured * PARTICLE_VOLUME_ML)
-        return {"active": len(kept_positions), "captured": captured, "aspirated_ml": aspirated}
+        expected_aspirated = captured * PARTICLE_VOLUME_ML
+        if not math.isclose(aspirated, expected_aspirated, rel_tol=0.0, abs_tol=1.0e-12):
+            raise RuntimeError(
+                "Particle removal and collection ledger diverged: "
+                f"removed_ml={expected_aspirated}, accounted_ml={aspirated}"
+            )
+        return {
+            "active": len(kept_positions),
+            "captured": captured,
+            "aspirated_ml": aspirated,
+            "capacity_blocked": capacity_blocked,
+            "remaining_collection_ml": max(
+                0.0, ledger.collection_capacity_ml - ledger.aspirated_ml
+            ),
+        }
 
 
 @dataclass

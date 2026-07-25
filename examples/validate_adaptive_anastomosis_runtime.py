@@ -179,13 +179,26 @@ def main() -> int:
             if not prim.GetRelationship(relationship).GetTargets():
                 raise RuntimeError(f"Attachment relationship missing: {path}")
 
-    patency = helper.LumenPatencyController().evaluate(
-        [0.0092, 0.0090, 0.0091, 0.0093, 0.0090, 0.0092],
-        centerline_offset_m=0.001,
-        axis_error_deg=3.0,
+    def usd_world_points(mesh_path):
+        mesh_prim = stage.GetPrimAtPath(mesh_path)
+        mesh = UsdGeom.Mesh(mesh_prim)
+        transform = UsdGeom.Xformable(
+            mesh_prim
+        ).ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+        return [
+            tuple(transform.Transform(point))
+            for point in (mesh.GetPointsAttr().Get() or [])
+        ]
+
+    seam_geometry = helper.measure_lumen_seam_geometry(
+        usd_world_points(deformables["LeftTissue"]),
+        usd_world_points(deformables["RightTissue"]),
     )
-    if not patency.passed:
-        raise RuntimeError(f"Nominal patency benchmark failed: {patency}")
+    patency = helper.LumenPatencyController().evaluate(
+        seam_geometry["radial_samples_m"],
+        centerline_offset_m=seam_geometry["centerline_offset_m"],
+        axis_error_deg=seam_geometry["axis_error_deg"],
+    )
 
     helper.ensure_leak_particle_system(stage=stage)
     ledger = helper.LeakTestLedger(initial_reservoir_ml=1.0)
@@ -215,25 +228,23 @@ def main() -> int:
         sequence.leak_test.update(
             0.1,
             pump_flow_ml_s=0.2,
-            edge_gap_m=0.0,
+            edge_gap_m=seam_geometry["edge_gap_m"],
             retained_staple_fraction=retention.retained_fraction,
             collar_bond_fraction=collar_controller.bonded_fraction(collar_bond),
         )
         if sequence.leak_test.pressure_pa >= sequence.leak_test.target_pressure_pa:
             break
-    if sequence.leak_test.pressure_pa < sequence.leak_test.target_pressure_pa:
-        raise RuntimeError("Controlled pressurization did not reach target pressure")
     sequence.transition("verify")
     for _ in range(81):
         verification = sequence.leak_test.update(
             0.1,
-            edge_gap_m=0.0,
+            edge_gap_m=seam_geometry["edge_gap_m"],
             retained_staple_fraction=retention.retained_fraction,
             collar_bond_fraction=collar_controller.bonded_fraction(collar_bond),
         )
-    if not sequence.leak_test.complete or not sequence.leak_test.passed:
+    if not sequence.leak_test.complete or sequence.leak_test.passed:
         raise RuntimeError(
-            "Pressure-decay verification failed: "
+            "Open scene-derived seam did not fail closed: "
             f"last={verification} avg={sequence.leak_test.average_leak_ml_min}"
         )
     ledger.leak(sequence.leak_test.integrated_leak_ml)
@@ -284,8 +295,11 @@ def main() -> int:
         raise RuntimeError("Isaac emitted engine errors:\n" + "\n".join(engine_errors))
 
     result = {
-        "schema": "dr.anmar.adaptive-anastomosis-cuda-smoke.v1",
-        "status": "pass",
+        "schema": "dr.anmar.adaptive-anastomosis-runtime-diagnostic.v2",
+        "status": "controller_exercise_only",
+        "qualification_scope": (
+            "composition_attachments_ledgers_and_fail_closed_open_seam_model"
+        ),
         "representation": args.representation,
         "steps": args.steps,
         "device": args.device,
@@ -315,7 +329,9 @@ def main() -> int:
             "centerline_offset_m": patency.centerline_offset_m,
             "axis_error_deg": patency.axis_error_deg,
             "passed": patency.passed,
+            "source": "authored_usd_nodes_before_physics",
         },
+        "seam_geometry": seam_geometry,
         "pressure_decay": {
             "target_pressure_pa": sequence.leak_test.target_pressure_pa,
             "final_pressure_pa": sequence.leak_test.pressure_pa,
@@ -325,6 +341,11 @@ def main() -> int:
             "integrated_leak_ml": sequence.leak_test.integrated_leak_ml,
             "passed": sequence.leak_test.passed,
         },
+        "intended_anastomosis_efficacy_qualified": False,
+        "efficacy_blocker": (
+            "runtime_seam_apposition_patency_and_calibrated_pressure_flow_"
+            "measurements_are_not_available"
+        ),
         "clinical_validation": False,
         "medical_device": False,
     }

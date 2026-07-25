@@ -44,39 +44,39 @@
       "sha256": "48f80b75fa505016c622a49c5faefa0dfbeb48d463f940bc79b9e2244f48cf17"
     },
     {
-      "bytes": 1218397,
+      "bytes": 1217740,
       "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_payload.usda",
-      "sha256": "3826025b3dbb16f62cab6c6febc846432041a968647036be4a60428101256b0b"
+      "sha256": "a8d871ebd44dd568687e2a1723847ab481b12a21498d636f36cd751ae888e571"
     },
     {
-      "bytes": 1105636,
+      "bytes": 1104979,
       "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_rigid_proxy.usda",
-      "sha256": "ff8c529d7d53f0425de8f8a4c3900e95fd5911538108b36c6096e285e9e3f871"
+      "sha256": "9908c23b21f775f6884ea5d0ee4a20a83b78f7d8418904cddb3107b07f3c8a58"
     },
     {
-      "bytes": 1219942,
+      "bytes": 1219285,
       "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_standalone.usda",
-      "sha256": "1c5e5a9fe06e7fc03c55af5ca5a10db18645d959d620fcbf4506b1e2c740a136"
+      "sha256": "6aceca1ce09de871fd0fc098a2a759dd7ae2f57e47156648bc5aa6787e7048d2"
     },
     {
-      "bytes": 25349,
+      "bytes": 25331,
       "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_division_blade_cartridge.usda",
-      "sha256": "1c78f59a7e93265f4dab00e586356c89636075f6fe211515e038196083cc12e9"
+      "sha256": "3cdf34ee7067ea5aa0f26147423a84752fa3cd899021c386803d5460491bd1e0"
     },
     {
-      "bytes": 462898,
+      "bytes": 462862,
       "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_seal_divide_vessel_demo.usda",
-      "sha256": "cce9dbd92bf39d500af4ab7eb6a9e39354bdb74a42d71addfac27379733bd841"
+      "sha256": "46003ccfe7ba49f33712047d4e00c39ab285669c9efb435189742096dd6d544f"
     },
     {
-      "bytes": 40551,
+      "bytes": 40542,
       "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_seal_vapor_particle.usda",
-      "sha256": "f3a9a87cc24f693d258558f4b384c6b499e0d1689a26a4590bf1e3737f479368"
+      "sha256": "d3750228bba4624ecbae20208f0ed39eeb10fdd2d8b57bc9d4f6dca02b9f0011"
     },
     {
-      "bytes": 67495,
+      "bytes": 67459,
       "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_tissue_seal_band.usda",
-      "sha256": "311a289a44e3ef184634f394c2de50b295a94c500a146a3715e16ce11a852c56"
+      "sha256": "c612c902102e853f7f5152052e2d07e13a62ad31b3034bce0600598e3ea39150"
     },
     {
       "bytes": 489,
@@ -184,9 +184,9 @@
       "sha256": "4a480b1de323a33be96510a4e3797cc47a503ab480099d5129616b118bd8296a"
     },
     {
-      "bytes": 2910,
+      "bytes": 932,
       "path": "assets/Props/SurgicalDivision/AdaptiveSealDivideRobot/qualification_report.json",
-      "sha256": "66c3f34b2d7b152abfd3f9f3fb9b53ca2372b0d9925357453d338e555b88dd08"
+      "sha256": "5fd338788ebb51a309302dc2961ffe7e5fb43376a0b92b8b4b148367a018e711"
     },
     {
       "bytes": 219937,
@@ -244,9 +244,9 @@
       "sha256": "1d185f486424a8b96dce4812f25110bc4d7c6ee3433523f6c6f1746165caefbb"
     },
     {
-      "bytes": 1038,
+      "bytes": 762,
       "path": "docs/adaptive_seal_divide_robot/VALIDATION.md",
-      "sha256": "4e3984a742f2d76e80925050df1b62a587836d1e8e00b58f3d8701f3650c8aa8"
+      "sha256": "ec2723eb12dbf2bc831d2255290614429d969e3a3083773e2c42f28c2f5174b0"
     },
     {
       "bytes": 1342,
@@ -254,9 +254,9 @@
       "sha256": "6c0b1b82c077a7a513aa74cc91de3b0100e8bf05a07766bee69bf6aa36ebc7b7"
     },
     {
-      "bytes": 12589,
+      "bytes": 27790,
       "path": "examples/validate_adaptive_seal_divide_runtime.py",
-      "sha256": "59921e3c119124272b2adb457d1675256069eef96870c80f42df3ff8bcaef9f7"
+      "sha256": "c77c2d6e19082e31444e4c657bf329c5d2f51d4126618ef34927d82cdc8ddfc7"
     },
     {
       "bytes": 2054,
@@ -274,9 +274,9 @@
       "sha256": "ddef0ade0bd6646140d98a75bc053e6b778915aa4d83272e16f341582999ec67"
     },
     {
-      "bytes": 131966,
+      "bytes": 131811,
       "path": "scripts/generate_dranmar_adaptive_seal_divide_robot.py",
-      "sha256": "273fdc074c0a703772ad35286fe4fd5ceffd19bce14afd44d2b2311a1944ad47"
+      "sha256": "5c6238241b6cf681b760812f33ad0d68d45056d5259b77cae7adda6fd0a0c2a4"
     },
     {
       "bytes": 5719,
@@ -294,16 +294,18 @@
       "sha256": "5b817d10222f03627d42e71de647cb056f3a3ecaceae2d77cdb41d7ffb762dea"
     },
     {
-      "bytes": 36986,
+      "bytes": 46932,
       "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/adaptive_seal_divide_robot.py",
-      "sha256": "846f35a1b66cbfd565ab4d0bc0856eac4b587b816829ea21c4770e814b2f9b99"
+      "sha256": "24a8024a206c37a88d36833ccd9a494120add2d4c3ea40fb91afb5afd5bfa2b2"
     },
     {
-      "bytes": 5553,
+      "bytes": 6821,
       "path": "tests/test_adaptive_seal_divide_robot.py",
-      "sha256": "f1d18f2ea5831e988450021d40f5fbd9c2bce086bf76fb5cd2ecccb0095d1fbf"
+      "sha256": "6d14f1a715714a06416fa815fc8e025b032f3c727d998d7d14796d6ad2cdaae9"
     }
   ],
+  "installed_overlay_entries_refreshed": 53,
+  "installed_overlay_hash_contract": "sha256 of exact current repository file bytes",
   "schema": "dranmar.asset-manifest.v1",
   "version": "0.1.0"
 }
