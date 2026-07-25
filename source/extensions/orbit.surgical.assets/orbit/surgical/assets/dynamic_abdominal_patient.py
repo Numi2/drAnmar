@@ -2369,7 +2369,11 @@ def _create_deformable_material(
 
 
 def _configure_deformable_body(
-    body_prim: Any, cfg: Mapping[str, Any], *, surface: bool
+    body_prim: Any,
+    cfg: Mapping[str, Any],
+    *,
+    surface: bool,
+    hierarchical_volume: bool = False,
 ) -> None:
     """Apply explicit mass and conservative body settings to the resolved body prim."""
     _apply_registered_api(body_prim, "OmniPhysicsDeformableBodyAPI")
@@ -2380,7 +2384,11 @@ def _configure_deformable_body(
         _apply_registered_api(body_prim, "PhysxSurfaceDeformableBodyAPI")
     else:
         _apply_registered_api(body_prim, "PhysxBaseDeformableBodyAPI")
-        _apply_registered_api(body_prim, "PhysxDeformableBodyAPI")
+        # PhysxDeformableBodyAPI is the legacy single-UsdGeomMesh schema. In
+        # Isaac 5.1, applying it to the Xform root of a modern deformable
+        # hierarchy makes the parser reject the body before cooking.
+        if not hierarchical_volume:
+            _apply_registered_api(body_prim, "PhysxDeformableBodyAPI")
     _set_usd_attribute_if_valid(body_prim, "physxDeformableBody:disableGravity", False)
     _set_usd_attribute_if_valid(
         body_prim,
@@ -2577,7 +2585,14 @@ def apply_component_deformable(
         if ok is False or body_prim is None or not body_prim.IsValid():
             raise RuntimeError(f"deformable creation failed for {component_path}")
 
-        _configure_deformable_body(body_prim, component_cfg, surface=surface)
+        _configure_deformable_body(
+            body_prim,
+            component_cfg,
+            surface=surface,
+            hierarchical_volume=bool(
+                volume and str(body_prim.GetPath()) == geometry_root_path
+            ),
+        )
         UsdShade.MaterialBindingAPI.Apply(body_prim).Bind(
             material, UsdShade.Tokens.weakerThanDescendants, "physics"
         )

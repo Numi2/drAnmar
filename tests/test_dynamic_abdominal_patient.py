@@ -325,3 +325,47 @@ def test_patient_collision_group_filters_only_internal_pairs(
     assert FakeCollection.instance.expansion.value == "expandPrims"
     assert FakeCollisionGroupSchema.group is not None
     assert FakeCollisionGroupSchema.group.filtered.targets == [group_path]
+
+
+def test_hierarchical_volume_does_not_apply_legacy_mesh_only_api(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeRegistry:
+        def FindAppliedAPIPrimDefinition(self, _name: str):
+            return object()
+
+    class FakeUsd:
+        @staticmethod
+        def SchemaRegistry():
+            return FakeRegistry()
+
+    class FakeAttribute:
+        def IsValid(self) -> bool:
+            return True
+
+        def Set(self, _value) -> None:
+            pass
+
+    class FakePrim:
+        def __init__(self):
+            self.applied: list[str] = []
+
+        def ApplyAPI(self, name: str) -> None:
+            self.applied.append(name)
+
+        def GetAttribute(self, _name: str) -> FakeAttribute:
+            return FakeAttribute()
+
+    monkeypatch.setitem(sys.modules, "pxr", SimpleNamespace(Usd=FakeUsd))
+    prim = FakePrim()
+
+    runtime._configure_deformable_body(
+        prim,
+        {"mass_kg": 1.0},
+        surface=False,
+        hierarchical_volume=True,
+    )
+
+    assert "OmniPhysicsDeformableBodyAPI" in prim.applied
+    assert "PhysxBaseDeformableBodyAPI" in prim.applied
+    assert "PhysxDeformableBodyAPI" not in prim.applied
