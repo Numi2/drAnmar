@@ -1,0 +1,91 @@
+{
+  "schema": "dr.anmar.dynamic-abdominal-patient-native-qualification.v1",
+  "asset_id": "dranmar-dynamic-abdominal-patient-v1",
+  "executed_at_utc": "2026-07-25T20:11:09Z",
+  "tested_commit": "d786c9ee8dc7c24997c73c4d9643aae40963e115",
+  "research_only": true,
+  "overall_qualified": false,
+  "target": {
+    "host_role": "Dr.Anmar NVIDIA qualification workstation",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "580.159.03",
+    "os": "Ubuntu 24.04.4 LTS",
+    "isaac_sim": "5.1",
+    "device": "cuda:0",
+    "physics_authority": "NVIDIA PhysX",
+    "scene_authority": "OpenUSD",
+    "simulation_authority": "Isaac Lab"
+  },
+  "room": {
+    "procedure_id": "dr-anmar-dynamic-abdominal-patient",
+    "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
+    "initial_access_state": "intact",
+    "active_deformables": [
+      "mesentery"
+    ],
+    "maximum_solver_active_deformables": 1,
+    "psm_root_height_m": 0.22
+  },
+  "passed": {
+    "openusd_scene_loaded": true,
+    "surface_deformable_route_created": true,
+    "intact_frame_rendered": true,
+    "access_transition_requested_once": true,
+    "access_transition_completed": true,
+    "coordinated_access_layers_visibly_opened": true,
+    "cut_event_count_after_transition": 1,
+    "repeat_request_was_idempotent": true,
+    "reset_restored_intact_state": true,
+    "reset_cleared_cut_event_count": true,
+    "psm_tools_started_clear_of_intact_skin": true,
+    "post_open_observation_seconds": 90,
+    "post_open_sim_steps_observed": 153,
+    "current_run_cuda_or_fatal_physx_errors": 0
+  },
+  "observed_performance": {
+    "physics_dt_s": 0.01,
+    "sim_fps_range": [
+      1.981,
+      1.999
+    ],
+    "render_fps_range": [
+      1.918,
+      2.064
+    ],
+    "camera_resolution_px": [
+      960,
+      640
+    ]
+  },
+  "frame_evidence": {
+    "intact_sha256": "7ec0798fd10c87f4410a2139226cccf2a5b2a7c926bf63bb3beb421df3b8f3db",
+    "open_sha256": "f71dae96e322443c62b1f46cbb77cba077067dd7a116743d5465c7ce06808ee4",
+    "interpretation": "Distinct frames were visually inspected. The intact surface was closed, both PSM tools began above the skin, and the open frame exposed internal anatomy through the coordinated central access aperture."
+  },
+  "representation_boundary": {
+    "access_geometry": "camera-readable central retracted opening",
+    "tissue_removed": false,
+    "detached_cut_piece": false,
+    "arbitrary_solver_fracture": false,
+    "physical_cut_path_calibrated": false,
+    "wound_edge_grasp_and_retraction_qualified": false,
+    "clinical_fidelity_claimed": false
+  },
+  "not_qualified": [
+    "native volume deformables",
+    "simultaneous multi-component deformables",
+    "physical incision propagation",
+    "instrumented puncture or cutting",
+    "wound-edge grasp and retraction",
+    "PBD fluid execution",
+    "fluid-structure interaction",
+    "constitutive calibration",
+    "clinical validation"
+  ],
+  "known_failed_experiment": {
+    "scope": "native volume-deformable lane",
+    "result": "failed",
+    "failure": "PhysX GPU narrowphase/CUDA error 700 after delayed execution",
+    "deployment_effect": "Volume routes remain disabled and unqualified in the doctor-facing room."
+  }
+}
