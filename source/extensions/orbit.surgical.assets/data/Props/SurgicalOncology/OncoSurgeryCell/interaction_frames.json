@@ -1,0 +1,342 @@
+{
+  "asset": "dranmar-oncosurgery-cell-v1",
+  "frames": {
+    "aspirator_tip": {
+      "link": "AspiratorRotor",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "selective_parenchymal_aspirator_tip",
+      "translation": [
+        0,
+        0,
+        0.232
+      ]
+    },
+    "bag_closure_reference": {
+      "link": "BagClosure",
+      "role": "specimen_bag_closure_reference",
+      "translation": [
+        -0.055,
+        0.055,
+        0.205
+      ]
+    },
+    "bipolar_left_contact": {
+      "link": "BipolarLeftJaw",
+      "role": "left_bipolar_seal_contact",
+      "translation": [
+        -0.015,
+        0.026,
+        0.218
+      ]
+    },
+    "bipolar_right_contact": {
+      "link": "BipolarRightJaw",
+      "role": "right_bipolar_seal_contact",
+      "translation": [
+        0.015,
+        0.026,
+        0.218
+      ]
+    },
+    "bipolar_seal_center": {
+      "link": "BipolarRightJaw",
+      "role": "bipolar_seal_center",
+      "translation": [
+        0,
+        0.026,
+        0.218
+      ]
+    },
+    "cavity_scan_reference": {
+      "link": "IrrigationValve",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "post_resection_cavity_scan_reference",
+      "translation": [
+        0,
+        0,
+        0.226
+      ]
+    },
+    "franka_mount": {
+      "link": "Mount",
+      "role": "franka_panda_link8_mount",
+      "translation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "hsi_camera": {
+      "link": "SensorTurret",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "hyperspectral_camera",
+      "translation": [
+        0.026,
+        -0.025,
+        0.098
+      ]
+    },
+    "irrigation_center": {
+      "link": "IrrigationValve",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "resection_irrigation_center",
+      "translation": [
+        0.018,
+        -0.018,
+        0.222
+      ]
+    },
+    "left_traction_contact": {
+      "link": "LeftTraction",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "left_tumor_resection_traction_contact",
+      "translation": [
+        -0.075,
+        0,
+        0.19
+      ]
+    },
+    "margin_marker_tip": {
+      "link": "MarginMarker",
+      "role": "specimen_margin_orientation_marker_tip",
+      "translation": [
+        0.055,
+        0.055,
+        0.205
+      ]
+    },
+    "nir_fluorescence_camera": {
+      "link": "SensorTurret",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "tumor_fluorescence_camera",
+      "translation": [
+        -0.026,
+        -0.025,
+        0.098
+      ]
+    },
+    "oct_beam_origin": {
+      "link": "OCTScannerY",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "oct_registered_origin",
+      "translation": [
+        -0.04,
+        -0.04,
+        0.132
+      ]
+    },
+    "raman_contact": {
+      "link": "RamanProbe",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "raman_margin_confirmation_contact",
+      "translation": [
+        -0.067,
+        0,
+        0.187
+      ]
+    },
+    "resection_tcp": {
+      "link": "AspiratorRotor",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "active_resection_tcp",
+      "translation": [
+        0,
+        0,
+        0.232
+      ]
+    },
+    "rgb_camera_left": {
+      "link": "SensorTurret",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "stereo_rgb_left",
+      "translation": [
+        -0.025,
+        0.025,
+        0.098
+      ]
+    },
+    "rgb_camera_right": {
+      "link": "SensorTurret",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "stereo_rgb_right",
+      "translation": [
+        0.025,
+        0.025,
+        0.098
+      ]
+    },
+    "right_traction_contact": {
+      "link": "RightTraction",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "right_tumor_resection_traction_contact",
+      "translation": [
+        0.075,
+        0,
+        0.19
+      ]
+    },
+    "scissor_cut_plane": {
+      "link": "ScissorBlade",
+      "role": "guarded_cut_plane",
+      "translation": [
+        0,
+        -0.045,
+        0.22
+      ]
+    },
+    "scissor_guard_tip": {
+      "link": "ScissorGuard",
+      "role": "guarded_cutting_tip",
+      "translation": [
+        0,
+        -0.045,
+        0.219
+      ]
+    },
+    "specimen_bag_center": {
+      "link": "BagDeployer",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "specimen_bag_deployment_center",
+      "translation": [
+        -0.055,
+        0.055,
+        0.21
+      ]
+    },
+    "suction_center": {
+      "link": "AspiratorRotor",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "resection_suction_center",
+      "translation": [
+        0,
+        0,
+        0.224
+      ]
+    },
+    "tool_center": {
+      "link": "Mount",
+      "role": "registered_oncology_work_center",
+      "translation": [
+        0,
+        0,
+        0.235
+      ]
+    },
+    "tumor_mapping_tcp": {
+      "link": "SensorTurret",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "multimodal_mapping_tcp",
+      "translation": [
+        0,
+        0,
+        0.105
+      ]
+    },
+    "ultrasound_acoustic_axis": {
+      "link": "UltrasoundCompliance",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "ultrasound_acoustic_axis",
+      "translation": [
+        0.065,
+        0,
+        0.214
+      ]
+    },
+    "ultrasound_probe_face": {
+      "link": "UltrasoundCompliance",
+      "orientation": [
+        0.7071,
+        0.7071,
+        0,
+        0
+      ],
+      "role": "oncology_ultrasound_probe_face",
+      "translation": [
+        0.065,
+        0,
+        0.214
+      ]
+    }
+  },
+  "schema": "dr.anmar.interaction-frames.v1"
+}

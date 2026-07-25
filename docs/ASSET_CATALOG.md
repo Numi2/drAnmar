@@ -13,6 +13,9 @@ loading Isaac Sim merely to inspect the tree.
 - `scripts/dr_anmar_asset_registry.py` resolves provider-relative paths,
   inventories every local asset family, verifies JSON and textual USDA
   dependencies, and generates deterministic release locks.
+- `scripts/dr_anmar_i4h_adapter.py` derives its Dr.Anmar capability entries
+  from the complete 19-entry `physics_next/dr-anmar-assets.json` portfolio,
+  including the readiness of every declared artifact closure.
 - Each modern asset family lives under a stable category path such as
   `Props/SurgicalClosure/SkinStapler` or
   `Props/Patients/DynamicAbdominalPatient`.
@@ -25,6 +28,12 @@ The catalog structure follows the useful parts of the upstream
 stable relative paths, an explicit provider release and content hash, lazy
 subpath retrieval, deterministic folder hashing, and simulator-independent
 tests.
+
+The current structural gate discovers 27 local asset units and 127 direct USD
+entrypoints. These counts are generated from the tree; they are not a
+hand-maintained allow-list. The smaller runtime
+`DrAnmarSurgicalRobotAssets` interface exposes the eight procedure-specific
+standalone/payload/proxy robot families, including oncologic resection.
 
 ## Commands
 

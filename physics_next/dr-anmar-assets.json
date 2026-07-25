@@ -309,6 +309,27 @@
       "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
       "physical_qualification": "provisional_anatomy_mechanics_and_physiology_parameters_active",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-oncosurgery-cell-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncosurgery_tool.usda",
+      "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_tumor_resection_tool_payload.usda",
+      "rigid_proxy": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_tumor_resection_tool_rigid_proxy.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncology_liver.usda",
+      "workcell_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncosurgery_workcell.usda",
+      "profile": "physics_next/surgical-oncology/dranmar-oncosurgery-cell-v1.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/interaction_frames.json",
+      "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/oncologic_resection_task_contract.json",
+      "training_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/isaac_lab_training_contract.json",
+      "runtime": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/oncologic_resection.py",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/asset_manifest.json",
+      "gpu_report": "physics_next/benchmarks/dranmar-oncology-native-qualification.json",
+      "live_integration": "franka_link8_payload_standalone_articulation_rigid_proxy_registered_liver_dynamic_patient_explicit_tetmesh_gpu_volume_liver_and_three_station_workcell",
+      "live_behavior": "native_continuous_liver_deformation_registered_discrete_irreversible_resection_topology_multimodal_fusion_with_abstention_volumetric_tumor_and_margin_accounting_fail_closed_pedicle_seal_division_specimen_containment_orientation_cavity_correction_and_blood_bile_gates",
+      "deployment": "enabled_for_research_qualification",
+      "native_gpu_qualification": "passed_non_contact_dynamic_volume_stability_on_rtx_4090_2026_07_25_274_nodes_6_146729e_08_m_max_displacement_1_907188e_05_m_s_max_speed_zero_engine_errors_contact_sensor_and_franka_matrix_pending",
+      "physical_qualification": "pending_instrumented_payload_tissue_sensor_energy_and_specimen_bench",
+      "clinical_validation": false
     }
   ],
   "validation": {

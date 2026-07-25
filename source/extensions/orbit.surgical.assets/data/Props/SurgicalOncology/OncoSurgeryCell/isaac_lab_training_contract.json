@@ -1,0 +1,82 @@
+{
+  "schema": "dr.anmar.isaac-lab-oncology-training-contract.v1",
+  "asset": "dranmar-oncosurgery-cell-v1",
+  "version": "0.2.0",
+  "workflow": "manager_compatible_episode_model",
+  "implementation": "orbit.surgical.assets.oncologic_resection.OncologicResectionEpisode",
+  "actions": {
+    "robot": "Franka joint or differential IK action selected by the environment",
+    "tool": "22 bounded joint targets grouped as imaging traction resection specimen and valves",
+    "task": [
+      "register",
+      "accept_multimodal_map",
+      "set_resection_plan",
+      "release_resection_bond",
+      "seal_and_divide_pedicle",
+      "remove_or_ablate_tumor_cell",
+      "deploy_capture_close_and_mark_specimen",
+      "verify_cavity_and_losses"
+    ]
+  },
+  "policy_observation": [
+    "normalized_phase",
+    "released_bond_fraction",
+    "sealed_pedicle_fraction",
+    "residual_tumor_fraction",
+    "healthy_tissue_loss_fraction",
+    "normalized_minimum_margin",
+    "normalized_blood_loss",
+    "normalized_bile_loss",
+    "sensor_disagreement",
+    "sensor_confidence",
+    "bag_closed",
+    "orientation_completeness"
+  ],
+  "events": {
+    "startup": [
+      "spawn selected representation",
+      "resolve registered frames",
+      "verify joint and collider topology",
+      "activate exactly one Dynamic Patient liver GPU volume deformable in native tissue mode",
+      "retain the registered resection graph as the irreversible topology authority"
+    ],
+    "reset": [
+      "sample bounded domain parameters",
+      "reset tumor and bond state",
+      "reset specimen and fluid ledgers",
+      "randomize registration sensor friction stiffness and loss scales"
+    ],
+    "interval": [
+      "refresh modality buffers according to simulated update periods",
+      "expire stale samples"
+    ]
+  },
+  "termination": {
+    "success": "all final report gates pass",
+    "safety": [
+      "protected structure injury",
+      "uncontrolled blood loss",
+      "uncontrolled bile loss",
+      "persistent registration or sensor abstention"
+    ],
+    "timeout": "environment-defined finite-horizon truncation"
+  },
+  "deformable_tissue": {
+    "native_route": "DynamicAbdominalPatient liver explicit TetMesh volume deformable",
+    "device": "CUDA",
+    "maximum_active_components": 1,
+    "continuous_state": "simulation nodal positions and velocities",
+    "irreversible_resection_state": "96 registered bonds plus tumor-cell field",
+    "arbitrary_runtime_mesh_cutting": false,
+    "constitutive_calibration": false
+  },
+  "curriculum": [
+    "solitary visible tumor with no sensor dropout",
+    "multifocal tumor with bounded registration noise",
+    "protected pedicle management",
+    "single-modality dropout and disagreement",
+    "positive-margin cavity correction",
+    "full specimen containment and orientation"
+  ],
+  "clinical_validation": false
+}

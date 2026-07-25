@@ -1,0 +1,62 @@
+{
+  "failure_modes": [
+    "registration_error",
+    "positive_margin",
+    "missed_satellite",
+    "unsealed_vessel_division",
+    "unsealed_duct_division",
+    "specimen_fragmentation",
+    "bag_capture_failure",
+    "bag_closure_failure",
+    "excess_healthy_tissue_loss",
+    "cavity_sensor_disagreement",
+    "uncontrolled_bleeding",
+    "bile_leak"
+  ],
+  "metrics": [
+    "planned_volume_mm3",
+    "resected_volume_mm3",
+    "healthy_tissue_removed_mm3",
+    "tumor_removed_mm3",
+    "residual_tumor_volume_mm3",
+    "minimum_margin_m",
+    "margin_percentile_05_m",
+    "vessel_injury_count",
+    "duct_injury_count",
+    "blood_loss_ml",
+    "bile_loss_ml",
+    "bag_capture_success",
+    "orientation_marker_completeness",
+    "sensor_disagreement",
+    "correction_count"
+  ],
+  "phases": [
+    "inspect",
+    "register",
+    "map",
+    "plan",
+    "capture",
+    "resect_parenchyma",
+    "manage_pedicles",
+    "complete_boundary",
+    "deploy_bag",
+    "capture_specimen",
+    "close_bag",
+    "mark_orientation",
+    "cavity_scan",
+    "corrective_resection",
+    "hemostasis_and_bile_check",
+    "final_margin_report"
+  ],
+  "procedure": "adaptive_tumor_resection_and_margin_assurance",
+  "schema": "dr.anmar.oncologic-resection-task.v1",
+  "success": {
+    "bag_closed": true,
+    "bile_leak_ml_min_max": 0.2,
+    "minimum_margin_m_min": 0.01,
+    "protected_structure_injury_count_max": 0,
+    "residual_tumor_volume_mm3_max": 0.0,
+    "specimen_detached": true,
+    "uncontrolled_bleeding_ml_min_max": 5.0
+  }
+}

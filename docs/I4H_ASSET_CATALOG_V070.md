@@ -18,24 +18,44 @@ committed to Dr.Anmar.
 
 ## DrAnmar-authored catalog extensions
 
-DrAnmar also ships its own Apache-2.0 catalog content under the same relative
-addressing convention:
+DrAnmar also ships its own catalog content under the same relative-addressing
+convention. Licensing is repository- and asset-specific; local content must
+not be assumed to inherit the Apache-2.0 license of the upstream catalog
+helper.
 
 ```text
-Props/SurgicalCount/LaparotomySponge
-Props/SurgicalClosure/SkinStapler
-Props/SurgicalClosure/SkinAdhesive
-Props/SurgicalClosure/Needle
-Props/SurgicalClosure/NeedleThread
-Props/SurgicalClosure/StaplerTestCell
+Props/Patients/...
+Props/SurgicalAssessment/...
+Props/SurgicalClosure/...
+Props/SurgicalCount/...
+Props/SurgicalDissection/...
+Props/SurgicalDivision/...
+Props/SurgicalExposure/...
+Props/SurgicalHemostasis/...
+Props/SurgicalOncology/...
+Props/SurgicalPreparation/...
+Props/SurgicalReconstruction/...
+assets/dr_anmar/...
 ```
 
 These local extensions are not represented as NVIDIA-authored catalog content.
-`SurgicalCountAssets` exposes the unfolded and folded paths in the form
-expected by `BaseI4HAssets`; `SurgicalClosureAssets` exposes the stapler and
-topical skin-adhesive system paths. DrAnmar's capability payload
-identifies `provider: dr_anmar`, the local path, licence, representation and
-readiness.
+The repository registry discovers complete asset directories and validates
+their manifests, licensing evidence, JSON, and relative OpenUSD dependencies.
+The `DrAnmarSurgicalRobotAssets` compatibility interface exposes eight
+procedure-specific standalone robot paths in the form expected by
+`BaseI4HAssets`. DrAnmar's capability payload is generated from all 19
+authoritative portfolio entries and reports provider, path, representation,
+qualification state, and complete declared-artifact readiness.
+
+The surgical-oncology extension adds payload-backed standalone and
+Franka-mounted resection-tool routes, a rigid proxy, registered liver and
+three-station workcell, multimodal sensor frames, tumor/margin state, protected
+pedicle interlocks, specimen containment, a fail-closed Dynamic Patient GPU
+volume-liver route, and an Isaac Lab episode contract.
+It is documented in [`SURGICAL_ONCOLOGY.md`](SURGICAL_ONCOLOGY.md).
+
+The complete local catalog contract and validation commands are documented in
+[`ASSET_CATALOG.md`](ASSET_CATALOG.md).
 
 The sponge package keeps both dry/wet representations runnable. The topical
 skin-adhesive package adds an articulated applicator, removable rigid cap,

@@ -1,0 +1,485 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarMarginMarker"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarMarginMarker" (
+    prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "SemanticsLabelsAPI:class"]
+    customData = {
+        string drAnmarAssetId = "dranmar-margin-marker"
+        string drAnmarStatus = "research_only_not_clinically_validated"
+    }
+)
+{
+    token[] semantics:labels:class = ["margin_orientation_marker"]
+    bool physics:rigidBodyEnabled = true
+    float physics:mass = 0.002
+    def Scope "Looks"
+    {
+        def Material "WhitePolymer"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.78, 0.82, 0.84)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.28
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/WhitePolymer/PreviewSurface.outputs:surface>
+        }
+        def Material "DarkPolymer"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.035, 0.05, 0.06)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.34
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/DarkPolymer/PreviewSurface.outputs:surface>
+        }
+        def Material "TealPolymer"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.02, 0.38, 0.4)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.26
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/TealPolymer/PreviewSurface.outputs:surface>
+        }
+        def Material "BluePolymer"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.04, 0.18, 0.55)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.3
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/BluePolymer/PreviewSurface.outputs:surface>
+        }
+        def Material "OrangePolymer"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.83, 0.25, 0.05)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.31
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/OrangePolymer/PreviewSurface.outputs:surface>
+        }
+        def Material "Steel"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.48, 0.52, 0.58)
+                float inputs:metallic = 0.88
+                float inputs:roughness = 0.18
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/Steel/PreviewSurface.outputs:surface>
+        }
+        def Material "Ceramic"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.82, 0.8, 0.72)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.18
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/Ceramic/PreviewSurface.outputs:surface>
+        }
+        def Material "Lens"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.04, 0.28, 0.48)
+                float inputs:metallic = 0.05
+                float inputs:roughness = 0.06
+                float inputs:opacity = 0.28
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/Lens/PreviewSurface.outputs:surface>
+        }
+        def Material "Liver"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.36, 0.035, 0.03)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.5
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/Liver/PreviewSurface.outputs:surface>
+        }
+        def Material "TumorCore"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.78, 0.56, 0.06)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.48
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/TumorCore/PreviewSurface.outputs:surface>
+        }
+        def Material "TumorHalo"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.92, 0.18, 0.06)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.52
+                float inputs:opacity = 0.28
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/TumorHalo/PreviewSurface.outputs:surface>
+        }
+        def Material "Vessel"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.52, 0.01, 0.02)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.42
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/Vessel/PreviewSurface.outputs:surface>
+        }
+        def Material "Vein"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.02, 0.1, 0.42)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.42
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/Vein/PreviewSurface.outputs:surface>
+        }
+        def Material "Duct"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.08, 0.5, 0.12)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.46
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/Duct/PreviewSurface.outputs:surface>
+        }
+        def Material "Bag"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.25, 0.7, 0.78)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.1
+                float inputs:opacity = 0.26
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/Bag/PreviewSurface.outputs:surface>
+        }
+        def Material "Margin"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.02, 0.72, 0.8)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.24
+                float inputs:opacity = 0.38
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/Margin/PreviewSurface.outputs:surface>
+        }
+        def Material "InkBlue"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.01, 0.06, 0.62)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.32
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/InkBlue/PreviewSurface.outputs:surface>
+        }
+        def Material "InkGreen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.02, 0.55, 0.12)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.32
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/InkGreen/PreviewSurface.outputs:surface>
+        }
+        def Material "InkYellow"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.92, 0.65, 0.02)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.32
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/InkYellow/PreviewSurface.outputs:surface>
+        }
+        def Material "InkRed"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.7, 0.02, 0.02)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.32
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/InkRed/PreviewSurface.outputs:surface>
+        }
+        def Material "InkBlack"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.015, 0.015, 0.015)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.38
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/InkBlack/PreviewSurface.outputs:surface>
+        }
+        def Material "InkWhite"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.88, 0.88, 0.88)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.38
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarMarginMarker/Looks/InkWhite/PreviewSurface.outputs:surface>
+        }
+    }
+
+    def Scope "PhysicsMaterials"
+    {
+        def Material "PolymerPhysics" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.55
+            float physics:dynamicFriction = 0.42
+            float physics:restitution = 0.03
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+        def Material "SteelPhysics" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.32
+            float physics:dynamicFriction = 0.24
+            float physics:restitution = 0.02
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+        def Material "ElastomerPhysics" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.9
+            float physics:dynamicFriction = 0.72
+            float physics:restitution = 0.01
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+        def Material "TissuePhysics" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.62
+            float physics:dynamicFriction = 0.48
+            float physics:restitution = 0
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+        def Material "BagPhysics" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.45
+            float physics:dynamicFriction = 0.32
+            float physics:restitution = 0
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+    }
+
+    def Mesh "Visual" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </DrAnmarMarginMarker/Looks/InkBlue>
+        uniform bool doubleSided = false
+        float3[] extent = [(-0.003, -0.003, -0.014), (0.003, 0.003, 0.014)]
+        int[] faceVertexCounts = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+        int[] faceVertexIndices = [1, 0, 4, 1, 4, 2, 2, 4, 5, 2, 5, 3, 4, 0, 6, 4, 6, 5, 5, 6, 7, 5, 7, 3, 6, 0, 8, 6, 8, 7, 7, 8, 9, 7, 9, 3, 8, 0, 10, 8, 10, 9, 9, 10, 11, 9, 11, 3, 10, 0, 12, 10, 12, 11, 11, 12, 13, 11, 13, 3, 12, 0, 14, 12, 14, 13, 13, 14, 15, 13, 15, 3, 14, 0, 16, 14, 16, 15, 15, 16, 17, 15, 17, 3, 16, 0, 18, 16, 18, 17, 17, 18, 19, 17, 19, 3, 18, 0, 20, 18, 20, 19, 19, 20, 21, 19, 21, 3, 20, 0, 22, 20, 22, 21, 21, 22, 23, 21, 23, 3, 22, 0, 24, 22, 24, 23, 23, 24, 25, 23, 25, 3, 24, 0, 26, 24, 26, 25, 25, 26, 27, 25, 27, 3, 26, 0, 28, 26, 28, 27, 27, 28, 29, 27, 29, 3, 28, 0, 30, 28, 30, 29, 29, 30, 31, 29, 31, 3, 30, 0, 32, 30, 32, 31, 31, 32, 33, 31, 33, 3, 32, 0, 34, 32, 34, 33, 33, 34, 35, 33, 35, 3, 34, 0, 36, 34, 36, 35, 35, 36, 37, 35, 37, 3, 36, 0, 38, 36, 38, 37, 37, 38, 39, 37, 39, 3, 38, 0, 40, 38, 40, 39, 39, 40, 41, 39, 41, 3, 40, 0, 42, 40, 42, 41, 41, 42, 43, 41, 43, 3, 42, 0, 44, 42, 44, 43, 43, 44, 45, 43, 45, 3, 44, 0, 46, 44, 46, 45, 45, 46, 47, 45, 47, 3, 46, 0, 48, 46, 48, 47, 47, 48, 49, 47, 49, 3, 48, 0, 50, 48, 50, 49, 49, 50, 51, 49, 51, 3, 50, 0, 52, 50, 52, 51, 51, 52, 53, 51, 53, 3, 52, 0, 54, 52, 54, 53, 53, 54, 55, 53, 55, 3, 54, 0, 56, 54, 56, 55, 55, 56, 57, 55, 57, 3, 56, 0, 58, 56, 58, 57, 57, 58, 59, 57, 59, 3, 58, 0, 60, 58, 60, 59, 59, 60, 61, 59, 61, 3, 60, 0, 62, 60, 62, 61, 61, 62, 63, 61, 63, 3, 62, 0, 64, 62, 64, 63, 63, 64, 65, 63, 65, 3, 64, 0, 66, 64, 66, 65, 65, 66, 67, 65, 67, 3, 66, 0, 68, 66, 68, 67, 67, 68, 69, 67, 69, 3, 68, 0, 70, 68, 70, 69, 69, 70, 71, 69, 71, 3, 70, 0, 72, 70, 72, 71, 71, 72, 73, 71, 73, 3, 72, 0, 74, 72, 74, 73, 73, 74, 75, 73, 75, 3, 74, 0, 76, 74, 76, 75, 75, 76, 77, 75, 77, 3, 76, 0, 78, 76, 78, 77, 77, 78, 79, 77, 79, 3, 78, 0, 80, 78, 80, 79, 79, 80, 81, 79, 81, 3, 80, 0, 82, 80, 82, 81, 81, 82, 83, 81, 83, 3, 82, 0, 84, 82, 84, 83, 83, 84, 85, 83, 85, 3, 84, 0, 86, 84, 86, 85, 85, 86, 87, 85, 87, 3, 86, 0, 88, 86, 88, 87, 87, 88, 89, 87, 89, 3, 88, 0, 90, 88, 90, 89, 89, 90, 91, 89, 91, 3, 90, 0, 92, 90, 92, 91, 91, 92, 93, 91, 93, 3, 92, 0, 94, 92, 94, 93, 93, 94, 95, 93, 95, 3, 94, 0, 96, 94, 96, 95, 95, 96, 97, 95, 97, 3, 96, 0, 1, 96, 1, 97, 97, 1, 2, 97, 2, 3]
+        point3f[] points = [
+            (0, 0, -0.014),
+            (0.003, 0, -0.014),
+            (0.003, 0, 0.014),
+            (0, 0, 0.014),
+            (0.002974334584, 0.0003915785767, -0.014),
+            (0.002974334584, 0.0003915785767, 0.014),
+            (0.002897777479, 0.0007764571353, -0.014),
+            (0.002897777479, 0.0007764571353, 0.014),
+            (0.002771638598, 0.001148050297, -0.014),
+            (0.002771638598, 0.001148050297, 0.014),
+            (0.002598076211, 0.0015, -0.014),
+            (0.002598076211, 0.0015, 0.014),
+            (0.002380060021, 0.001826284287, -0.014),
+            (0.002380060021, 0.001826284287, 0.014),
+            (0.002121320344, 0.002121320344, -0.014),
+            (0.002121320344, 0.002121320344, 0.014),
+            (0.001826284287, 0.002380060021, -0.014),
+            (0.001826284287, 0.002380060021, 0.014),
+            (0.0015, 0.002598076211, -0.014),
+            (0.0015, 0.002598076211, 0.014),
+            (0.001148050297, 0.002771638598, -0.014),
+            (0.001148050297, 0.002771638598, 0.014),
+            (0.0007764571353, 0.002897777479, -0.014),
+            (0.0007764571353, 0.002897777479, 0.014),
+            (0.0003915785767, 0.002974334584, -0.014),
+            (0.0003915785767, 0.002974334584, 0.014),
+            (0, 0.003, -0.014),
+            (0, 0.003, 0.014),
+            (-0.0003915785767, 0.002974334584, -0.014),
+            (-0.0003915785767, 0.002974334584, 0.014),
+            (-0.0007764571353, 0.002897777479, -0.014),
+            (-0.0007764571353, 0.002897777479, 0.014),
+            (-0.001148050297, 0.002771638598, -0.014),
+            (-0.001148050297, 0.002771638598, 0.014),
+            (-0.0015, 0.002598076211, -0.014),
+            (-0.0015, 0.002598076211, 0.014),
+            (-0.001826284287, 0.002380060021, -0.014),
+            (-0.001826284287, 0.002380060021, 0.014),
+            (-0.002121320344, 0.002121320344, -0.014),
+            (-0.002121320344, 0.002121320344, 0.014),
+            (-0.002380060021, 0.001826284287, -0.014),
+            (-0.002380060021, 0.001826284287, 0.014),
+            (-0.002598076211, 0.0015, -0.014),
+            (-0.002598076211, 0.0015, 0.014),
+            (-0.002771638598, 0.001148050297, -0.014),
+            (-0.002771638598, 0.001148050297, 0.014),
+            (-0.002897777479, 0.0007764571353, -0.014),
+            (-0.002897777479, 0.0007764571353, 0.014),
+            (-0.002974334584, 0.0003915785767, -0.014),
+            (-0.002974334584, 0.0003915785767, 0.014),
+            (-0.003, 0, -0.014),
+            (-0.003, 0, 0.014),
+            (-0.002974334584, -0.0003915785767, -0.014),
+            (-0.002974334584, -0.0003915785767, 0.014),
+            (-0.002897777479, -0.0007764571353, -0.014),
+            (-0.002897777479, -0.0007764571353, 0.014),
+            (-0.002771638598, -0.001148050297, -0.014),
+            (-0.002771638598, -0.001148050297, 0.014),
+            (-0.002598076211, -0.0015, -0.014),
+            (-0.002598076211, -0.0015, 0.014),
+            (-0.002380060021, -0.001826284287, -0.014),
+            (-0.002380060021, -0.001826284287, 0.014),
+            (-0.002121320344, -0.002121320344, -0.014),
+            (-0.002121320344, -0.002121320344, 0.014),
+            (-0.001826284287, -0.002380060021, -0.014),
+            (-0.001826284287, -0.002380060021, 0.014),
+            (-0.0015, -0.002598076211, -0.014),
+            (-0.0015, -0.002598076211, 0.014),
+            (-0.001148050297, -0.002771638598, -0.014),
+            (-0.001148050297, -0.002771638598, 0.014),
+            (-0.0007764571353, -0.002897777479, -0.014),
+            (-0.0007764571353, -0.002897777479, 0.014),
+            (-0.0003915785767, -0.002974334584, -0.014),
+            (-0.0003915785767, -0.002974334584, 0.014),
+            (0, -0.003, -0.014),
+            (0, -0.003, 0.014),
+            (0.0003915785767, -0.002974334584, -0.014),
+            (0.0003915785767, -0.002974334584, 0.014),
+            (0.0007764571353, -0.002897777479, -0.014),
+            (0.0007764571353, -0.002897777479, 0.014),
+            (0.001148050297, -0.002771638598, -0.014),
+            (0.001148050297, -0.002771638598, 0.014),
+            (0.0015, -0.002598076211, -0.014),
+            (0.0015, -0.002598076211, 0.014),
+            (0.001826284287, -0.002380060021, -0.014),
+            (0.001826284287, -0.002380060021, 0.014),
+            (0.002121320344, -0.002121320344, -0.014),
+            (0.002121320344, -0.002121320344, 0.014),
+            (0.002380060021, -0.001826284287, -0.014),
+            (0.002380060021, -0.001826284287, 0.014),
+            (0.002598076211, -0.0015, -0.014),
+            (0.002598076211, -0.0015, 0.014),
+            (0.002771638598, -0.001148050297, -0.014),
+            (0.002771638598, -0.001148050297, 0.014),
+            (0.002897777479, -0.0007764571353, -0.014),
+            (0.002897777479, -0.0007764571353, 0.014),
+            (0.002974334584, -0.0003915785767, -0.014),
+            (0.002974334584, -0.0003915785767, 0.014)
+        ]
+        uniform token subdivisionScheme = "none"
+    }
+
+    def Scope "Frames" {
+        def Xform "marker_tip"
+        {
+            double3 xformOp:translate = (0, 0, -0.016)
+            quatf xformOp:orient = (1, 0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            custom string drAnmarFrameRole = "marker_tip"
+        }
+    }
+}

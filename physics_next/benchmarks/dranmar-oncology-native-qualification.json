@@ -1,0 +1,92 @@
+{
+  "schema": "dr.anmar.oncology-native-qualification.v1",
+  "status": "pass",
+  "recorded_at": "2026-07-25",
+  "host": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "580.159.03",
+    "device": "cuda:0",
+    "isaac_sim": "5.1.0.0",
+    "isaac_lab_reported_version": "0.54.2"
+  },
+  "scenario": {
+    "representation": "standalone",
+    "tissue_mode": "dynamic-volume",
+    "steps_per_phase": 1,
+    "phase_count": 16,
+    "rendered_sensors": "skipped",
+    "qualification_mode": "non_contact_stability_with_registered_target_recorded",
+    "phase_sweep_contract": "finite_bounded_setpoint_acceptance_not_convergence_benchmark"
+  },
+  "tool_evidence": {
+    "articulation_body_count": 23,
+    "articulation_joint_count": 22,
+    "authored_payload_mass_kg": 2.5534000042825937,
+    "finite_state": true,
+    "maximum_joint_error": 1.5582149028778076
+  },
+  "deformable_liver_evidence": {
+    "route": "current_direct_explicit_tetmesh_volume",
+    "body_prim_path": "/World/OncologyLiver/Geometry/SimulationTetMesh",
+    "nodal_point_count": 274,
+    "finite_state": true,
+    "disable_gravity": true,
+    "self_collision": false,
+    "solver_position_iteration_count": 24,
+    "maximum_displacement_m": 6.146728992462158e-08,
+    "maximum_allowed_displacement_m": 0.025,
+    "maximum_speed_m_s": 1.907188016048167e-05,
+    "maximum_allowed_speed_m_s": 0.5,
+    "qualification_lateral_bench_offset_m": 0.45,
+    "registered_liver_target_world_m": [
+      0.0,
+      0.0,
+      0.2770000014901161
+    ],
+    "qualification_target_world_m": [
+      0.45,
+      0.0,
+      0.2770000014901161
+    ],
+    "resection_tcp_world_m": [
+      0.0,
+      0.0,
+      0.3320000014901161
+    ]
+  },
+  "engine_error_count": 0,
+  "promotion_boundary": {
+    "proves": [
+      "native CUDA OpenUSD composition",
+      "22-joint articulation discovery and finite setpoint sweep",
+      "explicit TetMesh GPU volume-deformable discovery",
+      "bounded non-contact nodal displacement and speed",
+      "registered surgical target recorded separately from the stability lane"
+    ],
+    "does_not_prove": [
+      "joint convergence",
+      "robot-tissue contact stability",
+      "rendered sensor behavior",
+      "constitutive or patient-specific liver response",
+      "arbitrary runtime mesh cutting",
+      "sealing or energy-dose validity",
+      "physical, clinical, or medical-device validation"
+    ]
+  },
+  "reproduction": {
+    "program": "examples/validate_oncologic_resection_runtime.py",
+    "arguments": [
+      "--representation",
+      "standalone",
+      "--tissue-mode",
+      "dynamic-volume",
+      "--steps-per-phase",
+      "1",
+      "--skip-rendered-sensors",
+      "--headless",
+      "--device",
+      "cuda:0"
+    ]
+  },
+  "clinical_validation": false
+}

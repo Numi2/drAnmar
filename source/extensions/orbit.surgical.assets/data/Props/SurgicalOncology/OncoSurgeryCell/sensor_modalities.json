@@ -1,0 +1,66 @@
+{
+  "fusion_outputs": [
+    "tumor_probability",
+    "margin_probability",
+    "protected_structure_probability",
+    "sensor_disagreement",
+    "confidence"
+  ],
+  "modalities": {
+    "hyperspectral": {
+      "bands_nm": [
+        450,
+        550,
+        650,
+        730,
+        800,
+        900
+      ],
+      "purpose": [
+        "tissue_classification",
+        "ischemia_and_tumor_disagreement"
+      ]
+    },
+    "nir_fluorescence": {
+      "purpose": [
+        "tumor_probability",
+        "cavity_residual_detection"
+      ],
+      "state_source": "shared_tumor_field"
+    },
+    "oct": {
+      "purpose": [
+        "submillimeter_surface_margin",
+        "cut_surface_depth"
+      ],
+      "scan_axes": [
+        "oct_scan_x_joint",
+        "oct_scan_y_joint"
+      ]
+    },
+    "raman": {
+      "contact_frame": "raman_contact",
+      "purpose": [
+        "contact_margin_confirmation"
+      ]
+    },
+    "rgb_depth": {
+      "purpose": [
+        "surface_registration",
+        "tool_tracking",
+        "specimen_tracking"
+      ],
+      "runtime": "rtx_camera"
+    },
+    "ultrasound": {
+      "purpose": [
+        "deep_margin",
+        "vessel_and_duct_localization",
+        "specimen_depth"
+      ],
+      "runtime": "robotic_ultrasound_bridge_or_proxy"
+    }
+  },
+  "schema": "dr.anmar.oncology-sensors.v1",
+  "shared_registration_frame": "tumor_mapping_tcp"
+}

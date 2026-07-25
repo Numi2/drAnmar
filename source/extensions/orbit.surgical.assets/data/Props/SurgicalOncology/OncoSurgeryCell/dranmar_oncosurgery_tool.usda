@@ -1,0 +1,52 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarTumorResectionToolStandalone"
+    doc = "Lightweight interface layer for the DrAnmar oncology tool. The authored mechanism is payloaded for scalable composition."
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarTumorResectionToolStandalone" (
+    kind = "component"
+    assetInfo = {
+        string identifier = "dranmar-oncosurgery-tool-v0.2.0"
+        string name = "DrAnmar OncoSurgery Tool"
+        string version = "0.2.0"
+    }
+    payload = @./dranmar_tumor_resection_tool_standalone.usda@
+    prepend variantSets = [
+        "instrument_state",
+        "bag_state",
+        "tracer_state",
+        "collection_state",
+    ]
+    variants = {
+        string instrument_state = "ready"
+        string bag_state = "loaded"
+        string tracer_state = "full"
+        string collection_state = "empty"
+    }
+)
+{
+    variantSet "instrument_state" = {
+        "ready" {}
+        "spent" {}
+    }
+    variantSet "bag_state" = {
+        "loaded" {}
+        "deployed" {}
+        "closed" {}
+        "empty" {}
+    }
+    variantSet "tracer_state" = {
+        "full" {}
+        "partial" {}
+        "empty" {}
+    }
+    variantSet "collection_state" = {
+        "empty" {}
+        "partial" {}
+        "full" {}
+    }
+}

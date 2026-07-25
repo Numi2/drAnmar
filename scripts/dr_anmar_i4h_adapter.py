@@ -14,11 +14,12 @@ import json
 import hashlib
 import os
 import shutil
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 
 APP_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 I4H_ROOT = Path(
     os.environ.get("DR_ANMAR_I4H_ROOT", APP_ROOT / "vendor/i4h-workflows-current")
 ).expanduser()
@@ -44,6 +45,129 @@ HOLOHUB_CLI_COMMIT = os.environ.get(
     "DR_ANMAR_HOLOHUB_CLI_COMMIT",
     "f7e791dac061e01c560d3a2c5b7da82350915b69",
 )
+
+_PORTFOLIO_PATH_FIELDS = frozenset(
+    {
+        "asset",
+        "auxiliary_asset",
+        "base_layer",
+        "explicit_tetmesh",
+        "geometry_layer",
+        "gpu_report",
+        "interaction_frames",
+        "material_texture",
+        "materials_layer",
+        "operating_scene",
+        "payload_asset",
+        "physics_layer",
+        "physx_layer",
+        "profile",
+        "qualification",
+        "report",
+        "rigid_proxy",
+        "runtime",
+        "task_contract",
+        "training_contract",
+        "workcell_asset",
+    }
+)
+
+
+def _repository_artifact_path(relative_path: str) -> Path:
+    """Resolve one normalized portfolio path without permitting root escape."""
+
+    pure = PurePosixPath(relative_path)
+    if (
+        not relative_path
+        or "\x00" in relative_path
+        or "\\" in relative_path
+        or pure.is_absolute()
+        or any(part in {"", ".", ".."} for part in pure.parts)
+    ):
+        raise ValueError(f"Unsafe Dr.Anmar portfolio path: {relative_path!r}")
+    candidate = (REPOSITORY_ROOT / Path(*pure.parts)).resolve()
+    try:
+        candidate.relative_to(REPOSITORY_ROOT.resolve())
+    except ValueError as error:
+        raise ValueError(
+            f"Dr.Anmar portfolio path escapes the repository: {relative_path!r}"
+        ) from error
+    return candidate
+
+
+def _dr_anmar_portfolio_assets() -> tuple[list[dict[str, Any]], Path, str | None]:
+    """Expose every authored portfolio entry without maintaining a second list."""
+
+    portfolio_path = REPOSITORY_ROOT / "physics_next/dr-anmar-assets.json"
+    try:
+        portfolio = json.loads(portfolio_path.read_text(encoding="utf-8"))
+        entries = portfolio["assets"]
+        if not isinstance(entries, list):
+            raise ValueError("assets must be a list")
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        return [], portfolio_path, str(error)
+
+    data_prefix = "source/extensions/orbit.surgical.assets/data/"
+    assets: list[dict[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        asset_id = str(entry.get("id", "")).strip()
+        primary = str(entry.get("asset", "")).strip()
+        if not asset_id or not primary:
+            continue
+        if primary.startswith(data_prefix):
+            provider = "dr_anmar"
+            relative_path = primary.removeprefix(data_prefix)
+        else:
+            provider = "dr_anmar_repository"
+            relative_path = primary
+        try:
+            local_path = _repository_artifact_path(primary)
+        except ValueError as error:
+            return [], portfolio_path, f"{asset_id}: {error}"
+        artifacts: dict[str, dict[str, Any]] = {}
+        for key in sorted(_PORTFOLIO_PATH_FIELDS):
+            value = entry.get(key)
+            if not isinstance(value, str) or not value:
+                continue
+            try:
+                artifact_path = _repository_artifact_path(value)
+            except ValueError as error:
+                return [], portfolio_path, f"{asset_id}/{key}: {error}"
+            artifacts[key] = {
+                "relative_path": value,
+                "local_path": str(artifact_path),
+                "ready": artifact_path.is_file(),
+            }
+        category = (
+            relative_path.split("/", 2)[1]
+            if relative_path.startswith("Props/") and relative_path.count("/") >= 2
+            else "repository"
+        )
+        assets.append(
+            {
+                "id": asset_id,
+                "provider": provider,
+                "bundle": category,
+                "relative_path": relative_path,
+                "catalog_entry_present": True,
+                "local_path": str(local_path),
+                "local_ready": local_path.is_file(),
+                "artifact_closure_ready": bool(artifacts)
+                and all(item["ready"] for item in artifacts.values()),
+                "artifacts": artifacts,
+                "remote_url": None,
+                "representation": entry.get("live_integration"),
+                "native_gpu_qualification": entry.get("native_gpu_qualification"),
+                "physical_qualification": entry.get("physical_qualification"),
+                "license": "repository_and_asset_specific",
+                "license_review_required": True,
+                "noncommercial_research_only": False,
+                "clinical_validation": bool(entry.get("clinical_validation", False)),
+            }
+        )
+    return assets, portfolio_path, None
 
 
 def runtime_prerequisites() -> dict[str, Any]:
@@ -338,117 +462,10 @@ def asset_catalog_payload() -> dict[str, Any]:
             }
         )
 
-    dr_anmar_asset_root = (
-        Path(__file__).resolve().parents[1]
-        / "source/extensions/orbit.surgical.assets/data"
+    dr_anmar_assets, portfolio_path, portfolio_error = (
+        _dr_anmar_portfolio_assets()
     )
-    for asset_id, relative_path, representation in (
-        (
-            "laparotomy_sponge_unfolded",
-            "Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
-            "connected_triangular_surface_deformable",
-        ),
-        (
-            "laparotomy_sponge_folded_proxy",
-            "Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
-            "rigid_body_compound_collision_proxy",
-        ),
-        (
-            "skin_stapler_articulated",
-            "Props/SurgicalClosure/SkinStapler/skin_stapler_articulated.usda",
-            "trigger_and_pusher_articulation",
-        ),
-        (
-            "skin_stapler_rigid_proxy",
-            "Props/SurgicalClosure/SkinStapler/skin_stapler_rigid_proxy.usda",
-            "loaded_or_empty_rigid_body_compound_collision_proxy",
-        ),
-        (
-            "skin_staple",
-            "Props/SurgicalClosure/SkinStapler/skin_staple.usda",
-            "standalone_formed_staple_rigid_body",
-        ),
-        (
-            "skin_adhesive_applicator_articulated",
-            "Props/SurgicalClosure/SkinAdhesive/"
-            "skin_adhesive_applicator_articulated.usda",
-            "dual_paddle_and_metering_piston_articulation",
-        ),
-        (
-            "skin_adhesive_applicator_rigid_proxy",
-            "Props/SurgicalClosure/SkinAdhesive/"
-            "skin_adhesive_applicator_rigid_proxy.usda",
-            "single_rigid_body_perception_handover_proxy",
-        ),
-        (
-            "skin_adhesive_cap",
-            "Props/SurgicalClosure/SkinAdhesive/"
-            "skin_adhesive_cap.usda",
-            "independently_graspable_removable_cap",
-        ),
-        (
-            "skin_adhesive_bead",
-            "Props/SurgicalClosure/SkinAdhesive/"
-            "skin_adhesive_bead.usda",
-            "fresh_or_cured_kinematic_deposit_task_state",
-        ),
-        (
-            "dr_anmar_needle_v030",
-            "Props/SurgicalClosure/Needle/dranmar_needle.usda",
-            "rigid_half_circle_taper_point_needle",
-        ),
-        (
-            "dr_anmar_needle_thread_coiled_v030",
-            "Props/SurgicalClosure/NeedleThread/dranmar_needle_thread.usda",
-            "maximal_coordinate_d6_segment_chain_coiled",
-        ),
-        (
-            "dr_anmar_needle_thread_extended_v030",
-            "Props/SurgicalClosure/NeedleThread/"
-            "dranmar_needle_thread_extended.usda",
-            "maximal_coordinate_d6_segment_chain_extended",
-        ),
-        (
-            "dr_anmar_needle_thread_rigid_proxy_v030",
-            "Props/SurgicalClosure/NeedleThread/"
-            "dranmar_needle_thread_rigid_proxy.usda",
-            "single_rigid_body_perception_handover_proxy",
-        ),
-        (
-            "dr_anmar_stapler_test_fixture",
-            "Props/SurgicalClosure/StaplerTestCell/"
-            "stapler_test_fixture.usda",
-            "fixed_cradle_virtual_actuator_and_synthetic_coupon",
-        ),
-        (
-            "dr_anmar_stapler_test_device",
-            "Props/SurgicalClosure/StaplerTestCell/"
-            "stapler_test_device.usda",
-            "fixed_root_articulated_skin_stapler",
-        ),
-    ):
-        local_path = dr_anmar_asset_root / relative_path
-        assets.append(
-            {
-                "id": asset_id,
-                "provider": "dr_anmar",
-                "bundle": (
-                    "surgical_closure"
-                    if relative_path.startswith("Props/SurgicalClosure/")
-                    else "surgical_count"
-                ),
-                "relative_path": relative_path,
-                "catalog_entry_present": True,
-                "local_path": str(local_path),
-                "local_ready": local_path.is_file(),
-                "remote_url": None,
-                "representation": representation,
-                "license": "Apache-2.0",
-                "license_review_required": False,
-                "noncommercial_research_only": False,
-                "clinical_validation": False,
-            }
-        )
+    assets.extend(dr_anmar_assets)
 
     arena_constants = I4H_ROOT / "workflows/agentic/arena/arena/assets/constants.py"
     arena_asset_root = None
@@ -477,10 +494,18 @@ def asset_catalog_payload() -> dict[str, Any]:
         "download_root": str(I4H_ASSET_DOWNLOAD_DIR),
         "content_root": str(content_root),
         "remote_root": remote_root,
+        "dr_anmar_portfolio_path": str(portfolio_path),
+        "dr_anmar_portfolio_error": portfolio_error,
         "assets": assets,
         "ready_assets": sum(asset["local_ready"] for asset in assets),
         "dr_anmar_authored_assets": sum(
-            asset.get("provider") == "dr_anmar" for asset in assets
+            str(asset.get("provider", "")).startswith("dr_anmar")
+            for asset in assets
+        ),
+        "dr_anmar_complete_artifact_closures": sum(
+            bool(asset.get("artifact_closure_ready"))
+            for asset in assets
+            if str(asset.get("provider", "")).startswith("dr_anmar")
         ),
         "arena_asset_root": arena_asset_root,
         "arena_asset_contract_discovered": bool(arena_asset_root),

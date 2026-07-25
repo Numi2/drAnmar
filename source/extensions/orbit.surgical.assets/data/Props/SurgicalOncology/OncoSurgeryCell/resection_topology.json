@@ -1,0 +1,2123 @@
+{
+  "bond_count": 96,
+  "bonds": [
+    {
+      "aspiration_energy_threshold_j": 0.03097049871936293,
+      "center_m": [
+        0.059267554754952836,
+        -0.004,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.015365889371334093,
+      "id": "resection_bond_000",
+      "kind": "fibrous_band",
+      "mechanical_work_threshold_j": 0.09482035153814679,
+      "nearest_protected_structure": null,
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "recommended_modality": "guarded_scissors",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.023825845482612466,
+      "center_m": [
+        0.058270287010138366,
+        0.002438750488038239,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.013901476224826488,
+      "id": "resection_bond_001",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.11991912520390914,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.9659258262890683,
+        0.25881904510252074,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.031321454947233915,
+      "center_m": [
+        0.0553464459244412,
+        0.008438710770854953,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.013319722412080709,
+      "id": "resection_bond_002",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10641784178610168,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.8660254037844387,
+        0.49999999999999994,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.0477975056022471,
+      "center_m": [
+        0.050695286435975734,
+        0.013590993470579373,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.008533302704475679,
+      "id": "resection_bond_003",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.06857912642300193,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.7071067811865476,
+        0.7071067811865475,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.17364677939947915,
+      "center_m": [
+        0.04463377737747642,
+        0.017544479035775017,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.0051650949275480465,
+      "id": "resection_bond_004",
+      "kind": "vascular_pedicle",
+      "mechanical_work_threshold_j": 0.19470266556296456,
+      "nearest_protected_structure": "vessel",
+      "normal": [
+        0.5000000000000001,
+        0.8660254037844386,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.1357310875980919,
+      "center_m": [
+        0.03757500057416263,
+        0.020029743958617615,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.003558757977327273,
+      "id": "resection_bond_005",
+      "kind": "vascular_pedicle",
+      "mechanical_work_threshold_j": 0.2175313230281036,
+      "nearest_protected_structure": "vessel",
+      "normal": [
+        0.25881904510252074,
+        0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.1623641402166512,
+      "center_m": [
+        0.030000000000000002,
+        0.020877421541709913,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.003516890082839744,
+      "id": "resection_bond_006",
+      "kind": "vascular_pedicle",
+      "mechanical_work_threshold_j": 0.2134182923299699,
+      "nearest_protected_structure": "vessel",
+      "normal": [
+        6.123233995736766e-17,
+        1.0,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.0640865569147754,
+      "center_m": [
+        0.022424999425837366,
+        0.020029743958617615,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.0005635484320292081,
+      "id": "resection_bond_007",
+      "kind": "vascular_pedicle",
+      "mechanical_work_threshold_j": 0.16061729795099686,
+      "nearest_protected_structure": "vessel",
+      "normal": [
+        -0.25881904510252063,
+        0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04947923314118682,
+      "center_m": [
+        0.015366222622523589,
+        0.01754447903577502,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.0072453850041331175,
+      "id": "resection_bond_008",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.11446442140679498,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.4999999999999998,
+        0.8660254037844387,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04295568691425965,
+      "center_m": [
+        0.009304713564024267,
+        0.013590993470579377,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.011310629098130524,
+      "id": "resection_bond_009",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.04771659816365161,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.022283418264039314,
+      "center_m": [
+        0.004653554075558803,
+        0.008438710770854953,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.014918525884979841,
+      "id": "resection_bond_010",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03884158143574523,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.8660254037844387,
+        0.49999999999999994,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.022906168696530522,
+      "center_m": [
+        0.001729712989861635,
+        0.002438750488038246,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.01151753104283365,
+      "id": "resection_bond_011",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03960163321856239,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.9659258262890682,
+        0.258819045102521,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.027351663945797328,
+      "center_m": [
+        0.0007324452450471614,
+        -0.003999999999999997,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.010623996404100335,
+      "id": "resection_bond_012",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10468839333538432,
+      "nearest_protected_structure": null,
+      "normal": [
+        -1.0,
+        1.2246467991473532e-16,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04308868712312439,
+      "center_m": [
+        0.001729712989861628,
+        -0.010438750488038242,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.013360809206514663,
+      "id": "resection_bond_013",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.11143980350568779,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.9659258262890683,
+        -0.2588190451025208,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03125084184315123,
+      "center_m": [
+        0.004653554075558796,
+        -0.016438710770854948,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.012177967485297524,
+      "id": "resection_bond_014",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.11549950734822528,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.8660254037844388,
+        -0.4999999999999997,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.022981851870411407,
+      "center_m": [
+        0.009304713564024254,
+        -0.021590993470579363,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.006462381550169174,
+      "id": "resection_bond_015",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.0826786035990645,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.7071067811865479,
+        -0.7071067811865471,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.18810932779810224,
+      "center_m": [
+        0.015366222622523568,
+        -0.025544479035775013,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.004795754672987604,
+      "id": "resection_bond_016",
+      "kind": "bile_duct_pedicle",
+      "mechanical_work_threshold_j": 0.24881745002002695,
+      "nearest_protected_structure": "duct",
+      "normal": [
+        -0.5000000000000004,
+        -0.8660254037844384,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.1158270872066764,
+      "center_m": [
+        0.022424999425837366,
+        -0.028029743958617615,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.0038494336539141153,
+      "id": "resection_bond_017",
+      "kind": "bile_duct_pedicle",
+      "mechanical_work_threshold_j": 0.23275172092119217,
+      "nearest_protected_structure": "duct",
+      "normal": [
+        -0.25881904510252063,
+        -0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.07832468267913262,
+      "center_m": [
+        0.029999999999999992,
+        -0.028877421541709913,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.004298010983467836,
+      "id": "resection_bond_018",
+      "kind": "bile_duct_pedicle",
+      "mechanical_work_threshold_j": 0.10689400482817031,
+      "nearest_protected_structure": "duct",
+      "normal": [
+        -1.8369701987210297e-16,
+        -1.0,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.1599826711705989,
+      "center_m": [
+        0.03757500057416262,
+        -0.028029743958617615,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.004534303397317445,
+      "id": "resection_bond_019",
+      "kind": "bile_duct_pedicle",
+      "mechanical_work_threshold_j": 0.14761678461107763,
+      "nearest_protected_structure": "duct",
+      "normal": [
+        0.2588190451025203,
+        -0.9659258262890684,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.13550970590446004,
+      "center_m": [
+        0.04463377737747642,
+        -0.025544479035775017,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.0049115384796458005,
+      "id": "resection_bond_020",
+      "kind": "bile_duct_pedicle",
+      "mechanical_work_threshold_j": 0.23056921182425352,
+      "nearest_protected_structure": "duct",
+      "normal": [
+        0.5000000000000001,
+        -0.8660254037844386,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.044358257423572384,
+      "center_m": [
+        0.05069528643597573,
+        -0.02159099347057938,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.00689879140145801,
+      "id": "resection_bond_021",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10349730151168068,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.7071067811865474,
+        -0.7071067811865477,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03432894975158357,
+      "center_m": [
+        0.05534644592444119,
+        -0.016438710770854965,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.010887043405125653,
+      "id": "resection_bond_022",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.036144560246361514,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.8660254037844384,
+        -0.5000000000000004,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03148804145628882,
+      "center_m": [
+        0.058270287010138366,
+        -0.01043875048803826,
+        -0.009812440320746692
+      ],
+      "clearance_m": 0.016245622119876808,
+      "id": "resection_bond_023",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03370872511410728,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.9659258262890681,
+        -0.25881904510252157,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.05215048602694459,
+      "center_m": [
+        0.06875649686842579,
+        -0.004,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.00728001568962824,
+      "id": "resection_bond_024",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.06394547041665236,
+      "nearest_protected_structure": null,
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.17921870437057588,
+      "center_m": [
+        0.06743590126170387,
+        0.004526281584354079,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.0014708737452101028,
+      "id": "resection_bond_025",
+      "kind": "vascular_pedicle",
+      "mechanical_work_threshold_j": 0.16834156665868874,
+      "nearest_protected_structure": "vessel",
+      "normal": [
+        0.9659258262890683,
+        0.25881904510252074,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.05145640920462804,
+      "center_m": [
+        0.06356411084974878,
+        0.012471511169080959,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.009591461251082348,
+      "id": "resection_bond_026",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.09262578403938848,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.8660254037844387,
+        0.49999999999999994,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.031212923681880028,
+      "center_m": [
+        0.05740498175069907,
+        0.019294234488094208,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.013814495429510854,
+      "id": "resection_bond_027",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.059523313232542174,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.7071067811865476,
+        0.7071067811865475,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.030946794997711195,
+      "center_m": [
+        0.0493782484342129,
+        0.02452949422228646,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.00696918530041314,
+      "id": "resection_bond_028",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10832737007446044,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.5000000000000001,
+        0.8660254037844386,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.020730642218381973,
+      "center_m": [
+        0.0400309195110048,
+        0.02782051607244829,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.009083364962018156,
+      "id": "resection_bond_029",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03598482200067578,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.25881904510252074,
+        0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.020586298647834525,
+      "center_m": [
+        0.030000000000000002,
+        0.028943022338161924,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.01653009398066436,
+      "id": "resection_bond_030",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10047117991500402,
+      "nearest_protected_structure": null,
+      "normal": [
+        6.123233995736766e-17,
+        1.0,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02772436963930003,
+      "center_m": [
+        0.019969080488995206,
+        0.02782051607244829,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.01617976864550792,
+      "id": "resection_bond_031",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.06258597183478277,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.25881904510252063,
+        0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02913062515647978,
+      "center_m": [
+        0.010621751565787114,
+        0.024529494222286462,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.014925532901338343,
+      "id": "resection_bond_032",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.08455694394611538,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.4999999999999998,
+        0.8660254037844387,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.018484637552811947,
+      "center_m": [
+        0.0025950182493009316,
+        0.019294234488094215,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.011793145409807262,
+      "id": "resection_bond_033",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10279225140992977,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.0486683524391698,
+      "center_m": [
+        -0.0035641108497487806,
+        0.012471511169080959,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.010607535453035001,
+      "id": "resection_bond_034",
+      "kind": "fibrous_band",
+      "mechanical_work_threshold_j": 0.11103132975268798,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.8660254037844387,
+        0.49999999999999994,
+        0.0
+      ],
+      "recommended_modality": "guarded_scissors",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04612336211375634,
+      "center_m": [
+        -0.007435901261703869,
+        0.004526281584354088,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.00833631227895488,
+      "id": "resection_bond_035",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.037196524337440376,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.9659258262890682,
+        0.258819045102521,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.17540109649013377,
+      "center_m": [
+        -0.008756496868425792,
+        -0.003999999999999996,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.00407485805049938,
+      "id": "resection_bond_036",
+      "kind": "vascular_pedicle",
+      "mechanical_work_threshold_j": 0.19538157128976244,
+      "nearest_protected_structure": "vessel",
+      "normal": [
+        -1.0,
+        1.2246467991473532e-16,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02477794349559758,
+      "center_m": [
+        -0.007435901261703869,
+        -0.012526281584354081,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.010362892189406565,
+      "id": "resection_bond_037",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.06163998493241695,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.9659258262890683,
+        -0.2588190451025208,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.05313009783374452,
+      "center_m": [
+        -0.0035641108497487875,
+        -0.020471511169080952,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.014654565704751005,
+      "id": "resection_bond_038",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.0763366315680252,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.8660254037844388,
+        -0.4999999999999997,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04987230687651571,
+      "center_m": [
+        0.0025950182493009177,
+        -0.027294234488094198,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.011107492474951934,
+      "id": "resection_bond_039",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03287152401688283,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.7071067811865479,
+        -0.7071067811865471,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.017619703736320186,
+      "center_m": [
+        0.010621751565787086,
+        -0.03252949422228645,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.011071190548906826,
+      "id": "resection_bond_040",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.06285676454164116,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.5000000000000004,
+        -0.8660254037844384,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02623156529125524,
+      "center_m": [
+        0.019969080488995206,
+        -0.035820516072448294,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.012545941220894344,
+      "id": "resection_bond_041",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.041345501404296575,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.25881904510252063,
+        -0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.033886761215145,
+      "center_m": [
+        0.029999999999999992,
+        -0.03694302233816192,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.013384091289546209,
+      "id": "resection_bond_042",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.08605224834703035,
+      "nearest_protected_structure": null,
+      "normal": [
+        -1.8369701987210297e-16,
+        -1.0,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.054399984346773046,
+      "center_m": [
+        0.04003091951100478,
+        -0.035820516072448294,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.011494573668214146,
+      "id": "resection_bond_043",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.046004790509670934,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.2588190451025203,
+        -0.9659258262890684,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.1613256392555924,
+      "center_m": [
+        0.0493782484342129,
+        -0.03252949422228646,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.003341892037482553,
+      "id": "resection_bond_044",
+      "kind": "vascular_pedicle",
+      "mechanical_work_threshold_j": 0.09391753684395782,
+      "nearest_protected_structure": "vessel",
+      "normal": [
+        0.5000000000000001,
+        -0.8660254037844386,
+        0.0
+      ],
+      "recommended_modality": "seal_divide",
+      "released": false,
+      "seal_required": true,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02656977479644669,
+      "center_m": [
+        0.057404981750699066,
+        -0.02729423448809422,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.008609739423112129,
+      "id": "resection_bond_045",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.07046219095591125,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.7071067811865474,
+        -0.7071067811865477,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.048690357893571,
+      "center_m": [
+        0.06356411084974878,
+        -0.020471511169080976,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.009693584370865573,
+      "id": "resection_bond_046",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.1046035848055278,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.8660254037844384,
+        -0.5000000000000004,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.019871179086875728,
+      "center_m": [
+        0.06743590126170387,
+        -0.012526281584354107,
+        0.004083073303855267
+      ],
+      "clearance_m": 0.01502135826323878,
+      "id": "resection_bond_047",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.09417334594292928,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.9659258262890681,
+        -0.25881904510252157,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03354709247539377,
+      "center_m": [
+        0.06875649686842579,
+        -0.004,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.016831521949288726,
+      "id": "resection_bond_048",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03400376010080065,
+      "nearest_protected_structure": null,
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.05239756043905317,
+      "center_m": [
+        0.06743590126170387,
+        0.004526281584354079,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.015285221763443492,
+      "id": "resection_bond_049",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.07861571069089737,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.9659258262890683,
+        0.25881904510252074,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.018229107732016372,
+      "center_m": [
+        0.06356411084974878,
+        0.012471511169080959,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.018151782248371162,
+      "id": "resection_bond_050",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.1127666111112737,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.8660254037844387,
+        0.49999999999999994,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03284476959851211,
+      "center_m": [
+        0.05740498175069907,
+        0.019294234488094208,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.015028141310758083,
+      "id": "resection_bond_051",
+      "kind": "fibrous_band",
+      "mechanical_work_threshold_j": 0.031029673826548143,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.7071067811865476,
+        0.7071067811865475,
+        0.0
+      ],
+      "recommended_modality": "guarded_scissors",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03135619533788077,
+      "center_m": [
+        0.0493782484342129,
+        0.02452949422228646,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.009244054085412826,
+      "id": "resection_bond_052",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03173449570955447,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.5000000000000001,
+        0.8660254037844386,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.029056206068984645,
+      "center_m": [
+        0.0400309195110048,
+        0.02782051607244829,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.011794848477415035,
+      "id": "resection_bond_053",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.11624937566128343,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.25881904510252074,
+        0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.0404284648931546,
+      "center_m": [
+        0.030000000000000002,
+        0.028943022338161924,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.019026078816351225,
+      "id": "resection_bond_054",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.11582865140042659,
+      "nearest_protected_structure": null,
+      "normal": [
+        6.123233995736766e-17,
+        1.0,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04403161302918017,
+      "center_m": [
+        0.019969080488995206,
+        0.02782051607244829,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.013043768145951736,
+      "id": "resection_bond_055",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.05661893435323864,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.25881904510252063,
+        0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.021927842717940894,
+      "center_m": [
+        0.010621751565787114,
+        0.024529494222286462,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.009768503055634004,
+      "id": "resection_bond_056",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.051755962211723586,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.4999999999999998,
+        0.8660254037844387,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02305759383606199,
+      "center_m": [
+        0.0025950182493009316,
+        0.019294234488094215,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.009815113793666667,
+      "id": "resection_bond_057",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.06789290200330031,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02281474625297384,
+      "center_m": [
+        -0.0035641108497487806,
+        0.012471511169080959,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.012311596313942947,
+      "id": "resection_bond_058",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.0666727844604192,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.8660254037844387,
+        0.49999999999999994,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04728303169889738,
+      "center_m": [
+        -0.007435901261703869,
+        0.004526281584354088,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.01634577542043279,
+      "id": "resection_bond_059",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.07325606489630346,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.9659258262890682,
+        0.258819045102521,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.0214186580851578,
+      "center_m": [
+        -0.008756496868425792,
+        -0.003999999999999996,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.01978377877326525,
+      "id": "resection_bond_060",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.04541919507459573,
+      "nearest_protected_structure": null,
+      "normal": [
+        -1.0,
+        1.2246467991473532e-16,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.05487482051880597,
+      "center_m": [
+        -0.007435901261703869,
+        -0.012526281584354081,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.021931938739014868,
+      "id": "resection_bond_061",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03254771444633119,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.9659258262890683,
+        -0.2588190451025208,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.054248965964721174,
+      "center_m": [
+        -0.0035641108497487875,
+        -0.020471511169080952,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.026443814096356114,
+      "id": "resection_bond_062",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.060934836956883905,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.8660254037844388,
+        -0.4999999999999997,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03898300005569769,
+      "center_m": [
+        0.0025950182493009177,
+        -0.027294234488094198,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.02677989375241114,
+      "id": "resection_bond_063",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03560361545553907,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.7071067811865479,
+        -0.7071067811865471,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04224607770212502,
+      "center_m": [
+        0.010621751565787086,
+        -0.03252949422228645,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.02612856815231121,
+      "id": "resection_bond_064",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.09198521373581761,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.5000000000000004,
+        -0.8660254037844384,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.042852139465637554,
+      "center_m": [
+        0.019969080488995206,
+        -0.035820516072448294,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.027006149346323408,
+      "id": "resection_bond_065",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.07031377685306872,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.25881904510252063,
+        -0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.05087584859186272,
+      "center_m": [
+        0.029999999999999992,
+        -0.03694302233816192,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.024684910707951327,
+      "id": "resection_bond_066",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10397712846349368,
+      "nearest_protected_structure": null,
+      "normal": [
+        -1.8369701987210297e-16,
+        -1.0,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.050592605272811175,
+      "center_m": [
+        0.04003091951100478,
+        -0.035820516072448294,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.01684343900495258,
+      "id": "resection_bond_067",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.0540962107940052,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.2588190451025203,
+        -0.9659258262890684,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04432117896040898,
+      "center_m": [
+        0.0493782484342129,
+        -0.03252949422228646,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.012224947651711417,
+      "id": "resection_bond_068",
+      "kind": "fibrous_band",
+      "mechanical_work_threshold_j": 0.03514897061364147,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.5000000000000001,
+        -0.8660254037844386,
+        0.0
+      ],
+      "recommended_modality": "guarded_scissors",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.028301058893492825,
+      "center_m": [
+        0.057404981750699066,
+        -0.02729423448809422,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.01481139814674098,
+      "id": "resection_bond_069",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.05477874840229967,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.7071067811865474,
+        -0.7071067811865477,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.025124160351368573,
+      "center_m": [
+        0.06356411084974878,
+        -0.020471511169080976,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.02139848990670967,
+      "id": "resection_bond_070",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.04773442719183567,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.8660254037844384,
+        -0.5000000000000004,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03620003084491882,
+      "center_m": [
+        0.06743590126170387,
+        -0.012526281584354107,
+        0.019916926696144734
+      ],
+      "clearance_m": 0.02188790076457521,
+      "id": "resection_bond_071",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.052200934830706446,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.9659258262890681,
+        -0.25881904510252157,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03441369871891063,
+      "center_m": [
+        0.059267554754952836,
+        -0.004,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.030321007569995014,
+      "id": "resection_bond_072",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.08363453397825599,
+      "nearest_protected_structure": null,
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02057019913477525,
+      "center_m": [
+        0.058270287010138366,
+        0.002438750488038239,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.02964699986683144,
+      "id": "resection_bond_073",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.046534139941194375,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.9659258262890683,
+        0.25881904510252074,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02081128449496913,
+      "center_m": [
+        0.0553464459244412,
+        0.008438710770854953,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.029846420107810044,
+      "id": "resection_bond_074",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.07253011507843024,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.8660254037844387,
+        0.49999999999999994,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.038787826167129696,
+      "center_m": [
+        0.050695286435975734,
+        0.013590993470579373,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.02630860890470838,
+      "id": "resection_bond_075",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.07544358181456923,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.7071067811865476,
+        0.7071067811865475,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.022023047927181585,
+      "center_m": [
+        0.04463377737747642,
+        0.017544479035775017,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.02456956599609383,
+      "id": "resection_bond_076",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10836749247781759,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.5000000000000001,
+        0.8660254037844386,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04479026850075704,
+      "center_m": [
+        0.03757500057416263,
+        0.020029743958617615,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.025326721013806733,
+      "id": "resection_bond_077",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10679727192086459,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.25881904510252074,
+        0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.01930443211549082,
+      "center_m": [
+        0.030000000000000002,
+        0.020877421541709913,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.0281540141534111,
+      "id": "resection_bond_078",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.09104752207071158,
+      "nearest_protected_structure": null,
+      "normal": [
+        6.123233995736766e-17,
+        1.0,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.041661198920688224,
+      "center_m": [
+        0.022424999425837366,
+        0.020029743958617615,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.02532192397021721,
+      "id": "resection_bond_079",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.033141333973092275,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.25881904510252063,
+        0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04708584670906508,
+      "center_m": [
+        0.015366222622523589,
+        0.01754447903577502,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.024408322198724297,
+      "id": "resection_bond_080",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.11244408044423548,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.4999999999999998,
+        0.8660254037844387,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.027418079702837828,
+      "center_m": [
+        0.009304713564024267,
+        0.013590993470579377,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.025156907656691627,
+      "id": "resection_bond_081",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03309235847709193,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.7071067811865475,
+        0.7071067811865476,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03261875428679875,
+      "center_m": [
+        0.004653554075558803,
+        0.008438710770854953,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.027163756654699563,
+      "id": "resection_bond_082",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10776053178085149,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.8660254037844387,
+        0.49999999999999994,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04889989285963452,
+      "center_m": [
+        0.001729712989861635,
+        0.002438750488038246,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.030152994805365842,
+      "id": "resection_bond_083",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03278833871837891,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.9659258262890682,
+        0.258819045102521,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02110084026231193,
+      "center_m": [
+        0.0007324452450471614,
+        -0.003999999999999997,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.033117258687839754,
+      "id": "resection_bond_084",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.0481246448827716,
+      "nearest_protected_structure": null,
+      "normal": [
+        -1.0,
+        1.2246467991473532e-16,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03856320061115025,
+      "center_m": [
+        0.001729712989861628,
+        -0.010438750488038242,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.034058099331421565,
+      "id": "resection_bond_085",
+      "kind": "fibrous_band",
+      "mechanical_work_threshold_j": 0.05379642257120064,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.9659258262890683,
+        -0.2588190451025208,
+        0.0
+      ],
+      "recommended_modality": "guarded_scissors",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.0423967093913719,
+      "center_m": [
+        0.004653554075558796,
+        -0.016438710770854948,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.03594099061670388,
+      "id": "resection_bond_086",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.06419744924400037,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.8660254037844388,
+        -0.4999999999999997,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.01707106800407946,
+      "center_m": [
+        0.009304713564024254,
+        -0.021590993470579363,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.03760177688028701,
+      "id": "resection_bond_087",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.07951802690218254,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.7071067811865479,
+        -0.7071067811865471,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.026840248675496264,
+      "center_m": [
+        0.015366222622523568,
+        -0.025544479035775013,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.03744128921248387,
+      "id": "resection_bond_088",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.08778324908943161,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.5000000000000004,
+        -0.8660254037844384,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03908095417823243,
+      "center_m": [
+        0.022424999425837366,
+        -0.028029743958617615,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.03799770654332271,
+      "id": "resection_bond_089",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.06604165648395925,
+      "nearest_protected_structure": null,
+      "normal": [
+        -0.25881904510252063,
+        -0.9659258262890683,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02416428431188614,
+      "center_m": [
+        0.029999999999999992,
+        -0.028877421541709913,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.033486203769796684,
+      "id": "resection_bond_090",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.09786096186822707,
+      "nearest_protected_structure": null,
+      "normal": [
+        -1.8369701987210297e-16,
+        -1.0,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.03492949569827351,
+      "center_m": [
+        0.03757500057416262,
+        -0.028029743958617615,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.029801516188175975,
+      "id": "resection_bond_091",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.10181515999638625,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.2588190451025203,
+        -0.9659258262890684,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.027320481822015928,
+      "center_m": [
+        0.04463377737747642,
+        -0.025544479035775017,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.0279518376162207,
+      "id": "resection_bond_092",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.05013588232160142,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.5000000000000001,
+        -0.8660254037844386,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.02413822136643419,
+      "center_m": [
+        0.05069528643597573,
+        -0.02159099347057938,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.028464120017463554,
+      "id": "resection_bond_093",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.11349261886349858,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.7071067811865474,
+        -0.7071067811865477,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.054570691698410355,
+      "center_m": [
+        0.05534644592444119,
+        -0.016438710770854965,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.030907681370561085,
+      "id": "resection_bond_094",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.04465233245643652,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.8660254037844384,
+        -0.5000000000000004,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    },
+    {
+      "aspiration_energy_threshold_j": 0.04287143422372727,
+      "center_m": [
+        0.058270287010138366,
+        -0.01043875048803826,
+        0.03381244032074669
+      ],
+      "clearance_m": 0.03235820752794558,
+      "id": "resection_bond_095",
+      "kind": "parenchyma",
+      "mechanical_work_threshold_j": 0.03534224830707434,
+      "nearest_protected_structure": null,
+      "normal": [
+        0.9659258262890681,
+        -0.25881904510252157,
+        0.0
+      ],
+      "recommended_modality": "selective_aspiration",
+      "released": false,
+      "seal_required": false,
+      "sealed": false
+    }
+  ],
+  "detachment_rule": "all_boundary_bonds_released_and_all_pedicles_sealed",
+  "planned_margin_m": 0.01,
+  "root_tissue": "liver_bed",
+  "schema": "dr.anmar.resection-topology.v1",
+  "specimen_target": "liver_tumor_specimen",
+  "version": "0.1.0"
+}

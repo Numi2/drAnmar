@@ -29,6 +29,7 @@ __version__ = ORBITSURGICAL_ASSETS_METADATA["package"]["version"]
 from .ecm import *
 from .closure_robot import *
 from .laparotomy_sponge import *
+from .dranmar_asset_catalog import *
 from .needle_thread import *
 from .psm import *
 from .skin_adhesive import *
@@ -42,3 +43,4 @@ from .adaptive_seal_divide_robot import *
 from .safeplane_dissection_robot import *
 from .perfusion_viability_robot import *
 from .dynamic_abdominal_patient import *
+from .oncologic_resection import *

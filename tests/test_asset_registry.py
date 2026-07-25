@@ -19,6 +19,10 @@ from dr_anmar_asset_registry import (
     validate_catalog,
     verify_lock,
 )
+from dr_anmar_i4h_adapter import (
+    _dr_anmar_portfolio_assets,
+    _repository_artifact_path,
+)
 from dr_anmar_procedures import PROCEDURE_ROOMS
 
 
@@ -77,6 +81,30 @@ def test_catalog_gate_covers_runtime_room_references() -> None:
     assert report["asset_units"] >= 20
     assert report["entrypoints"] >= 40
     assert report["passed"], json.dumps(report["issues"], indent=2)
+
+
+def test_capability_payload_covers_the_authoritative_portfolio() -> None:
+    portfolio = json.loads(
+        (ROOT / "physics_next/dr-anmar-assets.json").read_text(encoding="utf-8")
+    )
+    assets, portfolio_path, error = _dr_anmar_portfolio_assets()
+
+    assert error is None
+    assert portfolio_path == ROOT / "physics_next/dr-anmar-assets.json"
+    assert {asset["id"] for asset in assets} == {
+        asset["id"] for asset in portfolio["assets"]
+    }
+    assert all(asset["local_ready"] for asset in assets)
+    assert all(asset["clinical_validation"] is False for asset in assets)
+
+
+@pytest.mark.parametrize(
+    "relative",
+    ("../outside.usda", "/tmp/outside.usda", r"..\outside.usda"),
+)
+def test_capability_portfolio_rejects_path_escape(relative: str) -> None:
+    with pytest.raises(ValueError):
+        _repository_artifact_path(relative)
 
 
 def test_folder_hash_includes_names_and_contents(tmp_path: Path) -> None:

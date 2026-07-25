@@ -1,0 +1,24 @@
+{
+  "local_orientation_wxyz": [
+    0.9238795325112867,
+    0,
+    0,
+    -0.3826834323650898
+  ],
+  "local_translation_m": [
+    0,
+    0,
+    0
+  ],
+  "parent_link": "panda_link8",
+  "payload_link": "Links/Mount",
+  "schema": "dr.anmar.franka-mount.v1",
+  "stock_prims_deactivated": [
+    "panda_hand_joint",
+    "panda_hand",
+    "panda_finger_joint1",
+    "panda_finger_joint2",
+    "panda_leftfinger",
+    "panda_rightfinger"
+  ]
+}

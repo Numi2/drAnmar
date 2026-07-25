@@ -1,0 +1,16 @@
+{
+  "asset": "dranmar-oncosurgery-cell-v1",
+  "collider_primitive_count": 24,
+  "link_count": 23,
+  "regions": {
+    "aspirator": "tip and guard explicitly represented",
+    "bag_deployer": "housing represented; deformable bag uses separate asset",
+    "bipolar_jaws": "jaw bodies represented",
+    "mount": "0.94 axis-scale inset",
+    "scissors": "guard and blade bodies represented",
+    "sensor_turret": "0.94 axis-scale inset",
+    "traction_pads": "contact surfaces visual-aligned"
+  },
+  "schema": "dr.anmar.collider-coverage.v1",
+  "status": "engineering_estimate_pending_runtime_contact_review"
+}

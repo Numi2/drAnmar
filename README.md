@@ -37,6 +37,27 @@ Dr.Anmar supports four connected activities:
 The platform is intended for reproducible engineering studies. Every quantitative result must be interpreted
 within the exact asset revision, software stack, hardware, scenario, and measurement contract that produced it.
 
+## Asset catalog and reproducibility
+
+Dr.Anmar uses one provider-aware asset registry for repository assets and the
+pinned NVIDIA Isaac for Healthcare v0.7.0 catalog. It inventories complete
+asset directories, validates relative USD dependency closure, rejects path
+traversal and workstation-absolute references, checks manifests and licensing
+evidence, and can generate deterministic directory hashes for release locks.
+The hub, workstation, native-room resolver, installers, and capability API use
+the same provider-relative paths instead of maintaining independent root logic.
+
+```bash
+python3 scripts/dr_anmar_asset_registry.py verify
+python3 scripts/dr_anmar_asset_registry.py inventory --hash
+```
+
+The clinician-facing capability payload is generated from all 19 entries in
+`physics_next/dr-anmar-assets.json`, including every declared profile, runtime,
+report, qualification, and composition artifact. This structural readiness is
+not a substitute for native physics, physical, biomechanical, or clinical
+qualification. See [`docs/ASSET_CATALOG.md`](docs/ASSET_CATALOG.md).
+
 ## New Dr.Anmar robot systems
 
 Seven procedure-specific systems were added and qualified on 25 July 2026. Each system is provided as:
@@ -167,6 +188,30 @@ depth, a cooked tissue surface with two fixtures, blind diagnosis of six
 modeled faults, force-coupled probe contact, evidence-based intervention, and
 three loaded-arm poses with the authored 2.537 kg payload. See
 [`docs/perfusion_viability_robot/VALIDATION.md`](docs/perfusion_viability_robot/VALIDATION.md).
+
+### Surgical-oncology research cell
+
+The OncoSurgery Cell integrates a payload-backed 22-joint tumor-resection tool,
+a 3,028-cell liver tumor field, 96 explicit resection bonds, protected vascular
+and bile-duct interlocks, registered RGB/depth, NIR, hyperspectral, ultrasound,
+OCT, and Raman contracts, specimen containment and orientation, cavity
+verification, and corrective resection.
+
+Its Isaac Lab runtime provides standalone, rigid-proxy, Franka-mounted, liver,
+specimen, and three-station workcell factories; bounded reset-time domain
+randomization; a 12-term policy observation; dense safety-aware reward; and a
+contract-gated final margin report. The imported USDA layers were repaired and
+wrapped with lightweight relative-payload interfaces, and the Franka payload
+representations now share a consistent authored 2.5534 kg mass. The native
+tissue route couples the task to the Dynamic Patient liver's explicit
+tetrahedral PhysX GPU volume deformable while retaining the registered
+resection graph for irreversible topology changes. Native CUDA qualification
+now records a passing RTX 4090 non-contact volume-stability lane with 274 live
+tetrahedral nodes, bounded displacement and speed, and zero engine errors.
+Robot-tissue contact, rendered sensors, Franka payload behavior, and all
+physical, biomechanical, and clinical validation remain explicit promotion
+gates. See
+[`docs/SURGICAL_ONCOLOGY.md`](docs/SURGICAL_ONCOLOGY.md).
 
 ## Platform architecture
 
