@@ -503,6 +503,8 @@ class DynamicPatientRescueBridge:
     def apply_resuscitation(
         self,
         snapshot: ResuscitationSnapshot,
+        *,
+        physics_step: int,
     ) -> None:
         """Project only scene-supported circulation and ventilation effects."""
 
@@ -544,6 +546,12 @@ class DynamicPatientRescueBridge:
             respiration = getattr(self.patient, "respiration", None)
             if respiration is None:
                 raise TypeError("dynamic patient must expose respiration")
+            if int(ventilation["last_physics_step"]) != physics_step:
+                respiration.tidal_volume_ml = self._baseline_tidal_volume_ml
+                respiration.inspired_oxygen_fraction = (
+                    self._baseline_fio2_fraction
+                )
+                return
             connected = bool(ventilation["airway_connected"])
             effective_l_min = float(
                 ventilation["effective_minute_ventilation_l_min"]
@@ -793,6 +801,7 @@ class AutonomousRescueORRuntime:
 
         previous = self.effects.snapshot()
         previous_spo2 = self._patient_spo2_fraction()
+        observed_target_ids = {frame.target_id}
         current = self._scene_adapter.publish(frame)
         for companion in companion_frames:
             if (
@@ -804,11 +813,16 @@ class AutonomousRescueORRuntime:
                     "companion scene evidence must share the primary "
                     "physics interval"
                 )
+            observed_target_ids.add(companion.target_id)
             current = self._scene_adapter.publish(companion)
+        current = self._scene_adapter.finalize_interval(
+            frozenset(observed_target_ids)
+        )
         if self.patient_bridge is not None:
             self.patient_bridge.apply(current)
             self.patient_bridge.apply_resuscitation(
-                self.resuscitation.snapshot()
+                self.resuscitation.snapshot(),
+                physics_step=frame.physics_step,
             )
             self.patient_bridge.advance_physiology(frame.dt_s)
         current_spo2 = self._patient_spo2_fraction()

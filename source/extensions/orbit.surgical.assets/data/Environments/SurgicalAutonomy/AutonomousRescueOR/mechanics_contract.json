@@ -12,6 +12,7 @@
     "patient outcomes cannot be supplied as action fields",
     "the rescue vessel endpoint vertices are attached to authored world fixtures",
     "physics steps and simulation time must increase monotonically per observed target and per pump channel",
+    "instantaneous ventilation and active repair effects expire when their scene evidence is not refreshed in the current physics interval",
     "unilateral contact cannot create bilateral compression",
     "contact outside the authored target neighborhood cannot control the defect",
     "clip occlusion requires a retained scene attachment",

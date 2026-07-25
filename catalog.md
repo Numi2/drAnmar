@@ -9,9 +9,9 @@ It records software and asset provenance; it is not clinical-validation evidence
 
 - Catalog schema: `dr.anmar.asset-catalog-lock.v3`
 - Catalog version: `1.2.0`
-- Catalog SHA-256: `12f3740100ddd703956a23ef54d3c8e6b7d975e4f88c38197c1444418c1152cd`
-- Local asset units: `27`
-- Product portfolio assets: `19`
+- Catalog SHA-256: `b2e9cfba465c3bec53df414640a0c2d8075808088aee38c74b34c8d3c20d5fd3`
+- Local asset units: `28`
+- Product portfolio assets: `20`
 - Clinical validation: `false`
 
 ## NVIDIA Isaac for Healthcare provider
@@ -27,7 +27,8 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 
 | Asset unit | Entrypoints | Files | Bytes | SHA-256 | License evidence |
 | --- | ---: | ---: | ---: | --- | --- |
-| `dr_anmar:Props/Patients/DynamicAbdominalPatient` | 3 | 84 | 21856860 | `87cc2cad07499d5f9ff08eb9ed107b07765ed20095e331378a6c21737c820e8a` | `source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/LICENSE.txt` |
+| `dr_anmar:Environments/SurgicalAutonomy/AutonomousRescueOR` | 11 | 77 | 16734804 | `635d78199a2ac1273d240a8a13cf4999574eb20174bd18d3aabafdd85403785b` | `source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/LICENSE.txt` |
+| `dr_anmar:Props/Patients/DynamicAbdominalPatient` | 3 | 84 | 21857721 | `283473c42f482558f593d80f5675dde98f6a550b34f6e349bcb051b019ff2833` | `source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalAssessment/PerfusionViabilityRobot` | 7 | 49 | 35118832 | `f4bd998140b6e1c59f3f67af3cf3f9d698f6cf7a7002b8a0cd1f040d0e609b34` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/ClosureRobot` | 6 | 134 | 14929244 | `fa67ba1568caf9fe7d6fa8a6cb61bc897280abacd565321b1e4fae5ac5bce56b` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/ClosureRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/Needle` | 1 | 9 | 2523083 | `5fc31f57028c9eda6004b0f4b4258bfeb66f737bc88a61928209c9fbb6bfe81a` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/LICENSE.txt` |
@@ -76,6 +77,7 @@ and clinical evidence are deliberately separate claims.
 | `dranmar-adaptive-hemostasis-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
 | `dranmar-adaptive-seal-divide-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
 | `dranmar-atraumatic-exposure-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
+| `dranmar-autonomous-rescue-or-v0.4.0` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset runtime effect and orchestration contracts |
 | `dranmar-dynamic-abdominal-patient-v1` | interactive training patient | available for simulation training data generation and evaluation | repository verified asset runtime and state contracts |
 | `dranmar-oncosurgery-cell-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task training and runtime contracts |
 | `dranmar-perfusion-viability-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
@@ -100,6 +102,7 @@ and clinical evidence are deliberately separate claims.
 | `dranmar-adaptive-hemostasis-robot-v1` | runtime composition observed current native matrix not yet established | occlusion patch seal residual flow and instrumented hemostasis bench ev… | `not established` |
 | `dranmar-adaptive-seal-divide-robot-v1` | runtime composition observed current native matrix not yet established | through thickness compression material and instrumented bench evidence … | `not established` |
 | `dranmar-atraumatic-exposure-robot-v1` | runtime composition observed current native matrix not yet established | pad contact force capture quality and instrumented retraction bench evi… | `not established` |
+| `dranmar-autonomous-rescue-or-v0.4.0` | native multiarm and deformable runtime evidence not yet recorded for v0… | contact flow tissue and resuscitation bench evidence not yet established | `not established` |
 | `dranmar-dynamic-abdominal-patient-v1` | native cuda execution not yet recorded | anatomy mechanics and physiology bench correlation not yet established | `not established` |
 | `dranmar-oncosurgery-cell-v1` | non contact dynamic volume stability recorded on rtx 4090 2026 07 25 co… | instrumented payload tissue sensor energy and specimen bench evidence n… | `not established` |
 | `dranmar-perfusion-viability-robot-v1` | standalone loaded franka and serialized six camera depth matrix recorde… | sensor calibration flow bench and tissue correlation not yet established | `not established` |

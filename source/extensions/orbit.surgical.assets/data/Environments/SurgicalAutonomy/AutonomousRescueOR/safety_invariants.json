@@ -19,7 +19,7 @@
     },
     {
       "id": "transient_effect_releases",
-      "rule": "temporary compression decays after physical contact release; only scene-observed retained attachments can persist",
+      "rule": "temporary compression decays after physical contact release; retained repairs and ventilation remain effective only while current-interval attachment and scene evidence continues",
       "severity": "runtime"
     },
     {

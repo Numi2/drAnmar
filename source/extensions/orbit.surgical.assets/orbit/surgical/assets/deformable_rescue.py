@@ -272,6 +272,15 @@ class SceneEvidenceAdapter:
     def publish(self, frame: PhysicsEvidenceFrame) -> RescueEffectsSnapshot:
         return self._effects._ingest(frame, self._authority)
 
+    def finalize_interval(
+        self,
+        observed_target_ids: frozenset[str],
+    ) -> RescueEffectsSnapshot:
+        return self._effects._finalize_interval(
+            observed_target_ids,
+            self._authority,
+        )
+
 
 class ContactDrivenRescueEffects:
     """Own patient effects and reject action- or caller-authored outcomes."""
@@ -380,6 +389,36 @@ class ContactDrivenRescueEffects:
             self._update_film(frame)
         else:
             self._update_repair(frame)
+        return self.snapshot()
+
+    def _finalize_interval(
+        self,
+        observed_target_ids: frozenset[str],
+        authority: _SceneAuthority,
+    ) -> RescueEffectsSnapshot:
+        """Fail closed when an already-active repair loses scene evidence."""
+
+        if authority is not self._authority:
+            self._rejected_frames += 1
+            raise PermissionError(
+                "only the environment may finalize scene evidence"
+            )
+        if "rescue_vessel" not in observed_target_ids:
+            raise ValueError(
+                "every rescue interval requires fresh rescue_vessel evidence"
+            )
+        for target_id, state in self.repairs.items():
+            if state.last_physics_step < 0 or target_id in observed_target_ids:
+                continue
+            state.approximation_fraction = 0.0
+            state.retention_fraction = 0.0
+            state.leak_rate_ml_s = 2.5
+            state.contact_coverage_fraction = 0.0
+            state.measured_pressure_kpa = 0.0
+            state.seal_quality = 0.0
+            state.seal_verified = False
+            state.verification_elapsed_s = 0.0
+            state.verification_frame_count = 0
         return self.snapshot()
 
     def _bilateral_contact_quality(

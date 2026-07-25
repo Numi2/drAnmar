@@ -58,6 +58,11 @@
     "patient.fluids"
   ],
   "intended_use": "simulation_training",
+  "resuscitation_interfaces": {
+    "vascular_access": "Frames/vascular_access_connector",
+    "airway": "Frames/airway_connector",
+    "effect_authority": "environment_owned_post_physics_pump_line_and_airway_evidence"
+  },
   "schema": "dr.anmar.dynamic-patient-runtime.v1",
   "snapshot_contract": {
     "includes": [

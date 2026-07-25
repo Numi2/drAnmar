@@ -39,7 +39,8 @@ post-physics observations containing bilateral contact forces, tool speed,
 measured separation, retained attachments, patch contact points, and leaked
 particle counts. Hemostasis verification additionally requires measured
 upstream pressure; requesting a challenge cannot synthesize one. The DrAnmar
-runtime derives:
+runtime also expires active repair and ventilation effects when their evidence
+is not refreshed in the current physics interval. It derives:
 
 - temporary vessel compression from bilateral contact, symmetry, gap, speed,
   and proximity to the authored defect-control frame;

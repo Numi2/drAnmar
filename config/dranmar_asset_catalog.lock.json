@@ -1,7 +1,57 @@
 {
   "assets": [
     {
-      "bytes": 21856860,
+      "bytes": 16734804,
+      "clinical_validation": false,
+      "entrypoints": [
+        "dranmar_autonomous_rescue_or.usda",
+        "dranmar_deformable_rescue_suite.usda",
+        "dranmar_physiological_monitor.usda",
+        "dranmar_rescue_abdominal_wall.usda",
+        "dranmar_rescue_bowel_anastomosis.usda",
+        "dranmar_rescue_occlusive_film.usda",
+        "dranmar_rescue_vessel.usda",
+        "dranmar_resuscitation_module.usda",
+        "dranmar_sterile_tool_carousel.usda",
+        "dranmar_universal_tool_changer.usda",
+        "dranmar_universal_tool_changer_payload.usda"
+      ],
+      "file_count": 77,
+      "id": "dr_anmar:Environments/SurgicalAutonomy/AutonomousRescueOR",
+      "license_path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/LICENSE.txt",
+      "metadata": [
+        "LICENSE.txt",
+        "NOTICE.txt",
+        "README.md",
+        "asset_manifest.json",
+        "benchmark_scenarios.json",
+        "capability_matrix.json",
+        "complication_library.json",
+        "deformable_geometry_report.json",
+        "deformable_rescue_contract.json",
+        "deformable_rescue_scenarios.json",
+        "deformable_rescue_topology.json",
+        "dependency_manifest.json",
+        "episode_schema.json",
+        "i4h_catalog_contract.json",
+        "interaction_frames.json",
+        "mechanics_contract.json",
+        "physics_profile.json",
+        "procedure_graphs.json",
+        "qualification_report.json",
+        "rescue_protocols.json",
+        "resource_inventory.json",
+        "robot_station_contract.json",
+        "safety_invariants.json",
+        "tool_registry.json",
+        "workspace_topology.json"
+      ],
+      "provider": "dr_anmar",
+      "relative_path": "Environments/SurgicalAutonomy/AutonomousRescueOR",
+      "sha256": "635d78199a2ac1273d240a8a13cf4999574eb20174bd18d3aabafdd85403785b"
+    },
+    {
+      "bytes": 21857721,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_dynamic_abdominal_patient.usda",
@@ -24,7 +74,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/Patients/DynamicAbdominalPatient",
-      "sha256": "87cc2cad07499d5f9ff08eb9ed107b07765ed20095e331378a6c21737c820e8a"
+      "sha256": "283473c42f482558f593d80f5675dde98f6a550b34f6e349bcb051b019ff2833"
     },
     {
       "bytes": 35118832,
@@ -631,7 +681,7 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "12f3740100ddd703956a23ef54d3c8e6b7d975e4f88c38197c1444418c1152cd",
+  "catalog_sha256": "b2e9cfba465c3bec53df414640a0c2d8075808088aee38c74b34c8d3c20d5fd3",
   "catalog_version": "1.2.0",
   "clinical_validation": false,
   "i4h": {
@@ -641,7 +691,7 @@
     "release": "v0.7.0"
   },
   "portfolio": {
-    "asset_count": 19,
+    "asset_count": 20,
     "assets": [
       {
         "artifacts": {
@@ -872,6 +922,26 @@
         "product_capability": "executable_training_workcell",
         "real_world_evidence": "pad_contact_force_capture_quality_and_instrumented_retraction_bench_evidence_not_yet_established",
         "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      {
+        "artifacts": {
+          "asset": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_autonomous_rescue_or.usda",
+          "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_deformable_rescue_suite.usda",
+          "interaction_frames": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/interaction_frames.json",
+          "payload_asset": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_universal_tool_changer_payload.usda",
+          "profile": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/physics_profile.json",
+          "report": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/asset_manifest.json",
+          "runtime": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/autonomous_rescue_or.py",
+          "task_contract": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/benchmark_scenarios.json"
+        },
+        "asset": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_autonomous_rescue_or.usda",
+        "clinical_validation": false,
+        "id": "dranmar-autonomous-rescue-or-v0.4.0",
+        "native_simulator_evidence": "native_multiarm_and_deformable_runtime_evidence_not_yet_recorded_for_v0_4_0",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "contact_flow_tissue_and_resuscitation_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_runtime_effect_and_orchestration_contracts",
         "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       },
       {
