@@ -84,7 +84,7 @@
 <div class="app">
   <header>
     <div class="brand"><div class="brandmark">DA</div>Dr.<span>Anmar</span></div>
-    <button id="benchSetupBtn" class="btn small bench-header-action" onclick="openBenchSetup()">Bench setup <small id="benchAssetCount">3 props</small></button>
+    <button id="benchSetupBtn" class="btn small bench-header-action" onclick="openBenchSetup()">Bench setup <small id="benchAssetCount">3 assets</small></button>
     <div class="live"><i id="liveDot" class="dot"></i><span id="liveText">Connecting to Isaac Lab…</span></div>
   </header>
   <div id="appShell" class="shell">
@@ -193,7 +193,7 @@
 </div>
 <dialog id="benchSetupDialog" class="bench-setup-dialog" aria-labelledby="benchSetupTitle">
   <div class="bench-setup-head"><div><div class="eyebrow">NVIDIA native asset composition</div><h2 id="benchSetupTitle">Set up the bench</h2><p>Add only what this exercise needs. Applying a setup restarts the same native room.</p></div><button class="bench-close" aria-label="Close bench setup" onclick="closeBenchSetup()">×</button></div>
-  <div class="bench-setup-body"><div id="benchCoreAssets" class="bench-core"></div><div class="bench-picker"><div class="bench-picker-head"><div><b>Bench assets</b><small>Choose each physical prop independently</small></div><span id="benchDraftCount" class="bench-picker-count">0 selected</span></div><div id="benchAssetGrid" class="bench-asset-grid"></div></div><div class="bench-gripper-config"><h3>Exact PSM jaw targets</h3><p>Symmetric joint targets in radians.</p><div class="bench-gripper-grid"><label class="bench-gripper-field"><span><b>Open target</b><small>0.10–0.60 · step 0.01</small></span><input id="benchOpenRad" type="number" min="0.10" max="0.60" step="0.01" inputmode="decimal" oninput="setBenchGripperValue('open',this.value)"></label><label class="bench-gripper-field"><span><b>Closed target</b><small>0.00–0.15 · lower closes further</small></span><input id="benchCloseRad" type="number" min="0.00" max="0.15" step="0.01" inputmode="decimal" oninput="setBenchGripperValue('close',this.value)"></label></div><p id="benchGripperError" class="bench-gripper-error"></p></div><p class="bench-setup-note">The two PSMs and table remain loaded; applying a setup restarts only this native bench.</p></div>
+  <div class="bench-setup-body"><div id="benchCoreAssets" class="bench-core"></div><div class="bench-picker"><div class="bench-picker-head"><div><b>Bench assets</b><small>Choose props independently or add one complete Dr.Anmar robot station</small></div><span id="benchDraftCount" class="bench-picker-count">0 selected</span></div><div id="benchAssetGrid" class="bench-asset-grid"></div></div><div class="bench-gripper-config"><h3>Exact PSM jaw targets</h3><p>Symmetric joint targets in radians.</p><div class="bench-gripper-grid"><label class="bench-gripper-field"><span><b>Open target</b><small>0.10–0.60 · step 0.01</small></span><input id="benchOpenRad" type="number" min="0.10" max="0.60" step="0.01" inputmode="decimal" oninput="setBenchGripperValue('open',this.value)"></label><label class="bench-gripper-field"><span><b>Closed target</b><small>0.00–0.15 · lower closes further</small></span><input id="benchCloseRad" type="number" min="0.00" max="0.15" step="0.01" inputmode="decimal" oninput="setBenchGripperValue('close',this.value)"></label></div><p id="benchGripperError" class="bench-gripper-error"></p></div><p class="bench-setup-note">The two PSMs and table remain loaded; applying a setup restarts only this native bench.</p></div>
   <div class="bench-setup-actions"><button class="btn small" onclick="restoreDefaultBenchAssets()">Use default</button><div><button class="btn" onclick="closeBenchSetup()">Cancel</button><button id="applyBenchSetupBtn" class="btn primary" onclick="applyBenchSetup()">Apply setup</button></div></div>
 </dialog>
 <div id="toast" class="toast"></div>
@@ -256,17 +256,22 @@
   function benchAssetProvider(asset){return String(asset.provider||'nvidia_i4h').startsWith('dr_anmar')?'Dr.Anmar':'NVIDIA'}
   function renderBenchSetup(){
     const procedure=benchProcedure(),catalog=procedure?.bench_asset_catalog||[],selected=new Set(S.benchAssetDraft);
-    document.getElementById('benchAssetCount').textContent=`${S.selectedBenchAssets.length} props`;
+    document.getElementById('benchAssetCount').textContent=`${S.selectedBenchAssets.length} assets`;
     document.getElementById('benchDraftCount').textContent=`${selected.size} selected`;
     document.getElementById('benchCoreAssets').innerHTML=`<b>Always present</b>${(procedure?.bench_core_assets||[]).map(x=>`<span>✓ ${escapeHtml(x.title)}</span>`).join('')}`;
-    document.getElementById('benchAssetGrid').innerHTML=['NVIDIA','Dr.Anmar'].map(provider=>{const assets=catalog.filter(x=>benchAssetProvider(x)===provider);if(!assets.length)return'';return`<section class="bench-asset-group"><div class="bench-asset-group-head"><span>${provider}</span><span>${assets.length} available</span></div><div class="bench-asset-list">${assets.map(x=>`<label class="bench-asset ${selected.has(x.id)?'on':''}"><input type="checkbox" ${selected.has(x.id)?'checked':''} onchange="toggleBenchAsset('${x.id}',this.checked)"><span><b>${escapeHtml(x.title)}</b><small>${escapeHtml(x.description)}</small></span><span class="bench-asset-state">${selected.has(x.id)?'Added':'Add'}</span></label>`).join('')}</div></section>`}).join('');
+    const sections=[
+      {title:'NVIDIA assets',assets:catalog.filter(x=>benchAssetProvider(x)==='NVIDIA')},
+      {title:'Dr.Anmar instruments and props',assets:catalog.filter(x=>benchAssetProvider(x)==='Dr.Anmar'&&x.catalog_section!=='robot_systems')},
+      {title:'Dr.Anmar robot systems · choose one',assets:catalog.filter(x=>x.catalog_section==='robot_systems')},
+    ];
+    document.getElementById('benchAssetGrid').innerHTML=sections.map(section=>{const assets=section.assets;if(!assets.length)return'';return`<section class="bench-asset-group"><div class="bench-asset-group-head"><span>${section.title}</span><span>${assets.length} available</span></div><div class="bench-asset-list">${assets.map(x=>`<label class="bench-asset ${selected.has(x.id)?'on':''}"><input type="checkbox" ${selected.has(x.id)?'checked':''} onchange="toggleBenchAsset('${x.id}',this.checked)"><span><b>${escapeHtml(x.title)}</b><small>${escapeHtml(x.description)}</small></span><span class="bench-asset-state">${selected.has(x.id)?'Added':'Add'}</span></label>`).join('')}</div></section>`}).join('');
     document.getElementById('benchOpenRad').value=S.gripperOpenDraft.toFixed(2);
     document.getElementById('benchCloseRad').value=S.gripperCloseDraft.toFixed(2);
     updateBenchApplyState();
   }
   function openBenchSetup(){S.benchAssetDraft=[...S.selectedBenchAssets];S.gripperOpenDraft=S.gripperOpenRad;S.gripperCloseDraft=S.gripperCloseRad;renderBenchSetup();document.getElementById('benchSetupDialog').showModal()}
   function closeBenchSetup(){document.getElementById('benchSetupDialog').close()}
-  function toggleBenchAsset(id,enabled){const order=(benchProcedure()?.bench_asset_catalog||[]).map(x=>x.id),selected=new Set(S.benchAssetDraft);enabled?selected.add(id):selected.delete(id);S.benchAssetDraft=order.filter(item=>selected.has(item));renderBenchSetup()}
+  function toggleBenchAsset(id,enabled){const catalog=benchProcedure()?.bench_asset_catalog||[],order=catalog.map(x=>x.id),selected=new Set(S.benchAssetDraft),asset=catalog.find(x=>x.id===id);if(enabled&&asset?.exclusive_group)catalog.filter(x=>x.exclusive_group===asset.exclusive_group&&x.id!==id).forEach(x=>selected.delete(x.id));enabled?selected.add(id):selected.delete(id);S.benchAssetDraft=order.filter(item=>selected.has(item));renderBenchSetup()}
   function setBenchGripperValue(kind,value){const numeric=value.trim()===''?NaN:Number(value);if(kind==='open')S.gripperOpenDraft=numeric;else S.gripperCloseDraft=numeric;updateBenchApplyState()}
   function restoreDefaultBenchAssets(){const profile=defaultGripperProfile();S.benchAssetDraft=defaultBenchAssets();S.gripperOpenDraft=profile.open_rad;S.gripperCloseDraft=profile.close_rad;renderBenchSetup()}
   async function applyBenchSetup(){if(gripperProfileError())return;S.selectedBenchAssets=[...S.benchAssetDraft];S.gripperOpenRad=S.gripperOpenDraft;S.gripperCloseRad=S.gripperCloseDraft;closeBenchSetup();await launchProcedure(MAIN_PROCEDURE_ID,'',true,'main')}

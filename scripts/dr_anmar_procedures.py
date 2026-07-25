@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from dr_anmar_bench_systems import BENCH_ROBOT_SYSTEM_CATALOG
+
 
 CT_MULTI_ORGAN = "OR_scene_CTLiver-Prostate-Bladder"
 MAISI_LIVER_27 = "OR_scene_MAISI_imagesTr_liver_27_relabel_resample1_syn_seed6_postprocess"
@@ -102,6 +104,7 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
                 "physics": "physx_surface_deformable_attachments",
                 "default": False,
             },
+            *BENCH_ROBOT_SYSTEM_CATALOG,
             {
                 "id": "dr_anmar_needle_v030",
                 "title": "Dr.Anmar needle v0.3",

@@ -1,0 +1,84 @@
+{
+  "schema": "dr_anmar.bench_robot_system_matrix.v1",
+  "date_utc": "2026-07-25",
+  "host": "numi",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "driver": "580.159.03"
+  },
+  "runtime": {
+    "python": "3.11.15",
+    "isaaclab_package": "0.54.2",
+    "isaac_sim": "5.1.0.0",
+    "torch": "2.7.0+cu128",
+    "eula_accepted": true
+  },
+  "bench": {
+    "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
+    "procedure": "nvidia-native-surgical-bench",
+    "selection_contract": "one featured Dr.Anmar robot system at a time",
+    "spawned_representations": [
+      "standalone_articulation",
+      "procedure_substrate"
+    ],
+    "validated_not_duplicated_representations": [
+      "franka_payload",
+      "rigid_planning_proxy"
+    ]
+  },
+  "cases": [
+    {
+      "id": "wound_preparation_robot",
+      "live_frame_id": 5,
+      "passed": true
+    },
+    {
+      "id": "atraumatic_exposure_robot",
+      "live_frame_id": 6,
+      "passed": true
+    },
+    {
+      "id": "adaptive_hemostasis_robot",
+      "live_frame_id": 5,
+      "passed": true
+    },
+    {
+      "id": "adaptive_anastomosis_robot",
+      "live_frame_id": 4,
+      "passed": true
+    },
+    {
+      "id": "adaptive_seal_divide_robot",
+      "live_frame_id": 5,
+      "passed": true
+    },
+    {
+      "id": "safeplane_dissection_robot",
+      "live_frame_id": 5,
+      "passed": true
+    }
+  ],
+  "assertions_per_case": [
+    "workstation process remained live through readiness",
+    "fatal_error was null",
+    "active_bench_assets exactly matched the requested system",
+    "featured_robot_system exactly matched the requested system",
+    "endoscope_left produced a non-empty 960x640 JPEG",
+    "worker stopped cleanly and released the test port"
+  ],
+  "static_validation": {
+    "python_tests": 35,
+    "python_subtests": 3,
+    "browser_control_tests": 14,
+    "python_compilation": "passed",
+    "catalog_json_parse": "passed",
+    "doctor_studio_javascript_syntax": "passed",
+    "ruff": "passed"
+  },
+  "result": "passed_6_of_6",
+  "boundaries": [
+    "This qualifies bench selection, file resolution, articulation creation, substrate composition, stepping and camera visibility.",
+    "The generic bench station does not run each package's complete procedure controller or runtime deformable-cooking route.",
+    "This is not physical calibration, clinical validation or approval for patient care."
+  ]
+}

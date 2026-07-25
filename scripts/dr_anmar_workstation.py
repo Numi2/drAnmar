@@ -28,6 +28,12 @@ from typing import Any
 
 from isaaclab.app import AppLauncher
 
+from dr_anmar_bench_systems import (
+    BENCH_ROBOT_SYSTEMS_BY_ID,
+    FEATURED_ROBOT_POSITION_M,
+    FEATURED_SUBSTRATE_POSITION_M,
+    resolve_featured_robot_system,
+)
 from dr_anmar_procedures import PROCEDURES_BY_ID
 from dr_anmar_native_rooms import resolve_native_room
 from dr_anmar_asset_layout import asset_landing as dr_anmar_asset_landing
@@ -226,6 +232,24 @@ from orbit.surgical.assets.closure_robot import (
     make_franka_closure_robot_cfg,
     set_joint_targets as set_closure_robot_joint_targets,
 )
+from orbit.surgical.assets.wound_preparation_robot import (
+    make_tool_cfg as make_wound_preparation_tool_cfg,
+)
+from orbit.surgical.assets.atraumatic_exposure_robot import (
+    make_tool_cfg as make_atraumatic_exposure_tool_cfg,
+)
+from orbit.surgical.assets.adaptive_hemostasis_robot import (
+    make_tool_cfg as make_adaptive_hemostasis_tool_cfg,
+)
+from orbit.surgical.assets.adaptive_anastomosis_robot import (
+    make_tool_cfg as make_adaptive_anastomosis_tool_cfg,
+)
+from orbit.surgical.assets.adaptive_seal_divide_robot import (
+    make_tool_cfg as make_adaptive_seal_divide_tool_cfg,
+)
+from orbit.surgical.assets.safeplane_dissection_robot import (
+    make_tool_cfg as make_safeplane_dissection_tool_cfg,
+)
 from orbit.surgical.assets.skin_stapler import (
     ClosureLine,
     FIRE_THRESHOLD_DEG,
@@ -239,6 +263,15 @@ from orbit.surgical.assets.skin_stapler import (
     spacing_errors_m,
     synchronized_joint_targets_deg,
 )
+
+BENCH_ROBOT_SYSTEM_FACTORIES = {
+    "wound_preparation_robot": make_wound_preparation_tool_cfg,
+    "atraumatic_exposure_robot": make_atraumatic_exposure_tool_cfg,
+    "adaptive_hemostasis_robot": make_adaptive_hemostasis_tool_cfg,
+    "adaptive_anastomosis_robot": make_adaptive_anastomosis_tool_cfg,
+    "adaptive_seal_divide_robot": make_adaptive_seal_divide_tool_cfg,
+    "safeplane_dissection_robot": make_safeplane_dissection_tool_cfg,
+}
 
 from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
@@ -4078,6 +4111,8 @@ def main() -> None:
     stapler_test_cell_enabled = bool(procedure.get("stapler_test_cell"))
     selected_bench_assets: set[str] = set()
     bench_asset_paths: dict[str, Path] = {}
+    featured_robot_system_id: str | None = None
+    featured_robot_system_paths: dict[str, Path] = {}
     if nvidia_native_bench:
         bench_catalog = tuple(procedure.get("bench_asset_catalog", ()))
         allowed_bench_assets = {str(item["id"]) for item in bench_catalog}
@@ -4097,11 +4132,15 @@ def main() -> None:
                 "Unknown operating-room bench assets: "
                 + ", ".join(unknown_bench_assets)
             )
+        featured_robot_system_id = resolve_featured_robot_system(
+            selected_bench_assets
+        )
         procedure["active_bench_assets"] = [
             str(item["id"])
             for item in bench_catalog
             if str(item["id"]) in selected_bench_assets
         ]
+        procedure["featured_robot_system"] = featured_robot_system_id
         core_bench_assets = {
             "psm": I4H_ASSET_CONTENT_ROOT / "Robots/dVRK/PSM/psm.usd",
             "needle_runtime": I4H_ASSET_CONTENT_ROOT
@@ -4139,11 +4178,36 @@ def main() -> None:
                 if str(item["id"]) in selected_bench_assets
             },
         }
+        if featured_robot_system_id is not None:
+            featured_robot_spec = BENCH_ROBOT_SYSTEMS_BY_ID[
+                featured_robot_system_id
+            ]
+            featured_robot_system_paths = {
+                "standalone": bench_asset_paths[featured_robot_system_id],
+                **{
+                    key.removesuffix("_path"): (
+                        bench_asset_provider_roots[
+                            str(featured_robot_spec.get("provider", "nvidia_i4h"))
+                        ]
+                        / str(featured_robot_spec[key])
+                    )
+                    for key in (
+                        "payload_path",
+                        "rigid_proxy_path",
+                        "auxiliary_path",
+                    )
+                },
+            }
         missing_bench_assets = [
             f"{name}: {path}"
             for name, path in bench_asset_paths.items()
             if not path.is_file()
         ]
+        missing_bench_assets.extend(
+            f"{featured_robot_system_id}.{name}: {path}"
+            for name, path in featured_robot_system_paths.items()
+            if name != "standalone" and not path.is_file()
+        )
         if missing_bench_assets:
             raise RuntimeError(
                 "The operating-room bench is missing required assets: "
@@ -4557,6 +4621,33 @@ def main() -> None:
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=closure_tissue_spawn,
+            )
+        if featured_robot_system_id is not None:
+            # The large Dr.Anmar systems share one featured station so the
+            # bench remains readable and GPU-bounded. Each selection composes
+            # the real standalone articulation and its authored task substrate;
+            # the payload and rigid planning proxy are validated with the same
+            # catalog contract but are not duplicated into the live station.
+            env_cfg.scene.replicate_physics = False
+            featured_robot_cfg = BENCH_ROBOT_SYSTEM_FACTORIES[
+                featured_robot_system_id
+            ](
+                prim_path="{ENV_REGEX_NS}/FeaturedRobotSystem",
+                position=FEATURED_ROBOT_POSITION_M,
+            )
+            featured_robot_cfg.spawn.usd_path = str(
+                featured_robot_system_paths["standalone"]
+            )
+            env_cfg.scene.featured_robot_system = featured_robot_cfg
+            env_cfg.scene.featured_robot_substrate = AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/FeaturedRobotSubstrate",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    pos=FEATURED_SUBSTRATE_POSITION_M,
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=sim_utils.UsdFileCfg(
+                    usd_path=str(featured_robot_system_paths["auxiliary"]),
+                ),
             )
         env_cfg.scene.table.spawn.usd_path = str(bench_asset_paths["table"])
         env_cfg.scene.table.init_state.pos = (0.0, 0.0, -0.457)

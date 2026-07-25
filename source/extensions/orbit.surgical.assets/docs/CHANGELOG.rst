@@ -1,6 +1,22 @@
 Changelog
 ---------
 
+0.6.0 (2026-07-25)
+~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added the wound-preparation, atraumatic-exposure, adaptive-hemostasis,
+  adaptive-anastomosis, adaptive seal-and-divide and SafePlane-dissection
+  systems to the main Bench Setup as optional robot stations.
+* Each station composes the real standalone articulation and its authored
+  procedure substrate while validating the associated Franka payload and
+  rigid planning proxy.
+* Added an exclusive featured-robot station contract so the shared bench loads
+  one large system at a time without changing the default NVIDIA handover
+  composition.
+
 0.5.0 (2026-07-24)
 ~~~~~~~~~~~~~~~~~~
 

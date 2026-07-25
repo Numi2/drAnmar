@@ -30,6 +30,10 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from dr_anmar_catalog import CATALOG, PRIMARY_TASKS, TASKS_BY_ID
+from dr_anmar_bench_systems import (
+    related_asset_paths as related_bench_asset_paths,
+    resolve_featured_robot_system,
+)
 from dr_anmar_curriculum import curriculum_payload
 from dr_anmar_i4h_adapter import (
     I4H_ROOT,
@@ -116,6 +120,10 @@ def bench_asset_selection(
     unknown = sorted(selected - allowed)
     if unknown:
         raise HTTPException(400, "Unknown operating-room bench assets: " + ", ".join(unknown))
+    try:
+        resolve_featured_robot_system(selected)
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
     return tuple(str(item["id"]) for item in catalog if str(item["id"]) in selected)
 
 
@@ -177,6 +185,10 @@ def missing_required_bench_assets(
         if root is None:
             raise RuntimeError(f"Unknown operating-room asset provider: {provider}")
         required.append((root, str(item["path"])))
+        required.extend(
+            (root, relative_path)
+            for relative_path in related_bench_asset_paths(item)
+        )
     return [
         str(relative_path)
         for root, relative_path in required
