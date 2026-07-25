@@ -5,6 +5,7 @@ import json
 import math
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -200,3 +201,32 @@ def test_reset_and_scenario_orchestration_restore_episode_contract() -> None:
     assert orchestrator.completed_steps == [first_step]
     with pytest.raises(ValueError, match="not part"):
         orchestrator.mark_step("invented_step")
+
+
+def test_codeless_usd_apis_are_applied_only_when_registered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeRegistry:
+        def FindAppliedAPIPrimDefinition(self, name: str):
+            return object() if name == "AvailableAPI" else None
+
+    class FakeUsd:
+        @staticmethod
+        def SchemaRegistry():
+            return FakeRegistry()
+
+    class FakePrim:
+        def __init__(self):
+            self.applied: list[str] = []
+
+        def ApplyAPI(self, name: str) -> None:
+            self.applied.append(name)
+
+    monkeypatch.setitem(sys.modules, "pxr", SimpleNamespace(Usd=FakeUsd))
+    prim = FakePrim()
+
+    assert runtime._apply_registered_api(prim, "AvailableAPI") is True
+    assert runtime._apply_registered_api(prim, "MissingAPI", required=False) is False
+    assert prim.applied == ["AvailableAPI"]
+    with pytest.raises(RuntimeError, match="Required USD API schema"):
+        runtime._apply_registered_api(prim, "MissingAPI")

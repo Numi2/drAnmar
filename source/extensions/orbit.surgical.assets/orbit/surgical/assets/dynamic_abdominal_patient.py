@@ -2251,6 +2251,26 @@ def _set_usd_attribute_if_valid(prim: Any, name: str, value: Any) -> bool:
     return True
 
 
+def _apply_registered_api(
+    prim: Any,
+    schema_identifier: str,
+    *,
+    required: bool = True,
+) -> bool:
+    """Apply a codeless API only when the active USD runtime registers it."""
+    from pxr import Usd
+
+    definition = Usd.SchemaRegistry().FindAppliedAPIPrimDefinition(schema_identifier)
+    if not definition:
+        if required:
+            raise RuntimeError(
+                f"Required USD API schema is unavailable: {schema_identifier}"
+            )
+        return False
+    prim.ApplyAPI(schema_identifier)
+    return True
+
+
 def _selected_visual_mesh_path(stage: Any, component_path: str) -> str:
     """Return the visual mesh selected by the component's access-state variant."""
     base = component_path.rstrip("/") + "/Geometry"
@@ -2297,7 +2317,7 @@ def _create_deformable_material(
 
     material = UsdShade.Material.Define(stage, path)
     prim = material.GetPrim()
-    prim.ApplyAPI("OmniPhysicsBaseMaterialAPI")
+    _apply_registered_api(prim, "OmniPhysicsBaseMaterialAPI")
     _set_usd_attribute_if_valid(
         prim, "omniphysics:density", float(cfg.get("density_kg_m3", 1050.0))
     )
@@ -2305,7 +2325,7 @@ def _create_deformable_material(
         prim, "omniphysics:dynamicFriction", float(cfg.get("dynamic_friction", 0.38))
     )
 
-    prim.ApplyAPI("OmniPhysicsDeformableMaterialAPI")
+    _apply_registered_api(prim, "OmniPhysicsDeformableMaterialAPI")
     _set_usd_attribute_if_valid(
         prim,
         "omniphysics:youngsModulus",
@@ -2316,13 +2336,13 @@ def _create_deformable_material(
     )
 
     if surface:
-        prim.ApplyAPI("OmniPhysicsSurfaceDeformableMaterialAPI")
+        _apply_registered_api(prim, "OmniPhysicsSurfaceDeformableMaterialAPI")
         _set_usd_attribute_if_valid(
             prim, "omniphysics:surfaceThickness", _surface_thickness_seed(cfg)
         )
         # Zero delegates shell bending to the runtime's thickness-aware derivation.
         _set_usd_attribute_if_valid(prim, "omniphysics:surfaceBendStiffness", 0.0)
-        prim.ApplyAPI("PhysxSurfaceDeformableMaterialAPI")
+        _apply_registered_api(prim, "PhysxSurfaceDeformableMaterialAPI")
         damping = float(cfg.get("damping_seed", 0.16))
         _set_usd_attribute_if_valid(
             prim, "physxDeformableMaterial:elasticityDamping", damping
@@ -2331,10 +2351,15 @@ def _create_deformable_material(
             prim, "physxDeformableMaterial:bendDamping", damping
         )
     else:
-        # The exact PhysX material API name differs across releases. Applying both
-        # codeless schemas is harmless when one is unavailable.
-        prim.ApplyAPI("PhysxDeformableBodyMaterialAPI")
-        prim.ApplyAPI("PhysxBaseDeformableMaterialAPI")
+        # Isaac 5.1 registers PhysxDeformableBodyMaterialAPI but not the
+        # later PhysxBaseDeformableMaterialAPI. Applying an unregistered
+        # codeless schema is a runtime error.
+        _apply_registered_api(prim, "PhysxDeformableBodyMaterialAPI")
+        _apply_registered_api(
+            prim,
+            "PhysxBaseDeformableMaterialAPI",
+            required=False,
+        )
         _set_usd_attribute_if_valid(
             prim,
             "physxDeformableMaterial:elasticityDamping",
@@ -2347,15 +2372,15 @@ def _configure_deformable_body(
     body_prim: Any, cfg: Mapping[str, Any], *, surface: bool
 ) -> None:
     """Apply explicit mass and conservative body settings to the resolved body prim."""
-    body_prim.ApplyAPI("OmniPhysicsDeformableBodyAPI")
+    _apply_registered_api(body_prim, "OmniPhysicsDeformableBodyAPI")
     _set_usd_attribute_if_valid(
         body_prim, "omniphysics:mass", float(cfg.get("mass_kg", 0.1))
     )
     if surface:
-        body_prim.ApplyAPI("PhysxSurfaceDeformableBodyAPI")
+        _apply_registered_api(body_prim, "PhysxSurfaceDeformableBodyAPI")
     else:
-        body_prim.ApplyAPI("PhysxBaseDeformableBodyAPI")
-        body_prim.ApplyAPI("PhysxDeformableBodyAPI")
+        _apply_registered_api(body_prim, "PhysxBaseDeformableBodyAPI")
+        _apply_registered_api(body_prim, "PhysxDeformableBodyAPI")
     _set_usd_attribute_if_valid(body_prim, "physxDeformableBody:disableGravity", False)
     _set_usd_attribute_if_valid(
         body_prim,
