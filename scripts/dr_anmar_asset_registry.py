@@ -27,8 +27,8 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 POLICY_RELATIVE_PATH = Path("config/dranmar_asset_catalog.json")
 PORTFOLIO_RELATIVE_PATH = Path("physics_next/dr-anmar-assets.json")
 POLICY_SCHEMA = "dr.anmar.asset-catalog-policy.v1"
-PORTFOLIO_SCHEMA = "dr.anmar.asset-portfolio.v1"
-LOCK_SCHEMA = "dr.anmar.asset-catalog-lock.v2"
+PORTFOLIO_SCHEMA = "dr.anmar.asset-portfolio.v2"
+LOCK_SCHEMA = "dr.anmar.asset-catalog-lock.v3"
 USD_SUFFIXES = frozenset({".usd", ".usda", ".usdc"})
 _USD_REFERENCE = re.compile(r"@([^@\r\n]+)@")
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{7,64}$")
@@ -46,12 +46,12 @@ PORTFOLIO_PATH_FIELDS = frozenset(
         "interaction_frames",
         "material_texture",
         "materials_layer",
+        "native_evidence",
         "operating_scene",
         "payload_asset",
         "physics_layer",
         "physx_layer",
         "profile",
-        "qualification",
         "report",
         "rigid_proxy",
         "runtime",
@@ -65,8 +65,11 @@ PORTFOLIO_REQUIRED_FIELDS = frozenset(
         "id",
         "asset",
         "live_integration",
-        "native_gpu_qualification",
-        "physical_qualification",
+        "product_capability",
+        "training_readiness",
+        "software_evidence",
+        "native_simulator_evidence",
+        "real_world_evidence",
         "clinical_validation",
     }
 )
@@ -596,6 +599,55 @@ def validate_portfolio(
                 f"{asset_id or index}: clinical_validation must be exactly false.",
                 repository_root,
             )
+        legacy_evidence_fields = sorted(
+            {"native_gpu_qualification", "physical_qualification"} & entry.keys()
+        )
+        if legacy_evidence_fields:
+            _issue(
+                issues,
+                "error",
+                "legacy_qualification_language",
+                location,
+                f"{asset_id or index}: remove ambiguous fields {legacy_evidence_fields}.",
+                repository_root,
+            )
+        for key in (
+            "product_capability",
+            "training_readiness",
+            "software_evidence",
+            "native_simulator_evidence",
+            "real_world_evidence",
+        ):
+            value = entry.get(key)
+            if not isinstance(value, str) or not value.strip():
+                _issue(
+                    issues,
+                    "error",
+                    "invalid_evidence_tier",
+                    location,
+                    f"{asset_id or index}/{key}: must be a non-empty string.",
+                    repository_root,
+                )
+        if "available" not in str(entry.get("training_readiness", "")):
+            _issue(
+                issues,
+                "error",
+                "missing_training_availability",
+                location,
+                f"{asset_id or index}: training_readiness must state current availability.",
+                repository_root,
+            )
+        if entry.get("task_contract") and entry.get("product_capability") != (
+            "executable_training_workcell"
+        ):
+            _issue(
+                issues,
+                "error",
+                "task_contract_without_training_workcell",
+                location,
+                f"{asset_id or index}: task-contract assets must be executable training workcells.",
+                repository_root,
+            )
         declared_artifacts = 0
         for key in sorted(PORTFOLIO_PATH_FIELDS):
             value = entry.get(key)
@@ -1074,8 +1126,11 @@ def build_lock(
                         for key in sorted(PORTFOLIO_PATH_FIELDS)
                         if isinstance(entry.get(key), str) and entry[key]
                     },
-                    "native_gpu_qualification": entry["native_gpu_qualification"],
-                    "physical_qualification": entry["physical_qualification"],
+                    "product_capability": entry["product_capability"],
+                    "training_readiness": entry["training_readiness"],
+                    "software_evidence": entry["software_evidence"],
+                    "native_simulator_evidence": entry["native_simulator_evidence"],
+                    "real_world_evidence": entry["real_world_evidence"],
                     "clinical_validation": entry["clinical_validation"],
                 }
                 for entry in sorted(
@@ -1159,22 +1214,41 @@ def render_catalog_document(lock: Mapping[str, Any]) -> str:
             "",
             "## Product-facing portfolio",
             "",
-            "| Asset | Primary stage | Native GPU qualification | Physical qualification | Clinical |",
-            "| --- | --- | --- | --- | --- |",
+            "These assets are available Dr.Anmar simulation-training capabilities.",
+            "Repository verification, native-simulator evidence, real-world evidence,",
+            "and clinical evidence are deliberately separate claims.",
+            "",
+            "| Asset | Product capability | Training readiness | Software evidence |",
+            "| --- | --- | --- | --- |",
         ]
     )
     for asset in portfolio:
         lines.append(
-            f"| `{asset['id']}` | `{asset['asset']}` | "
-            f"{_display_status(asset['native_gpu_qualification'])} | "
-            f"{_display_status(asset['physical_qualification'])} | "
-            f"`{str(asset['clinical_validation']).lower()}` |"
+            f"| `{asset['id']}` | {_display_status(asset['product_capability'])} | "
+            f"{_display_status(asset['training_readiness'])} | "
+            f"{_display_status(asset['software_evidence'])} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Evidence boundaries",
+            "",
+            "| Asset | Native simulator evidence | Real-world evidence | Clinical evidence |",
+            "| --- | --- | --- | --- |",
+        ]
+    )
+    for asset in portfolio:
+        lines.append(
+            f"| `{asset['id']}` | "
+            f"{_display_status(asset['native_simulator_evidence'])} | "
+            f"{_display_status(asset['real_world_evidence'])} | "
+            f"`{'not established' if asset['clinical_validation'] is False else 'established'}` |"
         )
     lines.extend(
         [
             "",
             "Regenerate this file and its lock only after asset-specific structural,",
-            "native simulation, and applicable physical qualification gates have been reviewed.",
+            "native-simulator, and applicable real-world evidence has been reviewed.",
             "",
         ]
     )

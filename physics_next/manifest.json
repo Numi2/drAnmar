@@ -156,7 +156,7 @@
     "dr_anmar_stapler_test_cell": {
       "fixture": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda",
       "fixture_articulated_device": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_device.usda",
-      "qualification": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/qualification_report.json",
+      "native_evidence": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/native_simulator_evidence.json",
       "current_capability": "six_dof_fixture_trigger_pusher_cycle_and_logical_deployment_evidence",
       "deployment": "native_rtx_4090_runtime_qualified_2026_07_24"
     }

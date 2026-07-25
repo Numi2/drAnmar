@@ -1,9 +1,9 @@
 {
-  "schema": "dranmar.perfusion-viability-qualification-report.v1",
+  "schema": "dranmar.perfusion-viability-native-simulator-evidence.v1",
   "asset": "dranmar-perfusion-viability-robot-v1",
   "version": "0.1.1",
   "status": "pass",
-  "qualification_date": "2026-07-25",
+  "recorded_date": "2026-07-25",
   "ownership": "DrAnmar",
   "runtime_host": "numi",
   "platform": {

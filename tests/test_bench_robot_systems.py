@@ -41,7 +41,12 @@ def test_every_new_robot_system_is_selectable_from_the_native_bench() -> None:
         assert item is BENCH_ROBOT_SYSTEMS_BY_ID[asset_id]
         assert item["provider"] == "dr_anmar"
         assert item["bench_kind"] == "robot_system"
+        assert item["product_capability"] == "executable_training_workcell"
+        assert item["software_evidence"] == (
+            "repository_verified_asset_task_and_controller_contracts"
+        )
         assert item["representation"] == ("standalone_articulation_with_task_substrate")
+        assert "research" not in str(item["description"]).lower()
         assert item["default"] is False
 
 

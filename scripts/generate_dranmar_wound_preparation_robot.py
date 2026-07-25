@@ -3159,9 +3159,12 @@ def main() -> None:
         "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/wound_preparation_task_contract.json",
         "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/asset_manifest.json",
         "live_integration": "franka_panda_link8_replacement_with_irrigation_aspiration_debridement_and_inspection",
-        "deployment": "enabled_for_research_iteration",
-        "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
-        "physical_qualification": "provisional_unmeasured_parameters_active",
+        "deployment": "enabled_as_training_workcell",
+        "product_capability": "executable_training_workcell",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+        "real_world_evidence": "instrumented_wound_preparation_bench_evidence_not_yet_established",
         "clinical_validation": False,
     }
     assets[:] = [item for item in assets if item.get("id") != entry["id"]]

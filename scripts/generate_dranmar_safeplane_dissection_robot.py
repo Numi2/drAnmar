@@ -3749,7 +3749,6 @@ def physics_profile(bundle: ToolBundle) -> dict[str, object]:
             "duct": {"radius_m": 0.0026, "injury_consequence": "continuity_joint_removed_and_duct_leak_ledger_activated"},
         },
         "runtime_platforms": ["OpenUSD", "NVIDIA PhysX", "NVIDIA Isaac Lab"],
-        "runtime_observation": "archived_smoke_record_not_physical_qualification",
         "clinical_validation": False,
     }
 
@@ -4008,9 +4007,12 @@ def update_portfolio(repo: Path) -> None:
         "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/asset_manifest.json",
         "live_integration": "franka_hand_replacement_connectivity_aware_multimodal_dissection",
         "live_behavior": "distributed_traction_blunt_spreading_hydrodissection_guarded_scissors_low_energy_dissection_protected_structure_state_and_topology_verification",
-        "deployment": "enabled_for_research_iteration",
-        "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
-        "physical_qualification": "provisional_parameters_pending_instrumented_dissection_bench",
+        "deployment": "enabled_as_training_workcell",
+        "product_capability": "executable_training_workcell",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+        "real_world_evidence": "instrumented_dissection_bench_evidence_not_yet_established",
         "clinical_validation": False,
     }
     assets[:] = [item for item in assets if item.get("id") != asset_id]
@@ -4265,8 +4267,8 @@ def static_report(files: Sequence[Path]) -> dict[str, object]:
             path.relative_to(PACKAGE_ROOT).as_posix()
             for path in files if path.suffix == ".py"
         ],
-        "runtime_observation": "archived_smoke_record_not_physical_qualification",
-        "physical_effect_qualified": False,
+        "native_simulator_evidence": "not_recorded",
+        "real_world_evidence": "not_established",
     }
 
 

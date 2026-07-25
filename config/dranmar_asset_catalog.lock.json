@@ -48,15 +48,15 @@
         "collider_coverage.json",
         "franka_mount_contract.json",
         "interaction_frames.json",
+        "native_simulator_evidence.json",
         "perfusion_network.json",
         "perfusion_viability_task_contract.json",
         "physics_profile.json",
-        "qualification_report.json",
         "sensor_modalities.json"
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalAssessment/PerfusionViabilityRobot",
-      "sha256": "ee5195b474e97a1be341e2fa6f63d3f7ea527cac0110eda7163db2f87540ad92"
+      "sha256": "012853c9c02b1b27d3a9a8738dbf90a50094f0c81aa387931fc2969b7a45ac42"
     },
     {
       "bytes": 14929327,
@@ -175,7 +175,7 @@
       "sha256": "49e96c2b7b8b63537351b27787a50531222dc504055a2279c1bad708b30fadeb"
     },
     {
-      "bytes": 17450,
+      "bytes": 17449,
       "clinical_validation": false,
       "entrypoints": [
         "stapler_test_device.usda",
@@ -186,12 +186,12 @@
       "license_path": "LICENSE",
       "metadata": [
         "README.md",
-        "qualification_report.json",
+        "native_simulator_evidence.json",
         "tissue_closure_qualification_report.json"
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalClosure/StaplerTestCell",
-      "sha256": "8610e3ec1913a63a0ed89c61240010811af44b25a771ee7a9633359eda553bc6"
+      "sha256": "1c98f70c4e1b171dbec490123fc5c16c2b57f9ce5b9bf96a3dc518ee79baf178"
     },
     {
       "bytes": 1308161,
@@ -214,7 +214,7 @@
       "sha256": "5ba80dde18531db08cc13d311986748a28e51507142a54fd7e8fdf8332700453"
     },
     {
-      "bytes": 25740195,
+      "bytes": 25740118,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_adhesion_bridge.usda",
@@ -248,7 +248,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalDissection/SafePlaneDissectionRobot",
-      "sha256": "3859a3357575a682b2b87a98ec9b13ab5064666b7df1d301245c3be4bbd0ac68"
+      "sha256": "60236ab41c761c751fb1595e7ddbabf3a01647914ea599474d4850bf86288e95"
     },
     {
       "bytes": 9745553,
@@ -636,8 +636,8 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "1eab5cffcaa8572509ed4761188d472306c6629b71dfa3685ce75013035a6b7d",
-  "catalog_version": "1.1.0",
+  "catalog_sha256": "9a8880911b7d771291727040afc8f3c6d297e3cd9d3f2b235480e981d66a8d43",
+  "catalog_version": "1.2.0",
   "clinical_validation": false,
   "i4h": {
     "asset_version": "0.7.0",
@@ -659,8 +659,11 @@
         "asset": "assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
         "clinical_validation": false,
         "id": "dr-anmar-hemostasis-v1",
-        "native_gpu_qualification": "blocked_pending_native_probe",
-        "physical_qualification": "blocked_pending_closure_leak_retention_and_damage_data"
+        "native_simulator_evidence": "native_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "closure_leak_retention_and_damage_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_training_workcell_composition"
       },
       {
         "artifacts": {
@@ -673,8 +676,11 @@
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
         "clinical_validation": false,
         "id": "dr-anmar-laparotomy-sponge-v1",
-        "native_gpu_qualification": "qualified_rigid_and_surface_cuda_isaac_sim_5.1_and_6.0",
-        "physical_qualification": "provisional_category_grounded_parameters_active"
+        "native_simulator_evidence": "rigid_and_surface_cuda_runs_recorded_on_isaac_sim_5_1_and_6_0",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "category_grounded_parameters_without_instrumented_bench_correlation",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_simulation_training"
       },
       {
         "artifacts": {
@@ -690,8 +696,11 @@
         "asset": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
         "clinical_validation": false,
         "id": "dr-anmar-needle",
-        "native_gpu_qualification": "blocked_pending_native_probe",
-        "physical_qualification": "blocked_pending_metrology_and_bench_data"
+        "native_simulator_evidence": "native_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "instrumented_metrology_and_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_training_workcell_composition"
       },
       {
         "artifacts": {
@@ -703,8 +712,11 @@
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/dranmar_needle.usda",
         "clinical_validation": false,
         "id": "dr-anmar-needle-system-v0.3.0",
-        "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
-        "physical_qualification": "provisional_category_level_parameters_active"
+        "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "category_level_parameters_without_instrumented_bench_correlation",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_simulation_training"
       },
       {
         "artifacts": {
@@ -717,8 +729,11 @@
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/dranmar_needle_thread.usda",
         "clinical_validation": false,
         "id": "dr-anmar-needle-thread-system-v0.3.0",
-        "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
-        "physical_qualification": "provisional_unmeasured_thread_joint_and_swage_parameters_active"
+        "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "thread_joint_and_swage_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_simulation_training"
       },
       {
         "artifacts": {
@@ -730,19 +745,25 @@
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_rigid_proxy.usda",
         "clinical_validation": false,
         "id": "dr-anmar-skin-stapler-v0.2.0",
-        "native_gpu_qualification": "articulated_test_cell_qualified_on_rtx_4090_2026_07_24_rigid_operating_room_prop_pending",
-        "physical_qualification": "provisional_unmeasured_parameters_active"
+        "native_simulator_evidence": "articulated_test_cell_run_recorded_on_rtx_4090_2026_07_24",
+        "product_capability": "simulation_training_instrument",
+        "real_world_evidence": "instrumented_stapler_measurements_not_yet_established",
+        "software_evidence": "repository_verified_asset_and_mechanism_contracts",
+        "training_readiness": "available_for_simulation_training"
       },
       {
         "artifacts": {
           "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda",
-          "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/qualification_report.json"
+          "native_evidence": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/native_simulator_evidence.json"
         },
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda",
         "clinical_validation": false,
         "id": "dr-anmar-stapler-test-cell-v0.1.0",
-        "native_gpu_qualification": "qualified_on_rtx_4090_2026_07_24_partial_18_7477_deg_no_deployment_full_event_24_6002_deg_max_pusher_8_9742_mm_max_fixture_error_0_1207_mm_0_0685_deg",
-        "physical_qualification": "blocked_pending_instrumented_physical_trigger_and_pusher_measurements"
+        "native_simulator_evidence": "rtx_4090_mechanism_cycle_recorded_2026_07_24_with_partial_and_full_event_telemetry",
+        "product_capability": "mechanism_training_workcell",
+        "real_world_evidence": "instrumented_trigger_and_pusher_measurements_not_yet_established",
+        "software_evidence": "repository_verified_asset_mechanism_and_room_contracts",
+        "training_readiness": "available_for_simulation_training_and_evaluation"
       },
       {
         "artifacts": {
@@ -754,8 +775,11 @@
         "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
         "clinical_validation": false,
         "id": "dr-anmar-suturable-tissue-v1",
-        "native_gpu_qualification": "blocked_pending_native_probe",
-        "physical_qualification": "blocked_pending_deformation_puncture_pullout_and_closure_data"
+        "native_simulator_evidence": "native_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "deformation_puncture_pullout_and_closure_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_training_workcell_composition"
       },
       {
         "artifacts": {
@@ -773,8 +797,11 @@
         "asset": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
         "clinical_validation": false,
         "id": "dr-anmar-suture-4-0-braided-v1",
-        "native_gpu_qualification": "blocked_pending_convergence_and_physical_validation_after_warp_gpu_engineering_pass",
-        "physical_qualification": "blocked_pending_straight_knotted_damage_and_swage_bench_data"
+        "native_simulator_evidence": "warp_gpu_engineering_run_recorded_native_physx_convergence_not_yet_established",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "straight_knotted_damage_and_swage_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_training_workcell_composition"
       },
       {
         "artifacts": {
@@ -783,15 +810,17 @@
           "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/interaction_frames.json",
           "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_payload.usda",
           "profile": "physics_next/surgical-reconstruction/dranmar-adaptive-anastomosis-v1.json",
-          "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/qualification_report.json",
           "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/asset_manifest.json",
           "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/adaptive_anastomosis_task_contract.json"
         },
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_standalone.usda",
         "clinical_validation": false,
         "id": "dranmar-adaptive-anastomosis-robot-v1",
-        "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-        "physical_qualification": "blocked_pending_scene_measured_lumen_seam_leak_and_instrumented_anastomosis_bench"
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "lumen_seam_leak_and_instrumented_anastomosis_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       },
       {
         "artifacts": {
@@ -800,15 +829,17 @@
           "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/interaction_frames.json",
           "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_payload.usda",
           "profile": "physics_next/surgical-hemostasis/dranmar-adaptive-hemostasis-v1.json",
-          "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/qualification_report.json",
           "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/asset_manifest.json",
           "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/adaptive_hemostasis_task_contract.json"
         },
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_standalone.usda",
         "clinical_validation": false,
         "id": "dranmar-adaptive-hemostasis-robot-v1",
-        "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-        "physical_qualification": "blocked_pending_scene_measured_occlusion_patch_seal_residual_flow_and_instrumented_hemostasis_bench"
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "occlusion_patch_seal_residual_flow_and_instrumented_hemostasis_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       },
       {
         "artifacts": {
@@ -817,15 +848,17 @@
           "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/interaction_frames.json",
           "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_payload.usda",
           "profile": "physics_next/surgical-division/dranmar-adaptive-seal-divide-v1.json",
-          "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/qualification_report.json",
           "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/asset_manifest.json",
           "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/adaptive_seal_divide_task_contract.json"
         },
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_standalone.usda",
         "clinical_validation": false,
         "id": "dranmar-adaptive-seal-divide-robot-v1",
-        "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-        "physical_qualification": "blocked_surface_shell_cannot_resolve_through_thickness_compression_pending_volumetric_material_and_instrumented_bench"
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "through_thickness_compression_material_and_instrumented_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       },
       {
         "artifacts": {
@@ -834,15 +867,17 @@
           "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/interaction_frames.json",
           "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_payload.usda",
           "profile": "physics_next/surgical-exposure/dranmar-atraumatic-exposure-robot-v1.json",
-          "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/qualification_report.json",
           "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/asset_manifest.json",
           "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/surgical_exposure_task_contract.json"
         },
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_standalone.usda",
         "clinical_validation": false,
         "id": "dranmar-atraumatic-exposure-robot-v1",
-        "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-        "physical_qualification": "blocked_pending_scene_measured_pad_contact_force_capture_quality_and_instrumented_retraction_bench"
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "pad_contact_force_capture_quality_and_instrumented_retraction_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       },
       {
         "artifacts": {
@@ -855,8 +890,11 @@
         "asset": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda",
         "clinical_validation": false,
         "id": "dranmar-dynamic-abdominal-patient-v1",
-        "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
-        "physical_qualification": "provisional_anatomy_mechanics_and_physiology_parameters_active"
+        "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+        "product_capability": "interactive_training_patient",
+        "real_world_evidence": "anatomy_mechanics_and_physiology_bench_correlation_not_yet_established",
+        "software_evidence": "repository_verified_asset_runtime_and_state_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       },
       {
         "artifacts": {
@@ -876,25 +914,31 @@
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncosurgery_tool.usda",
         "clinical_validation": false,
         "id": "dranmar-oncosurgery-cell-v1",
-        "native_gpu_qualification": "passed_non_contact_dynamic_volume_stability_on_rtx_4090_2026_07_25_274_nodes_6_146729e_08_m_max_displacement_1_907188e_05_m_s_max_speed_zero_engine_errors_contact_sensor_and_franka_matrix_pending",
-        "physical_qualification": "pending_instrumented_payload_tissue_sensor_energy_and_specimen_bench"
+        "native_simulator_evidence": "non_contact_dynamic_volume_stability_recorded_on_rtx_4090_2026_07_25_contact_sensor_and_franka_matrix_not_yet_recorded",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "instrumented_payload_tissue_sensor_energy_and_specimen_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_training_and_runtime_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       },
       {
         "artifacts": {
           "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_standalone.usda",
           "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfused_tissue_demo.usda",
           "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/interaction_frames.json",
+          "native_evidence": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/native_simulator_evidence.json",
           "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_payload.usda",
           "profile": "physics_next/surgical-assessment/dranmar-perfusion-viability-v1.json",
-          "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/qualification_report.json",
           "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/asset_manifest.json",
           "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/perfusion_viability_task_contract.json"
         },
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_standalone.usda",
         "clinical_validation": false,
         "id": "dranmar-perfusion-viability-robot-v1",
-        "native_gpu_qualification": "passed_v0_1_1_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_rtx_4090_standalone_loaded_franka_and_serialized_six_camera_depth_matrix",
-        "physical_qualification": "reduced_order_research_model_pending_sensor_calibration_flow_bench_and_tissue_validation"
+        "native_simulator_evidence": "standalone_loaded_franka_and_serialized_six_camera_depth_matrix_recorded_on_rtx_4090_isaac_sim_6_0_1",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "sensor_calibration_flow_bench_and_tissue_correlation_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       },
       {
         "artifacts": {
@@ -903,15 +947,17 @@
           "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/interaction_frames.json",
           "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_payload.usda",
           "profile": "physics_next/surgical-dissection/dranmar-safeplane-dissection-v1.json",
-          "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/qualification_report.json",
           "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/asset_manifest.json",
           "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/safeplane_dissection_task_contract.json"
         },
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_standalone.usda",
         "clinical_validation": false,
         "id": "dranmar-safeplane-dissection-robot-v1",
-        "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-        "physical_qualification": "blocked_pending_contact_derived_bridge_work_scene_measured_release_and_instrumented_dissection_bench"
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "contact_derived_bridge_work_release_and_instrumented_dissection_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       },
       {
         "artifacts": {
@@ -924,8 +970,11 @@
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_articulated.usda",
         "clinical_validation": false,
         "id": "dranmar-skin-adhesive-system-v1",
-        "native_gpu_qualification": "pending_live_isaac_sim_cuda_execution",
-        "physical_qualification": "provisional_category_parameters_active"
+        "native_simulator_evidence": "live_native_cuda_execution_not_yet_recorded",
+        "product_capability": "simulation_training_instrument",
+        "real_world_evidence": "instrumented_adhesive_delivery_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_and_mechanism_contracts",
+        "training_readiness": "available_for_simulation_training"
       },
       {
         "artifacts": {
@@ -940,11 +989,14 @@
         "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_standalone.usda",
         "clinical_validation": false,
         "id": "dranmar-wound-preparation-robot-v1",
-        "native_gpu_qualification": "runtime_smoke_only_physical_effect_unqualified",
-        "physical_qualification": "blocked_pending_contact_derived_debridement_work_fluid_capture_and_instrumented_calibration"
+        "native_simulator_evidence": "runtime_smoke_recorded_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "contact_derived_debridement_work_fluid_capture_and_instrumented_calibration_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
       }
     ],
-    "schema": "dr.anmar.asset-portfolio.v1"
+    "schema": "dr.anmar.asset-portfolio.v2"
   },
-  "schema": "dr.anmar.asset-catalog-lock.v2"
+  "schema": "dr.anmar.asset-catalog-lock.v3"
 }

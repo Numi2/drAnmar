@@ -1284,7 +1284,7 @@ def generate_textures() -> list[Path]:
     try: font=ImageFont.truetype("DejaVuSans-Bold.ttf",92); small=ImageFont.truetype("DejaVuSans.ttf",38)
     except OSError: font=ImageFont.load_default(); small=ImageFont.load_default()
     d.rounded_rectangle((26,26,998,394),radius=36,outline=(18,90,145),width=12,fill=(249,251,253))
-    d.text((72,82),"DrAnmar",font=font,fill=(12,74,122)); d.text((76,226),"ATRAUMATIC EXPOSURE",font=small,fill=(18,96,142)); d.text((76,292),"RESEARCH SIMULATION ONLY",font=small,fill=(96,104,112))
+    d.text((72,82),"DrAnmar",font=font,fill=(12,74,122)); d.text((76,226),"ATRAUMATIC EXPOSURE",font=small,fill=(18,96,142)); d.text((76,292),"SIMULATION TRAINING WORKCELL",font=small,fill=(96,104,112))
     paths.append(save_texture(label,"dranmar_exposure_label.png"))
     return paths
 
@@ -1307,36 +1307,6 @@ def task_contract() -> dict[str,object]:
 
 def physics_profile(bundle: ToolBundle) -> dict[str,object]:
     return {"schema":"dr.anmar.atraumatic-exposure-profile.v1","id":"dranmar-atraumatic-exposure-robot-v1","version":VERSION,"status":"research_informed_engineering_model_pending_physical_and_clinical_validation","units":"MKS","mechanism":{"lateral_retraction_range_m":0.040,"independent_lift_range_m":[-0.025,0.030],"pad_pitch_ranges_deg":{"left":[-42,72],"right":[-72,42]},"compliance_travel_m":0.006,"compliance_stiffness_n_m":1250.0,"compliance_damping_n_s_m":38.0,"capture_cells_per_pad":PAD_CAPTURE_CELL_COUNT,"pad_contact_area_m2_seed":0.0015},"force_control":{"nominal_target_force_per_pad_n":1.25,"soft_limit_force_per_pad_n":2.5,"hard_release_force_per_pad_n":4.0,"maximum_force_asymmetry_n":1.0,"controller":"independent_force_limited_impedance_plus_roi_visibility_outer_loop","all_values":"provisional_engineering_seeds"},"capture":{"fenestrated":"geometric_trapping_plus_distributed_overlap_attachments","microcup":"distributed_low_vacuum_proxy_plus_overlap_attachments","attachment_cells":"independent_runtime_deformable_attachments","release":"progressive_outer_cell_release_then_full_release_on_hard_overload"},"tissue":{"representation":"two portable triangle surfaces cooked at runtime by the current surface-deformable route","youngs_modulus_pa_seed":60000.0,"poissons_ratio_seed":0.45,"surface_thickness_m_seed":0.006,"density_kg_m3_seed":1050.0,"self_collision":True},"runtime":{"observed_stack":"Isaac Sim 6.0.1.0 / Isaac Lab distribution 6.1.16","franka_mount":"stock panda_hand_joint frame with unique panda_link8 compatibility fallback","status":"composition_observed_physical_effect_unqualified"},"clinical_validation":False,"medical_device":False}
-
-
-def qualification_report() -> dict[str,object]:
-    return {
-        "schema": "dr.anmar.runtime-observation-record.v2",
-        "asset": "dranmar-atraumatic-exposure-robot-v1",
-        "status": "archived_not_qualification_evidence",
-        "historical_observation": {
-            "date": "2026-07-25",
-            "host": "Numi",
-            "gpu": "NVIDIA GeForce RTX 4090",
-            "stack": "Isaac Lab 6.1.16 / Isaac Sim 6.0.1.0",
-            "observed": "standalone and Franka compositions stepped with finite joint state",
-        },
-        "usable_evidence": [
-            "asset composition and articulation discovery",
-            "surface-deformable schema application",
-            "fail-closed attachment authoring",
-            "bounded controller outputs",
-        ],
-        "not_evidence_for": [
-            "pad contact force",
-            "capture quality",
-            "tissue safety",
-            "exposure efficacy",
-            "clinical or regulatory performance",
-        ],
-        "clinical_validation": False,
-        "medical_device": False,
-    }
 
 
 def collider_coverage(bundle: ToolBundle) -> dict[str,object]:
@@ -2676,13 +2646,12 @@ def generate() -> dict[str,object]:
         write_json(ASSET_ROOT/"surgical_exposure_task_contract.json",task_contract()),
         write_json(ASSET_ROOT/"physics_profile.json",physics_profile(bundle)),
         write_json(ASSET_ROOT/"collider_coverage.json",collider_coverage(bundle)),
-        write_json(ASSET_ROOT/"qualification_report.json",qualification_report()),
     ]
     (ASSET_ROOT/"README.md").write_text(readme(),encoding="utf-8")
     shutil.copy2(ASSET_ROOT/"README.md",PACKAGE_ROOT/"README.md")
     (ASSET_ROOT/"LICENSE.txt").write_text("Copyright 2026 DrAnmar Project Developers\n\nLicensed under the Apache License, Version 2.0.\n",encoding="utf-8")
     (PACKAGE_ROOT/"LICENSE").write_text("Apache License 2.0\n",encoding="utf-8")
-    (PACKAGE_ROOT/"NOTICE").write_text("DrAnmar Atraumatic Surgical Exposure Robot. Independently generated category-level research asset.\n",encoding="utf-8")
+    (PACKAGE_ROOT/"NOTICE").write_text("DrAnmar Atraumatic Surgical Exposure Robot. Independently generated simulation-training asset.\n",encoding="utf-8")
     INTEGRATION_PATH.write_text(author_integration_module(),encoding="utf-8")
     (DOCS_ROOT/"MECHANISM.md").write_text(docs_mechanism(),encoding="utf-8")
     (DOCS_ROOT/"FORCE_CONTROL.md").write_text(docs_force_control(),encoding="utf-8")

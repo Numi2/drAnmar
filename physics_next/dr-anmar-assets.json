@@ -1,7 +1,7 @@
 {
-  "schema": "dr.anmar.asset-portfolio.v1",
+  "schema": "dr.anmar.asset-portfolio.v2",
   "name": "DrAnmar Surgical Asset Portfolio",
-  "status": "research_assets_enabled_with_per_asset_qualification_evidence",
+  "status": "training_assets_available_with_separate_evidence_tiers",
   "units": "metres-kilograms-seconds",
   "ownership": {
     "geometry": "independently_authored_dr_anmar",
@@ -27,8 +27,11 @@
       "report": "assets/dr_anmar/suture/DrAnmarSuture4_0.report.json",
       "live_integration": "all_repository_local_rooms",
       "live_behavior": "nvidia_aligned_component_and_subcomponent_model_identity_asset_info_wikidata_semantic_labels_inherited_by_all_visual_geometry_and_explicitly_anchored_relative_composition_paths_lightweight_interface_referenced_base_and_public_none_physics_physx_payload_variants_with_nested_suture_selection_binary_geometry_visual_materials_neutral_physics_and_dedicated_physx_layers_without_cross_content_or_cross_engine_schema_contamination_rigid_needle_geometry_integrated_explicit_mass_center_inertia_principal_axes_analytic_indexed_face_varying_normals_and_composed_suture_analytic_tangent_frames_and_explicit_physical_envelope_decoupled_mass_center_inertia_principal_axes_top_level_looks_separate_visual_physics_materials_guide_purpose_nonrendering_collision_density_scaled_episode_dynamics_scale_aware_physx_contact_offsets_curvature_bounded_explicit_extent_compound_collision_swage_and_setup_domain",
-      "native_gpu_qualification": "blocked_pending_native_probe",
-      "physical_qualification": "blocked_pending_metrology_and_bench_data",
+      "product_capability": "simulation_training_component",
+      "training_readiness": "available_for_training_workcell_composition",
+      "software_evidence": "repository_verified_asset_closure",
+      "native_simulator_evidence": "native_execution_not_yet_recorded",
+      "real_world_evidence": "instrumented_metrology_and_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -45,8 +48,11 @@
       "live_integration": "all_repository_local_rooms",
       "live_behavior": "warp_xpbd_segment_capsule_self_contact_knot_compaction_transferable_instrument_grasps_breakable_needle_swage_and_localized_strand_failure_with_layered_openusd_physx_compatibility_payload",
       "gpu_report": "physics_next/benchmarks/dr-anmar-warp-suture-qualification.json",
-      "native_gpu_qualification": "blocked_pending_convergence_and_physical_validation_after_warp_gpu_engineering_pass",
-      "physical_qualification": "blocked_pending_straight_knotted_damage_and_swage_bench_data",
+      "product_capability": "simulation_training_component",
+      "training_readiness": "available_for_training_workcell_composition",
+      "software_evidence": "repository_verified_asset_closure",
+      "native_simulator_evidence": "warp_gpu_engineering_run_recorded_native_physx_convergence_not_yet_established",
+      "real_world_evidence": "straight_knotted_damage_and_swage_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -63,8 +69,11 @@
         "thread_passage",
         "cutting"
       ],
-      "native_gpu_qualification": "blocked_pending_native_probe",
-      "physical_qualification": "blocked_pending_deformation_puncture_pullout_and_closure_data",
+      "product_capability": "simulation_training_component",
+      "training_readiness": "available_for_training_workcell_composition",
+      "software_evidence": "repository_verified_asset_closure",
+      "native_simulator_evidence": "native_execution_not_yet_recorded",
+      "real_world_evidence": "deformation_puncture_pullout_and_closure_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -90,8 +99,11 @@
         "bleeding",
         "rupture"
       ],
-      "native_gpu_qualification": "blocked_pending_native_probe",
-      "physical_qualification": "blocked_pending_closure_leak_retention_and_damage_data",
+      "product_capability": "simulation_training_component",
+      "training_readiness": "available_for_training_workcell_composition",
+      "software_evidence": "repository_verified_asset_closure",
+      "native_simulator_evidence": "native_execution_not_yet_recorded",
+      "real_world_evidence": "closure_leak_retention_and_damage_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -104,8 +116,11 @@
       "live_integration": "i4h_compatible_surgical_count_catalog_and_repository_local_rooms",
       "live_behavior": "dry_and_wet_rigid_perception_grasp_handover_tray_placement_counting_and_loop_retrieval_plus_runtime_cooked_connected_surface_deformation_with_self_collision",
       "deployment": "enabled",
-      "native_gpu_qualification": "qualified_rigid_and_surface_cuda_isaac_sim_5.1_and_6.0",
-      "physical_qualification": "provisional_category_grounded_parameters_active",
+      "product_capability": "simulation_training_component",
+      "training_readiness": "available_for_simulation_training",
+      "software_evidence": "repository_verified_asset_closure",
+      "native_simulator_evidence": "rigid_and_surface_cuda_runs_recorded_on_isaac_sim_5_1_and_6_0",
+      "real_world_evidence": "category_grounded_parameters_without_instrumented_bench_correlation",
       "clinical_validation": false
     },
     {
@@ -117,8 +132,11 @@
       "live_integration": "optional_standalone_rigid_prop_in_main_operating_room",
       "live_behavior": "half_circle_taper_point_rigid_needle_with_explicit_swage_recess_compound_collision_mass_properties_and_robot_interaction_frames",
       "deployment": "enabled_as_optional_bench_asset",
-      "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
-      "physical_qualification": "provisional_category_level_parameters_active",
+      "product_capability": "simulation_training_component",
+      "training_readiness": "available_for_simulation_training",
+      "software_evidence": "repository_verified_asset_closure",
+      "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+      "real_world_evidence": "category_level_parameters_without_instrumented_bench_correlation",
       "clinical_validation": false
     },
     {
@@ -132,8 +150,11 @@
       "live_integration": "four_independently_selectable_main_operating_room_representations",
       "live_behavior": "rigid_needle_with_180_mm_braided_4_0_thread_120_maximal_coordinate_segments_d6_constraints_explicit_swage_joint_coiled_extended_and_rigid_proxy_routes",
       "deployment": "enabled_as_optional_bench_assets",
-      "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
-      "physical_qualification": "provisional_unmeasured_thread_joint_and_swage_parameters_active",
+      "product_capability": "simulation_training_component",
+      "training_readiness": "available_for_simulation_training",
+      "software_evidence": "repository_verified_asset_closure",
+      "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+      "real_world_evidence": "thread_joint_and_swage_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -147,8 +168,11 @@
       "live_integration": "optional_loaded_rigid_prop_in_main_operating_room",
       "live_behavior": "loaded_or_empty_rigid_perception_grasp_handover_positioning_and_contact_plus_separate_articulated_trigger_pusher_and_deterministic_simulated_staple_deployment_helpers",
       "deployment": "enabled_as_optional_rigid_operating_room_prop",
-      "native_gpu_qualification": "articulated_test_cell_qualified_on_rtx_4090_2026_07_24_rigid_operating_room_prop_pending",
-      "physical_qualification": "provisional_unmeasured_parameters_active",
+      "product_capability": "simulation_training_instrument",
+      "training_readiness": "available_for_simulation_training",
+      "software_evidence": "repository_verified_asset_and_mechanism_contracts",
+      "native_simulator_evidence": "articulated_test_cell_run_recorded_on_rtx_4090_2026_07_24",
+      "real_world_evidence": "instrumented_stapler_measurements_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -163,8 +187,11 @@
       "live_integration": "optional_complete_system_in_main_operating_room_bench",
       "live_behavior": "four_link_dual_paddle_and_metering_piston_articulation_independently_graspable_cap_and_fresh_or_cured_kinematic_deposit_task_state",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "pending_live_isaac_sim_cuda_execution",
-      "physical_qualification": "provisional_category_parameters_active",
+      "product_capability": "simulation_training_instrument",
+      "training_readiness": "available_for_simulation_training",
+      "software_evidence": "repository_verified_asset_and_mechanism_contracts",
+      "native_simulator_evidence": "live_native_cuda_execution_not_yet_recorded",
+      "real_world_evidence": "instrumented_adhesive_delivery_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -172,12 +199,15 @@
       "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda",
       "fixture_articulated_device": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_device.usda",
       "mechanism_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_articulated.usda",
-      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/qualification_report.json",
+      "native_evidence": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/native_simulator_evidence.json",
       "live_integration": "dedicated_doctor_selectable_stapler_test_cell_room",
       "live_behavior": "six_dof_velocity_fixture_virtual_linear_actuator_bounded_press_hold_release_partial_stroke_rejection_trigger_pusher_and_fixture_error_telemetry_rearm_and_single_edge_logical_deployment",
-      "deployment": "enabled_as_research_room",
-      "native_gpu_qualification": "qualified_on_rtx_4090_2026_07_24_partial_18_7477_deg_no_deployment_full_event_24_6002_deg_max_pusher_8_9742_mm_max_fixture_error_0_1207_mm_0_0685_deg",
-      "physical_qualification": "blocked_pending_instrumented_physical_trigger_and_pusher_measurements",
+      "deployment": "enabled_as_training_room",
+      "product_capability": "mechanism_training_workcell",
+      "training_readiness": "available_for_simulation_training_and_evaluation",
+      "software_evidence": "repository_verified_asset_mechanism_and_room_contracts",
+      "native_simulator_evidence": "rtx_4090_mechanism_cycle_recorded_2026_07_24_with_partial_and_full_event_telemetry",
+      "real_world_evidence": "instrumented_trigger_and_pusher_measurements_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -191,8 +221,11 @@
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/asset_manifest.json",
       "live_integration": "franka_panda_link8_replacement_plus_optional_main_bench_standalone_articulation_and_wound_bed_station",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "runtime_smoke_only_physical_effect_unqualified",
-      "physical_qualification": "blocked_pending_contact_derived_debridement_work_fluid_capture_and_instrumented_calibration",
+      "product_capability": "executable_training_workcell",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+      "native_simulator_evidence": "runtime_smoke_recorded_current_native_matrix_not_yet_established",
+      "real_world_evidence": "contact_derived_debridement_work_fluid_capture_and_instrumented_calibration_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -204,12 +237,14 @@
       "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/interaction_frames.json",
       "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/surgical_exposure_task_contract.json",
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/asset_manifest.json",
-      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/qualification_report.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_exposure_substrate_station",
       "live_behavior": "distributed_tissue_capture_independent_retraction_compliance_force_estimation_progressive_release_and_roi_visibility_control",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-      "physical_qualification": "blocked_pending_scene_measured_pad_contact_force_capture_quality_and_instrumented_retraction_bench",
+      "product_capability": "executable_training_workcell",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+      "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+      "real_world_evidence": "pad_contact_force_capture_quality_and_instrumented_retraction_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -221,12 +256,14 @@
       "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/interaction_frames.json",
       "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/adaptive_hemostasis_task_contract.json",
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/asset_manifest.json",
-      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/qualification_report.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_bleeding_vessel_station",
       "live_behavior": "blood_particles_fixture_and_pad_attachments_retained_clip_patch_bonds_and_fail_closed_reduced_order_flow_controller",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-      "physical_qualification": "blocked_pending_scene_measured_occlusion_patch_seal_residual_flow_and_instrumented_hemostasis_bench",
+      "product_capability": "executable_training_workcell",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+      "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+      "real_world_evidence": "occlusion_patch_seal_residual_flow_and_instrumented_hemostasis_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -238,12 +275,14 @@
       "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/interaction_frames.json",
       "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/adaptive_anastomosis_task_contract.json",
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/asset_manifest.json",
-      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/qualification_report.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_hollow_tissue_station",
       "live_behavior": "bilateral_surface_deformables_distal_fixtures_temporary_capture_retained_staple_ring_collar_sector_bonds_and_fail_closed_patency_leak_controllers",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-      "physical_qualification": "blocked_pending_scene_measured_lumen_seam_leak_and_instrumented_anastomosis_bench",
+      "product_capability": "executable_training_workcell",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+      "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+      "real_world_evidence": "lumen_seam_leak_and_instrumented_anastomosis_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -255,12 +294,14 @@
       "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/interaction_frames.json",
       "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/adaptive_seal_divide_task_contract.json",
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/asset_manifest.json",
-      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/qualification_report.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_vessel_station",
       "live_behavior": "dual_surface_deformables_distal_fixtures_bridge_cells_fail_closed_compression_and_blade_interlocks_and_research_thermal_leak_controllers",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-      "physical_qualification": "blocked_surface_shell_cannot_resolve_through_thickness_compression_pending_volumetric_material_and_instrumented_bench",
+      "product_capability": "executable_training_workcell",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+      "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+      "real_world_evidence": "through_thickness_compression_material_and_instrumented_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -272,12 +313,14 @@
       "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/interaction_frames.json",
       "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/safeplane_dissection_task_contract.json",
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/asset_manifest.json",
-      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/qualification_report.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_safeplane_tissue_station",
       "live_behavior": "surface_deformables_fixture_grounding_distributed_traction_guarded_multimodal_controller_protected_structure_interlocks_and_capacity_safe_pbd_fluid",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "archived_runtime_observation_not_physical_or_efficacy_qualification",
-      "physical_qualification": "blocked_pending_contact_derived_bridge_work_scene_measured_release_and_instrumented_dissection_bench",
+      "product_capability": "executable_training_workcell",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+      "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+      "real_world_evidence": "contact_derived_bridge_work_release_and_instrumented_dissection_bench_evidence_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -289,12 +332,15 @@
       "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/interaction_frames.json",
       "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/perfusion_viability_task_contract.json",
       "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/asset_manifest.json",
-      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/qualification_report.json",
+      "native_evidence": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/native_simulator_evidence.json",
       "live_integration": "franka_verified_stock_hand_frame_replacement_plus_optional_main_bench_standalone_articulation_and_perfused_tissue_station",
       "live_behavior": "blind_registered_multimodal_fusion_with_temporal_icg_conserved_consumables_sensor_fault_abstention_force_coupled_contact_physical_intervention_evidence_and_closed_loop_rescan",
       "deployment": "enabled_as_optional_bench_system",
-      "native_gpu_qualification": "passed_v0_1_1_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_rtx_4090_standalone_loaded_franka_and_serialized_six_camera_depth_matrix",
-      "physical_qualification": "reduced_order_research_model_pending_sensor_calibration_flow_bench_and_tissue_validation",
+      "product_capability": "executable_training_workcell",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+      "native_simulator_evidence": "standalone_loaded_franka_and_serialized_six_camera_depth_matrix_recorded_on_rtx_4090_isaac_sim_6_0_1",
+      "real_world_evidence": "sensor_calibration_flow_bench_and_tissue_correlation_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -305,9 +351,12 @@
       "profile": "physics_next/dynamic-patient/dranmar-dynamic-abdominal-patient-v1.json",
       "runtime": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/dynamic_abdominal_patient.py",
       "live_integration": "unified_procedure_patient_for_all_dranmar_surgical_robots",
-      "deployment": "enabled_for_research_iteration",
-      "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
-      "physical_qualification": "provisional_anatomy_mechanics_and_physiology_parameters_active",
+      "deployment": "enabled_as_training_patient",
+      "product_capability": "interactive_training_patient",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_runtime_and_state_contracts",
+      "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+      "real_world_evidence": "anatomy_mechanics_and_physiology_bench_correlation_not_yet_established",
       "clinical_validation": false
     },
     {
@@ -326,19 +375,22 @@
       "gpu_report": "physics_next/benchmarks/dranmar-oncology-native-qualification.json",
       "live_integration": "franka_link8_payload_standalone_articulation_rigid_proxy_registered_liver_dynamic_patient_explicit_tetmesh_gpu_volume_liver_and_three_station_workcell",
       "live_behavior": "native_continuous_liver_deformation_registered_discrete_irreversible_resection_topology_multimodal_fusion_with_abstention_volumetric_tumor_and_margin_accounting_fail_closed_pedicle_seal_division_specimen_containment_orientation_cavity_correction_and_blood_bile_gates",
-      "deployment": "enabled_for_research_qualification",
-      "native_gpu_qualification": "passed_non_contact_dynamic_volume_stability_on_rtx_4090_2026_07_25_274_nodes_6_146729e_08_m_max_displacement_1_907188e_05_m_s_max_speed_zero_engine_errors_contact_sensor_and_franka_matrix_pending",
-      "physical_qualification": "pending_instrumented_payload_tissue_sensor_energy_and_specimen_bench",
+      "deployment": "enabled_as_training_workcell",
+      "product_capability": "executable_training_workcell",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_task_training_and_runtime_contracts",
+      "native_simulator_evidence": "non_contact_dynamic_volume_stability_recorded_on_rtx_4090_2026_07_25_contact_sensor_and_franka_matrix_not_yet_recorded",
+      "real_world_evidence": "instrumented_payload_tissue_sensor_energy_and_specimen_bench_evidence_not_yet_established",
       "clinical_validation": false
     }
   ],
-  "validation": {
-    "deterministic_contracts": "automated_in_ci",
+  "evidence_policy": {
+    "repository_verification": "automated_in_ci",
     "openusd_parse": "required_before_release",
-    "native_gpu_results": "required_for_native_capability_promotion",
-    "bench_compositor": "passed_7_of_7_on_numi_rtx_4090_2026_07_25",
+    "native_simulator_evidence": "specific_recorded_stack_only",
+    "bench_compositor": "seven_of_seven_workcells_recorded_on_numi_rtx_4090_2026_07_25",
     "bench_compositor_report": "physics_next/benchmarks/dr-anmar-bench-robot-system-matrix.json",
-    "physical_bench_results": "required_for_biomechanical_promotion",
-    "clinical_use": "blocked"
+    "real_world_evidence": "instrumented_bench_results_required_before_real_world_claims",
+    "clinical_evidence": "not_established"
   }
 }

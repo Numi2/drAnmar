@@ -22,9 +22,11 @@ BENCH_ROBOT_SYSTEM_CATALOG: tuple[dict[str, Any], ...] = (
         "id": "wound_preparation_robot",
         "title": "Wound preparation robot",
         "description": (
-            "Articulated inspection, irrigation, aspiration and debridement "
-            "system with its wound-bed procedure substrate."
+            "Executable Dr.Anmar training workcell for articulated inspection, "
+            "irrigation, aspiration and debridement with a wound-bed task."
         ),
+        "product_capability": "executable_training_workcell",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
         "path": (
             "Props/SurgicalPreparation/WoundPreparationRobot/"
             "dranmar_wound_preparation_tool_standalone.usda"
@@ -53,9 +55,11 @@ BENCH_ROBOT_SYSTEM_CATALOG: tuple[dict[str, Any], ...] = (
         "id": "atraumatic_exposure_robot",
         "title": "Atraumatic exposure robot",
         "description": (
-            "Articulated bilateral tissue-capture and force-controlled "
-            "retraction system with its exposure substrate."
+            "Executable Dr.Anmar training workcell for bilateral tissue capture, "
+            "force-controlled retraction and exposure management."
         ),
+        "product_capability": "executable_training_workcell",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
         "path": (
             "Props/SurgicalExposure/AtraumaticExposureRobot/"
             "dranmar_atraumatic_exposure_tool_standalone.usda"
@@ -84,9 +88,11 @@ BENCH_ROBOT_SYSTEM_CATALOG: tuple[dict[str, Any], ...] = (
         "id": "adaptive_hemostasis_robot",
         "title": "Adaptive hemostasis robot",
         "description": (
-            "Articulated field-clearing, temporary-control, clip, patch and "
-            "seal-verification system with its bleeding-vessel substrate."
+            "Executable Dr.Anmar training workcell for field clearing, temporary "
+            "control, clipping, patching and simulated seal assessment."
         ),
+        "product_capability": "executable_training_workcell",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
         "path": (
             "Props/SurgicalHemostasis/AdaptiveHemostasisRobot/"
             "dranmar_adaptive_hemostasis_tool_standalone.usda"
@@ -115,9 +121,11 @@ BENCH_ROBOT_SYSTEM_CATALOG: tuple[dict[str, Any], ...] = (
         "id": "adaptive_anastomosis_robot",
         "title": "Adaptive anastomosis robot",
         "description": (
-            "Articulated capture, alignment, staple-ring, reinforcement and "
-            "leak-test system with its hollow-tissue substrate."
+            "Executable Dr.Anmar training workcell for capture, alignment, "
+            "staple-ring deployment, reinforcement and simulated leak testing."
         ),
+        "product_capability": "executable_training_workcell",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
         "path": (
             "Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/"
             "dranmar_adaptive_anastomosis_tool_standalone.usda"
@@ -146,9 +154,11 @@ BENCH_ROBOT_SYSTEM_CATALOG: tuple[dict[str, Any], ...] = (
         "id": "adaptive_seal_divide_robot",
         "title": "Adaptive seal-and-divide robot",
         "description": (
-            "Articulated centering, compression-sealing, guarded division and "
-            "stump-verification system with its vessel substrate."
+            "Executable Dr.Anmar training workcell for centering, compression "
+            "sealing, guarded division and simulated stump assessment."
         ),
+        "product_capability": "executable_training_workcell",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
         "path": (
             "Props/SurgicalDivision/AdaptiveSealDivideRobot/"
             "dranmar_adaptive_seal_divide_tool_standalone.usda"
@@ -177,9 +187,11 @@ BENCH_ROBOT_SYSTEM_CATALOG: tuple[dict[str, Any], ...] = (
         "id": "safeplane_dissection_robot",
         "title": "SafePlane dissection robot",
         "description": (
-            "Articulated traction, blunt, hydro, guarded-scissor and energy "
-            "dissection system with its protected-structure substrate."
+            "Executable Dr.Anmar training workcell for traction, blunt, hydro, "
+            "guarded-scissor and energy dissection around protected structures."
         ),
+        "product_capability": "executable_training_workcell",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
         "path": (
             "Props/SurgicalDissection/SafePlaneDissectionRobot/"
             "dranmar_safeplane_dissection_tool_standalone.usda"
@@ -208,9 +220,11 @@ BENCH_ROBOT_SYSTEM_CATALOG: tuple[dict[str, Any], ...] = (
         "id": "perfusion_viability_robot",
         "title": "Perfusion and viability robot",
         "description": (
-            "Articulated registered RGB, ICG, speckle, thermal, Doppler and "
-            "ultrasound assessment system with its perfused-tissue substrate."
+            "Executable Dr.Anmar training workcell for registered RGB, ICG, "
+            "speckle, thermal, Doppler and ultrasound assessment workflows."
         ),
+        "product_capability": "executable_training_workcell",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
         "path": (
             "Props/SurgicalAssessment/PerfusionViabilityRobot/"
             "dranmar_perfusion_viability_tool_standalone.usda"

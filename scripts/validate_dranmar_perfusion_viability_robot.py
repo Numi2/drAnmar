@@ -183,46 +183,46 @@ def main() -> int:
         "consumable depletion behavior is missing",
     )
 
-    qualification = ASSET_ROOT / "qualification_report.json"
-    if qualification.exists():
-        report = json.loads(qualification.read_text(encoding="utf-8"))
+    native_evidence = ASSET_ROOT / "native_simulator_evidence.json"
+    if native_evidence.exists():
+        report = json.loads(native_evidence.read_text(encoding="utf-8"))
         matrix = report.get("matrix", [])
-        require(report.get("status") == "pass", "qualification report does not pass")
+        require(report.get("status") == "pass", "native simulator evidence does not pass")
         require(
             {entry.get("representation") for entry in matrix}
             == {"standalone", "franka"}
             and all(entry.get("status") == "pass" for entry in matrix),
-            "native qualification matrix is incomplete",
+            "native simulator evidence matrix is incomplete",
         )
-        require(report.get("version") == "0.1.1", "qualification is not v0.1.1")
+        require(report.get("version") == "0.1.1", "native simulator evidence is not v0.1.1")
         require(
             all(entry.get("rendered_registered_camera_count") == 6 for entry in matrix),
-            "rendered camera qualification is incomplete",
+            "rendered camera evidence is incomplete",
         )
         require(
             all(entry.get("surface_deformable_fixture_attachments") == 2 for entry in matrix),
-            "deformable fixture qualification is incomplete",
+            "deformable fixture evidence is incomplete",
         )
         franka = next(
             entry for entry in matrix if entry.get("representation") == "franka"
         )
         require(
             len(franka.get("loaded_arm_motion", {})) == 3,
-            "loaded Franka sweep qualification is incomplete",
+            "loaded Franka sweep evidence is incomplete",
         )
         bench = report.get("bench_compositor", {})
         require(
             bench.get("status") == "pass"
             and bench.get("active_bench_assets") == ["perfusion_viability_robot"]
             and bench.get("featured_robot_system") == "perfusion_viability_robot",
-            "isolated perfusion bench qualification is incomplete",
+            "isolated perfusion bench evidence is incomplete",
         )
         require(
             bench.get("featured_station_position_m") == [0.04, 0.04, 0.015]
             and bench.get("featured_substrate_position_m") == [0.04, 0.04, 0.001]
             and bench.get("single_featured_system_policy") is True
             and bench.get("single_active_camera_renderer") is True,
-            "bench framing or latency policy differs from the qualified contract",
+            "bench framing or latency policy differs from the recorded contract",
         )
 
     result = {
@@ -233,7 +233,7 @@ def main() -> int:
         "primary_textures": len(png_files),
         "json_contracts": len(json_files),
         "python_files_compiled": len(PYTHON_FILES),
-        "qualification_report": qualification.exists(),
+        "native_simulator_evidence": native_evidence.exists(),
         "pxr_required": args.require_pxr,
         "research_only": True,
         "clinical_validation": False,

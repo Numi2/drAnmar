@@ -41,7 +41,6 @@
     "NVIDIA PhysX",
     "NVIDIA Isaac Lab"
   ],
-  "runtime_observation": "archived_smoke_record_not_physical_qualification",
   "schema": "dranmar.safeplane-dissection-profile.v1",
   "status": "research_informed_engineering_model_pending_runtime_metrology_and_clinical_validation",
   "tissue_substrate": {

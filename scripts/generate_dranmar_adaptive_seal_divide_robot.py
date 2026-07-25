@@ -2322,7 +2322,12 @@ def update_portfolio(repo: Path) -> None:
         "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_seal_divide_vessel_demo.usda",
         "profile": "physics_next/surgical-division/dranmar-adaptive-seal-divide-v1.json",
         "live_integration": "franka_hand_replacement_dual_seal_and_interlocked_division",
-        "deployment": "enabled_research_only",
+        "deployment": "enabled_as_training_workcell",
+        "product_capability": "executable_training_workcell",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+        "real_world_evidence": "instrumented_seal_divide_bench_evidence_not_yet_established",
         "clinical_validation": False,
     }
     assets[:] = [item for item in assets if item.get("id") != asset_id]
@@ -2498,8 +2503,8 @@ def static_report(files: Sequence[Path]) -> dict[str,object]:
             p.relative_to(PACKAGE_ROOT).as_posix()
             for p in files if p.suffix==".py"
         ],
-        "runtime_observation":"archived_smoke_record_not_physical_qualification",
-        "physical_effect_qualified":False,
+        "native_simulator_evidence":"not_recorded",
+        "real_world_evidence":"not_established",
     }
 
 

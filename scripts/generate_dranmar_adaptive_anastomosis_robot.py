@@ -2622,7 +2622,12 @@ def main():
         "profile":"physics_next/surgical-reconstruction/dranmar-adaptive-anastomosis-v1.json",
         "live_integration":"franka_panda_link8_replacement_and_standalone_articulation",
         "live_behavior":"bilateral_capture_alignment_eversion_circumferential_stapling_reinforcement_patency_and_pressure_decay_verification",
-        "deployment":"enabled_research_only",
+        "deployment":"enabled_as_training_workcell",
+        "product_capability":"executable_training_workcell",
+        "training_readiness":"available_for_simulation_training_data_generation_and_evaluation",
+        "software_evidence":"repository_verified_asset_task_and_controller_contracts",
+        "native_simulator_evidence":"native_cuda_execution_not_yet_recorded",
+        "real_world_evidence":"instrumented_anastomosis_bench_evidence_not_yet_established",
         "clinical_validation":False,
     }
     if portfolio.exists():
@@ -2758,13 +2763,13 @@ def static_report(files: Sequence[Path]) -> dict[str,object]:
     for path in usda:
         text=path.read_text(encoding="utf-8")
         checks.append({"path":path.relative_to(PACKAGE_ROOT).as_posix(),"balanced_braces":text.count("{")==text.count("}"),"flat_quaternion_count":text.count("quatf "),"nested_quaternion_pattern_absent":"(1, (" not in text,"one_line_over_absent":all(not(line.strip().startswith("over ") and "{" in line and "}" in line) for line in text.splitlines())})
-    runtime_status="archived_smoke_record_not_physical_qualification"
     return {
         "schema":"dranmar.static-build-report.v1",
         "asset":"dranmar-adaptive-anastomosis-robot-v1",
         "usda_checks":checks,
         "python_files":[p.relative_to(PACKAGE_ROOT).as_posix() for p in files if p.suffix==".py"],
-        "runtime_validation":runtime_status,
+        "native_simulator_evidence":"not_recorded",
+        "real_world_evidence":"not_established",
     }
 
 

@@ -157,9 +157,11 @@ def main() -> int:
     static_report = json.loads((root / "static_build_report.json").read_text(encoding="utf-8"))
     require(static_report.get("status") == "pass", "static build report does not pass")
     version = json.loads((asset_root / "asset_manifest.json").read_text(encoding="utf-8"))["version"]
-    qualification = json.loads((asset_root / "qualification_report.json").read_text(encoding="utf-8"))
-    require(qualification.get("version") == version, "qualification version differs")
-    require(qualification.get("status") == "pass", "qualification does not pass")
+    native_evidence = json.loads(
+        (asset_root / "native_simulator_evidence.json").read_text(encoding="utf-8")
+    )
+    require(native_evidence.get("version") == version, "native evidence version differs")
+    require(native_evidence.get("status") == "pass", "native evidence does not pass")
 
     archives = {}
     if args.archives_dir:

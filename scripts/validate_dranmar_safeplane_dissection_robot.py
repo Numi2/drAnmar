@@ -310,21 +310,6 @@ def main() -> int:
     )
     require(all((root / path).is_file() for path in required), "release documentation or qualification tooling is incomplete")
 
-    qualification = asset_root / "qualification_report.json"
-    if qualification.exists():
-        report = json.loads(qualification.read_text(encoding="utf-8"))
-        require(
-            report.get("schema") == "dr.anmar.runtime-observation-record.v2"
-            and report.get("status") == "archived_not_qualification_evidence",
-            "runtime observation must not claim physical qualification",
-        )
-        require(
-            "contact-derived adhesion work" in report.get(
-                "not_evidence_for", []
-            ),
-            "SafePlane observation boundary omits contact-derived work",
-        )
-
     archive_count = validate_archives(root) if package_mode else 0
     result = {
         "schema": "dranmar.safeplane-dissection-static-validation.v1",
@@ -338,7 +323,8 @@ def main() -> int:
         "manifest_files_checked": manifest_checked,
         "archives_checked": archive_count,
         "usdchecker": bool(checker),
-        "qualification_report": qualification.exists(),
+        "native_simulator_evidence": "not_recorded",
+        "real_world_evidence": "not_established",
         "clinical_validation": False,
         "medical_device": False,
     }

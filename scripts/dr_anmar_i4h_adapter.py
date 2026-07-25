@@ -118,8 +118,11 @@ def _dr_anmar_portfolio_assets() -> tuple[list[dict[str, Any]], Path, str | None
                 "artifacts": artifacts,
                 "remote_url": None,
                 "representation": entry.get("live_integration"),
-                "native_gpu_qualification": entry.get("native_gpu_qualification"),
-                "physical_qualification": entry.get("physical_qualification"),
+                "product_capability": entry.get("product_capability"),
+                "training_readiness": entry.get("training_readiness"),
+                "software_evidence": entry.get("software_evidence"),
+                "native_simulator_evidence": entry.get("native_simulator_evidence"),
+                "real_world_evidence": entry.get("real_world_evidence"),
                 "license": "repository_and_asset_specific",
                 "license_review_required": True,
                 "noncommercial_research_only": False,
@@ -142,7 +145,7 @@ def _dr_anmar_release_lock_payload() -> dict[str, Any]:
         digest_matches = lock.get("catalog_sha256") == catalog_lock_digest(lock)
         return {
             "ready": bool(
-                lock.get("schema") == "dr.anmar.asset-catalog-lock.v2"
+                lock.get("schema") == "dr.anmar.asset-catalog-lock.v3"
                 and isinstance(assets, list)
                 and isinstance(portfolio, list)
                 and lock.get("clinical_validation") is False

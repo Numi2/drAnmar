@@ -1,6 +1,6 @@
 {
   "schema": "dr.anmar.asset-catalog-policy.v1",
-  "catalog_version": "1.1.0",
+  "catalog_version": "1.2.0",
   "description": "One catalog contract for Dr.Anmar-owned assets and the pinned NVIDIA Isaac for Healthcare provider.",
   "release": {
     "lock_path": "config/dranmar_asset_catalog.lock.json",
@@ -96,6 +96,7 @@
       "anatomy_manifest.json",
       "physics_profile.json",
       "mechanics_contract.json",
+      "native_simulator_evidence.json",
       "qualification_report.json",
       "tissue_closure_qualification_report.json"
     ],

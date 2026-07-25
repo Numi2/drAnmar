@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "asset_id": "dr-anmar-stapler-test-cell-v0.1.0",
   "qualified_at": "2026-07-24",
-  "status": "native_mechanism_cycle_qualified",
+  "status": "native_mechanism_cycle_recorded",
   "procedure_id": "dr-anmar-stapler-test-cell",
   "runtime": {
     "host": "gilgamesh",

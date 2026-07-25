@@ -7,9 +7,9 @@ It records software and asset provenance; it is not clinical-validation evidence
 
 ## Release identity
 
-- Catalog schema: `dr.anmar.asset-catalog-lock.v2`
-- Catalog version: `1.1.0`
-- Catalog SHA-256: `1eab5cffcaa8572509ed4761188d472306c6629b71dfa3685ce75013035a6b7d`
+- Catalog schema: `dr.anmar.asset-catalog-lock.v3`
+- Catalog version: `1.2.0`
+- Catalog SHA-256: `9a8880911b7d771291727040afc8f3c6d297e3cd9d3f2b235480e981d66a8d43`
 - Local asset units: `27`
 - Product portfolio assets: `19`
 - Clinical validation: `false`
@@ -28,15 +28,15 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 | Asset unit | Entrypoints | Files | Bytes | SHA-256 | License evidence |
 | --- | ---: | ---: | ---: | --- | --- |
 | `dr_anmar:Props/Patients/DynamicAbdominalPatient` | 3 | 84 | 21856358 | `91e5fc8b714aea21cf43a8afe2a207cf28b412354ea8ffe5f3082fa346fde566` | `source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalAssessment/PerfusionViabilityRobot` | 7 | 49 | 35118868 | `ee5195b474e97a1be341e2fa6f63d3f7ea527cac0110eda7163db2f87540ad92` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalAssessment/PerfusionViabilityRobot` | 7 | 49 | 35118868 | `012853c9c02b1b27d3a9a8738dbf90a50094f0c81aa387931fc2969b7a45ac42` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/ClosureRobot` | 6 | 134 | 14929327 | `ff8bd9c9e5272d4e994a5556e589aa6d776e7db4abb4032321d2644e78f7f905` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/ClosureRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/Needle` | 1 | 9 | 2523189 | `a706d874f803b5b931aa54856c9029c980958b9e9f21ecccae210ab215beb856` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/NeedleThread` | 3 | 14 | 17476800 | `d4fb4a594d8dc6906c3a0b6717855e69acdba6703aa79e0111e627540db996cf` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/SkinAdhesive` | 4 | 33 | 8669688 | `5616f55286d3b77c1cdc41a60d04a41449653d267846de039c5ad38fc19c1157` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/SkinStapler` | 3 | 72 | 59730548 | `49e96c2b7b8b63537351b27787a50531222dc504055a2279c1bad708b30fadeb` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalClosure/StaplerTestCell` | 2 | 5 | 17450 | `8610e3ec1913a63a0ed89c61240010811af44b25a771ee7a9633359eda553bc6` | `LICENSE` |
+| `dr_anmar:Props/SurgicalClosure/StaplerTestCell` | 2 | 5 | 17449 | `1c98f70c4e1b171dbec490123fc5c16c2b57f9ce5b9bf96a3dc518ee79baf178` | `LICENSE` |
 | `dr_anmar:Props/SurgicalCount/LaparotomySponge` | 2 | 13 | 1308161 | `5ba80dde18531db08cc13d311986748a28e51507142a54fd7e8fdf8332700453` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalDissection/SafePlaneDissectionRobot` | 13 | 59 | 25740195 | `3859a3357575a682b2b87a98ec9b13ab5064666b7df1d301245c3be4bbd0ac68` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalDissection/SafePlaneDissectionRobot` | 13 | 59 | 25740118 | `60236ab41c761c751fb1595e7ddbabf3a01647914ea599474d4850bf86288e95` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalDivision/AdaptiveSealDivideRobot` | 7 | 41 | 9745553 | `65c022fbf5e0b6de2086858e387748f1595aade88990ce740dcedcddd13f47e8` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalExposure/AtraumaticExposureRobot` | 6 | 36 | 37327765 | `448dfc366838a192857d4621332df0d87edab7002a7d3c6e4fe4c80ab8cffe63` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalHemostasis/AdaptiveHemostasisRobot` | 8 | 39 | 18738234 | `f972960f55bfccaf21bfd3874ffaa002dddaa195673a47ead34e22a4c1b09a00` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/LICENSE.txt` |
@@ -57,27 +57,55 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 
 ## Product-facing portfolio
 
-| Asset | Primary stage | Native GPU qualification | Physical qualification | Clinical |
-| --- | --- | --- | --- | --- |
-| `dr-anmar-hemostasis-v1` | `assets/dr_anmar/hemostasis/DrAnmarVessel.usda` | blocked pending native probe | blocked pending closure leak retention and damage data | `false` |
-| `dr-anmar-laparotomy-sponge-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda` | qualified rigid and surface cuda isaac sim 5.1 and 6.0 | provisional category grounded parameters active | `false` |
-| `dr-anmar-needle` | `assets/dr_anmar/needle/DrAnmarNeedle.usda` | blocked pending native probe | blocked pending metrology and bench data | `false` |
-| `dr-anmar-needle-system-v0.3.0` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/dranmar_needle.usda` | pending isaac sim cuda execution | provisional category level parameters active | `false` |
-| `dr-anmar-needle-thread-system-v0.3.0` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/dranmar_needle_thread.usda` | pending isaac sim cuda execution | provisional unmeasured thread joint and swage parameters active | `false` |
-| `dr-anmar-skin-stapler-v0.2.0` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_rigid_proxy.usda` | articulated test cell qualified on rtx 4090 2026 07 24 rigid operating … | provisional unmeasured parameters active | `false` |
-| `dr-anmar-stapler-test-cell-v0.1.0` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda` | qualified on rtx 4090 2026 07 24 partial 18 7477 deg no deployment full… | blocked pending instrumented physical trigger and pusher measurements | `false` |
-| `dr-anmar-suturable-tissue-v1` | `assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda` | blocked pending native probe | blocked pending deformation puncture pullout and closure data | `false` |
-| `dr-anmar-suture-4-0-braided-v1` | `assets/dr_anmar/suture/DrAnmarSuture4_0.usda` | blocked pending convergence and physical validation after warp gpu engi… | blocked pending straight knotted damage and swage bench data | `false` |
-| `dranmar-adaptive-anastomosis-robot-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_standalone.usda` | archived runtime observation not physical or efficacy qualification | blocked pending scene measured lumen seam leak and instrumented anastom… | `false` |
-| `dranmar-adaptive-hemostasis-robot-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_standalone.usda` | archived runtime observation not physical or efficacy qualification | blocked pending scene measured occlusion patch seal residual flow and i… | `false` |
-| `dranmar-adaptive-seal-divide-robot-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_standalone.usda` | archived runtime observation not physical or efficacy qualification | blocked surface shell cannot resolve through thickness compression pend… | `false` |
-| `dranmar-atraumatic-exposure-robot-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_standalone.usda` | archived runtime observation not physical or efficacy qualification | blocked pending scene measured pad contact force capture quality and in… | `false` |
-| `dranmar-dynamic-abdominal-patient-v1` | `source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda` | pending isaac sim cuda execution | provisional anatomy mechanics and physiology parameters active | `false` |
-| `dranmar-oncosurgery-cell-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncosurgery_tool.usda` | passed non contact dynamic volume stability on rtx 4090 2026 07 25 274 … | pending instrumented payload tissue sensor energy and specimen bench | `false` |
-| `dranmar-perfusion-viability-robot-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_standalone.usda` | passed v0 1 1 2026 07 25 isaac lab 6 1 16 isaac sim 6 0 1 rtx 4090 stan… | reduced order research model pending sensor calibration flow bench and … | `false` |
-| `dranmar-safeplane-dissection-robot-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_standalone.usda` | archived runtime observation not physical or efficacy qualification | blocked pending contact derived bridge work scene measured release and … | `false` |
-| `dranmar-skin-adhesive-system-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_articulated.usda` | pending live isaac sim cuda execution | provisional category parameters active | `false` |
-| `dranmar-wound-preparation-robot-v1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_standalone.usda` | runtime smoke only physical effect unqualified | blocked pending contact derived debridement work fluid capture and inst… | `false` |
+These assets are available Dr.Anmar simulation-training capabilities.
+Repository verification, native-simulator evidence, real-world evidence,
+and clinical evidence are deliberately separate claims.
+
+| Asset | Product capability | Training readiness | Software evidence |
+| --- | --- | --- | --- |
+| `dr-anmar-hemostasis-v1` | simulation training component | available for training workcell composition | repository verified asset closure |
+| `dr-anmar-laparotomy-sponge-v1` | simulation training component | available for simulation training | repository verified asset closure |
+| `dr-anmar-needle` | simulation training component | available for training workcell composition | repository verified asset closure |
+| `dr-anmar-needle-system-v0.3.0` | simulation training component | available for simulation training | repository verified asset closure |
+| `dr-anmar-needle-thread-system-v0.3.0` | simulation training component | available for simulation training | repository verified asset closure |
+| `dr-anmar-skin-stapler-v0.2.0` | simulation training instrument | available for simulation training | repository verified asset and mechanism contracts |
+| `dr-anmar-stapler-test-cell-v0.1.0` | mechanism training workcell | available for simulation training and evaluation | repository verified asset mechanism and room contracts |
+| `dr-anmar-suturable-tissue-v1` | simulation training component | available for training workcell composition | repository verified asset closure |
+| `dr-anmar-suture-4-0-braided-v1` | simulation training component | available for training workcell composition | repository verified asset closure |
+| `dranmar-adaptive-anastomosis-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
+| `dranmar-adaptive-hemostasis-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
+| `dranmar-adaptive-seal-divide-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
+| `dranmar-atraumatic-exposure-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
+| `dranmar-dynamic-abdominal-patient-v1` | interactive training patient | available for simulation training data generation and evaluation | repository verified asset runtime and state contracts |
+| `dranmar-oncosurgery-cell-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task training and runtime contracts |
+| `dranmar-perfusion-viability-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
+| `dranmar-safeplane-dissection-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
+| `dranmar-skin-adhesive-system-v1` | simulation training instrument | available for simulation training | repository verified asset and mechanism contracts |
+| `dranmar-wound-preparation-robot-v1` | executable training workcell | available for simulation training data generation and evaluation | repository verified asset task and controller contracts |
+
+## Evidence boundaries
+
+| Asset | Native simulator evidence | Real-world evidence | Clinical evidence |
+| --- | --- | --- | --- |
+| `dr-anmar-hemostasis-v1` | native execution not yet recorded | closure leak retention and damage bench evidence not yet established | `not established` |
+| `dr-anmar-laparotomy-sponge-v1` | rigid and surface cuda runs recorded on isaac sim 5 1 and 6 0 | category grounded parameters without instrumented bench correlation | `not established` |
+| `dr-anmar-needle` | native execution not yet recorded | instrumented metrology and bench evidence not yet established | `not established` |
+| `dr-anmar-needle-system-v0.3.0` | native cuda execution not yet recorded | category level parameters without instrumented bench correlation | `not established` |
+| `dr-anmar-needle-thread-system-v0.3.0` | native cuda execution not yet recorded | thread joint and swage bench evidence not yet established | `not established` |
+| `dr-anmar-skin-stapler-v0.2.0` | articulated test cell run recorded on rtx 4090 2026 07 24 | instrumented stapler measurements not yet established | `not established` |
+| `dr-anmar-stapler-test-cell-v0.1.0` | rtx 4090 mechanism cycle recorded 2026 07 24 with partial and full even… | instrumented trigger and pusher measurements not yet established | `not established` |
+| `dr-anmar-suturable-tissue-v1` | native execution not yet recorded | deformation puncture pullout and closure bench evidence not yet establi… | `not established` |
+| `dr-anmar-suture-4-0-braided-v1` | warp gpu engineering run recorded native physx convergence not yet esta… | straight knotted damage and swage bench evidence not yet established | `not established` |
+| `dranmar-adaptive-anastomosis-robot-v1` | runtime composition observed current native matrix not yet established | lumen seam leak and instrumented anastomosis bench evidence not yet est… | `not established` |
+| `dranmar-adaptive-hemostasis-robot-v1` | runtime composition observed current native matrix not yet established | occlusion patch seal residual flow and instrumented hemostasis bench ev… | `not established` |
+| `dranmar-adaptive-seal-divide-robot-v1` | runtime composition observed current native matrix not yet established | through thickness compression material and instrumented bench evidence … | `not established` |
+| `dranmar-atraumatic-exposure-robot-v1` | runtime composition observed current native matrix not yet established | pad contact force capture quality and instrumented retraction bench evi… | `not established` |
+| `dranmar-dynamic-abdominal-patient-v1` | native cuda execution not yet recorded | anatomy mechanics and physiology bench correlation not yet established | `not established` |
+| `dranmar-oncosurgery-cell-v1` | non contact dynamic volume stability recorded on rtx 4090 2026 07 25 co… | instrumented payload tissue sensor energy and specimen bench evidence n… | `not established` |
+| `dranmar-perfusion-viability-robot-v1` | standalone loaded franka and serialized six camera depth matrix recorde… | sensor calibration flow bench and tissue correlation not yet established | `not established` |
+| `dranmar-safeplane-dissection-robot-v1` | runtime composition observed current native matrix not yet established | contact derived bridge work release and instrumented dissection bench e… | `not established` |
+| `dranmar-skin-adhesive-system-v1` | live native cuda execution not yet recorded | instrumented adhesive delivery bench evidence not yet established | `not established` |
+| `dranmar-wound-preparation-robot-v1` | runtime smoke recorded current native matrix not yet established | contact derived debridement work fluid capture and instrumented calibra… | `not established` |
 
 Regenerate this file and its lock only after asset-specific structural,
-native simulation, and applicable physical qualification gates have been reviewed.
+native-simulator, and applicable real-world evidence has been reviewed.

@@ -100,6 +100,8 @@ def test_capability_payload_covers_the_authoritative_portfolio() -> None:
     assert portfolio_path == ROOT / "physics_next/dr-anmar-assets.json"
     assert {asset["id"] for asset in assets} == {asset["id"] for asset in portfolio["assets"]}
     assert all(asset["local_ready"] for asset in assets)
+    assert all(asset["training_readiness"].startswith("available_") for asset in assets)
+    assert all(asset["software_evidence"].startswith("repository_verified_") for asset in assets)
     assert all(asset["clinical_validation"] is False for asset in assets)
 
 
@@ -107,7 +109,7 @@ def test_capability_payload_exposes_the_release_lock_identity() -> None:
     release = asset_catalog_payload()["dr_anmar_release_lock"]
 
     assert release["ready"] is True
-    assert release["schema"] == "dr.anmar.asset-catalog-lock.v2"
+    assert release["schema"] == "dr.anmar.asset-catalog-lock.v3"
     assert release["self_digest_matches"] is True
     assert release["clinical_validation"] is False
     assert release["asset_units"] >= 20
@@ -163,14 +165,17 @@ def test_release_lock_detects_asset_change(tmp_path: Path) -> None:
     (portfolio_root / "dr-anmar-assets.json").write_text(
         json.dumps(
             {
-                "schema": "dr.anmar.asset-portfolio.v1",
+                "schema": "dr.anmar.asset-portfolio.v2",
                 "assets": [
                     {
                         "id": "fixture",
                         "asset": "assets/fixture.usda",
                         "live_integration": "test",
-                        "native_gpu_qualification": "not_run",
-                        "physical_qualification": "not_run",
+                        "product_capability": "simulation_training_component",
+                        "training_readiness": "available_for_training_workcell_composition",
+                        "software_evidence": "repository_verified_asset_closure",
+                        "native_simulator_evidence": "not_recorded",
+                        "real_world_evidence": "not_established",
                         "clinical_validation": False,
                     }
                 ],
@@ -209,3 +214,20 @@ def test_release_lock_rejects_duplicate_ids_and_stale_self_digest() -> None:
 
     assert "Asset-catalog lock contains duplicate asset IDs." in failures
     assert "Asset-catalog lock self-digest does not match." in failures
+
+
+def test_product_capability_is_not_defined_by_negative_evidence_language() -> None:
+    portfolio = json.loads(
+        (ROOT / "physics_next/dr-anmar-assets.json").read_text(encoding="utf-8")
+    )
+    forbidden = ("research", "archived", "reduced_order", "unqualified", "blocked")
+
+    for asset in portfolio["assets"]:
+        product_surface = " ".join(
+            (
+                asset["product_capability"],
+                asset["training_readiness"],
+                asset["software_evidence"],
+            )
+        ).lower()
+        assert not any(term in product_surface for term in forbidden), asset["id"]
