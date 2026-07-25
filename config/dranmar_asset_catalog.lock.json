@@ -1,14 +1,14 @@
 {
   "assets": [
     {
-      "bytes": 19906593,
+      "bytes": 21856358,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_dynamic_abdominal_patient.usda",
         "dranmar_dynamic_abdominal_patient_operating_scene.usda",
         "dranmar_dynamic_abdominal_patient_rigid_proxy.usda"
       ],
-      "file_count": 83,
+      "file_count": 84,
       "id": "dr_anmar:Props/Patients/DynamicAbdominalPatient",
       "license_path": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/LICENSE.txt",
       "metadata": [
@@ -24,7 +24,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/Patients/DynamicAbdominalPatient",
-      "sha256": "094fc717257213009fd4f66c50e8bba33f9919173dcb1f53786c47c88f4a8c88"
+      "sha256": "91e5fc8b714aea21cf43a8afe2a207cf28b412354ea8ffe5f3082fa346fde566"
     },
     {
       "bytes": 35118868,
@@ -636,7 +636,7 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "480568720ee50ccefc91e638b0a4cb3798ed52f9e473277926c4a8f10fbfb89c",
+  "catalog_sha256": "1eab5cffcaa8572509ed4761188d472306c6629b71dfa3685ce75013035a6b7d",
   "catalog_version": "1.1.0",
   "clinical_validation": false,
   "i4h": {
