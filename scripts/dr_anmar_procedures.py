@@ -310,6 +310,10 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "nvidia_native_bench": True,
         "dynamic_abdominal_patient": True,
         "dynamic_patient_access_state": "open",
+        # Isaac 5.1 supports only one deformable collision group. Keep one
+        # procedure target solver-active while the complete modular anatomy
+        # and shared physiology remain present.
+        "dynamic_patient_active_deformables": ("liver",),
         "required_nvidia_assets": (
             "Robots/dVRK/PSM/psm.usd",
             "Props/SutureNeedle/needle_sdf.usd",

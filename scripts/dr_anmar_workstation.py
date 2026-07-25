@@ -4690,6 +4690,17 @@ def main() -> None:
             for setting, value in dynamic_patient_physx.items():
                 if hasattr(env_cfg.sim.physx, setting):
                     setattr(env_cfg.sim.physx, setting, value)
+            dynamic_patient_active_deformables = tuple(
+                str(component)
+                for component in procedure.get(
+                    "dynamic_patient_active_deformables", ()
+                )
+            )
+            if not dynamic_patient_active_deformables:
+                raise ValueError(
+                    "The dynamic patient room requires at least one explicitly "
+                    "selected solver-active deformable component"
+                )
             patient_access_state = str(
                 procedure.get("dynamic_patient_access_state", "open")
             )
@@ -4723,7 +4734,8 @@ def main() -> None:
                 )
 
                 mechanics_routes = apply_patient_deformables(
-                    str(patient_root.GetPath())
+                    str(patient_root.GetPath()),
+                    include=dynamic_patient_active_deformables,
                 )
                 failed_routes = {
                     component: result
@@ -4736,13 +4748,20 @@ def main() -> None:
                         "Dynamic abdominal patient mechanics failed closed: "
                         f"{failed_routes}"
                     )
-                collision_filter = configure_patient_internal_collision_filter(
-                    str(patient_root.GetPath())
-                )
+                if len(dynamic_patient_active_deformables) > 1:
+                    collision_filter = configure_patient_internal_collision_filter(
+                        str(patient_root.GetPath())
+                    )
+                else:
+                    collision_filter = {
+                        "patient_path": str(patient_root.GetPath()),
+                        "policy": "not_required_for_single_active_deformable",
+                    }
                 print(
                     "[DR_ANMAR_DYNAMIC_PATIENT_MECHANICS] "
                     + json.dumps(
                         {
+                            "active_deformables": dynamic_patient_active_deformables,
                             "collision_filter": collision_filter,
                             "routes": mechanics_routes,
                         },
