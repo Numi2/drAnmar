@@ -38,9 +38,11 @@ app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
 
 import numpy as np
+import carb
 import omni.usd
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
+from isaacsim.core.simulation_manager import PhysxGpuCfg, PhysxScene
 from pxr import UsdGeom
 
 
@@ -72,9 +74,21 @@ def main() -> int:
     if args.steps <= 0:
         raise ValueError("--steps must be greater than zero")
 
+    engine_errors: list[str] = []
+    carb_logging = carb.logging.acquire_logging()
+
+    def record_engine_error(source, level, _filename, _line_number, message):
+        if level >= carb.logging.LEVEL_ERROR and len(engine_errors) < 20:
+            engine_errors.append(f"{source}: {message.strip()}")
+
+    logger_handle = carb_logging.add_logger(record_engine_error)
     helper = load_helper()
     sim = sim_utils.SimulationContext(
         sim_utils.SimulationCfg(dt=1.0 / 120.0, device=args.device)
+    )
+    physx_scene = PhysxScene(sim.cfg.physics_prim_path)
+    physx_scene.set_gpu_configuration(
+        PhysxGpuCfg(gpu_max_deformable_surface_contacts=2**21)
     )
     ground_cfg = sim_utils.GroundPlaneCfg()
     ground_cfg.func("/World/GroundPlane", ground_cfg)
@@ -108,6 +122,12 @@ def main() -> int:
     stage = omni.usd.get_context().get_stage()
     deformable = helper.apply_wound_surface_deformable(wound_root, stage=stage)
     attachments = helper.attach_demo_debris(wound_root, stage=stage)
+    attachment_prims = [stage.GetPrimAtPath(path) for path in attachments.values()]
+    if len(attachment_prims) != 7 or any(not prim.IsValid() for prim in attachment_prims):
+        raise RuntimeError("The wound demo did not author seven valid debris attachments")
+    attachment_types = [prim.GetTypeName() for prim in attachment_prims]
+    if any(not type_name for type_name in attachment_types):
+        raise RuntimeError(f"Debris attachment type is missing: {attachment_types}")
     particle_paths = helper.ensure_irrigation_particle_system(stage=stage)
     ledger = helper.FluidLedger()
     emitted = helper.emit_irrigation_burst(
@@ -150,6 +170,9 @@ def main() -> int:
     missing_schemas = sorted(required_deformable_schemas - set(applied_schemas))
     if missing_schemas:
         raise RuntimeError(f"Surface deformable cooking omitted schemas: {missing_schemas}")
+    carb_logging.remove_logger(logger_handle)
+    if engine_errors:
+        raise RuntimeError("Isaac runtime emitted engine errors:\n" + "\n".join(engine_errors))
 
     result = {
         "schema": "dr.anmar.wound-preparation-cuda-smoke.v1",
@@ -157,12 +180,17 @@ def main() -> int:
         "representation": args.representation,
         "steps": args.steps,
         "device": args.device,
+        "gpu_max_deformable_surface_contacts": (
+            physx_scene.get_gpu_configuration().gpu_max_deformable_surface_contacts
+        ),
         "isaaclab_distribution_version": distribution_version("isaaclab"),
         "isaacsim_distribution_version": distribution_version("isaacsim"),
         "tool_joint_names": joint_names,
         "finite_joint_state": True,
+        "engine_error_count": 0,
         "deformable_applied_schemas": applied_schemas,
         "attachment_count": len(attachments),
+        "attachment_types": attachment_types,
         "particle_count": len(particle_points),
         "fluid": ledger.snapshot(),
         "clinical_validation": False,

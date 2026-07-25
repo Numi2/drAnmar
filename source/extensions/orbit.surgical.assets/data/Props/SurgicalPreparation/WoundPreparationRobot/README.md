@@ -71,8 +71,9 @@ python3 -m unittest -v tests/test_wound_preparation_robot.py
 
 The validator checks OpenUSD parsing, mirrored asset integrity, manifest hashes,
 JSON contracts, GLB/PNG containers, Python syntax, release inventory, and
-non-portable build-artifact exclusion. Isaac Sim/PhysX CUDA execution and
-physical calibration remain separate promotion gates.
+non-portable build-artifact exclusion. Bounded Isaac Sim/PhysX CUDA smoke
+execution is recorded in `docs/VALIDATION.md`; physical calibration remains a
+separate promotion gate.
 
 ## Deterministic regeneration
 

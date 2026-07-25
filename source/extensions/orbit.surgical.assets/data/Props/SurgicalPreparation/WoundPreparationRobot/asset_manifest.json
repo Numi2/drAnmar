@@ -3,9 +3,9 @@
   "catalog_subpath": "Props/SurgicalPreparation/WoundPreparationRobot",
   "files": [
     {
-      "bytes": 3274,
+      "bytes": 3323,
       "path": "README.md",
-      "sha256": "36b349d79761d3f7e7b31cb57c4215ef5be7f0364bba5d55459e75266a646c4f"
+      "sha256": "447c22a0dbd907a91d1dcc9cc94148d185c975b03c5e3f5252e250d73269146a"
     },
     {
       "bytes": 91,
@@ -13,9 +13,9 @@
       "sha256": "2c9b848f1570e944243138c5df64efe23dbf14fb3158d52f705791954d3b5864"
     },
     {
-      "bytes": 3274,
+      "bytes": 3323,
       "path": "assets/Props/SurgicalPreparation/WoundPreparationRobot/README.md",
-      "sha256": "36b349d79761d3f7e7b31cb57c4215ef5be7f0364bba5d55459e75266a646c4f"
+      "sha256": "447c22a0dbd907a91d1dcc9cc94148d185c975b03c5e3f5252e250d73269146a"
     },
     {
       "bytes": 5472,
@@ -238,9 +238,9 @@
       "sha256": "91facd852776edf440ffc9976491302bf7106ba1ec29c49402e2e8e149f57720"
     },
     {
-      "bytes": 1741,
+      "bytes": 2317,
       "path": "docs/VALIDATION.md",
-      "sha256": "b1dbf569b848354e9fba6e9b08ddaeb456096e9cdeadb47543123004be09d591"
+      "sha256": "99ddda5f24c0ee3c1d723e85018e1103eabbf8cc14bbcb30198188aa8613343c"
     },
     {
       "bytes": 2053,
@@ -248,9 +248,9 @@
       "sha256": "a76739d594b3b4085335fbe33cf0b2d3ec805f8858cf3ba4e7081c8378f8df2a"
     },
     {
-      "bytes": 6456,
+      "bytes": 7941,
       "path": "examples/validate_wound_preparation_runtime.py",
-      "sha256": "cc33c9f77081e35ce49d8cdc3e6fbb6bda376b5472d59a3198dac299f3c7626f"
+      "sha256": "e514b5d8e0cb4f35b336707d94ffbd543ff67a7b388e299a88b939fd70cd65ec"
     },
     {
       "bytes": 4688,
@@ -268,9 +268,9 @@
       "sha256": "1b5807e67acb57d1d81defc52dfd551ec11683a92e938b5fa91bf5a2990756b1"
     },
     {
-      "bytes": 150836,
+      "bytes": 156295,
       "path": "scripts/generate_dranmar_wound_preparation_robot.py",
-      "sha256": "c418fc010d8e556cd718c25713dec8341d773c07dee42c21f7a822da4a5a845b"
+      "sha256": "f870a79dd9effeb2143e6e30551049a5f9c1bafdd648c3c350b5afe52230a641"
     },
     {
       "bytes": 5747,
@@ -293,9 +293,9 @@
       "sha256": "2c9b848f1570e944243138c5df64efe23dbf14fb3158d52f705791954d3b5864"
     },
     {
-      "bytes": 3274,
+      "bytes": 3323,
       "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/README.md",
-      "sha256": "36b349d79761d3f7e7b31cb57c4215ef5be7f0364bba5d55459e75266a646c4f"
+      "sha256": "447c22a0dbd907a91d1dcc9cc94148d185c975b03c5e3f5252e250d73269146a"
     },
     {
       "bytes": 5472,
@@ -498,9 +498,9 @@
       "sha256": "f4f2e843c3aeaffa3646991cced6eaa28baa6f63f71568785abfa3a7efb39af4"
     },
     {
-      "bytes": 39410,
+      "bytes": 44820,
       "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/wound_preparation_robot.py",
-      "sha256": "f0276d89d5e7cd38c5f5eb77ec85700e3a89dfddf8624793348bc06c7aa05ff2"
+      "sha256": "6c0de32dc518b7fe2fc8c5c6f0982d5fc3070edd48f998cdd36ee2b691cfef04"
     },
     {
       "bytes": 4729,

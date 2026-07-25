@@ -170,9 +170,47 @@ def _spawn_single_franka_with_wound_preparation_tool(prim_path: str, cfg: Any, t
         "panda_hand_joint", "panda_hand", "panda_finger_joint1", "panda_finger_joint2",
         "panda_leftfinger", "panda_rightfinger",
     }
-    for prim in list(stage.Traverse()):
-        if prim.GetPath().HasPrefix(Sdf.Path(prim_path)) and prim.GetName() in names_to_disable:
-            stage.OverridePrim(prim.GetPath()).SetActive(False)
+    robot_path = Sdf.Path(prim_path)
+    hand_joint_prims = [
+        prim
+        for prim in stage.Traverse()
+        if prim.GetPath().HasPrefix(robot_path) and prim.GetName() == "panda_hand_joint"
+    ]
+    if len(hand_joint_prims) == 1:
+        stock_hand_joint = UsdPhysics.Joint(hand_joint_prims[0])
+        mount_body_paths = stock_hand_joint.GetBody0Rel().GetTargets()
+        mount_local_pos0 = stock_hand_joint.GetLocalPos0Attr().Get() or Gf.Vec3f(0, 0, 0)
+        mount_local_rot0 = stock_hand_joint.GetLocalRot0Attr().Get() or Gf.Quatf(1, 0, 0, 0)
+    else:
+        link8_paths = [
+            prim.GetPath()
+            for prim in stage.Traverse()
+            if prim.GetPath().HasPrefix(robot_path) and prim.GetName() == "panda_link8"
+        ]
+        if len(link8_paths) != 1:
+            raise RuntimeError(
+                "Could not resolve the Franka hand mount from panda_hand_joint or panda_link8"
+            )
+        mount_body_paths = link8_paths
+        mount_local_pos0 = Gf.Vec3f(0, 0, 0)
+        half_angle = math.radians(-45.0) / 2.0
+        mount_local_rot0 = Gf.Quatf(
+            math.cos(half_angle), 0, 0, math.sin(half_angle)
+        )
+    if len(mount_body_paths) != 1 or not stage.GetPrimAtPath(mount_body_paths[0]).IsValid():
+        raise RuntimeError(f"Invalid Franka hand mount target: {mount_body_paths}")
+
+    candidate_paths = [
+        prim.GetPath()
+        for prim in stage.Traverse()
+        if prim.GetPath().HasPrefix(robot_path) and prim.GetName() in names_to_disable
+    ]
+    paths_to_disable = []
+    for path in sorted(candidate_paths, key=lambda item: str(item).count("/")):
+        if not any(path.HasPrefix(parent) for parent in paths_to_disable):
+            paths_to_disable.append(path)
+    for path in paths_to_disable:
+        stage.OverridePrim(path).SetActive(False)
 
     tool_path = f"{prim_path}/DrAnmarWoundPreparationTool"
     create_prim(tool_path, usd_path=str(TOOL_PAYLOAD_USD), stage=stage)
@@ -182,12 +220,11 @@ def _spawn_single_franka_with_wound_preparation_tool(prim_path: str, cfg: Any, t
     )
 
     joint = UsdPhysics.FixedJoint.Define(stage, f"{prim_path}/dranmar_wound_preparation_mount_joint")
-    joint.CreateBody0Rel().SetTargets([Sdf.Path(f"{prim_path}/panda_link8")])
+    joint.CreateBody0Rel().SetTargets(mount_body_paths)
     joint.CreateBody1Rel().SetTargets([Sdf.Path(f"{tool_path}/Links/Mount")])
-    joint.CreateLocalPos0Attr().Set(Gf.Vec3f(0, 0, 0))
+    joint.CreateLocalPos0Attr().Set(mount_local_pos0)
     joint.CreateLocalPos1Attr().Set(Gf.Vec3f(0, 0, 0))
-    half_angle = math.radians(-45.0) / 2.0
-    joint.CreateLocalRot0Attr().Set(Gf.Quatf(math.cos(half_angle), 0, 0, math.sin(half_angle)))
+    joint.CreateLocalRot0Attr().Set(mount_local_rot0)
     joint.CreateLocalRot1Attr().Set(Gf.Quatf(1, 0, 0, 0))
     return robot
 
@@ -332,30 +369,112 @@ def create_deformable_attachment(
     deformable_prim_path: str, rigid_prim_path: str, attachment_path: str, *, stage=None
 ) -> str:
     """Create an overlap-generated rigid/deformable attachment across Isaac generations."""
-    import omni.kit.commands
-    from pxr import Sdf
+    from pxr import Gf, Sdf, Usd, UsdGeom, Vt
     stage = _current_stage(stage)
     if stage.GetPrimAtPath(attachment_path).IsValid():
         stage.RemovePrim(attachment_path)
+
+    # Isaac Sim 6 replaced the command-authored PhysxPhysicsAttachment with
+    # explicit OmniPhysics vertex attachments. Author the current schema
+    # directly so headless runtimes do not depend on an optional UI command.
+    prim_definition = Usd.SchemaRegistry().FindConcretePrimDefinition(
+        "OmniPhysicsVtxXformAttachment"
+    )
+    if prim_definition:
+        deformable_prim = stage.GetPrimAtPath(deformable_prim_path)
+        rigid_prim = stage.GetPrimAtPath(rigid_prim_path)
+        mesh = UsdGeom.Mesh(deformable_prim)
+        points = list(mesh.GetPointsAttr().Get() or [])
+        if not deformable_prim.IsValid() or not mesh or not points:
+            raise ValueError(f"Attachment source is not a populated mesh: {deformable_prim_path}")
+        if not rigid_prim.IsValid() or not UsdGeom.Xformable(rigid_prim):
+            raise ValueError(f"Attachment target is not xformable: {rigid_prim_path}")
+
+        mesh_to_world = UsdGeom.Xformable(deformable_prim).ComputeLocalToWorldTransform(
+            Usd.TimeCode.Default()
+        )
+        rigid_to_world = UsdGeom.Xformable(rigid_prim).ComputeLocalToWorldTransform(
+            Usd.TimeCode.Default()
+        )
+        world_to_rigid = rigid_to_world.GetInverse()
+        bounds = UsdGeom.BBoxCache(
+            Usd.TimeCode.Default(), [UsdGeom.Tokens.default_]
+        ).ComputeWorldBound(rigid_prim).ComputeAlignedRange()
+        minimum, maximum = bounds.GetMin(), bounds.GetMax()
+        center = (minimum + maximum) * 0.5
+        margin = 0.0025
+        ranked: list[tuple[float, int, Gf.Vec3d, bool]] = []
+        for index, point in enumerate(points):
+            world = mesh_to_world.Transform(Gf.Vec3d(point))
+            delta = world - center
+            distance_sq = float(Gf.Dot(delta, delta))
+            overlaps = all(
+                minimum[axis] - margin <= world[axis] <= maximum[axis] + margin
+                for axis in range(3)
+            )
+            ranked.append((distance_sq, index, world, overlaps))
+        ranked.sort(key=lambda item: item[0])
+        selected = [item for item in ranked if item[3]][:12]
+        if len(selected) < 4:
+            selected = ranked[: min(4, len(ranked))]
+        if not selected:
+            raise RuntimeError(f"No deformable vertices available for {attachment_path}")
+
+        attachment = stage.DefinePrim(attachment_path, "OmniPhysicsVtxXformAttachment")
+        attachment.CreateRelationship("omniphysics:src0").SetTargets(
+            [Sdf.Path(deformable_prim_path)]
+        )
+        attachment.CreateRelationship("omniphysics:src1").SetTargets(
+            [Sdf.Path(rigid_prim_path)]
+        )
+        attachment.CreateAttribute(
+            "omniphysics:vtxIndicesSrc0", Sdf.ValueTypeNames.IntArray
+        ).Set(Vt.IntArray([item[1] for item in selected]))
+        attachment.CreateAttribute(
+            "omniphysics:localPositionsSrc1", Sdf.ValueTypeNames.Point3fArray
+        ).Set(
+            Vt.Vec3fArray(
+                [Gf.Vec3f(world_to_rigid.Transform(item[2])) for item in selected]
+            )
+        )
+        attachment.CreateAttribute(
+            "omniphysics:attachmentEnabled", Sdf.ValueTypeNames.Bool
+        ).Set(True)
+        if (
+            not attachment.IsValid()
+            or attachment.GetTypeName() != "OmniPhysicsVtxXformAttachment"
+            or not attachment.GetRelationship("omniphysics:src0").GetTargets()
+            or not attachment.GetRelationship("omniphysics:src1").GetTargets()
+        ):
+            raise RuntimeError(f"Could not author current attachment schema at {attachment_path}")
+        return "OmniPhysicsVtxXformAttachment"
+
+    import omni.kit.commands
+
+    def execute_and_verify(command: str, **kwargs) -> str:
+        omni.kit.commands.execute(command, **kwargs)
+        attachment = stage.GetPrimAtPath(attachment_path)
+        if not attachment.IsValid():
+            raise RuntimeError(f"{command} did not author {attachment_path}")
+        return command
+
     try:
-        omni.kit.commands.execute(
+        return execute_and_verify(
             "CreateAutoDeformableAttachment",
             target_attachment_path=Sdf.Path(attachment_path),
             attachable0_path=Sdf.Path(deformable_prim_path),
             attachable1_path=Sdf.Path(rigid_prim_path),
         )
-        return "CreateAutoDeformableAttachment"
     except Exception as current_error:
         if stage.GetPrimAtPath(attachment_path).IsValid():
             stage.RemovePrim(attachment_path)
         try:
-            omni.kit.commands.execute(
+            return execute_and_verify(
                 "CreatePhysicsAttachment",
                 target_attachment_path=Sdf.Path(attachment_path),
                 actor0_path=Sdf.Path(deformable_prim_path),
                 actor1_path=Sdf.Path(rigid_prim_path),
             )
-            return "CreatePhysicsAttachment"
         except Exception as legacy_error:
             raise RuntimeError(
                 f"Could not create attachment {attachment_path}: current={current_error!r}; legacy={legacy_error!r}"

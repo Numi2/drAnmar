@@ -28,10 +28,22 @@ On an Isaac Lab CUDA host, run both runtime representations:
 
 The runtime smoke test requires finite articulation state after simulation,
 presence of all five tool joints, successful current surface-deformable cooking,
-seven debris attachments, and a conserved multi-nozzle PBD particle burst.
+seven authored debris attachments, a conserved multi-nozzle PBD particle burst,
+and zero error-level Isaac/PhysX log messages.
 
-Passing these checks qualifies the package structure and static OpenUSD
-composition. It does not qualify Isaac Sim execution, PhysX CUDA particles,
-surface-deformable cooking, attachment behavior, contact tuning, physical
-metrology, tissue selectivity, or clinical use. Those remain separate promotion
-gates and must not be inferred from the static result.
+## Qualified runtime snapshot
+
+On 2026-07-25, the standalone tool and complete Franka-mounted representation
+each passed 120 headless simulation steps on the Gilgamesh RTX 4090 using
+Isaac Lab 6.1.16, Isaac Sim 6.0.1.0, and `cuda:0`. Both runs reported finite
+joint state, all five tool joints, seven
+`OmniPhysicsVtxXformAttachment` debris constraints, 80 emitted PBD particles,
+zero fluid-ledger balance error, and zero error-level engine messages. The
+Franka run resolved all seven arm joints and all five tool joints in one
+articulation.
+
+This snapshot qualifies bounded execution, composition, surface-deformable
+cooking, attachment authoring, and PBD particle creation on that exact software
+and GPU stack. It does not qualify contact tuning, physical metrology, fluid
+calibration, tissue selectivity, clinical efficacy, or patient use. Those remain
+separate promotion gates.
