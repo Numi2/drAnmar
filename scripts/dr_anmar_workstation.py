@@ -10,6 +10,7 @@ import asyncio
 import hashlib
 import io
 import json
+import math
 import os
 import platform
 import queue
@@ -214,6 +215,15 @@ from orbit.surgical.assets.skin_adhesive import (
     activation_targets as skin_adhesive_activation_targets,
     make_articulated_cfg as make_articulated_skin_adhesive_cfg,
     set_activation_target as set_skin_adhesive_activation_target,
+)
+from orbit.surgical.assets.closure_robot import (
+    ClosurePhase,
+    ClosureSequenceController,
+    anchor_tissue_outer_edges,
+    apply_tissue_demo_surface_deformables,
+    closure_phase_targets,
+    make_franka_closure_robot_cfg,
+    set_joint_targets as set_closure_robot_joint_targets,
 )
 from orbit.surgical.assets.skin_stapler import (
     ClosureLine,
@@ -444,7 +454,7 @@ APP_HTML = r"""<!doctype html>
     .procedure-title{font-size:15px;font-weight:850}.procedure-objective{color:#b9ccd2;font-size:11px;margin:6px 0 10px}.procedure-progress{height:4px;background:#19313b;margin:8px 0}.procedure-progress i{display:block;height:100%;background:var(--cyan);width:0}.procedure-step{display:grid;grid-template-columns:21px 1fr;gap:7px;padding:6px 0;border-top:1px solid #19313b;color:#738d96;font-size:10px}.procedure-step b{color:#9eb5bd}.procedure-step.complete b{color:var(--green)}.procedure-step.active b{color:var(--cyan)}.procedure-step span:first-child{font:10px ui-monospace,monospace}
     .supervision{border-color:#356475;background:linear-gradient(135deg,#0d2731,#09171e)}.supervision-state{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}.supervision-state b{color:var(--cyan)}.cue{min-height:32px;margin-top:9px;padding:8px;border-left:2px solid var(--cyan);background:#061219;color:#9fc0c9;font-size:11px}
     .safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.safety-metric{padding:8px;background:#061219;border:1px solid #1c3742}.safety-metric b{display:block;color:var(--green);font:15px ui-monospace,monospace}.safety-metric span{color:var(--muted);font-size:9px}
-    .stapler-cell{padding:12px;border:1px solid #5d6140;border-radius:11px;background:linear-gradient(135deg,#252417,#151b1f)}#staplerCell.hidden{display:none!important}.stapler-cell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}.stapler-cell-head b{display:block;color:#f1e6c1;font-size:14px}.stapler-cell-head small{display:block;margin-top:2px;color:#aaa58d;font-size:9px}.stapler-phase{padding:4px 7px;border-radius:5px;background:#393622;color:#f0cf77;font:800 8px ui-monospace,monospace;text-transform:uppercase}.stapler-metrics{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}.stapler-metric{padding:7px;border:1px solid #4c4930;border-radius:6px;background:#181b18}.stapler-metric b{display:block;color:#e9d98e;font:14px ui-monospace,monospace}.stapler-metric span{color:#928f7d;font-size:7px;letter-spacing:.05em}.stapler-progress{height:5px;margin-top:7px;overflow:hidden;border-radius:4px;background:#111411}.stapler-progress i{display:block;width:0;height:100%;background:#d8b750;transition:width .25s ease}.stapler-controls{display:grid;grid-template-columns:.8fr 1.6fr .8fr repeat(3,1fr);gap:6px;margin-top:8px}.stapler-target{display:grid;grid-column:span 3;grid-template-columns:1fr auto;align-items:center;gap:4px 8px;padding:6px 8px;border:1px solid #4c4930;border-radius:7px;background:#181b18}.stapler-target b{color:#d9d3b6;font-size:9px}.stapler-target output{color:#e9d98e;font:12px ui-monospace,monospace}.stapler-target input{grid-column:1/-1;width:100%;accent-color:#d8b750}.stapler-controls button{min-height:42px;background:#29291d;border-color:#565135;font-size:9px}.stapler-controls button.primary{background:#d8b750;border-color:#d8b750;color:#221f10}.stapler-controls button:disabled{cursor:not-allowed;opacity:.45}.stapler-boundary{margin:7px 0 0;color:#8f8c7f;font-size:8px}
+    .stapler-cell{padding:12px;border:1px solid #5d6140;border-radius:11px;background:linear-gradient(135deg,#252417,#151b1f)}#staplerCell.hidden{display:none!important}.stapler-cell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}.stapler-cell-head b{display:block;color:#f1e6c1;font-size:14px}.stapler-cell-head small{display:block;margin-top:2px;color:#aaa58d;font-size:9px}.stapler-phase{padding:4px 7px;border-radius:5px;background:#393622;color:#f0cf77;font:800 8px ui-monospace,monospace;text-transform:uppercase}.stapler-metrics{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}.stapler-metric{padding:7px;border:1px solid #4c4930;border-radius:6px;background:#181b18}.stapler-metric b{display:block;color:#e9d98e;font:14px ui-monospace,monospace}.stapler-metric span{color:#928f7d;font-size:7px;letter-spacing:.05em}.stapler-progress{height:5px;margin-top:7px;overflow:hidden;border-radius:4px;background:#111411}.stapler-progress i{display:block;width:0;height:100%;background:#d8b750;transition:width .25s ease}.stapler-controls{display:grid;grid-template-columns:.8fr 1.6fr .8fr repeat(3,1fr);gap:6px;margin-top:8px}#closureRobotCell .stapler-controls{grid-template-columns:repeat(3,1fr)}.stapler-target{display:grid;grid-column:span 3;grid-template-columns:1fr auto;align-items:center;gap:4px 8px;padding:6px 8px;border:1px solid #4c4930;border-radius:7px;background:#181b18}.stapler-target b{color:#d9d3b6;font-size:9px}.stapler-target output{color:#e9d98e;font:12px ui-monospace,monospace}.stapler-target input{grid-column:1/-1;width:100%;accent-color:#d8b750}.stapler-controls button{min-height:42px;background:#29291d;border-color:#565135;font-size:9px}.stapler-controls button.primary{background:#d8b750;border-color:#d8b750;color:#221f10}.stapler-controls button:disabled{cursor:not-allowed;opacity:.45}.stapler-boundary{margin:7px 0 0;color:#8f8c7f;font-size:8px}
     .control-dock{position:relative;margin:0 0 10px;padding:34px 10px 8px;border:1px solid #294651;border-radius:9px;background:#0a171e;box-shadow:none}.control-dock:before{content:"Robot controls";position:absolute;left:12px;top:10px;color:#dffbff;font:800 12px/1 ui-sans-serif,system-ui}.control-dock:after{display:none}.control-dock .move-button{min-height:43px;padding:4px 2px;border:1px solid #31515d;background:#0d2028;font-size:10px;line-height:1.05}.control-dock .move-button small{font-size:8px;margin-top:2px}.control-dock .stop-center{width:100%;min-height:34px;padding:3px 8px;border:1px solid #68444b;background:#25181c;color:#ffc2c7;font-size:9px}.control-dock .hint{display:none}.instrument-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.instrument-grid.single{grid-template-columns:1fr}.instrument-card{min-width:0;padding:7px;border:1px solid #1d3540;border-radius:8px;background:#08131a}.instrument-head{display:flex;align-items:center;gap:7px;margin-bottom:5px}.instrument-head button{flex:1;min-height:30px;padding:3px 7px;text-align:left;font-size:10px}.instrument-head .arm.active{border-color:#426775;background:#132a33;color:#dffbff}.instrument-head span{color:#708b95;font:750 8px/1 ui-monospace,monospace;letter-spacing:.08em;white-space:nowrap}.hand-key-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.hand-key{display:flex;flex-direction:column;align-items:center;justify-content:center}.hand-key kbd{height:18px;min-width:22px;padding:0 4px;font-size:9px}.instrument-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:5px}.instrument-actions .modifier-chip,.instrument-actions button{min-height:29px;display:flex;align-items:center;justify-content:center;gap:3px;padding:2px;font-size:8px}.instrument-actions button,.instrument-actions .primary{border-color:#31515d;background:#0d2028;color:#dffbff}.direct-roll{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}.direct-roll .move-button{min-height:29px;font-size:8px}.direct-roll kbd{height:16px;min-width:18px;padding:0 3px;font-size:8px}.hand-speeds{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px}.hand-speeds button{min-height:29px;padding:2px;font-size:8px}.hand-speeds button.active{border-color:#527480;background:#132a33}.hand-speeds kbd{height:16px;min-width:17px;padding:0 3px;font-size:8px}.control-stop-row{margin-top:7px;padding-top:6px;border-top:1px solid #1d3540}.control-dock .control-readout{min-height:15px;margin-top:3px;font-size:8px}.control-dock .control-readout i{width:5px;height:5px}
     kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 6px;border:1px solid #4a6570;border-bottom-width:2px;border-radius:5px;background:#09141a;color:#dffbff;font:800 10px/1 ui-monospace,SFMono-Regular,Menlo;white-space:nowrap}button kbd{pointer-events:none}.header-keyboard{min-height:32px;margin-left:4px;padding:0 10px;background:#10252e;color:#cfe7eb;font-size:11px}.header-keyboard kbd{margin-right:5px}.keyboard-quick{display:grid;grid-template-columns:.9fr 1.1fr;gap:5px;margin:0;padding:0;border:0;background:transparent}.keyboard-quick-head{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 1px}.keyboard-quick-head b{color:#8eabb5;font-size:10px;font-weight:750;letter-spacing:.04em}.keyboard-quick-head span{display:none}.keyboard-input-display{display:flex;align-items:center;gap:6px;min-height:38px;margin:0;padding:5px 7px;border:1px solid #1d3540;border-radius:6px;background:#08131a;color:#a7bbc2;font-size:10px}.keyboard-input-display kbd{min-width:38px;height:18px;font-size:8px;color:var(--green);border-color:#3b7a67}.keyboard-input-display.active{border-color:var(--green);box-shadow:none}.keyboard-input-display.active span{color:#e5ffff}.smart-action{width:100%;min-height:38px;margin:0;background:#2fc5d8;border-color:#52d7e8;color:#031014;text-align:left;padding:5px 8px;box-shadow:none}.smart-action strong{display:block;font-size:11px}.smart-action strong kbd{height:17px;min-width:24px;padding:0 4px;font-size:8px}.smart-action small{display:block;overflow:hidden;color:#174851;font-size:8px;line-height:1.1;white-space:nowrap;text-overflow:ellipsis}.proximity{grid-column:1/-1;margin:0;padding:4px 7px;border:0;border-radius:5px;background:#071219;font-size:9px;line-height:1.2}.proximity b{font-size:9px;margin-right:5px}.control-feel{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:7px;min-height:23px;border:1px solid #1d3540;border-radius:5px;background:#071219;color:#86a5af;font:8px/1 ui-monospace,SFMono-Regular,Menlo}.control-feel b{color:#dffbff}.modifier-row{grid-column:1/-1;display:flex;gap:4px;margin:0}.modifier-chip{flex:1;padding:3px;border:0;border-radius:5px;background:#071219;color:#829aa3;font-size:9px;text-align:center}.modifier-chip kbd{height:16px;min-width:20px;padding:0 3px;font-size:8px}.modifier-chip.active{color:var(--green);background:#0b2b25}.keyboard-coverage{display:none}.keyboard-coverage.bad{color:var(--red)}button.key-active,button.state-active{border-color:var(--green)!important;box-shadow:0 0 0 1px #42e49b77!important;background:#174a42!important;color:#efffff!important}button.key-active kbd,button.state-active kbd{border-color:#9bffe0;background:#dcfff5;color:#09281f}.smart-action.key-active{background:#8bffe0!important;color:#041a13!important;transform:none}
     .teleop-strip{grid-column:1/-1;display:grid;grid-template-columns:1.05fr .95fr;gap:5px}.gamepad-status{min-width:0;min-height:42px;padding:4px 7px;display:grid;grid-template-columns:7px minmax(0,1fr) auto;align-items:center;gap:7px;text-align:left;border-color:#294b57;background:#081820;color:#a9c2ca;overflow:hidden}.gamepad-status.connected{border-color:#387c68;color:var(--green);background:linear-gradient(120deg,#0a241f,#081820)}.gamepad-status.mode{border-color:var(--cyan);box-shadow:inset 0 0 12px #2cd2e817}.gamepad-dot{width:7px;height:7px;border-radius:50%;background:#60767d}.gamepad-status.connected .gamepad-dot{background:var(--green);box-shadow:0 0 8px #42e49baa}.gamepad-copy{min-width:0}.gamepad-copy b,.gamepad-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gamepad-copy b{color:#dffbff;font:800 9px/1.1 ui-sans-serif,system-ui}.gamepad-copy small{margin-top:2px;color:#7f9ca5;font:8px/1.1 ui-monospace,SFMono-Regular,Menlo}.gamepad-status.connected .gamepad-copy small{color:#89bbae}.gamepad-sticks{display:flex;gap:4px}.stick-meter{position:relative;width:20px;height:20px;border:1px solid #3c5c66;border-radius:50%;background:#061219}.stick-meter:before,.stick-meter:after{content:"";position:absolute;background:#294550}.stick-meter:before{left:3px;right:3px;top:9px;height:1px}.stick-meter:after{top:3px;bottom:3px;left:9px;width:1px}.stick-meter i{position:absolute;left:7px;top:7px;width:5px;height:5px;border-radius:50%;background:#66828b;transition:transform 45ms linear}.gamepad-status.connected .stick-meter i{background:var(--cyan);box-shadow:0 0 5px #2cd2e899}.voice-form{display:grid;grid-template-columns:minmax(0,1fr) 36px 36px;gap:4px}.voice-form input{min-width:0;height:34px;padding:0 8px;border:1px solid #294b57;border-radius:6px;background:#061219;color:#ddf7fa;font:9px/1 ui-sans-serif,system-ui}.voice-form input:focus{outline:1px solid var(--cyan);border-color:var(--cyan)}.voice-form button{min-height:34px;padding:0;font-size:12px}.voice-mic.listening{border-color:#ff8b93;background:#4b1f28;color:#fff;box-shadow:0 0 12px #ff4f6670}.voice-status{grid-column:1/-1;min-height:8px;color:#718f99;font:8px/1.1 ui-monospace,SFMono-Regular,Menlo;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.voice-status.listening{color:#ff9da5}.voice-status.ok{color:var(--green)}.voice-status.error{color:#ffb1b6}
@@ -507,6 +517,12 @@ APP_HTML = r"""<!doctype html>
         </div><div class="instrument-actions"><div id="rightRotateModifier" class="modifier-chip"><kbd>R⇧</kbd> Angle</div><div id="rightPrecisionModifier" class="modifier-chip"><kbd>R⌥</kbd> Fine</div><button id="gripCloseButton" class="gripper-control primary" data-shortcut="Enter" onclick="toggleGrip(1)"><kbd>Enter</kbd> Grip</button></div><div class="direct-roll"><button class="move-button" data-arm="1" data-key="KeyN" data-shortcut="N" data-axis="3" data-direction="-1"><kbd>N</kbd> Roll ↶</button><button class="move-button" data-arm="1" data-key="KeyM" data-shortcut="M" data-axis="3" data-direction="1"><kbd>M</kbd> Roll ↷</button></div><div class="hand-speeds"><button data-hand-speed-arm="1" data-hand-speed=".35" data-shortcut="8" onclick="setHandSpeed(1,.35,'8')"><kbd>8</kbd> Fine</button><button class="active" data-hand-speed-arm="1" data-hand-speed="1" data-shortcut="9" onclick="setHandSpeed(1,1,'9')"><kbd>9</kbd> Normal</button><button data-hand-speed-arm="1" data-hand-speed="1.7" data-shortcut="0" onclick="setHandSpeed(1,1.7,'0')"><kbd>0</kbd> Fast</button></div></section>
       </div><div class="control-stop-row"><button class="stop-center" data-shortcut="Esc" onclick="emergencyStop()">Stop both robots <kbd>Esc / ⌫</kbd></button></div><div id="controlReadout" class="control-readout" aria-live="polite"><i></i><span>Ready · hold a key to move either instrument</span></div>
     </section>
+    <section id="closureRobotCell" class="stapler-cell hidden" aria-label="Approximate staple seal robot controls">
+      <div class="stapler-cell-head"><div><b>Dr.Anmar approximate–staple–seal robot</b><small>Franka link8 mount · surface-deformable tissue · measured physical phase gates</small></div><span id="closureRobotPhase" class="stapler-phase">READY</span></div>
+      <div class="stapler-metrics"><div class="stapler-metric"><b id="closureRobotApproximation">0 / 0 mm</b><span>CARRIAGES L / R</span></div><div class="stapler-metric"><b id="closureRobotClamps">28 / −28°</b><span>CLAMPS L / R</span></div><div class="stapler-metric"><b id="closureRobotDriver">0.0 mm</b><span>STAPLE DRIVER</span></div><div class="stapler-metric"><b id="closureRobotStaple">0 · 0 bonds</b><span>RETAINED STAPLE</span></div><div class="stapler-metric"><b id="closureRobotAdhesive">0.0 / 0.0 mm</b><span>DEPLOY / METER</span></div><div class="stapler-metric"><b id="closureRobotBonds">0 · 0 bonds</b><span>ADHESIVE BEAD</span></div><div class="stapler-metric"><b id="closureRobotCapture">0</b><span>TEMP CAPTURE</span></div><div class="stapler-metric"><b id="closureRobotPhysics">PHYSX</b><span>TISSUE AUTHORITY</span></div></div>
+      <div class="stapler-controls"><button id="closureRobotRun" class="primary" data-shortcut="CLOSE-RUN" onclick="closureRobotCommand('run')">Run complete<br>physical closure</button><button id="closureRobotStop" data-shortcut="CLOSE-STOP" onclick="closureRobotCommand('stop')">Hold mechanism<br>keep attachments</button><button data-shortcut="CLOSE-RESET" onclick="closureRobotCommand('reset')">Reset robot<br>and closure</button></div>
+      <p class="stapler-boundary">The stock Panda hand and fingers are inactive; the payload is fixed directly to panda_link8. Clamp capture, the two formed-staple legs and all six cured-bead regions use PhysxPhysicsAttachment. The runtime never rewrites tissue transforms or nodal positions. Penetration, metal forming, adhesive chemistry, damage and clinical strength are not claimed.</p>
+    </section>
     <section id="staplerCell" class="stapler-cell hidden" aria-label="Stapler test cell controls">
       <div class="stapler-cell-head"><div><b>Dr.Anmar physical tissue closure bench</b><small>PhysX FEM tissue · pre-fire wound approximation · rigid retained staples · no robot grip required</small></div><span id="staplerPhase" class="stapler-phase">READY</span></div>
       <div class="stapler-metrics"><div class="stapler-metric"><b id="staplerStation">1 / 7</b><span>CLOSURE STATION</span></div><div class="stapler-metric"><b id="staplerClosure">0 / 7</b><span>STAPLES PLACED</span></div><div class="stapler-metric"><b id="staplerGap">—</b><span>LIVE TISSUE GAP</span></div><div class="stapler-metric"><b id="staplerApproximation">0%</b><span>APPROXIMATION</span></div><div class="stapler-metric"><b id="staplerSpacing">6.0 mm</b><span>GUIDED SPACING</span></div><div class="stapler-metric"><b id="staplerTrigger">0.0°</b><span>ACTUAL TRIGGER</span></div><div class="stapler-metric"><b id="staplerPusher">0.0 mm</b><span>PUSHER TRAVEL</span></div><div class="stapler-metric"><b id="staplerMagazine">35 / 35</b><span>MAGAZINE</span></div><div class="stapler-metric"><b id="staplerRetention">OPEN</b><span>PHYSICAL RETENTION</span></div></div>
@@ -556,6 +572,8 @@ async function requestJson(url,options={},timeoutMs=5000){const controller=new A
 async function post(url,body={},timeoutMs=5000){return requestJson(url,{method:'POST',headers:{'content-type':'application/json','x-dr-anmar-operator':operatorId},body:JSON.stringify(body)},timeoutMs)}
 async function setSkinAdhesiveActivation(percent){const activation=Math.max(0,Math.min(1,(Number(percent)||0)/100));try{await post('/api/skin-adhesive/activation',{activation});toast(`Skin adhesive activation ${Math.round(activation*100)}%`);await refresh()}catch(e){toast(e.message)}}
 function renderSkinAdhesive(system={}){const panel=document.getElementById('skinAdhesiveCell'),enabled=!!system.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const actual=Number(system.actual_activation||0),target=Number(system.target_activation||0),slider=document.getElementById('skinAdhesiveTarget'),arm=Number(system.mounted_arm||1);document.getElementById('skinAdhesivePhase').textContent=String(system.workflow_state||system.applicator_state||'mounted').replaceAll('_',' ');document.getElementById('skinAdhesiveActivation').textContent=`${Math.round(actual*100)}%`;document.getElementById('skinAdhesiveLeft').textContent=`${Number(system.left_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesiveRight').textContent=`${Number(system.right_paddle_deg||0).toFixed(1)}°`;document.getElementById('skinAdhesivePiston').textContent=`${Number(system.piston_travel_mm||0).toFixed(2)} mm`;document.getElementById('skinAdhesiveMount').textContent=`INSTRUMENT ${arm}`;document.getElementById('skinAdhesiveOutlet').textContent=String(system.outlet_state||'exposed').toUpperCase();const gripButton=document.getElementById(arm===1?'gripOpenButton':'gripCloseButton');if(gripButton)gripButton.innerHTML=`<kbd>${arm===1?'Space':'Enter'}</kbd> Dispense`;if(document.activeElement!==slider)slider.value=String(Math.round(target*100));document.getElementById('skinAdhesiveTargetOutput').value=`${Math.round(target*100)}%`}
+async function closureRobotCommand(action){try{await post('/api/closure-robot/command',{action});toast({run:'Physical closure started',stop:'Closure mechanism held',reset:'Closure robot reset'}[action]||action);await refresh()}catch(e){toast(e.message)}}
+function renderClosureRobot(system={}){const panel=document.getElementById('closureRobotCell'),enabled=!!system.enabled;panel.classList.toggle('hidden',!enabled);if(!enabled)return;const phase=String(system.phase||'ready').replaceAll('_',' '),running=!!system.cycle_running,complete=!!system.cycle_complete;document.getElementById('closureRobotPhase').textContent=system.last_error?'safety hold':complete?'complete':system.held?`held · ${phase}`:phase;document.getElementById('closureRobotApproximation').textContent=`${Number(system.left_approximation_mm||0).toFixed(1)} / ${Number(system.right_approximation_mm||0).toFixed(1)} mm`;document.getElementById('closureRobotClamps').textContent=`${Number(system.left_clamp_deg||0).toFixed(1)} / ${Number(system.right_clamp_deg||0).toFixed(1)}°`;document.getElementById('closureRobotDriver').textContent=`${Number(system.staple_driver_mm||0).toFixed(1)} mm`;document.getElementById('closureRobotStaple').textContent=`${Number(system.formed_staple_count||0)} · ${Number(system.staple_attachment_count||0)} bonds`;document.getElementById('closureRobotAdhesive').textContent=`${Number(system.adhesive_deploy_mm||0).toFixed(1)} / ${Number(system.adhesive_meter_mm||0).toFixed(1)} mm`;document.getElementById('closureRobotBonds').textContent=`${Number(system.adhesive_bead_count||0)} · ${Number(system.adhesive_bond_attachment_count||0)} bonds`;document.getElementById('closureRobotCapture').textContent=String(Number(system.capture_attachment_count||0));document.getElementById('closureRobotPhysics').textContent=String(system.tissue_backend||'physx').replace('physx_','').toUpperCase();const run=document.getElementById('closureRobotRun'),stop=document.getElementById('closureRobotStop');run.disabled=running;stop.disabled=!running;run.innerHTML=complete?'Run a new<br>physical closure':'Run complete<br>physical closure';if(system.last_error)run.title=system.last_error;else run.removeAttribute('title')}
 function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toastTimer=null;e.classList.remove('show')},1600)}
 async function staplerCommand(action,targetDeg=null){try{const body={action};if(targetDeg!==null)body.target_deg=Number(targetDeg);await post('/api/stapler/command',body);const message={fire:'Stapler cycle started',reset:'Tissue closure reset',release:'Stapler released',previous_station:'Fixture indexed to previous station',next_station:'Fixture indexed to next station'}[action]||`Trigger target ${Number(targetDeg).toFixed(0)}°`;toast(message);await refresh()}catch(e){toast(e.message)}}
 function setStaplerTarget(value){const target=Math.max(0,Math.min(28,Number(value)||0));return staplerCommand('set_target',target)}
@@ -681,7 +699,7 @@ async function refresh(){if(refreshInFlight||pageDisposed||document.hidden)retur
   currentViewMode=s.camera_view_mode||currentViewMode;renderFreeCamera(selectedCameraAdjustment(s));document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',!cameraAdjustMode&&x.dataset.viewMode===currentViewMode));
   document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record')?.classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[0]===false);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[(s.arms||1)>1?1:0]===false);
 	  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m;proximity.className='proximity';let guidance='Move toward the target';if(s.native_grasp_contact_active?.[activeArm]){guidance='Native jaw contact detected · lift smoothly';proximity.classList.add('held')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){guidance=`Target ${Math.round(distance*1000)} mm · ${targetDirections(offset)||'hold course'}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Next</b><span>${guidance}</span>`;const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],contact=s.native_grasp_contact_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':contact?'Lift the physically held object':'Open jaws and retry';
-  const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderStaplerCell(s.stapler_test_cell);renderSkinAdhesive(s.skin_adhesive_system);renderExpert(s.expert_demonstration);
+  const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderClosureRobot(s.closure_robot_system);renderStaplerCell(s.stapler_test_cell);renderSkinAdhesive(s.skin_adhesive_system);renderExpert(s.expert_demonstration);
 	  if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
 }catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}finally{refreshInFlight=false}}
 async function heartbeat(){if(heartbeatInFlight||pageDisposed||document.hidden)return;heartbeatInFlight=true;try{await post('/api/operator/heartbeat',{},3000)}catch(_error){}finally{heartbeatInFlight=false}}
@@ -770,6 +788,10 @@ class StaplerCommandRequest(BaseModel):
 
 class SkinAdhesiveActivationRequest(BaseModel):
     activation: float
+
+
+class ClosureRobotCommandRequest(BaseModel):
+    action: str
 
 
 class ScenarioRequest(BaseModel):
@@ -957,6 +979,8 @@ class SharedState:
     stapler_test_cell: dict[str, Any] = field(default_factory=dict)
     skin_adhesive_target: float = 0.0
     skin_adhesive_system: dict[str, Any] = field(default_factory=dict)
+    closure_robot_command_request: str | None = None
+    closure_robot_system: dict[str, Any] = field(default_factory=dict)
     dr_anmar_needle_domain: dict[str, float | int] = field(
         default_factory=dict
     )
@@ -1208,6 +1232,7 @@ class SharedState:
                 "native_telemetry": self.native_telemetry,
                 "stapler_test_cell": dict(self.stapler_test_cell),
                 "skin_adhesive_system": dict(self.skin_adhesive_system),
+                "closure_robot_system": dict(self.closure_robot_system),
                 "dr_anmar_needle_domain": self.dr_anmar_needle_domain,
                 "sensor_quality": {
                     "valid_depth_fraction": self.camera_valid_depth_fraction,
@@ -1297,6 +1322,7 @@ class SharedState:
                 },
                 "stapler_test_cell": dict(self.stapler_test_cell),
                 "skin_adhesive_system": dict(self.skin_adhesive_system),
+                "closure_robot_system": dict(self.closure_robot_system),
             }
 
     def _procedure_status(self) -> dict[str, Any]:
@@ -2059,6 +2085,8 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.grippers_open = [True] * state.arms
             state.gripper_apertures = [1.0] * state.arms
             state.skin_adhesive_target = 0.0
+            if state.closure_robot_system.get("enabled", False):
+                state.closure_robot_command_request = "reset"
         state.wake_event.set()
         return {"ok": True}
 
@@ -2222,6 +2250,44 @@ def build_web_app(state: SharedState) -> FastAPI:
             "targets": skin_adhesive_activation_targets(target),
             "skin_adhesive_system": result,
         }
+
+    @app.post("/api/closure-robot/command")
+    def closure_robot_command(
+        request: ClosureRobotCommandRequest,
+    ) -> dict[str, Any]:
+        action = request.action.strip().lower()
+        if action not in {"run", "stop", "reset"}:
+            raise HTTPException(400, "action must be run, stop, or reset")
+        with state.lock:
+            if not state.closure_robot_system.get("enabled", False):
+                raise HTTPException(
+                    409,
+                    "Add the Dr.Anmar approximate–staple–seal robot to this bench first",
+                )
+            if (
+                action == "run"
+                and state.closure_robot_system.get("cycle_running", False)
+            ):
+                raise HTTPException(409, "The physical closure cycle is already running")
+            state.closure_robot_command_request = action
+            state.operator_input_source = "keyboard_pointer"
+            state.coaching_cue = {
+                "run": (
+                    "Closure robot started. Each phase advances only after the "
+                    "articulated mechanism reaches its measured physical target."
+                ),
+                "stop": (
+                    "Closure robot held at its current articulated target. "
+                    "PhysX attachments remain physical and active."
+                ),
+                "reset": (
+                    "Resetting the closure mechanism and removing its runtime "
+                    "staple, adhesive and temporary capture attachments."
+                ),
+            }[action]
+            result = dict(state.closure_robot_system)
+        state.wake_event.set()
+        return {"ok": True, "action": action, "closure_robot_system": result}
 
     @app.get("/api/scenarios")
     def scenarios() -> dict[str, Any]:
@@ -3986,6 +4052,10 @@ def main() -> None:
         nvidia_native_bench
         and "skin_adhesive_system" in selected_bench_assets
     )
+    closure_robot_enabled = bool(
+        nvidia_native_bench
+        and "approximate_staple_seal_robot" in selected_bench_assets
+    )
     skin_adhesive_paths: dict[str, Path] = {}
     if skin_adhesive_enabled:
         skin_adhesive_paths = {
@@ -4003,6 +4073,38 @@ def main() -> None:
             raise RuntimeError(
                 "The Dr.Anmar topical skin-adhesive system is incomplete: "
                 + "; ".join(missing_skin_adhesive_assets)
+            )
+    closure_robot_asset_root = (
+        REPOSITORY_ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/"
+        "SurgicalClosure/ClosureRobot"
+    )
+    closure_robot_paths: dict[str, Path] = {}
+    if closure_robot_enabled:
+        closure_robot_paths = {
+            "payload": bench_asset_paths["approximate_staple_seal_robot"],
+            "standalone": closure_robot_asset_root
+            / "dranmar_closure_tool_standalone.usda",
+            "tissue": closure_robot_asset_root
+            / "dranmar_closure_tissue_demo.usda",
+            "staple": closure_robot_asset_root
+            / "dranmar_closure_staple.usda",
+            "adhesive_bead": closure_robot_asset_root
+            / "dranmar_closure_adhesive_bead.usda",
+            "physics_profile": closure_robot_asset_root
+            / "physics_profile.json",
+            "mount_contract": closure_robot_asset_root
+            / "franka_mount_contract.json",
+        }
+        missing_closure_robot_assets = [
+            f"{name}: {path}"
+            for name, path in closure_robot_paths.items()
+            if not path.is_file()
+        ]
+        if missing_closure_robot_assets:
+            raise RuntimeError(
+                "The Dr.Anmar approximate–staple–seal robot is incomplete: "
+                + "; ".join(missing_closure_robot_assets)
             )
     stapler_test_cell_paths = {
         "fixture": REPOSITORY_ROOT
@@ -4148,7 +4250,7 @@ def main() -> None:
         env_cfg.sim.dt = orbit_psm_foundation.sim.dt
         env_cfg.decimation = orbit_psm_foundation.decimation
         env_cfg.sim.render_interval = orbit_psm_foundation.sim.render_interval
-    if stapler_test_cell_enabled:
+    if stapler_test_cell_enabled or closure_robot_enabled:
         # The imported 6 mm tissue coupon requires the profile's 1 ms FEM
         # cadence. Preserve the PSM action period by increasing decimation
         # while giving the deformable solver the substeps it needs.
@@ -4260,6 +4362,97 @@ def main() -> None:
                 )
             robot_cfg.init_state.pos = root_position
             robot_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        if closure_robot_enabled:
+            env_cfg.scene.replicate_physics = False
+            closure_robot_cfg = make_franka_closure_robot_cfg(
+                prim_path="{ENV_REGEX_NS}/ClosureRobot",
+                staple_state="loaded",
+                adhesive_state="full",
+            )
+            # The standard Franka ready pose places link8 over the shared
+            # operative center. The tissue spawn below derives its setup
+            # transform from the authored closure TCP before PhysX starts.
+            # Offset Isaac 5.1's ready-pose link8 so the diagonal closure axis
+            # lands the authored TCP on the shared operative target rather
+            # than below the table or outside the endoscope view.
+            closure_robot_cfg.init_state.pos = (-0.499, 0.22, -0.045)
+            closure_robot_cfg.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+            env_cfg.scene.closure_robot = closure_robot_cfg
+
+            closure_tissue_spawn = sim_utils.UsdFileCfg(
+                usd_path=str(closure_robot_paths["tissue"]),
+            )
+            source_closure_tissue_spawn = closure_tissue_spawn.func
+
+            def spawn_closure_tissue_at_tool(
+                prim_path: str,
+                cfg: sim_utils.UsdFileCfg,
+                translation=None,
+                orientation=None,
+                **kwargs: Any,
+            ) -> Any:
+                tissue_root = source_closure_tissue_spawn(
+                    prim_path,
+                    cfg,
+                    translation=translation,
+                    orientation=orientation,
+                    **kwargs,
+                )
+                import omni.usd
+                from pxr import UsdGeom
+
+                stage = omni.usd.get_context().get_stage()
+                resolved_root_path = str(tissue_root.GetPath())
+                environment_path = resolved_root_path.rsplit("/", 1)[0]
+                closure_tcp_path = (
+                    f"{environment_path}/ClosureRobot/"
+                    "DrAnmarClosureTool/Links/Mount/Frames/closure_tcp"
+                )
+                closure_tcp = stage.GetPrimAtPath(closure_tcp_path)
+                if not closure_tcp.IsValid():
+                    raise RuntimeError(
+                        "The composed Franka closure robot has no authored closure_tcp"
+                    )
+                cache = UsdGeom.XformCache()
+                environment_prim = tissue_root.GetParent()
+                closure_tcp_world = cache.GetLocalToWorldTransform(closure_tcp)
+                environment_world = cache.GetLocalToWorldTransform(
+                    environment_prim
+                )
+                tissue_local = closure_tcp_world * environment_world.GetInverse()
+                tissue_xform = UsdGeom.Xformable(tissue_root)
+                tissue_xform.ClearXformOpOrder()
+                tissue_xform.AddTransformOp().Set(tissue_local)
+                if not sim_utils.standardize_xform_ops(tissue_root):
+                    raise RuntimeError(
+                        "The closure tissue root could not be converted to "
+                        "Isaac Lab's canonical transform stack"
+                    )
+
+                tissue_info = apply_tissue_demo_surface_deformables(
+                    resolved_root_path
+                )
+                anchor_tissue_outer_edges(
+                    stage,
+                    tissue_root_path=resolved_root_path,
+                    left_tissue_path=str(
+                        tissue_info["left_tissue_path"]
+                    ),
+                    right_tissue_path=str(
+                        tissue_info["right_tissue_path"]
+                    ),
+                )
+                return tissue_root
+
+            closure_tissue_spawn.func = spawn_closure_tissue_at_tool
+            env_cfg.scene.closure_tissue = AssetBaseCfg(
+                prim_path="{ENV_REGEX_NS}/ClosureTissue",
+                init_state=AssetBaseCfg.InitialStateCfg(
+                    pos=(0.0, 0.0, 0.0),
+                    rot=(1.0, 0.0, 0.0, 0.0),
+                ),
+                spawn=closure_tissue_spawn,
+            )
         env_cfg.scene.table.spawn.usd_path = str(bench_asset_paths["table"])
         env_cfg.scene.table.init_state.pos = (0.0, 0.0, -0.457)
         env_cfg.scene.object.spawn.usd_path = str(bench_asset_paths["needle_runtime"])
@@ -5048,7 +5241,9 @@ def main() -> None:
     camera_target = np.asarray(
         procedure.get(
             "interactive_camera_target_m",
-            (-0.070, -0.020, 0.055)
+            (-0.045, 0.220, 0.355)
+            if closure_robot_enabled
+            else (-0.070, -0.020, 0.055)
             if nvidia_native_bench
             else env_cfg.viewer.lookat,
         ),
@@ -5059,7 +5254,9 @@ def main() -> None:
     camera_eye = np.asarray(
         procedure.get(
             "interactive_camera_eye_m",
-            (0.38, -0.44, 0.32)
+            (0.32, 0.62, 0.52)
+            if closure_robot_enabled
+            else (0.38, -0.44, 0.32)
             if nvidia_native_bench
             else (0.36, 0.36, 0.21)
             if bimanual_softmimicgen
@@ -5673,6 +5870,76 @@ def main() -> None:
         if stapler_test_cell_enabled
         else None
     )
+    closure_robot_articulation = (
+        scene.articulations.get("closure_robot")
+        if closure_robot_enabled
+        else None
+    )
+    closure_robot_joint_indices: dict[str, int] = {}
+    closure_robot_arm_joint_indices: list[int] = []
+    closure_robot_body_indices: dict[str, int] = {}
+    if closure_robot_enabled:
+        if closure_robot_articulation is None:
+            raise RuntimeError(
+                "The setup bench did not create the Franka closure articulation"
+            )
+        closure_joint_names = list(closure_robot_articulation.joint_names)
+        required_closure_joint_names = tuple(
+            closure_phase_targets(ClosurePhase.READY)
+        )
+        try:
+            closure_robot_joint_indices = {
+                name: closure_joint_names.index(name)
+                for name in required_closure_joint_names
+            }
+        except ValueError as exc:
+            raise RuntimeError(
+                "The composed Franka articulation is missing one or more "
+                "approximation, clamp, staple, or adhesive joints"
+            ) from exc
+        try:
+            closure_robot_arm_joint_indices = [
+                closure_joint_names.index(f"panda_joint{index}")
+                for index in range(1, 8)
+            ]
+        except ValueError as exc:
+            raise RuntimeError(
+                "The composed Franka articulation is missing one or more "
+                "of its seven arm joints"
+            ) from exc
+        closure_body_names = list(closure_robot_articulation.body_names)
+        forbidden_closure_bodies = sorted(
+            {
+                "panda_hand",
+                "panda_leftfinger",
+                "panda_rightfinger",
+            }.intersection(closure_body_names)
+        )
+        if forbidden_closure_bodies:
+            raise RuntimeError(
+                "The Franka closure articulation still contains stock hand "
+                "bodies: " + ", ".join(forbidden_closure_bodies)
+            )
+        required_closure_bodies = (
+            "panda_link8",
+            "Mount",
+            "LeftCarriage",
+            "RightCarriage",
+            "LeftClamp",
+            "RightClamp",
+            "StapleDriver",
+            "AdhesiveCarriage",
+        )
+        try:
+            closure_robot_body_indices = {
+                name: closure_body_names.index(name)
+                for name in required_closure_bodies
+            }
+        except ValueError as exc:
+            raise RuntimeError(
+                "The Franka closure articulation is missing its physical "
+                "mount or one or more payload links"
+            ) from exc
     stapler_trigger_joint_index: int | None = None
     stapler_pusher_joint_index: int | None = None
     stapler_housing_body_index: int | None = None
@@ -5732,6 +5999,58 @@ def main() -> None:
                 "The topical skin-adhesive applicator requires both paddle "
                 "joints and the metering-piston joint"
             ) from exc
+    closure_robot_controller: ClosureSequenceController | None = None
+    closure_robot_tool_path = (
+        "/World/envs/env_0/ClosureRobot/DrAnmarClosureTool"
+    )
+    closure_tissue_root_path = "/World/envs/env_0/ClosureTissue"
+    closure_left_tissue_path = (
+        f"{closure_tissue_root_path}/LeftTissue/SimulationMesh"
+    )
+    closure_right_tissue_path = (
+        f"{closure_tissue_root_path}/RightTissue/SimulationMesh"
+    )
+    if closure_robot_enabled:
+        for required_path in (
+            closure_robot_tool_path,
+            closure_left_tissue_path,
+            closure_right_tissue_path,
+        ):
+            if not suture_stage.GetPrimAtPath(required_path).IsValid():
+                raise RuntimeError(
+                    "The Franka closure setup is missing its composed runtime "
+                    f"prim: {required_path}"
+                )
+        closure_robot_controller = ClosureSequenceController(
+            stage=suture_stage,
+            tool_path=closure_robot_tool_path,
+            left_tissue_path=closure_left_tissue_path,
+            right_tissue_path=closure_right_tissue_path,
+        )
+    closure_robot_arm_hold_targets: torch.Tensor | None = None
+    closure_robot_mount_reference_w: torch.Tensor | None = None
+    closure_robot_max_mount_error_mm = 0.0
+    if (
+        closure_robot_articulation is not None
+        and closure_robot_arm_joint_indices
+        and "panda_link8" in closure_robot_body_indices
+    ):
+        closure_robot_arm_hold_targets = (
+            closure_robot_articulation.data.joint_pos[
+                :,
+                closure_robot_arm_joint_indices,
+            ]
+            .detach()
+            .clone()
+        )
+        closure_robot_mount_reference_w = (
+            closure_robot_articulation.data.body_pos_w[
+                0,
+                closure_robot_body_indices["panda_link8"],
+            ]
+            .detach()
+            .clone()
+        )
     object_names = sorted(scene.rigid_objects.keys())
     objects = {name: scene[name] for name in object_names}
     deformable_names = sorted(getattr(scene, "deformable_objects", {}).keys())
@@ -7322,7 +7641,74 @@ def main() -> None:
             "curing_solver": False,
             "clinical_validation": False,
         },
+        closure_robot_system={
+            "enabled": closure_robot_enabled,
+            "asset_id": (
+                "dranmar-approximate-staple-seal-end-effector-v1"
+            ),
+            "version": "0.1.0",
+            "phase": "ready" if closure_robot_enabled else "disabled",
+            "cycle_running": False,
+            "cycle_complete": False,
+            "mount_robot": "Franka Panda",
+            "mount_link": "panda_link8",
+            "stock_hand_active": False,
+            "fixed_mount": True,
+            "articulation_joint_count": (
+                len(closure_robot_articulation.joint_names)
+                if closure_robot_articulation is not None
+                else 0
+            ),
+            "articulation_body_count": (
+                len(closure_robot_articulation.body_names)
+                if closure_robot_articulation is not None
+                else 0
+            ),
+            "arm_hold": "gravity_compensated_physical_joint_position_drive",
+            "mount_translation_error_mm": 0.0,
+            "max_mount_translation_error_mm": 0.0,
+            "joint_target_source": "measured_phase_gated_sequence",
+            "left_approximation_mm": 0.0,
+            "right_approximation_mm": 0.0,
+            "left_clamp_deg": 28.0,
+            "right_clamp_deg": -28.0,
+            "staple_driver_mm": 0.0,
+            "adhesive_deploy_mm": 0.0,
+            "adhesive_meter_mm": 0.0,
+            "temporary_capture_attachment_count": 0,
+            "formed_staple_count": 0,
+            "staple_attachment_count": 0,
+            "adhesive_bead_count": 0,
+            "adhesive_bond_attachment_count": 0,
+            "attachment_prim_count": 0,
+            "attachment_enabled_count": 0,
+            "attachment_actor_pair_count": 0,
+            "attachment_auto_overlap_count": 0,
+            "attachment_explicit_point_count": 0,
+            "tissue_backend": "physx_surface_deformable",
+            "attachment_backend": "PhysxPhysicsAttachment",
+            "transform_writes": False,
+            "kinematic_tissue_motion": False,
+            "staple_dynamic_rigid_body": True,
+            "parameter_status": "provisional_unmeasured",
+            "clinical_validation": False,
+        },
     )
+    closure_cycle_running = False
+    closure_cycle_phase = (
+        ClosurePhase.READY
+        if closure_robot_enabled
+        else None
+    )
+    closure_phase_started_at = time.monotonic()
+    closure_hold_targets = (
+        closure_phase_targets(ClosurePhase.READY)
+        if closure_robot_enabled
+        else {}
+    )
+    closure_staple_deployed = False
+    closure_bead_deposited = False
+
     state.simulation_profile = {
         "scene_authority": "OpenUSD",
         "simulation_authority": "Isaac Lab",
@@ -8020,6 +8406,15 @@ def main() -> None:
         nonlocal stapler_last_placement
         nonlocal stapler_fixture_position_w
         nonlocal stapler_fixture_quaternion_w
+        nonlocal closure_cycle_running
+        nonlocal closure_cycle_phase
+        nonlocal closure_phase_started_at
+        nonlocal closure_hold_targets
+        nonlocal closure_staple_deployed
+        nonlocal closure_bead_deposited
+        nonlocal closure_robot_arm_hold_targets
+        nonlocal closure_robot_mount_reference_w
+        nonlocal closure_robot_max_mount_error_mm
         native_grasp_arms.clear()
         update_procedure_waypoint_marker(0, force=True)
         np.random.seed(selected_seed)
@@ -8050,6 +8445,41 @@ def main() -> None:
             stapler_fixture_position_w = None
             stapler_fixture_quaternion_w = None
             reset_stapler_tissue_physics()
+        if (
+            closure_robot_enabled
+            and closure_robot_controller is not None
+            and closure_robot_articulation is not None
+        ):
+            closure_robot_controller.reset()
+            closure_robot_arm_hold_targets = (
+                closure_robot_articulation.data.joint_pos[
+                    :,
+                    closure_robot_arm_joint_indices,
+                ]
+                .detach()
+                .clone()
+            )
+            closure_robot_mount_reference_w = (
+                closure_robot_articulation.data.body_pos_w[
+                    0,
+                    closure_robot_body_indices["panda_link8"],
+                ]
+                .detach()
+                .clone()
+            )
+            closure_robot_max_mount_error_mm = 0.0
+            closure_cycle_running = False
+            closure_cycle_phase = ClosurePhase.READY
+            closure_phase_started_at = time.monotonic()
+            closure_hold_targets = closure_phase_targets(
+                ClosurePhase.READY
+            )
+            closure_staple_deployed = False
+            closure_bead_deposited = False
+            set_closure_robot_joint_targets(
+                closure_robot_articulation,
+                closure_hold_targets,
+            )
         dr_anmar_needle_domain: dict[str, Any] = {}
         if dr_anmar_parametric_needle_enabled:
             dr_anmar_needle_domain = (
@@ -8164,6 +8594,25 @@ def main() -> None:
                         "last_event": None,
                     }
                 )
+            if closure_robot_enabled:
+                state.closure_robot_command_request = None
+                state.closure_robot_system.update(
+                    {
+                        "phase": "ready",
+                        "cycle_running": False,
+                        "cycle_complete": False,
+                        "temporary_capture_attachment_count": 0,
+                        "formed_staple_count": 0,
+                        "staple_attachment_count": 0,
+                        "adhesive_bead_count": 0,
+                        "adhesive_bond_attachment_count": 0,
+                        "attachment_prim_count": 0,
+                        "attachment_enabled_count": 0,
+                        "attachment_actor_pair_count": 0,
+                        "attachment_auto_overlap_count": 0,
+                        "attachment_explicit_point_count": 0,
+                    }
+                )
             state.dr_anmar_needle_domain = dr_anmar_needle_domain
             state.upstream_task_success = False if _softmimicgen_task else None
         selected_active_camera = active_logical_camera_name()
@@ -8252,6 +8701,10 @@ def main() -> None:
             stapler_station_request = state.stapler_station_request
             state.stapler_station_request = None
             stapler_manual_target_deg = state.stapler_manual_target_deg
+            closure_robot_command_request = (
+                state.closure_robot_command_request
+            )
+            state.closure_robot_command_request = None
             scenario_id = state.scenario_id
             scenario_seed = state.scenario_seed
             camera_view_request = state.camera_view_request
@@ -8505,6 +8958,390 @@ def main() -> None:
                 ),
                 joint_ids=[stapler_pusher_joint_index],
             )
+
+        if (
+            closure_robot_enabled
+            and closure_robot_controller is not None
+            and closure_robot_articulation is not None
+            and closure_cycle_phase is not None
+        ):
+            try:
+                closure_positions = closure_robot_articulation.data.joint_pos[
+                    0
+                ]
+
+                def closure_position(name: str) -> float:
+                    return float(
+                        closure_positions[
+                            closure_robot_joint_indices[name]
+                        ].item()
+                    )
+
+                release_clamps_open = False
+                if closure_robot_command_request == "reset":
+                    closure_robot_controller.reset()
+                    closure_cycle_running = False
+                    closure_cycle_phase = ClosurePhase.READY
+                    closure_phase_started_at = loop_started
+                    closure_staple_deployed = False
+                    closure_bead_deposited = False
+                    closure_hold_targets = closure_phase_targets(
+                        ClosurePhase.READY
+                    )
+                elif closure_robot_command_request == "run":
+                    closure_robot_controller.reset()
+                    closure_cycle_running = True
+                    closure_cycle_phase = ClosurePhase.CAPTURE
+                    closure_robot_controller.phase = (
+                        ClosurePhase.CAPTURE
+                    )
+                    closure_phase_started_at = loop_started
+                    closure_staple_deployed = False
+                    closure_bead_deposited = False
+                    closure_hold_targets = closure_phase_targets(
+                        ClosurePhase.CAPTURE
+                    )
+                elif closure_robot_command_request == "stop":
+                    closure_cycle_running = False
+                    closure_hold_targets = {
+                        name: closure_position(name)
+                        for name in closure_robot_joint_indices
+                    }
+
+                if closure_cycle_running:
+                    closure_hold_targets = closure_phase_targets(
+                        closure_cycle_phase
+                    )
+                    phase_elapsed_s = max(
+                        0.0,
+                        loop_started - closure_phase_started_at,
+                    )
+                    left_clamp_rad = closure_position(
+                        "left_clamp_joint"
+                    )
+                    right_clamp_rad = closure_position(
+                        "right_clamp_joint"
+                    )
+                    left_approximation_m = closure_position(
+                        "left_approximation_joint"
+                    )
+                    right_approximation_m = closure_position(
+                        "right_approximation_joint"
+                    )
+                    driver_m = closure_position(
+                        "staple_driver_joint"
+                    )
+                    adhesive_deploy_m = closure_position(
+                        "adhesive_deploy_joint"
+                    )
+                    adhesive_meter_m = closure_position(
+                        "adhesive_meter_joint"
+                    )
+                    release_clamps_open = bool(
+                        left_clamp_rad >= math.radians(25.0)
+                        and right_clamp_rad <= math.radians(-25.0)
+                    )
+                    if (
+                        closure_cycle_phase is ClosurePhase.RELEASE
+                        and not release_clamps_open
+                    ):
+                        # Remove the temporary tissue capture first, then open
+                        # both clamps while the approximation carriages remain
+                        # centered. Retracting under a still-closed clamp can
+                        # wedge real deformable tissue between the upper clamp
+                        # and lower shoe.
+                        closure_hold_targets[
+                            "left_approximation_joint"
+                        ] = 0.022
+                        closure_hold_targets[
+                            "right_approximation_joint"
+                        ] = -0.022
+
+                    if (
+                        closure_cycle_phase is ClosurePhase.CAPTURE
+                        and phase_elapsed_s >= 0.20
+                        and abs(left_clamp_rad) <= math.radians(2.0)
+                        and abs(right_clamp_rad) <= math.radians(2.0)
+                    ):
+                        closure_robot_controller.capture()
+                        closure_cycle_phase = ClosurePhase.APPROXIMATE
+                        closure_robot_controller.phase = (
+                            ClosurePhase.APPROXIMATE
+                        )
+                        closure_phase_started_at = loop_started
+                    elif (
+                        closure_cycle_phase
+                        is ClosurePhase.APPROXIMATE
+                        and left_approximation_m >= 0.020
+                        and right_approximation_m <= -0.020
+                    ):
+                        closure_cycle_phase = ClosurePhase.STAPLE
+                        closure_robot_controller.phase = (
+                            ClosurePhase.STAPLE
+                        )
+                        closure_phase_started_at = loop_started
+                    elif (
+                        closure_cycle_phase is ClosurePhase.STAPLE
+                        and driver_m >= 0.012
+                        and not closure_staple_deployed
+                    ):
+                        suture_stage.DefinePrim(
+                            f"{closure_tissue_root_path}/Deployments",
+                            "Xform",
+                        )
+                        closure_robot_controller.staple_retention.deploy(
+                            prim_path=(
+                                f"{closure_tissue_root_path}/Deployments/"
+                                "FormedStaple_01"
+                            ),
+                            left_tissue_path=closure_left_tissue_path,
+                            right_tissue_path=closure_right_tissue_path,
+                            translation_m=(0.0, 0.0, 0.0034),
+                            orientation_wxyz=(1.0, 0.0, 0.0, 0.0),
+                        )
+                        closure_staple_deployed = True
+                        closure_robot_controller.release_capture()
+                        closure_cycle_phase = ClosurePhase.RELEASE
+                        closure_phase_started_at = loop_started
+                    elif (
+                        closure_cycle_phase is ClosurePhase.RELEASE
+                        and release_clamps_open
+                        and left_approximation_m <= 0.003
+                        and right_approximation_m >= -0.003
+                    ):
+                        closure_cycle_phase = ClosurePhase.ADHESIVE
+                        closure_robot_controller.phase = (
+                            ClosurePhase.ADHESIVE
+                        )
+                        closure_phase_started_at = loop_started
+                    elif (
+                        closure_cycle_phase is ClosurePhase.ADHESIVE
+                        and adhesive_deploy_m <= -0.025
+                        and adhesive_meter_m >= 0.008
+                        and not closure_bead_deposited
+                    ):
+                        closure_robot_controller.adhesive_bonds.deposit(
+                            prim_path=(
+                                f"{closure_tissue_root_path}/Deployments/"
+                                "AdhesiveBead_01"
+                            ),
+                            translation_m=(0.0, 0.0, 0.0022),
+                            orientation_wxyz=(1.0, 0.0, 0.0, 0.0),
+                        )
+                        closure_bead_deposited = True
+                        closure_cycle_phase = (
+                            ClosurePhase.CURE_LEADING
+                        )
+                        closure_robot_controller.phase = (
+                            ClosurePhase.CURE_LEADING
+                        )
+                        closure_phase_started_at = loop_started
+                    elif (
+                        closure_cycle_phase
+                        is ClosurePhase.CURE_LEADING
+                        and phase_elapsed_s >= 0.75
+                    ):
+                        closure_robot_controller.adhesive_bonds.set_cure_fraction(
+                            0,
+                            0.5,
+                        )
+                        closure_cycle_phase = (
+                            ClosurePhase.CURE_TRAILING
+                        )
+                        closure_robot_controller.phase = (
+                            ClosurePhase.CURE_TRAILING
+                        )
+                        closure_phase_started_at = loop_started
+                    elif (
+                        closure_cycle_phase
+                        is ClosurePhase.CURE_TRAILING
+                        and phase_elapsed_s >= 0.75
+                    ):
+                        closure_robot_controller.adhesive_bonds.set_cure_fraction(
+                            0,
+                            1.0,
+                        )
+                        closure_cycle_phase = ClosurePhase.COMPLETE
+                        closure_robot_controller.phase = (
+                            ClosurePhase.COMPLETE
+                        )
+                        closure_phase_started_at = loop_started
+                        closure_cycle_running = False
+                        closure_hold_targets = closure_phase_targets(
+                            ClosurePhase.COMPLETE
+                        )
+                        with state.lock:
+                            state.procedure_event_code = (
+                                PROCEDURE_EVENTS["task_complete"]
+                            )
+                            state.procedure_event_sequence += 1
+                            state.coaching_cue = (
+                                "Physical closure complete: the dynamic "
+                                "formed staple retains two tissue attachments "
+                                "and the cured bead retains six."
+                            )
+
+                set_closure_robot_joint_targets(
+                    closure_robot_articulation,
+                    closure_hold_targets,
+                )
+                if (
+                    closure_robot_arm_hold_targets is None
+                    or closure_robot_mount_reference_w is None
+                ):
+                    raise RuntimeError(
+                        "The Franka closure arm has no initialized physical "
+                        "joint-space hold"
+                    )
+                closure_robot_articulation.set_joint_position_target(
+                    closure_robot_arm_hold_targets,
+                    joint_ids=closure_robot_arm_joint_indices,
+                )
+                closure_snapshot = closure_robot_controller.snapshot()
+                closure_body_positions = (
+                    closure_robot_articulation.data.body_pos_w[0]
+                    .detach()
+                    .cpu()
+                )
+                mount_position_w = closure_robot_articulation.data.body_pos_w[
+                    0,
+                    closure_robot_body_indices["panda_link8"],
+                ]
+                mount_translation_error_mm = float(
+                    torch.linalg.vector_norm(
+                        mount_position_w - closure_robot_mount_reference_w
+                    )
+                    .detach()
+                    .cpu()
+                    .item()
+                    * 1000.0
+                )
+                closure_robot_max_mount_error_mm = max(
+                    closure_robot_max_mount_error_mm,
+                    mount_translation_error_mm,
+                )
+                closure_body_positions_m = {
+                    name: [
+                        round(float(component), 6)
+                        for component in closure_body_positions[index].tolist()
+                    ]
+                    for name, index in closure_robot_body_indices.items()
+                }
+                with state.lock:
+                    state.closure_robot_system.update(
+                        {
+                            **closure_snapshot,
+                            "body_positions_m": closure_body_positions_m,
+                            "mount_translation_error_mm": round(
+                                mount_translation_error_mm,
+                                4,
+                            ),
+                            "max_mount_translation_error_mm": round(
+                                closure_robot_max_mount_error_mm,
+                                4,
+                            ),
+                            "phase": (
+                                closure_cycle_phase.value
+                                if closure_cycle_phase is not None
+                                else "disabled"
+                            ),
+                            "cycle_running": closure_cycle_running,
+                            "cycle_complete": (
+                                closure_cycle_phase
+                                is ClosurePhase.COMPLETE
+                            ),
+                            "held": bool(
+                                not closure_cycle_running
+                                and closure_cycle_phase
+                                not in {
+                                    ClosurePhase.READY,
+                                    ClosurePhase.COMPLETE,
+                                }
+                            ),
+                            "release_stage": (
+                                "open_clamps"
+                                if closure_cycle_phase
+                                is ClosurePhase.RELEASE
+                                and not release_clamps_open
+                                else "retract_carriages"
+                                if closure_cycle_phase
+                                is ClosurePhase.RELEASE
+                                else None
+                            ),
+                            "left_approximation_mm": round(
+                                closure_position(
+                                    "left_approximation_joint"
+                                )
+                                * 1000.0,
+                                4,
+                            ),
+                            "right_approximation_mm": round(
+                                closure_position(
+                                    "right_approximation_joint"
+                                )
+                                * 1000.0,
+                                4,
+                            ),
+                            "left_clamp_deg": round(
+                                math.degrees(
+                                    closure_position(
+                                        "left_clamp_joint"
+                                    )
+                                ),
+                                4,
+                            ),
+                            "right_clamp_deg": round(
+                                math.degrees(
+                                    closure_position(
+                                        "right_clamp_joint"
+                                    )
+                                ),
+                                4,
+                            ),
+                            "staple_driver_mm": round(
+                                closure_position(
+                                    "staple_driver_joint"
+                                )
+                                * 1000.0,
+                                4,
+                            ),
+                            "adhesive_deploy_mm": round(
+                                closure_position(
+                                    "adhesive_deploy_joint"
+                                )
+                                * 1000.0,
+                                4,
+                            ),
+                            "adhesive_meter_mm": round(
+                                closure_position(
+                                    "adhesive_meter_joint"
+                                )
+                                * 1000.0,
+                                4,
+                            ),
+                            "last_error": None,
+                        }
+                    )
+            except (
+                AttributeError,
+                IndexError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+            ) as exc:
+                closure_cycle_running = False
+                with state.lock:
+                    state.closure_robot_system.update(
+                        {
+                            "phase": "safety_hold",
+                            "cycle_running": False,
+                            "cycle_complete": False,
+                            "last_error": str(exc),
+                        }
+                    )
+                    state.coaching_cue = (
+                        "Closure robot safety hold: " + str(exc)
+                    )
 
         if expert_request == "start":
             expert_controller.start()

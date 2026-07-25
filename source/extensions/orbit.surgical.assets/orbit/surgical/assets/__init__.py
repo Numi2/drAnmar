@@ -27,6 +27,7 @@ __version__ = ORBITSURGICAL_ASSETS_METADATA["package"]["version"]
 ##
 
 from .ecm import *
+from .closure_robot import *
 from .laparotomy_sponge import *
 from .needle_thread import *
 from .psm import *

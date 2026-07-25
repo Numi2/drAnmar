@@ -1,0 +1,210 @@
+{
+  "coordinate_convention": "+Z approach, +X across wound, +Y along wound",
+  "frames": {
+    "adhesive_path_tangent": {
+      "orientation_wxyz": [
+        0.70710678,
+        0,
+        0,
+        0.70710678
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.154
+      ],
+      "rest_pose_path": "RestPoseFrames/adhesive_path_tangent",
+      "role": "wound_tangent",
+      "runtime_path": "Links/Mount/Frames/adhesive_path_tangent"
+    },
+    "adhesive_tip": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "AdhesiveCarriage",
+      "position": [
+        0,
+        0.03,
+        0.1495
+      ],
+      "rest_pose_path": "RestPoseFrames/adhesive_tip",
+      "role": "adhesive_dispense",
+      "runtime_path": "Links/AdhesiveCarriage/Frames/adhesive_tip"
+    },
+    "anvil_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.148
+      ],
+      "rest_pose_path": "RestPoseFrames/anvil_center",
+      "role": "staple_forming_anvil",
+      "runtime_path": "Links/Mount/Frames/anvil_center"
+    },
+    "camera_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.034,
+        0.076
+      ],
+      "rest_pose_path": "RestPoseFrames/camera_reference",
+      "role": "sensor_mount",
+      "runtime_path": "Links/Mount/Frames/camera_reference"
+    },
+    "closure_tcp": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.0,
+        0.0,
+        0.154
+      ],
+      "rest_pose_path": "RestPoseFrames/closure_tcp",
+      "role": "robot_tcp",
+      "runtime_path": "Links/Mount/Frames/closure_tcp"
+    },
+    "count_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.04,
+        0.032
+      ],
+      "rest_pose_path": "RestPoseFrames/count_reference",
+      "role": "inventory_reference",
+      "runtime_path": "Links/Mount/Frames/count_reference"
+    },
+    "left_tissue_capture": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftClamp",
+      "position": [
+        -0.026,
+        0,
+        0.154
+      ],
+      "rest_pose_path": "RestPoseFrames/left_tissue_capture",
+      "role": "tissue_capture",
+      "runtime_path": "Links/LeftClamp/Frames/left_tissue_capture"
+    },
+    "panda_link8_mount": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rest_pose_path": "RestPoseFrames/panda_link8_mount",
+      "role": "franka_mount",
+      "runtime_path": "Links/Mount/Frames/panda_link8_mount"
+    },
+    "right_tissue_capture": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightClamp",
+      "position": [
+        0.026,
+        0,
+        0.154
+      ],
+      "rest_pose_path": "RestPoseFrames/right_tissue_capture",
+      "role": "tissue_capture",
+      "runtime_path": "Links/RightClamp/Frames/right_tissue_capture"
+    },
+    "staple_driver_face": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "StapleDriver",
+      "position": [
+        0,
+        0,
+        0.138
+      ],
+      "rest_pose_path": "RestPoseFrames/staple_driver_face",
+      "role": "driver_face",
+      "runtime_path": "Links/StapleDriver/Frames/staple_driver_face"
+    },
+    "staple_exit": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.154
+      ],
+      "rest_pose_path": "RestPoseFrames/staple_exit",
+      "role": "staple_deployment",
+      "runtime_path": "Links/Mount/Frames/staple_exit"
+    },
+    "wound_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.154
+      ],
+      "rest_pose_path": "RestPoseFrames/wound_center",
+      "role": "closure_reference",
+      "runtime_path": "Links/Mount/Frames/wound_center"
+    }
+  },
+  "schema": "dr.anmar.interaction-frames.v1"
+}

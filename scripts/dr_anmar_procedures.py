@@ -92,6 +92,17 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
                 "default": False,
             },
             {
+                "id": "approximate_staple_seal_robot",
+                "title": "Dr.Anmar approximate–staple–seal robot",
+                "description": "Franka hand replacement with bilateral tissue approximation, a retained formed staple and staged two-sided adhesive bonds.",
+                "path": "Props/SurgicalClosure/ClosureRobot/dranmar_closure_tool_payload.usda",
+                "provider": "dr_anmar",
+                "state": "loaded_full",
+                "representation": "fixed_joint_franka_end_effector",
+                "physics": "physx_surface_deformable_attachments",
+                "default": False,
+            },
+            {
                 "id": "dr_anmar_needle_v030",
                 "title": "Dr.Anmar needle v0.3",
                 "description": "New half-circle taper-point needle with explicit swage recess, compound collision and authored grasp frames.",

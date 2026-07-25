@@ -1,0 +1,59 @@
+{
+  "phases": [
+    {
+      "id": "approach",
+      "required_frames": [
+        "closure_tcp",
+        "wound_center"
+      ]
+    },
+    {
+      "id": "capture",
+      "joint_targets": {
+        "left_clamp_joint": 0.0,
+        "right_clamp_joint": 0.0
+      },
+      "runtime_event": "create jaw-to-tissue attachments"
+    },
+    {
+      "id": "approximate",
+      "joint_targets": {
+        "left_approximation_joint": 0.022,
+        "right_approximation_joint": -0.022
+      },
+      "success": "wound gap below configured threshold"
+    },
+    {
+      "id": "staple",
+      "joint_targets": {
+        "staple_driver_joint": 0.014
+      },
+      "runtime_event": "spawn formed staple and attach it to both tissue sides"
+    },
+    {
+      "id": "release",
+      "runtime_event": "remove temporary jaw attachments; staple remains"
+    },
+    {
+      "id": "adhesive",
+      "joint_targets": {
+        "adhesive_deploy_joint": -0.03
+      },
+      "runtime_event": "deposit bead segments from nozzle trajectory"
+    },
+    {
+      "id": "cure",
+      "runtime_event": "ramp the provisional strength of the two existing bead-to-tissue attachments and switch the bead visual/contact state to cured"
+    }
+  ],
+  "schema": "dr.anmar.closure-sequence.v1",
+  "success_metrics": [
+    "wound_edge_distance",
+    "edge_height_mismatch",
+    "staple_bridge_integrity",
+    "staple_attachment_count",
+    "adhesive_coverage_fraction",
+    "adhesive_bond_attachment_count",
+    "unintended_tissue_contact_count"
+  ]
+}

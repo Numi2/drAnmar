@@ -1,0 +1,34 @@
+{
+  "mount_link": "panda_link8",
+  "mount_rotation_wxyz": [
+    0.9238795325112867,
+    0,
+    0,
+    -0.3826834323650898
+  ],
+  "mount_translation_m": [
+    0,
+    0,
+    0
+  ],
+  "note": "The tool payload is authored without an articulation root so its links join the Franka articulation through a runtime fixed joint before simulation reset.",
+  "payload_base_link": "Links/Mount",
+  "payload_root": "DrAnmarClosureTool",
+  "removed_or_deactivated_prims": [
+    "panda_hand_joint",
+    "panda_hand",
+    "panda_finger_joint1",
+    "panda_finger_joint2",
+    "panda_leftfinger",
+    "panda_rightfinger"
+  ],
+  "robot_config": "isaaclab_assets.robots.franka.FRANKA_PANDA_CFG",
+  "robot_usd": "${ISAAC_NUCLEUS_DIR}/Robots/FrankaRobotics/FrankaPanda/franka.usd",
+  "robot_usd_reason": "non_instanceable_composable_asset_required_for_hand_deactivation_and_payload_insertion",
+  "robot_variants": {
+    "Gripper": "Default",
+    "Mesh": "Performance"
+  },
+  "schema": "dr.anmar.franka-hand-replacement.v1",
+  "tool_tcp": "Links/Mount/Frames/closure_tcp"
+}
