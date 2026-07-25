@@ -1,0 +1,277 @@
+{
+  "asset": "dranmar-adaptive-hemostasis-robot-v1",
+  "frames": {
+    "bleeding_source_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.184
+      ],
+      "role": "bleeding_source_localization"
+    },
+    "clip_exit": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "ClipDriver",
+      "position": [
+        0,
+        0,
+        0.181
+      ],
+      "role": "clip_exit"
+    },
+    "clip_forming_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.181
+      ],
+      "role": "clip_forming_center"
+    },
+    "count_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.05,
+        0.052
+      ],
+      "role": "inventory_reference"
+    },
+    "disposal_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0.048,
+        0.06
+      ],
+      "role": "disposal_reference"
+    },
+    "flow_probe": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.146
+      ],
+      "role": "flow_verification_probe"
+    },
+    "fluorescence_camera": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.052,
+        0.096
+      ],
+      "role": "fluorescence_camera"
+    },
+    "hemostasis_tcp": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.184
+      ],
+      "role": "tool_center_point"
+    },
+    "irrigation_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.164
+      ],
+      "role": "irrigation_center"
+    },
+    "left_clip_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftClipJaw",
+      "position": [
+        0,
+        0,
+        0.017
+      ],
+      "role": "vascular_clip_forming_contact"
+    },
+    "left_compression_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftPad",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "temporary_vessel_compression_contact"
+    },
+    "panda_link8_mount": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "robot_mount"
+    },
+    "patch_application": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "PatchPlaten",
+      "position": [
+        0,
+        0,
+        0.01
+      ],
+      "role": "patch_application_center"
+    },
+    "rgb_camera_left": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        -0.013,
+        -0.052,
+        0.084
+      ],
+      "role": "rgb_camera"
+    },
+    "rgb_camera_right": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.013,
+        -0.052,
+        0.084
+      ],
+      "role": "rgb_camera"
+    },
+    "right_clip_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightClipJaw",
+      "position": [
+        0,
+        0,
+        0.017
+      ],
+      "role": "vascular_clip_forming_contact"
+    },
+    "right_compression_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightPad",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "temporary_vessel_compression_contact"
+    },
+    "suction_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.161
+      ],
+      "role": "annular_suction_center"
+    }
+  },
+  "schema": "dranmar.interaction-frames.v1",
+  "units": "m"
+}

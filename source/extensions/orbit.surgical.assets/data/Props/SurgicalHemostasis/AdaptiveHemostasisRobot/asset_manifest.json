@@ -1,0 +1,277 @@
+{
+  "asset": "dranmar-adaptive-hemostasis-robot-v1",
+  "files": [
+    {
+      "bytes": 61,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/LICENSE.txt",
+      "sha256": "b1dfa2dfca252aa086c890c14107e1377fb5c6958f30251ccc0a7718725f5f37"
+    },
+    {
+      "bytes": 1502,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/README.md",
+      "sha256": "93eb2a639ac50ee4a9aae8484b2c4e38346150b4d1a459cbaad82bf7f42ff1b3"
+    },
+    {
+      "bytes": 904,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/adaptive_hemostasis_task_contract.json",
+      "sha256": "ede3ef168ea6b15c3582e372d4f1bcef147e4b9720e4b86880302a7e4f49a213"
+    },
+    {
+      "bytes": 7434,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/collider_coverage.json",
+      "sha256": "d9ef17cdc8a72b5b9a1613000662ec55e9b1ba0a5be70dfb1cd80c54473a9b4b"
+    },
+    {
+      "bytes": 3137831,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_payload.usda",
+      "sha256": "4161f30debcd70a45ce20c2166e01f7be6c6b442ed8d82b8cebd64f33a3c4332"
+    },
+    {
+      "bytes": 2775138,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_rigid_proxy.usda",
+      "sha256": "e8727f0429c7916f0e9581b27e0777672de84415afd0364e6af5d5730fbe6c4c"
+    },
+    {
+      "bytes": 3139477,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_standalone.usda",
+      "sha256": "8c18de379d03aa0042d108617bfe64166883001aba27918269ba9605c7a4097b"
+    },
+    {
+      "bytes": 1606276,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_bleeding_vessel_demo.usda",
+      "sha256": "283a0ed40d56b5959ef4946fb42614966cf847e599ec16304cef7cc5aadfdfd8"
+    },
+    {
+      "bytes": 44694,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_blood_droplet.usda",
+      "sha256": "69d94d4b95c5bf9e23160e4baff9af2ebeeb6989ee391e0a995c06c74b83e60b"
+    },
+    {
+      "bytes": 300213,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_hemostatic_clip.usda",
+      "sha256": "d2cade5224366d6d7f7c7f757009a4a3dd91dc12d62a0ed30688077174b8fedc"
+    },
+    {
+      "bytes": 127380,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_hemostatic_patch.usda",
+      "sha256": "deafd3b6ca98438342a204c775d6cac1403b0eb71164f84dffac4c0e959ec6fc"
+    },
+    {
+      "bytes": 142179,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_hemostatic_patch_rigid_proxy.usda",
+      "sha256": "6fb776fb5e402f37dfd035f2ea8917ba51094849427f5538cd00d58804ab84a0"
+    },
+    {
+      "bytes": 668,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/franka_mount_contract.json",
+      "sha256": "9c63158f1f6da54944a59afbd4602f85cf28a4c534ef58d707d6e11bbe24b7b9"
+    },
+    {
+      "bytes": 395556,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_bleeding_vessel.glb",
+      "sha256": "faf896e3cd7153c386e7cd165151b2f388e29b8e87afecef3cb274fb01f81f99"
+    },
+    {
+      "bytes": 503012,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_franka_hemostasis_assembly.glb",
+      "sha256": "161ebc517e042cc1bb9616d0da1708d7e5af98749e4b55db172a67498191dc80"
+    },
+    {
+      "bytes": 416284,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_clear.glb",
+      "sha256": "1a79a536a786746410c8a940d4d5b9d84d408aae682ccadfad0614aae2d5a696"
+    },
+    {
+      "bytes": 416304,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_clip.glb",
+      "sha256": "a9cc7fc7b9dcc82132cffc8a37b310cdee130e0a8398f006ddb9701964b81112"
+    },
+    {
+      "bytes": 432800,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_collision_debug.glb",
+      "sha256": "d57c319349f850f7ae4dbe0870fa57333cf5e66ef14f8586bbf6457c43c7d8c8"
+    },
+    {
+      "bytes": 416284,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_complete.glb",
+      "sha256": "8ad0ebf6d406a84a5587629bffb7b09d566cd37ac28005ca7ae28c1b13bda8ee"
+    },
+    {
+      "bytes": 416300,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_compress.glb",
+      "sha256": "5f1cfe39cea0fdc40d8b4ac42f1b3ad159db1251ea3f4552b15331293328d6cf"
+    },
+    {
+      "bytes": 416256,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_exploded.glb",
+      "sha256": "9ba6a1be6bc251826a7c072c77be3321feb438fc35ae0cf7104913a4e088e2d2"
+    },
+    {
+      "bytes": 474836,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_frame_debug.glb",
+      "sha256": "738095825a6dd43b2930149cf220d6b32b574959263dbdc02da106a90377f252"
+    },
+    {
+      "bytes": 416284,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_inspect.glb",
+      "sha256": "8ad0ebf6d406a84a5587629bffb7b09d566cd37ac28005ca7ae28c1b13bda8ee"
+    },
+    {
+      "bytes": 416288,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_patch.glb",
+      "sha256": "4d1db19b6993ae28d1f00a03987d04731ca2f739d705752b41f51c94f0001435"
+    },
+    {
+      "bytes": 416284,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostasis_tool_verify.glb",
+      "sha256": "db2e5215c02482b26e6421b261544aec8aa3d78dfc6992c4e272affee02cbc61"
+    },
+    {
+      "bytes": 33460,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostatic_clip_formed.glb",
+      "sha256": "8b21e5ce77d112cc8ea356158ed6b4e931bbb4ab443187d6a76f6429e936e7e5"
+    },
+    {
+      "bytes": 33456,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostatic_clip_open.glb",
+      "sha256": "fd5b29ee15654bbed97544a061084dedbd7ae3e2d0b49651fb95ddadf703afbf"
+    },
+    {
+      "bytes": 28524,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_hemostatic_patch.glb",
+      "sha256": "9a1ecadce73e116a970f92c826c85f7f6e0807a8bb5c3dde62ee0946355382a0"
+    },
+    {
+      "bytes": 438604,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/glb/dranmar_sealed_vessel.glb",
+      "sha256": "e4bffa7d1078fa4d29b28f7668a82bdf7e542905c88812c0c0071b0625ed0f8a"
+    },
+    {
+      "bytes": 4627,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/interaction_frames.json",
+      "sha256": "f5197729d655bbf3926d6d6f2332eabb85bd965a06e97b7ca0c092b5be987490"
+    },
+    {
+      "bytes": 1599,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/physics_profile.json",
+      "sha256": "18da9c9d3d467e7486706786d62ec12238dd83cbeb9a438c83caa604cdf85a9a"
+    },
+    {
+      "bytes": 2081,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/qualification_report.json",
+      "sha256": "e66ebdf1103a0ff5178ad987401bafb9675a764247bd1283a6f94e636b65bf8a"
+    },
+    {
+      "bytes": 477603,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/textures/blood_basecolor.png",
+      "sha256": "8c9f51a44b563d8674ef5e04d5c43cbf4ab642a79e3a8e54f3f457bdabbdcf73"
+    },
+    {
+      "bytes": 406559,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/textures/hemostatic_patch_basecolor.png",
+      "sha256": "b60f2022dbb057b89391bde8cf6fced449d04847810acfc16081130cd24aa40b"
+    },
+    {
+      "bytes": 4112,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/textures/label_dranmar.png",
+      "sha256": "a866fe1be80139e06adeb5ceba7dcb810922e50b6d76f495cce4b1b7dd48ffcc"
+    },
+    {
+      "bytes": 249088,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/textures/metal_microtexture.png",
+      "sha256": "08db22fd73d5b59f2ce9d9537dbffaed2cf85e0189e0c5ae6c02d49d67bd8863"
+    },
+    {
+      "bytes": 273203,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/textures/polymer_microtexture.png",
+      "sha256": "3a88e8892b53ab8b5772d18cc73a511d36d0fa254427cb894fe819ada105dfb4"
+    },
+    {
+      "bytes": 356731,
+      "path": "assets/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/textures/vessel_basecolor.png",
+      "sha256": "adbb56fafb857d4749315aa628817bcaa4b3bf626237368d0e4e358c46fa8b7e"
+    },
+    {
+      "bytes": 795,
+      "path": "docs/adaptive_hemostasis_robot/FLOW_AND_LEAK_MODEL.md",
+      "sha256": "c84a42f8125d81df97e9e289c0879681c8a4826e42b2800ceb68c51f45100213"
+    },
+    {
+      "bytes": 397,
+      "path": "docs/adaptive_hemostasis_robot/FRANKA_INTEGRATION.md",
+      "sha256": "d98976f13425d188b274b8c7d4bbe8b76cbd124e022d0be52659f9d2d3a52300"
+    },
+    {
+      "bytes": 371,
+      "path": "docs/adaptive_hemostasis_robot/MECHANISM.md",
+      "sha256": "11cbb3bbfb6a186542c9daa4cba066e5079d717a2bf354a885231dfbe2eb2a6e"
+    },
+    {
+      "bytes": 1166,
+      "path": "docs/adaptive_hemostasis_robot/PHYSICAL_HEMOSTASIS.md",
+      "sha256": "43968a12894a2e44bed012f05c15dd02403fb2606232d59761b2f497178178e1"
+    },
+    {
+      "bytes": 1092,
+      "path": "docs/adaptive_hemostasis_robot/VALIDATION.md",
+      "sha256": "fa8f4757b08001e86fc0121c4d58b2ed883d085df818fa17d80b348a967c3df3"
+    },
+    {
+      "bytes": 1131,
+      "path": "examples/franka_adaptive_hemostasis_scene.py",
+      "sha256": "8a6ff84dca81b69feca1c3ad4c2d2398f301f771e146c59a043f2233cedc95f9"
+    },
+    {
+      "bytes": 10609,
+      "path": "examples/validate_adaptive_hemostasis_runtime.py",
+      "sha256": "5e3746c18200daf79576f28955e46dd017b381cac2ac4bbfd6b80bc482a0d707"
+    },
+    {
+      "bytes": 1599,
+      "path": "physics_next/surgical-hemostasis/dranmar-adaptive-hemostasis-v1.json",
+      "sha256": "18da9c9d3d467e7486706786d62ec12238dd83cbeb9a438c83caa604cdf85a9a"
+    },
+    {
+      "bytes": 93237,
+      "path": "previews/dranmar_adaptive_hemostasis_robot_full_arm_preview.png",
+      "sha256": "2eed10e2f19863a236a3d23c3d51d11905a58fe2dd48be3d1c658f173fd23e3d"
+    },
+    {
+      "bytes": 185285,
+      "path": "previews/dranmar_adaptive_hemostasis_robot_preview.png",
+      "sha256": "b178577b0079d59a6c5bd9fca52d802c09b9e57e70cf76665551830ee68072ad"
+    },
+    {
+      "bytes": 116497,
+      "path": "scripts/generate_dranmar_adaptive_hemostasis_robot.py",
+      "sha256": "a1b5d1d469f98a6fb4223d2f191e0fcd495b0a1107fb15c02d2e140b1c2e04de"
+    },
+    {
+      "bytes": 5661,
+      "path": "scripts/install_into_dranmar.py",
+      "sha256": "e2e89a36242c5dbad30df8a0944328ab7b2ea56989bee1e23c487283dd4ea615"
+    },
+    {
+      "bytes": 78,
+      "path": "scripts/requirements_adaptive_hemostasis_generation.txt",
+      "sha256": "a645d183e5e1df4e7e0806a12edfa332c7fcc8c96bed41b8ec6410b689c76f70"
+    },
+    {
+      "bytes": 5778,
+      "path": "scripts/validate_dranmar_adaptive_hemostasis_robot.py",
+      "sha256": "9e5037882451f9d2019123c76d1641814c4d8c1b397a17a72cb0dc92542c4f04"
+    },
+    {
+      "bytes": 43321,
+      "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/adaptive_hemostasis_robot.py",
+      "sha256": "f5efd0a3e1b714009269f8255b1cf09cf9cd2d8b4bd9fe25c806ae7678176c08"
+    },
+    {
+      "bytes": 5599,
+      "path": "tests/test_adaptive_hemostasis_robot.py",
+      "sha256": "1a1ae046f94f071acfd0e6a047a0ae0ac2c95c73b32d083f6522bc4c29e1c0e0"
+    }
+  ],
+  "schema": "dranmar.asset-manifest.v1",
+  "version": "0.1.0"
+}

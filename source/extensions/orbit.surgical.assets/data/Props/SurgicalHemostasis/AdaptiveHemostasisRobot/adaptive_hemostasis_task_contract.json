@@ -1,0 +1,41 @@
+{
+  "clinical_validation": false,
+  "failure_modes": [
+    "source_not_localized",
+    "insufficient_temporary_compression",
+    "clip_misalignment",
+    "clip_slip",
+    "incomplete_occlusion",
+    "patch_delamination",
+    "continued_bleeding",
+    "excess_compression",
+    "vessel_rupture_proxy",
+    "suction_overcapture"
+  ],
+  "phases": [
+    "inspect",
+    "clear",
+    "compress",
+    "temporary_control_check",
+    "clip",
+    "release_compression",
+    "patch",
+    "pressure_challenge",
+    "verify",
+    "complete",
+    "abort"
+  ],
+  "schema": "dranmar.adaptive-hemostasis-task.v1",
+  "success_metrics": [
+    "residual_flow_ml_min",
+    "time_to_temporary_control_s",
+    "time_to_durable_control_s",
+    "clip_retained",
+    "patch_bond_fraction",
+    "compression_force_n",
+    "collected_blood_ml",
+    "spilled_blood_ml",
+    "pressure_challenge_pass",
+    "vessel_damage_proxy"
+  ]
+}

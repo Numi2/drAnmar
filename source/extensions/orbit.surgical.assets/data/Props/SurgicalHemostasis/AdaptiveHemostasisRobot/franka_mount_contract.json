@@ -1,0 +1,28 @@
+{
+  "deactivate": [
+    "panda_hand_joint",
+    "panda_hand",
+    "panda_finger_joint1",
+    "panda_finger_joint2",
+    "panda_leftfinger",
+    "panda_rightfinger"
+  ],
+  "fallback_local_rotation_axis_angle_deg": {
+    "angle": -45.0,
+    "axis": [
+      0,
+      0,
+      1
+    ]
+  },
+  "fallback_local_translation_m": [
+    0,
+    0,
+    0
+  ],
+  "local_transform": "copied_from_stock_panda_hand_joint_frame_with_minus_45_degree_z_fallback",
+  "parent_link": "resolved_from_stock_panda_hand_joint_body0_with_unique_panda_link8_fallback",
+  "payload_link": "DrAnmarAdaptiveHemostasisTool/Links/Mount",
+  "research_only": true,
+  "schema": "dranmar.franka-mount.v1"
+}

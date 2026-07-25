@@ -36,3 +36,4 @@ from .skin_stapler import *
 from .star import *
 from .wound_preparation_robot import *
 from .atraumatic_exposure_robot import *
+from .adaptive_hemostasis_robot import *

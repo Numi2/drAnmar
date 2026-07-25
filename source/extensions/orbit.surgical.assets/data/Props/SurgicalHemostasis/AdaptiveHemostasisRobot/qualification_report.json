@@ -1,0 +1,62 @@
+{
+  "asset": "dranmar-adaptive-hemostasis-robot-v1",
+  "clinical_validation": false,
+  "host": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_driver": "580.159.03",
+    "hostname": "numi",
+    "operating_system": "Linux 7.0.0-28-generic"
+  },
+  "limits": [
+    "No calibrated vessel-damage or tissue-selectivity model.",
+    "Clip conversion is discrete and does not model continuous metal plasticity.",
+    "Patch bonding is mechanical and does not model coagulation chemistry.",
+    "Blood transport is a particle proxy with reduced-order source flow, not CFD.",
+    "No clinical, patient-care, regulatory, sterilization, or physical-bench claim."
+  ],
+  "medical_device": false,
+  "physical_calibration": "pending_instrumented_hemostasis_bench",
+  "qualified_at_utc": "2026-07-25T12:54:00Z",
+  "runtime_cases": [
+    {
+      "attachment_count": 14,
+      "attachment_type": "OmniPhysicsVtxXformAttachment",
+      "average_residual_flow_ml_min": 0.0004749459978241737,
+      "blood_particle_count": 8,
+      "device": "cuda:0",
+      "engine_error_count": 0,
+      "finite_joint_state": true,
+      "joint_count": 11,
+      "ledger_conservation_error_ml": 0.0,
+      "representation": "standalone",
+      "status": "pass",
+      "steps": 120
+    },
+    {
+      "attachment_count": 14,
+      "attachment_type": "OmniPhysicsVtxXformAttachment",
+      "average_residual_flow_ml_min": 0.0004749459978241737,
+      "blood_particle_count": 8,
+      "device": "cuda:0",
+      "engine_error_count": 0,
+      "finite_joint_state": true,
+      "joint_count": 18,
+      "ledger_conservation_error_ml": 0.0,
+      "representation": "franka",
+      "status": "pass",
+      "steps": 120
+    }
+  ],
+  "runtime_stack": {
+    "isaac_lab": "6.1.16",
+    "isaac_sim": "6.0.1.0",
+    "physics_backend": "PhysX CUDA",
+    "surface_deformable_schemas": [
+      "OmniPhysicsDeformableBodyAPI",
+      "OmniPhysicsSurfaceDeformableSimAPI",
+      "PhysxSurfaceDeformableBodyAPI"
+    ]
+  },
+  "schema": "dranmar.native-gpu-qualification.v1",
+  "status": "qualified_headless_cuda_standalone_and_franka"
+}

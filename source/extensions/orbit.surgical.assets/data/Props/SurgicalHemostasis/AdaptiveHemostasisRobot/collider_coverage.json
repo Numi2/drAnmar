@@ -1,0 +1,402 @@
+{
+  "asset": "dranmar-adaptive-hemostasis-robot-v1",
+  "links": [
+    {
+      "axis_coverage_ratio": [
+        1.0201342281879193,
+        0.8173913043478261,
+        0.9393939393939393
+      ],
+      "collider_bounds_m": [
+        [
+          -0.076,
+          -0.047,
+          0.0
+        ],
+        [
+          0.076,
+          0.047,
+          0.155
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "Mount",
+      "visual_bounds_m": [
+        [
+          -0.07500000000000001,
+          -0.054,
+          0.0
+        ],
+        [
+          0.074,
+          0.061,
+          0.165
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0625,
+        1.0242587601078168,
+        0.888888888888889
+      ],
+      "collider_bounds_m": [
+        [
+          -0.017,
+          -0.019,
+          -0.014
+        ],
+        [
+          0.017,
+          0.019,
+          0.014
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "LeftCompression",
+      "visual_bounds_m": [
+        [
+          -0.016,
+          -0.0191,
+          -0.0185
+        ],
+        [
+          0.016,
+          0.018,
+          0.013
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.05,
+        0.9957325746799431,
+        1.0294117647058822
+      ],
+      "collider_bounds_m": [
+        [
+          -0.0105,
+          -0.0175,
+          -0.0075
+        ],
+        [
+          0.0105,
+          0.0175,
+          0.003
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "LeftPad",
+      "visual_bounds_m": [
+        [
+          -0.01,
+          -0.018150000000000003,
+          -0.007
+        ],
+        [
+          0.01,
+          0.017,
+          0.0032
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0625,
+        1.0242587601078168,
+        0.888888888888889
+      ],
+      "collider_bounds_m": [
+        [
+          -0.017,
+          -0.019,
+          -0.014
+        ],
+        [
+          0.017,
+          0.019,
+          0.014
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "RightCompression",
+      "visual_bounds_m": [
+        [
+          -0.016,
+          -0.0191,
+          -0.0185
+        ],
+        [
+          0.016,
+          0.018,
+          0.013
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.05,
+        0.9957325746799431,
+        1.0294117647058822
+      ],
+      "collider_bounds_m": [
+        [
+          -0.0105,
+          -0.0175,
+          -0.0075
+        ],
+        [
+          0.0105,
+          0.0175,
+          0.003
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "RightPad",
+      "visual_bounds_m": [
+        [
+          -0.01,
+          -0.018150000000000003,
+          -0.007
+        ],
+        [
+          0.01,
+          0.017,
+          0.0032
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.9398496240601505,
+        1.0833333333333333,
+        0.7659574468085106
+      ],
+      "collider_bounds_m": [
+        [
+          -0.006,
+          -0.013,
+          -0.013999999999999999
+        ],
+        [
+          0.006500000000000001,
+          0.013,
+          0.022
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "LeftClipJaw",
+      "visual_bounds_m": [
+        [
+          -0.0055,
+          -0.012,
+          -0.015000000000000001
+        ],
+        [
+          0.0078,
+          0.012,
+          0.032
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.9398496240601505,
+        1.0833333333333333,
+        0.7659574468085106
+      ],
+      "collider_bounds_m": [
+        [
+          -0.006500000000000001,
+          -0.013,
+          -0.013999999999999999
+        ],
+        [
+          0.006,
+          0.013,
+          0.022
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "RightClipJaw",
+      "visual_bounds_m": [
+        [
+          -0.0078,
+          -0.012,
+          -0.015000000000000001
+        ],
+        [
+          0.0055,
+          0.012,
+          0.032
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0714285714285714,
+        1.0999999999999999,
+        1.215909090909091
+      ],
+      "collider_bounds_m": [
+        [
+          -0.0075,
+          -0.011,
+          -0.021
+        ],
+        [
+          0.0075,
+          0.011,
+          0.0325
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "ClipDriver",
+      "visual_bounds_m": [
+        [
+          -0.007,
+          -0.01,
+          -0.02
+        ],
+        [
+          0.007,
+          0.01,
+          0.024
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0689655172413792,
+        1.0689655172413792,
+        0.75
+      ],
+      "collider_bounds_m": [
+        [
+          -0.031,
+          -0.031,
+          -0.006
+        ],
+        [
+          0.031,
+          0.031,
+          0.006
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "PatchCarousel",
+      "visual_bounds_m": [
+        [
+          -0.029,
+          -0.029,
+          -0.008
+        ],
+        [
+          0.029,
+          0.029,
+          0.008
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.9375,
+        0.9230769230769231,
+        1.0108557270183474
+      ],
+      "collider_bounds_m": [
+        [
+          -0.015,
+          -0.012,
+          -0.039
+        ],
+        [
+          0.015,
+          0.012,
+          0.008
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "PatchPlaten",
+      "visual_bounds_m": [
+        [
+          -0.016,
+          -0.013,
+          -0.038
+        ],
+        [
+          0.016,
+          0.013,
+          0.008495260148184271
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0833333333333333,
+        0.9960159362549801,
+        1.0714285714285714
+      ],
+      "collider_bounds_m": [
+        [
+          -0.0065,
+          -0.0125,
+          -0.0075
+        ],
+        [
+          0.0065,
+          0.0125,
+          0.0075
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "SuctionValve",
+      "visual_bounds_m": [
+        [
+          -0.006,
+          -0.0131,
+          -0.007
+        ],
+        [
+          0.006,
+          0.012,
+          0.007
+        ]
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0833333333333333,
+        0.9960159362549801,
+        1.0714285714285714
+      ],
+      "collider_bounds_m": [
+        [
+          -0.0065,
+          -0.0125,
+          -0.0075
+        ],
+        [
+          0.0065,
+          0.0125,
+          0.0075
+        ]
+      ],
+      "deliberate_insets": "contact and port openings remain unobstructed",
+      "link": "IrrigationValve",
+      "visual_bounds_m": [
+        [
+          -0.006,
+          -0.0131,
+          -0.007
+        ],
+        [
+          0.006,
+          0.012,
+          0.007
+        ]
+      ]
+    }
+  ],
+  "schema": "dranmar.collider-coverage.v1"
+}

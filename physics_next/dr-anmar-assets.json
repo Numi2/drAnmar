@@ -211,6 +211,23 @@
       "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1_four_case_matrix",
       "physical_qualification": "provisional_parameters_pending_instrumented_retraction_bench",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-adaptive-hemostasis-robot-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_standalone.usda",
+      "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_payload.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_bleeding_vessel_demo.usda",
+      "profile": "physics_next/surgical-hemostasis/dranmar-adaptive-hemostasis-v1.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/interaction_frames.json",
+      "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/adaptive_hemostasis_task_contract.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/asset_manifest.json",
+      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/qualification_report.json",
+      "live_integration": "franka_verified_stock_hand_frame_replacement_and_standalone_articulation",
+      "live_behavior": "blood_particles_fixture_and_pad_attachments_retained_clip_patch_bonds_pressure_challenge_and_residual_flow_verification",
+      "deployment": "enabled_for_research_iteration",
+      "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1",
+      "physical_qualification": "provisional_parameters_pending_instrumented_hemostasis_bench",
+      "clinical_validation": false
     }
   ],
   "validation": {
