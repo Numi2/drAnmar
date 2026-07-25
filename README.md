@@ -1,332 +1,219 @@
 # Dr.Anmar
 
-Dr.Anmar is a clinician-facing surgical robotics learning and research studio. It owns the doctor workflow,
-procedure rooms, native interaction contracts, safety boundaries, expert guidance, evidence pipeline, and
-research loop. The studio executes through Isaac Sim and PhysX, with ORBIT-Surgical-derived task foundations
-and optional NVIDIA and SonoGym provider integrations behind explicit contracts. See
-[`docs/OWNERSHIP.md`](docs/OWNERSHIP.md) for the full provenance boundary.
+**A clinician-centered research platform for surgical robotics simulation, teleoperation, data collection, and policy evaluation.**
 
-Researchers use the same workstation to compose OpenUSD anatomy, instruments and tasks; collect synchronized
-multimodal trajectories; reproduce controlled failures; compare policies; and preserve dataset, experiment and
-runtime provenance. External runtimes execute bounded simulation responsibilities; Dr.Anmar owns the connected
-study and operating-room experience.
+Dr.Anmar integrates interactive surgical workspaces, articulated robot systems, OpenUSD assets, PhysX mechanics,
+multimodal sensing, demonstration recording, and reproducible experiment contracts. The platform is designed to
+connect a clinician's procedural intent to inspectable robot behavior without hiding the underlying simulator,
+control, data, or validation boundaries.
 
-<p align="center">
-  <img src="docs/screenshots/dr-anmar-live-controls-2026.gif" width="960" alt="Live Dr.Anmar OpenUSD operating room showing the simulated surgical instrument, anatomy, keyboard controls, camera views, gripper feedback, and guided supervision">
-</p>
+Dr.Anmar owns the doctor-facing workflow, procedure rooms, interaction contracts, safety controls, evidence
+pipeline, and study lifecycle. NVIDIA Isaac Sim, Isaac Lab, PhysX, ORBIT-Surgical-derived task foundations, and
+optional providers execute bounded technical roles. The complete ownership and provenance model is documented in
+[`docs/OWNERSHIP.md`](docs/OWNERSHIP.md).
 
-<p align="center"><strong>A surgical robotics lab that begins with the doctor—not the simulator manual</strong><br>
-Camera-native hand teleoperation, live simulation, training data, coaching, failure studies, and robot learning in one browser.</p>
-
-<p align="center">
-  <a href="#quick-start">Quick start</a> ·
-  <a href="docs/WEBCAM_TELEOPERATION.md">Webcam control</a> ·
-  <a href="docs/KEYBOARD_CONTROLS.md">Input map</a> ·
-  <a href="docs/OWNERSHIP.md">Ownership</a> ·
-  <a href="SECURITY.md">Security</a>
-</p>
-
-Every visual below was captured from Dr.Anmar itself. No figures were copied from research papers.
-
-> [!WARNING]
-> Dr.Anmar is research software for simulation, synthetic data, and education. It is not a medical
-> device, is not clinically validated, and must not be used for diagnosis, treatment, patient-specific
-> planning, or control of physical surgical hardware.
-
-## What Dr.Anmar offers
-
-| Offering | What the doctor sees | What the researcher gets |
-| --- | --- | --- |
-| **Guided robotics curriculum** | 21 lessons that explain control, demonstration, vision, policies, procedures, safety, recovery and orthopedic ultrasound in clinical language | A reproducible progression from observation to teleoperation, data collection, training and comparison |
-| **Interactive surgical digital twin** | Dr.Anmar rooms with game-like keyboard control, immediate stop/takeover, camera presets, task guidance and seven anatomy choices | Native task bindings, versioned OpenUSD composition, contact instrumentation and simulator telemetry |
-| **Webcam surgical teleoperation** | Move one or two instruments with a downward index-point clutch, proportional thumb–index grippers, and a visible fingertip-to-table target | Long-range camera-aligned six-axis targets, automatic per-camera calibration, quality gating, audited commands and native differential-IK execution |
-| **Procedure rooms** | Needle handling, retraction, anatomy navigation, recovery, thread work and ultrasound tasks that connect to real simulator environments | A compact catalog with direct task, asset and external-provider bindings |
-| **Demonstrations and Skills Twin** | Record a complete attempt, replay it, see phase-aware coaching, and compare against a clinician-selected reference | Checksummed trajectory/manifest pairs, task-native tool paths, multimodal observations, analysis and content-addressed dataset cards |
-| **Failure Lab and policy evaluation** | Practise shifted viewpoints, low light, occlusion, target variation, calibration drift, tissue variation and safe hand-back | Seeded challenge matrices, interventions, native outcomes, safety events and immutable policy-evaluation cards |
-| **Multimodal study builder** | Start from a clinical question and choose what the policy should perceive | Stereo RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact, deformation, operator input and procedure annotations, with guarded NVIDIA workflow bindings |
-
-### Recent upgrades
-
-- **Camera-native hand control:** palm translation and orientation follow the live operative view and are transformed
-  into each PSM's native NVIDIA differential-IK frame. Changing camera view freezes motion and requires a fresh,
-  jump-free anchor.
-- **Point-down motion clutch:** a straight downward index with the other fingers tucked engages after a steady 180 ms
-  hold; relaxing the point freezes immediately. The preview shows clutch, range, and table-contact intent in real time.
-- **Fingertip-to-table mapping:** deliberate movement uses the full safe camera-relative workspace, and touching the
-  preview's bottom **TABLE REACH** line requests the downward endpoint for native table contact.
-- **Hands-free setup:** calibration advances automatically from on-screen instructions, works with either hand,
-  starts in one-hand mode, and admits a second hand only after an intentional relaxed-then-point gesture.
-- **Precision without mode juggling:** orientation-compensated relative depth, time-aware filtering, bounded
-  prediction and progressive gain keep small motions fine while preserving deliberate reach.
-- **A separate webcam workspace:** the camera preview launches from the operative view rather than the keymap
-  drawer, floats independently, can be moved and resized, remembers its geometry, and returns to a compact default
-  with **Fit**.
-- **Needle-to-thread continuity:** the pinned NVIDIA curved needle can now be selected with Dr.Anmar's braided
-  4-0 PhysX suture through an explicitly aligned factory-swage frame, without replacing the original NVIDIA bench.
+> [!CAUTION]
+> Dr.Anmar is research software for simulation, synthetic data, and education. It is not a medical device, has not
+> been clinically validated, and must not be used for diagnosis, treatment, patient-specific planning, or control of
+> physical surgical hardware.
 
 <p align="center">
-  <img src="docs/screenshots/dr-anmar-platform-tour-2026.gif" width="960" alt="Fresh tour of Dr.Anmar Learn, Skills Twin, Failure Lab, Multimodal Lab, Policy Lab, and Anatomy Library workspaces">
+  <img src="docs/screenshots/dr-anmar-live-controls-2026.gif" width="960" alt="Dr.Anmar operating room with live simulated surgical instruments, anatomy, cameras, controls, and guidance">
 </p>
 
-<p align="center"><strong>One connected workflow</strong><br>
-Learn → operate → record → receive coaching → stress-test → build a study → train and compare.</p>
+## Research scope
 
-### Live surgical digital twin
+Dr.Anmar supports four connected activities:
 
-The operating room composes a procedure, an anatomy preset, the correct robot task or provider, instrument
-controls, safety boundary, camera views, teaching steps, and measurable completion signals. The doctor changes
-rooms from a plain-language procedure menu; Dr.Anmar handles the worker lifecycle and restores the room after
-bounded training or an external workflow.
+1. **Simulation:** compose articulated instruments, anatomy, sensors, contacts, deformables, particles, and
+   task-specific mechanics in versioned OpenUSD scenes.
+2. **Human demonstration:** control one or two instruments by keyboard, game controller, voice, or camera-native
+   hand tracking while preserving audited command and simulator state.
+3. **Robot learning:** record synchronized observations and actions, construct dataset cards, train bounded
+   imitation- or reinforcement-learning experiments, and compare policies under controlled perturbations.
+4. **Evaluation:** reproduce task phases and failures, measure native simulator outcomes, retain provenance, and
+   distinguish software qualification from physical, biomechanical, clinical, and regulatory validation.
+
+The platform is intended for reproducible engineering studies. Every quantitative result must be interpreted
+within the exact asset revision, software stack, hardware, scenario, and measurement contract that produced it.
+
+## New Dr.Anmar robot systems
+
+Five procedure-specific systems were added and qualified on 25 July 2026. Each system is provided as:
+
+- a standalone articulated mechanism for isolated development;
+- a composable payload mounted to an Isaac Lab Franka articulation;
+- deterministic source generation and asset manifests;
+- OpenUSD, GLB, texture, interaction-frame, controller, and task contracts;
+- CPU-side structural and controller tests; and
+- a headless CUDA runtime qualification program.
+
+The animations below were rendered directly from the standalone OpenUSD articulations in Isaac Lab on an NVIDIA
+RTX 4090. They visualize authored phase targets; they are not physical-performance or clinical evidence.
+
+### Wound preparation robot
 
 <p align="center">
-  <img src="docs/screenshots/dr-anmar-live-operating-room-2026.png" width="960" alt="Live Dr.Anmar liver-retraction operating room with OpenUSD anatomy, dVRK instrument, complete keyboard control dock, guidance, and camera HUD">
+  <img src="docs/screenshots/robots/wound-preparation-isaac-lab.gif" width="800" alt="Dr.Anmar wound preparation robot moving through inspect, contact, irrigation, debridement, aspiration, and rinse phases in Isaac Lab">
 </p>
 
-The main Operating Room is one stable NVIDIA surgical bench. Needle pickup, handover and passing are
-progressive guided lessons inside that bench, while dropped-needle recovery is a repeatable physical scenario
-on the same scene. Experimental tissue, anatomy and strand work lives in Research Labs. Orthopedic ultrasound
-is one SonoGym workspace with navigation, reconstruction and guided-surgery modes.
+An articulated concentric work head combines a compliant contact guard, interchangeable debridement cartridge,
+multi-nozzle irrigation, annular aspiration, and explicit fluid-volume accounting. The simulation model represents
+adhered debris release through accumulated contact work and conserves emitted, active, aspirated, spilled, and
+discarded particle volume.
 
-### Executable expert guidance
+The qualified CUDA snapshot covered both standalone and Franka-mounted representations for 120 steps, all five
+tool joints, a cooked surface-deformable wound, seven debris attachments, 80 PBD particles, zero fluid-ledger
+balance error, finite joint state, and zero error-level engine messages. See
+[`docs/VALIDATION.md`](docs/VALIDATION.md).
 
-Supported local procedure rooms can run a live expert controller through **Rest → Approach → Align → Contact → Grasp →
-Manipulate → Verify → Recover**. This is not a prerecorded video: the robot acts inside the current OpenUSD
-room while camera, task, force, tissue and phase telemetry update. A doctor can pause for inspection or take
-manual control from the current phase. Complete runs are saved and qualified; only clean uninterrupted runs
-become Behavior Cloning candidates, and clinician review is still required before reference promotion. The
-full workflow and honest qualification boundary are documented in
-[`docs/EXECUTABLE_EXPERT_GUIDANCE.md`](docs/EXECUTABLE_EXPERT_GUIDANCE.md).
+### Atraumatic exposure robot
 
 <p align="center">
-  <img src="docs/screenshots/expert-guidance-needle-handover.gif" width="960" alt="Live Dr.Anmar expert guidance performing a dual-instrument needle handover through approach, grasp, manipulation, verification, and recovery">
+  <img src="docs/screenshots/robots/atraumatic-exposure-isaac-lab.gif" width="800" alt="Dr.Anmar atraumatic exposure robot deploying and retracting bilateral tissue-contact pads in Isaac Lab">
 </p>
 
-<p align="center"><strong>Dual-instrument needle handover</strong><br>
-Pickup → presentation → receiving grasp → release → separation, performed in the live dual-PSM room.</p>
+The exposure system uses symmetric carriages, independent lift and pitch axes, compliant pad travel, and twelve
+distributed capture cells. Fenestrated and microcup pad variants share one articulation and force/visibility
+control contract, enabling controlled comparison of contact geometry without changing the experimental interface.
 
-### Orthopedic robotic ultrasound with SonoGym
+Both pad geometries passed the standalone and Franka-mounted 120-step CUDA matrix with finite articulation state,
+two cooked tissue flaps, two outer anchors, twelve capture constraints, finite controller output, and zero
+error-level engine messages. See
+[`docs/atraumatic_exposure_robot/VALIDATION.md`](docs/atraumatic_exposure_robot/VALIDATION.md).
 
-The Orthopedics course delegates three L4 research tasks to the pinned upstream SonoGym environments:
+### Adaptive hemostasis robot
 
-- robotic probe navigation to the transverse plane through the centre of L4;
-- ultrasound-based L4 surface reconstruction with coverage observations; and
-- dual-robot ultrasound-guided orthopedic trajectory research with SonoGym's safety cost.
+<p align="center">
+  <img src="docs/screenshots/robots/adaptive-hemostasis-isaac-lab.gif" width="800" alt="Dr.Anmar adaptive hemostasis robot progressing through compression, clip placement, patch application, and verification phases in Isaac Lab">
+</p>
 
-Dr.Anmar owns the room and study flow, runs the provider headlessly on the GPU, and transports its native
-ultrasound observation and action vector into the existing browser. SonoGym remains the provider for its
-patient assets, ultrasound generation, task stepping, rewards, and safety constraints.
+This system combines bilateral compression, irrigation and annular suction, clip delivery, patch application, and
+a reduced-order pressure/flow verification model. Its runtime contract separates temporary compression,
+retained-clip, and patch-bond attachments so that control phases and failure conditions remain independently
+inspectable.
 
-Install the public source, patient assets, ultrasound models and isolated runtime with:
+Qualification checks current surface-deformable vessel schemas, all eleven tool joints, attachment lifecycles,
+conserved particle-volume bookkeeping, suction capture, provisional retention/cure thresholds, pressure-challenge
+integration, finite state, and error-free engine execution in standalone and Franka-mounted configurations. See
+[`docs/adaptive_hemostasis_robot/VALIDATION.md`](docs/adaptive_hemostasis_robot/VALIDATION.md).
 
-```bash
-./scripts/install_sonogym.sh
+### Adaptive anastomosis robot
+
+<p align="center">
+  <img src="docs/screenshots/robots/adaptive-anastomosis-isaac-lab.gif" width="800" alt="Dr.Anmar adaptive anastomosis robot aligning, everting, stapling, reinforcing, and pressure-testing a simulated lumen in Isaac Lab">
+</p>
+
+The anastomosis system provides bilateral circumferential capture, coaxial tissue approximation, an expandable
+lumen mandrel, independent eversion, a sixteen-position staple crown, reinforcement-collar application, temporary
+occlusion, and a pressure-decay test model.
+
+The native runtime matrix covers the 14-DoF standalone mechanism and 21-DoF Franka assembly, two cooked tissue
+surfaces, twelve temporary capture attachments, sixteen retained staples through 32 leg attachments, 32 cured
+collar-sector attachments, conserved PBD leak particles, patency evaluation, an eight-second pressure-decay
+challenge, at least 120 CUDA steps, and finite state. See
+[`docs/adaptive_anastomosis_robot/VALIDATION.md`](docs/adaptive_anastomosis_robot/VALIDATION.md).
+
+### Adaptive seal-and-divide robot
+
+<p align="center">
+  <img src="docs/screenshots/robots/adaptive-seal-divide-isaac-lab.gif" width="800" alt="Dr.Anmar adaptive seal-and-divide robot centering, compressing, sealing, and dividing simulated tissue in Isaac Lab">
+</p>
+
+The seal-and-divide system integrates tissue centering, symmetric jaw compression, guarded blade travel,
+irrigation, suction, energy-state estimation, thermal and impedance observables, seal verification, and explicit
+blade-before-seal interlocks.
+
+CUDA qualification requires two cooked vessel surfaces, two distal fixtures, sixteen bridge attachments, four
+temporary compression attachments, four retained seal-band attachments, interlocked division, release of temporary
+constraints, exact joint counts, finite state for 120 steps, and zero engine errors in both standalone and
+Franka-mounted representations. See
+[`docs/adaptive_seal_divide_robot/VALIDATION.md`](docs/adaptive_seal_divide_robot/VALIDATION.md).
+
+## Platform architecture
+
+```text
+Clinician / researcher
+        │
+        ▼
+Doctor Studio ── control, guidance, study configuration, review
+        │
+        ▼
+Dr.Anmar hub ── authentication, operator lease, lifecycle, provenance
+        │
+        ▼
+Isaac worker ── task, robot, sensor, controller, recorder bindings
+        │
+        ├── Isaac Lab articulation and task APIs
+        ├── PhysX rigid, deformable, attachment, and particle mechanics
+        ├── OpenUSD scenes, materials, assets, and variants
+        └── optional bounded NVIDIA / SonoGym workflows
+        │
+        ▼
+Evidence ── trajectories, manifests, metrics, logs, dataset cards
 ```
 
-The installer pins SonoGym source commit `e67be58334d1a5274f0913af36f56e4b0b7ffe5a` and the public asset/model
-dataset revision `b37b080a8673f856266a2306724e48d5e034521a`. Downloaded assets and the Isaac
-runtime stay outside this Git repository. See [`docs/ORTHOPEDIC_ULTRASOUND.md`](docs/ORTHOPEDIC_ULTRASOUND.md).
+This separation is intentional:
 
-## Control pedagogy designed for doctors
+- the browser never determines physical contact, attachment, puncture, division, or task success;
+- visible controls are converted into bounded robot commands and audited;
+- native simulator state is the authority for mechanics and outcomes;
+- provider-specific behavior remains behind explicit adapters;
+- downloaded assets, demonstrations, checkpoints, logs, and runtime state remain outside Git; and
+- promotion claims are limited to the evidence recorded for the exact tested configuration.
 
-Dr.Anmar exposes robotics progressively instead of presenting a wall of simulator controls:
+## Doctor Studio
 
-1. **Observe** — see the complete task and learn which visual cues matter.
-2. **Demonstrate** — perform the same task in the digital twin and record the whole trajectory.
-3. **Train** — connect the demonstration to Behavior Cloning or run a deliberately bounded RL exercise.
-4. **Compare** — change anatomy, viewpoint, or object pose and inspect where behavior changes.
+Doctor Studio presents the simulator as a procedural workspace rather than an infrastructure console. It includes:
 
-<p align="center">
-  <img src="docs/screenshots/doctor-studio-learning-loop.gif" width="960" alt="Dr.Anmar guiding a needle-lift lesson through Observe, Demonstrate, Train, and Compare">
-</p>
-
-<p align="center"><strong>Observe → Demonstrate → Train → Compare</strong><br>
-One repeatable loop connects clinical intent, robot control, data collection, and policy evaluation.</p>
-
-![Dr.Anmar guided needle-lift lesson with the four-step learning rail](docs/screenshots/doctor-studio-guided-learning.png)
-
-### Surgical controls that behave like a game
-
-The live workstation translates six-degree-of-freedom robot control into a control surface clinicians can
-learn immediately:
-
-- Hold to move; release to stop.
-- Precision, Normal, and Fast speed modes make fine grasping and open-space travel equally accessible.
-- Position and angle controls use spatial language—*toward patient*, *away*, *roll*, *pitch*, and *yaw*.
-- Every visible action has an audited keyboard equivalent. One Xbox-style controller is natively bimanual: the left
-  and right sticks permanently own the left and right robots, with hold-to-use depth, wrist, camera and session layers,
-  per-hand precision, explicit gripper controls, live mode feedback and supported-controller haptics.
-- Push-to-talk voice and the matching typed-command fallback provide bounded robot nudges, explicit gripper actions,
-  camera selection, speed changes, smart assist and emergency stop without creating an always-listening control path.
-- A checksum-pinned, locally served MediaPipe Hand Landmarker provides one- or two-hand webcam pose control:
-  left/right hands own the corresponding PSM, palm translation/orientation follows the displayed camera, and only
-  thumb–index spacing controls each proportional jaw. Automatic calibration, a downward index-point clutch,
-  fingertip-to-table reach, jump-free recentering, independent hand-loss freezes and a 250 ms server watchdog keep
-  motion bounded.
-- `Enter` becomes a contextual approach → grasp → lift control, while six hold-to-move surgical combinations
-  provide orbiting, curved needle driving, reversal, lift/retract, and lower/approach with one key each.
-- A quick tap performs a bounded precision nudge; holding the same combination key gives continuous motion.
-- Combined movement keys remain control conveniences only; they never create contacts, attachments, punctures
-  or task success outside the native simulator.
-- `Option` and `Shift` act as temporary precision and fast clutches; `Esc` always stops and restores manual control.
-- Gripper and demonstration controls sit beside movement so practice naturally becomes training data.
-
-The complete input map is documented in [`docs/KEYBOARD_CONTROLS.md`](docs/KEYBOARD_CONTROLS.md); the webcam API,
-privacy boundary, pinned assets, and safety behavior are in
-[`docs/WEBCAM_TELEOPERATION.md`](docs/WEBCAM_TELEOPERATION.md).
+- guided robotics lessons expressed in clinical language;
+- live OpenUSD operating and research rooms;
+- keyboard and game-controller bimanual control;
+- camera-native one- or two-hand webcam teleoperation;
+- bounded voice commands with a matching typed-command fallback;
+- immediate stop, pause, takeover, and camera controls;
+- demonstration recording, replay, and clinician-selected references;
+- Skills Twin trajectory and phase analysis;
+- seeded Failure Lab perturbations and policy evaluation; and
+- multimodal study manifests for RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact,
+  deformation, operator input, and procedure annotations.
 
 <p align="center">
-  <img src="docs/screenshots/keyboard-surgical-control-workflow.gif" width="960" alt="Live Dr.Anmar keyboard workflow grasping a curved needle, visibly entering and fully withdrawing from the anatomy surface while held, then presenting it to a second instrument before handoff">
+  <img src="docs/screenshots/dr-anmar-platform-tour-2026.gif" width="960" alt="Dr.Anmar Learn, Skills Twin, Failure Lab, Multimodal Lab, Policy Lab, and Anatomy Library">
 </p>
 
-<p align="center"><strong>Archived keyboard workflow study</strong><br>
-The control presentation remains useful; its former projected puncture sequence has been removed from the
-runnable workstation.</p>
-
-<p align="center">
-  <img src="docs/screenshots/fast-needle-pickup-and-handoff.gif" width="960" alt="Live dual-arm Dr.Anmar workflow rapidly picking up a curved needle, presenting it to the receiving instrument, closing the receiving jaws, releasing the original holder, and carrying the retained needle toward the organ">
-</p>
-
-<p align="center"><strong>Fast dual-instrument pickup and completed handoff</strong><br>
-Pickup → presentation → dual grasp → holder release → receiver recovery → organ approach, with the active keyboard controls visible throughout.</p>
-
-Robot articulation, rigid objects, jaw contact and object motion are governed by PhysX. Dr.Anmar observes that
-state for teaching and recording but does not attach objects, disable anatomy collisions or project instrument
-motion. Advanced tissue and device interactions return only through native deformable/topology/fluid workers.
-
-<p align="center">
-  <img src="docs/screenshots/surgical-control-panel.png" width="400" alt="Dr.Anmar game-like surgical instrument controls for speed, position, angle, and gripper">
-</p>
-
-### Robot learning explained in clinical language
-
-The Policy Lab compares Behavior Cloning, Reinforcement Learning, and Visual Behavior Cloning with simple
-resident-training analogies. Training begins with a small, reviewable recipe so a new user learns what
-observations, rewards, environments, iterations, logs, and checkpoints mean before scaling up.
-
-![Dr.Anmar Policy Lab comparing robot-learning approaches and preparing a bounded training run](docs/screenshots/doctor-studio-policy-lab.png)
-
-The current RL truth boundary, NVIDIA-native PSM control/data contract, Gilgamesh qualification evidence, and
-remaining lift/handover work are documented in [`docs/RL_FOUNDATION.md`](docs/RL_FOUNDATION.md), with the exact
-qualification results in [`docs/PSM_FOUNDATION_VALIDATION_2026-07-23.md`](docs/PSM_FOUNDATION_VALIDATION_2026-07-23.md).
-
-### Every practice attempt becomes structured training data
-
-The Demonstrations workspace teaches what makes an example useful, records the complete behavior from
-approach through safe recovery, and keeps synchronized observations, actions, joint motion, tool motion,
-and object pose together for Behavior Cloning.
-
-![Dr.Anmar Demonstrations workspace showing recording controls and example-quality guidance](docs/screenshots/doctor-studio-demonstrations.png)
-
-<p align="center">
-  <img src="docs/screenshots/dr-anmar-skills-twin-2026.png" width="960" alt="Fresh Dr.Anmar Surgical Skills Twin view showing a recorded attempt, telemetry, phase timeline, coaching, replay, and reference-path controls">
-</p>
-
-The Skills Twin turns one saved attempt into an inspectable coaching record: tool path, object lift, grasp drift,
-corrections, recovery hold, available contact and tissue signals, native simulator outcome, phase timeline and
-reference comparison. Scores and cues are deliberately labeled as research proxies pending clinician validation.
-
-### Multimodal studies without infrastructure-first UX
-
-The Multimodal Lab starts with a medical research question, then explains each sensor or state channel by the
-decision it helps a policy make. It generates a study manifest and binds selected modalities to the appropriate
-Dr.Anmar or NVIDIA workflow while keeping privileged hardware modes locked until their prerequisites exist.
-
-<p align="center">
-  <img src="docs/screenshots/dr-anmar-multimodal-lab-2026.png" width="960" alt="Fresh Dr.Anmar Multimodal Study Builder showing clinician explanations, robotic surgery and ultrasound workflows, and selectable stereo, depth, segmentation, point-cloud, wrist-camera, pose and physical-interaction signals">
-</p>
-
-## What is included
-
-- Doctor Studio web interface with a live simulated endoscope and game-like PSM controls.
-- Camera-native one- or two-hand webcam teleoperation with automatic per-hand calibration, proportional
-  thumb–index grippers, point-down long-range clutching, fingertip-to-table reach, a detached movable/resizable
-  preview and local-only video.
-- OpenUSD operating rooms, seven pinned anatomy sources, and a repository-local
-  Dr.Anmar bench shelf with the standalone needle, the pinned NVIDIA needle
-  factory-swaged to Dr.Anmar 4-0 suture, the native Dr.Anmar needle-suture
-  assembly, suturable tissue, vascular clip, laparotomy sponge, and skin stapler.
-- Native rigid-body needle pickup, dual-arm handover, passing/regrasp, navigation and recovery rooms.
-- PhysX contact sensors on the gripper bodies; no synthetic grasp joints or collision-disabling puncture paths.
-- A compact 12-room procedure catalog backed by local tasks, installed thread assets, NVIDIA ultrasound,
-  and SonoGym.
-- Guided lessons, plain-language robotics explanations, progress tracking, and a robotics glossary.
-- Demonstration recording and replay for behavior-cloning experiments.
-- Executable eight-phase simulation experts in native-ready rooms, with live pause/resume, exact-state manual
-  takeover, synchronized recording and degraded-run warnings.
-- Surgical Skills Twin analysis with telemetry-derived coaching, phase timelines, subscores, and selected-attempt replay.
-- Needle-lift Failure Lab with reproducible camera and visual challenges, supervision state, and immediate doctor handoff.
-- Synchronized endoscopic RGB, robot state, native simulator outcomes, and available contact-force evidence in new demonstrations.
-- Clinician-selected reference demonstrations with normalized trajectory comparison and coaching.
-- Synchronized 50 Hz robot state plus 5 Hz endoscopic RGB, metric depth, semantic IDs, camera intrinsics,
-  native task outcomes, available contact forces, and deformable-tissue research telemetry.
-- Stereo endoscope views, task-native instrument wrist cameras, camera-frame metric point clouds, joint torque,
-  anatomy pose, operator gaze/input provenance, and procedure phase/event annotation.
-- A clinician-facing Multimodal Lab that converts a research question into an exportable study manifest bound
-  to NVIDIA's robotic-surgery, robotic-ultrasound, SO-ARM/GR00T, and telesurgery workflows.
-- A guarded NVIDIA workflow runner with live mode discovery, plain-language prerequisites, job logs,
-  provenance manifests, automatic lesson restoration, and privileged hardware modes locked out by default.
-- A pinned SonoGym provider with three native L4 orthopedic-ultrasound rooms, browser keyboard control,
-  native observation streaming, isolated Isaac Lab 2.1.0 runtime, and source/asset provenance.
-- Simulator-native target-pose, control-calibration, and multi-organ context challenges beside the camera and
-  image stressors.
-- Automated challenge summaries with per-scenario descriptive statistics, intervention rate, native success,
-  safety-event rate, and 95% intervals where repeated rollouts exist.
-- Content-addressed dataset cards that freeze demonstration and sidecar checksums, provenance, modalities,
-  task context, references, duration, and intended research use into an exportable JSON record.
-
-The multimodal architecture and study schema are described in
+The interaction model and safety behavior are documented in
+[`docs/KEYBOARD_CONTROLS.md`](docs/KEYBOARD_CONTROLS.md) and
+[`docs/WEBCAM_TELEOPERATION.md`](docs/WEBCAM_TELEOPERATION.md). The multimodal data contract is described in
 [`docs/MULTIMODAL_STUDIES.md`](docs/MULTIMODAL_STUDIES.md).
-- Automated challenge matrices that replay one demonstration across selected scenarios and seeds while preserving every rollout.
-- Versioned demonstration and experiment manifests recording task, scenario, seed, source revision, and training recipe.
-- Nine registered task families and 54 control/play variants backed by the local simulator substrate.
-- RSL-RL, RL-Games, Stable-Baselines3, SKRL, and Robomimic learning workflows.
-- A resumable installer for seven pinned anatomy scene archives.
-- An Isaac Sim 5.1 / Isaac Lab 2.3.2 compatibility layer for the local task environments.
-- An isolated `physics-next` environment for PhysX FEM, coupled Newton VBD and CRESSim-MPM development.
 
-Downloaded anatomy, demonstrations, checkpoints, logs, and runtime state are deliberately kept outside
-the Git repository.
+## Evidence and validation model
 
-The first Skills Twin metrics are explicitly research coaching proxies rather than validated clinical
-assessment instruments. Runtime, telemetry, performance, and clinician-study work intentionally deferred
-from the fast implementation pass is tracked in [the validation backlog](docs/VALIDATION_BACKLOG.md).
+Dr.Anmar uses four distinct evidence levels:
+
+| Level | Establishes | Does not establish |
+| --- | --- | --- |
+| Structural validation | Parseable assets, schemas, manifests, hashes, paths, and package consistency | Runtime stability or physical behavior |
+| Controller tests | Deterministic phase logic, bounds, interlocks, accounting, and failure handling | Simulator integration or calibrated control |
+| CUDA runtime qualification | Bounded execution on the recorded Isaac/GPU stack, finite state, expected schemas and constraints, and specified smoke-test outcomes | Generalization to another stack or physical system |
+| Physical and clinical validation | Requires calibrated hardware, tissue models/specimens, metrology, safety analysis, clinician protocols, and regulatory governance | Not supplied by this repository |
+
+Current robot qualification is limited to the first three levels. Mechanical constants, tissue parameters,
+pressure/flow thresholds, energy models, contact limits, damage proxies, and success thresholds are provisional
+research values unless a robot-specific document explicitly records calibrated evidence.
 
 ## Requirements
 
-The simulation runtime requires a compatible Linux x86-64 machine with an NVIDIA GPU. The Dr.Anmar
-source folder can be inspected and managed on macOS or Windows, but Isaac Sim cannot run there as this
-project's simulator backend.
+The simulator runtime requires a Linux x86-64 system with a compatible NVIDIA GPU. Source, documentation, and
+browser code can be inspected on macOS or Windows, but this project's Isaac Sim backend does not execute there.
 
-The current validated baseline is:
+Validated lanes currently include:
 
-- NVIDIA Isaac Sim 5.1
-- Isaac Lab 2.3.2
-- Python 3.10 or newer inside the Isaac environment
+- Isaac Sim 5.1 with Isaac Lab 2.3.2 for the stable operating-room workflow; and
+- Isaac Sim 6.0.1.0 with Isaac Lab 6.1.16 for the new surface-deformable robot qualification lane.
 
-The optional research runtime is installed separately with `./dr_anmar_physics_next.sh install`. It targets
-Isaac Sim 6.0.1 and Isaac Lab 3.0 beta2 and records the backend that actually generated each result. Its
-versioned native-capability, asset, material and benchmark contracts live in
-[`physics_next/`](physics_next/README.md), with measured evidence and unfinished calibration work in
-[`docs/PHYSICS_NEXT_VALIDATION_LOG.md`](docs/PHYSICS_NEXT_VALIDATION_LOG.md).
-The current Gilgamesh Newton VBD replay pair completed 600/600 finite steps at 17.074 ms p95, held global
-tetrahedral-volume error to 4.787%, limited rigid-probe penetration to 0.0136 mm, measured a 1.019 N peak
-normal reaction, produced no inverted elements, and reproduced the final state exactly. The canonical Newton
-coupon met all five recorded engineering criteria. The authored 33,274-node / 165,031-tetrahedron patient
-liver also loads and advances finitely through Newton with zero inversion in its separate integration smoke.
-These remain non-clinical research results—not a promoted biomechanical patient model—because matched PhysX,
-anatomical attachment, material calibration and clinician review are incomplete.
-
-The July 20 Gilgamesh pass exercised the earlier prototype surface across its OpenUSD room compositions.
-Those captures remain development history and are not evidence of native ultrasound, suturing, cutting or
-tissue mechanics. Exact evidence is in
-[`docs/GILGAMESH_VALIDATION_2026-07-20.md`](docs/GILGAMESH_VALIDATION_2026-07-20.md).
-The historical coupled-physics and Isaac for Healthcare v0.6.0 pass is recorded in
-[`docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md`](docs/GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md).
-The upstream-first v0.7.0 migration and its current qualification boundary are recorded in
-[`docs/GILGAMESH_I4H_V070_MIGRATION_2026-07-23.md`](docs/GILGAMESH_I4H_V070_MIGRATION_2026-07-23.md).
-
-Install Isaac Sim and Isaac Lab using their official instructions before continuing. NVIDIA components
-are dependencies and are not redistributed by this repository.
+Python 3.10 or newer is required inside the corresponding Isaac environment. NVIDIA components and optional
+provider assets retain their own licenses and are not redistributed by this repository.
 
 ## Quick start
 
@@ -334,17 +221,16 @@ Clone the repository outside the Isaac Lab checkout:
 
 ```bash
 git clone https://github.com/Numi2/drAnmar.git
-cd DrAnmar
+cd drAnmar
 cp .env.example .env
 ```
 
-Edit `.env` so `ISAAC_PYTHON` points to the Python executable in your Isaac-enabled environment. Runtime
-data defaults to `~/.local/share/dr-anmar` and can be moved by changing `DR_ANMAR_ROOT`.
-For a shared workstation, set a long random `DR_ANMAR_ACCESS_TOKEN`; Doctor Studio then requires login and
-shares the resulting secure session with its operating-room worker. Set `DR_ANMAR_COOKIE_SECURE=1` behind
-HTTPS. `DR_ANMAR_SENSOR_PROFILE` selects `efficient`, `stereo`, or full `research` camera capture.
+Set `ISAAC_PYTHON` in `.env` to the Python executable in the selected Isaac environment. Runtime data defaults to
+`~/.local/share/dr-anmar`; change `DR_ANMAR_ROOT` to relocate it. For a shared workstation, configure a long random
+`DR_ANMAR_ACCESS_TOKEN`, use `DR_ANMAR_COOKIE_SECURE=1` behind HTTPS, and keep the services on a trusted LAN or
+private VPN.
 
-Install the ORBIT-Surgical extensions:
+Install the local extensions:
 
 ```bash
 export IsaacLab_PATH=/absolute/path/to/IsaacLab
@@ -357,58 +243,7 @@ Start Doctor Studio:
 ./dr_anmar_suite.sh start
 ```
 
-Optionally install the pinned Isaac for Healthcare v0.7.0 workflow source and compatible HoloHub CLI:
-
-```bash
-./scripts/install_i4h_workflows.sh
-```
-
-The installer creates a versioned checkout and points
-`~/.local/share/dr-anmar/vendor/i4h-workflows-current` at it. Older checkouts remain available for rollback.
-For NVIDIA's native surgical Arena environments, install the upstream runtime without the optional Cosmos
-component:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-./scripts/setup_i4h_agentic.sh
-```
-
-Install NVIDIA's matching v0.7.0 healthcare asset catalog and retrieve only the canonical surgical core:
-
-```bash
-./scripts/install_i4h_asset_catalog.sh
-./scripts/fetch_i4h_assets.sh surgical-core
-```
-
-The catalog source is pinned to commit `b0b7ad39f26490d58d12407cfa74b3c9ad861769`; its v0.7.0
-content address is `724f82e`. NVIDIA catalog payloads are stored under `DR_ANMAR_ROOT`, never vendored into this repository.
-The catalog supplies the canonical dVRK PSM/ECM, STAR, suture needle and SDF, suture pad, surgical
-instruments, anatomy, ultrasound fixtures, medical robots and selected deformables. Downloads are split into
-explicit `surgical-core`, `surgical-anatomy`, `ultrasound`, `medical-robots`, and `rheo` bundles.
-
-Dr.Anmar does not rewrite the asset URLs inside NVIDIA's native Arena environments: the v0.7 Agentic source
-currently pins those surgical environments to its v0.5 catalog content. The separate v0.7 catalog provider is
-for provenance-safe new room composition until NVIDIA changes the upstream environment contract. Review the
-licence shipped with every downloaded asset before redistribution. Lightwheel assets are restricted to
-non-commercial research and development use. Installation, bundle sizes and the Gilgamesh evidence are in
-[`docs/I4H_ASSET_CATALOG_V070.md`](docs/I4H_ASSET_CATALOG_V070.md).
-
-The main operating-room Bench Setup now exposes Dr.Anmar's authored surgical
-asset family as optional props: standalone curved needle, factory-swaged needle
-with 4-0 braided suture, open-incision tissue, vascular clip, folded laparotomy
-sponge, and loaded skin stapler. Each uses a separate table landing and the
-default NVIDIA skills layout remains unchanged until a doctor enables one.
-Advanced deformable tissue and hemostasis behavior remains in the dedicated
-research rooms. Asset details and qualification boundaries are documented in
-[`docs/DR_ANMAR_SUTURE_4_0.md`](docs/DR_ANMAR_SUTURE_4_0.md),
-[`docs/LAPAROTOMY_SPONGE.md`](docs/LAPAROTOMY_SPONGE.md), and
-[`docs/SKIN_STAPLER.md`](docs/SKIN_STAPLER.md).
-
-Official workflow containers also require Docker Engine with NVIDIA GPU container support. DDS-based modes
-such as robotic ultrasound require a valid `RTI_LICENSE_FILE`. The Multimodal Lab reports these prerequisites
-and keeps launch disabled until they are present; the normal Dr.Anmar operating room does not require them.
-
-Open [http://localhost:2360](http://localhost:2360). Useful service commands are:
+Open [http://localhost:2360](http://localhost:2360). Service controls are:
 
 ```bash
 ./dr_anmar_suite.sh status
@@ -417,68 +252,73 @@ Open [http://localhost:2360](http://localhost:2360). Useful service commands are
 ./dr_anmar_suite.sh stop
 ```
 
-For Mac webcam control of the Gilgamesh room, use the private loopback launcher:
+See [`SECURITY.md`](SECURITY.md) before allowing access from another machine.
+
+## Reproducing robot qualification
+
+Run a robot's static validator and unit tests before its CUDA runtime test. For example:
 
 ```bash
-./dr_anmar_webcam.sh start
+python3 scripts/validate_dranmar_wound_preparation_robot.py --require-usdchecker
+python3 -m unittest -v tests/test_wound_preparation_robot.py
+
+./isaaclab.sh -p examples/validate_wound_preparation_runtime.py \
+  --headless --device cuda:0 --representation standalone
+./isaaclab.sh -p examples/validate_wound_preparation_runtime.py \
+  --headless --device cuda:0 --representation franka
 ```
 
-It opens [http://127.0.0.1:12360](http://127.0.0.1:12360) through an authenticated SSH tunnel. Browsers treat the
-loopback origin as trustworthy, so **Webcam view** can request the camera without requiring Tailscale Serve or a
-tailnet HTTPS administrator. The preview and raw landmarks stay in the browser; only validated numeric pose,
-clutch, quality and aperture commands reach the workstation. Use `./dr_anmar_webcam.sh status` or
-`./dr_anmar_webcam.sh stop` to inspect or close the exact tunnel.
+Equivalent validators and runtime programs are included for the exposure, hemostasis, anastomosis, and
+seal-and-divide systems. Do not transfer a passing result between robot revisions, representations, simulator
+versions, GPUs, or physics configurations.
 
-The hub and worker listen on all network interfaces by default so another trusted device can reach the
-workstation. Optional token authentication and a single-operator browser lease are built in, but authentication
-is disabled until `DR_ANMAR_ACCESS_TOKEN` is configured. Keep the service on a trusted LAN or private VPN,
-enable the token for shared deployments, terminate HTTPS in front of it, and never expose ports 2360 or 2361
-directly to the public internet. See [SECURITY.md](SECURITY.md).
-
-## Anatomy scenes
-
-The optional installer downloads the seven official ORBIT-Surgical v0.1.0 OpenUSD anatomy archives
-(about 6.3 GB compressed) into `DR_ANMAR_ROOT`, never into the repository:
+The Isaac Lab documentation GIFs can be regenerated with:
 
 ```bash
-"${ISAAC_PYTHON}" scripts/install_sufia_assets.py
+./isaaclab.sh -p scripts/capture_dranmar_robot_gif.py \
+  --headless --enable_cameras --device cuda:0 \
+  --robot adaptive-hemostasis \
+  --output docs/screenshots/robots/adaptive-hemostasis-isaac-lab.gif
 ```
 
-The Anatomy Library will detect the extracted scenes automatically. Review the upstream project and
-release terms before redistributing any downloaded assets; this repository does not vendor them.
+Valid robot identifiers are `wound-preparation`, `atraumatic-exposure`, `adaptive-hemostasis`,
+`adaptive-anastomosis`, and `adaptive-seal-divide`.
 
 ## Command-line workflows
 
 ```bash
-# Inventory environments and educational content
+# Inspect registered environments and curriculum content
 ./dr_anmar.sh list
 ./dr_anmar.sh catalog
 ./dr_anmar.sh doctor
 
-# Run a bounded GPU smoke session
+# Run a bounded task smoke session
 ./dr_anmar.sh smoke Isaac-Lift-Needle-PSM-IK-Rel-v0 120
 
-# Start a training workflow (example)
-./dr_anmar_train.sh rsl_rl Isaac-Lift-Needle-PSM-IK-Rel-v0 --num_envs 256 --max_iterations 1000
+# Start a training experiment
+./dr_anmar_train.sh rsl_rl \
+  Isaac-Lift-Needle-PSM-IK-Rel-v0 \
+  --num_envs 256 \
+  --max_iterations 1000
 ```
 
-The upstream teleoperation, state-machine, Robomimic, training, and policy-playback programs remain
-under `source/standalone`.
-
-## Repository layout
+## Repository structure
 
 ```text
 web/                  Doctor Studio browser application
-scripts/              Hub, workstation, curriculum, asset installer, and checks
-source/extensions/    ORBIT-Surgical simulator extensions and robot assets
-source/standalone/    Simulation, teleoperation, data, and learning workflows
-docs/design/          Product design reference
-dr_anmar_*.sh         Portable service and training launchers
+scripts/              Hub, workers, control adapters, generators, and checks
+examples/             Native CUDA qualification programs
+tests/                Controller and package regression tests
+source/extensions/    Simulator tasks and articulated robot assets
+source/standalone/    Teleoperation, data, training, and policy workflows
+physics_next/         Versioned next-generation physics contracts
+docs/                 Architecture, mechanisms, evidence, and validation records
+dr_anmar_*.sh         Portable service, runtime, and training launchers
 ```
 
-## Open-source development
+## Development checks
 
-Run the public-release checks before opening a pull request:
+Run the public-release checks before submitting changes:
 
 ```bash
 python3 scripts/check_public_release.py
@@ -486,27 +326,34 @@ python3 scripts/audit_project_consistency.py
 python3 scripts/audit_keyboard_controls.py
 python3 scripts/check_web_syntax.py
 python3 -m compileall -q scripts source
-bash -n dr_anmar.sh dr_anmar_suite.sh dr_anmar_train.sh dr_anmar_workstation.sh orbitsurgical.sh
+bash -n dr_anmar.sh dr_anmar_suite.sh dr_anmar_train.sh \
+  dr_anmar_workstation.sh orbitsurgical.sh
 ```
 
-See the [complete engineering audit](docs/COMPLETE_AUDIT_2026-07-20.md),
-[CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance, and [NOTICE.md](NOTICE.md) for provenance.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`NOTICE.md`](NOTICE.md), and the
+[`validation backlog`](docs/VALIDATION_BACKLOG.md).
 
-## ORBIT-Surgical citation
+## Citation
 
-If this project contributes to published research, cite the ORBIT-Surgical authors:
+If ORBIT-Surgical-derived components contribute to published research, cite:
 
 ```bibtex
 @article{yu2024orbit,
   title={ORBIT-Surgical: An Open-Simulation Framework for Learning Surgical Augmented Dexterity},
-  author={Yu, Qinxi and Moghani, Masoud and Dharmarajan, Karthik and Schorp, Vincent and Panitch, William Chung-Ho and Liu, Jingzhou and Hari, Kush and Huang, Huang and Mittal, Mayank and Goldberg, Ken and others},
+  author={Yu, Qinxi and Moghani, Masoud and Dharmarajan, Karthik and Schorp, Vincent and
+          Panitch, William Chung-Ho and Liu, Jingzhou and Hari, Kush and Huang, Huang and
+          Mittal, Mayank and Goldberg, Ken and others},
   journal={arXiv preprint arXiv:2404.16027},
   year={2024}
 }
 ```
 
+Publications using Dr.Anmar should additionally report the repository revision, robot asset manifest, simulator
+and Isaac Lab versions, GPU/driver, scenario and seed, control policy, sensor profile, and applicable qualification
+report.
+
 ## License
 
 Dr.Anmar and the included ORBIT-Surgical-derived source are distributed under the
-[BSD 3-Clause License](LICENSE). NVIDIA Isaac Sim and other optional dependencies or downloaded assets
+[`BSD 3-Clause License`](LICENSE). Isaac Sim, Isaac Lab, NVIDIA assets, SonoGym, and other optional dependencies
 retain their own licenses and terms.
