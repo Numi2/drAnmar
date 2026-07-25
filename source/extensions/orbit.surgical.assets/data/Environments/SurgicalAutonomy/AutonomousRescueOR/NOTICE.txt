@@ -1,0 +1,6 @@
+DrAnmar Autonomous Surgical Orchestration and Rescue System
+Copyright (c) 2026 DrAnmar Project Developers.
+
+Independently authored simulation geometry and software. NVIDIA Isaac Sim,
+Isaac Lab, PhysX, and Isaac for Healthcare are runtime platforms and are not
+redistributed by this package.

@@ -1,0 +1,38 @@
+{
+  "schema": "dr.anmar.autonomous-rescue-or-physics-profile.v1",
+  "version": "0.4.0",
+  "runtime": "Isaac Sim / Isaac Lab / PhysX",
+  "stable_backend": "physx_rigid_plus_volume_and_surface_deformables",
+  "evidence_ingress": {
+    "owner": "environment",
+    "phase": "post_physics",
+    "required_fields": [
+      "physics_step",
+      "simulation_time_s",
+      "left_normal_force_n",
+      "right_normal_force_n",
+      "separation_m",
+      "tool_speed_m_s",
+      "retained_attachment_count",
+      "patch_contact_point_count",
+      "leaked_particle_count"
+    ],
+    "strictly_monotonic": true,
+    "policy_writable_outcomes": []
+  },
+  "rescue_vessel": {
+    "representation": "volume_deformable_vessel_wall_plus_reduced_order_conserved_flow",
+    "temporary_control": "bilateral_force_symmetry_gap_and_velocity",
+    "definitive_clip": "retained_attachment_count_plus_contact_dwell",
+    "patch_seal": "contact_point_coverage_force_and_dwell",
+    "verification": "fresh_pressure_challenge_window_residual_flow_and_distal_perfusion"
+  },
+  "repair_targets": {
+    "bowel_anastomosis": "gap_contact_retained_attachments_and_particle_leak",
+    "abdominal_wall": "gap_contact_and_retained_attachments",
+    "occlusive_film": "contact_coverage_and_retained_bonds"
+  },
+  "topology_change": false,
+  "clinical_validation": false,
+  "parameter_status": "provisional_engineering_seeds"
+}

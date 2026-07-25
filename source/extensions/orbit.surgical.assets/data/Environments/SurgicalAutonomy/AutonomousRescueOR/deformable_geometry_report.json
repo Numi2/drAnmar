@@ -1,0 +1,41 @@
+{
+  "assets": {
+    "abdominal_wall_left": {
+      "mass_kg": 0.9864192000000116,
+      "surface_triangles": 336,
+      "tetrahedra": 648,
+      "vertices": 210
+    },
+    "abdominal_wall_right": {
+      "mass_kg": 0.9864192000000132,
+      "surface_triangles": 336,
+      "tetrahedra": 648,
+      "vertices": 210
+    },
+    "bowel_distal": {
+      "mass_kg": 0.05696011898902793,
+      "surface_triangles": 1056,
+      "tetrahedra": 2592,
+      "vertices": 720
+    },
+    "bowel_proximal": {
+      "mass_kg": 0.05696011898902792,
+      "surface_triangles": 1056,
+      "tetrahedra": 2592,
+      "vertices": 720
+    },
+    "film": {
+      "mass_kg": 0.008720999999999998,
+      "triangles": 640,
+      "vertices": 357
+    },
+    "vessel": {
+      "mass_kg": 0.00404108321917986,
+      "surface_triangles": 1200,
+      "tetrahedra": 3120,
+      "vertices": 840
+    }
+  },
+  "schema": "dr.anmar.deformable-rescue-geometry-report.v1",
+  "version": "0.3.0"
+}

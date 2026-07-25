@@ -469,7 +469,27 @@ def _physiology_checks() -> dict[str, Any]:
         condition_results[condition] = condition_metrics
 
     patient = module.DynamicSurgicalPatient(procedure_stage="access_open")
-    patient.robot.exposure(target="liver", force_n=1.4, compression_fraction=0.08)
+    patient.contacts.observe(
+        module.PatientContactFrame(
+            target="liver",
+            source_robot="atraumatic_exposure_robot",
+            interaction="exposure",
+            normal_forces_n=(1.25, 1.25),
+            tool_position_m=(0.0, 0.0, 0.0),
+        )
+    )
+    patient.step(0.1)
+    for _ in range(12):
+        patient.contacts.observe(
+            module.PatientContactFrame(
+                target="liver",
+                source_robot="atraumatic_exposure_robot",
+                interaction="exposure",
+                normal_forces_n=(1.25, 1.25),
+                tool_position_m=(0.02, 0.0, 0.0),
+            )
+        )
+        patient.step(0.1)
     patient.robot.dissection(target="adhesion_03", method="hydrodissection")
     patient.start_bleeding(
         "mesenteric_bleed",
@@ -481,10 +501,16 @@ def _physiology_checks() -> dict[str, Any]:
     for _ in range(160):
         patient.step(0.1)
     before = patient.observation()
-    patient.robot.hemostasis(
-        source_id="mesenteric_bleed", method="clip_and_patch", effectiveness=0.99
-    )
     for _ in range(240):
+        patient.contacts.observe(
+            module.PatientContactFrame(
+                target="mesenteric_bleed",
+                source_robot="adaptive_hemostasis_robot",
+                interaction="hemostasis",
+                normal_forces_n=(1.8, 1.8),
+                tool_position_m=(0.0, 0.0, 0.0),
+            )
+        )
         patient.step(0.1)
     patient.robot.perfusion_scan(target="small_bowel")
     patient.robot.close_wound(

@@ -1,0 +1,198 @@
+{
+  "complications": [
+    {
+      "id": "catastrophic_hemorrhage",
+      "priority": 100,
+      "rescue_protocol": "hemorrhage_control",
+      "signals": [
+        "active_blood_loss_ml_min>=300",
+        "rapid_map_decline",
+        "visible_blood_particles"
+      ],
+      "targets": [
+        "bleeding_source"
+      ]
+    },
+    {
+      "id": "hypovolemic_shock",
+      "priority": 95,
+      "rescue_protocol": "circulatory_stabilization",
+      "signals": [
+        "map<60",
+        "shock_index>1.0",
+        "blood_volume_fraction<0.75"
+      ],
+      "targets": [
+        "patient"
+      ]
+    },
+    {
+      "id": "hypoxemia",
+      "priority": 94,
+      "rescue_protocol": "oxygenation_stabilization",
+      "signals": [
+        "spo2<0.90",
+        "etco2_abnormal",
+        "ventilation_failure"
+      ],
+      "targets": [
+        "patient"
+      ]
+    },
+    {
+      "id": "regional_ischemia",
+      "priority": 86,
+      "rescue_protocol": "ischemia_reversal",
+      "signals": [
+        "relative_flow<0.45",
+        "viability<0.62",
+        "multimodal_perfusion_disagreement"
+      ],
+      "targets": [
+        "affected_region"
+      ]
+    },
+    {
+      "id": "anastomotic_leak",
+      "priority": 84,
+      "rescue_protocol": "anastomosis_revision",
+      "signals": [
+        "anastomosis_leak_area>0",
+        "pressure_decay_failure",
+        "extraluminal_test_medium"
+      ],
+      "targets": [
+        "anastomosis"
+      ]
+    },
+    {
+      "id": "seal_divide_stump_leak",
+      "priority": 83,
+      "rescue_protocol": "stump_reseal",
+      "signals": [
+        "stump_flow_above_limit",
+        "seal_band_failure"
+      ],
+      "targets": [
+        "stump"
+      ]
+    },
+    {
+      "id": "bile_leak",
+      "priority": 80,
+      "rescue_protocol": "bile_leak_control",
+      "signals": [
+        "bile_leak_ml_h>0",
+        "duct_damage_active",
+        "bile_particles"
+      ],
+      "targets": [
+        "bile_duct"
+      ]
+    },
+    {
+      "id": "urine_leak",
+      "priority": 79,
+      "rescue_protocol": "urinary_leak_control",
+      "signals": [
+        "ureter_damage_active",
+        "urine_particles",
+        "urine_output_decline"
+      ],
+      "targets": [
+        "ureter"
+      ]
+    },
+    {
+      "id": "thermal_fault",
+      "priority": 78,
+      "rescue_protocol": "thermal_injury_control",
+      "signals": [
+        "tool_overtemperature",
+        "thermal_spread_near_protected_structure",
+        "smoke_above_limit"
+      ],
+      "targets": [
+        "energy_site"
+      ]
+    },
+    {
+      "id": "retraction_injury",
+      "priority": 75,
+      "rescue_protocol": "release_retraction",
+      "signals": [
+        "excess_pad_force",
+        "regional_compression>0.45",
+        "perfusion_decline_during_retraction"
+      ],
+      "targets": [
+        "retracted_tissue"
+      ]
+    },
+    {
+      "id": "dressing_compression_ischemia",
+      "priority": 70,
+      "rescue_protocol": "dressing_pressure_revision",
+      "signals": [
+        "skin_perfusion_low",
+        "negative_pressure_excess",
+        "border_compression"
+      ],
+      "targets": [
+        "skin"
+      ]
+    },
+    {
+      "id": "tool_fault",
+      "priority": 68,
+      "rescue_protocol": "safe_tool_exchange",
+      "signals": [
+        "joint_fault",
+        "consumable_empty",
+        "blade_jam",
+        "sensor_fault"
+      ],
+      "targets": [
+        "tool"
+      ]
+    },
+    {
+      "id": "retained_item_count_discrepancy",
+      "priority": 64,
+      "rescue_protocol": "item_recovery",
+      "signals": [
+        "count_mismatch",
+        "radiopaque_item_unreconciled"
+      ],
+      "targets": [
+        "surgical_field"
+      ]
+    },
+    {
+      "id": "abdominal_wall_dehiscence",
+      "priority": 82,
+      "rescue_protocol": "abdominal_wall_revision",
+      "signals": [
+        "wound_gap_m>0.002",
+        "repair_retention_fraction<0.9"
+      ],
+      "targets": [
+        "abdominal_wall"
+      ]
+    },
+    {
+      "id": "dressing_delamination",
+      "priority": 72,
+      "rescue_protocol": "dressing_reseal",
+      "signals": [
+        "film_bond_fraction<0.9",
+        "seal_leak_detected"
+      ],
+      "targets": [
+        "skin"
+      ]
+    }
+  ],
+  "research_only": true,
+  "schema": "dr.anmar.complication-library.v1"
+}

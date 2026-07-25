@@ -1,0 +1,31 @@
+{
+  "catalog_subpath": "Environments/SurgicalAutonomy/AutonomousRescueOR",
+  "clinical_validation": false,
+  "composition": {
+    "absolute_asset_paths_allowed": false,
+    "external_geometry_dependencies": [],
+    "relative_usd_dependencies_required": true
+  },
+  "entrypoints": {
+    "abdominal_wall": "dranmar_rescue_abdominal_wall.usda",
+    "bowel_anastomosis": "dranmar_rescue_bowel_anastomosis.usda",
+    "deformable_suite": "dranmar_deformable_rescue_suite.usda",
+    "environment": "dranmar_autonomous_rescue_or.usda",
+    "occlusive_film": "dranmar_rescue_occlusive_film.usda",
+    "physiological_monitor": "dranmar_physiological_monitor.usda",
+    "resuscitation_module": "dranmar_resuscitation_module.usda",
+    "tool_carousel": "dranmar_sterile_tool_carousel.usda",
+    "tool_changer": "dranmar_universal_tool_changer.usda",
+    "vessel": "dranmar_rescue_vessel.usda"
+  },
+  "license": "Apache-2.0",
+  "research_only": true,
+  "retrieval": {
+    "cli_sub_path": "Environments/SurgicalAutonomy/AutonomousRescueOR",
+    "import_network_side_effects": false,
+    "python_base_class": "i4h_asset_helper.BaseI4HAssets",
+    "usd_policy": "download_complete_containing_directory"
+  },
+  "schema": "dr.anmar.i4h-catalog-contract.v1",
+  "version": "0.3.0"
+}

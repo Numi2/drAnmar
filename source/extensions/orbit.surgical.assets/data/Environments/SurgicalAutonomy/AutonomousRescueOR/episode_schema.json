@@ -1,0 +1,57 @@
+{
+  "$id": "dr.anmar.autonomous-rescue-episode.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "autonomy_mode": {
+      "enum": [
+        "observer",
+        "advisory",
+        "supervised",
+        "autonomous_research"
+      ]
+    },
+    "episode_id": {
+      "type": "string"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "patient_snapshot_final": {
+      "type": "object"
+    },
+    "patient_snapshot_initial": {
+      "type": "object"
+    },
+    "procedure_id": {
+      "type": "string"
+    },
+    "research_only": {
+      "const": true
+    },
+    "scenario_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "trace": {
+      "items": {
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "episode_id",
+    "seed",
+    "procedure_id",
+    "patient_snapshot_initial",
+    "trace",
+    "metrics",
+    "patient_snapshot_final"
+  ],
+  "type": "object"
+}

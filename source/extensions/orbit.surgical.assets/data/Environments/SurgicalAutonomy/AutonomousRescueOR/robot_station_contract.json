@@ -1,0 +1,104 @@
+{
+  "research_only": true,
+  "scheduling_priority": [
+    "emergency_rescue",
+    "patient_stabilization",
+    "field_control",
+    "verification",
+    "procedure",
+    "closure",
+    "aftercare"
+  ],
+  "schema": "dr.anmar.robot-station-contract.v1",
+  "stations": [
+    {
+      "home_zone": "primary_home",
+      "id": "primary",
+      "pose": {
+        "position_m": [
+          -0.86,
+          -0.64,
+          0.05
+        ],
+        "yaw_deg": 38.0
+      },
+      "preferred_tools": [
+        "safeplane_dissection",
+        "adaptive_seal_divide",
+        "adaptive_anastomosis",
+        "closure_robot"
+      ],
+      "responsibilities": [
+        "dissection",
+        "seal_divide",
+        "anastomosis",
+        "closure"
+      ]
+    },
+    {
+      "home_zone": "exposure_home",
+      "id": "exposure",
+      "pose": {
+        "position_m": [
+          0.86,
+          -0.64,
+          0.05
+        ],
+        "yaw_deg": 142.0
+      },
+      "preferred_tools": [
+        "atraumatic_exposure"
+      ],
+      "responsibilities": [
+        "exposure",
+        "counter_traction",
+        "field_stabilization"
+      ]
+    },
+    {
+      "home_zone": "rescue_home",
+      "id": "rescue",
+      "pose": {
+        "position_m": [
+          -0.86,
+          0.64,
+          0.05
+        ],
+        "yaw_deg": -38.0
+      },
+      "preferred_tools": [
+        "adaptive_hemostasis",
+        "wound_preparation",
+        "laparotomy_sponge"
+      ],
+      "responsibilities": [
+        "hemostasis",
+        "wound_preparation",
+        "field_clearance",
+        "retrieval"
+      ]
+    },
+    {
+      "home_zone": "assessment_home",
+      "id": "assessment",
+      "pose": {
+        "position_m": [
+          0.86,
+          0.64,
+          0.05
+        ],
+        "yaw_deg": -142.0
+      },
+      "preferred_tools": [
+        "perfusion_viability",
+        "dressing_robot"
+      ],
+      "responsibilities": [
+        "perfusion_assessment",
+        "ultrasound",
+        "verification",
+        "dressing"
+      ]
+    }
+  ]
+}

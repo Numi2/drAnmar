@@ -37,6 +37,26 @@ def load_runtime():
 runtime = load_runtime()
 
 
+def observe_contact(
+    patient,
+    *,
+    target: str,
+    interaction: str,
+    forces: tuple[float, float],
+    position: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    source_robot: str = "test_tool",
+) -> None:
+    patient.contacts.observe(
+        runtime.PatientContactFrame(
+            target=target,
+            source_robot=source_robot,
+            interaction=interaction,
+            normal_forces_n=forces,
+            tool_position_m=position,
+        )
+    )
+
+
 def test_repository_contract_is_complete_and_registered_once() -> None:
     required_assets = (
         "dranmar_dynamic_abdominal_patient.usda",
@@ -67,8 +87,10 @@ def test_repository_contract_is_complete_and_registered_once() -> None:
 
     room = PROCEDURES_BY_ID["dr-anmar-dynamic-abdominal-patient"]
     assert room["dynamic_abdominal_patient"] is True
-    assert room["dynamic_patient_access_state"] == "intact"
+    assert room["dynamic_patient_access_state"] == "open"
     assert room["dynamic_patient_active_deformables"] == ("mesentery",)
+    assert room["dynamic_patient_contact_interaction"] == "exposure"
+    assert room["dynamic_patient_contact_target"] == "mesentery"
     assert room["dynamic_patient_position_m"] == (0.0, 0.0, 0.0)
     assert room["psm_root_height_m"] == 0.22
     assert room["nvidia_native_bench"] is True
@@ -172,14 +194,140 @@ def test_damage_adhesion_and_hemostasis_transitions_are_consistent() -> None:
     )
     patient.step(0.1)
     before = patient.bleeding.total_flow_ml_s
-    event = patient.robot.hemostasis(
-        source_id="control_target",
-        method="clip",
-        effectiveness=0.99,
+    for _ in range(20):
+        observe_contact(
+            patient,
+            target="control_target",
+            interaction="hemostasis",
+            forces=(1.8, 1.8),
+        )
+        patient.step(0.1)
+    assert patient.bleeding.total_flow_ml_s < before
+    assert patient.bleeding.sources[
+        "control_target"
+    ].control_effectiveness > 0.99
+
+
+def test_contact_effects_require_bilateral_physics_and_tool_motion() -> None:
+    patient = runtime.DynamicSurgicalPatient(procedure_stage="access_open")
+    tissue = patient.tissue_state.get("mesentery")
+
+    for _ in range(10):
+        observe_contact(
+            patient,
+            target="mesentery",
+            interaction="exposure",
+            forces=(1.25, 0.0),
+        )
+        patient.step(0.1)
+    assert tissue.retraction_fraction == 0.0
+    assert tissue.contact_compression_fraction == 0.0
+
+    observe_contact(
+        patient,
+        target="mesentery",
+        interaction="exposure",
+        forces=(1.25, 1.25),
     )
     patient.step(0.1)
-    assert patient.bleeding.total_flow_ml_s < before
-    assert event.result["controlled_fraction"] == pytest.approx(0.99)
+    for _ in range(12):
+        observe_contact(
+            patient,
+            target="mesentery",
+            interaction="exposure",
+            forces=(1.25, 1.25),
+            position=(0.02, 0.0, 0.0),
+        )
+        patient.step(0.1)
+
+    assert tissue.retraction_fraction > 0.45
+    assert tissue.contact_compression_fraction == pytest.approx(
+        0.1, abs=0.001
+    )
+    assert patient.perfusion.regions[
+        "small_bowel"
+    ].compression_fraction == pytest.approx(0.1, abs=0.001)
+
+    for _ in range(20):
+        patient.step(0.1)
+    assert tissue.retraction_fraction < 0.01
+    assert tissue.contact_compression_fraction < 0.001
+
+
+def test_overforce_causes_damage_instead_of_better_exposure() -> None:
+    patient = runtime.DynamicSurgicalPatient(procedure_stage="access_open")
+    tissue = patient.tissue_state.get("mesentery")
+    baseline_integrity = tissue.integrity_fraction
+
+    observe_contact(
+        patient,
+        target="mesentery",
+        interaction="exposure",
+        forces=(5.0, 5.0),
+    )
+    patient.step(0.1)
+    for _ in range(20):
+        observe_contact(
+            patient,
+            target="mesentery",
+            interaction="exposure",
+            forces=(5.0, 5.0),
+            position=(0.04, 0.0, 0.0),
+        )
+        patient.step(0.1)
+
+    assert tissue.retraction_fraction == pytest.approx(0.0)
+    assert tissue.integrity_fraction < baseline_integrity
+    assert any(
+        event.kind == "contact_overload"
+        for event in patient.damage.events.values()
+    )
+
+
+def test_direct_exposure_and_hemostasis_outcome_writes_are_absent() -> None:
+    patient = runtime.DynamicSurgicalPatient()
+    assert not hasattr(patient.robot, "exposure")
+    assert not hasattr(patient.robot, "hemostasis")
+    assert not hasattr(patient.interventions, "apply_exposure")
+    assert not hasattr(patient.interventions, "apply_hemostasis")
+    with pytest.raises(KeyError, match="unknown patient intervention"):
+        patient.interventions.apply(
+            {
+                "action": "hemostasis",
+                "target": "invented",
+                "parameters": {"effectiveness": 1.0},
+            }
+        )
+
+
+def test_contact_hemostasis_reopens_when_physical_compression_releases() -> None:
+    patient = runtime.DynamicSurgicalPatient()
+    patient.start_bleeding(
+        "source",
+        "major_vessels",
+        vessel_radius_m=0.0015,
+        injury_fraction=0.8,
+        kind="arterial",
+    )
+    patient.step(0.1)
+    baseline_flow = patient.bleeding.total_flow_ml_s
+    for _ in range(20):
+        observe_contact(
+            patient,
+            target="source",
+            interaction="hemostasis",
+            forces=(1.8, 1.8),
+        )
+        patient.step(0.1)
+    controlled_flow = patient.bleeding.total_flow_ml_s
+    for _ in range(20):
+        patient.step(0.1)
+
+    assert controlled_flow < baseline_flow * 0.05
+    assert patient.bleeding.total_flow_ml_s > controlled_flow
+    assert patient.bleeding.sources[
+        "source"
+    ].contact_compression_fraction < 0.001
 
 
 def test_reset_and_scenario_orchestration_restore_episode_contract() -> None:

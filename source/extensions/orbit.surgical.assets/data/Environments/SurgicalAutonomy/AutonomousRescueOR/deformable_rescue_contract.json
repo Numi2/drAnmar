@@ -1,0 +1,79 @@
+{
+  "attachment_compatibility": {
+    "surface_to_rigid": true,
+    "surface_to_surface": false,
+    "surface_to_xformable": true,
+    "volume_to_rigid": true,
+    "volume_to_surface": true,
+    "volume_to_volume": true,
+    "volume_to_xformable": true
+  },
+  "bodies": [
+    {
+      "asset": "dranmar_rescue_abdominal_wall.usda",
+      "id": "abdominal_wall_left",
+      "kind": "volume",
+      "prim": "/DrAnmarRescueAbdominalWall/LeftWall",
+      "render_mesh": "RenderMesh",
+      "simulation_mesh": "SimulationMesh"
+    },
+    {
+      "asset": "dranmar_rescue_abdominal_wall.usda",
+      "id": "abdominal_wall_right",
+      "kind": "volume",
+      "prim": "/DrAnmarRescueAbdominalWall/RightWall",
+      "render_mesh": "RenderMesh",
+      "simulation_mesh": "SimulationMesh"
+    },
+    {
+      "asset": "dranmar_rescue_bowel_anastomosis.usda",
+      "id": "bowel_proximal",
+      "kind": "volume",
+      "prim": "/DrAnmarRescueBowelAnastomosis/ProximalBowel"
+    },
+    {
+      "asset": "dranmar_rescue_bowel_anastomosis.usda",
+      "id": "bowel_distal",
+      "kind": "volume",
+      "prim": "/DrAnmarRescueBowelAnastomosis/DistalBowel"
+    },
+    {
+      "asset": "dranmar_rescue_vessel.usda",
+      "id": "rescue_vessel",
+      "kind": "volume",
+      "prim": "/DrAnmarRescueVessel/VesselWall"
+    },
+    {
+      "asset": "dranmar_rescue_occlusive_film.usda",
+      "id": "occlusive_film",
+      "kind": "surface",
+      "prim": "/DrAnmarRescueOcclusiveFilm/Film"
+    }
+  ],
+  "clinical_validation": false,
+  "guidance_baseline": {
+    "isaac_lab": "3.0.0-beta2",
+    "kinematic_targets": "supported only for volume deformables",
+    "omni_physics": "110.0",
+    "surface_control": "attachments to rigid or Xformable anchors; no surface vertex kinematic targets",
+    "surface_rule": "triangular UsdGeom.Mesh used as both simulation and collision mesh",
+    "volume_rule": "UsdGeom.TetMesh simulation topology with identical rest topology and exactly one effective collider"
+  },
+  "limitations": [
+    "attachment stiffness and damping are not available in current auto attachments",
+    "surface-to-surface auto attachments are not supported",
+    "surface deformables must use their simulation mesh for collision",
+    "static friction is not relied upon; dynamic friction carries contact tuning",
+    "surface stretch and shear override stiffnesses are left at zero because the current PhysX implementation does not support them",
+    "surface bending uses thickness-aware bend stiffness",
+    "rest topology is not mutated during simulation; cuts and repair continuity are represented by explicit topology ledgers and removable attachments"
+  ],
+  "mask_shape_types": [
+    "Cube",
+    "Sphere",
+    "Capsule"
+  ],
+  "research_only": true,
+  "schema": "dr.anmar.deformable-rescue-contract.v3",
+  "version": "0.3.0"
+}

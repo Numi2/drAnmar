@@ -45,3 +45,6 @@ from .safeplane_dissection_robot import *
 from .perfusion_viability_robot import *
 from .dynamic_abdominal_patient import *
 from .oncologic_resection import *
+from .deformable_rescue import *
+from .autonomous_rescue_or import *
+from .autonomous_rescue_scene import *

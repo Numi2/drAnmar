@@ -48,20 +48,25 @@ class DrAnmarAssetDescriptor:
     asset_id: str
     catalog_subpath: str
     primary_usd: str
-    rigid_proxy_usd: str
-    payload_usd: str
+    rigid_proxy_usd: str | None
+    payload_usd: str | None
     interaction_frames: str = "interaction_frames.json"
     physics_profile: str = "physics_profile.json"
     asset_manifest: str = "asset_manifest.json"
+    allow_catalog_dependencies: bool = False
 
     def members(self) -> tuple[str, ...]:
-        return (
-            self.primary_usd,
-            self.rigid_proxy_usd,
-            self.payload_usd,
-            self.interaction_frames,
-            self.physics_profile,
-            self.asset_manifest,
+        return tuple(
+            member
+            for member in (
+                self.primary_usd,
+                self.rigid_proxy_usd,
+                self.payload_usd,
+                self.interaction_frames,
+                self.physics_profile,
+                self.asset_manifest,
+            )
+            if member
         )
 
 
@@ -122,6 +127,15 @@ DRANMAR_SIM_READY_ASSETS: Final[dict[str, DrAnmarAssetDescriptor]] = {
         "dranmar_tumor_resection_tool_rigid_proxy.usda",
         "dranmar_tumor_resection_tool_payload.usda",
     ),
+    "autonomous_rescue_or": DrAnmarAssetDescriptor(
+        "dranmar-autonomous-rescue-or-v0.3.0",
+        "Environments/SurgicalAutonomy/AutonomousRescueOR",
+        "dranmar_autonomous_rescue_or.usda",
+        None,
+        "dranmar_universal_tool_changer_payload.usda",
+        physics_profile="physics_profile.json",
+        allow_catalog_dependencies=True,
+    ),
 }
 
 
@@ -175,6 +189,10 @@ def asset_path(
         raise KeyError(
             f"Asset member {member!r} is not declared by {asset_name!r}"
         ) from error
+    if not relative_name:
+        raise KeyError(
+            f"Asset member {member!r} is not available for {asset_name!r}"
+        )
     path = asset_directory(asset_name, require=require) / relative_name
     if require and not path.is_file():
         raise FileNotFoundError(f"DrAnmar catalog member is missing: {path}")
@@ -238,6 +256,9 @@ def validate_usd_dependency_closure(asset_name: str) -> dict[str, object]:
     missing: list[str] = []
     escaping: list[str] = []
     references_checked = 0
+    external_catalog_references_checked = 0
+    descriptor = DRANMAR_SIM_READY_ASSETS[asset_name]
+    data_root = asset_data_root().resolve()
     for _, source in iter_hashed_files(directory):
         if source.suffix.lower() not in {".usd", ".usda"}:
             continue
@@ -255,8 +276,16 @@ def validate_usd_dependency_closure(asset_name: str) -> dict[str, object]:
             try:
                 resolved.relative_to(directory.resolve())
             except ValueError:
-                escaping.append(f"{source.name}: {reference}")
-                continue
+                if descriptor.allow_catalog_dependencies:
+                    try:
+                        resolved.relative_to(data_root)
+                    except ValueError:
+                        escaping.append(f"{source.name}: {reference}")
+                        continue
+                    external_catalog_references_checked += 1
+                else:
+                    escaping.append(f"{source.name}: {reference}")
+                    continue
             if not resolved.exists():
                 missing.append(f"{source.name}: {reference}")
     if missing or escaping:
@@ -268,6 +297,9 @@ def validate_usd_dependency_closure(asset_name: str) -> dict[str, object]:
         "asset_name": asset_name,
         "directory": str(directory),
         "references_checked": references_checked,
+        "external_catalog_references_checked": (
+            external_catalog_references_checked
+        ),
         "missing": [],
         "escaping": [],
     }
@@ -313,4 +345,8 @@ class DrAnmarSurgicalRobotAssets(_BaseI4HAssets):
     ONCOLOGIC_RESECTION = (
         "Props/SurgicalOncology/OncoSurgeryCell/"
         "dranmar_tumor_resection_tool_standalone.usda"
+    )
+    AUTONOMOUS_RESCUE_OR = (
+        "Environments/SurgicalAutonomy/AutonomousRescueOR/"
+        "dranmar_autonomous_rescue_or.usda"
     )

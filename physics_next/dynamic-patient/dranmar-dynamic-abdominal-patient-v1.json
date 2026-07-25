@@ -13,7 +13,8 @@
   "clinical_validation": false,
   "deployment": {
     "doctor_room_id": "dr-anmar-dynamic-abdominal-patient",
-    "default_access_state": "intact",
+    "default_access_state": "open",
+    "patient_effect_authority": "filtered_post_physics_contact_force_and_tool_pose",
     "maximum_solver_active_deformables": 1,
     "mechanics_policy": "fail_closed_if_any_requested_native_route_is_not_applied",
     "multi_component_deformables_qualified": false,
@@ -26,6 +27,7 @@
     "organ_deformation": "mixed volume surface and segmented representations",
     "pulsation": "regional vessel expansion target",
     "respiration": "partial kinematic organ displacement",
+    "retraction_and_temporary_hemostasis": "bilateral contact force response with overload damage and release recovery",
     "topology": "removable bridge and attachment contracts"
   },
   "physiology": {
@@ -53,6 +55,7 @@
     "tissue_state",
     "organ_motion",
     "damage",
+    "contacts",
     "interventions",
     "robot",
     "event_bus",

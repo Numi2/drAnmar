@@ -113,7 +113,7 @@ def test_capability_payload_exposes_the_release_lock_identity() -> None:
     assert release["self_digest_matches"] is True
     assert release["clinical_validation"] is False
     assert release["asset_units"] >= 20
-    assert release["portfolio_assets"] == 19
+    assert release["portfolio_assets"] == 20
 
 
 @pytest.mark.parametrize(

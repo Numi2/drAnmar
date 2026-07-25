@@ -75,6 +75,7 @@
   "quality": {
     "metadata_required_prefixes": {
       "dr_anmar": [
+        "Environments/SurgicalAutonomy",
         "Props/Patients",
         "Props/SurgicalAssessment",
         "Props/SurgicalClosure",

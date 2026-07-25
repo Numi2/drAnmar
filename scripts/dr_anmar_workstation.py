@@ -21,7 +21,7 @@ import time
 import traceback
 import zipfile
 from collections import OrderedDict, deque
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -254,6 +254,15 @@ from orbit.surgical.assets.safeplane_dissection_robot import (
 from orbit.surgical.assets.perfusion_viability_robot import (
     make_tool_cfg as make_perfusion_viability_tool_cfg,
 )
+from orbit.surgical.assets.dynamic_abdominal_patient import (
+    DynamicSurgicalPatient,
+    PatientContactFrame,
+)
+from orbit.surgical.assets.autonomous_rescue_or import (
+    AutonomousRescueORRuntime,
+    PhysicsEvidenceFrame,
+    rescue_vessel_cfg,
+)
 from orbit.surgical.assets.skin_stapler import (
     ClosureLine,
     FIRE_THRESHOLD_DEG,
@@ -457,7 +466,6 @@ PROCEDURE_EVENTS = {
     "task_complete": 4,
     "handoff": 5,
     "safety_review": 6,
-    "laparotomy_cut_open": 7,
 }
 OPERATOR_INPUT_SOURCES = {
     "none": 0,
@@ -580,7 +588,7 @@ APP_HTML = r"""<!doctype html>
       <p class="stapler-boundary">The tissue is a live PhysX FEM body. Each cycle first approximates both wound edges, then a collision-enabled rigid staple retains two local FEM attachment bands after release. The backend does not cut tissue or model needle penetration, metal plastic forming, calibrated pullout strength or clinical performance.</p>
     </section>
     <details class="session-details"><summary>Procedure details and session tools</summary><div class="session-details-grid">
-      <section class="session-section"><h2>Procedure</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div><button id="patientCutButton" class="patient-access hidden" data-shortcut="F11" onclick="cutOpenPatient()"><b>F11 · Cut open abdomen</b><br><small>Record modeled laparotomy and expose the cavity</small></button></div></section>
+      <section class="session-section"><h2>Procedure</h2><div class="card"><div id="procedureTitle" class="procedure-title">Free practice</div><div id="procedureObjective" class="procedure-objective">Use the robot controls to explore the digital twin.</div><div class="procedure-progress"><i id="procedureProgress"></i></div><div id="procedureSteps"></div></div></section>
       <section class="session-section"><h2>Guidance</h2><div class="card supervision"><div class="supervision-state"><span>Control</span><b id="autonomyState">Manual</b></div><div class="grid two"><button id="manualMode" class="autonomy active" data-shortcut="⇧G" onclick="setAutonomy('manual')">Manual <kbd>⇧G</kbd></button><button id="guidedMode" class="autonomy" data-shortcut="G" onclick="setAutonomy('guided')">Guided <kbd>G</kbd></button></div><div id="coachingCue" class="cue">You command every movement. Dr.Anmar records telemetry for coaching.</div></div></section>
       <section class="session-section"><h2>Live signals</h2><div class="card"><div class="safety-grid"><div class="safety-metric"><b id="forceMetric">—</b><span>CONTACT N</span></div><div class="safety-metric"><b id="deformMetric">—</b><span>TISSUE MM</span></div><div class="safety-metric"><b id="stressMetric">—</b><span>STRESS PA</span></div></div></div></section>
       <section class="session-section"><h2>Session</h2><div class="card"><div class="grid two"><button data-shortcut="T" onclick="recording(false)">Stop & save <kbd>T</kbd></button><button data-shortcut="R" onclick="replay()">Replay last <kbd>R</kbd></button><button data-shortcut="Delete" onclick="resetScene()">Reset scene <kbd>Delete</kbd></button></div><div class="hint" id="lastDemo">Robot state and camera observations are saved together.</div></div></section>
@@ -696,7 +704,6 @@ function cycleSensorCamera(){const buttons=[...document.querySelectorAll('[data-
 async function annotatePhase(phase){try{const x=await post('/api/annotation',{phase});toast(x.message)}catch(e){toast(e.message)}}
 async function annotateEvent(event){try{const x=await post('/api/annotation',{event});toast('Procedure event saved')}catch(e){toast(e.message)}}
 async function resetScene(){try{await post('/api/reset');toast('Scene reset')}catch(e){toast(e.message)}}
-async function cutOpenPatient(source='operator'){const button=document.getElementById('patientCutButton');if(button.classList.contains('hidden')||button.disabled)return;button.disabled=true;try{const result=await post('/api/patient/access',{action:'cut_open',source});toast(result.already_open?'Surgical access is already open':result.already_requested?'Modeled laparotomy already requested':'Modeled laparotomy requested')}catch(e){button.disabled=false;toast(e.message)}}
 async function setAutonomy(mode){try{const x=await post('/api/autonomy',{mode});toast(x.message)}catch(e){toast(e.message)}}
 async function takeControl(){stopDrive(false);try{const x=await post('/api/handoff');toast(x.message)}catch(e){toast(e.message)}}
 async function startExpert(){try{const x=await post('/api/expert/start');toast(x.message)}catch(e){toast(e.message)}}
@@ -729,7 +736,7 @@ function handleDiscreteShortcut(event){const {code}=event;if(code==='Slash'&&eve
   Space:['Space','Instrument 1 gripper',()=>toggleGrip(0)],Enter:['Enter','Instrument 2 gripper',()=>toggleGrip((latestStatus?.arms||1)>1?1:0)],NumpadEnter:['Enter','Instrument 2 gripper',()=>toggleGrip((latestStatus?.arms||1)>1?1:0)],Backspace:null,Escape:null,
   BracketLeft:['[','Pointer controls · instrument 1',()=>setArm(0)],BracketRight:[']','Pointer controls · instrument 2',()=>setArm(1)],KeyC:[event.shiftKey?'⇧C':'C',event.shiftKey?'Next camera view':'Next camera sensor',()=>event.shiftKey?cycleCameraView():cycleSensorCamera()],
   Comma:[',','Pointer precision speed',()=>setSpeedShortcut(.35)],Period:['.','Pointer normal speed',()=>setSpeedShortcut(1)],Slash:['/','Pointer fast speed',()=>setSpeedShortcut(1.7)],
-  KeyG:[event.shiftKey?'⇧G':'G',event.shiftKey?'Manual control':'Guided control',()=>setAutonomy(event.shiftKey?'manual':'guided')],KeyH:['H','Toggle clinician path',()=>toggleReferenceGhost()],F9:['F9','Run live expert',()=>startExpert()],F10:['F10','Pause or resume expert',()=>toggleExpertPause()],F11:['F11','Cut open abdomen',()=>cutOpenPatient('keyboard')],F12:['F12','Smart context action',()=>smartAction()],
+  KeyG:[event.shiftKey?'⇧G':'G',event.shiftKey?'Manual control':'Guided control',()=>setAutonomy(event.shiftKey?'manual':'guided')],KeyH:['H','Toggle clinician path',()=>toggleReferenceGhost()],F9:['F9','Run live expert',()=>startExpert()],F10:['F10','Pause or resume expert',()=>toggleExpertPause()],F12:['F12','Smart context action',()=>smartAction()],
   KeyY:['Y','Start recording',()=>recording(true)],KeyT:['T','Stop and save',()=>recording(false)],KeyR:['R','Replay last',()=>replay()],Delete:['Delete','Reset scene',()=>resetScene()]
 };if(code==='Backspace'||code==='Escape'){if(!event.repeat)emergencyStop();return true}const command=commands[code];if(!command)return false;if(!event.repeat)runShortcut(...command);return true}
 document.addEventListener('keydown',event=>{if(event.code==='Backquote'&&!isTypingTarget(event.target)&&!event.metaKey&&!event.ctrlKey){event.preventDefault();if(!event.repeat)startVoiceInput();return}if(isTypingTarget(event.target)||event.metaKey||event.ctrlKey)return;const helpOpen=!document.getElementById('keyboardHelp').classList.contains('hidden');if(helpOpen&&event.code!=='Slash'&&event.code!=='Escape'&&event.code!=='Backspace'){event.preventDefault();return}if(event.code==='ShiftLeft'||event.code==='ShiftRight'){event.preventDefault();heldModifiers.add(event.code==='ShiftLeft'?'rotate-left':'rotate-right');showKeyAction(event.code==='ShiftLeft'?'L⇧':'R⇧',`${event.code==='ShiftLeft'?'Left':'Right'} wrist angle mode`,true);syncKeyVisuals();updateDrive();return}if(event.code==='AltLeft'||event.code==='AltRight'){event.preventDefault();const modifier=event.code==='AltLeft'?'precision-left':'precision-right';heldModifiers.add(modifier);showKeyAction(event.code==='AltLeft'?'L⌥':'R⌥',`${event.code==='AltLeft'?'Left':'Right'} precision clutch`,true);syncKeyVisuals();updateDrive();return}if(handleDiscreteShortcut(event)){event.preventDefault();if((event.code==='Escape'||event.code==='Backspace')&&helpOpen)toggleKeyboardHelp(false);return}if(!dualMovementCodes.has(event.code))return;event.preventDefault();inputSource='keyboard_pointer';if(!heldKeys.has(event.code))heldKeyStartedAt.set(event.code,performance.now());heldKeys.add(event.code);updateDrive();showKeyAction(event.key.length===1?event.key.toUpperCase():event.key,activeDriveLabel(),true)});
@@ -744,7 +751,7 @@ cameraView.addEventListener('pointerup',finishCameraDrag);cameraView.addEventLis
 function targetDirections(offset){if(!offset)return'';const choices=[];if(Math.abs(offset[2])>.004)choices.push([Math.abs(offset[2]),offset[2]>0?'Up':'Down']);if(Math.abs(offset[1])>.004)choices.push([Math.abs(offset[1]),offset[1]>0?'Left':'Right']);if(Math.abs(offset[0])>.004)choices.push([Math.abs(offset[0]),offset[0]<0?'Toward':'Away']);return choices.sort((a,b)=>b[0]-a[0]).slice(0,2).map(x=>x[1]).join(' + ')}
 async function refresh(){if(refreshInFlight||pageDisposed||document.hidden)return;refreshInFlight=true;try{
   const s=await requestJson('/api/status/live',{cache:'no-store'},2500);if(workerInstanceId&&s.instance_id!==workerInstanceId){location.reload();return}workerInstanceId=s.instance_id;latestStatus=s;if(activeArm>=s.arms){activeArm=0;document.getElementById('arm0').classList.add('active');document.getElementById('arm1').classList.remove('active')}document.getElementById('dot').classList.add('ok');document.getElementById('connection').textContent='Isaac Lab live';const contactPad=standardGamepads()[0];for(let arm=0;arm<2;arm++){const contact=!!s.native_grasp_contact_active?.[arm];if(contact&&!previousGamepadContacts[arm])gamepadHaptic(contactPad,{duration:95,weak:arm===0 ? .48 : .12,strong:arm===1 ? .48 : .12});previousGamepadContacts[arm]=contact}
-  const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;const procedureMarkup=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join(''),procedureSteps=document.getElementById('procedureSteps');if(procedureSteps.dataset.markup!==procedureMarkup){procedureSteps.innerHTML=procedureMarkup;procedureSteps.dataset.markup=procedureMarkup}const patient=s.dynamic_patient||{},patientCutButton=document.getElementById('patientCutButton'),patientRoom=patient.access_state==='intact'||patient.access_state==='open',patientCutPending=!!patient.access_pending,sessionDetails=document.querySelector('.session-details');if(patientRoom&&!sessionDetails.dataset.patientRoomShown){sessionDetails.open=true;sessionDetails.dataset.patientRoomShown='true'}patientCutButton.classList.toggle('hidden',!patientRoom);patientCutButton.classList.toggle('open',patient.access_state==='open');patientCutButton.disabled=patient.access_state==='open'||patientCutPending;patientCutButton.innerHTML=patient.access_state==='open'?'<b>Access open</b><br><small>Modeled laparotomy event recorded</small>':patientCutPending?'<b>Opening access…</b><br><small>Hold instruments clear during transition</small>':'<b>F11 · Cut open abdomen</b><br><small>Record modeled laparotomy and expose the cavity</small>';
+  const p=s.procedure||{};document.getElementById('procedureTitle').textContent=p.title||'Free practice';document.getElementById('procedureObjective').textContent=p.objective||'Use the robot controls to explore the digital twin.';document.getElementById('procedureProgress').style.width=`${p.progress_percent||0}%`;const procedureMarkup=(p.steps||[]).map((x,i)=>`<div class="procedure-step ${x.status}"><span>${String(i+1).padStart(2,'0')}</span><div><b>${x.title}</b><br>${x.instruction}</div></div>`).join(''),procedureSteps=document.getElementById('procedureSteps');if(procedureSteps.dataset.markup!==procedureMarkup){procedureSteps.innerHTML=procedureMarkup;procedureSteps.dataset.markup=procedureMarkup}const patient=s.dynamic_patient||{},patientRoom=patient.access_state==='intact'||patient.access_state==='open',sessionDetails=document.querySelector('.session-details');if(patientRoom&&!sessionDetails.dataset.patientRoomShown){sessionDetails.open=true;sessionDetails.dataset.patientRoomShown='true'}
   document.querySelectorAll('[data-camera]').forEach(button=>button.classList.toggle('hidden',!s.camera_names.includes(button.dataset.camera)));document.getElementById('rightInstrumentControls').classList.toggle('hidden',s.arms<2);document.getElementById('instrumentGrid').classList.toggle('single',s.arms<2);document.querySelectorAll('.gripper-control').forEach(button=>button.classList.toggle('hidden',!s.has_grippers));
   currentViewMode=s.camera_view_mode||currentViewMode;renderFreeCamera(selectedCameraAdjustment(s));document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',!cameraAdjustMode&&x.dataset.viewMode===currentViewMode));
   document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record')?.classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[0]===false);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[(s.arms||1)>1?1:0]===false);
@@ -880,11 +887,6 @@ class ProcedureAnnotationRequest(BaseModel):
     phase: str | None = None
     event: str | None = None
     note: str = ""
-
-
-class PatientAccessRequest(BaseModel):
-    action: str = "cut_open"
-    source: str = "operator"
 
 
 @dataclass
@@ -1034,8 +1036,6 @@ class SharedState:
     procedure_event_sequence: int = 0
     procedure_events: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=4096))
     dynamic_patient_access_state: str = ""
-    dynamic_patient_access_request: str | None = None
-    dynamic_patient_access_source: str = "operator"
     dynamic_patient_cut_events: int = 0
     procedure_waypoints_total: int = 0
     procedure_waypoints_completed: int = 0
@@ -1272,7 +1272,7 @@ class SharedState:
                 "procedure": procedure_status,
                 "dynamic_patient": {
                     "access_state": self.dynamic_patient_access_state or None,
-                    "access_pending": self.dynamic_patient_access_request == "open",
+                    "access_pending": False,
                     "cut_events": self.dynamic_patient_cut_events,
                     "active_deformables": list(
                         self.procedure.get(
@@ -1470,7 +1470,48 @@ class SharedState:
             )
         elif kind == "dynamic_abdominal_patient":
             completed = int(self.camera_nonblank_seen)
-            completed += int(self.dynamic_patient_access_state == "open")
+            contact_states = (
+                self.native_telemetry
+                .get("dynamic_patient_effects", {})
+                .get("states", [])
+            )
+            completed += int(
+                any(
+                    float(item.get("retraction_fraction", 0.0)) > 0.02
+                    for item in contact_states
+                )
+            )
+        elif kind == "autonomous_rescue_or":
+            completed = int(self.camera_nonblank_seen)
+            rescue = self.native_telemetry.get(
+                "autonomous_rescue_or",
+                {},
+            )
+            measured = rescue.get("measured_contact", {})
+            vessel = rescue.get("vessel", {})
+            completed += int(
+                min(
+                    float(measured.get("left_normal_force_n", 0.0)),
+                    float(measured.get("right_normal_force_n", 0.0)),
+                )
+                > 0.12
+            )
+            completed += int(
+                float(
+                    vessel.get(
+                        "transient_compression_fraction",
+                        0.0,
+                    )
+                )
+                > 0.1
+            )
+            completed += int(
+                float(vessel.get("retained_clip_fraction", 0.0)) > 0.0
+                or float(vessel.get("patch_seal_fraction", 0.0)) > 0.0
+            )
+            completed += int(
+                bool(vessel.get("hemostasis_verified", False))
+            )
         elif kind == "native_suturing_bench":
             # This dry-lab room deliberately avoids synthetic completion
             # predicates.  Only an observed physical grasp and subsequent
@@ -2489,44 +2530,6 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.coaching_cue = scenario["doctor_focus"]
         state.wake_event.set()
         return {"ok": True, "scenario": scenario, "seed": request.seed, "message": f"{scenario['title']} loaded"}
-
-    @app.post("/api/patient/access")
-    def patient_access(request: PatientAccessRequest) -> dict[str, Any]:
-        if state.procedure.get("guide_kind") != "dynamic_abdominal_patient":
-            raise HTTPException(409, "This room does not contain the dynamic patient")
-        if request.action != "cut_open":
-            raise HTTPException(400, "Supported patient access action: cut_open")
-        request_source = "".join(
-            character for character in request.source.strip() if character.isprintable()
-        )[:64] or "operator"
-        with state.lock:
-            if state.dynamic_patient_access_state == "open":
-                return {
-                    "ok": True,
-                    "access_state": "open",
-                    "already_open": True,
-                    "cut_events": state.dynamic_patient_cut_events,
-                }
-            if state.dynamic_patient_access_request == "open":
-                return {
-                    "ok": True,
-                    "access_state": "intact",
-                    "requested": "open",
-                    "already_requested": True,
-                }
-            state.dynamic_patient_access_request = "open"
-            state.dynamic_patient_access_source = request_source
-            state.coaching_cue = (
-                "Modeled laparotomy cut requested. Hold both instruments clear "
-                "while the coordinated access layers open."
-            )
-        state.wake_event.set()
-        return {
-            "ok": True,
-            "access_state": "intact",
-            "requested": "open",
-            "already_open": False,
-        }
 
     @app.post("/api/evaluate")
     def evaluate(request: EvaluationRequest) -> dict[str, Any]:
@@ -4187,6 +4190,16 @@ def main() -> None:
     dynamic_abdominal_patient_enabled = bool(
         procedure.get("dynamic_abdominal_patient")
     )
+    autonomous_rescue_or_enabled = bool(
+        procedure.get("autonomous_rescue_or")
+    )
+    if dynamic_abdominal_patient_enabled and autonomous_rescue_or_enabled:
+        raise ValueError(
+            "Select one contact-driven patient substrate per procedure room"
+        )
+    contact_driven_patient_effects_enabled = bool(
+        dynamic_abdominal_patient_enabled or autonomous_rescue_or_enabled
+    )
     stapler_test_cell_enabled = bool(procedure.get("stapler_test_cell"))
     selected_bench_assets: set[str] = set()
     bench_asset_paths: dict[str, Path] = {}
@@ -4317,6 +4330,19 @@ def main() -> None:
         raise RuntimeError(
             "The dynamic abdominal patient room is missing its primary asset: "
             f"{dynamic_abdominal_patient_path}"
+        )
+    autonomous_rescue_vessel_path = (
+        REPOSITORY_ROOT
+        / "source/extensions/orbit.surgical.assets/data/Environments"
+        / "SurgicalAutonomy/AutonomousRescueOR/dranmar_rescue_vessel.usda"
+    )
+    if (
+        autonomous_rescue_or_enabled
+        and not autonomous_rescue_vessel_path.is_file()
+    ):
+        raise RuntimeError(
+            "The Autonomous Rescue OR is missing its live vessel substrate: "
+            f"{autonomous_rescue_vessel_path}"
         )
     bench_dr_anmar_suture_enabled = bool(
         nvidia_native_bench
@@ -4889,6 +4915,38 @@ def main() -> None:
                     rot=(1.0, 0.0, 0.0, 0.0),
                 ),
                 spawn=dynamic_patient_spawn,
+            )
+        if autonomous_rescue_or_enabled:
+            env_cfg.scene.replicate_physics = False
+            for setting, value in {
+                "gpu_collision_stack_size": 2**30,
+                "gpu_heap_capacity": 2**28,
+                "gpu_temp_buffer_capacity": 2**26,
+                "gpu_max_soft_body_contacts": 2**20,
+            }.items():
+                if hasattr(env_cfg.sim.physx, setting):
+                    setattr(env_cfg.sim.physx, setting, value)
+            rescue_vessel_position_raw = tuple(
+                procedure.get(
+                    "rescue_vessel_position_m",
+                    (0.0, 0.0, 0.055),
+                )
+            )
+            if len(rescue_vessel_position_raw) != 3:
+                raise ValueError(
+                    "rescue_vessel_position_m must contain exactly three values"
+                )
+            rescue_vessel_position = tuple(
+                float(value) for value in rescue_vessel_position_raw
+            )
+            if not all(
+                math.isfinite(value) for value in rescue_vessel_position
+            ):
+                raise ValueError(
+                    "rescue_vessel_position_m values must all be finite"
+                )
+            env_cfg.scene.autonomous_rescue_vessel = rescue_vessel_cfg(
+                position=rescue_vessel_position,
             )
         env_cfg.scene.table.spawn.usd_path = str(bench_asset_paths["table"])
         env_cfg.scene.table.init_state.pos = (0.0, 0.0, -0.457)
@@ -5759,6 +5817,24 @@ def main() -> None:
         if "Dual" in args_cli.task
         else ("Robot",)
     )
+    contact_effect_filter_prim = procedure.get("contact_effect_filter_prim")
+    if (
+        dynamic_abdominal_patient_enabled
+        and not contact_effect_filter_prim
+    ):
+        contact_effect_filter_prim = (
+            "{ENV_REGEX_NS}/DynamicAbdominalPatient/Anatomy/"
+            f"{procedure.get('dynamic_patient_contact_target', 'mesentery')}"
+            "/Geometry/Visual"
+        )
+    contact_effect_filter = (
+        [str(contact_effect_filter_prim)]
+        if (
+            contact_driven_patient_effects_enabled
+            and contact_effect_filter_prim
+        )
+        else []
+    )
     # One native net-force sensor per rigid jaw is sufficient for grasp
     # detection. Per-segment filter matrices scale every jaw against the full
     # suture body chain and were never consumed after PhysX became the sole
@@ -5776,6 +5852,7 @@ def main() -> None:
                     update_period=0.0,
                     history_length=3,
                     track_air_time=False,
+                    filter_prim_paths_expr=contact_effect_filter,
                 ),
             )
     if not single_active_camera_renderer:
@@ -6670,6 +6747,25 @@ def main() -> None:
         sensor = scene[name]
         if getattr(sensor.data, "net_forces_w", None) is not None:
             contact_sensors[name] = sensor
+    dynamic_patient_runtime = (
+        DynamicSurgicalPatient(
+            seed=DEFAULT_SCENARIO_SEED,
+            procedure_stage="access_open",
+            condition=str(
+                procedure.get("dynamic_patient_condition", "healthy")
+            ),
+        )
+        if dynamic_abdominal_patient_enabled
+        else None
+    )
+    autonomous_rescue_runtime = (
+        AutonomousRescueORRuntime(seed=DEFAULT_SCENARIO_SEED)
+        if autonomous_rescue_or_enabled
+        else None
+    )
+    rescue_physics_step = -1
+    rescue_simulation_time_s = 0.0
+    rescue_previous_tool_positions: dict[int, np.ndarray] = {}
     showcase_children: list[Any] = []
     default_showcase_names: set[str] = {"Liver_topo_blender"}
     collision_mesh_count = 0
@@ -7143,6 +7239,66 @@ def main() -> None:
             except (AttributeError, IndexError, RuntimeError):
                 continue
         return max(observed, default=0.0)
+
+    def contact_effect_jaw_force(arm: int, jaw: int) -> float | None:
+        """Return only the configured jaw/substrate collision-pair force."""
+        sensor = contact_sensors.get(
+            f"gripper_contact_{arm + 1}_jaw_{jaw}"
+        )
+        if sensor is None:
+            return None
+        filtered = getattr(sensor.data, "force_matrix_w", None)
+        if filtered is None:
+            return None
+        try:
+            return float(
+                torch.linalg.vector_norm(
+                    filtered[0],
+                    dim=-1,
+                )
+                .max()
+                .detach()
+                .cpu()
+                .item()
+            )
+        except (AttributeError, IndexError, RuntimeError):
+            return None
+
+    def jaw_positions_for_arm(
+        arm: int,
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        """Read the two physical jaw poses used to measure aperture."""
+
+        if arm >= len(robot_names):
+            return None
+        robot_name = robot_names[arm]
+        names = robot_body_names.get(robot_name, [])
+        try:
+            left_index = names.index("psm_tool_gripper1_link")
+            right_index = names.index("psm_tool_gripper2_link")
+        except ValueError:
+            return None
+        try:
+            positions = robots[robot_name].data.body_pos_w[0]
+            left = (
+                positions[left_index, :3]
+                .detach()
+                .cpu()
+                .numpy()
+                .astype(np.float32)
+            )
+            right = (
+                positions[right_index, :3]
+                .detach()
+                .cpu()
+                .numpy()
+                .astype(np.float32)
+            )
+        except (AttributeError, IndexError, RuntimeError):
+            return None
+        if not np.isfinite(left).all() or not np.isfinite(right).all():
+            return None
+        return left, right
 
     def suture_segment_positions() -> np.ndarray:
         if suture_segment_view is None:
@@ -8857,12 +9013,21 @@ def main() -> None:
         nonlocal closure_robot_arm_hold_targets
         nonlocal closure_robot_mount_reference_w
         nonlocal closure_robot_max_mount_error_mm
+        nonlocal rescue_physics_step
+        nonlocal rescue_simulation_time_s
         native_grasp_arms.clear()
         update_procedure_waypoint_marker(0, force=True)
         np.random.seed(selected_seed)
         torch.manual_seed(selected_seed)
         env.reset(seed=selected_seed)
+        latest_dynamic_patient_telemetry.clear()
+        latest_autonomous_rescue_telemetry.clear()
         if dynamic_abdominal_patient_enabled:
+            if dynamic_patient_runtime is None:
+                raise RuntimeError(
+                    "Dynamic patient physiology runtime is unavailable"
+                )
+            dynamic_patient_runtime.reset()
             patient_prim = suture_stage.GetPrimAtPath(
                 "/World/envs/env_0/DynamicAbdominalPatient"
             )
@@ -8885,6 +9050,22 @@ def main() -> None:
                 raise RuntimeError(
                     "Dynamic patient reset failed closed: "
                     f"{initial_access_state}"
+                )
+        if autonomous_rescue_or_enabled:
+            if autonomous_rescue_runtime is None:
+                raise RuntimeError(
+                    "Autonomous Rescue OR effects runtime is unavailable"
+                )
+            autonomous_rescue_runtime.reset(seed=selected_seed)
+            rescue_physics_step = -1
+            rescue_simulation_time_s = 0.0
+            rescue_previous_tool_positions.clear()
+            vessel_prim = suture_stage.GetPrimAtPath(
+                "/World/envs/env_0/AutonomousRescueVessel"
+            )
+            if not vessel_prim.IsValid():
+                raise RuntimeError(
+                    "Autonomous Rescue OR reset failed: vessel prim is missing"
                 )
         if stapler_test_cell_enabled:
             if suture_stage.GetPrimAtPath(
@@ -9025,8 +9206,6 @@ def main() -> None:
             state.native_telemetry = {}
             if dynamic_abdominal_patient_enabled:
                 state.dynamic_patient_access_state = initial_access_state
-                state.dynamic_patient_access_request = None
-                state.dynamic_patient_access_source = "operator"
                 state.dynamic_patient_cut_events = 0
             if skin_adhesive_enabled:
                 state.skin_adhesive_target = 0.0
@@ -9135,6 +9314,8 @@ def main() -> None:
     latest_contact_forces: dict[str, float] = {}
     latest_deformable_safety: dict[str, float] = {}
     latest_suture_telemetry: dict[str, Any] = {}
+    latest_dynamic_patient_telemetry: dict[str, Any] = {}
+    latest_autonomous_rescue_telemetry: dict[str, Any] = {}
     replay_actions: np.ndarray | None = None
     upstream_expert_active = False
     upstream_expert_index = 0
@@ -9176,13 +9357,6 @@ def main() -> None:
                 state.closure_robot_command_request
             )
             state.closure_robot_command_request = None
-            dynamic_patient_access_request = (
-                state.dynamic_patient_access_request
-            )
-            state.dynamic_patient_access_request = None
-            dynamic_patient_access_source = (
-                state.dynamic_patient_access_source
-            )
             scenario_id = state.scenario_id
             scenario_seed = state.scenario_seed
             camera_view_request = state.camera_view_request
@@ -9259,65 +9433,6 @@ def main() -> None:
         if reset_requested:
             with torch.inference_mode():
                 reset_environment(scenario_id, scenario_seed)
-            # Reset owns the whole episode boundary. Do not replay a request
-            # copied from the pre-reset state into the freshly reset patient.
-            dynamic_patient_access_request = None
-
-        if dynamic_patient_access_request is not None:
-            patient_prim = suture_stage.GetPrimAtPath(
-                "/World/envs/env_0/DynamicAbdominalPatient"
-            )
-            if not patient_prim.IsValid():
-                raise RuntimeError(
-                    "Dynamic patient access transition failed closed: "
-                    "patient prim is missing"
-                )
-            access_variant = patient_prim.GetVariantSets().GetVariantSet(
-                "access_state"
-            )
-            if (
-                not access_variant.IsValid()
-                or dynamic_patient_access_request not in {"intact", "open"}
-                or not access_variant.SetVariantSelection(
-                    dynamic_patient_access_request
-                )
-            ):
-                raise RuntimeError(
-                    "Dynamic patient access transition failed closed: "
-                    f"{dynamic_patient_access_request}"
-                )
-            with state.lock:
-                state.dynamic_patient_access_state = (
-                    dynamic_patient_access_request
-                )
-                if dynamic_patient_access_request == "open":
-                    state.dynamic_patient_cut_events += 1
-                    state.intervention_count += 1
-                    state.procedure_phase = "access"
-                    state.procedure_event_code = PROCEDURE_EVENTS[
-                        "laparotomy_cut_open"
-                    ]
-                    state.procedure_event_sequence += 1
-                    state.procedure_events.append(
-                        {
-                            "time": datetime.now(timezone.utc).isoformat(),
-                            "recorded_frame": state.recorded_frames,
-                            "frame_alignment": "next_control_frame_index",
-                            "sim_step": state.sim_step,
-                            "phase": "access",
-                            "event": "laparotomy_cut_open",
-                            "event_sequence": state.procedure_event_sequence,
-                            "note": (
-                                "Coordinated access-state transition requested by "
-                                f"{dynamic_patient_access_source}; not calibrated "
-                                "continuous cutting"
-                            ),
-                        }
-                    )
-                    state.coaching_cue = (
-                        "Surgical access is open. Confirm the incision margins "
-                        "and exposed anatomy before advancing an instrument."
-                    )
 
         stapler_target_deg = 0.0
         stapler_cycle_phase = "disabled"
@@ -10411,6 +10526,231 @@ def main() -> None:
                 )
             write_native_attachment()
             _observations, reward, terminated, truncated, info = env.step(actions)
+            if dynamic_patient_runtime is not None:
+                patient_contact_target = str(
+                    procedure.get(
+                        "dynamic_patient_contact_target",
+                        "mesentery",
+                    )
+                )
+                patient_contact_interaction = str(
+                    procedure.get(
+                        "dynamic_patient_contact_interaction",
+                        "exposure",
+                    )
+                )
+                sensor_pairs_observed = 0
+                for arm in range(arms):
+                    left_force = contact_effect_jaw_force(arm, 1)
+                    right_force = contact_effect_jaw_force(arm, 2)
+                    tool_position = tool_position_for_arm(arm)
+                    if (
+                        left_force is None
+                        or right_force is None
+                        or tool_position is None
+                    ):
+                        continue
+                    dynamic_patient_runtime.contacts.observe(
+                        PatientContactFrame(
+                            target=patient_contact_target,
+                            source_robot=f"psm_{arm + 1}",
+                            interaction=patient_contact_interaction,
+                            normal_forces_n=(
+                                left_force,
+                                right_force,
+                            ),
+                            tool_position_m=tuple(
+                                float(value)
+                                for value in tool_position
+                            ),
+                        )
+                    )
+                    sensor_pairs_observed += 1
+                dynamic_patient_runtime.step(
+                    float(env_cfg.sim.dt * env_cfg.decimation)
+                )
+                target_tissue_state = (
+                    dynamic_patient_runtime.tissue_state.get(
+                        patient_contact_target
+                    )
+                )
+                latest_dynamic_patient_telemetry = {
+                    **dynamic_patient_runtime.contact_effects.snapshot(),
+                    "sensor_pair_count": sensor_pairs_observed,
+                    "sensor_authority_available": (
+                        sensor_pairs_observed == arms
+                    ),
+                    "vital_signs": asdict(
+                        dynamic_patient_runtime.vital_signs
+                    ),
+                    "target_tissue": {
+                        **asdict(target_tissue_state),
+                        "active_adhesions": sorted(
+                            target_tissue_state.active_adhesions
+                        ),
+                    },
+                }
+            if autonomous_rescue_runtime is not None:
+                action_period_s = float(
+                    env_cfg.sim.dt * env_cfg.decimation
+                )
+                rescue_candidates: list[dict[str, Any]] = []
+                for arm in range(arms):
+                    left_force = contact_effect_jaw_force(arm, 1)
+                    right_force = contact_effect_jaw_force(arm, 2)
+                    jaw_positions = jaw_positions_for_arm(arm)
+                    tool_position = tool_position_for_arm(arm)
+                    if (
+                        left_force is None
+                        or right_force is None
+                        or jaw_positions is None
+                        or tool_position is None
+                    ):
+                        continue
+                    previous_tool_position = (
+                        rescue_previous_tool_positions.get(arm)
+                    )
+                    tool_speed_m_s = (
+                        float(
+                            np.linalg.norm(
+                                tool_position - previous_tool_position
+                            )
+                            / action_period_s
+                        )
+                        if previous_tool_position is not None
+                        else 0.0
+                    )
+                    rescue_previous_tool_positions[arm] = (
+                        tool_position.copy()
+                    )
+                    rescue_candidates.append(
+                        {
+                            "arm": arm,
+                            "left_force_n": left_force,
+                            "right_force_n": right_force,
+                            "separation_m": float(
+                                np.linalg.norm(
+                                    jaw_positions[0] - jaw_positions[1]
+                                )
+                            ),
+                            "tool_speed_m_s": tool_speed_m_s,
+                        }
+                    )
+                selected_contact = (
+                    max(
+                        rescue_candidates,
+                        key=lambda item: min(
+                            float(item["left_force_n"]),
+                            float(item["right_force_n"]),
+                        ),
+                    )
+                    if rescue_candidates
+                    else {
+                        "arm": 0,
+                        "left_force_n": 0.0,
+                        "right_force_n": 0.0,
+                        "separation_m": 0.02,
+                        "tool_speed_m_s": 0.0,
+                    }
+                )
+                rescue_physics_step += 1
+                rescue_simulation_time_s += action_period_s
+                rescue_observation = (
+                    autonomous_rescue_runtime.advance_scene(
+                        PhysicsEvidenceFrame(
+                            physics_step=rescue_physics_step,
+                            simulation_time_s=(
+                                rescue_simulation_time_s
+                            ),
+                            dt_s=action_period_s,
+                            station_id=(
+                                f"psm_{int(selected_contact['arm']) + 1}"
+                            ),
+                            tool_id="psm_grasper",
+                            target_id="rescue_vessel",
+                            left_normal_force_n=float(
+                                selected_contact["left_force_n"]
+                            ),
+                            right_normal_force_n=float(
+                                selected_contact["right_force_n"]
+                            ),
+                            separation_m=float(
+                                selected_contact["separation_m"]
+                            ),
+                            tool_speed_m_s=float(
+                                selected_contact["tool_speed_m_s"]
+                            ),
+                        )
+                    )
+                )
+                rescue_patient = rescue_observation["patient"]
+                rescue_vessel = rescue_patient["vessel"]
+                rescue_complications = [
+                    {
+                        "id": str(item["id"]),
+                        "priority": int(item["priority"]),
+                        "target_id": str(item["target_id"]),
+                    }
+                    for item in rescue_observation[
+                        "active_complications"
+                    ]
+                ]
+                rescue_plan = rescue_observation["rescue_plan"]
+                latest_autonomous_rescue_telemetry = {
+                    "physics_step": int(
+                        rescue_patient["physics_step"]
+                    ),
+                    "simulation_time_s": float(
+                        rescue_patient["simulation_time_s"]
+                    ),
+                    "sensor_pair_count": len(rescue_candidates),
+                    "sensor_authority_available": bool(
+                        rescue_candidates
+                    ),
+                    "selected_arm": (
+                        int(selected_contact["arm"]) + 1
+                    ),
+                    "measured_contact": {
+                        "left_normal_force_n": float(
+                            selected_contact["left_force_n"]
+                        ),
+                        "right_normal_force_n": float(
+                            selected_contact["right_force_n"]
+                        ),
+                        "jaw_separation_m": float(
+                            selected_contact["separation_m"]
+                        ),
+                        "tool_speed_m_s": float(
+                            selected_contact["tool_speed_m_s"]
+                        ),
+                    },
+                    "vessel": {
+                        key: value
+                        for key, value in rescue_vessel.items()
+                    },
+                    "active_complications": rescue_complications,
+                    "rescue_plan": (
+                        {
+                            "complication_id": str(
+                                rescue_plan["complication_id"]
+                            ),
+                            "protocol_id": str(
+                                rescue_plan["protocol_id"]
+                            ),
+                            "action_count": len(
+                                rescue_plan["actions"]
+                            ),
+                        }
+                        if rescue_plan is not None
+                        else None
+                    ),
+                    "contact_owned_reward": float(
+                        rescue_observation["last_reward"]
+                    ),
+                    "outcome_authority": (
+                        "post_physics_filtered_contact"
+                    ),
+                }
             if (
                 stapler_articulation is not None
                 and stapler_housing_body_index is not None
@@ -10878,6 +11218,26 @@ def main() -> None:
         environment_terminated = bool(scalar_value(terminated))
         environment_truncated = bool(scalar_value(truncated))
         environment_success = native_success_from_info(info)
+        if autonomous_rescue_or_enabled:
+            rescue_vessel_telemetry = (
+                latest_autonomous_rescue_telemetry.get("vessel", {})
+            )
+            environment_reward = float(
+                latest_autonomous_rescue_telemetry.get(
+                    "contact_owned_reward",
+                    0.0,
+                )
+            )
+            environment_success = (
+                1.0
+                if bool(
+                    rescue_vessel_telemetry.get(
+                        "hemostasis_verified",
+                        False,
+                    )
+                )
+                else 0.0
+            )
         if softmimicgen_goal is not None:
             environment_success = 1.0 if bool(
                 softmimicgen_goal(env.unwrapped)[0].detach().cpu().item()
@@ -10940,6 +11300,12 @@ def main() -> None:
                 "contact_forces_n": dict(latest_contact_forces),
                 "deformable": dict(latest_deformable_safety),
                 "dr_anmar_suture": dict(latest_suture_telemetry),
+                "dynamic_patient_effects": dict(
+                    latest_dynamic_patient_telemetry
+                ),
+                "autonomous_rescue_or": dict(
+                    latest_autonomous_rescue_telemetry
+                ),
                 "native_deformable_domain": dict(native_episode_domain),
                 "dr_anmar_hemostasis": {
                     "clip_pose_w": (

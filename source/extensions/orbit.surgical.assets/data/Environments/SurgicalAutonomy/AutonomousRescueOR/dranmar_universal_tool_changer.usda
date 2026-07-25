@@ -1,0 +1,844 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarUniversalToolChanger"
+    metersPerUnit = 1
+    kilogramsPerUnit = 1
+    upAxis = "Z"
+    doc = "DrAnmar universal surgical quick-change interface for research simulation."
+)
+
+def Xform "DrAnmarUniversalToolChanger" (
+    prepend apiSchemas = ["PhysicsArticulationRootAPI", "SemanticsLabelsAPI:class"]
+    assetInfo = { string name = "DrAnmarUniversalToolChanger" string version = "0.3.0" }
+    customData = {
+        string drAnmarAssetId = "dranmar-universal-tool-changer-v1"
+        bool drAnmarClinicalValidation = false
+        string drAnmarStatus = "research_only_provisional_mechanism"
+        string drAnmarMountParent = "panda_link8"
+        string drAnmarHotSwapMode = "separate_articulation_fixed_joint"
+        string drAnmarColdSwapMode = "compose_before_physics_reset"
+    }
+)
+{
+    token[] semantics:labels:class = ["surgical_tool_changer", "robot_end_effector_interface"]
+    def Scope "Looks"
+    {
+        def Material "Floor"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.14, 0.17, 0.2)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.62
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Floor/PreviewSurface.outputs:surface>
+        }
+        def Material "Table"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.31, 0.36, 0.41)
+                float inputs:metallic = 0.65
+                float inputs:roughness = 0.28
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Table/PreviewSurface.outputs:surface>
+        }
+        def Material "Mattress"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.025, 0.31, 0.55)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Mattress/PreviewSurface.outputs:surface>
+        }
+        def Material "Robot"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.82, 0.84, 0.86)
+                float inputs:metallic = 0.25
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Robot/PreviewSurface.outputs:surface>
+        }
+        def Material "Joint"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.16, 0.19, 0.23)
+                float inputs:metallic = 0.55
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Joint/PreviewSurface.outputs:surface>
+        }
+        def Material "Metal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.5, 0.55, 0.6)
+                float inputs:metallic = 0.78
+                float inputs:roughness = 0.22
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Metal/PreviewSurface.outputs:surface>
+        }
+        def Material "DarkMetal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.12, 0.15, 0.18)
+                float inputs:metallic = 0.8
+                float inputs:roughness = 0.2
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/DarkMetal/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerBlue"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.4, 0.74)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.34
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/PolymerBlue/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerGreen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.04, 0.52, 0.27)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.37
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/PolymerGreen/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerRed"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.68, 0.05, 0.04)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.37
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/PolymerRed/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerPurple"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.33, 0.13, 0.58)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.36
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/PolymerPurple/PreviewSurface.outputs:surface>
+        }
+        def Material "Warning"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.96, 0.55, 0.04)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.25
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Warning/PreviewSurface.outputs:surface>
+        }
+        def Material "Critical"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.9, 0.03, 0.025)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Critical/PreviewSurface.outputs:surface>
+        }
+        def Material "Stable"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.7, 0.3)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Stable/PreviewSurface.outputs:surface>
+        }
+        def Material "Screen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.005, 0.02, 0.03)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.1
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Screen/PreviewSurface.outputs:surface>
+        }
+        def Material "Skin"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.73, 0.46, 0.37)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Skin/PreviewSurface.outputs:surface>
+        }
+        def Material "Organ"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.43, 0.055, 0.045)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.48
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Organ/PreviewSurface.outputs:surface>
+        }
+        def Material "Bowel"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.76, 0.35, 0.3)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Bowel/PreviewSurface.outputs:surface>
+        }
+        def Material "Blood"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.52, 0.002, 0.006)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.08
+                float inputs:opacity = 0.85
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/Blood/PreviewSurface.outputs:surface>
+        }
+        def Material "SafetyZone"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.48, 0.85)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.2
+                float inputs:opacity = 0.14
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/SafetyZone/PreviewSurface.outputs:surface>
+        }
+        def Material "RescueZone"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.92, 0.04, 0.03)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.2
+                float inputs:opacity = 0.16
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/RescueZone/PreviewSurface.outputs:surface>
+        }
+        def Material "White"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.93, 0.94, 0.95)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.25
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarUniversalToolChanger/Looks/White/PreviewSurface.outputs:surface>
+        }
+    }
+    def Scope "PhysicsMaterials"
+    {
+        def Material "DefaultContact" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.48
+            float physics:dynamicFriction = 0.36
+            float physics:restitution = 0.01
+            uniform token physxMaterial:frictionCombineMode = "average"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+        def Material "ToolCouplingContact" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.72
+            float physics:dynamicFriction = 0.55
+            float physics:restitution = 0.0
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+    }
+    def Scope "Links"
+    {
+        def Xform "Mount" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            customData = {
+                string drAnmarFrame = "robot_mount"
+            }
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.21
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (0.00018, 0.00018, 0.00012)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cylinder "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/DarkMetal>
+                uniform token axis = "Z"
+                double radius = 0.055
+                double height = 0.05
+                double3 xformOp:translate = (0, 0, 0.025)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Collision" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/DarkMetal>
+                rel material:binding:physics = </DrAnmarUniversalToolChanger/PhysicsMaterials/DefaultContact>
+                bool physics:collisionEnabled = true
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token axis = "Z"
+                double radius = 0.054
+                double height = 0.048
+                double3 xformOp:translate = (0, 0, 0.025)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+        }
+        def Xform "LockRing" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.065
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2.5e-05, 2.5e-05, 4.2e-05)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cylinder "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/PolymerBlue>
+                uniform token axis = "Z"
+                double radius = 0.064
+                double height = 0.018
+                double3 xformOp:translate = (0, 0, -0.054)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Collision" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/PolymerBlue>
+                rel material:binding:physics = </DrAnmarUniversalToolChanger/PhysicsMaterials/DefaultContact>
+                bool physics:collisionEnabled = true
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token axis = "Z"
+                double radius = 0.063
+                double height = 0.017
+                double3 xformOp:translate = (0, 0, -0.054)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+        }
+        def Xform "Latch0" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            customData = {
+                int drAnmarLatchIndex = 0
+            }
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.012
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2e-06, 2e-06, 1.2e-06)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cube "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Warning>
+                double size = 1
+                double3 xformOp:translate = (0.044, 0, -0.048)
+                double3 xformOp:scale = (0.018, 0.012, 0.035)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+            def Cube "Collision" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Warning>
+                rel material:binding:physics = </DrAnmarUniversalToolChanger/PhysicsMaterials/DefaultContact>
+                bool physics:collisionEnabled = true
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                double size = 1
+                double3 xformOp:translate = (0.044, 0, -0.048)
+                double3 xformOp:scale = (0.018, 0.012, 0.035)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+        def Xform "Latch1" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            customData = {
+                int drAnmarLatchIndex = 1
+            }
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.012
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2e-06, 2e-06, 1.2e-06)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cube "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Warning>
+                double size = 1
+                double3 xformOp:translate = (-0.022, 0.03810511777, -0.048)
+                double3 xformOp:scale = (0.018, 0.012, 0.035)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+            def Cube "Collision" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Warning>
+                rel material:binding:physics = </DrAnmarUniversalToolChanger/PhysicsMaterials/DefaultContact>
+                bool physics:collisionEnabled = true
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                double size = 1
+                double3 xformOp:translate = (-0.022, 0.03810511777, -0.048)
+                double3 xformOp:scale = (0.018, 0.012, 0.035)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+        def Xform "Latch2" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            customData = {
+                int drAnmarLatchIndex = 2
+            }
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.012
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (2e-06, 2e-06, 1.2e-06)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cube "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Warning>
+                double size = 1
+                double3 xformOp:translate = (-0.022, -0.03810511777, -0.048)
+                double3 xformOp:scale = (0.018, 0.012, 0.035)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+            def Cube "Collision" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Warning>
+                rel material:binding:physics = </DrAnmarUniversalToolChanger/PhysicsMaterials/DefaultContact>
+                bool physics:collisionEnabled = true
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                double size = 1
+                double3 xformOp:translate = (-0.022, -0.03810511777, -0.048)
+                double3 xformOp:scale = (0.018, 0.012, 0.035)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+        def Xform "ToolAdapter" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+            customData = {
+                string drAnmarFrame = "tool_mount"
+            }
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.11
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (6e-05, 6e-05, 4e-05)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cylinder "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/DarkMetal>
+                uniform token axis = "Z"
+                double radius = 0.05
+                double height = 0.04
+                double3 xformOp:translate = (0, 0, -0.09)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Collision" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/DarkMetal>
+                rel material:binding:physics = </DrAnmarUniversalToolChanger/PhysicsMaterials/DefaultContact>
+                bool physics:collisionEnabled = true
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token axis = "Z"
+                double radius = 0.049
+                double height = 0.038
+                double3 xformOp:translate = (0, 0, -0.09)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "ElectricalContact00" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Stable>
+                uniform token axis = "Z"
+                double radius = 0.0025
+                double height = 0.01
+                double3 xformOp:translate = (0.03, 0, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "ElectricalContact01" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Stable>
+                uniform token axis = "Z"
+                double radius = 0.0025
+                double height = 0.01
+                double3 xformOp:translate = (0.02121320344, 0.02121320344, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "ElectricalContact02" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Stable>
+                uniform token axis = "Z"
+                double radius = 0.0025
+                double height = 0.01
+                double3 xformOp:translate = (1.836970199e-18, 0.03, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "ElectricalContact03" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Stable>
+                uniform token axis = "Z"
+                double radius = 0.0025
+                double height = 0.01
+                double3 xformOp:translate = (-0.02121320344, 0.02121320344, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "ElectricalContact04" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Stable>
+                uniform token axis = "Z"
+                double radius = 0.0025
+                double height = 0.01
+                double3 xformOp:translate = (-0.03, 3.673940397e-18, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "ElectricalContact05" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Stable>
+                uniform token axis = "Z"
+                double radius = 0.0025
+                double height = 0.01
+                double3 xformOp:translate = (-0.02121320344, -0.02121320344, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "ElectricalContact06" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Stable>
+                uniform token axis = "Z"
+                double radius = 0.0025
+                double height = 0.01
+                double3 xformOp:translate = (-5.510910596e-18, -0.03, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "ElectricalContact07" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/Stable>
+                uniform token axis = "Z"
+                double radius = 0.0025
+                double height = 0.01
+                double3 xformOp:translate = (0.02121320344, -0.02121320344, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "FluidPort0" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/PolymerBlue>
+                uniform token axis = "Z"
+                double radius = 0.004
+                double height = 0.014
+                double3 xformOp:translate = (-0.018, 0.02, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "FluidPort1" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/PolymerBlue>
+                uniform token axis = "Z"
+                double radius = 0.004
+                double height = 0.014
+                double3 xformOp:translate = (0, 0.02, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "FluidPort2" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarUniversalToolChanger/Looks/PolymerBlue>
+                uniform token axis = "Z"
+                double radius = 0.004
+                double height = 0.014
+                double3 xformOp:translate = (0.018, 0.02, -0.109)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+        }
+    }
+    def Scope "Joints"
+    {
+    def PhysicsRevoluteJoint "lock_ring_joint" (
+        prepend apiSchemas = ["PhysicsDriveAPI:angular"]
+    )
+    {
+        rel physics:body0 = </DrAnmarUniversalToolChanger/Links/Mount>
+        rel physics:body1 = </DrAnmarUniversalToolChanger/Links/LockRing>
+        uniform token physics:axis = "Z"
+        point3f physics:localPos0 = (0, 0, -0.054)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        float physics:lowerLimit = 0
+        float physics:upperLimit = 42
+        bool physics:collisionEnabled = false
+        uniform token drive:angular:physics:type = "force"
+        float drive:angular:physics:targetPosition = 0
+        float drive:angular:physics:targetVelocity = 0
+        float drive:angular:physics:stiffness = 180
+        float drive:angular:physics:damping = 12
+        float drive:angular:physics:maxForce = 22
+    }
+    def PhysicsPrismaticJoint "latch_0_joint" (
+        prepend apiSchemas = ["PhysicsDriveAPI:linear"]
+    )
+    {
+        rel physics:body0 = </DrAnmarUniversalToolChanger/Links/Mount>
+        rel physics:body1 = </DrAnmarUniversalToolChanger/Links/Latch0>
+        uniform token physics:axis = "X"
+        point3f physics:localPos0 = (0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        float physics:lowerLimit = 0
+        float physics:upperLimit = 0.0045
+        bool physics:collisionEnabled = false
+        uniform token drive:linear:physics:type = "force"
+        float drive:linear:physics:targetPosition = 0
+        float drive:linear:physics:targetVelocity = 0
+        float drive:linear:physics:stiffness = 4200
+        float drive:linear:physics:damping = 100
+        float drive:linear:physics:maxForce = 85
+    }
+    def PhysicsPrismaticJoint "latch_1_joint" (
+        prepend apiSchemas = ["PhysicsDriveAPI:linear"]
+    )
+    {
+        rel physics:body0 = </DrAnmarUniversalToolChanger/Links/Mount>
+        rel physics:body1 = </DrAnmarUniversalToolChanger/Links/Latch1>
+        uniform token physics:axis = "X"
+        point3f physics:localPos0 = (0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        float physics:lowerLimit = 0
+        float physics:upperLimit = 0.0045
+        bool physics:collisionEnabled = false
+        uniform token drive:linear:physics:type = "force"
+        float drive:linear:physics:targetPosition = 0
+        float drive:linear:physics:targetVelocity = 0
+        float drive:linear:physics:stiffness = 4200
+        float drive:linear:physics:damping = 100
+        float drive:linear:physics:maxForce = 85
+    }
+    def PhysicsPrismaticJoint "latch_2_joint" (
+        prepend apiSchemas = ["PhysicsDriveAPI:linear"]
+    )
+    {
+        rel physics:body0 = </DrAnmarUniversalToolChanger/Links/Mount>
+        rel physics:body1 = </DrAnmarUniversalToolChanger/Links/Latch2>
+        uniform token physics:axis = "X"
+        point3f physics:localPos0 = (0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        float physics:lowerLimit = 0
+        float physics:upperLimit = 0.0045
+        bool physics:collisionEnabled = false
+        uniform token drive:linear:physics:type = "force"
+        float drive:linear:physics:targetPosition = 0
+        float drive:linear:physics:targetVelocity = 0
+        float drive:linear:physics:stiffness = 4200
+        float drive:linear:physics:damping = 100
+        float drive:linear:physics:maxForce = 85
+    }
+    def PhysicsFixedJoint "tool_adapter_joint"
+    {
+        rel physics:body0 = </DrAnmarUniversalToolChanger/Links/Mount>
+        rel physics:body1 = </DrAnmarUniversalToolChanger/Links/ToolAdapter>
+        point3f physics:localPos0 = (0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        bool physics:collisionEnabled = false
+    }
+    }
+    def Scope "Frames"
+    {
+        def Xform "robot_mount"
+        {
+            double3 xformOp:translate = (0, 0, 0.05)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_mount"
+        {
+            double3 xformOp:translate = (0, 0, -0.112)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "electrical_interface"
+        {
+            double3 xformOp:translate = (0, 0, -0.108)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "fluid_interface"
+        {
+            double3 xformOp:translate = (0, 0.02, -0.108)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "latch_reference"
+        {
+            double3 xformOp:translate = (0.044, 0, -0.048)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "count_reference"
+        {
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+}

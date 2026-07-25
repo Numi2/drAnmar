@@ -1,0 +1,227 @@
+{
+  "mount_interface": {
+    "cold_swap": "compose_non_articulation_root_payload_before_physics_initialization",
+    "coupler_asset": "dranmar_universal_tool_changer.usda",
+    "coupler_payload_asset": "dranmar_universal_tool_changer_payload.usda",
+    "hot_swap": "spawn_tool_body_and_fix_to_integrated_tool_adapter",
+    "parent_link": "panda_link8",
+    "tool_mount_frame": "Frames/tool_mount"
+  },
+  "research_only": true,
+  "schema": "dr.anmar.autonomous-rescue-tool-registry.v1",
+  "tools": [
+    {
+      "capabilities": [
+        "exposure",
+        "counter_traction",
+        "tissue_capture",
+        "force_control"
+      ],
+      "catalog_payload": "Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_payload.usda",
+      "consumables": {},
+      "display_name": "DrAnmar Atraumatic Exposure Robot",
+      "id": "atraumatic_exposure",
+      "integration_module": "orbit.surgical.assets.atraumatic_exposure_robot",
+      "preferred_station": "exposure",
+      "risk_class": "B",
+      "standalone": "Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_standalone.usda",
+      "sterility_required": true
+    },
+    {
+      "capabilities": [
+        "dissection",
+        "blunt_spreading",
+        "hydrodissection",
+        "guarded_cutting",
+        "low_energy_dissection",
+        "suction"
+      ],
+      "catalog_payload": "Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_payload.usda",
+      "consumables": {
+        "hydro_ml": 35.0,
+        "irrigation_ml": 50.0,
+        "scissor_cartridges": 2
+      },
+      "display_name": "DrAnmar SafePlane Dissection Robot",
+      "id": "safeplane_dissection",
+      "integration_module": "orbit.surgical.assets.safeplane_dissection_robot",
+      "preferred_station": "primary",
+      "risk_class": "D",
+      "standalone": "Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_standalone.usda",
+      "sterility_required": true
+    },
+    {
+      "capabilities": [
+        "irrigation",
+        "aspiration",
+        "debridement",
+        "field_clearance"
+      ],
+      "catalog_payload": "Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_payload.usda",
+      "consumables": {
+        "debridement_cartridges": 3,
+        "irrigation_ml": 250.0
+      },
+      "display_name": "DrAnmar Wound Preparation Robot",
+      "id": "wound_preparation",
+      "integration_module": "orbit.surgical.assets.wound_preparation_robot",
+      "preferred_station": "rescue",
+      "risk_class": "C",
+      "standalone": "Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_standalone.usda",
+      "sterility_required": true
+    },
+    {
+      "capabilities": [
+        "temporary_compression",
+        "hemostasis",
+        "vascular_clipping",
+        "hemostatic_patch",
+        "field_clearance",
+        "flow_verification"
+      ],
+      "catalog_payload": "Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_payload.usda",
+      "consumables": {
+        "hemostatic_patches": 4,
+        "irrigation_ml": 60.0,
+        "vascular_clips": 8
+      },
+      "display_name": "DrAnmar Adaptive Hemostasis Robot",
+      "id": "adaptive_hemostasis",
+      "integration_module": "orbit.surgical.assets.adaptive_hemostasis_robot",
+      "preferred_station": "rescue",
+      "risk_class": "D",
+      "standalone": "Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_standalone.usda",
+      "sterility_required": true
+    },
+    {
+      "capabilities": [
+        "tissue_centering",
+        "compression",
+        "energy_sealing",
+        "division",
+        "stump_verification"
+      ],
+      "catalog_payload": "Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_payload.usda",
+      "consumables": {
+        "blade_cartridges": 2,
+        "saline_ml": 80.0
+      },
+      "display_name": "DrAnmar Adaptive Seal-and-Divide Robot",
+      "id": "adaptive_seal_divide",
+      "integration_module": "orbit.surgical.assets.adaptive_seal_divide_robot",
+      "preferred_station": "primary",
+      "risk_class": "E",
+      "standalone": "Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_standalone.usda",
+      "sterility_required": true
+    },
+    {
+      "capabilities": [
+        "hollow_tissue_capture",
+        "lumen_alignment",
+        "anastomosis",
+        "staple_ring",
+        "reinforcement",
+        "leak_test"
+      ],
+      "catalog_payload": "Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_payload.usda",
+      "consumables": {
+        "reinforcement_collars": 2,
+        "staple_rings": 2,
+        "test_medium_ml": 100.0
+      },
+      "display_name": "DrAnmar Adaptive Anastomosis Robot",
+      "id": "adaptive_anastomosis",
+      "integration_module": "orbit.surgical.assets.adaptive_anastomosis_robot",
+      "preferred_station": "primary",
+      "risk_class": "E",
+      "standalone": "Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_standalone.usda",
+      "sterility_required": true
+    },
+    {
+      "capabilities": [
+        "wound_approximation",
+        "stapling",
+        "skin_adhesive",
+        "closure_verification"
+      ],
+      "catalog_payload": "Props/SurgicalClosure/ClosureRobot/dranmar_closure_tool_payload.usda",
+      "consumables": {
+        "adhesive_ml": 0.8,
+        "skin_staples": 12
+      },
+      "display_name": "DrAnmar Approximate-Staple-Seal Closure Robot",
+      "id": "closure_robot",
+      "integration_module": "orbit.surgical.assets.closure_robot",
+      "preferred_station": "primary",
+      "risk_class": "D",
+      "standalone": "Props/SurgicalClosure/ClosureRobot/dranmar_closure_tool_standalone.usda",
+      "sterility_required": true
+    },
+    {
+      "capabilities": [
+        "rgb_depth",
+        "icg",
+        "speckle",
+        "thermal",
+        "oxygenation",
+        "doppler",
+        "ultrasound",
+        "perfusion_verification"
+      ],
+      "catalog_payload": "Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_payload.usda",
+      "consumables": {
+        "contrast_ml": 25.0,
+        "ultrasound_gel_ml": 15.0
+      },
+      "display_name": "DrAnmar Multimodal Perfusion and Tissue-Viability Robot",
+      "id": "perfusion_viability",
+      "integration_module": "orbit.surgical.assets.perfusion_viability_robot",
+      "preferred_station": "assessment",
+      "risk_class": "B",
+      "standalone": "Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_standalone.usda",
+      "sterility_required": true
+    },
+    {
+      "capabilities": [
+        "dressing_application",
+        "occlusive_seal",
+        "negative_pressure",
+        "exudate_collection",
+        "seal_test"
+      ],
+      "catalog_payload": "Props/SurgicalAftercare/DressingRobot/dranmar_dressing_tool_payload.usda",
+      "consumables": {
+        "canister_ml": 90.0,
+        "dressings": 3,
+        "suction_ports": 3
+      },
+      "display_name": "DrAnmar Occlusive Dressing and Negative Pressure Robot",
+      "id": "dressing_robot",
+      "integration_module": "orbit.surgical.assets.dressing_robot",
+      "preferred_station": "assessment",
+      "risk_class": "C",
+      "standalone": "Props/SurgicalAftercare/DressingRobot/dranmar_dressing_tool_standalone.usda",
+      "sterility_required": true
+    },
+    {
+      "capabilities": [
+        "absorption",
+        "field_clearance",
+        "surgical_count",
+        "retrieval"
+      ],
+      "catalog_payload": "Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
+      "consumables": {
+        "sponges": 20
+      },
+      "display_name": "DrAnmar Radiopaque Laparotomy Sponge",
+      "id": "laparotomy_sponge",
+      "integration_module": "orbit.surgical.assets.laparotomy_sponge",
+      "preferred_station": "rescue",
+      "risk_class": "A",
+      "standalone": "Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
+      "sterility_required": true
+    }
+  ],
+  "version": "0.3.0"
+}

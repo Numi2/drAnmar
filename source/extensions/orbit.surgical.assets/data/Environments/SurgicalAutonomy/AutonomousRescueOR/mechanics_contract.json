@@ -1,0 +1,35 @@
+{
+  "schema": "dr.anmar.autonomous-rescue-or-mechanics-contract.v1",
+  "version": "0.4.0",
+  "authority_order": [
+    "live_physx_contact_and_joint_state",
+    "live_attachment_and_particle_state",
+    "derived_patient_effect_state",
+    "policy_observation"
+  ],
+  "anti_gaming_invariants": [
+    "policy actions contain intent only",
+    "patient outcomes cannot be supplied as action fields",
+    "physics steps and simulation time must increase monotonically",
+    "unilateral contact cannot create bilateral compression",
+    "clip occlusion requires a retained scene attachment",
+    "patch sealing requires distributed contact points and dwell",
+    "hemostasis success requires a fresh pressure challenge window",
+    "hemostasis success also requires preserved distal perfusion",
+    "reward is computed from patient state change rather than action identity"
+  ],
+  "failure_modes": [
+    "contact_asymmetry",
+    "insufficient_contact",
+    "excess_tool_velocity",
+    "overcompression_damage",
+    "distal_ischemia",
+    "clip_or_patch_without_retention",
+    "rebleeding_under_pressure_challenge",
+    "repair_gap",
+    "repair_attachment_loss",
+    "particle_leak"
+  ],
+  "calibration_status": "provisional_not_fitted_to_physical_bench_data",
+  "clinical_validation": false
+}

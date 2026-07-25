@@ -1,0 +1,55 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarDeformableRescueSuite"
+    metersPerUnit = 1
+    kilogramsPerUnit = 1
+    upAxis = "Z"
+    doc = "Self-contained deformable rescue scenario suite for the DrAnmar Autonomous Rescue OR."
+)
+
+def Xform "DrAnmarDeformableRescueSuite" (
+    assetInfo = { string name = "DrAnmarDeformableRescueSuite" string version = "0.3.0" }
+    kind = "assembly"
+    prepend variantSets = "scenario"
+    variants = { string scenario = "hemorrhage" }
+)
+{
+    custom string drAnmarStatus = "research_only"
+    custom string drAnmarNvidiaGuidance = "Omni_Physics_110_surface_volume_deformable_and_attachment_contracts"
+    def Xform "AbdominalWall" (
+        prepend references = @./dranmar_rescue_abdominal_wall.usda@
+    )
+    {
+        double3 xformOp:translate = (0, 0, 0.04)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def Xform "BowelAnastomosis" (
+        prepend references = @./dranmar_rescue_bowel_anastomosis.usda@
+    )
+    {
+        double3 xformOp:translate = (0, 0.035, 0.09)
+        quatf xformOp:orient = (0.70710678, 0, 0.70710678, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+    }
+    def Xform "Vessel" (
+        prepend references = @./dranmar_rescue_vessel.usda@
+    )
+    {
+        double3 xformOp:translate = (0, -0.05, 0.11)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    def Xform "OcclusiveFilm" (
+        prepend references = @./dranmar_rescue_occlusive_film.usda@
+    )
+    {
+        double3 xformOp:translate = (0, 0, 0.145)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+    variantSet "scenario" = {
+        "hemorrhage" { custom string drAnmarActiveRescueScenario = "hemorrhage" }
+        "anastomotic_leak" { custom string drAnmarActiveRescueScenario = "anastomotic_leak" }
+        "abdominal_dehiscence" { custom string drAnmarActiveRescueScenario = "abdominal_dehiscence" }
+        "dressing_delamination" { custom string drAnmarActiveRescueScenario = "dressing_delamination" }
+        "all" { custom string drAnmarActiveRescueScenario = "all" }
+    }
+}

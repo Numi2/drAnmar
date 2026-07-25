@@ -24,7 +24,9 @@
     "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/physics_profile.json",
     "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/interaction_frames.json",
     "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/integration_report.json",
-    "benchmarks/softmimicgen-threading-replay.json"
+    "benchmarks/softmimicgen-threading-replay.json",
+    "../source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/physics_profile.json",
+    "../source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/mechanics_contract.json"
   ],
   "backends": {
     "physx_rigid": {
@@ -95,6 +97,7 @@
     "wound_edge_approximation": ["physx_fem", "newton_vbd"],
     "suturing": ["cressim_mpm"],
     "cutting": ["cressim_mpm"],
+    "contact_driven_rescue": ["physx_fem", "physx_rigid"],
     "policy_training": ["newton_vbd", "physx_fem", "physx_rigid"]
   },
   "foundational_assets": {
@@ -159,6 +162,14 @@
       "native_evidence": "../source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/native_simulator_evidence.json",
       "current_capability": "six_dof_fixture_trigger_pusher_cycle_and_logical_deployment_evidence",
       "deployment": "native_rtx_4090_runtime_qualified_2026_07_24"
+    },
+    "dr_anmar_autonomous_rescue_or": {
+      "profile": "../source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/physics_profile.json",
+      "mechanics_contract": "../source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/mechanics_contract.json",
+      "environment": "../source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_autonomous_rescue_or.usda",
+      "runtime": "../source/extensions/orbit.surgical.assets/orbit/surgical/assets/autonomous_rescue_or.py",
+      "current_capability": "contact_attachment_particle_and_gap_derived_rescue_training_effects",
+      "deployment": "enabled_for_training_environment_composition"
     }
   },
   "promotion_rule": "A procedure becomes runnable only when its active native backend owns every required physical capability and its calibration and replay evidence are recorded.",

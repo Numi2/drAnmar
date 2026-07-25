@@ -1,0 +1,52 @@
+{
+  "research_only": true,
+  "scenarios": [
+    {
+      "asset": "dranmar_rescue_vessel.usda",
+      "id": "hemorrhage",
+      "initial_state": "bleeding",
+      "required_actions": [
+        "temporary_compression",
+        "clip",
+        "patch",
+        "flow_verify"
+      ]
+    },
+    {
+      "asset": "dranmar_rescue_bowel_anastomosis.usda",
+      "id": "anastomotic_leak",
+      "initial_state": "leaking",
+      "required_actions": [
+        "capture",
+        "align",
+        "staple_ring",
+        "reinforce",
+        "pressure_test"
+      ]
+    },
+    {
+      "asset": "dranmar_rescue_abdominal_wall.usda",
+      "id": "abdominal_dehiscence",
+      "initial_state": "open",
+      "required_actions": [
+        "capture_edges",
+        "approximate",
+        "staple_or_suture",
+        "adhesive",
+        "load_test"
+      ]
+    },
+    {
+      "asset": "dranmar_rescue_occlusive_film.usda",
+      "id": "dressing_delamination",
+      "initial_state": "delaminated",
+      "required_actions": [
+        "remove_failed_bonds",
+        "reapply_film",
+        "bond_perimeter",
+        "leak_test"
+      ]
+    }
+  ],
+  "schema": "dr.anmar.deformable-rescue-scenarios.v1"
+}

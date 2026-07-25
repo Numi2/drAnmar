@@ -33,14 +33,30 @@ def load_runtime():
         return module
 
 
-patient = load_runtime().DynamicSurgicalPatient()
+runtime = load_runtime()
+patient = runtime.DynamicSurgicalPatient()
 patient.interventions.set_access_state("open", source_robot="procedure_setup")
-patient.interventions.apply_exposure(
-    target="gallbladder",
-    force_n=1.2,
-    compression_fraction=0.08,
-    source_robot="atraumatic_exposure_robot",
+patient.contacts.observe(
+    runtime.PatientContactFrame(
+        target="gallbladder",
+        source_robot="atraumatic_exposure_robot",
+        interaction="exposure",
+        normal_forces_n=(1.25, 1.25),
+        tool_position_m=(0.0, 0.0, 0.0),
+    )
 )
+patient.step(0.1)
+for _ in range(12):
+    patient.contacts.observe(
+        runtime.PatientContactFrame(
+            target="gallbladder",
+            source_robot="atraumatic_exposure_robot",
+            interaction="exposure",
+            normal_forces_n=(1.25, 1.25),
+            tool_position_m=(0.02, 0.0, 0.0),
+        )
+    )
+    patient.step(0.1)
 patient.interventions.apply_dissection(
     target="adhesion_00",
     method="guarded_scissors",
@@ -55,12 +71,17 @@ patient.bleeding.create_source(
 )
 for _ in range(80):
     patient.step(0.1)
-patient.interventions.apply_hemostasis(
-    target="cystic_artery_injury",
-    method="clip",
-    effectiveness=0.99,
-    source_robot="adaptive_hemostasis_robot",
-)
+for _ in range(30):
+    patient.contacts.observe(
+        runtime.PatientContactFrame(
+            target="cystic_artery_injury",
+            source_robot="adaptive_hemostasis_robot",
+            interaction="hemostasis",
+            normal_forces_n=(1.8, 1.8),
+            tool_position_m=(0.0, 0.0, 0.0),
+        )
+    )
+    patient.step(0.1)
 patient.interventions.apply_closure(
     target="abdominal_wall",
     method="staple_and_adhesive",

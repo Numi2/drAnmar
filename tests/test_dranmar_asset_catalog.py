@@ -32,7 +32,7 @@ def load_catalog():
 
 def test_all_robot_catalog_members_and_usd_dependencies_exist():
     catalog = load_catalog()
-    assert len(catalog.DRANMAR_SIM_READY_ASSETS) == 8
+    assert len(catalog.DRANMAR_SIM_READY_ASSETS) == 9
     for name, descriptor in catalog.DRANMAR_SIM_READY_ASSETS.items():
         directory = catalog.asset_directory(name)
         assert directory.as_posix().endswith(descriptor.catalog_subpath)
@@ -45,6 +45,11 @@ def test_all_robot_catalog_members_and_usd_dependencies_exist():
         catalog.DrAnmarSurgicalRobotAssets.ONCOLOGIC_RESECTION
         == "Props/SurgicalOncology/OncoSurgeryCell/"
         "dranmar_tumor_resection_tool_standalone.usda"
+    )
+    assert (
+        catalog.DrAnmarSurgicalRobotAssets.AUTONOMOUS_RESCUE_OR
+        == "Environments/SurgicalAutonomy/AutonomousRescueOR/"
+        "dranmar_autonomous_rescue_or.usda"
     )
 
 
@@ -83,7 +88,7 @@ def test_catalog_index_is_deterministic_and_dependency_complete():
     first = generator.build_index()
     second = generator.build_index()
     assert first == second
-    assert first["asset_count"] == len(first["assets"]) == 8
+    assert first["asset_count"] == len(first["assets"]) == 9
     assert all(
         len(asset["sha256"]) == 64
         and asset["file_count"] > 0

@@ -295,6 +295,77 @@ PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
 
 ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
     {
+        "id": "dr-anmar-autonomous-rescue-or",
+        "title": "Autonomous Rescue OR",
+        "category": "Contact-driven complication rescue",
+        "difficulty": "Advanced research",
+        "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-v0",
+        "anatomy_scene": "",
+        "anatomy_focus": "Dr.Anmar deformable hemorrhage rescue vessel",
+        "robot": "Dual dVRK PSM physical rescue station",
+        "instrument": "PSM graspers; Dr.Anmar hemostasis tools are optional payloads",
+        "objective": "Control a hemorrhage substrate through real bilateral jaw contact while preserving distal perfusion and avoiding force-induced vessel damage.",
+        "interaction": "The procedure controller may choose a rescue intent, but only post-PhysX filtered jaw contact, measured jaw separation, tool motion, retained attachments, and observed leakage can change bleeding, perfusion, damage, or verification state.",
+        "guide_kind": "autonomous_rescue_or",
+        "nvidia_native_bench": True,
+        "autonomous_rescue_or": True,
+        "rescue_vessel_position_m": (0.0, 0.0, 0.055),
+        "contact_effect_filter_prim": (
+            "{ENV_REGEX_NS}/AutonomousRescueVessel/"
+            "VesselWall/SimulationMesh"
+        ),
+        "required_nvidia_assets": (
+            "Robots/dVRK/PSM/psm.usd",
+            "Props/SutureNeedle/needle_sdf.usd",
+            "Props/Table/table.usd",
+        ),
+        "required_repository_assets": (
+            "source/extensions/orbit.surgical.assets/data/Environments/"
+            "SurgicalAutonomy/AutonomousRescueOR/"
+            "dranmar_rescue_vessel.usda",
+            "source/extensions/orbit.surgical.assets/orbit/surgical/assets/"
+            "deformable_rescue.py",
+            "source/extensions/orbit.surgical.assets/orbit/surgical/assets/"
+            "autonomous_rescue_or.py",
+        ),
+        "bench_core_assets": (
+            {"id": "dual_psm", "title": "Dual dVRK PSMs"},
+            {
+                "id": "rescue_vessel",
+                "title": "Endpoint-anchored deformable rescue vessel",
+            },
+        ),
+        "bench_asset_catalog": (),
+        "psm_root_spacing_m": 0.20,
+        "psm_root_height_m": 0.20,
+        "hide_anatomy": True,
+        "show_waypoint_markers": False,
+        "interactive_camera_width_px": 960,
+        "interactive_camera_height_px": 640,
+        "interactive_camera_eye_m": (0.34, -0.40, 0.30),
+        "interactive_camera_target_m": (0.0, 0.0, 0.055),
+        "interactive_rgb_only": True,
+        "interactive_multiview": True,
+        "single_active_camera_renderer": True,
+        "steps": [
+            step("inspect", "Locate the bleeding source", "Observe the anchored deformable vessel and the contact-owned residual-flow state.", "bleeding source observed"),
+            step("compress", "Establish bilateral compression", "Bring both physical jaw pads onto the vessel with balanced, stable contact; a command alone has no effect.", "contact-derived flow reduction"),
+            step("protect", "Preserve the vessel", "Reduce residual flow without force asymmetry, overload damage, or excessive distal occlusion.", "damage and distal perfusion observed"),
+            step("release", "Check for retained control", "Release transient compression and observe whether a physical retained clip or patch continues to control flow.", "release response observed"),
+            step("challenge", "Verify under pressure", "Run the pressure challenge and hold the physically repaired vessel below residual-flow limits while distal perfusion remains present.", "contact-derived verification transition"),
+        ],
+        "success_metrics": [
+            "post-physics bilateral contact force",
+            "measured jaw separation",
+            "residual blood flow",
+            "cumulative blood loss",
+            "distal perfusion",
+            "overload damage",
+            "release response",
+            "pressure-challenge response",
+        ],
+    },
+    {
         "id": "dr-anmar-dynamic-abdominal-patient",
         "title": "Dynamic abdominal patient",
         "category": "Whole-procedure patient simulation",
@@ -305,16 +376,18 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "robot": "Dual dVRK PSM with Dr.Anmar robot-adapter portfolio",
         "instrument": "Procedure-dependent surgical instruments",
         "objective": "Use one persistent abdominal patient state across exposure, dissection, hemostasis, division, reconstruction, closure, dressing, and perfusion assessment.",
-        "interaction": "Dr.Anmar-authored modular anatomy and solver-independent physiology are composed with fail-closed PhysX volume and surface deformable routes. Host-controlled cutting, puncture, attachments, sutures, staples, seals, and fluid events remain explicit intervention contracts.",
+        "interaction": "The room starts as a prepared open field. Native PhysX jaw-to-patient contact force and tool pose drive retraction, compression, perfusion, overload damage, and temporary hemostasis; no policy action can write those patient outcomes directly.",
         "guide_kind": "dynamic_abdominal_patient",
         "nvidia_native_bench": True,
         "dynamic_abdominal_patient": True,
-        "dynamic_patient_access_state": "intact",
+        "dynamic_patient_access_state": "open",
         "dynamic_patient_position_m": (0.0, 0.0, 0.0),
         # Isaac 5.1 supports only one deformable collision group. Keep one
         # procedure target solver-active while the complete modular anatomy
         # and shared physiology remain present.
         "dynamic_patient_active_deformables": ("mesentery",),
+        "dynamic_patient_contact_interaction": "exposure",
+        "dynamic_patient_contact_target": "mesentery",
         "required_nvidia_assets": (
             "Robots/dVRK/PSM/psm.usd",
             "Props/SutureNeedle/needle_sdf.usd",
@@ -348,12 +421,11 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "interactive_multiview": True,
         "single_active_camera_renderer": True,
         "steps": [
-            step("inspect", "Inspect patient", "Confirm the intact abdominal surface and planned access site before moving an instrument.", "surface and access site identified"),
-            step("access", "Create surgical access", "Perform the modeled laparotomy cut to expose the abdominal cavity.", "open access variant and cut event recorded"),
-            step("expose", "Establish exposure", "Retract only through the typed patient adapter and monitor regional compression and perfusion.", "exposure and perfusion state"),
-            step("treat", "Perform the procedure", "Apply dissection, hemostasis, division, or reconstruction events while preserving the chronological damage and intervention record.", "intervention and damage stream"),
+            step("inspect", "Inspect prepared field", "Confirm the open abdominal field and solver-active mesentery before moving an instrument.", "field and target identified"),
+            step("expose", "Establish physical exposure", "Capture the mesentery with both jaws and retract it; patient state changes only from the filtered native contact pair and tool pose.", "contact-derived retraction and compression"),
+            step("treat", "Perform the procedure", "Use physically coupled tools while monitoring regional compression, perfusion, bleeding, and overload damage.", "contact effects and damage stream"),
             step("assess", "Assess viability", "Run a perfusion scan and reconcile regional flow, active bleeding, fluid balance, and vital-sign state.", "shared physiology observation"),
-            step("close", "Close and dress", "Restore the abdominal wall and skin access state, apply the dressing, and save the final patient snapshot.", "closure and serializable evidence"),
+            step("close", "Close and dress", "Use retained physical closure mechanisms, then save the final patient state.", "closure and final patient state"),
         ],
         "success_metrics": [
             "native deformable route creation",

@@ -1,0 +1,48 @@
+{
+  "authority": "live_scene_physics",
+  "implemented_safety_kernel": false,
+  "invariants": [
+    {
+      "id": "contact_owns_patient_effects",
+      "rule": "bleeding, perfusion, compression, tissue damage, repair integrity, and success are derived from post-physics scene observations rather than policy action fields",
+      "severity": "runtime"
+    },
+    {
+      "id": "filtered_pair_force",
+      "rule": "clinical effects use the configured jaw-to-substrate force matrix and never substitute an unfiltered net-force sensor",
+      "severity": "runtime"
+    },
+    {
+      "id": "bilateral_contact",
+      "rule": "single-pad force, asymmetric squeezing, distant jaw closure, or motion without target contact cannot produce useful compression",
+      "severity": "runtime"
+    },
+    {
+      "id": "transient_effect_releases",
+      "rule": "temporary compression decays after physical contact release; only scene-observed retained attachments can persist",
+      "severity": "runtime"
+    },
+    {
+      "id": "overforce_has_consequence",
+      "rule": "excessive or unstable force accumulates vessel or tissue damage and cannot improve the patient outcome",
+      "severity": "runtime"
+    },
+    {
+      "id": "reward_follows_change",
+      "rule": "reward is based on measured flow improvement, blood loss, perfusion loss, new damage, and a one-time verification transition; favorable-state dwell earns no reward",
+      "severity": "runtime"
+    },
+    {
+      "id": "verification_is_a_perturbation",
+      "rule": "hemostasis verification requires a fresh pressure challenge observed across physics frames and cannot be set by a policy result flag",
+      "severity": "runtime"
+    },
+    {
+      "id": "research_only",
+      "rule": "the system never represents simulation thresholds as patient-care settings",
+      "severity": "scope"
+    }
+  ],
+  "research_only": true,
+  "schema": "dr.anmar.physical-runtime-invariants.v2"
+}

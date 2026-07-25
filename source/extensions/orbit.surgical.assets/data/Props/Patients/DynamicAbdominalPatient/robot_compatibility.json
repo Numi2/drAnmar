@@ -1,5 +1,5 @@
 {
-  "integration_policy": "robot modules remain optional; patient event contract is stable and solver-independent",
+  "integration_policy": "robot modules remain optional; exposure and hemostasis patient effects accept only post-physics contact observations",
   "patient_asset_id": "dranmar-dynamic-abdominal-patient-v1",
   "intended_use": "simulation_training",
   "robots": [
@@ -7,7 +7,7 @@
       "asset_id": "dranmar-atraumatic-exposure-robot-v1",
       "capability": "retraction",
       "optional_dependency": true,
-      "patient_adapter": "patient.robot.exposure",
+      "patient_adapter": "patient.contacts.observe(PatientContactFrame interaction=exposure)",
       "python_module": "atraumatic_exposure_robot"
     },
     {
@@ -28,7 +28,7 @@
       "asset_id": "dranmar-adaptive-hemostasis-robot-v1",
       "capability": "hemostasis",
       "optional_dependency": true,
-      "patient_adapter": "patient.robot.hemostasis",
+      "patient_adapter": "patient.contacts.observe(PatientContactFrame interaction=hemostasis)",
       "python_module": "adaptive_hemostasis_robot"
     },
     {

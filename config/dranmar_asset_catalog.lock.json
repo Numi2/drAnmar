@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "bytes": 21856602,
+      "bytes": 21856860,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_dynamic_abdominal_patient.usda",
@@ -24,7 +24,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/Patients/DynamicAbdominalPatient",
-      "sha256": "79f7ec8f80b176cfc14285d98e58c4e004864302a84d68fb666eefe7749452f3"
+      "sha256": "87cc2cad07499d5f9ff08eb9ed107b07765ed20095e331378a6c21737c820e8a"
     },
     {
       "bytes": 35118832,
@@ -631,7 +631,7 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "961ffabc16cc9085fda783ce5db47ec678bcb3eb82bfe6b692a653b61dc51cda",
+  "catalog_sha256": "12f3740100ddd703956a23ef54d3c8e6b7d975e4f88c38197c1444418c1152cd",
   "catalog_version": "1.2.0",
   "clinical_validation": false,
   "i4h": {

@@ -1,0 +1,400 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarPhysiologicalMonitor"
+    metersPerUnit = 1
+    kilogramsPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarPhysiologicalMonitor" (
+    prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI", "SemanticsLabelsAPI:class"]
+    customData = { string drAnmarAssetId = "dranmar-physiological-monitor-v1" bool drAnmarClinicalValidation = false }
+)
+{
+    token[] semantics:labels:class = ["patient_monitor", "physiological_display"]
+    bool physics:rigidBodyEnabled = true
+    bool physics:kinematicEnabled = true
+    float physics:mass = 16
+    def Scope "Looks"
+    {
+        def Material "Floor"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.14, 0.17, 0.2)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.62
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Floor/PreviewSurface.outputs:surface>
+        }
+        def Material "Table"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.31, 0.36, 0.41)
+                float inputs:metallic = 0.65
+                float inputs:roughness = 0.28
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Table/PreviewSurface.outputs:surface>
+        }
+        def Material "Mattress"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.025, 0.31, 0.55)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Mattress/PreviewSurface.outputs:surface>
+        }
+        def Material "Robot"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.82, 0.84, 0.86)
+                float inputs:metallic = 0.25
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Robot/PreviewSurface.outputs:surface>
+        }
+        def Material "Joint"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.16, 0.19, 0.23)
+                float inputs:metallic = 0.55
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Joint/PreviewSurface.outputs:surface>
+        }
+        def Material "Metal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.5, 0.55, 0.6)
+                float inputs:metallic = 0.78
+                float inputs:roughness = 0.22
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Metal/PreviewSurface.outputs:surface>
+        }
+        def Material "DarkMetal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.12, 0.15, 0.18)
+                float inputs:metallic = 0.8
+                float inputs:roughness = 0.2
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/DarkMetal/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerBlue"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.4, 0.74)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.34
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/PolymerBlue/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerGreen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.04, 0.52, 0.27)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.37
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/PolymerGreen/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerRed"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.68, 0.05, 0.04)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.37
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/PolymerRed/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerPurple"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.33, 0.13, 0.58)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.36
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/PolymerPurple/PreviewSurface.outputs:surface>
+        }
+        def Material "Warning"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.96, 0.55, 0.04)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.25
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Warning/PreviewSurface.outputs:surface>
+        }
+        def Material "Critical"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.9, 0.03, 0.025)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Critical/PreviewSurface.outputs:surface>
+        }
+        def Material "Stable"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.7, 0.3)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Stable/PreviewSurface.outputs:surface>
+        }
+        def Material "Screen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.005, 0.02, 0.03)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.1
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Screen/PreviewSurface.outputs:surface>
+        }
+        def Material "Skin"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.73, 0.46, 0.37)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Skin/PreviewSurface.outputs:surface>
+        }
+        def Material "Organ"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.43, 0.055, 0.045)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.48
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Organ/PreviewSurface.outputs:surface>
+        }
+        def Material "Bowel"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.76, 0.35, 0.3)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Bowel/PreviewSurface.outputs:surface>
+        }
+        def Material "Blood"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.52, 0.002, 0.006)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.08
+                float inputs:opacity = 0.85
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/Blood/PreviewSurface.outputs:surface>
+        }
+        def Material "SafetyZone"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.48, 0.85)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.2
+                float inputs:opacity = 0.14
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/SafetyZone/PreviewSurface.outputs:surface>
+        }
+        def Material "RescueZone"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.92, 0.04, 0.03)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.2
+                float inputs:opacity = 0.16
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/RescueZone/PreviewSurface.outputs:surface>
+        }
+        def Material "White"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.93, 0.94, 0.95)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.25
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarPhysiologicalMonitor/Looks/White/PreviewSurface.outputs:surface>
+        }
+    }
+    def Scope "PhysicsMaterials"
+    {
+        def Material "DefaultContact" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.48
+            float physics:dynamicFriction = 0.36
+            float physics:restitution = 0.01
+            uniform token physxMaterial:frictionCombineMode = "average"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+        def Material "ToolCouplingContact" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.72
+            float physics:dynamicFriction = 0.55
+            float physics:restitution = 0.0
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+    }
+    def Scope "Geometry"
+    {
+        def Cylinder "Pole" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </DrAnmarPhysiologicalMonitor/Looks/Metal>
+            uniform token axis = "Z"
+            double radius = 0.032
+            double height = 1.25
+            double3 xformOp:translate = (0, 0, 0.67)
+            quatf xformOp:orient = (1, 0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+        }
+        def Cube "Base" (
+            prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+        )
+        {
+            rel material:binding = </DrAnmarPhysiologicalMonitor/Looks/DarkMetal>
+            rel material:binding:physics = </DrAnmarPhysiologicalMonitor/PhysicsMaterials/DefaultContact>
+            bool physics:collisionEnabled = true
+            double size = 1
+            double3 xformOp:translate = (0, 0, 0.04)
+            double3 xformOp:scale = (0.42, 0.3, 0.05)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Body" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </DrAnmarPhysiologicalMonitor/Looks/DarkMetal>
+            double size = 1
+            double3 xformOp:translate = (0, 0, 1.25)
+            double3 xformOp:scale = (0.62, 0.1, 0.4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+        def Cube "Screen" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </DrAnmarPhysiologicalMonitor/Looks/Screen>
+            double size = 1
+            double3 xformOp:translate = (0, -0.056, 1.25)
+            double3 xformOp:scale = (0.54, 0.012, 0.32)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+    def Scope "Frames"
+    {
+        def Xform "screen_center"
+        {
+            double3 xformOp:translate = (0, -0.063, 1.25)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "alarm_light"
+        {
+            double3 xformOp:translate = (0, -0.063, 1.4)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "network_port"
+        {
+            double3 xformOp:translate = (0.25, 0.05, 1.14)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "count_reference"
+        {
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+}

@@ -11,6 +11,7 @@ The module exposes a shared physiology contract for all DrAnmar surgical robots:
     patient.tissue_state
     patient.organ_motion
     patient.damage
+    patient.contacts
     patient.interventions
     patient.incision
 
@@ -118,6 +119,11 @@ VALID_CONDITIONS = frozenset(
     }
 )
 VALID_HABITUS = frozenset({"baseline", "lean", "increased_visceral_fat"})
+VALID_CONTACT_INTERACTIONS = frozenset({"exposure", "hemostasis"})
+CONTACT_PERFUSION_TERRITORIES = {
+    "mesentery": "small_bowel",
+    "major_vessels": "other",
+}
 NATIVE_DEFORMABLE_ROUTES = frozenset(
     {
         "current_explicit_tetmesh_volume_hierarchy",
@@ -503,6 +509,7 @@ class BleedSource:
     downstream_pressure_mmhg: float = 5.0
     discharge_coefficient: float = 0.68
     control_effectiveness: float = 0.0
+    contact_compression_fraction: float = 0.0
     clot_fraction: float = 0.0
     active: bool = True
     current_flow_ml_s: float = 0.0
@@ -564,20 +571,22 @@ class BleedingModel:
         self.sources[source_id] = source
         return source
 
-    def apply_control(
-        self, source_id: str, *, effectiveness: float, method: str
-    ) -> None:
+    def _set_contact_compression(self, source_id: str, fraction: float) -> None:
+        """Apply transient occlusion derived from a physics contact frame."""
         source = self.sources[source_id]
-        source.control_effectiveness = max(
-            source.control_effectiveness, _clamp(effectiveness, 0.0, 1.0)
+        compression = _clamp(fraction, 0.0, 1.0)
+        source.contact_compression_fraction = compression
+        source.control_effectiveness = compression
+        source.last_control_method = (
+            "bilateral_contact_compression" if compression > 0.0 else None
         )
-        source.last_control_method = str(method)
-        if source.control_effectiveness >= 0.999 and source.current_flow_ml_s < 0.002:
-            source.active = False
+        if compression < 0.999 and source.clot_fraction < 0.999:
+            source.active = True
 
     def reopen(self, source_id: str, fraction: float = 0.5) -> None:
         source = self.sources[source_id]
         source.control_effectiveness *= 1.0 - _clamp(fraction, 0.0, 1.0)
+        source.contact_compression_fraction = source.control_effectiveness
         source.active = True
 
     def step(self, dt_s: float) -> float:
@@ -953,6 +962,8 @@ class OrganTissueState:
     integrity_fraction: float = 1.0
     closure_fraction: float = 0.0
     seal_fraction: float = 0.0
+    retraction_fraction: float = 0.0
+    contact_compression_fraction: float = 0.0
     retraction_compression_fraction: float = 0.0
     contamination_fraction: float = 0.0
     edema_fraction: float = 0.0
@@ -994,13 +1005,23 @@ class TissueStateRegistry:
         state.cuts += 1
         state.integrity_fraction = _clamp(state.integrity_fraction - severity, 0.0, 1.0)
 
-    def retract(self, organ_id: str, compression_fraction: float) -> None:
-        self.get(organ_id).retraction_compression_fraction = _clamp(
+    def apply_contact_response(
+        self,
+        organ_id: str,
+        *,
+        retraction_fraction: float,
+        compression_fraction: float,
+    ) -> None:
+        state = self.get(organ_id)
+        state.retraction_fraction = _clamp(retraction_fraction, 0.0, 1.0)
+        state.contact_compression_fraction = _clamp(
             compression_fraction, 0.0, 1.0
         )
-
-    def release_retraction(self, organ_id: str) -> None:
-        self.get(organ_id).retraction_compression_fraction = 0.0
+        # Retain the original snapshot field for readers while changing its
+        # authority: it is now an observed contact effect, not a caller input.
+        state.retraction_compression_fraction = (
+            state.contact_compression_fraction
+        )
 
     def suture(self, organ_id: str, closure_fraction: float) -> None:
         state = self.get(organ_id)
@@ -1033,6 +1054,399 @@ class TissueStateRegistry:
         state.contamination_fraction = _clamp(
             state.contamination_fraction - contamination_reduction, 0, 1
         )
+
+
+@dataclass(frozen=True)
+class PatientContactFrame:
+    """One post-physics tool/patient contact observation.
+
+    The frame deliberately contains only simulator primitives.  It has no
+    success, compression, perfusion, exposure, or hemostasis result for a
+    policy or robot caller to write.
+    """
+
+    target: str
+    source_robot: str
+    interaction: str
+    normal_forces_n: tuple[float, float]
+    tool_position_m: tuple[float, float, float] | None = None
+
+    def __post_init__(self) -> None:
+        if not self.target:
+            raise ValueError("target must not be empty")
+        if not self.source_robot:
+            raise ValueError("source_robot must not be empty")
+        if self.interaction not in VALID_CONTACT_INTERACTIONS:
+            raise ValueError(
+                f"unsupported contact interaction {self.interaction!r}"
+            )
+        if len(self.normal_forces_n) != 2:
+            raise ValueError("normal_forces_n must contain exactly two pad forces")
+        forces = tuple(
+            _nonnegative(value, f"normal_forces_n[{index}]")
+            for index, value in enumerate(self.normal_forces_n)
+        )
+        object.__setattr__(self, "normal_forces_n", forces)
+        if self.tool_position_m is not None:
+            if len(self.tool_position_m) != 3:
+                raise ValueError("tool_position_m must contain exactly three values")
+            position = tuple(float(value) for value in self.tool_position_m)
+            if not all(math.isfinite(value) for value in position):
+                raise ValueError("tool_position_m values must be finite")
+            object.__setattr__(self, "tool_position_m", position)
+
+
+@dataclass(frozen=True)
+class ContactEffectCalibration:
+    """Provisional simulator coupling derived from the authored tool profiles."""
+
+    minimum_contact_force_n: float = 0.05
+    exposure_target_force_per_pad_n: float = 1.25
+    exposure_soft_force_per_pad_n: float = 2.5
+    exposure_hard_force_per_pad_n: float = 4.0
+    exposure_maximum_asymmetry_n: float = 1.0
+    exposure_full_retraction_distance_m: float = 0.04
+    exposure_local_compression_at_target: float = 0.10
+    hemostasis_target_force_per_pad_n: float = 1.8
+    hemostasis_soft_force_per_pad_n: float = 4.0
+    hemostasis_hard_force_per_pad_n: float = 7.0
+    hemostasis_maximum_asymmetry_n: float = 1.5
+    contact_attack_time_s: float = 0.18
+    contact_release_time_s: float = 0.12
+    tissue_recovery_time_s: float = 0.35
+    overload_damage_fraction_per_s: float = 0.03
+    parameter_status: str = "provisional_engineering_seeds"
+
+
+@dataclass
+class ContactEffectState:
+    target: str
+    source_robot: str
+    interaction: str
+    contact_active: bool = False
+    anchor_position_m: tuple[float, float, float] | None = None
+    retraction_fraction: float = 0.0
+    compression_fraction: float = 0.0
+    hemostatic_control_fraction: float = 0.0
+    bilateral_force_n: float = 0.0
+    peak_force_n: float = 0.0
+    force_asymmetry_n: float = 0.0
+    traction_distance_m: float = 0.0
+    overload_damage_fraction: float = 0.0
+    reported_damage_fraction: float = 0.0
+
+
+class ContactDrivenPatientEffects:
+    """Convert post-physics contact into patient state without result injection."""
+
+    def __init__(
+        self,
+        patient: "DynamicSurgicalPatient",
+        calibration: ContactEffectCalibration | None = None,
+    ):
+        self.patient = patient
+        self.calibration = calibration or ContactEffectCalibration()
+        self._pending: dict[tuple[str, str, str], PatientContactFrame] = {}
+        self.states: dict[tuple[str, str, str], ContactEffectState] = {}
+
+    def observe(self, frame: PatientContactFrame) -> None:
+        """Queue the latest authoritative contact frame for the next patient step."""
+        if frame.interaction == "exposure":
+            self.patient.tissue_state.get(frame.target)
+        elif frame.target not in self.patient.bleeding.sources:
+            raise KeyError(f"unknown bleeding source {frame.target!r}")
+        key = (frame.source_robot, frame.target, frame.interaction)
+        self._pending[key] = frame
+        self.states.setdefault(
+            key,
+            ContactEffectState(
+                target=frame.target,
+                source_robot=frame.source_robot,
+                interaction=frame.interaction,
+            ),
+        )
+
+    @staticmethod
+    def _distance(
+        left: tuple[float, float, float],
+        right: tuple[float, float, float],
+    ) -> float:
+        return math.sqrt(sum((a - b) ** 2 for a, b in zip(left, right)))
+
+    def _force_quality(
+        self,
+        frame: PatientContactFrame | None,
+        *,
+        target_force_n: float,
+        soft_force_n: float,
+        hard_force_n: float,
+        maximum_asymmetry_n: float,
+    ) -> tuple[bool, float, float, float, float]:
+        forces = frame.normal_forces_n if frame is not None else (0.0, 0.0)
+        left, right = forces
+        bilateral = min(left, right)
+        peak = max(left, right)
+        asymmetry = abs(left - right)
+        active = bilateral >= self.calibration.minimum_contact_force_n
+        if not active:
+            return False, 0.0, bilateral, peak, asymmetry
+        target_quality = _clamp(bilateral / target_force_n, 0.0, 1.0)
+        balance_quality = _clamp(
+            1.0 - asymmetry / maximum_asymmetry_n, 0.0, 1.0
+        )
+        overload_quality = (
+            1.0
+            if peak <= soft_force_n
+            else _clamp(
+                (hard_force_n - peak) / (hard_force_n - soft_force_n),
+                0.0,
+                1.0,
+            )
+        )
+        return (
+            True,
+            target_quality * balance_quality * overload_quality,
+            bilateral,
+            peak,
+            asymmetry,
+        )
+
+    def _apply_overload(
+        self,
+        state: ContactEffectState,
+        *,
+        dt_s: float,
+        soft_force_n: float,
+        hard_force_n: float,
+    ) -> None:
+        overload = max(
+            0.0,
+            (state.peak_force_n - soft_force_n)
+            / max(hard_force_n - soft_force_n, 1.0e-9),
+        )
+        if overload <= 0.0:
+            return
+        increment = (
+            overload
+            * dt_s
+            * self.calibration.overload_damage_fraction_per_s
+        )
+        state.overload_damage_fraction = _clamp(
+            state.overload_damage_fraction + increment, 0.0, 1.0
+        )
+        target = state.target
+        if state.interaction == "hemostasis":
+            source = self.patient.bleeding.sources[target]
+            target = source.organ_id
+            source.injury_fraction = _clamp(
+                source.injury_fraction + 0.5 * increment, 0.0, 1.0
+            )
+        tissue = self.patient.tissue_state.get(target)
+        tissue.integrity_fraction = _clamp(
+            tissue.integrity_fraction - increment, 0.0, 1.0
+        )
+        if (
+            state.overload_damage_fraction - state.reported_damage_fraction
+            >= 0.01
+        ):
+            severity = (
+                state.overload_damage_fraction
+                - state.reported_damage_fraction
+            )
+            state.reported_damage_fraction = state.overload_damage_fraction
+            event = self.patient.damage.record(
+                time_s=self.patient.time_s,
+                target=target,
+                kind="contact_overload",
+                severity=severity,
+                source_robot=state.source_robot,
+                consequences={
+                    "peak_force_n": state.peak_force_n,
+                    "cumulative_damage_fraction": (
+                        state.overload_damage_fraction
+                    ),
+                },
+            )
+            self.patient.event_bus.emit(
+                PatientEvent(
+                    self.patient.time_s,
+                    "damage",
+                    asdict(event),
+                    source=state.source_robot,
+                )
+            )
+
+    def step(self, dt_s: float) -> None:
+        dt = float(dt_s)
+        if not math.isfinite(dt) or dt <= 0.0:
+            raise ValueError("dt_s must be positive and finite")
+        calibration = self.calibration
+        for key, state in self.states.items():
+            frame = self._pending.get(key)
+            if state.interaction == "exposure":
+                (
+                    active,
+                    quality,
+                    bilateral,
+                    peak,
+                    asymmetry,
+                ) = self._force_quality(
+                    frame,
+                    target_force_n=calibration.exposure_target_force_per_pad_n,
+                    soft_force_n=calibration.exposure_soft_force_per_pad_n,
+                    hard_force_n=calibration.exposure_hard_force_per_pad_n,
+                    maximum_asymmetry_n=(
+                        calibration.exposure_maximum_asymmetry_n
+                    ),
+                )
+                if active and frame is not None:
+                    if not state.contact_active:
+                        state.anchor_position_m = frame.tool_position_m
+                    if (
+                        frame.tool_position_m is not None
+                        and state.anchor_position_m is not None
+                    ):
+                        state.traction_distance_m = self._distance(
+                            frame.tool_position_m,
+                            state.anchor_position_m,
+                        )
+                    retraction_target = quality * _clamp(
+                        state.traction_distance_m
+                        / calibration.exposure_full_retraction_distance_m,
+                        0.0,
+                        1.0,
+                    )
+                    compression_target = _clamp(
+                        calibration.exposure_local_compression_at_target
+                        * bilateral
+                        / calibration.exposure_target_force_per_pad_n,
+                        0.0,
+                        1.0,
+                    )
+                else:
+                    state.anchor_position_m = None
+                    state.traction_distance_m = 0.0
+                    retraction_target = 0.0
+                    compression_target = 0.0
+                state.retraction_fraction = _smooth(
+                    state.retraction_fraction,
+                    retraction_target,
+                    dt,
+                    (
+                        calibration.contact_attack_time_s
+                        if active
+                        else calibration.tissue_recovery_time_s
+                    ),
+                )
+                state.compression_fraction = _smooth(
+                    state.compression_fraction,
+                    compression_target,
+                    dt,
+                    (
+                        calibration.contact_attack_time_s
+                        if active
+                        else calibration.contact_release_time_s
+                    ),
+                )
+                soft = calibration.exposure_soft_force_per_pad_n
+                hard = calibration.exposure_hard_force_per_pad_n
+            else:
+                (
+                    active,
+                    quality,
+                    bilateral,
+                    peak,
+                    asymmetry,
+                ) = self._force_quality(
+                    frame,
+                    target_force_n=calibration.hemostasis_target_force_per_pad_n,
+                    soft_force_n=calibration.hemostasis_soft_force_per_pad_n,
+                    hard_force_n=calibration.hemostasis_hard_force_per_pad_n,
+                    maximum_asymmetry_n=(
+                        calibration.hemostasis_maximum_asymmetry_n
+                    ),
+                )
+                state.hemostatic_control_fraction = _smooth(
+                    state.hemostatic_control_fraction,
+                    quality if active else 0.0,
+                    dt,
+                    (
+                        calibration.contact_attack_time_s
+                        if active
+                        else calibration.contact_release_time_s
+                    ),
+                )
+                soft = calibration.hemostasis_soft_force_per_pad_n
+                hard = calibration.hemostasis_hard_force_per_pad_n
+            state.contact_active = active
+            state.bilateral_force_n = bilateral
+            state.peak_force_n = peak
+            state.force_asymmetry_n = asymmetry
+            self._apply_overload(
+                state,
+                dt_s=dt,
+                soft_force_n=soft,
+                hard_force_n=hard,
+            )
+
+        exposure_targets = {
+            state.target
+            for state in self.states.values()
+            if state.interaction == "exposure"
+        }
+        for target in exposure_targets:
+            matching = [
+                state
+                for state in self.states.values()
+                if state.interaction == "exposure" and state.target == target
+            ]
+            retraction = max(
+                (state.retraction_fraction for state in matching),
+                default=0.0,
+            )
+            compression = max(
+                (state.compression_fraction for state in matching),
+                default=0.0,
+            )
+            self.patient.tissue_state.apply_contact_response(
+                target,
+                retraction_fraction=retraction,
+                compression_fraction=compression,
+            )
+            perfusion_target = CONTACT_PERFUSION_TERRITORIES.get(
+                target,
+                target,
+            )
+            self.patient.perfusion.set_compression(
+                perfusion_target,
+                compression,
+            )
+
+        for source_id in self.patient.bleeding.sources:
+            control = max(
+                (
+                    state.hemostatic_control_fraction
+                    for state in self.states.values()
+                    if state.interaction == "hemostasis"
+                    and state.target == source_id
+                ),
+                default=0.0,
+            )
+            self.patient.bleeding._set_contact_compression(
+                source_id,
+                control,
+            )
+        self._pending.clear()
+
+    def snapshot(self) -> dict[str, Any]:
+        return {
+            "authority": "post_physics_contact_force_and_tool_pose",
+            "calibration": asdict(self.calibration),
+            "states": [
+                asdict(state)
+                for _, state in sorted(self.states.items())
+            ],
+        }
 
 
 LAPAROTOMY_LAYERS = (
@@ -1435,10 +1849,8 @@ class InterventionRegistry:
         params = dict(event.get("parameters", {}))
         dispatch = {
             "set_access_state": self.set_access_state,
-            "exposure": self.apply_exposure,
             "dissection": self.apply_dissection,
             "wound_preparation": self.apply_wound_preparation,
-            "hemostasis": self.apply_hemostasis,
             "seal_divide": self.apply_seal_divide,
             "anastomosis": self.apply_anastomosis,
             "closure": self.apply_closure,
@@ -1467,39 +1879,6 @@ class InterventionRegistry:
             "abdomen",
             {"state": selected},
             {"access_state": selected},
-        )
-
-    def apply_exposure(
-        self,
-        *,
-        target: str,
-        force_n: float = 1.0,
-        compression_fraction: float = 0.05,
-        source_robot: str = "atraumatic_exposure_robot",
-        **kwargs,
-    ) -> InterventionEvent:
-        compression = _clamp(compression_fraction, 0, 1)
-        self.patient.tissue_state.retract(target, compression)
-        self.patient.perfusion.set_compression(target, compression)
-        return self._record(
-            source_robot,
-            "exposure",
-            target,
-            {"force_n": force_n, "compression_fraction": compression},
-            {"regional_compression_fraction": compression},
-        )
-
-    def release_exposure(
-        self, *, target: str, source_robot: str = "atraumatic_exposure_robot"
-    ) -> InterventionEvent:
-        self.patient.tissue_state.release_retraction(target)
-        self.patient.perfusion.set_compression(target, 0)
-        return self._record(
-            source_robot,
-            "release_exposure",
-            target,
-            {},
-            {"regional_compression_fraction": 0.0},
         )
 
     def apply_dissection(
@@ -1564,33 +1943,6 @@ class InterventionRegistry:
                 "contamination_reduction": contamination_reduction,
             },
             {"prepared": True},
-        )
-
-    def apply_hemostasis(
-        self,
-        *,
-        target: str,
-        method: str,
-        effectiveness: float = 0.95,
-        source_robot: str = "adaptive_hemostasis_robot",
-        **kwargs,
-    ) -> InterventionEvent:
-        controlled_fraction = _clamp(effectiveness, 0.0, 1.0)
-        if target in self.patient.bleeding.sources:
-            self.patient.bleeding.apply_control(
-                target, effectiveness=controlled_fraction, method=method
-            )
-        if target in {"bile_duct", "cystic_duct", "gallbladder"}:
-            self.patient.biliary.duct_control_effectiveness = max(
-                self.patient.biliary.duct_control_effectiveness,
-                controlled_fraction,
-            )
-        return self._record(
-            source_robot,
-            "hemostasis",
-            target,
-            {"method": method, "effectiveness": controlled_fraction},
-            {"controlled_fraction": controlled_fraction},
         )
 
     def apply_seal_divide(
@@ -1779,19 +2131,6 @@ class RobotInterventionAdapter:
     def __init__(self, patient: "DynamicSurgicalPatient"):
         self.patient = patient
 
-    def exposure(
-        self, *, target: str, force_n: float, compression_fraction: float
-    ) -> InterventionEvent:
-        return self.patient.interventions.apply_exposure(
-            target=target,
-            force_n=force_n,
-            compression_fraction=compression_fraction,
-            source_robot="atraumatic_exposure_robot",
-        )
-
-    def release_exposure(self, *, target: str) -> InterventionEvent:
-        return self.patient.interventions.release_exposure(target=target)
-
     def dissection(
         self,
         *,
@@ -1829,16 +2168,6 @@ class RobotInterventionAdapter:
             debridement_fraction=debridement_fraction,
             contamination_reduction=contamination_reduction,
             source_robot="wound_preparation_robot",
-        )
-
-    def hemostasis(
-        self, *, source_id: str, method: str, effectiveness: float
-    ) -> InterventionEvent:
-        return self.patient.interventions.apply_hemostasis(
-            target=source_id,
-            method=method,
-            effectiveness=effectiveness,
-            source_robot="adaptive_hemostasis_robot",
         )
 
     def seal_and_divide(
@@ -2034,6 +2363,8 @@ class DynamicSurgicalPatient:
         )
         self.bleeding = BleedingModel(self)
         self.vital_signs = VitalSignsModel()
+        self.contact_effects = ContactDrivenPatientEffects(self)
+        self.contacts = self.contact_effects
         self.interventions = InterventionRegistry(self)
         self.robot = RobotInterventionAdapter(self)
         self.released_adhesions: set[str] = set()
@@ -2148,6 +2479,7 @@ class DynamicSurgicalPatient:
         if not math.isfinite(dt) or dt <= 0:
             raise ValueError("dt_s must be positive and finite")
         self.time_s += dt
+        self.contact_effects.step(dt)
         tissue_supply = sum(
             s.oxygen_supply_ratio for s in self.perfusion.regions.values()
         ) / max(len(self.perfusion.regions), 1)
@@ -2223,11 +2555,6 @@ class DynamicSurgicalPatient:
         self.fluid_balance.bile_output_ml += leak
         self._last_bile_leak_ml = leak
         self.organ_motion.step(self.respiration, self.cardiovascular)
-        for organ, state in self.tissue_state.organs.items():
-            if organ in self.perfusion.regions:
-                self.perfusion.set_compression(
-                    organ, state.retraction_compression_fraction
-                )
         self.vital_signs.update(self)
         self.event_bus.emit(
             PatientEvent(
@@ -2426,6 +2753,7 @@ class DynamicSurgicalPatient:
                 "pulsation_scale": self.organ_motion.pulsation_scale,
             },
             "damage": {key: asdict(value) for key, value in self.damage.events.items()},
+            "contact_effects": self.contact_effects.snapshot(),
             "incision": self.incision.snapshot(),
             "interventions": [asdict(value) for value in self.interventions.history],
             "events": self.event_bus.snapshot(),

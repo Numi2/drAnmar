@@ -1,0 +1,35 @@
+{
+  "counted_items": [
+    "sponges",
+    "needles",
+    "sutures",
+    "vascular_clips",
+    "staple_rings",
+    "skin_staples",
+    "blade_cartridges",
+    "scissor_cartridges"
+  ],
+  "fail_closed_on_negative_inventory": true,
+  "research_only": true,
+  "resources": {
+    "adhesive_ml": 4.0,
+    "blade_cartridges": 4,
+    "blood_products_ml": 1200.0,
+    "contrast_ml": 50.0,
+    "crystalloid_ml": 3000.0,
+    "dressings": 4,
+    "hemostatic_patches": 8,
+    "irrigation_ml": 1500.0,
+    "needles": 12,
+    "scissor_cartridges": 4,
+    "skin_staples": 48,
+    "sponges": 20,
+    "staple_rings": 4,
+    "suction_canister_ml": 1500.0,
+    "sutures": 12,
+    "ultrasound_gel_ml": 30.0,
+    "vascular_clips": 16,
+    "vasopressor_syringes": 4
+  },
+  "schema": "dr.anmar.autonomous-or-resource-inventory.v1"
+}

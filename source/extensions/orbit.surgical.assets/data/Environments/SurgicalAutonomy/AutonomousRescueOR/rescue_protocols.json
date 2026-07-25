@@ -1,0 +1,654 @@
+{
+  "protocols": {
+    "abdominal_wall_revision": [
+      {
+        "action": "closure",
+        "capability": "closure",
+        "id": "capture_edges",
+        "parameters": {
+          "intent": "capture_and_approximate_edges"
+        },
+        "priority": 88,
+        "reversible": false,
+        "station": "primary",
+        "tool": "closure_robot",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "verify_recovery",
+        "capability": "assessment",
+        "id": "load_test",
+        "priority": 86,
+        "reversible": true,
+        "station": "assessment",
+        "zones": [
+          "monitoring"
+        ]
+      }
+    ],
+    "anastomosis_revision": [
+      {
+        "action": "wound_preparation",
+        "capability": "field_clearance",
+        "id": "isolate_and_clear",
+        "priority": 88,
+        "reversible": true,
+        "station": "rescue",
+        "tool": "wound_preparation",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "anastomosis",
+        "capability": "anastomosis",
+        "id": "reconstruct",
+        "priority": 90,
+        "reversible": false,
+        "station": "primary",
+        "tool": "adaptive_anastomosis",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "verify_anastomosis",
+        "capability": "leak_test",
+        "id": "leak_test",
+        "priority": 92,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      }
+    ],
+    "bile_leak_control": [
+      {
+        "action": "wound_preparation",
+        "capability": "field_clearance",
+        "id": "clear_bile",
+        "priority": 84,
+        "reversible": true,
+        "station": "rescue",
+        "tool": "wound_preparation",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "hemostasis",
+        "capability": "hemostasis",
+        "id": "clip_or_seal_duct",
+        "priority": 86,
+        "reversible": false,
+        "station": "rescue",
+        "tool": "adaptive_hemostasis",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "verify_bile_leak",
+        "capability": "assessment",
+        "id": "verify_bile_control",
+        "priority": 84,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      }
+    ],
+    "circulatory_stabilization": [
+      {
+        "action": "scan_patient",
+        "capability": "assessment",
+        "id": "identify_bleeding",
+        "priority": 95,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "transfuse",
+        "capability": "resuscitation",
+        "id": "transfuse",
+        "priority": 95,
+        "reversible": false,
+        "station": "system",
+        "zones": [
+          "resuscitation"
+        ]
+      },
+      {
+        "action": "crystalloid",
+        "capability": "resuscitation",
+        "id": "crystalloid_support",
+        "priority": 90,
+        "reversible": false,
+        "station": "system",
+        "zones": [
+          "resuscitation"
+        ]
+      },
+      {
+        "action": "verify_recovery",
+        "capability": "assessment",
+        "id": "reassess_vitals",
+        "priority": 90,
+        "reversible": true,
+        "station": "system",
+        "zones": [
+          "monitoring"
+        ]
+      }
+    ],
+    "dressing_pressure_revision": [
+      {
+        "action": "revise_dressing_pressure",
+        "capability": "dressing_application",
+        "id": "reduce_pressure",
+        "priority": 80,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "dressing_robot",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "perfusion_scan",
+        "capability": "perfusion_verification",
+        "id": "verify_skin_perfusion",
+        "priority": 82,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      }
+    ],
+    "dressing_reseal": [
+      {
+        "action": "revise_dressing_pressure",
+        "capability": "dressing_application",
+        "id": "remove_failed_bonds",
+        "parameters": {
+          "pressure_kpa": -3.0
+        },
+        "priority": 78,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "dressing_robot",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "dressing",
+        "capability": "dressing_application",
+        "id": "reapply_film",
+        "priority": 80,
+        "reversible": false,
+        "station": "assessment",
+        "tool": "dressing_robot",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "verify_recovery",
+        "capability": "assessment",
+        "id": "seal_test",
+        "priority": 80,
+        "reversible": true,
+        "station": "assessment",
+        "zones": [
+          "monitoring"
+        ]
+      }
+    ],
+    "hemorrhage_control": [
+      {
+        "action": "preempt",
+        "capability": "orchestration",
+        "id": "freeze_routine_actions",
+        "priority": 100,
+        "reversible": true,
+        "station": "system",
+        "zones": [
+          "emergency_field"
+        ]
+      },
+      {
+        "action": "exposure",
+        "capability": "exposure",
+        "id": "maintain_exposure",
+        "priority": 99,
+        "reversible": true,
+        "station": "exposure",
+        "tool": "atraumatic_exposure",
+        "zones": [
+          "emergency_field"
+        ]
+      },
+      {
+        "action": "wound_preparation",
+        "capability": "field_clearance",
+        "id": "clear_blood",
+        "priority": 99,
+        "reversible": true,
+        "station": "rescue",
+        "tool": "wound_preparation",
+        "zones": [
+          "emergency_field"
+        ]
+      },
+      {
+        "action": "temporary_compression",
+        "capability": "temporary_compression",
+        "id": "temporary_compression",
+        "priority": 100,
+        "reversible": true,
+        "station": "rescue",
+        "tool": "adaptive_hemostasis",
+        "zones": [
+          "emergency_field"
+        ]
+      },
+      {
+        "action": "hemostasis",
+        "capability": "hemostasis",
+        "id": "definitive_hemostasis",
+        "priority": 100,
+        "reversible": false,
+        "station": "rescue",
+        "tool": "adaptive_hemostasis",
+        "zones": [
+          "emergency_field"
+        ]
+      },
+      {
+        "action": "transfuse",
+        "capability": "resuscitation",
+        "id": "volume_resuscitation",
+        "priority": 98,
+        "reversible": false,
+        "station": "system",
+        "zones": [
+          "resuscitation"
+        ]
+      },
+      {
+        "action": "perfusion_scan",
+        "capability": "perfusion_verification",
+        "id": "flow_verification",
+        "priority": 96,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "emergency_field"
+        ]
+      }
+    ],
+    "ischemia_reversal": [
+      {
+        "action": "release_exposure",
+        "capability": "exposure",
+        "id": "release_external_compression",
+        "priority": 90,
+        "reversible": true,
+        "station": "exposure",
+        "tool": "atraumatic_exposure",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "revise_dressing_pressure",
+        "capability": "dressing_application",
+        "id": "reduce_dressing_pressure",
+        "priority": 88,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "dressing_robot",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "perfusion_scan",
+        "capability": "perfusion_verification",
+        "id": "perfusion_rescan",
+        "priority": 90,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "revise_flow_obstruction",
+        "capability": "reconstruction",
+        "id": "revise_occlusion_or_anastomosis",
+        "priority": 86,
+        "reversible": false,
+        "station": "primary",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "perfusion_scan",
+        "capability": "perfusion_verification",
+        "id": "confirm_recovery",
+        "priority": 90,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      }
+    ],
+    "item_recovery": [
+      {
+        "action": "preempt",
+        "capability": "orchestration",
+        "id": "pause_closure",
+        "priority": 80,
+        "reversible": true,
+        "station": "system",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "count_scan",
+        "capability": "assessment",
+        "id": "scan_field",
+        "priority": 80,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "retrieve_item",
+        "capability": "retrieval",
+        "id": "retrieve_item",
+        "priority": 80,
+        "reversible": false,
+        "station": "rescue",
+        "tool": "laparotomy_sponge",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "reconcile_count",
+        "capability": "surgical_count",
+        "id": "reconcile_count",
+        "priority": 80,
+        "reversible": true,
+        "station": "system",
+        "zones": [
+          "monitoring"
+        ]
+      }
+    ],
+    "oxygenation_stabilization": [
+      {
+        "action": "safe_retract_all",
+        "capability": "orchestration",
+        "id": "pause_and_retract",
+        "priority": 100,
+        "reversible": true,
+        "station": "system",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "set_fio2",
+        "capability": "resuscitation",
+        "id": "increase_oxygen",
+        "priority": 100,
+        "reversible": true,
+        "station": "system",
+        "zones": [
+          "resuscitation"
+        ]
+      },
+      {
+        "action": "restore_ventilation",
+        "capability": "resuscitation",
+        "id": "restore_ventilation",
+        "priority": 100,
+        "reversible": true,
+        "station": "system",
+        "zones": [
+          "resuscitation"
+        ]
+      },
+      {
+        "action": "verify_recovery",
+        "capability": "assessment",
+        "id": "verify_oxygenation",
+        "priority": 96,
+        "reversible": true,
+        "station": "system",
+        "zones": [
+          "monitoring"
+        ]
+      }
+    ],
+    "release_retraction": [
+      {
+        "action": "release_exposure",
+        "capability": "exposure",
+        "id": "unload_pads",
+        "priority": 90,
+        "reversible": true,
+        "station": "exposure",
+        "tool": "atraumatic_exposure",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "perfusion_scan",
+        "capability": "perfusion_verification",
+        "id": "perfusion_rescan",
+        "priority": 88,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      }
+    ],
+    "safe_tool_exchange": [
+      {
+        "action": "safe_retract_station",
+        "capability": "orchestration",
+        "id": "safe_retract",
+        "priority": 90,
+        "reversible": true,
+        "station": "faulted_station",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "undock_tool",
+        "capability": "tool_change",
+        "id": "release_tool",
+        "priority": 88,
+        "reversible": true,
+        "station": "faulted_station",
+        "zones": [
+          "tool_exchange"
+        ]
+      },
+      {
+        "action": "dock_tool",
+        "capability": "tool_change",
+        "id": "dock_replacement",
+        "priority": 88,
+        "reversible": true,
+        "station": "faulted_station",
+        "zones": [
+          "tool_exchange"
+        ]
+      },
+      {
+        "action": "tool_self_test",
+        "capability": "assessment",
+        "id": "functional_check",
+        "priority": 86,
+        "reversible": true,
+        "station": "faulted_station",
+        "zones": [
+          "tool_exchange"
+        ]
+      }
+    ],
+    "stump_reseal": [
+      {
+        "action": "temporary_compression",
+        "capability": "temporary_compression",
+        "id": "temporary_compression",
+        "priority": 90,
+        "reversible": true,
+        "station": "rescue",
+        "tool": "adaptive_hemostasis",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "seal_stump",
+        "capability": "energy_sealing",
+        "id": "reseal",
+        "priority": 90,
+        "reversible": false,
+        "station": "primary",
+        "tool": "adaptive_seal_divide",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "verify_stump",
+        "capability": "flow_verification",
+        "id": "verify_stump",
+        "priority": 92,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      }
+    ],
+    "thermal_injury_control": [
+      {
+        "action": "stop_energy",
+        "capability": "orchestration",
+        "id": "stop_energy",
+        "priority": 100,
+        "reversible": true,
+        "station": "system",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "wound_preparation",
+        "capability": "irrigation",
+        "id": "irrigate",
+        "priority": 88,
+        "reversible": true,
+        "station": "rescue",
+        "tool": "wound_preparation",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "perfusion_scan",
+        "capability": "thermal",
+        "id": "assess_viability",
+        "priority": 88,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      }
+    ],
+    "urinary_leak_control": [
+      {
+        "action": "wound_preparation",
+        "capability": "field_clearance",
+        "id": "clear_urine",
+        "priority": 82,
+        "reversible": true,
+        "station": "rescue",
+        "tool": "wound_preparation",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "anastomosis",
+        "capability": "anastomosis",
+        "id": "repair_ureter",
+        "priority": 84,
+        "reversible": false,
+        "station": "primary",
+        "tool": "adaptive_anastomosis",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "perfusion_scan",
+        "capability": "ultrasound",
+        "id": "verify_urinary_flow",
+        "priority": 82,
+        "reversible": true,
+        "station": "assessment",
+        "tool": "perfusion_viability",
+        "zones": [
+          "central_field"
+        ]
+      }
+    ]
+  },
+  "research_only": true,
+  "resumption_gate": [
+    "complication_controlled",
+    "physiology_recovered",
+    "workspace_clear",
+    "tool_self_tests_pass",
+    "evidence_complete"
+  ],
+  "schema": "dr.anmar.rescue-protocol-library.v1"
+}

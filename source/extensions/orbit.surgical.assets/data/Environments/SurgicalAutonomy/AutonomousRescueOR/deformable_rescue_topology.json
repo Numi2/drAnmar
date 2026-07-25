@@ -1,0 +1,233 @@
+{
+  "abdominal_wall": {
+    "repair_pairs": [
+      {
+        "id": "wall_pair_00",
+        "left_frame": "RepairInterface/left_edge_00",
+        "right_frame": "RepairInterface/right_edge_00",
+        "state": "open"
+      },
+      {
+        "id": "wall_pair_01",
+        "left_frame": "RepairInterface/left_edge_01",
+        "right_frame": "RepairInterface/right_edge_01",
+        "state": "open"
+      },
+      {
+        "id": "wall_pair_02",
+        "left_frame": "RepairInterface/left_edge_02",
+        "right_frame": "RepairInterface/right_edge_02",
+        "state": "open"
+      },
+      {
+        "id": "wall_pair_03",
+        "left_frame": "RepairInterface/left_edge_03",
+        "right_frame": "RepairInterface/right_edge_03",
+        "state": "open"
+      },
+      {
+        "id": "wall_pair_04",
+        "left_frame": "RepairInterface/left_edge_04",
+        "right_frame": "RepairInterface/right_edge_04",
+        "state": "open"
+      },
+      {
+        "id": "wall_pair_05",
+        "left_frame": "RepairInterface/left_edge_05",
+        "right_frame": "RepairInterface/right_edge_05",
+        "state": "open"
+      },
+      {
+        "id": "wall_pair_06",
+        "left_frame": "RepairInterface/left_edge_06",
+        "right_frame": "RepairInterface/right_edge_06",
+        "state": "open"
+      },
+      {
+        "id": "wall_pair_07",
+        "left_frame": "RepairInterface/left_edge_07",
+        "right_frame": "RepairInterface/right_edge_07",
+        "state": "open"
+      },
+      {
+        "id": "wall_pair_08",
+        "left_frame": "RepairInterface/left_edge_08",
+        "right_frame": "RepairInterface/right_edge_08",
+        "state": "open"
+      },
+      {
+        "id": "wall_pair_09",
+        "left_frame": "RepairInterface/left_edge_09",
+        "right_frame": "RepairInterface/right_edge_09",
+        "state": "open"
+      }
+    ],
+    "supported_repairs": [
+      "staple_bridge",
+      "suture_bridge",
+      "adhesive_bridge"
+    ]
+  },
+  "bowel_anastomosis": {
+    "repair_pairs": [
+      {
+        "distal_frame": "RepairInterface/distal_seam_00",
+        "id": "bowel_pair_00",
+        "proximal_frame": "RepairInterface/proximal_seam_00",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_01",
+        "id": "bowel_pair_01",
+        "proximal_frame": "RepairInterface/proximal_seam_01",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_02",
+        "id": "bowel_pair_02",
+        "proximal_frame": "RepairInterface/proximal_seam_02",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_03",
+        "id": "bowel_pair_03",
+        "proximal_frame": "RepairInterface/proximal_seam_03",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_04",
+        "id": "bowel_pair_04",
+        "proximal_frame": "RepairInterface/proximal_seam_04",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_05",
+        "id": "bowel_pair_05",
+        "proximal_frame": "RepairInterface/proximal_seam_05",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_06",
+        "id": "bowel_pair_06",
+        "proximal_frame": "RepairInterface/proximal_seam_06",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_07",
+        "id": "bowel_pair_07",
+        "proximal_frame": "RepairInterface/proximal_seam_07",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_08",
+        "id": "bowel_pair_08",
+        "proximal_frame": "RepairInterface/proximal_seam_08",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_09",
+        "id": "bowel_pair_09",
+        "proximal_frame": "RepairInterface/proximal_seam_09",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_10",
+        "id": "bowel_pair_10",
+        "proximal_frame": "RepairInterface/proximal_seam_10",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_11",
+        "id": "bowel_pair_11",
+        "proximal_frame": "RepairInterface/proximal_seam_11",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_12",
+        "id": "bowel_pair_12",
+        "proximal_frame": "RepairInterface/proximal_seam_12",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_13",
+        "id": "bowel_pair_13",
+        "proximal_frame": "RepairInterface/proximal_seam_13",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_14",
+        "id": "bowel_pair_14",
+        "proximal_frame": "RepairInterface/proximal_seam_14",
+        "state": "leaking"
+      },
+      {
+        "distal_frame": "RepairInterface/distal_seam_15",
+        "id": "bowel_pair_15",
+        "proximal_frame": "RepairInterface/proximal_seam_15",
+        "state": "leaking"
+      }
+    ],
+    "supported_repairs": [
+      "staple_ring",
+      "reinforcement_collar",
+      "suture_ring"
+    ]
+  },
+  "film": {
+    "attachment_pair": "surface_to_volume",
+    "kinematic_target_policy": "forbidden",
+    "perimeter_bonds": [
+      {
+        "id": "film_bond_00",
+        "mask": "AttachmentMasks/PerimeterBond_00",
+        "state": "released"
+      },
+      {
+        "id": "film_bond_01",
+        "mask": "AttachmentMasks/PerimeterBond_01",
+        "state": "released"
+      },
+      {
+        "id": "film_bond_02",
+        "mask": "AttachmentMasks/PerimeterBond_02",
+        "state": "released"
+      },
+      {
+        "id": "film_bond_03",
+        "mask": "AttachmentMasks/PerimeterBond_03",
+        "state": "released"
+      },
+      {
+        "id": "film_bond_04",
+        "mask": "AttachmentMasks/PerimeterBond_04",
+        "state": "released"
+      },
+      {
+        "id": "film_bond_05",
+        "mask": "AttachmentMasks/PerimeterBond_05",
+        "state": "released"
+      },
+      {
+        "id": "film_bond_06",
+        "mask": "AttachmentMasks/PerimeterBond_06",
+        "state": "released"
+      },
+      {
+        "id": "film_bond_07",
+        "mask": "AttachmentMasks/PerimeterBond_07",
+        "state": "released"
+      }
+    ]
+  },
+  "schema": "dr.anmar.deformable-rescue-topology.v1",
+  "vessel": {
+    "control_sequence": [
+      "temporary_compression",
+      "clip_attachment",
+      "patch_attachment",
+      "flow_verification"
+    ],
+    "injury_id": "vessel_sidewall_injury_00",
+    "source_frame": "Frames/bleeding_source"
+  }
+}

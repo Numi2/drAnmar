@@ -1,5 +1,6 @@
 {
   "asset_id": "dranmar-dynamic-abdominal-patient-v1",
+  "intended_use": "simulation_training",
   "not_executed": [
     "OpenUSD runtime parse",
     "Isaac Sim execution",
@@ -144,12 +145,12 @@
       }
     },
     "robot_sequence": {
-      "active_loss_after_ml_min": 4.009677880662843,
-      "active_loss_before_ml_min": 716.3710995233445,
-      "blood_loss_before_control_ml": 197.18259002414104,
+      "active_loss_after_ml_min": 0.0,
+      "active_loss_before_ml_min": 716.3891216925126,
+      "blood_loss_before_control_ml": 197.2606616936136,
       "dressing_applied": true,
-      "event_count": 407,
-      "intervention_count": 6,
+      "event_count": 418,
+      "intervention_count": 4,
       "released_adhesions": [
         "adhesion_03"
       ]
@@ -163,7 +164,6 @@
       "status": "critical_research_state"
     }
   },
-  "intended_use": "simulation_training",
   "schema": "dr.anmar.dynamic-abdominal-patient-model-sanity.v1",
   "static": {
     "access_layer_variant_paths": {
@@ -174,25 +174,20 @@
       "subcutaneous_fat": true
     },
     "deformable_hierarchy_roots": {
-      "abdominal_wall": true,
       "bladder": true,
       "colon": true,
       "diaphragm": true,
-      "fascia": true,
       "gallbladder": true,
       "left_kidney": true,
       "liver": true,
       "liver_tumor": true,
-      "major_vessels": true,
       "mesentery": true,
       "pancreas": true,
       "peritoneum": true,
       "right_kidney": true,
-      "skin": true,
       "small_bowel": true,
       "spleen": true,
-      "stomach": true,
-      "subcutaneous_fat": true
+      "stomach": true
     },
     "glb_count": 36,
     "glb_metrics": {
@@ -378,21 +373,28 @@
       }
     },
     "json_count": 8,
+    "laparotomy_wound_metrics": {
+      "body_count": 10,
+      "minimum_signed_volume_m3": 5.3666666666666505e-08,
+      "points_per_body": 350,
+      "tetrahedra_per_body": 864,
+      "total_tetrahedra": 8640
+    },
     "png_count": 8,
-    "python_count": 4,
+    "python_count": 5,
     "relative_references_complete": true,
     "repository_registration_complete": true,
     "tet_metrics": {
       "bladder": {
-        "maximum_tet_volume_m3": 6.008800000000002e-07,
-        "minimum_tet_volume_m3": 5.160633025971472e-10,
+        "maximum_tet_volume_m3": 1.1185504755879116e-06,
+        "minimum_tet_volume_m3": 4.2551473429118296e-08,
         "orientation_counts": {
           "negative": 0,
-          "positive": 704
+          "positive": 751
         },
-        "tetrahedra": 704,
+        "tetrahedra": 751,
         "total_volume_m3": 0.00018238411554947527,
-        "vertices": 210
+        "vertices": 215
       },
       "gallbladder": {
         "maximum_tet_volume_m3": 1.5571139742931422e-07,
@@ -417,15 +419,15 @@
         "vertices": 214
       },
       "liver": {
-        "maximum_tet_volume_m3": 4.165666995669235e-06,
-        "minimum_tet_volume_m3": 2.6070471855831133e-09,
+        "maximum_tet_volume_m3": 5.78764064033657e-06,
+        "minimum_tet_volume_m3": 2.480302516111042e-08,
         "orientation_counts": {
           "negative": 0,
-          "positive": 1152
+          "positive": 1066
         },
-        "tetrahedra": 1152,
-        "total_volume_m3": 0.0011733980719081292,
-        "vertices": 274
+        "tetrahedra": 1066,
+        "total_volume_m3": 0.0011728335481944376,
+        "vertices": 297
       },
       "liver_tumor": {
         "maximum_tet_volume_m3": 7.718749999999999e-08,
@@ -437,6 +439,17 @@
         "tetrahedra": 596,
         "total_volume_m3": 1.4994300539620557e-05,
         "vertices": 189
+      },
+      "pancreas": {
+        "maximum_tet_volume_m3": 6.561271760041085e-08,
+        "minimum_tet_volume_m3": 6.4164366e-10,
+        "orientation_counts": {
+          "negative": 0,
+          "positive": 8390
+        },
+        "tetrahedra": 8390,
+        "total_volume_m3": 6.6096e-05,
+        "vertices": 2257
       },
       "right_kidney": {
         "maximum_tet_volume_m3": 5.214958164914017e-07,
@@ -459,128 +472,144 @@
         "tetrahedra": 786,
         "total_volume_m3": 0.0001363692175367723,
         "vertices": 214
+      },
+      "stomach": {
+        "maximum_tet_volume_m3": 2.965564028531518e-06,
+        "minimum_tet_volume_m3": 3.698993815370587e-08,
+        "orientation_counts": {
+          "negative": 0,
+          "positive": 781
+        },
+        "tetrahedra": 781,
+        "total_volume_m3": 0.0005371032572599439,
+        "vertices": 220
       }
     },
     "top_level_access_variant_complete": true,
     "usd_sources": {
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_abdominal_adhesions.usda": {
         "brace_pairs": 20,
-        "bytes": 242998,
+        "bytes": 242989,
         "flat_quaternion_count": 12
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_abdominal_wall.usda": {
         "brace_pairs": 20,
-        "bytes": 119772,
+        "bytes": 119776,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_bladder.usda": {
         "brace_pairs": 10,
-        "bytes": 439752,
+        "bytes": 440434,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_bowel_lesion.usda": {
         "brace_pairs": 9,
-        "bytes": 399843,
+        "bytes": 399834,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_colon.usda": {
         "brace_pairs": 10,
-        "bytes": 28549,
+        "bytes": 28540,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_diaphragm.usda": {
         "brace_pairs": 9,
-        "bytes": 210037,
+        "bytes": 210028,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_fascia.usda": {
         "brace_pairs": 20,
-        "bytes": 120531,
+        "bytes": 120535,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_gallbladder.usda": {
         "brace_pairs": 11,
-        "bytes": 444740,
+        "bytes": 444731,
         "flat_quaternion_count": 2
+      },
+      "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_laparotomy_wound.usda": {
+        "brace_pairs": 78,
+        "bytes": 1400386,
+        "flat_quaternion_count": 0
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_left_kidney.usda": {
         "brace_pairs": 10,
-        "bytes": 442577,
+        "bytes": 442568,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_liver.usda": {
         "brace_pairs": 11,
-        "bytes": 462204,
+        "bytes": 459458,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_liver_tumor.usda": {
         "brace_pairs": 10,
-        "bytes": 436369,
+        "bytes": 436360,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_major_vessels.usda": {
         "brace_pairs": 11,
-        "bytes": 56308,
+        "bytes": 56285,
         "flat_quaternion_count": 3
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_mesentery.usda": {
         "brace_pairs": 9,
-        "bytes": 75594,
+        "bytes": 75585,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_nerves.usda": {
         "brace_pairs": 9,
-        "bytes": 20277,
+        "bytes": 20268,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_pancreas.usda": {
-        "brace_pairs": 9,
-        "bytes": 397047,
+        "brace_pairs": 10,
+        "bytes": 899106,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_peritoneum.usda": {
         "brace_pairs": 20,
-        "bytes": 120732,
+        "bytes": 120714,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_right_kidney.usda": {
         "brace_pairs": 10,
-        "bytes": 442587,
+        "bytes": 442578,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_skin.usda": {
         "brace_pairs": 20,
-        "bytes": 119600,
+        "bytes": 119604,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_small_bowel.usda": {
         "brace_pairs": 10,
-        "bytes": 154103,
+        "bytes": 154094,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_spleen.usda": {
         "brace_pairs": 10,
-        "bytes": 441720,
+        "bytes": 441711,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_stomach.usda": {
-        "brace_pairs": 10,
-        "bytes": 25957,
+        "brace_pairs": 11,
+        "bytes": 73839,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_subcutaneous_fat.usda": {
         "brace_pairs": 20,
-        "bytes": 119736,
+        "bytes": 119740,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_ureters.usda": {
         "brace_pairs": 10,
-        "bytes": 18315,
+        "bytes": 18306,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda": {
-        "brace_pairs": 64,
-        "bytes": 14204,
+        "brace_pairs": 70,
+        "bytes": 14794,
         "flat_quaternion_count": 34
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_operating_scene.usda": {
@@ -590,45 +619,37 @@
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_rigid_proxy.usda": {
         "brace_pairs": 119,
-        "bytes": 4530455,
+        "bytes": 4530257,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/fluids/bile_particle.usda": {
         "brace_pairs": 6,
-        "bytes": 27007,
+        "bytes": 26998,
         "flat_quaternion_count": 0
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/fluids/blood_particle.usda": {
         "brace_pairs": 6,
-        "bytes": 26920,
+        "bytes": 26911,
         "flat_quaternion_count": 0
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/fluids/irrigation_particle.usda": {
         "brace_pairs": 6,
-        "bytes": 27003,
+        "bytes": 26994,
         "flat_quaternion_count": 0
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/fluids/urine_particle.usda": {
         "brace_pairs": 6,
-        "bytes": 27015,
+        "bytes": 27006,
         "flat_quaternion_count": 0
       }
     },
-    "usda_count": 30,
+    "usda_count": 31,
     "volume_cooking_sources": {
-      "abdominal_wall": {
-        "geometry_count": 1,
-        "watertight": true
-      },
       "bladder": {
         "geometry_count": 1,
         "watertight": true
       },
       "bowel_lesion": {
-        "geometry_count": 1,
-        "watertight": true
-      },
-      "fascia": {
         "geometry_count": 1,
         "watertight": true
       },
@@ -648,10 +669,6 @@
         "geometry_count": 1,
         "watertight": true
       },
-      "major_vessels": {
-        "geometry_count": 1,
-        "watertight": true
-      },
       "pancreas": {
         "geometry_count": 1,
         "watertight": true
@@ -660,19 +677,11 @@
         "geometry_count": 1,
         "watertight": true
       },
-      "skin": {
-        "geometry_count": 1,
-        "watertight": true
-      },
       "spleen": {
         "geometry_count": 1,
         "watertight": true
       },
       "stomach": {
-        "geometry_count": 1,
-        "watertight": true
-      },
-      "subcutaneous_fat": {
         "geometry_count": 1,
         "watertight": true
       }

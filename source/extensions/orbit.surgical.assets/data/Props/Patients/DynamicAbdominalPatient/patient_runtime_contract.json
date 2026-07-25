@@ -53,6 +53,7 @@
     "patient.damage",
     "patient.interventions",
     "patient.robot",
+    "patient.contacts",
     "patient.event_bus",
     "patient.fluids"
   ],
@@ -65,6 +66,7 @@
       "active_bleeding",
       "fluid_balance",
       "damage",
+      "contact_effects",
       "tissue_state",
       "intervention_history",
       "event_stream",
@@ -81,6 +83,7 @@
   "step_contract": {
     "method": "patient.step(dt_s)",
     "order": [
+      "contact_effects",
       "respiration",
       "cardiovascular",
       "bleeding",

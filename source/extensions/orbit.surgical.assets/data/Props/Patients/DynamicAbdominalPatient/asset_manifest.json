@@ -347,14 +347,14 @@
       "sha256": "7be6131a81a8941f1821495d0bb00a4859204a3fba82890caf886a058d6b05a8"
     },
     {
-      "bytes": 2674,
+      "bytes": 2740,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/mechanics_contract.json",
-      "sha256": "d6b352ea8666467016c0c0c6f4c1d7c847ef1696a7631e9c2af34035932dd5f9"
+      "sha256": "5613f2e746feedfabef3d2a9c7411fbc5dc69105377442277ae9bcb545a0eaf6"
     },
     {
-      "bytes": 2152,
+      "bytes": 2226,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/patient_runtime_contract.json",
-      "sha256": "e0ef857f6536ba087da2cb11ae7b572df169ca9d8dcbc9f7cc8824df47454349"
+      "sha256": "8de5c632b4cda85a3cf8b08528295b88c1821d63afa1c0e1022fdbbcbce7dc37"
     },
     {
       "bytes": 3786,
@@ -367,9 +367,9 @@
       "sha256": "b8b1602a6f7c9cdb06591f835d8541d96291488858a0efa18af9390dba9d5108"
     },
     {
-      "bytes": 2478,
+      "bytes": 2596,
       "path": "assets/Props/Patients/DynamicAbdominalPatient/robot_compatibility.json",
-      "sha256": "1ebe5cd503bb2f79de3b82963d30ecf078cf3cf74eaadac41c7744cb9b23aef0"
+      "sha256": "dc07a73dcb2a6c26d20d47e068c02f8ebacb36280c45ddd68f664f22e8453f12"
     },
     {
       "bytes": 433227,
@@ -457,14 +457,14 @@
       "sha256": "0767c43fcfacd0d38df71c791045176e7159cf755c39d3041ce59cb09fae5e7d"
     },
     {
-      "bytes": 2202,
+      "bytes": 2852,
       "path": "examples/end_to_end_procedure.py",
-      "sha256": "e66efa2d16685b7a45338dad9bd1719768f38cef6e01eebff43404fb47dec070"
+      "sha256": "4a1a3fc5916fb5a9672e0f3e275ecd36b6edc525aec359802cfb58db2c254fe9"
     },
     {
-      "bytes": 2329,
+      "bytes": 2549,
       "path": "physics_next/dynamic-patient/dranmar-dynamic-abdominal-patient-v1.json",
-      "sha256": "3c54cdbbbf437f7342859eee8b1db97830e04e62b0953a6420a88636baa502bf"
+      "sha256": "e0d329ecab82461bd6a904b9b6ad973885dd8ab285067ff5a7c4fd5056ce4eb4"
     },
     {
       "bytes": 212390,

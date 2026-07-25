@@ -13,7 +13,7 @@
     "organ_deformation": "PhysX or Newton volume deformable where available; surface or segmented proxy otherwise",
     "puncture": "runtime damage tract plus optional solver-specific topology backend",
     "respiratory_displacement": "organ-specific partial kinematic targets for volume deformables and transform fallback for proxies",
-    "retraction_response": "robot-to-deformable attachment cells and regional perfusion compression",
+    "retraction_response": "post-physics bilateral contact force plus tool displacement drive tissue retraction, regional compression, perfusion, and overload damage",
     "sealing": "bond regions with maturation and overload through intervention API",
     "stapling": "paired tissue attachments and retained staple bodies through intervention API",
     "suturing": "suture attachment graph integrated through intervention API",

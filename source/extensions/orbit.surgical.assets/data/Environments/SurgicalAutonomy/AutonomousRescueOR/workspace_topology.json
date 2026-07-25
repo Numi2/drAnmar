@@ -1,0 +1,156 @@
+{
+  "deadlock_policy": "release_lowest_priority_reversible_reservation",
+  "emergency_preemption": true,
+  "human_exclusion_zone_m": 0.45,
+  "minimum_robot_link_clearance_m": 0.045,
+  "minimum_tool_clearance_m": 0.025,
+  "research_only": true,
+  "schema": "dr.anmar.workspace-topology.v1",
+  "zones": [
+    {
+      "center_m": [
+        0,
+        0,
+        1.08
+      ],
+      "exclusive_for": [
+        "energy_delivery",
+        "division",
+        "anastomosis"
+      ],
+      "extent_m": [
+        0.52,
+        0.72,
+        0.24
+      ],
+      "id": "central_field",
+      "max_robots": 2
+    },
+    {
+      "center_m": [
+        0,
+        0,
+        1.13
+      ],
+      "extent_m": [
+        0.34,
+        0.44,
+        0.26
+      ],
+      "id": "emergency_field",
+      "max_robots": 3,
+      "preempts": [
+        "central_field",
+        "left_flank",
+        "right_flank"
+      ]
+    },
+    {
+      "center_m": [
+        -0.34,
+        0,
+        1.02
+      ],
+      "exclusive_for": [],
+      "extent_m": [
+        0.2,
+        0.7,
+        0.26
+      ],
+      "id": "left_flank",
+      "max_robots": 1
+    },
+    {
+      "center_m": [
+        0.34,
+        0,
+        1.02
+      ],
+      "exclusive_for": [],
+      "extent_m": [
+        0.2,
+        0.7,
+        0.26
+      ],
+      "id": "right_flank",
+      "max_robots": 1
+    },
+    {
+      "center_m": [
+        0,
+        0.2,
+        1.06
+      ],
+      "exclusive_for": [],
+      "extent_m": [
+        0.44,
+        0.3,
+        0.24
+      ],
+      "id": "upper_abdomen",
+      "max_robots": 2
+    },
+    {
+      "center_m": [
+        0,
+        -0.2,
+        1.06
+      ],
+      "exclusive_for": [],
+      "extent_m": [
+        0.44,
+        0.3,
+        0.24
+      ],
+      "id": "lower_abdomen",
+      "max_robots": 2
+    },
+    {
+      "center_m": [
+        1.15,
+        0.78,
+        1.15
+      ],
+      "exclusive_for": [
+        "tool_change"
+      ],
+      "extent_m": [
+        0.68,
+        0.68,
+        0.7
+      ],
+      "id": "tool_exchange",
+      "max_robots": 1
+    },
+    {
+      "center_m": [
+        -1.12,
+        -0.72,
+        1.0
+      ],
+      "exclusive_for": [],
+      "extent_m": [
+        0.58,
+        0.58,
+        1.45
+      ],
+      "id": "resuscitation",
+      "max_robots": 0
+    },
+    {
+      "center_m": [
+        -1.15,
+        0.74,
+        1.25
+      ],
+      "exclusive_for": [],
+      "extent_m": [
+        0.72,
+        0.4,
+        0.6
+      ],
+      "id": "monitoring",
+      "max_robots": 0
+    }
+  ]
+}

@@ -1,0 +1,657 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarSterileToolCarousel"
+    metersPerUnit = 1
+    kilogramsPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarSterileToolCarousel" (
+    prepend apiSchemas = ["PhysicsArticulationRootAPI", "SemanticsLabelsAPI:class"]
+    customData = {
+        string drAnmarAssetId = "dranmar-sterile-tool-carousel-v1"
+        int drAnmarSlotCount = 12
+        bool drAnmarClinicalValidation = false
+    }
+)
+{
+    token[] semantics:labels:class = ["sterile_tool_carousel", "surgical_tool_storage"]
+    def Scope "Looks"
+    {
+        def Material "Floor"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.14, 0.17, 0.2)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.62
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Floor/PreviewSurface.outputs:surface>
+        }
+        def Material "Table"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.31, 0.36, 0.41)
+                float inputs:metallic = 0.65
+                float inputs:roughness = 0.28
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Table/PreviewSurface.outputs:surface>
+        }
+        def Material "Mattress"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.025, 0.31, 0.55)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Mattress/PreviewSurface.outputs:surface>
+        }
+        def Material "Robot"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.82, 0.84, 0.86)
+                float inputs:metallic = 0.25
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Robot/PreviewSurface.outputs:surface>
+        }
+        def Material "Joint"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.16, 0.19, 0.23)
+                float inputs:metallic = 0.55
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Joint/PreviewSurface.outputs:surface>
+        }
+        def Material "Metal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.5, 0.55, 0.6)
+                float inputs:metallic = 0.78
+                float inputs:roughness = 0.22
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Metal/PreviewSurface.outputs:surface>
+        }
+        def Material "DarkMetal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.12, 0.15, 0.18)
+                float inputs:metallic = 0.8
+                float inputs:roughness = 0.2
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/DarkMetal/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerBlue"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.4, 0.74)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.34
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/PolymerBlue/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerGreen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.04, 0.52, 0.27)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.37
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/PolymerGreen/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerRed"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.68, 0.05, 0.04)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.37
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/PolymerRed/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerPurple"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.33, 0.13, 0.58)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.36
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/PolymerPurple/PreviewSurface.outputs:surface>
+        }
+        def Material "Warning"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.96, 0.55, 0.04)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.25
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Warning/PreviewSurface.outputs:surface>
+        }
+        def Material "Critical"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.9, 0.03, 0.025)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Critical/PreviewSurface.outputs:surface>
+        }
+        def Material "Stable"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.7, 0.3)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Stable/PreviewSurface.outputs:surface>
+        }
+        def Material "Screen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.005, 0.02, 0.03)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.1
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Screen/PreviewSurface.outputs:surface>
+        }
+        def Material "Skin"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.73, 0.46, 0.37)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Skin/PreviewSurface.outputs:surface>
+        }
+        def Material "Organ"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.43, 0.055, 0.045)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.48
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Organ/PreviewSurface.outputs:surface>
+        }
+        def Material "Bowel"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.76, 0.35, 0.3)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Bowel/PreviewSurface.outputs:surface>
+        }
+        def Material "Blood"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.52, 0.002, 0.006)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.08
+                float inputs:opacity = 0.85
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/Blood/PreviewSurface.outputs:surface>
+        }
+        def Material "SafetyZone"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.48, 0.85)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.2
+                float inputs:opacity = 0.14
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/SafetyZone/PreviewSurface.outputs:surface>
+        }
+        def Material "RescueZone"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.92, 0.04, 0.03)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.2
+                float inputs:opacity = 0.16
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/RescueZone/PreviewSurface.outputs:surface>
+        }
+        def Material "White"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.93, 0.94, 0.95)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.25
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarSterileToolCarousel/Looks/White/PreviewSurface.outputs:surface>
+        }
+    }
+    def Scope "PhysicsMaterials"
+    {
+        def Material "DefaultContact" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.48
+            float physics:dynamicFriction = 0.36
+            float physics:restitution = 0.01
+            uniform token physxMaterial:frictionCombineMode = "average"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+        def Material "ToolCouplingContact" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.72
+            float physics:dynamicFriction = 0.55
+            float physics:restitution = 0.0
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+    }
+    def Scope "Links"
+    {
+        def Xform "Base" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 18
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (0.8, 0.8, 0.4)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cylinder "BaseVisual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/DarkMetal>
+                uniform token axis = "Z"
+                double radius = 0.22
+                double height = 0.16
+                double3 xformOp:translate = (0, 0, -0.12)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "ColumnVisual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/Metal>
+                uniform token axis = "Z"
+                double radius = 0.07
+                double height = 0.7
+                double3 xformOp:translate = (0, 0, 0.22)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "BaseCollision" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/DarkMetal>
+                rel material:binding:physics = </DrAnmarSterileToolCarousel/PhysicsMaterials/DefaultContact>
+                bool physics:collisionEnabled = true
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token axis = "Z"
+                double radius = 0.22
+                double height = 0.16
+                double3 xformOp:translate = (0, 0, -0.12)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+        }
+        def Xform "Rotor" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 7.2
+            point3f physics:centerOfMass = (0, 0, 0.57)
+            float3 physics:diagonalInertia = (0.32, 0.32, 0.58)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cylinder "RotorVisual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerBlue>
+                uniform token axis = "Z"
+                double radius = 0.36
+                double height = 0.1
+                double3 xformOp:translate = (0, 0, 0.57)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "RotorCollision" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerBlue>
+                rel material:binding:physics = </DrAnmarSterileToolCarousel/PhysicsMaterials/DefaultContact>
+                bool physics:collisionEnabled = true
+                uniform token purpose = "guide"
+                token visibility = "invisible"
+                uniform token axis = "Z"
+                double radius = 0.36
+                double height = 0.1
+                double3 xformOp:translate = (0, 0, 0.57)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock00" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerBlue>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (0.3, 0, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock01" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerGreen>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (0.2598076211, 0.15, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock02" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerRed>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (0.15, 0.2598076211, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock03" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerPurple>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (1.836970199e-17, 0.3, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock04" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerBlue>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (-0.15, 0.2598076211, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock05" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerGreen>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (-0.2598076211, 0.15, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock06" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerRed>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (-0.3, 3.673940397e-17, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock07" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerPurple>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (-0.2598076211, -0.15, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock08" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerBlue>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (-0.15, -0.2598076211, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock09" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerGreen>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (-5.510910596e-17, -0.3, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock10" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerRed>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (0.15, -0.2598076211, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+            def Cylinder "Dock11" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarSterileToolCarousel/Looks/PolymerPurple>
+                uniform token axis = "Z"
+                double radius = 0.037
+                double height = 0.065
+                double3 xformOp:translate = (0.2598076211, -0.15, 0.64)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+        }
+    }
+    def Scope "Joints"
+    {
+    def PhysicsRevoluteJoint "carousel_joint" (
+        prepend apiSchemas = ["PhysicsDriveAPI:angular"]
+    )
+    {
+        rel physics:body0 = </DrAnmarSterileToolCarousel/Links/Base>
+        rel physics:body1 = </DrAnmarSterileToolCarousel/Links/Rotor>
+        uniform token physics:axis = "Z"
+        point3f physics:localPos0 = (0, 0, 0.57)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        float physics:lowerLimit = -180
+        float physics:upperLimit = 180
+        bool physics:collisionEnabled = false
+        uniform token drive:angular:physics:type = "force"
+        float drive:angular:physics:targetPosition = -180
+        float drive:angular:physics:targetVelocity = 0
+        float drive:angular:physics:stiffness = 220
+        float drive:angular:physics:damping = 18
+        float drive:angular:physics:maxForce = 90
+    }
+    }
+    def Scope "Frames"
+    {
+        def Xform "tool_slot_00"
+        {
+            double3 xformOp:translate = (0.3, 0, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_01"
+        {
+            double3 xformOp:translate = (0.2598076211, 0.15, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_02"
+        {
+            double3 xformOp:translate = (0.15, 0.2598076211, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_03"
+        {
+            double3 xformOp:translate = (1.836970199e-17, 0.3, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_04"
+        {
+            double3 xformOp:translate = (-0.15, 0.2598076211, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_05"
+        {
+            double3 xformOp:translate = (-0.2598076211, 0.15, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_06"
+        {
+            double3 xformOp:translate = (-0.3, 3.673940397e-17, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_07"
+        {
+            double3 xformOp:translate = (-0.2598076211, -0.15, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_08"
+        {
+            double3 xformOp:translate = (-0.15, -0.2598076211, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_09"
+        {
+            double3 xformOp:translate = (-5.510910596e-17, -0.3, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_10"
+        {
+            double3 xformOp:translate = (0.15, -0.2598076211, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "tool_slot_11"
+        {
+            double3 xformOp:translate = (0.2598076211, -0.15, 0.7)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+}

@@ -382,6 +382,26 @@
       "native_simulator_evidence": "non_contact_dynamic_volume_stability_recorded_on_rtx_4090_2026_07_25_contact_sensor_and_franka_matrix_not_yet_recorded",
       "real_world_evidence": "instrumented_payload_tissue_sensor_energy_and_specimen_bench_evidence_not_yet_established",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-autonomous-rescue-or-v0.4.0",
+      "asset": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_autonomous_rescue_or.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_deformable_rescue_suite.usda",
+      "payload_asset": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_universal_tool_changer_payload.usda",
+      "profile": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/physics_profile.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/interaction_frames.json",
+      "task_contract": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/benchmark_scenarios.json",
+      "runtime": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/autonomous_rescue_or.py",
+      "report": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/asset_manifest.json",
+      "live_integration": "four_station_rescue_environment_dynamic_abdominal_patient_deformable_rescue_suite_tool_exchange_and_physiological_monitor",
+      "live_behavior": "policy_intent_isolated_from_monotonic_post_physics_contact_attachment_particle_and_patient_effect_authority",
+      "deployment": "enabled_as_training_environment",
+      "product_capability": "executable_training_workcell",
+      "training_readiness": "available_for_simulation_training_data_generation_and_evaluation",
+      "software_evidence": "repository_verified_asset_runtime_effect_and_orchestration_contracts",
+      "native_simulator_evidence": "native_multiarm_and_deformable_runtime_evidence_not_yet_recorded_for_v0_4_0",
+      "real_world_evidence": "contact_flow_tissue_and_resuscitation_bench_evidence_not_yet_established",
+      "clinical_validation": false
     }
   ],
   "evidence_policy": {

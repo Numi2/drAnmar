@@ -1,0 +1,583 @@
+#usda 1.0
+(
+    defaultPrim = "DrAnmarResuscitationModule"
+    metersPerUnit = 1
+    kilogramsPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "DrAnmarResuscitationModule" (
+    prepend apiSchemas = ["PhysicsArticulationRootAPI", "SemanticsLabelsAPI:class"]
+    customData = {
+        string drAnmarAssetId = "dranmar-resuscitation-module-v1"
+        bool drAnmarClinicalValidation = false
+        string drAnmarStatus = "research_only_provisional_delivery_model"
+    }
+)
+{
+    token[] semantics:labels:class = ["resuscitation_module", "infusion_pump", "ventilation_interface"]
+    def Scope "Looks"
+    {
+        def Material "Floor"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.14, 0.17, 0.2)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.62
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Floor/PreviewSurface.outputs:surface>
+        }
+        def Material "Table"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.31, 0.36, 0.41)
+                float inputs:metallic = 0.65
+                float inputs:roughness = 0.28
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Table/PreviewSurface.outputs:surface>
+        }
+        def Material "Mattress"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.025, 0.31, 0.55)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Mattress/PreviewSurface.outputs:surface>
+        }
+        def Material "Robot"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.82, 0.84, 0.86)
+                float inputs:metallic = 0.25
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Robot/PreviewSurface.outputs:surface>
+        }
+        def Material "Joint"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.16, 0.19, 0.23)
+                float inputs:metallic = 0.55
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Joint/PreviewSurface.outputs:surface>
+        }
+        def Material "Metal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.5, 0.55, 0.6)
+                float inputs:metallic = 0.78
+                float inputs:roughness = 0.22
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Metal/PreviewSurface.outputs:surface>
+        }
+        def Material "DarkMetal"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.12, 0.15, 0.18)
+                float inputs:metallic = 0.8
+                float inputs:roughness = 0.2
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/DarkMetal/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerBlue"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.4, 0.74)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.34
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/PolymerBlue/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerGreen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.04, 0.52, 0.27)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.37
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/PolymerGreen/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerRed"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.68, 0.05, 0.04)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.37
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/PolymerRed/PreviewSurface.outputs:surface>
+        }
+        def Material "PolymerPurple"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.33, 0.13, 0.58)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.36
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/PolymerPurple/PreviewSurface.outputs:surface>
+        }
+        def Material "Warning"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.96, 0.55, 0.04)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.25
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Warning/PreviewSurface.outputs:surface>
+        }
+        def Material "Critical"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.9, 0.03, 0.025)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Critical/PreviewSurface.outputs:surface>
+        }
+        def Material "Stable"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.7, 0.3)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.24
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Stable/PreviewSurface.outputs:surface>
+        }
+        def Material "Screen"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.005, 0.02, 0.03)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.1
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Screen/PreviewSurface.outputs:surface>
+        }
+        def Material "Skin"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.73, 0.46, 0.37)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Skin/PreviewSurface.outputs:surface>
+        }
+        def Material "Organ"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.43, 0.055, 0.045)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.48
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Organ/PreviewSurface.outputs:surface>
+        }
+        def Material "Bowel"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.76, 0.35, 0.3)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.55
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Bowel/PreviewSurface.outputs:surface>
+        }
+        def Material "Blood"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.52, 0.002, 0.006)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.08
+                float inputs:opacity = 0.85
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/Blood/PreviewSurface.outputs:surface>
+        }
+        def Material "SafetyZone"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.03, 0.48, 0.85)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.2
+                float inputs:opacity = 0.14
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/SafetyZone/PreviewSurface.outputs:surface>
+        }
+        def Material "RescueZone"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.92, 0.04, 0.03)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.2
+                float inputs:opacity = 0.16
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/RescueZone/PreviewSurface.outputs:surface>
+        }
+        def Material "White"
+        {
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.93, 0.94, 0.95)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.25
+                float inputs:opacity = 1
+                token outputs:surface
+            }
+            token outputs:surface.connect = </DrAnmarResuscitationModule/Looks/White/PreviewSurface.outputs:surface>
+        }
+    }
+    def Scope "PhysicsMaterials"
+    {
+        def Material "DefaultContact" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.48
+            float physics:dynamicFriction = 0.36
+            float physics:restitution = 0.01
+            uniform token physxMaterial:frictionCombineMode = "average"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+        def Material "ToolCouplingContact" (
+            prepend apiSchemas = ["PhysicsMaterialAPI", "PhysxMaterialAPI"]
+        )
+        {
+            float physics:staticFriction = 0.72
+            float physics:dynamicFriction = 0.55
+            float physics:restitution = 0.0
+            uniform token physxMaterial:frictionCombineMode = "max"
+            uniform token physxMaterial:restitutionCombineMode = "min"
+        }
+    }
+    def Scope "Links"
+    {
+        def Xform "Rack" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 24
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (1.2, 1.1, 0.45)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cube "Base" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarResuscitationModule/Looks/DarkMetal>
+                rel material:binding:physics = </DrAnmarResuscitationModule/PhysicsMaterials/DefaultContact>
+                bool physics:collisionEnabled = true
+                double size = 1
+                double3 xformOp:translate = (0, 0, -0.62)
+                double3 xformOp:scale = (0.46, 0.42, 0.12)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+            def Cube "Column" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarResuscitationModule/Looks/Metal>
+                double size = 1
+                double3 xformOp:translate = (0, 0, 0)
+                double3 xformOp:scale = (0.16, 0.16, 1.25)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+            def Cube "PumpRack" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarResuscitationModule/Looks/DarkMetal>
+                double size = 1
+                double3 xformOp:translate = (0, 0, 0.12)
+                double3 xformOp:scale = (0.48, 0.24, 0.56)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+        def Xform "CrystalloidPlunger" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.16
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (4e-05, 4e-05, 2e-05)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cube "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarResuscitationModule/Looks/PolymerBlue>
+                double size = 1
+                double3 xformOp:translate = (0, -0.17, 0.24)
+                double3 xformOp:scale = (0.3, 0.06, 0.06)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+        def Xform "BloodPlunger" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.16
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (4e-05, 4e-05, 2e-05)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cube "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarResuscitationModule/Looks/PolymerRed>
+                double size = 1
+                double3 xformOp:translate = (0, -0.17, 0.08)
+                double3 xformOp:scale = (0.3, 0.06, 0.06)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+        def Xform "VasopressorPlunger" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.16
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (4e-05, 4e-05, 2e-05)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cube "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarResuscitationModule/Looks/Warning>
+                double size = 1
+                double3 xformOp:translate = (0, -0.17, -0.08)
+                double3 xformOp:scale = (0.3, 0.06, 0.06)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+        def Xform "VentilationValve" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            bool physics:rigidBodyEnabled = true
+            bool physics:kinematicEnabled = false
+            float physics:mass = 0.22
+            point3f physics:centerOfMass = (0, 0, 0)
+            float3 physics:diagonalInertia = (5e-05, 5e-05, 3e-05)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Cylinder "Visual" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </DrAnmarResuscitationModule/Looks/PolymerGreen>
+                uniform token axis = "Y"
+                double radius = 0.045
+                double height = 0.11
+                double3 xformOp:translate = (0, -0.2, -0.27)
+                quatf xformOp:orient = (1, 0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+            }
+        }
+    }
+    def Scope "Joints"
+    {
+    def PhysicsPrismaticJoint "crystalloidplunger_joint" (
+        prepend apiSchemas = ["PhysicsDriveAPI:linear"]
+    )
+    {
+        rel physics:body0 = </DrAnmarResuscitationModule/Links/Rack>
+        rel physics:body1 = </DrAnmarResuscitationModule/Links/CrystalloidPlunger>
+        uniform token physics:axis = "X"
+        point3f physics:localPos0 = (0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        float physics:lowerLimit = 0
+        float physics:upperLimit = 0.18
+        bool physics:collisionEnabled = false
+        uniform token drive:linear:physics:type = "force"
+        float drive:linear:physics:targetPosition = 0
+        float drive:linear:physics:targetVelocity = 0
+        float drive:linear:physics:stiffness = 2200
+        float drive:linear:physics:damping = 80
+        float drive:linear:physics:maxForce = 120
+    }
+    def PhysicsPrismaticJoint "bloodplunger_joint" (
+        prepend apiSchemas = ["PhysicsDriveAPI:linear"]
+    )
+    {
+        rel physics:body0 = </DrAnmarResuscitationModule/Links/Rack>
+        rel physics:body1 = </DrAnmarResuscitationModule/Links/BloodPlunger>
+        uniform token physics:axis = "X"
+        point3f physics:localPos0 = (0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        float physics:lowerLimit = 0
+        float physics:upperLimit = 0.18
+        bool physics:collisionEnabled = false
+        uniform token drive:linear:physics:type = "force"
+        float drive:linear:physics:targetPosition = 0
+        float drive:linear:physics:targetVelocity = 0
+        float drive:linear:physics:stiffness = 2200
+        float drive:linear:physics:damping = 80
+        float drive:linear:physics:maxForce = 120
+    }
+    def PhysicsPrismaticJoint "vasopressorplunger_joint" (
+        prepend apiSchemas = ["PhysicsDriveAPI:linear"]
+    )
+    {
+        rel physics:body0 = </DrAnmarResuscitationModule/Links/Rack>
+        rel physics:body1 = </DrAnmarResuscitationModule/Links/VasopressorPlunger>
+        uniform token physics:axis = "X"
+        point3f physics:localPos0 = (0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        float physics:lowerLimit = 0
+        float physics:upperLimit = 0.18
+        bool physics:collisionEnabled = false
+        uniform token drive:linear:physics:type = "force"
+        float drive:linear:physics:targetPosition = 0
+        float drive:linear:physics:targetVelocity = 0
+        float drive:linear:physics:stiffness = 2200
+        float drive:linear:physics:damping = 80
+        float drive:linear:physics:maxForce = 120
+    }
+    def PhysicsRevoluteJoint "ventilation_valve_joint" (
+        prepend apiSchemas = ["PhysicsDriveAPI:angular"]
+    )
+    {
+        rel physics:body0 = </DrAnmarResuscitationModule/Links/Rack>
+        rel physics:body1 = </DrAnmarResuscitationModule/Links/VentilationValve>
+        uniform token physics:axis = "Y"
+        point3f physics:localPos0 = (0, 0, 0)
+        point3f physics:localPos1 = (0, 0, 0)
+        quatf physics:localRot0 = (1, 0, 0, 0)
+        quatf physics:localRot1 = (1, 0, 0, 0)
+        float physics:lowerLimit = 0
+        float physics:upperLimit = 90
+        bool physics:collisionEnabled = false
+        uniform token drive:angular:physics:type = "force"
+        float drive:angular:physics:targetPosition = 0
+        float drive:angular:physics:targetVelocity = 0
+        float drive:angular:physics:stiffness = 120
+        float drive:angular:physics:damping = 8
+        float drive:angular:physics:maxForce = 18
+    }
+    }
+    def Scope "Frames"
+    {
+        def Xform "crystalloid_outlet"
+        {
+            double3 xformOp:translate = (-0.12, -0.22, 0.24)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "blood_outlet"
+        {
+            double3 xformOp:translate = (0, -0.22, 0.08)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "vasopressor_outlet"
+        {
+            double3 xformOp:translate = (0.12, -0.22, -0.08)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "ventilation_outlet"
+        {
+            double3 xformOp:translate = (0, -0.25, -0.27)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+        def Xform "count_reference"
+        {
+            double3 xformOp:translate = (0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+}
