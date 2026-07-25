@@ -47,7 +47,7 @@ is not refreshed in the current physics interval. It derives:
 - definitive clip control from retained attachment state and contact dwell;
 - patch sealing from distributed contact and dwell;
 - residual bleeding and conserved blood loss;
-- distal-perfusion tradeoffs and overload damage;
+- distal-perfusion tradeoffs, shared-patient MAP coupling, and overload damage;
 - repair approximation, retention and leak;
 - occlusive-film integrity from eight perimeter bonds, distributed contact,
   measured cavity pressure, leak, and a continuous pressure-hold window;

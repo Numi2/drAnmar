@@ -29,7 +29,7 @@
     },
     {
       "id": "reward_follows_change",
-      "rule": "reward is based on measured flow improvement, blood loss, perfusion loss, new damage, and a one-time verification transition; favorable-state dwell earns no reward",
+      "rule": "reward is based on measured flow improvement, blood loss, distal perfusion, shared patient MAP and oxygenation change, new damage, and one-time verification transitions; favorable-state dwell earns no reward",
       "severity": "runtime"
     },
     {

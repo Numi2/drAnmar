@@ -15,6 +15,7 @@
     "instantaneous ventilation and active repair effects expire when their scene evidence is not refreshed in the current physics interval",
     "unilateral contact cannot create bilateral compression",
     "contact outside the authored target neighborhood cannot control the defect",
+    "vessel upstream pressure is coupled to shared patient MAP and inconsistent pressure evidence is rejected",
     "clip occlusion requires a retained scene attachment",
     "patch sealing requires distributed contact points and dwell",
     "film sealing requires retained perimeter bonds distributed contact measured cavity pressure and a continuous hold window",
@@ -23,7 +24,7 @@
     "ventilation support requires an attached airway valid pressure circuit flow and measured chest excursion",
     "hemostasis success requires a continuous measured upstream-pressure challenge window and cannot be activated by action intent",
     "hemostasis success also requires preserved distal perfusion",
-    "reward is computed from patient state change rather than action identity",
+    "reward is computed from patient state change including blood loss distal perfusion MAP oxygenation and new damage rather than action identity",
     "a favorable steady state earns no repeated reward"
   ],
   "failure_modes": [
