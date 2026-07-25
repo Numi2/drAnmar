@@ -48,7 +48,7 @@ evidence, and can generate deterministic directory hashes for release locks.
 The hub, workstation, native-room resolver, installers, and capability API use
 the same provider-relative paths instead of maintaining independent root logic.
 The checked-in lock and generated [`catalog.md`](catalog.md) cover all local
-asset units and all 19 product portfolio entries; CI rejects any drift between
+asset units and all 20 product portfolio entries; CI rejects any drift between
 those release artifacts and the repository.
 
 ```bash
@@ -57,7 +57,7 @@ python3 scripts/dr_anmar_asset_registry.py inventory --hash
 python3 scripts/dr_anmar_i4h_receipt.py verify
 ```
 
-The clinician-facing capability payload is generated from all 19 entries in
+The clinician-facing capability payload is generated from all 20 entries in
 `physics_next/dr-anmar-assets.json`, including every declared profile, runtime,
 report, native-evidence, and composition artifact. Repository verification is
 not a substitute for native-simulator, real-world, biomechanical, or clinical

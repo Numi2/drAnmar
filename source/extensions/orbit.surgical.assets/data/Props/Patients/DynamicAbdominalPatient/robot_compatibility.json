@@ -53,13 +53,6 @@
       "python_module": "closure_robot"
     },
     {
-      "asset_id": "dranmar-dressing-robot-v1",
-      "capability": "dressing",
-      "optional_dependency": true,
-      "patient_adapter": "patient.robot.dressing",
-      "python_module": "dressing_robot"
-    },
-    {
       "asset_id": "dranmar-perfusion-viability-robot-v1",
       "capability": "physiology_assessment",
       "optional_dependency": true,

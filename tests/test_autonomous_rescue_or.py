@@ -20,7 +20,11 @@ def load_rescue_modules():
     package.__path__ = [str(ASSET_MODULES)]
     sys.modules[package_name] = package
     loaded = {}
-    for module_name in ("deformable_rescue", "autonomous_rescue_or"):
+    for module_name in (
+        "deformable_rescue",
+        "resuscitation_effects",
+        "autonomous_rescue_or",
+    ):
         qualified = f"{package_name}.{module_name}"
         spec = importlib.util.spec_from_file_location(
             qualified,
@@ -34,7 +38,16 @@ def load_rescue_modules():
     return loaded["deformable_rescue"], loaded["autonomous_rescue_or"]
 
 
-def frame(runtime, step, *, left=1.8, right=1.8, retained=0, target="rescue_vessel"):
+def frame(
+    runtime,
+    step,
+    *,
+    left=1.8,
+    right=1.8,
+    retained=0,
+    target="rescue_vessel",
+    upstream_pressure_mmhg=None,
+):
     deformable, _ = runtime
     return deformable.PhysicsEvidenceFrame(
         physics_step=step,
@@ -47,7 +60,9 @@ def frame(runtime, step, *, left=1.8, right=1.8, retained=0, target="rescue_vess
         right_normal_force_n=right,
         separation_m=0.0005,
         tool_speed_m_s=0.0,
+        target_distance_m=0.0,
         retained_attachment_count=retained,
+        measured_upstream_pressure_mmhg=upstream_pressure_mmhg,
     )
 
 
@@ -95,7 +110,14 @@ def test_retained_contact_effect_survives_pressure_challenge():
     )
     runtime.request_action(verify)
     for step in range(1, 41):
-        runtime.advance_scene(frame(modules, step, retained=1))
+        runtime.advance_scene(
+            frame(
+                modules,
+                step,
+                retained=1,
+                upstream_pressure_mmhg=118.0,
+            )
+        )
     vessel = runtime.effects.snapshot().vessel
     assert vessel["retained_clip_fraction"] == pytest.approx(1.0)
     assert vessel["residual_flow_ml_s"] <= 0.08
@@ -142,6 +164,7 @@ def test_repair_effect_requires_geometry_and_retention():
             right_normal_force_n=1.5,
             separation_m=0.0012,
             tool_speed_m_s=0.0,
+            target_distance_m=0.0,
             retained_attachment_count=12,
         )
     )

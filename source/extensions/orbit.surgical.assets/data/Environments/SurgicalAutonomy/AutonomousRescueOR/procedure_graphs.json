@@ -134,21 +134,6 @@
         "zones": [
           "central_field"
         ]
-      },
-      {
-        "action": "dressing",
-        "capability": "dressing_application",
-        "id": "apply_dressing",
-        "irreversible": false,
-        "parameters": {
-          "pressure_kpa": -6.0
-        },
-        "station": "assessment",
-        "target": "skin",
-        "tool": "dressing_robot",
-        "zones": [
-          "central_field"
-        ]
       }
     ],
     "laparotomy_cholecystectomy": [
@@ -264,21 +249,6 @@
         "station": "primary",
         "target": "abdomen",
         "tool": "closure_robot",
-        "zones": [
-          "central_field"
-        ]
-      },
-      {
-        "action": "dressing",
-        "capability": "dressing_application",
-        "id": "apply_dressing",
-        "irreversible": false,
-        "parameters": {
-          "pressure_kpa": -6.0
-        },
-        "station": "assessment",
-        "target": "skin",
-        "tool": "dressing_robot",
         "zones": [
           "central_field"
         ]

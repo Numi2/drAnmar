@@ -8,7 +8,7 @@
     "tool_mount_frame": "Frames/tool_mount"
   },
   "research_only": true,
-  "schema": "dr.anmar.autonomous-rescue-tool-registry.v1",
+  "schema": "dr.anmar.autonomous-rescue-tool-registry.v2",
   "tools": [
     {
       "capabilities": [
@@ -183,28 +183,6 @@
     },
     {
       "capabilities": [
-        "dressing_application",
-        "occlusive_seal",
-        "negative_pressure",
-        "exudate_collection",
-        "seal_test"
-      ],
-      "catalog_payload": "Props/SurgicalAftercare/DressingRobot/dranmar_dressing_tool_payload.usda",
-      "consumables": {
-        "canister_ml": 90.0,
-        "dressings": 3,
-        "suction_ports": 3
-      },
-      "display_name": "DrAnmar Occlusive Dressing and Negative Pressure Robot",
-      "id": "dressing_robot",
-      "integration_module": "orbit.surgical.assets.dressing_robot",
-      "preferred_station": "assessment",
-      "risk_class": "C",
-      "standalone": "Props/SurgicalAftercare/DressingRobot/dranmar_dressing_tool_standalone.usda",
-      "sterility_required": true
-    },
-    {
-      "capabilities": [
         "absorption",
         "field_clearance",
         "surgical_count",
@@ -223,5 +201,5 @@
       "sterility_required": true
     }
   ],
-  "version": "0.3.0"
+  "version": "0.4.0"
 }

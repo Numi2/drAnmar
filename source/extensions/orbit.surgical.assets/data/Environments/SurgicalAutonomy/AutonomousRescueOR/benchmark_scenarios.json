@@ -3,7 +3,7 @@
   "scenarios": [
     {
       "id": "mesenteric_arterial_hemorrhage",
-      "inject_after_action": "expose_bowel",
+      "activation": "episode_start_scene_defect",
       "kind": "arterial_hemorrhage",
       "parameters": {
         "injury_fraction": 1.0,
@@ -20,10 +20,10 @@
     },
     {
       "id": "retractor_induced_bowel_ischemia",
-      "inject_after_action": "expose_bowel",
+      "activation": "external_scene_perturbation_after_exposure",
       "kind": "retraction_ischemia",
       "parameters": {
-        "compression_fraction": 0.72,
+        "physical_perturbation": "retractor_boundary_preload",
         "region": "small_bowel"
       },
       "procedure_id": "bowel_resection_anastomosis",
@@ -34,11 +34,10 @@
     },
     {
       "id": "bowel_anastomotic_leak",
-      "inject_after_action": "anastomose",
+      "activation": "external_scene_perturbation_after_reconstruction",
       "kind": "anastomotic_leak",
       "parameters": {
-        "leak_area_mm2": 6.0,
-        "patency_fraction": 0.82,
+        "initial_gap_m": 0.006,
         "target": "bowel_anastomosis"
       },
       "procedure_id": "bowel_resection_anastomosis",
@@ -49,10 +48,10 @@
     },
     {
       "id": "bowel_anastomotic_stenosis",
-      "inject_after_action": "anastomose",
+      "activation": "external_scene_perturbation_after_reconstruction",
       "kind": "anastomotic_stenosis",
       "parameters": {
-        "patency_fraction": 0.48,
+        "initial_lumen_scale": 0.48,
         "region": "small_bowel",
         "target": "bowel_anastomosis"
       },
@@ -64,7 +63,7 @@
     },
     {
       "id": "cystic_duct_bile_leak",
-      "inject_after_action": "dissect_gallbladder",
+      "activation": "external_scene_perturbation_after_dissection",
       "kind": "bile_duct_injury",
       "parameters": {
         "injury_fraction": 0.75
@@ -77,7 +76,7 @@
     },
     {
       "id": "right_ureter_injury",
-      "inject_after_action": "mobilize_bowel",
+      "activation": "external_scene_perturbation_after_dissection",
       "kind": "ureter_injury",
       "parameters": {
         "severity": 0.7,
@@ -91,7 +90,7 @@
     },
     {
       "id": "acute_airway_obstruction",
-      "inject_after_action": "expose_liver",
+      "activation": "external_physiology_perturbation",
       "kind": "hypoxemia",
       "parameters": {
         "airway_obstruction_fraction": 0.82,
@@ -105,7 +104,7 @@
     },
     {
       "id": "safeplane_blade_jam",
-      "inject_after_action": "map_perfusion",
+      "activation": "external_tool_fault",
       "kind": "tool_fault",
       "parameters": {
         "reason": "guarded_scissor_blade_jam",
@@ -119,7 +118,7 @@
     },
     {
       "id": "sponge_count_plus_one",
-      "inject_after_action": "verify_hemostasis",
+      "activation": "external_resource_perturbation",
       "kind": "count_discrepancy",
       "parameters": {
         "delta": 1,
@@ -134,11 +133,11 @@
     },
     {
       "id": "postoperative_dressing_compression",
-      "inject_after_action": "apply_dressing",
+      "activation": "external_scene_perturbation_after_dressing",
       "kind": "dressing_compression",
       "parameters": {
-        "compression_fraction": 0.65,
-        "pressure_kpa": -18.0
+        "boundary_pressure_kpa": -18.0,
+        "physical_perturbation": "film_boundary_preload"
       },
       "procedure_id": "bowel_resection_anastomosis",
       "required_recovery": [
@@ -148,7 +147,7 @@
     },
     {
       "id": "seal_divide_overtemperature",
-      "inject_after_action": "seal_divide_left",
+      "activation": "external_tool_fault",
       "kind": "thermal_fault",
       "parameters": {
         "target": "bowel_left_margin",
@@ -164,7 +163,7 @@
     },
     {
       "id": "compound_hemorrhage_and_tool_fault",
-      "inject_after_action": "dissect_lesion_plane",
+      "activation": "external_compound_perturbation",
       "kind": "compound",
       "parameters": {
         "events": [
@@ -194,14 +193,11 @@
       ]
     }
   ],
-  "schema": "dr.anmar.autonomous-rescue-benchmark-scenarios.v1",
-  "success_policy": {
-    "all_irreversible_actions_gated": true,
-    "count_reconciled": true,
-    "evidence_trace_required": true,
-    "final_map_mmhg_min": 60.0,
-    "final_spo2_fraction_min": 0.9,
-    "procedure_completion_required": true,
-    "zero_unresolved_critical_complications": true
-  }
+  "evaluation_authority": {
+    "action_fields_may_author_outcomes": false,
+    "current_executable_scenario": "mesenteric_arterial_hemorrhage",
+    "reward_source": "contact_owned_patient_effect_delta",
+    "scenario_parameters": "environment-owned initial conditions or physical perturbations"
+  },
+  "schema": "dr.anmar.autonomous-rescue-benchmark-scenarios.v2"
 }

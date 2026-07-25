@@ -13,7 +13,7 @@
         "seal_divide_cystic_pedicle",
         "perfusion_scan",
         "closure_robot",
-        "dressing_robot"
+        "occlusive_film_scene_effect"
       ],
       "success": [
         "gallbladder_target_removed",
@@ -36,7 +36,7 @@
         "leak_test",
         "perfusion_rescan",
         "closure_robot",
-        "dressing_robot"
+        "occlusive_film_scene_effect"
       ],
       "success": [
         "lesion_removed",
@@ -56,7 +56,7 @@
         "adaptive_hemostasis_robot",
         "perfusion_scan",
         "closure_robot",
-        "dressing_robot"
+        "occlusive_film_scene_effect"
       ],
       "success": [
         "tumor_removed",

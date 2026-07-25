@@ -1,5 +1,10 @@
 {
   "research_only": true,
+  "runtime_boundary": {
+    "asset_live_articulation_count": 0,
+    "contract_role": "station_layout_and_tool_preference_metadata",
+    "live_robot_articulations": "supplied_by_host_room"
+  },
   "scheduling_priority": [
     "emergency_rescue",
     "patient_stabilization",
@@ -9,16 +14,18 @@
     "closure",
     "aftercare"
   ],
-  "schema": "dr.anmar.robot-station-contract.v1",
+  "schema": "dr.anmar.robot-station-contract.v2",
   "stations": [
     {
       "home_zone": "primary_home",
       "id": "primary",
+      "authored_layout_position_m": [-0.86, -0.64, 0.05],
+      "mount": "host_rigid_table_edge",
       "pose": {
         "position_m": [
-          -0.86,
-          -0.64,
-          0.05
+          -0.58,
+          -0.48,
+          0.82
         ],
         "yaw_deg": 38.0
       },
@@ -38,11 +45,13 @@
     {
       "home_zone": "exposure_home",
       "id": "exposure",
+      "authored_layout_position_m": [0.86, -0.64, 0.05],
+      "mount": "host_rigid_table_edge",
       "pose": {
         "position_m": [
-          0.86,
-          -0.64,
-          0.05
+          0.58,
+          -0.48,
+          0.82
         ],
         "yaw_deg": 142.0
       },
@@ -58,11 +67,13 @@
     {
       "home_zone": "rescue_home",
       "id": "rescue",
+      "authored_layout_position_m": [-0.86, 0.64, 0.05],
+      "mount": "host_rigid_table_edge",
       "pose": {
         "position_m": [
-          -0.86,
-          0.64,
-          0.05
+          -0.58,
+          0.48,
+          0.82
         ],
         "yaw_deg": -38.0
       },
@@ -81,17 +92,19 @@
     {
       "home_zone": "assessment_home",
       "id": "assessment",
+      "authored_layout_position_m": [0.86, 0.64, 0.05],
+      "mount": "host_rigid_table_edge",
       "pose": {
         "position_m": [
-          0.86,
-          0.64,
-          0.05
+          0.58,
+          0.48,
+          0.82
         ],
         "yaw_deg": -142.0
       },
       "preferred_tools": [
         "perfusion_viability",
-        "dressing_robot"
+        "closure_robot"
       ],
       "responsibilities": [
         "perfusion_assessment",

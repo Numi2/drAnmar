@@ -303,9 +303,9 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
         "anatomy_scene": "",
         "anatomy_focus": "Dr.Anmar deformable hemorrhage rescue vessel",
         "robot": "Dual dVRK PSM physical rescue station",
-        "instrument": "PSM graspers; Dr.Anmar hemostasis tools are optional payloads",
+        "instrument": "Dual PSM graspers",
         "objective": "Control a hemorrhage substrate through real bilateral jaw contact while preserving distal perfusion and avoiding force-induced vessel damage.",
-        "interaction": "The procedure controller may choose a rescue intent, but only post-PhysX filtered jaw contact, measured jaw separation, tool motion, retained attachments, and observed leakage can change bleeding, perfusion, damage, or verification state.",
+        "interaction": "The procedure controller chooses motion, but only post-PhysX filtered jaw contact, measured jaw separation, jaw-center distance to the authored compression frame, and tool motion change bleeding, shared patient volume, perfusion, damage, or reward in this room.",
         "guide_kind": "autonomous_rescue_or",
         "nvidia_native_bench": True,
         "autonomous_rescue_or": True,
@@ -327,6 +327,8 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             "deformable_rescue.py",
             "source/extensions/orbit.surgical.assets/orbit/surgical/assets/"
             "autonomous_rescue_or.py",
+            "source/extensions/orbit.surgical.assets/orbit/surgical/assets/"
+            "dynamic_abdominal_patient.py",
         ),
         "bench_core_assets": (
             {"id": "dual_psm", "title": "Dual dVRK PSMs"},
@@ -351,8 +353,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             step("inspect", "Locate the bleeding source", "Observe the anchored deformable vessel and the contact-owned residual-flow state.", "bleeding source observed"),
             step("compress", "Establish bilateral compression", "Bring both physical jaw pads onto the vessel with balanced, stable contact; a command alone has no effect.", "contact-derived flow reduction"),
             step("protect", "Preserve the vessel", "Reduce residual flow without force asymmetry, overload damage, or excessive distal occlusion.", "damage and distal perfusion observed"),
-            step("release", "Check for retained control", "Release transient compression and observe whether a physical retained clip or patch continues to control flow.", "release response observed"),
-            step("challenge", "Verify under pressure", "Run the pressure challenge and hold the physically repaired vessel below residual-flow limits while distal perfusion remains present.", "contact-derived verification transition"),
+            step("release", "Confirm reversibility", "Release the vessel and observe transient control decay and rebleeding; this room does not invent a retained repair.", "release response observed"),
         ],
         "success_metrics": [
             "post-physics bilateral contact force",
@@ -362,7 +363,7 @@ ADVANCED_PROCEDURE_ROOMS: tuple[dict[str, Any], ...] = (
             "distal perfusion",
             "overload damage",
             "release response",
-            "pressure-challenge response",
+            "shared blood volume and vital signs",
         ],
     },
     {

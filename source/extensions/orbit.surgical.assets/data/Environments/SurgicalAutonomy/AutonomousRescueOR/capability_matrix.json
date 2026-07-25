@@ -134,22 +134,6 @@
     },
     {
       "capabilities": [
-        "dressing_application",
-        "occlusive_seal",
-        "negative_pressure",
-        "exudate_collection",
-        "seal_test"
-      ],
-      "catalog_payload": "Props/SurgicalAftercare/DressingRobot/dranmar_dressing_tool_payload.usda",
-      "cold_swap_supported": true,
-      "hot_swap_requires_separate_articulation": true,
-      "preferred_station": "assessment",
-      "risk_class": "C",
-      "runtime_module": "orbit.surgical.assets.dressing_robot",
-      "tool_id": "dressing_robot"
-    },
-    {
-      "capabilities": [
         "absorption",
         "field_clearance",
         "surgical_count",
@@ -183,5 +167,5 @@
     "patient.interventions"
   ],
   "station_layout_count": 4,
-  "tool_count": 10
+  "tool_count": 9
 }

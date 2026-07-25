@@ -11,7 +11,7 @@ reward.
 - a native DrAnmar room using NVIDIA i4h dual dVRK PSM articulations;
 - an endpoint-anchored Omni Physics volume-deformable rescue vessel;
 - jaw-to-vessel contact filtering from the live PhysX scene;
-- bilateral force, jaw-separation, and tool-speed measurements;
+- bilateral force, jaw-separation, tool-speed, and target-distance measurements;
 - reversible compression, force-asymmetry, overload damage, residual-flow,
   blood-loss, and distal-perfusion effects;
 - complication detection and rescue-plan selection that cannot author an
@@ -21,7 +21,9 @@ reward.
 
 The large OR USD contains four authored station and tool-change layout frames.
 Those are composition metadata, not four live Franka articulations. A host may
-populate them with compatible robots later. The current DrAnmar workstation
+populate them with compatible robots. The optional
+`autonomous_rescue_scene_cfg()` composition does populate those frames with
+four Franka/tool articulations; the current DrAnmar workstation room instead
 uses the real dual-PSM task it actually instantiates.
 
 The procedure, protocol, benchmark, resource, and tool JSON files describe
@@ -35,22 +37,36 @@ Policies request interventions but cannot write bleeding, occlusion, seal,
 perfusion, leak, closure, or success values. The environment submits monotonic
 post-physics observations containing bilateral contact forces, tool speed,
 measured separation, retained attachments, patch contact points, and leaked
-particle counts. The DrAnmar runtime derives:
+particle counts. Hemostasis verification additionally requires measured
+upstream pressure; requesting a challenge cannot synthesize one. The DrAnmar
+runtime derives:
 
-- temporary vessel compression from bilateral contact, symmetry, gap and speed;
+- temporary vessel compression from bilateral contact, symmetry, gap, speed,
+  and proximity to the authored defect-control frame;
 - definitive clip control from retained attachment state and contact dwell;
 - patch sealing from distributed contact and dwell;
 - residual bleeding and conserved blood loss;
 - distal-perfusion tradeoffs and overload damage;
 - repair approximation, retention and leak;
+- occlusive-film integrity from eight perimeter bonds, distributed contact,
+  measured cavity pressure, leak, and a continuous pressure-hold window;
+- crystalloid, blood-product, and vasopressor delivery from mutually
+  consistent plunger travel, outlet flow, reservoir mass loss, vascular-line
+  attachment, and line pressure;
+- ventilation support from airway attachment, valve travel, net circuit flow,
+  airway pressure, measured oxygen fraction, and observed chest excursion;
+- oxygenation support from airway attachment, valve position, circuit flow and
+  leak, airway pressure, delivered oxygen fraction, and measured chest motion;
 - complication detection, rescue priority and patient-state reward;
-- hemostasis only after a fresh pressure-challenge evidence window.
+- hemostasis only after a continuous measured pressure-challenge evidence
+  window.
 
 Runtime modules:
 
 ```text
 orbit.surgical.assets.autonomous_rescue_or
 orbit.surgical.assets.deformable_rescue
+orbit.surgical.assets.resuscitation_effects
 ```
 
 ## Catalog path

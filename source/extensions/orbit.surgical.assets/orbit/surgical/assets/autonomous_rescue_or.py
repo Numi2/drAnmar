@@ -28,6 +28,13 @@ from .deformable_rescue import (
     RescueEffectsSnapshot,
     SceneEvidenceAdapter,
 )
+from .resuscitation_effects import (
+    ContactDrivenResuscitationEffects,
+    PumpEvidenceAdapter,
+    PumpEvidenceFrame,
+    ResuscitationSnapshot,
+    VentilationEvidenceFrame,
+)
 
 
 ASSET_DIRECTORY: Final = (
@@ -41,6 +48,9 @@ DEFORMABLE_RESCUE_SUITE_USD: Final = (
     ASSET_DIRECTORY / "dranmar_deformable_rescue_suite.usda"
 )
 RESCUE_VESSEL_USD: Final = ASSET_DIRECTORY / "dranmar_rescue_vessel.usda"
+RESUSCITATION_MODULE_USD: Final = (
+    ASSET_DIRECTORY / "dranmar_resuscitation_module.usda"
+)
 TOOL_CHANGER_PAYLOAD_USD: Final = (
     ASSET_DIRECTORY / "dranmar_universal_tool_changer_payload.usda"
 )
@@ -207,12 +217,18 @@ class ComplicationDetector:
         snapshot: RescueEffectsSnapshot,
         *,
         baseline_blood_volume_ml: float,
+        effective_resuscitation_gain_ml: float = 0.0,
+        spo2_fraction: float | None = None,
     ) -> tuple[ComplicationObservation, ...]:
         vessel = snapshot.vessel
         observations: list[ComplicationObservation] = []
         residual_flow = float(vessel["residual_flow_ml_s"])
         blood_fraction = (
-            float(vessel["blood_volume_ml"]) / baseline_blood_volume_ml
+            (
+                float(vessel["blood_volume_ml"])
+                + max(0.0, float(effective_resuscitation_gain_ml))
+            )
+            / baseline_blood_volume_ml
         )
         distal_perfusion = float(vessel["distal_perfusion_fraction"])
         if residual_flow >= 2.0 and "catastrophic_hemorrhage" in self._definitions:
@@ -232,6 +248,18 @@ class ComplicationDetector:
                     "hypovolemic_shock",
                     "patient",
                     (f"conserved_blood_volume_fraction={blood_fraction:.6f}",),
+                )
+            )
+        if (
+            spo2_fraction is not None
+            and float(spo2_fraction) < 0.90
+            and "hypoxemia" in self._definitions
+        ):
+            observations.append(
+                self._observation(
+                    "hypoxemia",
+                    "patient",
+                    (f"patient_spo2_fraction={float(spo2_fraction):.6f}",),
                 )
             )
         if distal_perfusion < 0.45 and "regional_ischemia" in self._definitions:
@@ -275,6 +303,42 @@ class ComplicationDetector:
                         ),
                     )
                 )
+            if target_id == "occlusive_film" and int(
+                repair["last_physics_step"]
+            ) >= 0:
+                retention = float(repair["retention_fraction"])
+                coverage = float(repair["contact_coverage_fraction"])
+                pressure_kpa = float(repair["measured_pressure_kpa"])
+                seal_quality = float(repair["seal_quality"])
+                if (
+                    retention > 0.05
+                    and (coverage < 0.75 or seal_quality < 0.60)
+                    and "dressing_delamination" in self._definitions
+                ):
+                    observations.append(
+                        self._observation(
+                            "dressing_delamination",
+                            target_id,
+                            (
+                                f"scene_retention_fraction={retention:.6f}",
+                                f"scene_contact_coverage_fraction={coverage:.6f}",
+                                f"scene_seal_quality={seal_quality:.6f}",
+                            ),
+                        )
+                    )
+                if (
+                    pressure_kpa < -9.0
+                    and "dressing_compression_ischemia" in self._definitions
+                ):
+                    observations.append(
+                        self._observation(
+                            "dressing_compression_ischemia",
+                            target_id,
+                            (
+                                f"scene_cavity_pressure_kpa={pressure_kpa:.6f}",
+                            ),
+                        )
+                    )
         return tuple(
             sorted(
                 observations,
@@ -327,13 +391,40 @@ class DynamicPatientRescueBridge:
         patient: object,
         *,
         perfusion_region: str = "small_bowel",
+        ventilation_target_chest_excursion_m: float = 0.02,
     ) -> None:
         self.patient = patient
         self.perfusion_region = perfusion_region
+        self.ventilation_target_chest_excursion_m = float(
+            ventilation_target_chest_excursion_m
+        )
+        if self.ventilation_target_chest_excursion_m <= 0.0:
+            raise ValueError(
+                "ventilation_target_chest_excursion_m must be positive"
+            )
         self._projected_blood_loss_ml = 0.0
+        self._projected_crystalloid_ml = 0.0
+        self._projected_blood_product_ml = 0.0
+        respiration = getattr(patient, "respiration", None)
+        self._baseline_tidal_volume_ml = float(
+            getattr(respiration, "tidal_volume_ml", 500.0)
+        )
+        self._baseline_fio2_fraction = float(
+            getattr(respiration, "inspired_oxygen_fraction", 0.21)
+        )
+        self._projected_airway_pressure_damage = 0.0
 
     def reset(self) -> None:
         self._projected_blood_loss_ml = 0.0
+        self._projected_crystalloid_ml = 0.0
+        self._projected_blood_product_ml = 0.0
+        self._projected_airway_pressure_damage = 0.0
+        respiration = getattr(self.patient, "respiration", None)
+        if respiration is not None:
+            respiration.tidal_volume_ml = self._baseline_tidal_volume_ml
+            respiration.inspired_oxygen_fraction = (
+                self._baseline_fio2_fraction
+            )
 
     def apply(self, snapshot: RescueEffectsSnapshot) -> None:
         vessel = snapshot.vessel
@@ -368,17 +459,145 @@ class DynamicPatientRescueBridge:
                 "perfusion_restoration": distal,
             }
         tissue_state = getattr(self.patient, "tissue_state", None)
-        if tissue_state is not None and hasattr(tissue_state, "staple"):
+        if tissue_state is not None and hasattr(tissue_state, "get"):
             wall = snapshot.repairs["abdominal_wall"]
-            tissue_state.staple(
-                "abdominal_wall",
+            wall_state = tissue_state.get("abdominal_wall")
+            retained_closure = min(
+                float(wall["approximation_fraction"]),
                 float(wall["retention_fraction"]),
             )
-        if hasattr(self.patient, "vital_signs") and hasattr(
-            self.patient.vital_signs,
-            "update",
+            wall_state.closure_fraction = retained_closure
+            wall_state.staples = round(14 * retained_closure)
+        film = snapshot.repairs["occlusive_film"]
+        if (
+            int(film["last_physics_step"]) >= 0
+            and hasattr(self.patient, "dressing_state")
         ):
-            self.patient.vital_signs.update(self.patient)
+            self.patient.dressing_state = {
+                "target": "skin",
+                "pressure_kpa": float(film["measured_pressure_kpa"]),
+                "seal_fraction": float(film["seal_quality"]),
+                "seal_verified": bool(film["seal_verified"]),
+                "applied": float(film["retention_fraction"]) > 0.0,
+                "source": "autonomous_rescue_contact_effects",
+            }
+            if perfusion is not None and hasattr(
+                perfusion,
+                "set_compression",
+            ):
+                compression = max(
+                    0.0,
+                    min(
+                        1.0,
+                        abs(
+                            min(
+                                0.0,
+                                float(film["measured_pressure_kpa"]),
+                            )
+                        )
+                        / 40.0,
+                    ),
+                )
+                perfusion.set_compression("skin", compression)
+
+    def apply_resuscitation(
+        self,
+        snapshot: ResuscitationSnapshot,
+    ) -> None:
+        """Project only scene-supported circulation and ventilation effects."""
+
+        fluid_balance = getattr(self.patient, "fluid_balance", None)
+        if fluid_balance is None:
+            raise TypeError("dynamic patient must expose fluid_balance")
+        crystalloid_ml = float(
+            snapshot.channels["crystalloid"]["delivered_to_patient_ml"]
+        )
+        blood_product_ml = float(
+            snapshot.channels["blood_product"]["delivered_to_patient_ml"]
+        )
+        crystalloid_delta = max(
+            0.0,
+            crystalloid_ml - self._projected_crystalloid_ml,
+        )
+        blood_delta = max(
+            0.0,
+            blood_product_ml - self._projected_blood_product_ml,
+        )
+        if crystalloid_delta:
+            if not hasattr(fluid_balance, "infuse_crystalloid"):
+                raise TypeError(
+                    "dynamic patient fluid_balance must expose "
+                    "infuse_crystalloid"
+                )
+            fluid_balance.infuse_crystalloid(crystalloid_delta)
+            self._projected_crystalloid_ml = crystalloid_ml
+        if blood_delta:
+            if not hasattr(fluid_balance, "transfuse_blood"):
+                raise TypeError(
+                    "dynamic patient fluid_balance must expose transfuse_blood"
+                )
+            fluid_balance.transfuse_blood(blood_delta)
+            self._projected_blood_product_ml = blood_product_ml
+
+        ventilation = snapshot.ventilation
+        if int(ventilation["last_physics_step"]) >= 0:
+            respiration = getattr(self.patient, "respiration", None)
+            if respiration is None:
+                raise TypeError("dynamic patient must expose respiration")
+            connected = bool(ventilation["airway_connected"])
+            effective_l_min = float(
+                ventilation["effective_minute_ventilation_l_min"]
+            )
+            respiratory_rate = max(
+                1.0,
+                float(getattr(respiration, "respiratory_rate_bpm", 14.0)),
+            )
+            flow_supported_tidal_ml = (
+                effective_l_min * 1000.0 / respiratory_rate
+            )
+            chest_supported_tidal_ml = (
+                self._baseline_tidal_volume_ml
+                * min(
+                    2.0,
+                    float(ventilation["chest_excursion_m"])
+                    / self.ventilation_target_chest_excursion_m,
+                )
+            )
+            delivered_tidal_ml = min(
+                flow_supported_tidal_ml,
+                chest_supported_tidal_ml,
+            )
+            respiration.tidal_volume_ml = (
+                delivered_tidal_ml
+                if connected
+                else self._baseline_tidal_volume_ml
+            )
+            respiration.inspired_oxygen_fraction = (
+                float(ventilation["delivered_fio2_fraction"])
+                if connected
+                else self._baseline_fio2_fraction
+            )
+            pressure_damage = float(
+                ventilation["pressure_damage_fraction"]
+            )
+            pressure_damage_delta = max(
+                0.0,
+                pressure_damage - self._projected_airway_pressure_damage,
+            )
+            if pressure_damage_delta:
+                respiration.airway_obstruction_fraction = min(
+                    0.95,
+                    float(respiration.airway_obstruction_fraction)
+                    + pressure_damage_delta,
+                )
+                self._projected_airway_pressure_damage = pressure_damage
+
+    def advance_physiology(self, dt_s: float) -> None:
+        """Advance the shared patient exactly once for one physics interval."""
+
+        if not hasattr(self.patient, "step"):
+            raise TypeError("dynamic patient must expose step(dt_s)")
+        self.patient.step(dt_s)
 
 
 class AutonomousRescueORRuntime:
@@ -416,8 +635,16 @@ class AutonomousRescueORRuntime:
     ) -> None:
         self.effects = ContactDrivenRescueEffects(seed=seed)
         self._scene_adapter = self.effects.create_scene_adapter()
+        self.resuscitation = ContactDrivenResuscitationEffects()
+        self._pump_adapter = self.resuscitation.create_scene_adapter()
         self.patient_bridge = (
-            DynamicPatientRescueBridge(dynamic_patient)
+            DynamicPatientRescueBridge(
+                dynamic_patient,
+                ventilation_target_chest_excursion_m=(
+                    self.resuscitation.calibration
+                    .ventilation_target_chest_excursion_m
+                ),
+            )
             if dynamic_patient is not None
             else None
         )
@@ -430,10 +657,16 @@ class AutonomousRescueORRuntime:
         self._previous_blood_loss_ml = 0.0
         self._previous_perfusion_fraction = 1.0
         self._previous_overload_damage_fraction = 0.0
+        self._previous_spo2_fraction = (
+            self._patient_spo2_fraction() or 0.985
+        )
+        self._previous_airway_pressure_damage_fraction = 0.0
         self._hemostasis_rewarded = False
+        self._film_seal_rewarded = False
         self._latest_complications: tuple[ComplicationObservation, ...] = ()
         self._latest_plan: RescuePlan | None = None
         self._last_reward = 0.0
+        self._last_resuscitation_reward = 0.0
 
     @property
     def scene_adapter(self) -> SceneEvidenceAdapter:
@@ -441,8 +674,22 @@ class AutonomousRescueORRuntime:
 
         return self._scene_adapter
 
+    @property
+    def pump_adapter(self) -> PumpEvidenceAdapter:
+        """Environment-only ingress for live pump and vascular-line evidence."""
+
+        return self._pump_adapter
+
+    def _patient_spo2_fraction(self) -> float | None:
+        if self.patient_bridge is None:
+            return None
+        vital_signs = getattr(self.patient_bridge.patient, "vital_signs", None)
+        value = getattr(vital_signs, "spo2_fraction", None)
+        return None if value is None else float(value)
+
     def reset(self, *, seed: int | None = None) -> Mapping[str, object]:
         self.effects.reset(seed=seed)
+        self.resuscitation.reset()
         if self.patient_bridge is not None:
             self.patient_bridge.reset()
         self.resources = ResourceLedger.from_contract()
@@ -452,10 +699,16 @@ class AutonomousRescueORRuntime:
         self._previous_blood_loss_ml = 0.0
         self._previous_perfusion_fraction = 1.0
         self._previous_overload_damage_fraction = 0.0
+        self._previous_spo2_fraction = (
+            self._patient_spo2_fraction() or 0.985
+        )
+        self._previous_airway_pressure_damage_fraction = 0.0
         self._hemostasis_rewarded = False
+        self._film_seal_rewarded = False
         self._latest_complications = ()
         self._latest_plan = None
         self._last_reward = 0.0
+        self._last_resuscitation_reward = 0.0
         return self.policy_observation()
 
     def request_action(
@@ -493,6 +746,11 @@ class AutonomousRescueORRuntime:
             "load_test",
             "bond_perimeter",
             "leak_test",
+            "transfuse",
+            "crystalloid",
+            "vasopressor",
+            "set_fio2",
+            "restore_ventilation",
         }
         if action.requested_action not in allowed:
             record = self._record(
@@ -501,8 +759,6 @@ class AutonomousRescueORRuntime:
                 "unsupported_policy_intent",
             )
             return record
-        if action.requested_action in {"pressure_challenge", "flow_verify"}:
-            self.effects.start_pressure_challenge()
         record = self._record(
             action,
             ActionStatus.REQUESTED,
@@ -530,18 +786,42 @@ class AutonomousRescueORRuntime:
     def advance_scene(
         self,
         frame: PhysicsEvidenceFrame,
+        *,
+        companion_frames: Sequence[PhysicsEvidenceFrame] = (),
     ) -> Mapping[str, object]:
-        """Advance outcomes from one authoritative post-physics frame."""
+        """Advance outcomes once from a complete post-physics scene interval."""
 
         previous = self.effects.snapshot()
+        previous_spo2 = self._patient_spo2_fraction()
         current = self._scene_adapter.publish(frame)
+        for companion in companion_frames:
+            if (
+                companion.physics_step != frame.physics_step
+                or companion.simulation_time_s != frame.simulation_time_s
+                or companion.dt_s != frame.dt_s
+            ):
+                raise ValueError(
+                    "companion scene evidence must share the primary "
+                    "physics interval"
+                )
+            current = self._scene_adapter.publish(companion)
         if self.patient_bridge is not None:
             self.patient_bridge.apply(current)
+            self.patient_bridge.apply_resuscitation(
+                self.resuscitation.snapshot()
+            )
+            self.patient_bridge.advance_physiology(frame.dt_s)
+        current_spo2 = self._patient_spo2_fraction()
         self._latest_complications = self.detector.detect(
             current,
             baseline_blood_volume_ml=(
                 self.effects.calibration.baseline_blood_volume_ml
             ),
+            effective_resuscitation_gain_ml=(
+                self.resuscitation.snapshot()
+                .effective_circulating_volume_gain_ml
+            ),
+            spo2_fraction=current_spo2,
         )
         self._latest_plan = self.planner.plan(self._latest_complications)
         previous_flow = float(previous.vessel["residual_flow_ml_s"])
@@ -552,9 +832,49 @@ class AutonomousRescueORRuntime:
         verified = bool(current.vessel["hemostasis_verified"])
         overload = float(current.vessel["overload_damage_fraction"])
         newly_verified = verified and not self._hemostasis_rewarded
+        previous_film = previous.repairs["occlusive_film"]
+        current_film = current.repairs["occlusive_film"]
+        film_leak = float(current_film["leak_rate_ml_s"])
+        film_quality = float(current_film["seal_quality"])
+        film_verified = bool(current_film["seal_verified"])
+        newly_film_verified = (
+            film_verified and not self._film_seal_rewarded
+        )
+        current_spo2 = self._patient_spo2_fraction()
+        oxygenation_delta = (
+            current_spo2 - self._previous_spo2_fraction
+            if current_spo2 is not None
+            else 0.0
+        )
+        airway_pressure_damage = float(
+            self.resuscitation.snapshot().ventilation[
+                "pressure_damage_fraction"
+            ]
+        )
+        airway_pressure_damage_delta = max(
+            0.0,
+            airway_pressure_damage
+            - self._previous_airway_pressure_damage_fraction,
+        )
+        film_was_observed = int(previous_film["last_physics_step"]) >= 0
+        film_leak_improvement = (
+            float(previous_film["leak_rate_ml_s"]) - film_leak
+            if film_was_observed
+            else 0.0
+        )
+        film_quality_improvement = (
+            film_quality - float(previous_film["seal_quality"])
+            if film_was_observed
+            else 0.0
+        )
         flow_improvement = (
             previous_flow - current_flow
             if previous.physics_step >= 0
+            else 0.0
+        )
+        oxygenation_improvement = (
+            current_spo2 - previous_spo2
+            if current_spo2 is not None and previous_spo2 is not None
             else 0.0
         )
         self._last_reward = (
@@ -567,12 +887,122 @@ class AutonomousRescueORRuntime:
                 overload - self._previous_overload_damage_fraction,
             )
             + (8.0 if newly_verified else 0.0)
+            + 1.5 * film_leak_improvement
+            + 2.0 * film_quality_improvement
+            + (6.0 if newly_film_verified else 0.0)
+            + 20.0 * oxygenation_delta
+            - 6.0 * airway_pressure_damage_delta
+            + 10.0 * oxygenation_improvement
         )
         self._hemostasis_rewarded = self._hemostasis_rewarded or verified
+        self._film_seal_rewarded = (
+            self._film_seal_rewarded or film_verified
+        )
         self._previous_flow_ml_s = current_flow
         self._previous_blood_loss_ml = current_loss
         self._previous_perfusion_fraction = perfusion
         self._previous_overload_damage_fraction = overload
+        if current_spo2 is not None:
+            self._previous_spo2_fraction = current_spo2
+        self._previous_airway_pressure_damage_fraction = (
+            airway_pressure_damage
+        )
+        return self.policy_observation()
+
+    def advance_resuscitation(
+        self,
+        frame: PumpEvidenceFrame,
+    ) -> Mapping[str, object]:
+        """Advance volume support from conserved post-physics pump evidence."""
+
+        previous = self.resuscitation.snapshot()
+        current = self._pump_adapter.publish(frame)
+
+        resource_id = {
+            "crystalloid": "crystalloid_ml",
+            "blood_product": "blood_products_ml",
+            "vasopressor": "vasopressor_syringes",
+        }[frame.channel_id]
+        previous_withdrawn = float(
+            previous.channels[frame.channel_id][
+                "withdrawn_from_reservoir_ml"
+            ]
+        )
+        current_withdrawn = float(
+            current.channels[frame.channel_id][
+                "withdrawn_from_reservoir_ml"
+            ]
+        )
+        withdrawn_delta = max(0.0, current_withdrawn - previous_withdrawn)
+        resource_amount = withdrawn_delta
+        if frame.channel_id == "vasopressor":
+            resource_amount /= (
+                self.resuscitation.calibration
+                .vasopressor_volume_per_stroke_ml
+            )
+        if resource_amount:
+            self.resources.consume(resource_id, resource_amount)
+
+        rescue_snapshot = self.effects.snapshot()
+        self._latest_complications = self.detector.detect(
+            rescue_snapshot,
+            baseline_blood_volume_ml=(
+                self.effects.calibration.baseline_blood_volume_ml
+            ),
+            effective_resuscitation_gain_ml=(
+                current.effective_circulating_volume_gain_ml
+            ),
+            spo2_fraction=self._patient_spo2_fraction(),
+        )
+        self._latest_plan = self.planner.plan(self._latest_complications)
+
+        gain_delta = max(
+            0.0,
+            current.effective_circulating_volume_gain_ml
+            - previous.effective_circulating_volume_gain_ml,
+        )
+        deficit_before = max(
+            0.0,
+            self.effects.calibration.baseline_blood_volume_ml
+            - float(rescue_snapshot.vessel["blood_volume_ml"])
+            - previous.effective_circulating_volume_gain_ml,
+        )
+        useful_gain = min(gain_delta, deficit_before)
+        previous_channel = previous.channels[frame.channel_id]
+        current_channel = current.channels[frame.channel_id]
+        waste_delta = max(
+            0.0,
+            float(current_channel["wasted_or_extravasated_ml"])
+            - float(previous_channel["wasted_or_extravasated_ml"]),
+        )
+        pressure_damage_delta = max(
+            0.0,
+            float(current_channel["pressure_damage_fraction"])
+            - float(previous_channel["pressure_damage_fraction"]),
+        )
+        self._last_resuscitation_reward = (
+            0.01 * useful_gain
+            - 0.02 * waste_delta
+            - 10.0 * pressure_damage_delta
+        )
+        self._last_reward = self._last_resuscitation_reward
+        return self.policy_observation()
+
+    def advance_ventilation(
+        self,
+        frame: VentilationEvidenceFrame,
+    ) -> Mapping[str, object]:
+        """Advance airway support from connected circuit and chest evidence."""
+
+        previous = self.resuscitation.snapshot()
+        current = self._pump_adapter.publish_ventilation(frame)
+        damage_delta = max(
+            0.0,
+            float(current.ventilation["pressure_damage_fraction"])
+            - float(previous.ventilation["pressure_damage_fraction"]),
+        )
+        self._last_resuscitation_reward = -10.0 * damage_delta
+        self._last_reward = self._last_resuscitation_reward
         return self.policy_observation()
 
     def policy_observation(self) -> Mapping[str, object]:
@@ -600,10 +1030,15 @@ class AutonomousRescueORRuntime:
         return MappingProxyType(
             {
                 "patient": patient,
+                "resuscitation": self.resuscitation.snapshot().channels,
+                "ventilation": self.resuscitation.snapshot().ventilation,
                 "active_complications": active,
                 "rescue_plan": plan,
                 "resources": self.resources.snapshot(),
                 "last_reward": self._last_reward,
+                "last_resuscitation_reward": (
+                    self._last_resuscitation_reward
+                ),
                 "action_count": len(self._actions),
             }
         )
@@ -823,6 +1258,61 @@ def rescue_vessel_cfg(
     )
 
 
+def resuscitation_module_cfg(
+    prim_path: str = "{ENV_REGEX_NS}/ResuscitationModule",
+    *,
+    position: tuple[float, float, float] = (-0.75, 0.0, 0.0),
+):
+    """Return the articulated plunger/ventilation module for a live scene."""
+
+    try:
+        import isaaclab.sim as sim_utils
+        from isaaclab.actuators import ImplicitActuatorCfg
+        from isaaclab.assets import ArticulationCfg
+    except (ImportError, ModuleNotFoundError) as error:
+        raise RuntimeError(
+            "Isaac Lab is required to create the resuscitation module"
+        ) from error
+    return ArticulationCfg(
+        prim_path=prim_path,
+        spawn=sim_utils.UsdFileCfg(
+            usd_path=str(RESUSCITATION_MODULE_USD),
+            activate_contact_sensors=True,
+            articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+                fix_root_link=True,
+                enabled_self_collisions=False,
+                solver_position_iteration_count=12,
+                solver_velocity_iteration_count=4,
+            ),
+        ),
+        init_state=ArticulationCfg.InitialStateCfg(
+            pos=tuple(float(value) for value in position),
+            rot=(1.0, 0.0, 0.0, 0.0),
+            joint_pos={
+                ".*plunger_joint": 0.0,
+                "ventilation_valve_joint": 0.0,
+            },
+            joint_vel={".*": 0.0},
+        ),
+        actuators={
+            "fluid_pumps": ImplicitActuatorCfg(
+                joint_names_expr=[".*plunger_joint"],
+                effort_limit_sim=120.0,
+                velocity_limit_sim=0.06,
+                stiffness=2200.0,
+                damping=80.0,
+            ),
+            "ventilation": ImplicitActuatorCfg(
+                joint_names_expr=["ventilation_valve_joint"],
+                effort_limit_sim=18.0,
+                velocity_limit_sim=1.5,
+                stiffness=120.0,
+                damping=8.0,
+            ),
+        },
+    )
+
+
 __all__ = [
     "ASSET_DIRECTORY",
     "AUTONOMOUS_RESCUE_OR_USD",
@@ -835,6 +1325,7 @@ __all__ = [
     "DynamicPatientRescueBridge",
     "PolicyAction",
     "RESCUE_VESSEL_USD",
+    "RESUSCITATION_MODULE_USD",
     "RescuePlan",
     "RescuePlanner",
     "ResourceLedger",
@@ -842,4 +1333,5 @@ __all__ = [
     "anchor_rescue_vessel",
     "autonomous_rescue_or_cfg",
     "rescue_vessel_cfg",
+    "resuscitation_module_cfg",
 ]

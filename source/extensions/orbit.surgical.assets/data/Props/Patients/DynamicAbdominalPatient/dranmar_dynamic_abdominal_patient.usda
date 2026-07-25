@@ -289,6 +289,22 @@ def Xform "DrAnmarDynamicAbdominalPatient" (
             quatf xformOp:orient = (1, 0, 0, 0)
             uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
         }
+        def Xform "vascular_access_connector"
+        {
+            custom string drAnmar:role = "resuscitation_vascular_access"
+            custom string drAnmar:interface = "luer_lock_simulation_attachment"
+            double3 xformOp:translate = (0.12, 0.13, 0.035)
+            quatf xformOp:orient = (1, 0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+        }
+        def Xform "airway_connector"
+        {
+            custom string drAnmar:role = "resuscitation_airway_access"
+            custom string drAnmar:interface = "ventilation_circuit_simulation_attachment"
+            double3 xformOp:translate = (0, 0.17, 0.055)
+            quatf xformOp:orient = (1, 0, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+        }
         def Xform "count_reference"
         {
             custom string drAnmar:role = "count_reference"

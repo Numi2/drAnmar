@@ -70,7 +70,8 @@ class PhysicsEvidenceFrame:
     """Raw post-physics measurements accepted from the scene adapter.
 
     The frame contains no success, control, seal, patency, or perfusion result.
-    Separation and attachment counts must be measured from the live scene.
+    Separation, target distance, and attachment counts must be measured from
+    the live scene.
     """
 
     physics_step: int
@@ -83,10 +84,13 @@ class PhysicsEvidenceFrame:
     right_normal_force_n: float
     separation_m: float
     tool_speed_m_s: float
+    target_distance_m: float
     retained_attachment_count: int = 0
     patch_contact_point_count: int = 0
     leaked_particle_count: int = 0
     particle_volume_ml: float = 0.002
+    measured_cavity_pressure_kpa: float = 0.0
+    measured_upstream_pressure_mmhg: float | None = None
 
     def __post_init__(self) -> None:
         if self.physics_step < 0:
@@ -103,9 +107,27 @@ class PhysicsEvidenceFrame:
             "right_normal_force_n",
             "separation_m",
             "tool_speed_m_s",
+            "target_distance_m",
             "particle_volume_ml",
         ):
             object.__setattr__(self, name, _nonnegative(getattr(self, name), name))
+        object.__setattr__(
+            self,
+            "measured_cavity_pressure_kpa",
+            _finite(
+                self.measured_cavity_pressure_kpa,
+                "measured_cavity_pressure_kpa",
+            ),
+        )
+        if self.measured_upstream_pressure_mmhg is not None:
+            object.__setattr__(
+                self,
+                "measured_upstream_pressure_mmhg",
+                _nonnegative(
+                    self.measured_upstream_pressure_mmhg,
+                    "measured_upstream_pressure_mmhg",
+                ),
+            )
         if self.dt_s <= 0.0:
             raise ValueError("dt_s must be greater than zero")
         for name in (
@@ -127,6 +149,8 @@ class RescueEffectCalibration:
     vessel_hard_force_per_pad_n: float = 7.0
     vessel_maximum_asymmetry_n: float = 1.5
     vessel_closed_separation_m: float = 0.0044
+    full_target_radius_m: float = 0.006
+    maximum_target_radius_m: float = 0.025
     maximum_stable_tool_speed_m_s: float = 0.025
     contact_attack_time_s: float = 0.18
     contact_release_time_s: float = 0.10
@@ -140,6 +164,13 @@ class RescueEffectCalibration:
     minimum_verified_distal_perfusion_fraction: float = 0.52
     verification_window_s: float = 0.75
     minimum_verification_frames: int = 20
+    film_required_contact_points: int = 24
+    film_target_pressure_kpa: float = 6.0
+    film_pressure_tolerance_kpa: float = 3.0
+    film_minimum_seal_quality: float = 0.80
+    film_maximum_verified_leak_ml_s: float = 0.05
+    film_verification_window_s: float = 1.0
+    film_minimum_verification_frames: int = 20
     baseline_blood_volume_ml: float = 5000.0
     particle_leak_blend: float = 0.25
     parameter_status: str = "provisional_engineering_seeds"
@@ -148,11 +179,19 @@ class RescueEffectCalibration:
         for name, value in asdict(self).items():
             if name == "parameter_status":
                 continue
-            if name == "minimum_verification_frames":
+            if name in {
+                "minimum_verification_frames",
+                "film_required_contact_points",
+                "film_minimum_verification_frames",
+            }:
                 if value <= 0:
                     raise ValueError(f"{name} must be positive")
                 continue
             _nonnegative(value, name)
+        if self.maximum_target_radius_m <= self.full_target_radius_m:
+            raise ValueError(
+                "maximum_target_radius_m must exceed full_target_radius_m"
+            )
 
 
 @dataclass
@@ -170,6 +209,7 @@ class VesselRescueState:
     cumulative_blood_loss_ml: float = 0.0
     blood_volume_ml: float = 5000.0
     pressure_challenge_active: bool = False
+    measured_upstream_pressure_mmhg: float | None = None
     challenge_elapsed_s: float = 0.0
     challenge_frame_count: int = 0
     hemostasis_verified: bool = False
@@ -177,6 +217,8 @@ class VesselRescueState:
     last_simulation_time_s: float = -1.0
     clip_contact_dwell_s: float = 0.0
     patch_contact_dwell_s: float = 0.0
+    clip_maturity_fraction: float = 0.0
+    patch_maturity_fraction: float = 0.0
     last_retained_attachment_count: int = 0
 
 
@@ -190,6 +232,12 @@ class RepairState:
     retention_fraction: float = 0.0
     leak_rate_ml_s: float = 0.0
     overload_damage_fraction: float = 0.0
+    contact_coverage_fraction: float = 0.0
+    measured_pressure_kpa: float = 0.0
+    seal_quality: float = 0.0
+    seal_verified: bool = False
+    verification_elapsed_s: float = 0.0
+    verification_frame_count: int = 0
     last_physics_step: int = -1
     last_simulation_time_s: float = -1.0
 
@@ -198,7 +246,7 @@ class RepairState:
 class RescueEffectsSnapshot:
     physics_step: int
     simulation_time_s: float
-    vessel: Mapping[str, float | int | bool]
+    vessel: Mapping[str, float | int | bool | None]
     repairs: Mapping[str, Mapping[str, float | int | bool]]
     evidence_frames: int
     rejected_frames: int
@@ -250,7 +298,7 @@ class ContactDrivenRescueEffects:
                 "abdominal_wall", 0.030, 0.0020, 14
             ),
             "occlusive_film": RepairState(
-                "occlusive_film", 0.006, 0.0006, 32
+                "occlusive_film", 0.006, 0.0006, 8
             ),
         }
 
@@ -283,21 +331,15 @@ class ContactDrivenRescueEffects:
             state.retention_fraction = 0.0
             state.leak_rate_ml_s = 0.0
             state.overload_damage_fraction = 0.0
+            state.contact_coverage_fraction = 0.0
+            state.measured_pressure_kpa = 0.0
+            state.seal_quality = 0.0
+            state.seal_verified = False
+            state.verification_elapsed_s = 0.0
+            state.verification_frame_count = 0
             state.last_physics_step = -1
             state.last_simulation_time_s = -1.0
         return self.snapshot()
-
-    def start_pressure_challenge(self) -> None:
-        self.vessel.pressure_challenge_active = True
-        self.vessel.challenge_elapsed_s = 0.0
-        self.vessel.challenge_frame_count = 0
-        self.vessel.hemostasis_verified = False
-
-    def stop_pressure_challenge(self) -> None:
-        self.vessel.pressure_challenge_active = False
-        self.vessel.challenge_elapsed_s = 0.0
-        self.vessel.challenge_frame_count = 0
-        self.vessel.hemostasis_verified = False
 
     def _ingest(
         self,
@@ -307,18 +349,35 @@ class ContactDrivenRescueEffects:
         if authority is not self._authority:
             self._rejected_frames += 1
             raise PermissionError("patient effects accept environment scene evidence only")
-        if frame.physics_step <= self._physics_step:
+        target_state = (
+            self.vessel
+            if frame.target_id == "rescue_vessel"
+            else self.repairs[frame.target_id]
+        )
+        if frame.physics_step <= target_state.last_physics_step:
             self._rejected_frames += 1
-            raise ValueError("physics evidence must use a strictly increasing step")
-        if frame.simulation_time_s <= self._simulation_time_s and self._physics_step >= 0:
+            raise ValueError(
+                "physics evidence must use a strictly increasing step per target"
+            )
+        if (
+            frame.simulation_time_s <= target_state.last_simulation_time_s
+            and target_state.last_physics_step >= 0
+        ):
             self._rejected_frames += 1
-            raise ValueError("physics evidence must use increasing simulation time")
+            raise ValueError(
+                "physics evidence must use increasing simulation time per target"
+            )
 
-        self._physics_step = frame.physics_step
-        self._simulation_time_s = frame.simulation_time_s
+        self._physics_step = max(self._physics_step, frame.physics_step)
+        self._simulation_time_s = max(
+            self._simulation_time_s,
+            frame.simulation_time_s,
+        )
         self._evidence_frames += 1
         if frame.target_id == "rescue_vessel":
             self._update_vessel(frame)
+        elif frame.target_id == "occlusive_film":
+            self._update_film(frame)
         else:
             self._update_repair(frame)
         return self.snapshot()
@@ -344,7 +403,13 @@ class ContactDrivenRescueEffects:
             frame.tool_speed_m_s
             / self.calibration.maximum_stable_tool_speed_m_s
         )
-        return force * symmetry * speed
+        full_radius = self.calibration.full_target_radius_m
+        maximum_radius = self.calibration.maximum_target_radius_m
+        spatial = 1.0 - _clamp(
+            (frame.target_distance_m - full_radius)
+            / (maximum_radius - full_radius)
+        )
+        return force * symmetry * speed * spatial
 
     def _update_vessel(self, frame: PhysicsEvidenceFrame) -> None:
         cfg = self.calibration
@@ -386,38 +451,37 @@ class ContactDrivenRescueEffects:
                 + overload * cfg.overload_damage_fraction_per_s * frame.dt_s
             )
 
-        retained_increased = (
-            frame.retained_attachment_count
-            > state.last_retained_attachment_count
-        )
         if frame.retained_attachment_count > 0 and quality > 0.6:
             state.clip_contact_dwell_s += frame.dt_s
-        elif not retained_increased:
-            state.clip_contact_dwell_s = max(
-                0.0, state.clip_contact_dwell_s - frame.dt_s
+            state.clip_maturity_fraction = max(
+                state.clip_maturity_fraction,
+                _clamp(
+                    state.clip_contact_dwell_s / cfg.clip_maturation_time_s
+                ),
             )
-        clip_target = _clamp(
-            frame.retained_attachment_count
-            * state.clip_contact_dwell_s
-            / cfg.clip_maturation_time_s
-        )
-        state.retained_clip_fraction = max(
-            state.retained_clip_fraction,
-            clip_target,
+        elif frame.retained_attachment_count <= 0:
+            state.clip_contact_dwell_s = 0.0
+            state.clip_maturity_fraction = 0.0
+        state.retained_clip_fraction = (
+            state.clip_maturity_fraction
+            if frame.retained_attachment_count > 0
+            else 0.0
         )
         state.last_retained_attachment_count = frame.retained_attachment_count
 
         if frame.patch_contact_point_count >= 3 and quality > 0.45:
             state.patch_contact_dwell_s += frame.dt_s
-        else:
-            state.patch_contact_dwell_s = max(
-                0.0, state.patch_contact_dwell_s - 2.0 * frame.dt_s
+            state.patch_maturity_fraction = max(
+                state.patch_maturity_fraction,
+                _clamp(
+                    state.patch_contact_dwell_s / cfg.patch_maturation_time_s
+                ),
             )
         patch_coverage = _clamp(frame.patch_contact_point_count / 12.0)
-        patch_target = patch_coverage * _clamp(
-            state.patch_contact_dwell_s / cfg.patch_maturation_time_s
+        state.patch_seal_fraction = min(
+            state.patch_maturity_fraction,
+            patch_coverage,
         )
-        state.patch_seal_fraction = max(state.patch_seal_fraction, patch_target)
 
         control = 1.0
         for fraction in (
@@ -427,9 +491,22 @@ class ContactDrivenRescueEffects:
         ):
             control *= 1.0 - fraction
         effective_control = 1.0 - control
-        pressure_mmhg = cfg.nominal_upstream_pressure_mmhg
-        if state.pressure_challenge_active:
-            pressure_mmhg *= cfg.pressure_challenge_multiplier
+        state.measured_upstream_pressure_mmhg = (
+            frame.measured_upstream_pressure_mmhg
+        )
+        pressure_mmhg = (
+            frame.measured_upstream_pressure_mmhg
+            if frame.measured_upstream_pressure_mmhg is not None
+            else cfg.nominal_upstream_pressure_mmhg
+        )
+        state.pressure_challenge_active = bool(
+            frame.measured_upstream_pressure_mmhg is not None
+            and frame.measured_upstream_pressure_mmhg
+            >= (
+                cfg.nominal_upstream_pressure_mmhg
+                * cfg.pressure_challenge_multiplier
+            )
+        )
         pressure_pa = max(
             0.0,
             (pressure_mmhg - cfg.downstream_pressure_mmhg) * MMHG_TO_PA,
@@ -484,13 +561,14 @@ class ContactDrivenRescueEffects:
             )
             state.hemostasis_verified = stable
         else:
+            state.challenge_elapsed_s = 0.0
+            state.challenge_frame_count = 0
             state.hemostasis_verified = False
         state.last_physics_step = frame.physics_step
         state.last_simulation_time_s = frame.simulation_time_s
 
     def _update_repair(self, frame: PhysicsEvidenceFrame) -> None:
         state = self.repairs[frame.target_id]
-        quality = self._bilateral_contact_quality(frame, 1.5, 1.2)
         geometric = 1.0 - _clamp(
             (frame.separation_m - state.target_separation_m)
             / max(
@@ -498,15 +576,16 @@ class ContactDrivenRescueEffects:
                 1.0e-9,
             )
         )
-        state.approximation_fraction = quality * geometric
+        state.approximation_fraction = geometric
         state.retention_fraction = _clamp(
             frame.retained_attachment_count
             / max(state.required_attachment_count, 1)
         )
-        unclosed = 1.0 - min(
-            state.approximation_fraction,
-            state.retention_fraction,
+        retained_closure = (
+            min(state.approximation_fraction, state.retention_fraction)
+            * (1.0 - state.overload_damage_fraction)
         )
+        unclosed = 1.0 - retained_closure
         particle_leak = (
             frame.leaked_particle_count
             * frame.particle_volume_ml
@@ -519,6 +598,67 @@ class ContactDrivenRescueEffects:
                 state.overload_damage_fraction
                 + (peak_force - 6.0) * 0.005 * frame.dt_s
             )
+        state.last_physics_step = frame.physics_step
+        state.last_simulation_time_s = frame.simulation_time_s
+
+    def _update_film(self, frame: PhysicsEvidenceFrame) -> None:
+        """Derive film integrity only from live bonds, contact, and pressure."""
+
+        cfg = self.calibration
+        state = self.repairs["occlusive_film"]
+        state.approximation_fraction = 1.0 - _clamp(
+            (frame.separation_m - state.target_separation_m)
+            / max(
+                state.initial_separation_m - state.target_separation_m,
+                1.0e-9,
+            )
+        )
+        state.retention_fraction = _clamp(
+            frame.retained_attachment_count
+            / max(state.required_attachment_count, 1)
+        )
+        state.contact_coverage_fraction = _clamp(
+            frame.patch_contact_point_count
+            / cfg.film_required_contact_points
+        )
+        state.measured_pressure_kpa = frame.measured_cavity_pressure_kpa
+        pressure_quality = 1.0 - _clamp(
+            abs(
+                frame.measured_cavity_pressure_kpa
+                + cfg.film_target_pressure_kpa
+            )
+            / cfg.film_pressure_tolerance_kpa
+        )
+        particle_leak = (
+            frame.leaked_particle_count
+            * frame.particle_volume_ml
+            / frame.dt_s
+        )
+        retained_seal = min(
+            state.approximation_fraction,
+            state.retention_fraction,
+            state.contact_coverage_fraction,
+        )
+        state.leak_rate_ml_s = max(
+            0.0,
+            2.5 * (1.0 - retained_seal) + particle_leak,
+        )
+        state.seal_quality = min(retained_seal, pressure_quality)
+        stable = (
+            state.seal_quality >= cfg.film_minimum_seal_quality
+            and state.leak_rate_ml_s <= cfg.film_maximum_verified_leak_ml_s
+        )
+        if stable:
+            state.verification_elapsed_s += frame.dt_s
+            state.verification_frame_count += 1
+        else:
+            state.verification_elapsed_s = 0.0
+            state.verification_frame_count = 0
+        state.seal_verified = (
+            state.verification_elapsed_s >= cfg.film_verification_window_s
+            and state.verification_frame_count
+            >= cfg.film_minimum_verification_frames
+        )
         state.last_physics_step = frame.physics_step
         state.last_simulation_time_s = frame.simulation_time_s
 
@@ -551,6 +691,9 @@ class ContactDrivenRescueEffects:
                 "pressure_challenge_active": (
                     self.vessel.pressure_challenge_active
                 ),
+                "measured_upstream_pressure_mmhg": (
+                    self.vessel.measured_upstream_pressure_mmhg
+                ),
                 "hemostasis_verified": self.vessel.hemostasis_verified,
                 "last_physics_step": self.vessel.last_physics_step,
             }
@@ -565,6 +708,12 @@ class ContactDrivenRescueEffects:
                         "overload_damage_fraction": (
                             state.overload_damage_fraction
                         ),
+                        "contact_coverage_fraction": (
+                            state.contact_coverage_fraction
+                        ),
+                        "measured_pressure_kpa": state.measured_pressure_kpa,
+                        "seal_quality": state.seal_quality,
+                        "seal_verified": state.seal_verified,
                         "last_physics_step": state.last_physics_step,
                     }
                 )

@@ -89,6 +89,6 @@ patient.interventions.apply_closure(
     source_robot="closure_robot",
 )
 patient.interventions.apply_dressing(
-    target="skin", pressure_kpa=-10.0, source_robot="dressing_robot"
+    target="skin", pressure_kpa=-10.0, source_robot="manual_aftercare"
 )
 print(json.dumps(patient.snapshot(), indent=2, sort_keys=True))

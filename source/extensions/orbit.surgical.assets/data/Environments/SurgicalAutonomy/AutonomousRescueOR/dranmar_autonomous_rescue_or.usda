@@ -4,7 +4,7 @@
     metersPerUnit = 1
     kilogramsPerUnit = 1
     upAxis = "Z"
-    doc = "DrAnmar multi-arm autonomous surgical orchestration and rescue operating room."
+    doc = "DrAnmar rescue operating-room layout; live robot articulations are supplied by the host scene."
 )
 
 def Xform "DrAnmarAutonomousRescueOR" (
@@ -15,16 +15,17 @@ def Xform "DrAnmarAutonomousRescueOR" (
         string drAnmarEffectAuthority = "environment_post_physics_scene_evidence"
         bool drAnmarClinicalValidation = false
         string drAnmarStatus = "research_only_not_for_patient_care"
-        string drAnmarPatientDependency = "Props/Patients/DynamicAbdominalPatient"
+        string drAnmarOptionalPatientIntegration = "Props/Patients/DynamicAbdominalPatient"
         string drAnmarAutonomyModes = "observer_advisory_supervised_autonomous_research"
-        int drAnmarRobotStationCount = 4
+        int drAnmarStationFrameCount = 4
+        int drAnmarAssetLiveArticulationCount = 0
         int drAnmarToolSlotCount = 12
         string drAnmarDeformableGuidance = "OmniPhysics110_IsaacLab3_surface_volume_attachments"
     }
     prepend variantSets = ["scenario", "room_state"]
 )
 {
-    token[] semantics:labels:class = ["autonomous_surgical_operating_room", "multi_robot_surgical_environment", "complication_rescue_system"]
+    token[] semantics:labels:class = ["surgical_operating_room_layout", "host_populated_robot_stations", "complication_rescue_system"]
     def Scope "Looks"
     {
         def Material "Floor"
@@ -371,10 +372,12 @@ def Xform "DrAnmarAutonomousRescueOR" (
         }
     }
     def Xform "Patient" (
-        prepend references = @../../../Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_operating_scene.usda@
+        prepend references = @../../../Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda@</DrAnmarDynamicAbdominalPatient>
+        prepend variantSets = "access_state"
+        variants = { string access_state = "open" }
     )
     {
-        double3 xformOp:translate = (0, 0, 0)
+        double3 xformOp:translate = (0, 0, 1.015)
         uniform token[] xformOpOrder = ["xformOp:translate"]
     }
     def Xform "DeformableRescueSuite" (
@@ -411,7 +414,8 @@ def Xform "DrAnmarAutonomousRescueOR" (
         def Xform "Primary" (
             customData = {
                 string drAnmarRole = "primary_operator"
-                string drAnmarRobotType = "FrankaPanda"
+                string drAnmarCompatibleHostRobot = "FrankaPanda"
+                bool drAnmarHostMustSupplyArticulation = true
                 string drAnmarMountLink = "panda_link8"
             }
         )
@@ -429,7 +433,8 @@ def Xform "DrAnmarAutonomousRescueOR" (
         def Xform "Exposure" (
             customData = {
                 string drAnmarRole = "exposure_assistant"
-                string drAnmarRobotType = "FrankaPanda"
+                string drAnmarCompatibleHostRobot = "FrankaPanda"
+                bool drAnmarHostMustSupplyArticulation = true
                 string drAnmarMountLink = "panda_link8"
             }
         )
@@ -447,7 +452,8 @@ def Xform "DrAnmarAutonomousRescueOR" (
         def Xform "Rescue" (
             customData = {
                 string drAnmarRole = "emergency_rescue"
-                string drAnmarRobotType = "FrankaPanda"
+                string drAnmarCompatibleHostRobot = "FrankaPanda"
+                bool drAnmarHostMustSupplyArticulation = true
                 string drAnmarMountLink = "panda_link8"
             }
         )
@@ -465,7 +471,8 @@ def Xform "DrAnmarAutonomousRescueOR" (
         def Xform "Assessment" (
             customData = {
                 string drAnmarRole = "physiological_assessment"
-                string drAnmarRobotType = "FrankaPanda"
+                string drAnmarCompatibleHostRobot = "FrankaPanda"
+                bool drAnmarHostMustSupplyArticulation = true
                 string drAnmarMountLink = "panda_link8"
             }
         )

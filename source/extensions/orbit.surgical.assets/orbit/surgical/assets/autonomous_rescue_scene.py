@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import math
-from pathlib import Path
 from typing import Final
 
 from .autonomous_rescue_or import (
@@ -69,8 +68,27 @@ def _training_environment_cfg():
             )
             if placeholder.IsValid():
                 placeholder.SetActive(False)
+        from pxr import UsdGeom
+
+        rescue_suite_path = f"{root_path}/DeformableRescueSuite"
+        rescue_suite = stage.GetPrimAtPath(rescue_suite_path)
+        if not rescue_suite.IsValid():
+            raise RuntimeError(
+                f"rescue scene is missing {rescue_suite_path}"
+            )
+        UsdGeom.Imageable(rescue_suite).MakeVisible()
+        for inactive_substrate in (
+            "AbdominalWall",
+            "BowelAnastomosis",
+            "OcclusiveFilm",
+        ):
+            substrate = stage.GetPrimAtPath(
+                f"{rescue_suite_path}/{inactive_substrate}"
+            )
+            if substrate.IsValid():
+                substrate.SetActive(False)
         anchor_rescue_vessel(
-            f"{root_path}/DeformableRescueSuite/Vessel",
+            f"{rescue_suite_path}/Vessel",
             stage=stage,
         )
         return root_prim
@@ -86,9 +104,10 @@ def autonomous_rescue_scene_cfg(
 ):
     """Build the OR with four controllable Franka/tool articulations.
 
-    The room USDA owns the patient, deformable rescue substrates, resource
-    carousel, monitor, and station anchors. Isaac Lab owns the robot
-    articulations so each station exposes real joint/contact state.
+    The room USDA owns the patient, hemorrhage vessel, resource carousel,
+    monitor, and station anchors. Other rescue substrates remain inactive so
+    the current PhysX scene has one bounded deformable lane. Isaac Lab owns the
+    robot articulations so each station exposes real joint/contact state.
     """
 
     try:

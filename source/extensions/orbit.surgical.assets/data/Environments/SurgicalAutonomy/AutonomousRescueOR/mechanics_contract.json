@@ -10,13 +10,20 @@
   "anti_gaming_invariants": [
     "policy actions contain intent only",
     "patient outcomes cannot be supplied as action fields",
-    "physics steps and simulation time must increase monotonically",
+    "the rescue vessel endpoint vertices are attached to authored world fixtures",
+    "physics steps and simulation time must increase monotonically per observed target and per pump channel",
     "unilateral contact cannot create bilateral compression",
+    "contact outside the authored target neighborhood cannot control the defect",
     "clip occlusion requires a retained scene attachment",
     "patch sealing requires distributed contact points and dwell",
-    "hemostasis success requires a fresh pressure challenge window",
+    "film sealing requires retained perimeter bonds distributed contact measured cavity pressure and a continuous hold window",
+    "pump delivery requires mutually consistent plunger displacement outlet flow and reservoir mass loss",
+    "pump delivery reaches the patient only through a retained vascular attachment and valid line pressure",
+    "ventilation support requires an attached airway valid pressure circuit flow and measured chest excursion",
+    "hemostasis success requires a continuous measured upstream-pressure challenge window and cannot be activated by action intent",
     "hemostasis success also requires preserved distal perfusion",
-    "reward is computed from patient state change rather than action identity"
+    "reward is computed from patient state change rather than action identity",
+    "a favorable steady state earns no repeated reward"
   ],
   "failure_modes": [
     "contact_asymmetry",
@@ -28,7 +35,16 @@
     "rebleeding_under_pressure_challenge",
     "repair_gap",
     "repair_attachment_loss",
-    "particle_leak"
+    "particle_leak",
+    "dressing_delamination",
+    "negative_pressure_overcompression",
+    "vascular_line_disconnect",
+    "line_pressure_overload",
+    "extravasation",
+    "reservoir_flow_mismatch",
+    "airway_disconnect",
+    "ventilation_circuit_leak",
+    "airway_pressure_overload"
   ],
   "calibration_status": "provisional_not_fitted_to_physical_bench_data",
   "clinical_validation": false

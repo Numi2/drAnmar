@@ -1506,11 +1506,7 @@ class SharedState:
                 > 0.1
             )
             completed += int(
-                float(vessel.get("retained_clip_fraction", 0.0)) > 0.0
-                or float(vessel.get("patch_seal_fraction", 0.0)) > 0.0
-            )
-            completed += int(
-                bool(vessel.get("hemostasis_verified", False))
+                bool(rescue.get("release_observed", False))
             )
         elif kind == "native_suturing_bench":
             # This dry-lab room deliberately avoids synthetic completion
@@ -6758,14 +6754,51 @@ def main() -> None:
         if dynamic_abdominal_patient_enabled
         else None
     )
+    autonomous_rescue_patient_runtime = (
+        DynamicSurgicalPatient(
+            seed=DEFAULT_SCENARIO_SEED,
+            procedure_stage="access_open",
+            condition="healthy",
+        )
+        if autonomous_rescue_or_enabled
+        else None
+    )
     autonomous_rescue_runtime = (
-        AutonomousRescueORRuntime(seed=DEFAULT_SCENARIO_SEED)
+        AutonomousRescueORRuntime(
+            seed=DEFAULT_SCENARIO_SEED,
+            dynamic_patient=autonomous_rescue_patient_runtime,
+        )
         if autonomous_rescue_or_enabled
         else None
     )
     rescue_physics_step = -1
     rescue_simulation_time_s = 0.0
     rescue_previous_tool_positions: dict[int, np.ndarray] = {}
+    rescue_target_position_w: np.ndarray | None = None
+    if autonomous_rescue_or_enabled:
+        from pxr import Usd, UsdGeom
+
+        rescue_target_path = (
+            "/World/envs/env_0/AutonomousRescueVessel/"
+            "Frames/temporary_compression"
+        )
+        rescue_target_prim = suture_stage.GetPrimAtPath(
+            rescue_target_path
+        )
+        if (
+            not rescue_target_prim.IsValid()
+            or not UsdGeom.Xformable(rescue_target_prim)
+        ):
+            raise RuntimeError(
+                "Autonomous Rescue OR is missing its authored physical "
+                f"target frame: {rescue_target_path}"
+            )
+        rescue_target_position_w = np.asarray(
+            UsdGeom.Xformable(rescue_target_prim)
+            .ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+            .ExtractTranslation(),
+            dtype=np.float32,
+        )
     showcase_children: list[Any] = []
     default_showcase_names: set[str] = {"Liver_topo_blender"}
     collision_mesh_count = 0
@@ -9056,6 +9089,11 @@ def main() -> None:
                 raise RuntimeError(
                     "Autonomous Rescue OR effects runtime is unavailable"
                 )
+            if autonomous_rescue_patient_runtime is None:
+                raise RuntimeError(
+                    "Autonomous Rescue OR shared patient runtime is unavailable"
+                )
+            autonomous_rescue_patient_runtime.reset()
             autonomous_rescue_runtime.reset(seed=selected_seed)
             rescue_physics_step = -1
             rescue_simulation_time_s = 0.0
@@ -10591,6 +10629,10 @@ def main() -> None:
                     },
                 }
             if autonomous_rescue_runtime is not None:
+                if rescue_target_position_w is None:
+                    raise RuntimeError(
+                        "Autonomous Rescue OR target frame is unavailable"
+                    )
                 action_period_s = float(
                     env_cfg.sim.dt * env_cfg.decimation
                 )
@@ -10623,6 +10665,14 @@ def main() -> None:
                     rescue_previous_tool_positions[arm] = (
                         tool_position.copy()
                     )
+                    jaw_center_w = 0.5 * (
+                        jaw_positions[0] + jaw_positions[1]
+                    )
+                    target_distance_m = float(
+                        np.linalg.norm(
+                            jaw_center_w - rescue_target_position_w
+                        )
+                    )
                     rescue_candidates.append(
                         {
                             "arm": arm,
@@ -10634,14 +10684,26 @@ def main() -> None:
                                 )
                             ),
                             "tool_speed_m_s": tool_speed_m_s,
+                            "target_distance_m": target_distance_m,
                         }
                     )
                 selected_contact = (
                     max(
                         rescue_candidates,
-                        key=lambda item: min(
-                            float(item["left_force_n"]),
-                            float(item["right_force_n"]),
+                        key=lambda item: (
+                            min(
+                                float(item["left_force_n"]),
+                                float(item["right_force_n"]),
+                            )
+                            * max(
+                                0.0,
+                                1.0
+                                - float(item["target_distance_m"])
+                                / (
+                                    autonomous_rescue_runtime.effects
+                                    .calibration.maximum_target_radius_m
+                                ),
+                            )
                         ),
                     )
                     if rescue_candidates
@@ -10651,6 +10713,7 @@ def main() -> None:
                         "right_force_n": 0.0,
                         "separation_m": 0.02,
                         "tool_speed_m_s": 0.0,
+                        "target_distance_m": 1.0,
                     }
                 )
                 rescue_physics_step += 1
@@ -10680,6 +10743,9 @@ def main() -> None:
                             tool_speed_m_s=float(
                                 selected_contact["tool_speed_m_s"]
                             ),
+                            target_distance_m=float(
+                                selected_contact["target_distance_m"]
+                            ),
                         )
                     )
                 )
@@ -10696,6 +10762,30 @@ def main() -> None:
                     ]
                 ]
                 rescue_plan = rescue_observation["rescue_plan"]
+                current_compression_fraction = float(
+                    rescue_vessel[
+                        "transient_compression_fraction"
+                    ]
+                )
+                peak_compression_fraction = max(
+                    float(
+                        latest_autonomous_rescue_telemetry.get(
+                            "peak_compression_fraction",
+                            0.0,
+                        )
+                    ),
+                    current_compression_fraction,
+                )
+                release_observed = bool(
+                    latest_autonomous_rescue_telemetry.get(
+                        "release_observed",
+                        False,
+                    )
+                    or (
+                        peak_compression_fraction > 0.1
+                        and current_compression_fraction < 0.02
+                    )
+                )
                 latest_autonomous_rescue_telemetry = {
                     "physics_step": int(
                         rescue_patient["physics_step"]
@@ -10710,6 +10800,10 @@ def main() -> None:
                     "selected_arm": (
                         int(selected_contact["arm"]) + 1
                     ),
+                    "peak_compression_fraction": (
+                        peak_compression_fraction
+                    ),
+                    "release_observed": release_observed,
                     "measured_contact": {
                         "left_normal_force_n": float(
                             selected_contact["left_force_n"]
@@ -10723,11 +10817,20 @@ def main() -> None:
                         "tool_speed_m_s": float(
                             selected_contact["tool_speed_m_s"]
                         ),
+                        "target_distance_m": float(
+                            selected_contact["target_distance_m"]
+                        ),
                     },
                     "vessel": {
                         key: value
                         for key, value in rescue_vessel.items()
                     },
+                    "vital_signs": asdict(
+                        autonomous_rescue_patient_runtime.vital_signs
+                    ),
+                    "fluid_balance": asdict(
+                        autonomous_rescue_patient_runtime.fluid_balance
+                    ),
                     "active_complications": rescue_complications,
                     "rescue_plan": (
                         {
@@ -10748,7 +10851,7 @@ def main() -> None:
                         rescue_observation["last_reward"]
                     ),
                     "outcome_authority": (
-                        "post_physics_filtered_contact"
+                        "post_physics_filtered_local_contact"
                     ),
                 }
             if (

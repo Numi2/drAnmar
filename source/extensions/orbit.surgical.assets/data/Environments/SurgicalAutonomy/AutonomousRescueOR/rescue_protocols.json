@@ -154,12 +154,11 @@
     "dressing_pressure_revision": [
       {
         "action": "revise_dressing_pressure",
-        "capability": "dressing_application",
+        "capability": "negative_pressure_control",
         "id": "reduce_pressure",
         "priority": 80,
         "reversible": true,
-        "station": "assessment",
-        "tool": "dressing_robot",
+        "station": "system",
         "zones": [
           "central_field"
         ]
@@ -179,16 +178,27 @@
     ],
     "dressing_reseal": [
       {
-        "action": "revise_dressing_pressure",
-        "capability": "dressing_application",
-        "id": "remove_failed_bonds",
+        "action": "vent_negative_pressure",
+        "capability": "negative_pressure_control",
+        "id": "vent_dressing",
         "parameters": {
-          "pressure_kpa": -3.0
+          "pressure_kpa": 0.0
         },
         "priority": 78,
         "reversible": true,
-        "station": "assessment",
-        "tool": "dressing_robot",
+        "station": "system",
+        "zones": [
+          "central_field"
+        ]
+      },
+      {
+        "action": "remove_failed_bonds",
+        "capability": "dressing_application",
+        "id": "remove_failed_bonds",
+        "implementation_status": "requires_host_film_applicator",
+        "priority": 79,
+        "reversible": true,
+        "station": "system",
         "zones": [
           "central_field"
         ]
@@ -197,10 +207,10 @@
         "action": "dressing",
         "capability": "dressing_application",
         "id": "reapply_film",
+        "implementation_status": "requires_host_film_applicator",
         "priority": 80,
         "reversible": false,
-        "station": "assessment",
-        "tool": "dressing_robot",
+        "station": "system",
         "zones": [
           "central_field"
         ]
@@ -316,12 +326,11 @@
       },
       {
         "action": "revise_dressing_pressure",
-        "capability": "dressing_application",
+        "capability": "negative_pressure_control",
         "id": "reduce_dressing_pressure",
         "priority": 88,
         "reversible": true,
-        "station": "assessment",
-        "tool": "dressing_robot",
+        "station": "system",
         "zones": [
           "central_field"
         ]
@@ -643,12 +652,11 @@
     ]
   },
   "research_only": true,
-  "resumption_gate": [
+  "resumption_observations": [
     "complication_controlled",
     "physiology_recovered",
     "workspace_clear",
-    "tool_self_tests_pass",
-    "evidence_complete"
+    "tool_state_nominal"
   ],
-  "schema": "dr.anmar.rescue-protocol-library.v1"
+  "schema": "dr.anmar.rescue-protocol-library.v2"
 }

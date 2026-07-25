@@ -13,11 +13,15 @@
       "right_normal_force_n",
       "separation_m",
       "tool_speed_m_s",
+      "target_distance_m"
+    ],
+    "optional_scene_fields": [
       "retained_attachment_count",
       "patch_contact_point_count",
-      "leaked_particle_count"
+      "leaked_particle_count",
+      "measured_upstream_pressure_mmhg"
     ],
-    "strictly_monotonic": true,
+    "strictly_monotonic_per_target": true,
     "policy_writable_outcomes": []
   },
   "rescue_vessel": {
@@ -25,12 +29,42 @@
     "temporary_control": "bilateral_force_symmetry_gap_and_velocity",
     "definitive_clip": "retained_attachment_count_plus_contact_dwell",
     "patch_seal": "contact_point_coverage_force_and_dwell",
-    "verification": "fresh_pressure_challenge_window_residual_flow_and_distal_perfusion"
+    "verification": "continuous_measured_upstream_pressure_challenge_window_residual_flow_and_distal_perfusion"
+  },
+  "resuscitation_evidence_ingress": {
+    "owner": "environment",
+    "phase": "post_physics",
+    "required_fields": [
+      "plunger_position_m",
+      "downstream_flow_ml_s",
+      "reservoir_mass_g",
+      "access_attachment_count",
+      "line_pressure_kpa"
+    ],
+    "delivery_rule": "patient_delivery_is_the_minimum_consistent_plunger_flow_and_reservoir_mass_volume_with_connected_access_and_valid_pressure_while_all_measured_reservoir_mass_loss_reduces_inventory",
+    "strictly_monotonic_per_channel": true,
+    "policy_writable_delivered_volume": false
+  },
+  "ventilation_evidence_ingress": {
+    "owner": "environment",
+    "phase": "post_physics",
+    "required_fields": [
+      "airway_attachment_count",
+      "valve_angle_deg",
+      "inspiratory_flow_l_min",
+      "leaked_flow_l_min",
+      "airway_pressure_cmh2o",
+      "measured_fio2_fraction",
+      "chest_excursion_m"
+    ],
+    "delivery_rule": "support_requires_connected_airway_valid_pressure_valve_opening_net_flow_and_observed_chest_excursion",
+    "strictly_monotonic": true,
+    "policy_writable_oxygenation": false
   },
   "repair_targets": {
     "bowel_anastomosis": "gap_contact_retained_attachments_and_particle_leak",
     "abdominal_wall": "gap_contact_and_retained_attachments",
-    "occlusive_film": "contact_coverage_and_retained_bonds"
+    "occlusive_film": "gap_contact_coverage_retained_perimeter_bonds_measured_pressure_and_hold_window"
   },
   "topology_change": false,
   "clinical_validation": false,

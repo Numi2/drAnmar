@@ -2013,7 +2013,7 @@ class InterventionRegistry:
         target: str,
         method: str,
         closure_fraction: float = 1.0,
-        source_robot: str = "closure_robot",
+        source_robot: str = "environment_contact_effects",
         **kwargs,
     ) -> InterventionEvent:
         fraction = _clamp(closure_fraction, 0, 1)
@@ -2041,7 +2041,7 @@ class InterventionRegistry:
         target: str,
         pressure_kpa: float = 0.0,
         seal_fraction: float = 1.0,
-        source_robot: str = "dressing_robot",
+        source_robot: str = "environment_contact_effects",
         **kwargs,
     ) -> InterventionEvent:
         self.patient.dressing_state = {
@@ -2224,7 +2224,7 @@ class RobotInterventionAdapter:
             target=target,
             pressure_kpa=pressure_kpa,
             seal_fraction=seal_fraction,
-            source_robot="dressing_robot",
+            source_robot="environment_contact_effects",
         )
 
     def perfusion_scan(

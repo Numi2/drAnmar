@@ -14,7 +14,7 @@
     },
     {
       "id": "bilateral_contact",
-      "rule": "single-pad force, asymmetric squeezing, distant jaw closure, or motion without target contact cannot produce useful compression",
+      "rule": "single-pad force, asymmetric squeezing, closure away from the authored target neighborhood, or motion without target contact cannot produce useful compression",
       "severity": "runtime"
     },
     {
@@ -34,7 +34,7 @@
     },
     {
       "id": "verification_is_a_perturbation",
-      "rule": "hemostasis verification requires a fresh pressure challenge observed across physics frames and cannot be set by a policy result flag",
+      "rule": "hemostasis verification requires a continuous measured upstream-pressure challenge across physics frames; a policy request cannot activate the challenge or set its result",
       "severity": "runtime"
     },
     {

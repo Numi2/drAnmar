@@ -1,12 +1,13 @@
 {
   "external_geometry_dependencies": [],
-  "required": [
+  "optional_patient_integrations": [
     {
       "catalog_path": "Props/Patients/DynamicAbdominalPatient",
       "id": "dranmar-dynamic-abdominal-patient-v1",
       "purpose": "shared anatomy mechanics physiology damage fluids and interventions"
     }
   ],
+  "required": [],
   "research_only": true,
   "runtime_platforms": [
     "OpenUSD",
@@ -14,7 +15,7 @@
     "NVIDIA Isaac Lab",
     "Isaac for Healthcare Agentic Arena"
   ],
-  "schema": "dr.anmar.autonomous-rescue-dependencies.v1",
+  "schema": "dr.anmar.autonomous-rescue-dependencies.v2",
   "tool_dependencies": [
     {
       "catalog_payload": "Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_payload.usda",
@@ -63,12 +64,6 @@
       "id": "perfusion_viability",
       "integration_module": "orbit.surgical.assets.perfusion_viability_robot",
       "standalone": "Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_standalone.usda"
-    },
-    {
-      "catalog_payload": "Props/SurgicalAftercare/DressingRobot/dranmar_dressing_tool_payload.usda",
-      "id": "dressing_robot",
-      "integration_module": "orbit.surgical.assets.dressing_robot",
-      "standalone": "Props/SurgicalAftercare/DressingRobot/dranmar_dressing_tool_standalone.usda"
     },
     {
       "catalog_payload": "Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
