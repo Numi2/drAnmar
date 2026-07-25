@@ -48,8 +48,10 @@ Five procedure-specific systems were added and qualified on 25 July 2026. Each s
 - CPU-side structural and controller tests; and
 - a headless CUDA runtime qualification program.
 
-The animations below were rendered directly from the standalone OpenUSD articulations in Isaac Lab on an NVIDIA
-RTX 4090. They visualize authored phase targets; they are not physical-performance or clinical evidence.
+The animations below were rendered directly from the complete Franka-mounted OpenUSD assemblies in Isaac Lab on
+an NVIDIA RTX 4090. Each clip opens on the full robot, then moves to the authored tool center point and procedure
+fixture while the mechanism executes its phase targets. They are simulation visualizations, not
+physical-performance or clinical evidence.
 
 ### Wound preparation robot
 
@@ -177,10 +179,6 @@ Doctor Studio presents the simulator as a procedural workspace rather than an in
 - seeded Failure Lab perturbations and policy evaluation; and
 - multimodal study manifests for RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact,
   deformation, operator input, and procedure annotations.
-
-<p align="center">
-  <img src="docs/screenshots/dr-anmar-platform-tour-2026.gif" width="960" alt="Dr.Anmar Learn, Skills Twin, Failure Lab, Multimodal Lab, Policy Lab, and Anatomy Library">
-</p>
 
 The interaction model and safety behavior are documented in
 [`docs/KEYBOARD_CONTROLS.md`](docs/KEYBOARD_CONTROLS.md) and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render a reproducible Isaac Lab GIF for one Dr.Anmar surgical robot.
+"""Render a reproducible Isaac Lab GIF for one Franka-mounted Dr.Anmar robot.
 
 Run with the Isaac Lab Python launcher, for example:
 
@@ -8,9 +8,10 @@ Run with the Isaac Lab Python launcher, for example:
         --robot wound-preparation \
         --output docs/screenshots/robots/wound-preparation-isaac-lab.gif
 
-The GIFs are documentation media, not qualification evidence. Runtime
-qualification remains the responsibility of the robot-specific validation
-programs under ``examples/``.
+Each scene uses the same complete Franka composition and procedure fixture as
+the corresponding CUDA qualification program. The GIFs are documentation
+media, not qualification evidence. Runtime qualification remains the
+responsibility of the robot-specific validation programs under ``examples/``.
 """
 from __future__ import annotations
 
@@ -53,10 +54,12 @@ simulation_app = app_launcher.app
 
 import numpy as np
 import torch
+import omni.usd
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
 from isaaclab.sensors.camera import Camera, CameraCfg
 from PIL import Image, ImageDraw, ImageFont
+from pxr import Gf, UsdGeom
 
 
 @dataclass(frozen=True)
@@ -64,10 +67,9 @@ class RobotCapture:
     module_name: str
     display_name: str
     phases: tuple[str, ...]
-    spawn_height_m: float
-    camera_eye: tuple[float, float, float]
-    camera_target: tuple[float, float, float]
     variants: dict[str, str]
+    task_label: str
+    tcp_offset_m: float
 
 
 CAPTURES = {
@@ -75,60 +77,55 @@ CAPTURES = {
         module_name="wound_preparation_robot",
         display_name="Wound Preparation Robot",
         phases=("inspect", "contact", "pre_rinse", "debride", "aspirate", "post_rinse"),
-        spawn_height_m=0.45,
-        camera_eye=(0.68, 0.56, 0.58),
-        camera_target=(0.0, 0.0, 0.34),
         variants={"irrigation_state": "loaded", "collection_state": "empty"},
+        task_label="WOUND BED · IRRIGATION / ASPIRATION / DEBRIDEMENT",
+        tcp_offset_m=0.172,
     ),
     "atraumatic-exposure": RobotCapture(
         module_name="atraumatic_exposure_robot",
         display_name="Atraumatic Exposure Robot",
         phases=("stowed", "approach", "deploy", "contact", "capture", "retract", "hold", "release"),
-        spawn_height_m=0.45,
-        camera_eye=(0.75, 0.62, 0.65),
-        camera_target=(0.0, 0.0, 0.40),
         variants={"pad_type": "fenestrated"},
+        task_label="BILATERAL SOFT-TISSUE EXPOSURE · FENESTRATED PADS",
+        tcp_offset_m=0.184,
     ),
     "adaptive-hemostasis": RobotCapture(
         module_name="adaptive_hemostasis_robot",
         display_name="Adaptive Hemostasis Robot",
         phases=("inspect", "clear", "compress", "clip", "release_compression", "patch", "verify"),
-        spawn_height_m=0.45,
-        camera_eye=(0.70, 0.58, 0.62),
-        camera_target=(0.0, 0.0, 0.39),
         variants={
             "clip_state": "loaded",
             "patch_state": "loaded",
             "irrigation_state": "full",
             "collection_state": "empty",
         },
+        task_label="VESSEL HEMOSTASIS · COMPRESSION / CLIP / PATCH",
+        tcp_offset_m=0.184,
     ),
     "adaptive-anastomosis": RobotCapture(
         module_name="adaptive_anastomosis_robot",
         display_name="Adaptive Anastomosis Robot",
         phases=("inspect", "capture", "align", "approximate", "evert", "staple", "reinforce", "pressurize", "verify"),
-        spawn_height_m=0.45,
-        camera_eye=(0.78, 0.65, 0.65),
-        camera_target=(0.0, 0.0, 0.39),
         variants={
             "staple_state": "loaded",
             "collar_state": "loaded",
             "test_medium_state": "full",
         },
+        task_label="HOLLOW-TISSUE ANASTOMOSIS · STAPLE / REINFORCE / TEST",
+        tcp_offset_m=0.205,
     ),
     "adaptive-seal-divide": RobotCapture(
         module_name="adaptive_seal_divide_robot",
         display_name="Adaptive Seal-and-Divide Robot",
         phases=("inspect", "center", "compress", "seal", "verify_seal", "retract_guard", "divide", "release"),
-        spawn_height_m=0.45,
-        camera_eye=(0.70, 0.58, 0.62),
-        camera_target=(0.0, 0.0, 0.39),
         variants={
             "cartridge_state": "fresh",
             "saline_state": "full",
             "collection_state": "empty",
             "energy_state": "ready",
         },
+        task_label="VESSEL SEALING AND DIVISION · INTERLOCKED BLADE",
+        tcp_offset_m=0.190,
     ),
 }
 
@@ -180,10 +177,10 @@ def annotate(image: Image.Image, capture: RobotCapture, phase: str) -> Image.Ima
     canvas = image.convert("RGBA")
     draw = ImageDraw.Draw(canvas, "RGBA")
     draw.rectangle((0, 0, canvas.width, 58), fill=(5, 14, 24, 218))
-    draw.rectangle((0, canvas.height - 34, canvas.width, canvas.height), fill=(5, 14, 24, 205))
-    title_size = 19 if len(capture.display_name) > 25 else 22
+    draw.rectangle((0, canvas.height - 50, canvas.width, canvas.height), fill=(5, 14, 24, 218))
+    title_size = 16 if len(capture.display_name) > 25 else 19
     draw.text(
-        (22, 10 if title_size == 22 else 13),
+        (22, 14 if title_size == 19 else 16),
         f"Dr.Anmar · {capture.display_name}",
         font=font(title_size, bold=True),
         fill=(242, 248, 252, 255),
@@ -203,12 +200,173 @@ def annotate(image: Image.Image, capture: RobotCapture, phase: str) -> Image.Ima
         fill=(255, 255, 255, 255),
     )
     draw.text(
-        (22, canvas.height - 26),
-        "Isaac Lab · CUDA simulation visualization · non-clinical research asset",
-        font=font(14),
+        (22, canvas.height - 42),
+        capture.task_label,
+        font=font(13, bold=True),
+        fill=(128, 226, 236, 255),
+    )
+    draw.text(
+        (22, canvas.height - 23),
+        "COMPLETE FRANKA ASSEMBLY · ISAAC LAB / CUDA · NON-CLINICAL RESEARCH",
+        font=font(12),
         fill=(218, 230, 238, 255),
     )
     return canvas.convert("RGB")
+
+
+def spawn_franka_and_task(capture: RobotCapture, helper):
+    root_path = "/World/Robot"
+    stage = omni.usd.get_context().get_stage()
+
+    if args.robot == "wound-preparation":
+        tool_path = f"{root_path}/DrAnmarWoundPreparationTool"
+        robot_cfg = helper.make_franka_wound_preparation_robot_cfg(
+            prim_path=root_path,
+            **capture.variants,
+        )
+    elif args.robot == "atraumatic-exposure":
+        tool_path = f"{root_path}/DrAnmarAtraumaticExposureTool"
+        robot_cfg = helper.make_franka_exposure_robot_cfg(
+            prim_path=root_path,
+            **capture.variants,
+        )
+    elif args.robot == "adaptive-hemostasis":
+        tool_path = f"{root_path}/DrAnmarAdaptiveHemostasisTool"
+        robot_cfg = helper.make_franka_adaptive_hemostasis_robot_cfg(
+            prim_path=root_path,
+            **capture.variants,
+        )
+    elif args.robot == "adaptive-anastomosis":
+        tool_path = f"{root_path}/DrAnmarAdaptiveAnastomosisTool"
+        robot_cfg = helper.make_franka_adaptive_anastomosis_robot_cfg(
+            prim_path=root_path,
+            **capture.variants,
+        )
+    else:
+        tool_path = f"{root_path}/DrAnmarAdaptiveSealDivideTool"
+        robot_cfg = helper.make_franka_adaptive_seal_divide_robot_cfg(
+            prim_path=root_path,
+            **capture.variants,
+        )
+
+    robot = Articulation(robot_cfg)
+
+    if args.robot == "wound-preparation":
+        helper.spawn_wound_bed_demo("/World/ProcedureFixture")
+    elif args.robot == "atraumatic-exposure":
+        helper.spawn_exposure_tissue_demo("/World/ProcedureFixture")
+    elif args.robot == "adaptive-hemostasis":
+        helper.spawn_vessel_demo("/World/ProcedureFixture")
+    elif args.robot == "adaptive-anastomosis":
+        helper.spawn_hollow_tissue_demo(
+            "/World/ProcedureFixture",
+            state="initial",
+        )
+    elif args.robot == "adaptive-seal-divide":
+        helper.spawn_vessel_demo("/World/ProcedureFixture")
+
+    return robot, tool_path
+
+
+def rotate_wxyz(quaternion: np.ndarray, vector: np.ndarray) -> np.ndarray:
+    w = float(quaternion[0])
+    xyz = np.asarray(quaternion[1:4], dtype=np.float64)
+    vector = np.asarray(vector, dtype=np.float64)
+    return (
+        vector * (w * w - float(np.dot(xyz, xyz)))
+        + 2.0 * xyz * float(np.dot(xyz, vector))
+        + 2.0 * w * np.cross(xyz, vector)
+    )
+
+
+def align_fixture_to_mounted_tcp(
+    robot: Articulation,
+    tcp_offset_m: float,
+) -> np.ndarray:
+    mount_index = robot.body_names.index("Mount")
+    mount_position = (
+        robot.data.body_pos_w.torch[0, mount_index].detach().cpu().numpy()
+    )
+    mount_quaternion = (
+        robot.data.body_quat_w.torch[0, mount_index].detach().cpu().numpy()
+    )
+    tcp = mount_position + rotate_wxyz(
+        mount_quaternion,
+        np.asarray((0.0, 0.0, tcp_offset_m), dtype=np.float64),
+    )
+    prim = omni.usd.get_context().get_stage().GetPrimAtPath(
+        "/World/ProcedureFixture"
+    )
+    if not prim or not prim.IsValid():
+        raise RuntimeError("Procedure fixture was not spawned")
+    xformable = UsdGeom.Xformable(prim)
+    translate_set = False
+    orient_set = False
+    for operation in xformable.GetOrderedXformOps():
+        if operation.GetOpType() == UsdGeom.XformOp.TypeTranslate:
+            operation.Set(Gf.Vec3d(*[float(value) for value in tcp]))
+            translate_set = True
+        elif operation.GetOpType() == UsdGeom.XformOp.TypeOrient:
+            operation.Set(
+                Gf.Quatd(
+                    float(mount_quaternion[0]),
+                    float(mount_quaternion[1]),
+                    float(mount_quaternion[2]),
+                    float(mount_quaternion[3]),
+                )
+            )
+            orient_set = True
+    if not translate_set:
+        xformable.AddTranslateOp().Set(
+            Gf.Vec3d(*[float(value) for value in tcp])
+        )
+    if not orient_set:
+        xformable.AddOrientOp().Set(
+            Gf.Quatd(
+                float(mount_quaternion[0]),
+                float(mount_quaternion[1]),
+                float(mount_quaternion[2]),
+                float(mount_quaternion[3]),
+            )
+        )
+    return tcp.astype(np.float32)
+
+
+def camera_for_points(
+    points: np.ndarray,
+    *,
+    distance_scale: float,
+    minimum_distance: float,
+    direction_xyz: tuple[float, float, float] = (1.0, 1.0, 0.62),
+) -> tuple[np.ndarray, np.ndarray]:
+    points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+    minimum = np.min(points, axis=0)
+    maximum = np.max(points, axis=0)
+    center = (minimum + maximum) * 0.5
+    extent = maximum - minimum
+    direction = np.asarray(direction_xyz, dtype=np.float64)
+    direction /= np.linalg.norm(direction)
+    distance = max(minimum_distance, float(np.max(extent)) * distance_scale)
+    eye = center + direction * distance
+    return eye.astype(np.float32), center.astype(np.float32)
+
+
+def update_task_visual_state(phase: str) -> None:
+    if args.robot != "adaptive-anastomosis":
+        return
+    root = omni.usd.get_context().get_stage().GetPrimAtPath(
+        "/World/ProcedureFixture"
+    )
+    variants = root.GetVariantSets().GetVariantSet("state")
+    if not variants.IsValid():
+        return
+    if phase in {"align", "approximate", "evert"}:
+        state = "aligned"
+    elif phase in {"staple", "reinforce", "pressurize", "verify"}:
+        state = "completed"
+    else:
+        state = "initial"
+    variants.SetVariantSelection(state)
 
 
 def target_vector(robot: Articulation, phase_targets: dict[str, float]) -> tuple[torch.Tensor, torch.Tensor]:
@@ -253,13 +411,33 @@ def main() -> None:
     key_cfg = sim_utils.DistantLightCfg(intensity=2600.0, color=(1.0, 0.94, 0.86), angle=18.0)
     key_cfg.func("/World/KeyLight", key_cfg, translation=(1.0, 1.0, 2.0))
 
-    robot = Articulation(
-        helper.make_tool_cfg(
-            "/World/DrAnmarRobot",
-            position=(0.0, 0.0, capture.spawn_height_m),
-            **capture.variants,
-        )
+    table_cfg = sim_utils.CuboidCfg(
+        size=(1.10, 0.76, 0.045),
+        visual_material=sim_utils.PreviewSurfaceCfg(
+            diffuse_color=(0.055, 0.12, 0.15),
+            metallic=0.05,
+            roughness=0.28,
+        ),
     )
+    table_cfg.func(
+        "/World/ProcedureTable",
+        table_cfg,
+        translation=(0.35, 0.0, -0.035),
+    )
+    backdrop_cfg = sim_utils.CuboidCfg(
+        size=(3.0, 0.04, 2.0),
+        visual_material=sim_utils.PreviewSurfaceCfg(
+            diffuse_color=(0.018, 0.052, 0.075),
+            metallic=0.0,
+            roughness=0.42,
+        ),
+    )
+    backdrop_cfg.func(
+        "/World/Backdrop",
+        backdrop_cfg,
+        translation=(0.30, -0.82, 0.78),
+    )
+    robot, _tool_path = spawn_franka_and_task(capture, helper)
     camera = Camera(
         CameraCfg(
             prim_path="/World/DocumentationCamera",
@@ -268,7 +446,7 @@ def main() -> None:
             width=args.width,
             data_types=["rgb"],
             spawn=sim_utils.PinholeCameraCfg(
-                focal_length=34.0,
+                focal_length=24.0,
                 focus_distance=0.35,
                 horizontal_aperture=22.0,
                 clipping_range=(0.01, 5.0),
@@ -277,9 +455,42 @@ def main() -> None:
     )
 
     sim.reset()
+    tcp = align_fixture_to_mounted_tcp(robot, capture.tcp_offset_m)
+    sim.reset()
+    body_positions = robot.data.body_pos_w.torch[0].detach().cpu().numpy()
+    tool_body_ids = [
+        index
+        for index, name in enumerate(robot.body_names)
+        if not name.startswith("panda_link")
+    ]
+    tool_positions = body_positions[tool_body_ids]
+    fixture_context = np.stack(
+        (
+            tcp + np.asarray((-0.14, -0.14, -0.10), dtype=np.float32),
+            tcp + np.asarray((0.14, 0.14, 0.10), dtype=np.float32),
+        )
+    )
+    wide_eye, wide_target = camera_for_points(
+        np.concatenate((body_positions, fixture_context), axis=0),
+        distance_scale=3.2,
+        minimum_distance=1.55,
+    )
+    action_eye, action_target = camera_for_points(
+        np.concatenate((tool_positions, fixture_context), axis=0),
+        distance_scale=2.5,
+        minimum_distance=0.50,
+        direction_xyz=(0.4, 1.0, 0.18),
+    )
+    action_distance = float(np.linalg.norm(action_eye - action_target))
+    action_direction = np.asarray((0.4, 1.0, 0.18), dtype=np.float32)
+    action_direction /= np.linalg.norm(action_direction)
+    action_target = (
+        np.mean(tool_positions, axis=0) * 0.65 + tcp * 0.35
+    ).astype(np.float32)
+    action_eye = action_target + action_direction * action_distance
     camera.set_world_poses_from_view(
-        torch.tensor([capture.camera_eye], device=args.device),
-        torch.tensor([capture.camera_target], device=args.device),
+        torch.tensor([wide_eye], device=args.device),
+        torch.tensor([wide_target], device=args.device),
     )
     for _ in range(12):
         sim.step(render=True)
@@ -287,13 +498,29 @@ def main() -> None:
         camera.update(sim.get_physics_dt(), force_recompute=True)
 
     frames: list[Image.Image] = []
+    for _ in range(max(8, args.hold_frames * 3)):
+        sim.step(render=True)
+        robot.update(sim.get_physics_dt())
+        camera.update(sim.get_physics_dt(), force_recompute=True)
+        frame = tensor_rgb_to_image(camera.data.output["rgb"])
+        frames.append(annotate(frame, capture, "FRANKA MOUNTED"))
+
     previous_position = robot.data.joint_pos.torch.clone()
+    previous_eye = wide_eye
+    previous_target = wide_target
     for phase in capture.phases:
         print(f"Capturing {capture.display_name}: {phase}", flush=True)
+        update_task_visual_state(phase)
         end_position, end_velocity = target_vector(robot, helper.phase_targets(phase))
         for step in range(1, args.frames_per_transition + 1):
             blend = 0.5 - 0.5 * math.cos(math.pi * step / args.frames_per_transition)
             position = previous_position + (end_position - previous_position) * blend
+            eye = previous_eye + (action_eye - previous_eye) * blend
+            target = previous_target + (action_target - previous_target) * blend
+            camera.set_world_poses_from_view(
+                torch.tensor([eye], device=args.device),
+                torch.tensor([target], device=args.device),
+            )
             robot.write_joint_position_to_sim_index(position=position)
             robot.write_joint_velocity_to_sim_index(velocity=end_velocity)
             sim.step(render=True)
@@ -302,6 +529,10 @@ def main() -> None:
             frame = tensor_rgb_to_image(camera.data.output["rgb"])
             frames.append(annotate(frame, capture, phase))
         for _ in range(args.hold_frames):
+            camera.set_world_poses_from_view(
+                torch.tensor([action_eye], device=args.device),
+                torch.tensor([action_target], device=args.device),
+            )
             robot.write_joint_position_to_sim_index(position=end_position)
             robot.write_joint_velocity_to_sim_index(velocity=end_velocity)
             sim.step(render=True)
@@ -310,6 +541,8 @@ def main() -> None:
             frame = tensor_rgb_to_image(camera.data.output["rgb"])
             frames.append(annotate(frame, capture, phase))
         previous_position = end_position.clone()
+        previous_eye = action_eye
+        previous_target = action_target
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     frames[0].save(
