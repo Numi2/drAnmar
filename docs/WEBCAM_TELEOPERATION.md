@@ -35,16 +35,19 @@ Calibration records a robust median from 24 stable samples for neutral palm scal
 thumb–index spacing per browser camera in `localStorage`. Median absolute deviation rejects a moving hand rather than
 persisting a noisy calibration. The webcam stream and MediaPipe landmarks stay inside the browser.
 
-The browser runs inference on decoded camera frames with `requestVideoFrameCallback` where supported. Physical
-left/right identity combines MediaPipe handedness with palm-position continuity so one flickering handedness label
-cannot exchange the two instruments. A palm geometry score, field-of-view margin, landmark confidence, velocity, and
-scale-change plausibility form the transmitted signal-quality value. Frames below the quality gate do not move the
+The browser runs inference on decoded camera frames with `requestVideoFrameCallback` where supported and moves
+MediaPipe into a dedicated worker with a main-thread fallback. Physical left/right identity corrects MediaPipe's
+mirrored-input convention and combines the label with palm-position continuity. Ambiguous crossings or one-hand
+occlusions freeze identity rather than ever transferring an instrument between physical hands. Palm geometry,
+bone-length plausibility, field-of-view margin, velocity, and scale-change plausibility form the transmitted
+signal-quality value; handedness probability is used only for identity. Frames below the quality gate do not move the
 robot or update jaw aperture.
 
-Each arm uses time-aware One Euro filtering: it suppresses stationary landmark jitter while automatically reducing
-lag during deliberate motion. A bounded 25 ms velocity prediction compensates part of camera/inference latency,
-small translation and rotation deadbands remove resting chatter, and the interface exposes vision rate, inference
-time, round-trip command time, per-arm quality, point-down clutch state, table reach, and the active safety state.
+Each arm uses time-aware One Euro filtering plus quality- and tremor-adaptive deadbands: it suppresses stationary
+landmark jitter while automatically reducing lag during deliberate motion. Bounded velocity prediction adapts from
+measured vision and network delay, and uncertain frames automatically reduce native IK command speed. The interface
+exposes vision rate, inference time, network and simulator-application timing, per-arm quality, active stabilization,
+point-down clutch state, table reach, and the active safety state.
 
 Depth uses the ratio between image-space palm geometry and corresponding
 camera-aligned world-landmark geometry. This compensates for palm
@@ -91,10 +94,11 @@ for compatibility; `cartesian_actions`, `resolved_joint_targets`, and webcam ape
 proportional command.
 
 After 250 ms without a valid frame, that arm freezes, pending displacement is discarded, and the last aperture is
-held. The arm must produce a tracked frozen frame before movement can resume. Manual input disables webcam authority
-globally until the operator explicitly enables it again. The server independently rejects tracked frames below 60%
-quality, and simulator-rate commands use bounded acceleration for starts and direction changes plus exact residual
-settling to avoid chatter or cumulative-pose overshoot.
+held. Operator Freeze, tab hiding, vision failure, control-frame changes, and transport failure use a separate
+server-authoritative stop path that clears queued commands immediately. The arm must produce a tracked frozen frame
+before movement can resume. Webcam enablement atomically clears buffered keyboard, replay, and expert motion before
+claiming authority. The server independently rejects tracked frames below 60% quality, reduces speed near the quality
+floor, bounds translation and rotation vector norms, and uses bounded acceleration plus exact residual settling.
 
 ## Pinned local assets
 

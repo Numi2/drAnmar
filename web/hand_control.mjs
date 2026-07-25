@@ -13,6 +13,8 @@ const CALIBRATION_SAMPLE_COUNT = 24;
 const MIN_TRACKING_QUALITY = 0.60;
 const MIN_INFERENCE_INTERVAL_MS = 24;
 const PREDICTION_HORIZON_S = 0.025;
+const MIN_PREDICTION_HORIZON_S = 0.012;
+const MAX_PREDICTION_HORIZON_S = 0.045;
 const LOCAL_WEBCAM_ORIGIN = "http://127.0.0.1:12360";
 const CLUTCH_ENGAGE_SCORE = 0.72;
 const CLUTCH_RELEASE_SCORE = 0.48;
@@ -20,6 +22,8 @@ const CLUTCH_ENGAGE_HOLD_S = 0.18;
 const TABLE_CONTACT_LINE_Y = 0.92;
 const MAX_TRANSLATION_M = 0.12;
 const MAX_ROTATION_RAD = 0.80;
+const IDENTITY_CONFIDENCE_LOCK = 0.78;
+const IDENTITY_AMBIGUITY_MARGIN = 0.12;
 
 export const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 
@@ -136,6 +140,17 @@ export function rotationDelta(anchorBasis, currentBasis) {
   const cosine = clamp((rotation[0][0] + rotation[1][1] + rotation[2][2] - 1) * 0.5, -1, 1);
   const angle = Math.acos(cosine);
   if (angle < 1e-6) return [0, 0, 0];
+  if (Math.PI - angle < 1e-4) {
+    const signedRoot = (value, signHint) => (
+      Math.sign(signHint || 1) * Math.sqrt(Math.max(0, value))
+    );
+    const axis = normalize([
+      Math.sqrt(Math.max(0, (rotation[0][0] + 1) * 0.5)),
+      signedRoot((rotation[1][1] + 1) * 0.5, rotation[0][1]),
+      signedRoot((rotation[2][2] + 1) * 0.5, rotation[0][2]),
+    ], "half-turn axis");
+    return axis.map(value => value * angle);
+  }
   const denominator = 2 * Math.sin(angle);
   const axis = [
     (rotation[2][1] - rotation[1][2]) / denominator,
@@ -272,7 +287,12 @@ export function longRangeTranslation(
   const gain = Math.max(0, Number(motionGain) || 0) * clamp(Number(takeUp) || 0, 0, 1);
   const axisReach = [0.92, 1.08, 1.18];
   const mapped = translation.map((value, index) => Number(value) * gain * axisReach[index]);
-  mapped[2] = Math.min(mapped[2], -MAX_TRANSLATION_M * smoothStep01(tableProgress) * takeUp);
+  // Preserve ordinary camera-up motion until the fingertip deliberately moves
+  // toward the table guide. The old min() formulation suppressed every upward
+  // command even when table reach was zero. Blending preserves full XYZ control
+  // and still lands exactly on the bounded table endpoint at 100% reach.
+  const tableBlend = smoothStep01(tableProgress) * clamp(Number(takeUp) || 0, 0, 1);
+  mapped[2] = mapped[2] * (1 - tableBlend) - MAX_TRANSLATION_M * tableBlend;
   return mapped.map(value => clamp(value, -MAX_TRANSLATION_M, MAX_TRANSLATION_M));
 }
 
@@ -414,17 +434,56 @@ export function predictPoseVector(
   });
 }
 
-export function conditionPoseVector(values) {
+export function conditionPoseVector(
+  values,
+  {
+    translationDeadband = 0.00045,
+    rotationDeadband = 0.006,
+  } = {},
+) {
   return values.map((value, index) => {
-    const deadband = index < 3 ? 0.00045 : 0.006;
+    const deadband = index < 3 ? translationDeadband : rotationDeadband;
     if (Math.abs(value) <= deadband) return 0;
     return Math.sign(value) * (Math.abs(value) - deadband);
   });
 }
 
+export function landmarkGeometryQuality(landmarks) {
+  if (!landmarks || landmarks.length < 21) return 0;
+  let frame;
+  try {
+    frame = palmFrame(landmarks);
+  } catch (_error) {
+    return 0;
+  }
+  const scale = Math.max(frame.scale, 1e-6);
+  const boneRatios = HAND_CONNECTIONS.map(
+    ([from, to]) => distance3(landmarks[from], landmarks[to]) / scale,
+  );
+  const plausibleFraction = boneRatios.filter(
+    ratio => Number.isFinite(ratio) && ratio >= 0.035 && ratio <= 1.65,
+  ).length / boneRatios.length;
+  const palmSegments = [
+    distance3(landmarks[0], landmarks[5]),
+    distance3(landmarks[0], landmarks[9]),
+    distance3(landmarks[0], landmarks[17]),
+    distance3(landmarks[5], landmarks[17]),
+  ].map(value => value / scale);
+  const palmSpread = Math.max(...palmSegments) - Math.min(...palmSegments);
+  const consistency = clamp((1.8 - palmSpread) / 1.5, 0, 1);
+  return clamp(plausibleFraction * consistency, 0, 1);
+}
+
 export function trackingQuality(pose, previousPose = null, dt = 1 / 30) {
   if (!pose || !Number.isFinite(pose.scale) || pose.scale <= 0) return 0;
-  const confidence = clamp(Number(pose.confidence) || 0, 0, 1);
+  // MediaPipe's category score is handedness certainty, not landmark accuracy.
+  // Pose acceptance therefore uses geometric and temporal evidence while
+  // handedness confidence is reserved for identity assignment.
+  const landmarkQuality = clamp(
+    Number(pose.landmarkQuality ?? pose.confidence) || 0,
+    0,
+    1,
+  );
   const geometry = clamp(Number(pose.geometryQuality) || 0, 0, 1);
   const margin = Math.min(
     pose.center.x,
@@ -442,29 +501,87 @@ export function trackingQuality(pose, previousPose = null, dt = 1 / 30) {
       clamp((6.0 - scaleVelocity) / 3.0, 0, 1),
     );
   }
-  return clamp(Math.min(confidence, geometry, boundsQuality) * motionQuality, 0, 1);
+  return clamp(Math.min(landmarkQuality, geometry, boundsQuality) * motionQuality, 0, 1);
 }
 
-export function assignHandDetections(detections, previousPoses = new Map()) {
-  const usable = detections.filter(item => item?.pose && (item.proposedArm === 0 || item.proposedArm === 1));
-  if (!usable.length) return new Map();
-  const assignments = usable.length === 1
-    ? [[0], [1]]
-    : [[0, 1], [1, 0]];
-  let best = null;
+export function assignHandDetectionsDetailed(detections, previousPoses = new Map()) {
+  const usable = detections
+    .filter(item => item?.pose && (item.proposedArm === 0 || item.proposedArm === 1))
+    .slice(0, 2);
+  const poses = new Map();
+  const ambiguousArms = new Set();
+  if (!usable.length) return { poses, ambiguousArms };
+
+  if (usable.length === 1) {
+    const detection = usable[0];
+    const proposed = detection.proposedArm;
+    const other = proposed === 0 ? 1 : 0;
+    const proposedPrevious = previousPoses.get(proposed);
+    const otherPrevious = previousPoses.get(other);
+    const proposedDistance = proposedPrevious
+      ? distance3(detection.pose.center, proposedPrevious.center)
+      : Infinity;
+    const otherDistance = otherPrevious
+      ? distance3(detection.pose.center, otherPrevious.center)
+      : Infinity;
+    const identityConfidence = clamp(Number(detection.labelConfidence) || 0, 0, 1);
+
+    // Never hand an engaged instrument to the other physical hand merely
+    // because an occlusion left one detection near the other hand's last pose.
+    // A high-confidence label keeps ownership; a low-confidence conflict
+    // freezes both identities until an unambiguous frame arrives.
+    if (
+      proposedPrevious
+      && otherPrevious
+      && identityConfidence < IDENTITY_CONFIDENCE_LOCK
+      && otherDistance + 0.06 < proposedDistance
+    ) {
+      ambiguousArms.add(0);
+      ambiguousArms.add(1);
+      return { poses, ambiguousArms };
+    }
+    poses.set(proposed, detection.pose);
+    return { poses, ambiguousArms };
+  }
+
+  const assignments = [[0, 1], [1, 0]];
+  const candidates = [];
   for (const arms of assignments) {
     let cost = 0;
     for (let index = 0; index < usable.length; index += 1) {
       const detection = usable[index];
       const arm = arms[index];
       const labelConfidence = clamp(Number(detection.labelConfidence) || 0, 0, 1);
-      if (detection.proposedArm !== arm) cost += 0.80 * labelConfidence;
+      if (detection.proposedArm !== arm) cost += 1.35 * labelConfidence;
       const previous = previousPoses.get(arm);
-      if (previous) cost += 3.2 * distance3(detection.pose.center, previous.center);
+      if (previous) cost += 2.4 * distance3(detection.pose.center, previous.center);
     }
-    if (!best || cost < best.cost) best = { cost, arms };
+    candidates.push({ cost, arms });
   }
-  return new Map(best.arms.map((arm, index) => [arm, usable[index].pose]));
+  candidates.sort((left, right) => left.cost - right.cost);
+  const [best, second] = candidates;
+  if (second && second.cost - best.cost < IDENTITY_AMBIGUITY_MARGIN) {
+    ambiguousArms.add(0);
+    ambiguousArms.add(1);
+    return { poses, ambiguousArms };
+  }
+  best.arms.forEach((arm, index) => {
+    const detection = usable[index];
+    if (
+      arm !== detection.proposedArm
+      && Number(detection.labelConfidence) >= IDENTITY_CONFIDENCE_LOCK
+    ) {
+      ambiguousArms.add(arm);
+      return;
+    }
+    poses.set(arm, detection.pose);
+  });
+  for (const arm of ambiguousArms) poses.delete(arm);
+  return { poses, ambiguousArms };
+}
+
+export function assignHandDetections(detections, previousPoses = new Map()) {
+  return assignHandDetectionsDetailed(detections, previousPoses).poses;
 }
 
 function numericCalibration(calibration) {
@@ -557,6 +674,8 @@ class HandController {
     this.banner = this.panel.querySelector("#handBanner");
     this.stream = null;
     this.landmarker = null;
+    this.visionWorker = null;
+    this.visionFramePending = false;
     this.running = false;
     this.starting = false;
     this.startGeneration = 0;
@@ -566,6 +685,9 @@ class HandController {
     this.inFlight = false;
     this.suspendTransmission = false;
     this.queuedPayload = null;
+    this.transportGeneration = 0;
+    this.activeRequestController = null;
+    this.safetyStopPromise = null;
     this.sequenceBase = Date.now() * 1000;
     this.sequenceCounter = 0;
     this.lastInferenceAt = 0;
@@ -576,10 +698,13 @@ class HandController {
     this.frameRate = 0;
     this.inferenceMs = 0;
     this.roundTripMs = 0;
+    this.serverTransportAgeMs = null;
+    this.serverApplyAgeMs = null;
     this.transportDrops = 0;
     this.videoFrameRequest = null;
     this.poses = new Map();
     this.poseDiagnostics = new Map();
+    this.identityAmbiguousArms = new Set();
     this.anchors = new Map();
     this.engaged = [false, false];
     this.controlMode = "single";
@@ -607,6 +732,10 @@ class HandController {
       new OneEuroFilter({ minCutoff: 2.4, beta: 0.18 }),
     ];
     this.rawOffsets = [null, null];
+    this.motionDiagnostics = [
+      { tremor: 0, speed: 0, quality: 0, velocity: [0, 0, 0, 0, 0, 0] },
+      { tremor: 0, speed: 0, quality: 0, velocity: [0, 0, 0, 0, 0, 0] },
+    ];
     this.tableReach = [0, 0];
     this.currentCommands = [this.emptyCommand(0), this.emptyCommand(1)];
     this.lastAperture = [1, 1];
@@ -682,7 +811,7 @@ class HandController {
     }
     this.panel.querySelector("#handFreezeAll").addEventListener("click", () => {
       this.cancelAutomaticEngage();
-      this.freezeAll();
+      this.hardFreeze("operator_freeze");
     });
     this.panel.querySelector("#handRecalibrate").addEventListener("click", () => {
       const targetArms = this.controlMode === "single" && this.primaryArm !== null
@@ -698,7 +827,7 @@ class HandController {
     });
     window.addEventListener("pagehide", () => this.dispose(), { once: true });
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) this.freezeAll(false);
+      if (document.hidden) this.hardFreeze("page_hidden");
     });
     this.renderModeControl();
   }
@@ -1073,11 +1202,13 @@ class HandController {
     };
   }
 
-  async request(path, body) {
+  async request(path, body, { signal = null, keepalive = false } = {}) {
     const response = await fetch(path, {
       method: "POST",
       headers: { "content-type": "application/json", "x-dr-anmar-operator": this.operatorId },
       body: JSON.stringify(body),
+      signal,
+      keepalive,
     });
     let data = {};
     try { data = await response.json(); } catch (_error) {}
@@ -1096,6 +1227,100 @@ class HandController {
     this.launch.setAttribute("aria-label", "Webcam hand control is open");
     this.preparePanelGeometry();
     if (!this.running) await this.start();
+  }
+
+  async initializeVisionWorker() {
+    if (typeof Worker !== "function" || typeof createImageBitmap !== "function") return false;
+    const worker = new Worker("./hand-control-worker.mjs", { type: "module" });
+    try {
+      await new Promise((resolve, reject) => {
+        const timeout = window.setTimeout(
+          () => reject(new Error("Vision worker startup timed out")),
+          12_000,
+        );
+        worker.onmessage = event => {
+          if (event.data?.type === "ready") {
+            window.clearTimeout(timeout);
+            resolve();
+          } else if (event.data?.type === "error") {
+            window.clearTimeout(timeout);
+            reject(new Error(event.data.message || "Vision worker failed"));
+          }
+        };
+        worker.onerror = event => {
+          window.clearTimeout(timeout);
+          reject(new Error(event.message || "Vision worker failed"));
+        };
+        worker.postMessage({
+          type: "init",
+          assetBaseUrl: new URL("./hand-control-assets/", location.href).href,
+        });
+      });
+    } catch (error) {
+      worker.terminate();
+      throw error;
+    }
+    worker.onmessage = event => this.handleWorkerVisionMessage(event.data);
+    worker.onerror = event => this.handleVisionError(
+      new Error(event.message || "Vision worker stopped"),
+    );
+    this.visionWorker = worker;
+    return true;
+  }
+
+  handleWorkerVisionMessage(message) {
+    if (!message || message.type !== "result") {
+      if (message?.type === "error") {
+        this.visionFramePending = false;
+        this.handleVisionError(new Error(message.message || "Vision worker failed"));
+      }
+      return;
+    }
+    this.visionFramePending = false;
+    if (!this.running) return;
+    const time = Number(message.frameTimeMs);
+    this.lastCaptureEpochMs = performance.timeOrigin + time;
+    this.visionRecoveryAttempted = false;
+    this.inferenceMs = this.ewma(this.inferenceMs, Number(message.inferenceMs) || 0, 0.18);
+    if (this.lastFrameAt !== null && time > this.lastFrameAt) {
+      this.frameRate = this.ewma(this.frameRate, 1000 / (time - this.lastFrameAt), 0.15);
+    }
+    this.lastFrameAt = time;
+    try {
+      this.processResult(message.result, time / 1000);
+      this.collectCalibrationSamples(time);
+      this.draw();
+      this.transmit();
+      this.renderMetrics();
+    } catch (error) {
+      this.handleVisionError(error);
+    }
+  }
+
+  submitWorkerFrame(time, frameTimestampMs) {
+    if (!this.visionWorker || this.visionFramePending) return;
+    this.visionFramePending = true;
+    createImageBitmap(this.video)
+      .then(bitmap => {
+        if (!this.running || !this.visionWorker) {
+          bitmap.close?.();
+          this.visionFramePending = false;
+          return;
+        }
+        this.visionWorker.postMessage(
+          {
+            type: "frame",
+            bitmap,
+            timestampMs: frameTimestampMs,
+            frameTimeMs: time,
+          },
+          [bitmap],
+        );
+      })
+      .catch(error => {
+        this.visionFramePending = false;
+        this.handleVisionError(error);
+      });
   }
 
   async start() {
@@ -1124,7 +1349,12 @@ class HandController {
       if (generation !== this.startGeneration) return;
       if (!assetStatus.ready) throw new Error("Pinned MediaPipe assets are not installed");
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 540 } },
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 360 },
+          frameRate: { ideal: 60, min: 30 },
+        },
         audio: false,
       });
       if (generation !== this.startGeneration) {
@@ -1140,31 +1370,43 @@ class HandController {
       // orientation-compensated neutral palm scale used for relative depth.
       this.calibrationKey = `drAnmar.handCalibration.v4:${settings.deviceId || "default"}`;
       const storedCalibration = localStorage.getItem(this.calibrationKey);
-      this.calibration = numericCalibration(JSON.parse(storedCalibration || "null"));
-      const visionModule = await import("./hand-control-assets/vision_bundle.mjs");
-      if (generation !== this.startGeneration) return;
-      const files = await visionModule.FilesetResolver.forVisionTasks(
-        new URL("./hand-control-assets/wasm", location.href).href,
-      );
-      if (generation !== this.startGeneration) return;
-      const options = {
-        baseOptions: {
-          modelAssetPath: new URL("./hand-control-assets/hand_landmarker.task", location.href).href,
-          delegate: "GPU",
-        },
-        runningMode: "VIDEO",
-        numHands: 2,
-        minHandDetectionConfidence: 0.55,
-        minHandPresenceConfidence: 0.55,
-        minTrackingConfidence: 0.55,
-      };
       try {
-        this.landmarker = await visionModule.HandLandmarker.createFromOptions(files, options);
-      } catch (_gpuError) {
-        options.baseOptions.delegate = "CPU";
-        this.landmarker = await visionModule.HandLandmarker.createFromOptions(files, options);
+        this.calibration = numericCalibration(JSON.parse(storedCalibration || "null"));
+      } catch (_error) {
+        localStorage.removeItem(this.calibrationKey);
+        this.calibration = null;
+      }
+      try {
+        const workerReady = await this.initializeVisionWorker();
+        if (!workerReady) throw new Error("Vision worker is unavailable");
+      } catch (_workerError) {
+        const visionModule = await import("./hand-control-assets/vision_bundle.mjs");
+        if (generation !== this.startGeneration) return;
+        const files = await visionModule.FilesetResolver.forVisionTasks(
+          new URL("./hand-control-assets/wasm", location.href).href,
+        );
+        if (generation !== this.startGeneration) return;
+        const options = {
+          baseOptions: {
+            modelAssetPath: new URL("./hand-control-assets/hand_landmarker.task", location.href).href,
+            delegate: "GPU",
+          },
+          runningMode: "VIDEO",
+          numHands: 2,
+          minHandDetectionConfidence: 0.58,
+          minHandPresenceConfidence: 0.58,
+          minTrackingConfidence: 0.62,
+        };
+        try {
+          this.landmarker = await visionModule.HandLandmarker.createFromOptions(files, options);
+        } catch (_gpuError) {
+          options.baseOptions.delegate = "CPU";
+          this.landmarker = await visionModule.HandLandmarker.createFromOptions(files, options);
+        }
       }
       if (generation !== this.startGeneration) {
+        this.visionWorker?.terminate();
+        this.visionWorker = null;
         this.landmarker?.close?.();
         this.landmarker = null;
         this.stopMedia();
@@ -1176,7 +1418,7 @@ class HandController {
       this.lastFrameAt = null;
       this.launch.classList.add("state-active");
       this.setBanner("Tracking hands · motion frozen", "good");
-      await this.setServerEnabled(true);
+      await this.setServerEnabled(true, "camera_started");
       if (this.calibration) {
         this.autoEngagePending = false;
         this.setBanner("Point index down to move · relax the point to freeze", "good");
@@ -1207,9 +1449,13 @@ class HandController {
     }
   }
 
-  async setServerEnabled(enabled) {
+  async setServerEnabled(enabled, reason = enabled ? "operator_enable" : "operator_freeze") {
     try {
-      const response = await this.request("./api/teleop/hands/control", { enabled });
+      if (enabled && this.safetyStopPromise) {
+        await this.safetyStopPromise;
+        this.safetyStopPromise = null;
+      }
+      const response = await this.request("./api/teleop/hands/control", { enabled, reason });
       this.updateServerSnapshot(response.hand_teleop);
       if (!this.serverEnabled) this.freezeAll(false);
       return this.serverEnabled;
@@ -1423,7 +1669,7 @@ class HandController {
     this.setBanner("Calibration saved · point the index finger down to move", "good");
   }
 
-  poseFromLandmarks(landmarks, worldLandmarks, confidence) {
+  poseFromLandmarks(landmarks, worldLandmarks, identityConfidence) {
     const hasWorldLandmarks = worldLandmarks?.length === 21;
     const pose = palmFrame(hasWorldLandmarks ? worldLandmarks : landmarks);
     const imagePose = palmFrame(landmarks);
@@ -1443,38 +1689,45 @@ class HandController {
     );
     pose.indexTipY = landmarks[8].y;
     pose.landmarks = landmarks;
-    pose.confidence = confidence;
+    pose.identityConfidence = clamp(Number(identityConfidence) || 0, 0, 1);
+    pose.landmarkQuality = landmarkGeometryQuality(landmarks);
+    pose.confidence = pose.landmarkQuality;
     return pose;
   }
 
   frame(time, metadata = null) {
     if (!this.running) return;
+    this.lastCaptureEpochMs = performance.timeOrigin + time;
     const frameTimestampCandidateMs = Number.isFinite(metadata?.mediaTime)
       ? metadata.mediaTime * 1000
       : time;
     if (time - this.lastInferenceAt >= MIN_INFERENCE_INTERVAL_MS && this.video.readyState >= 2) {
-      const inferenceStarted = performance.now();
       this.lastInferenceAt = time;
       const frameTimestampMs = monotonicMediaPipeTimestamp(
         frameTimestampCandidateMs,
         this.lastMediaPipeTimestampMs,
       );
       this.lastMediaPipeTimestampMs = frameTimestampMs;
-      try {
-        const result = this.landmarker.detectForVideo(this.video, frameTimestampMs);
-        this.visionRecoveryAttempted = false;
-        this.inferenceMs = this.ewma(this.inferenceMs, performance.now() - inferenceStarted, 0.18);
-        if (this.lastFrameAt !== null && time > this.lastFrameAt) {
-          this.frameRate = this.ewma(this.frameRate, 1000 / (time - this.lastFrameAt), 0.15);
+      if (this.visionWorker) {
+        this.submitWorkerFrame(time, frameTimestampMs);
+      } else {
+        const inferenceStarted = performance.now();
+        try {
+          const result = this.landmarker.detectForVideo(this.video, frameTimestampMs);
+          this.visionRecoveryAttempted = false;
+          this.inferenceMs = this.ewma(this.inferenceMs, performance.now() - inferenceStarted, 0.18);
+          if (this.lastFrameAt !== null && time > this.lastFrameAt) {
+            this.frameRate = this.ewma(this.frameRate, 1000 / (time - this.lastFrameAt), 0.15);
+          }
+          this.lastFrameAt = time;
+          this.processResult(result, time / 1000);
+          this.collectCalibrationSamples(time);
+          this.draw();
+          this.transmit();
+          this.renderMetrics();
+        } catch (error) {
+          this.handleVisionError(error);
         }
-        this.lastFrameAt = time;
-        this.processResult(result, time / 1000);
-        this.collectCalibrationSamples(time);
-        this.draw();
-        this.transmit();
-        this.renderMetrics();
-      } catch (error) {
-        this.handleVisionError(error);
       }
     }
     if (time - this.lastStatusAt > 800) {
@@ -1485,7 +1738,7 @@ class HandController {
   }
 
   handleVisionError(error) {
-    this.freezeAll();
+    this.hardFreeze("vision_error");
     const message = String(error?.message || error || "Unknown vision error");
     const graphTimingFailure = /Packet timestamp mismatch|CalculatorGraph::Run|WaitUntilIdle/i.test(message);
     if (graphTimingFailure && !this.visionRecoveryAttempted) {
@@ -1511,10 +1764,10 @@ class HandController {
     const detections = [];
     (result.landmarks || []).forEach((landmarks, index) => {
       const category = result.handednesses?.[index]?.[0];
-      // The pinned Tasks Vision landmarker already reports the physical hand
-      // identity for this front-facing stream. Only the preview canvas is
-      // mirrored, so swapping the inference label here reverses ownership.
-      const proposedArm = handednessToArm(category?.categoryName, true);
+      // detectForVideo sees the raw, unmirrored camera frame. MediaPipe's
+      // handedness classifier assumes mirrored selfie input, so convert its
+      // label here; the CSS mirror affects only what the operator sees.
+      const proposedArm = handednessToArm(category?.categoryName, false);
       if (proposedArm === null || proposedArm > 1) return;
       try {
         detections.push({
@@ -1528,14 +1781,20 @@ class HandController {
         });
       } catch (_error) {}
     });
-    const assigned = assignHandDetections(detections, this.poses);
+    const assignment = assignHandDetectionsDetailed(detections, this.poses);
+    const assigned = assignment.poses;
+    this.identityAmbiguousArms = assignment.ambiguousArms;
     const next = new Map();
     const diagnostics = new Map();
     const dt = this.lastPoseTimestamp
       ? clamp(timestampSeconds - this.lastPoseTimestamp, 1 / 240, 0.2)
       : 1 / 30;
     for (const [arm, pose] of assigned) {
-      const quality = trackingQuality(pose, this.poses.get(arm), dt);
+      const previousPose = this.poses.get(arm);
+      pose.centerVelocity = previousPose
+        ? distance3(pose.center, previousPose.center) / Math.max(dt, 1 / 240)
+        : 0;
+      const quality = trackingQuality(pose, previousPose, dt);
       pose.quality = quality;
       pose.timestampSeconds = timestampSeconds;
       diagnostics.set(arm, {
@@ -1555,6 +1814,9 @@ class HandController {
     this.lastPoseTimestamp = timestampSeconds;
     this.poses = next;
     this.poseDiagnostics = diagnostics;
+    if (this.identityAmbiguousArms.size) {
+      this.setBanner("Hand identity ambiguous · motion frozen until hands separate", "warn");
+    }
     this.updatePointDownClutch(timestampSeconds);
     this.updateCommands(timestampSeconds);
     this.renderCards();
@@ -1640,6 +1902,7 @@ class HandController {
         adaptiveMotionGain(translationMagnitude, this.precision)
         * speed
         * calibrationGain
+        * (0.82 + 0.28 * smoothStep01((pose.centerVelocity || 0) / 0.75))
       );
       const rotationGain = (
         adaptiveMotionGain(rotationMagnitude * 0.035, this.precision)
@@ -1662,13 +1925,58 @@ class HandController {
       };
       const raw = [...offset.translation, ...offset.rotation];
       const previous = this.rawOffsets[arm];
+      const sampleDt = previous
+        ? clamp(timestampSeconds - previous.timestampSeconds, 1 / 240, 0.2)
+        : 1 / Math.max(this.frameRate || 30, 1);
+      const velocity = previous
+        ? raw.map((value, index) => (value - previous.value[index]) / sampleDt)
+        : [0, 0, 0, 0, 0, 0];
+      const diagnostic = this.motionDiagnostics[arm];
+      const translationSpeed = Math.hypot(...velocity.slice(0, 3));
+      const rotationSpeed = Math.hypot(...velocity.slice(3, 6));
+      const velocityInnovation = Math.hypot(
+        ...velocity.map((value, index) => value - diagnostic.velocity[index]),
+      );
+      const deliberateMotion = clamp(
+        translationSpeed / 0.16 + rotationSpeed / 2.4,
+        0,
+        1,
+      );
+      const tremorSample = clamp(
+        (velocityInnovation * sampleDt) / 0.018,
+        0,
+        1,
+      ) * (1 - 0.72 * deliberateMotion);
+      diagnostic.tremor = diagnostic.tremor
+        ? diagnostic.tremor + 0.14 * (tremorSample - diagnostic.tremor)
+        : tremorSample;
+      diagnostic.speed = translationSpeed + rotationSpeed * 0.035;
+      diagnostic.quality = pose.quality;
+      diagnostic.velocity = velocity;
+      const latencyPredictionS = clamp(
+        (this.inferenceMs + 0.5 * this.roundTripMs) / 1000,
+        MIN_PREDICTION_HORIZON_S,
+        MAX_PREDICTION_HORIZON_S,
+      ) * clamp(0.35 + 0.65 * pose.quality, 0.35, 1);
       const predicted = predictPoseVector(
         previous?.value,
         raw,
-        previous ? timestampSeconds - previous.timestampSeconds : 0,
+        sampleDt,
+        latencyPredictionS,
       );
       this.rawOffsets[arm] = { value: raw, timestampSeconds };
-      const conditioned = conditionPoseVector(predicted);
+      const conditioned = conditionPoseVector(predicted, {
+        translationDeadband: (
+          0.00030
+          + (1 - pose.quality) * 0.0010
+          + diagnostic.tremor * 0.00075
+        ),
+        rotationDeadband: (
+          0.0045
+          + (1 - pose.quality) * 0.012
+          + diagnostic.tremor * 0.008
+        ),
+      });
       const filtered = this.poseFilters[arm].filter(conditioned, timestampSeconds);
       offset = {
         translation: filtered.slice(0, 3).map(
@@ -1718,14 +2026,23 @@ class HandController {
   resetMotionFilter(arm) {
     this.poseFilters[arm].reset();
     this.rawOffsets[arm] = null;
+    this.motionDiagnostics[arm] = {
+      tremor: 0,
+      speed: 0,
+      quality: 0,
+      velocity: [0, 0, 0, 0, 0, 0],
+    };
   }
 
   renderMetrics() {
     this.panel.querySelector("#handRate").textContent = `${Math.round(this.frameRate)} Hz`;
     this.panel.querySelector("#handInference").textContent =
       `${this.inferenceMs ? Math.round(this.inferenceMs) : "—"} ms vision`;
+    const applied = Number.isFinite(this.serverApplyAgeMs)
+      ? ` · ${Math.round(this.serverApplyAgeMs)} ms apply`
+      : "";
     this.panel.querySelector("#handLatency").textContent =
-      `${this.roundTripMs ? Math.round(this.roundTripMs) : "—"} ms loop`;
+      `${this.roundTripMs ? Math.round(this.roundTripMs) : "—"} ms net${applied}`;
   }
 
   async transmit(forceFrozen = false) {
@@ -1742,22 +2059,49 @@ class HandController {
     const payload = {
       sequence: Math.floor(this.sequenceBase + this.sequenceCounter++),
       hands,
+      captured_at_ms: Number(this.lastCaptureEpochMs) || null,
+      inference_ms: Number(this.inferenceMs) || null,
+      client_sent_at_ms: null,
+      transport_drops: this.transportDrops,
     };
     if (this.queuedPayload) this.transportDrops += 1;
     this.queuedPayload = payload;
     if (this.inFlight) return;
+    const generation = this.transportGeneration;
     this.inFlight = true;
-    while (this.queuedPayload && this.running) {
+    while (
+      this.queuedPayload
+      && this.running
+      && generation === this.transportGeneration
+    ) {
       const next = this.queuedPayload;
       this.queuedPayload = null;
+      next.client_sent_at_ms = Date.now();
+      next.transport_drops = this.transportDrops;
+      const controller = new AbortController();
+      this.activeRequestController = controller;
       try {
         const sentAt = performance.now();
-        const response = await this.request("./api/teleop/hands", next);
+        const response = await this.request(
+          "./api/teleop/hands",
+          next,
+          { signal: controller.signal },
+        );
         this.roundTripMs = this.ewma(this.roundTripMs, performance.now() - sentAt, 0.20);
         this.updateServerSnapshot(response.hand_teleop);
       } catch (error) {
-        this.freezeAll(false);
-        this.setBanner(error.message, "warn");
+        if (
+          generation === this.transportGeneration
+          && error?.name !== "AbortError"
+        ) {
+          this.hardFreeze("transport_error");
+          this.setBanner(`Control link stopped · ${error.message}`, "warn");
+        }
+        break;
+      } finally {
+        if (this.activeRequestController === controller) {
+          this.activeRequestController = null;
+        }
       }
     }
     this.inFlight = false;
@@ -1766,6 +2110,12 @@ class HandController {
   updateServerSnapshot(snapshot) {
     if (!snapshot) return;
     this.serverEnabled = Boolean(snapshot.enabled);
+    this.serverTransportAgeMs = Number.isFinite(snapshot.transport?.latest_age_ms)
+      ? snapshot.transport.latest_age_ms
+      : null;
+    this.serverApplyAgeMs = Number.isFinite(snapshot.transport?.applied_age_ms)
+      ? snapshot.transport.applied_age_ms
+      : null;
     const controlFrameRevision = snapshot.control_frame?.revision;
     if (
       Number.isInteger(controlFrameRevision)
@@ -1773,7 +2123,7 @@ class HandController {
       && controlFrameRevision !== this.cameraControlFrameRevision
       && this.engaged.some(Boolean)
     ) {
-      this.freezeAll(false);
+      this.hardFreeze("operative_view_changed");
       this.setBanner("Operative view changed · relax, then point down to re-anchor", "warn");
     }
     if (Number.isInteger(controlFrameRevision)) {
@@ -1998,6 +2348,39 @@ class HandController {
     this.renderCards();
   }
 
+  hardFreeze(reason = "operator_freeze") {
+    this.cancelAutomaticEngage();
+    this.transportGeneration += 1;
+    this.queuedPayload = null;
+    this.activeRequestController?.abort();
+    this.activeRequestController = null;
+    this.inFlight = false;
+    this.freezeAll(false);
+    this.serverEnabled = false;
+    this.reacquire = [true, true];
+    this.serverSafety = [reason, reason];
+    const body = JSON.stringify({ enabled: false, reason });
+    this.safetyStopPromise = fetch("./api/teleop/hands/control", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-dr-anmar-operator": this.operatorId,
+      },
+      body,
+      keepalive: true,
+    })
+      .then(async response => {
+        if (!response.ok) throw new Error("Server stop was not acknowledged");
+        const data = await response.json();
+        this.updateServerSnapshot(data.hand_teleop);
+        return true;
+      })
+      .catch(() => false);
+    this.setBanner("All hand control frozen · point down to re-arm", "warn");
+    this.renderCards();
+    return this.safetyStopPromise;
+  }
+
   renderCards() {
     this.renderModeControl();
     for (const arm of [0, 1]) {
@@ -2016,6 +2399,8 @@ class HandController {
           : "NOT TRACKED";
       const safety = !enabled
         ? "Single-hand mode"
+        : this.identityAmbiguousArms.has(arm)
+          ? "Identity lock"
         : !pose && diagnostic
         ? "Vision quality hold"
         : this.reacquire[arm]
@@ -2042,8 +2427,13 @@ class HandController {
           ? `${Math.round(command.aperture_normalized * 100)}%`
           : "Held";
       const quality = pose?.quality ?? diagnostic?.quality;
+      const tremor = this.motionDiagnostics[arm]?.tremor;
       card.querySelector('[data-field="confidence"]').textContent =
-        Number.isFinite(quality) ? `${Math.round(quality * 100)}%` : "—";
+        Number.isFinite(quality)
+          ? `${Math.round(quality * 100)}% · ${
+            Number.isFinite(tremor) && tremor > 0.34 ? "stabilizing" : "steady"
+          }`
+          : "—";
       const button = card.querySelector("[data-hand-arm]");
       button.textContent = !enabled
         ? `Use ${arm ? "right" : "left"} only`
@@ -2173,6 +2563,10 @@ class HandController {
     this.stream?.getTracks().forEach(track => track.stop());
     this.stream = null;
     this.video.srcObject = null;
+    this.visionWorker?.postMessage({ type: "close" });
+    this.visionWorker?.terminate();
+    this.visionWorker = null;
+    this.visionFramePending = false;
     this.landmarker?.close?.();
     this.landmarker = null;
     this.lastMediaPipeTimestampMs = -1;
@@ -2181,8 +2575,7 @@ class HandController {
 
   async close() {
     this.savePanelGeometry();
-    this.freezeAll(false);
-    await this.setServerEnabled(false);
+    await this.hardFreeze("panel_closed");
     this.stopMedia();
     this.panel.classList.add("hidden");
     this.launch.setAttribute("aria-expanded", "false");
@@ -2199,9 +2592,17 @@ class HandController {
     this.startGeneration += 1;
     this.starting = false;
     this.running = false;
+    this.transportGeneration += 1;
     this.queuedPayload = null;
+    this.activeRequestController?.abort();
+    this.activeRequestController = null;
     this.stream?.getTracks().forEach(track => track.stop());
-    const body = JSON.stringify({ enabled: false });
+    this.visionWorker?.terminate();
+    this.visionWorker = null;
+    this.visionFramePending = false;
+    this.landmarker?.close?.();
+    this.landmarker = null;
+    const body = JSON.stringify({ enabled: false, reason: "page_unloaded" });
     fetch("./api/teleop/hands/control", {
       method: "POST",
       headers: { "content-type": "application/json", "x-dr-anmar-operator": this.operatorId },

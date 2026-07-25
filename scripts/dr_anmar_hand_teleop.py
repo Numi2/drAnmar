@@ -23,6 +23,9 @@ MAX_ROTATION_VECTOR_RAD = (0.80, 0.80, 0.80)
 MIN_HAND_TRACKING_CONFIDENCE = 0.60
 COMMAND_SLEW_PER_SECOND = 16.0
 RESIDUAL_DEADBAND_RATIO = 0.01
+MAX_TRANSLATION_COMMAND_NORM = 1.0
+MAX_ROTATION_COMMAND_NORM = 0.85
+MIN_QUALITY_SPEED_SCALE = 0.22
 
 
 def _bounded_vector(
@@ -163,6 +166,7 @@ class HandArmState:
     safety_state: str = "disabled"
     rejected_frames: int = 0
     last_command: list[float] = field(default_factory=lambda: [0.0] * 6)
+    quality_speed_scale: float = 0.0
 
     def discard_motion(
         self,
@@ -174,6 +178,7 @@ class HandArmState:
         self.target_offset = [0.0] * 6
         self.consumed_offset = [0.0] * 6
         self.last_command = [0.0] * 6
+        self.quality_speed_scale = 0.0
         self.reacquire_unclutched = require_unclutched
         if safety_state is not None:
             self.safety_state = safety_state
@@ -311,12 +316,13 @@ class HandTeleopRuntime:
         for arm, arm_state in enumerate(self.arm_states):
             if not self.enabled or not arm_state.tracked or not arm_state.motion_engaged:
                 arm_state.last_command = [0.0] * 6
+                arm_state.quality_speed_scale = 0.0
                 continue
+            arm_command = [0.0] * 6
             for axis, scale in enumerate(scales[arm]):
                 residual = arm_state.target_offset[axis] - arm_state.consumed_offset[axis]
                 if abs(residual) <= scale * RESIDUAL_DEADBAND_RATIO:
                     arm_state.consumed_offset[axis] = arm_state.target_offset[axis]
-                    arm_state.last_command[axis] = 0.0
                     continue
                 desired = max(-1.0, min(1.0, residual / scale))
                 if consume_dt is None:
@@ -338,9 +344,37 @@ class HandTeleopRuntime:
                             min(abs(desired), abs(previous) + maximum_delta),
                             desired,
                         )
-                commands[arm][axis] = command
-                arm_state.last_command[axis] = command
-                arm_state.consumed_offset[axis] += command * scale
+                arm_command[axis] = command
+
+            # Slow uncertain frames rather than letting a barely accepted pose
+            # command full native IK speed. Translation and rotation are also
+            # norm-bounded, eliminating faster diagonal motion while retaining
+            # exact residual convergence.
+            quality_speed = clamp_value(
+                MIN_QUALITY_SPEED_SCALE
+                + (1.0 - MIN_QUALITY_SPEED_SCALE)
+                * (
+                    (arm_state.confidence - MIN_HAND_TRACKING_CONFIDENCE)
+                    / 0.30
+                ),
+                MIN_QUALITY_SPEED_SCALE,
+                1.0,
+            )
+            arm_command = [value * quality_speed for value in arm_command]
+            for start, stop, maximum_norm in (
+                (0, 3, MAX_TRANSLATION_COMMAND_NORM),
+                (3, 6, MAX_ROTATION_COMMAND_NORM),
+            ):
+                norm = math.sqrt(sum(value * value for value in arm_command[start:stop]))
+                if norm > maximum_norm:
+                    scale_factor = maximum_norm / norm
+                    for axis in range(start, stop):
+                        arm_command[axis] *= scale_factor
+            arm_state.quality_speed_scale = quality_speed
+            arm_state.last_command = list(arm_command)
+            commands[arm] = list(arm_command)
+            for axis, scale in enumerate(scales[arm]):
+                arm_state.consumed_offset[axis] += arm_command[axis] * scale
         self.last_consume_at = timestamp
         return commands
 
@@ -394,6 +428,7 @@ class HandTeleopRuntime:
                     "safety_state": arm_state.safety_state,
                     "rejected_frames": arm_state.rejected_frames,
                     "last_command": list(arm_state.last_command),
+                    "quality_speed_scale": arm_state.quality_speed_scale,
                     "stale": arm_state.stale
                     or age_ms is None
                     or age_ms > round(self.timeout_s * 1000),

@@ -85,6 +85,7 @@ HAND_CONTROL_ASSET_FILES = {
     "wasm/vision_wasm_nosimd_internal.wasm",
 }
 HAND_CONTROL_CLIENT_PATH = Path(__file__).resolve().parents[1] / "web/hand_control.mjs"
+HAND_CONTROL_WORKER_PATH = Path(__file__).resolve().parents[1] / "web/hand_control_worker.mjs"
 
 
 def positive_environment_number(name: str, default: float, minimum: float) -> float:
@@ -760,10 +761,15 @@ class HandTeleopInput(BaseModel):
 class HandTeleopRequest(BaseModel):
     sequence: int
     hands: list[HandTeleopInput]
+    captured_at_ms: float | None = None
+    inference_ms: float | None = None
+    client_sent_at_ms: float | None = None
+    transport_drops: int = 0
 
 
 class HandTeleopControlRequest(BaseModel):
     enabled: bool
+    reason: str = "operator"
 
 
 class CameraViewRequest(BaseModel):
@@ -881,6 +887,15 @@ class SharedState:
     hand_camera_to_action_basis: list[list[list[float]]] = field(default_factory=list)
     hand_camera_control_name: str = "endoscope_left"
     hand_camera_control_revision: int = 0
+    hand_last_received_sequence: int = -1
+    hand_last_received_at: float = 0.0
+    hand_last_applied_sequence: int = -1
+    hand_last_applied_at: float = 0.0
+    hand_latest_transport_age_ms: float | None = None
+    hand_latest_capture_age_ms: float | None = None
+    hand_latest_inference_ms: float | None = None
+    hand_transport_drops: int = 0
+    hand_authority_reason: str = "disabled"
     native_grasp_contact_active: list[bool] = field(init=False)
     tool_to_object_distance_m: list[float | None] = field(init=False)
     tool_to_object_offset_m: list[list[float] | None] = field(init=False)
@@ -1024,11 +1039,13 @@ class SharedState:
         """Freeze and invalidate all pending webcam pose displacement."""
 
         self.hand_teleop.disable_motion(require_unclutched=require_unclutched)
+        self.hand_authority_reason = "frozen:other_control"
 
     def hand_teleop_snapshot(self, *, now: float | None = None) -> dict[str, Any]:
         """Return hand state plus the live camera-aligned IK control frame."""
 
-        snapshot = self.hand_teleop.snapshot(now=now)
+        timestamp = time.monotonic() if now is None else float(now)
+        snapshot = self.hand_teleop.snapshot(now=timestamp)
         snapshot["control_frame"] = {
             "name": self.hand_camera_control_name,
             "revision": self.hand_camera_control_revision,
@@ -1037,6 +1054,25 @@ class SharedState:
                 [list(row) for row in basis]
                 for basis in self.hand_camera_to_action_basis
             ],
+        }
+        snapshot["transport"] = {
+            "received_sequence": self.hand_last_received_sequence,
+            "applied_sequence": self.hand_last_applied_sequence,
+            "latest_age_ms": self.hand_latest_transport_age_ms,
+            "capture_age_ms": self.hand_latest_capture_age_ms,
+            "inference_ms": self.hand_latest_inference_ms,
+            "dropped_client_frames": self.hand_transport_drops,
+            "received_age_ms": (
+                round(max(0.0, timestamp - self.hand_last_received_at) * 1000)
+                if self.hand_last_received_at > 0.0
+                else None
+            ),
+            "applied_age_ms": (
+                round(max(0.0, timestamp - self.hand_last_applied_at) * 1000)
+                if self.hand_last_applied_at > 0.0
+                else None
+            ),
+            "authority_reason": self.hand_authority_reason,
         }
         return snapshot
 
@@ -1499,6 +1535,10 @@ def build_web_app(state: SharedState) -> FastAPI:
     def hand_control_client() -> FileResponse:
         return FileResponse(HAND_CONTROL_CLIENT_PATH, media_type="text/javascript")
 
+    @app.get("/hand-control-worker.mjs")
+    def hand_control_worker() -> FileResponse:
+        return FileResponse(HAND_CONTROL_WORKER_PATH, media_type="text/javascript")
+
     @app.get("/api/hand-control/assets")
     def hand_control_asset_status() -> dict[str, Any]:
         present = sorted(
@@ -1786,8 +1826,32 @@ def build_web_app(state: SharedState) -> FastAPI:
             )
         except (TypeError, ValueError) as error:
             raise HTTPException(400, str(error)) from error
+        if request.transport_drops < 0:
+            raise HTTPException(400, "transport_drops must be non-negative")
+        for value, label, maximum in (
+            (request.captured_at_ms, "captured_at_ms", None),
+            (request.client_sent_at_ms, "client_sent_at_ms", None),
+            (request.inference_ms, "inference_ms", 2000.0),
+        ):
+            if value is None:
+                continue
+            if not math.isfinite(float(value)) or (maximum is not None and not 0.0 <= float(value) <= maximum):
+                raise HTTPException(400, f"{label} is outside its valid range")
         command = np.zeros(state.action_dim, dtype=np.float32)
         now = time.monotonic()
+        wall_now_ms = time.time() * 1000.0
+        transport_age_ms = (
+            max(0.0, wall_now_ms - float(request.client_sent_at_ms))
+            if request.client_sent_at_ms is not None
+            and abs(wall_now_ms - float(request.client_sent_at_ms)) <= 60_000.0
+            else None
+        )
+        capture_age_ms = (
+            max(0.0, wall_now_ms - float(request.captured_at_ms))
+            if request.captured_at_ms is not None
+            and abs(wall_now_ms - float(request.captured_at_ms)) <= 60_000.0
+            else None
+        )
         with state.lock:
             if len(state.hand_camera_to_action_basis) != state.arms:
                 raise HTTPException(
@@ -1821,6 +1885,24 @@ def build_web_app(state: SharedState) -> FastAPI:
                 state.hand_teleop.submit(sequence, action_hands, now=now)
             except ValueError as error:
                 raise HTTPException(409, str(error)) from error
+            state.hand_last_received_sequence = sequence
+            state.hand_last_received_at = now
+            state.hand_latest_transport_age_ms = (
+                round(transport_age_ms, 2)
+                if transport_age_ms is not None
+                else None
+            )
+            state.hand_latest_capture_age_ms = (
+                round(capture_age_ms, 2)
+                if capture_age_ms is not None
+                else None
+            )
+            state.hand_latest_inference_ms = (
+                round(float(request.inference_ms), 2)
+                if request.inference_ms is not None
+                else None
+            )
+            state.hand_transport_drops = request.transport_drops
             for hand in action_hands:
                 arm = hand["arm"]
                 arm_state = state.hand_teleop.arm_states[arm]
@@ -1854,12 +1936,35 @@ def build_web_app(state: SharedState) -> FastAPI:
             raise HTTPException(423, detail)
         if not state.native_psm_policy_contract:
             raise HTTPException(409, "Webcam hand control requires the native NVIDIA PSM IK room")
+        reason = request.reason.strip()[:64] or "operator"
         with state.lock:
             if request.enabled:
+                # Webcam authority is exclusive. Clear every buffered manual
+                # command and stop replay/expert motion before arming the hand
+                # controller so releasing its clutch cannot reveal an older
+                # command underneath.
+                state.pulse.fill(0.0)
+                state.pulse_steps = 0
+                state.drive.fill(0.0)
+                state.drive_until = 0.0
+                state.drive_min_steps_remaining = 0
+                state.drive_stop_pending = False
+                if state.expert_demonstration.get("status") in {"running", "paused"}:
+                    state.expert_request = "take_over"
+                    state.expert_clean_run = False
+                if state.replaying or state.autonomy_mode == "supervised_replay":
+                    state.intervention_count += 1
+                    state.replaying = False
+                    state.replay_request = "stop"
+                    if state.autonomy_mode == "supervised_replay":
+                        state.autonomy_mode = "manual"
                 state.hand_teleop.enable_motion()
+                state.operator_input_source = "webcam_hands"
+                state.hand_authority_reason = f"enabled:{reason}"
                 message = "Hand control enabled; send an unclutched frame before engaging motion"
             else:
                 state.hand_teleop.disable_motion()
+                state.hand_authority_reason = f"frozen:{reason}"
                 message = "Hand control frozen"
             state.note_control(
                 "webcam_hands_enable" if request.enabled else "webcam_hands_disable",
@@ -8746,6 +8851,15 @@ def main() -> None:
                             hand_command,
                             dtype=np.float32,
                         )
+                if (
+                    state.hand_teleop.enabled
+                    and any(
+                        arm_state.motion_engaged
+                        for arm_state in state.hand_teleop.arm_states
+                    )
+                ):
+                    state.hand_last_applied_sequence = state.hand_teleop.last_sequence
+                    state.hand_last_applied_at = loop_started
             grippers_open = list(state.grippers_open)
             gripper_apertures = list(state.gripper_apertures)
             virtual_fixture_enabled = state.virtual_fixture_enabled
