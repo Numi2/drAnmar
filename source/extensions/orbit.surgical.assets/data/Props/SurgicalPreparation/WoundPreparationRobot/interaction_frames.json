@@ -1,0 +1,296 @@
+{
+  "asset": "DrAnmar Wound Preparation End Effector",
+  "coordinate_convention": {
+    "x": "lateral",
+    "y": "along_wound",
+    "z": "toward_patient"
+  },
+  "frames": {
+    "camera_left": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        -0.01,
+        -0.041,
+        0.096
+      ],
+      "role": "rgb_camera"
+    },
+    "camera_right": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.01,
+        -0.041,
+        0.096
+      ],
+      "role": "rgb_camera"
+    },
+    "cartridge_mount": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "DebridementRotor",
+      "position": [
+        0,
+        0,
+        -0.002
+      ],
+      "role": "cartridge_mount"
+    },
+    "contact_guard_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "ContactGuard",
+      "position": [
+        0,
+        0,
+        0.0
+      ],
+      "role": "contact_reference"
+    },
+    "count_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.041,
+        0.048
+      ],
+      "role": "inventory_reference"
+    },
+    "debridement_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "DebridementRotor",
+      "position": [
+        0,
+        0,
+        0.0055
+      ],
+      "role": "debridement_contact"
+    },
+    "depth_camera": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.041,
+        0.106
+      ],
+      "role": "depth_camera"
+    },
+    "fluorescence_camera": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.041,
+        0.086
+      ],
+      "role": "fluorescence_camera"
+    },
+    "illumination_ring": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.145
+      ],
+      "role": "illumination"
+    },
+    "irrigation_jet_origin": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.157
+      ],
+      "role": "irrigation_emitter_center"
+    },
+    "irrigation_reservoir_port": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "IrrigationReservoir",
+      "position": [
+        0,
+        0,
+        0.035
+      ],
+      "role": "fluid_supply_port"
+    },
+    "panda_link8_mount": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "franka_mount"
+    },
+    "rotor_axis": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "DebridementRotor",
+      "position": [
+        0,
+        0,
+        -0.004
+      ],
+      "role": "rotor_axis"
+    },
+    "service_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0.041,
+        0.052
+      ],
+      "role": "service_reference"
+    },
+    "suction_capture_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.166
+      ],
+      "role": "suction_capture_center"
+    },
+    "suction_throat": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.145
+      ],
+      "role": "suction_throat"
+    },
+    "waste_canister_port": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "WasteCanister",
+      "position": [
+        0,
+        0,
+        -0.035
+      ],
+      "role": "aspiration_return_port"
+    },
+    "wound_preparation_tcp": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.172
+      ],
+      "role": "robot_tcp"
+    }
+  },
+  "microjet_layout": {
+    "convergence_target_z_m": 0.174,
+    "count": 10,
+    "exit_radius_m": 0.0062,
+    "exit_z_m": 0.1595,
+    "ring_radius_m": 0.009
+  },
+  "schema": "dr.anmar.interaction-frames.v1",
+  "suction_layout": {
+    "annulus_inner_radius_m": 0.0132,
+    "annulus_outer_radius_m": 0.0186,
+    "capture_depth_m": 0.026,
+    "capture_radius_m": 0.023,
+    "slot_count": 12
+  },
+  "version": "0.1.0"
+}

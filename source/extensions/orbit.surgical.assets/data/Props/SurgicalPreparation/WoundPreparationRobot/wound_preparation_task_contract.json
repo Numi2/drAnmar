@@ -1,0 +1,47 @@
+{
+  "asset": "DrAnmar Wound Preparation End Effector",
+  "blocked_claims": [
+    "clinical debridement efficacy",
+    "bacterial reduction",
+    "healing improvement",
+    "tissue viability diagnosis",
+    "sterility",
+    "manufacturer equivalence",
+    "patient-care approval"
+  ],
+  "mechanisms": {
+    "aspiration": "twelve-slot annular suction crown with capture field and collection ledger",
+    "debridement": "extendable rotary cartridge with compliant guard and work-based debris release",
+    "inspection": [
+      "stereo_rgb",
+      "depth_projector",
+      "fluorescence_camera",
+      "illumination_ring"
+    ],
+    "irrigation": "ten inward-converging microjets with a metering spool and volume ledger"
+  },
+  "schema": "dr.anmar.wound-preparation-task.v1",
+  "sequence": [
+    "inspect",
+    "contact",
+    "pre_rinse",
+    "aspirate",
+    "debride",
+    "post_rinse",
+    "dry",
+    "verify"
+  ],
+  "success_metrics": [
+    "target coverage",
+    "remaining debris fraction",
+    "fluid emitted ml",
+    "fluid recovered ml",
+    "unrecovered fluid ml",
+    "peak contact force",
+    "debridement work",
+    "surface dwell time",
+    "collision count",
+    "verification coverage"
+  ],
+  "version": "0.1.0"
+}

@@ -1,0 +1,25 @@
+{
+  "asset": "DrAnmar Wound Preparation End Effector",
+  "disabled_stock_prims": [
+    "panda_hand_joint",
+    "panda_hand",
+    "panda_finger_joint1",
+    "panda_finger_joint2",
+    "panda_leftfinger",
+    "panda_rightfinger"
+  ],
+  "host": "Isaac Lab Franka Panda",
+  "host_link": "panda_link8",
+  "mount_rotation_deg_about_z": -45.0,
+  "mount_translation_m": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "payload_mount_link": "DrAnmarWoundPreparationTool/Links/Mount",
+  "payload_root": "DrAnmarWoundPreparationTool",
+  "schema": "dr.anmar.franka-payload-mount.v1",
+  "status": "category_level_research_interface_pending_runtime_and_metrology_iteration",
+  "tcp": "wound_preparation_tcp",
+  "version": "0.1.0"
+}

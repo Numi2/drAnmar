@@ -1,0 +1,158 @@
+{
+  "clinical_validation": false,
+  "debridement": {
+    "cartridges": [
+      "soft_brush",
+      "ring_curette",
+      "microtextured_pad"
+    ],
+    "debris_release_model": "cumulative_contact_work_removes_temporary_deformable_attachment",
+    "default_cartridge": "soft_brush",
+    "extension_m": 0.02,
+    "guard_compression_m": 0.008,
+    "nominal_rotation_speed_rpm": 420,
+    "status": "no_tissue_cutting_or_viability_claim"
+  },
+  "id": "dranmar-wound-preparation-robot-v1",
+  "joints": {
+    "contact_guard_joint": {
+      "axis": "Z",
+      "damping": 30.0,
+      "lower": 0.0,
+      "max_force": 32.0,
+      "parameter_status": "provisional_engineering_seed",
+      "stiffness": 1100.0,
+      "target_velocity": 0.0,
+      "type": "prismatic",
+      "upper": 0.008
+    },
+    "debridement_extension_joint": {
+      "axis": "Z",
+      "damping": 115.0,
+      "lower": 0.0,
+      "max_force": 45.0,
+      "parameter_status": "provisional_engineering_seed",
+      "stiffness": 4200.0,
+      "target_velocity": 0.0,
+      "type": "prismatic",
+      "upper": 0.02
+    },
+    "debridement_rotor_joint": {
+      "axis": "Z",
+      "damping": 0.018,
+      "lower": -360000.0,
+      "max_force": 0.32,
+      "parameter_status": "provisional_engineering_seed",
+      "stiffness": 0.0,
+      "target_velocity": 0.0,
+      "type": "revolute",
+      "upper": 360000.0
+    },
+    "irrigation_reservoir_fixed_joint": {
+      "axis": null,
+      "damping": 0.0,
+      "lower": null,
+      "max_force": 0.0,
+      "parameter_status": "provisional_engineering_seed",
+      "stiffness": 0.0,
+      "target_velocity": 0.0,
+      "type": "fixed",
+      "upper": null
+    },
+    "irrigation_valve_joint": {
+      "axis": "Z",
+      "damping": 45.0,
+      "lower": 0.0,
+      "max_force": 25.0,
+      "parameter_status": "provisional_engineering_seed",
+      "stiffness": 1800.0,
+      "target_velocity": 0.0,
+      "type": "prismatic",
+      "upper": 0.006
+    },
+    "suction_valve_joint": {
+      "axis": "Z",
+      "damping": 0.45,
+      "lower": 0.0,
+      "max_force": 2.0,
+      "parameter_status": "provisional_engineering_seed",
+      "stiffness": 8.0,
+      "target_velocity": 0.0,
+      "type": "revolute",
+      "upper": 85.0
+    },
+    "waste_canister_fixed_joint": {
+      "axis": null,
+      "damping": 0.0,
+      "lower": null,
+      "max_force": 0.0,
+      "parameter_status": "provisional_engineering_seed",
+      "stiffness": 0.0,
+      "target_velocity": 0.0,
+      "type": "fixed",
+      "upper": null
+    }
+  },
+  "medical_device": false,
+  "mount": {
+    "asset": "DrAnmar Wound Preparation End Effector",
+    "disabled_stock_prims": [
+      "panda_hand_joint",
+      "panda_hand",
+      "panda_finger_joint1",
+      "panda_finger_joint2",
+      "panda_leftfinger",
+      "panda_rightfinger"
+    ],
+    "host": "Isaac Lab Franka Panda",
+    "host_link": "panda_link8",
+    "mount_rotation_deg_about_z": -45.0,
+    "mount_translation_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "payload_mount_link": "DrAnmarWoundPreparationTool/Links/Mount",
+    "payload_root": "DrAnmarWoundPreparationTool",
+    "schema": "dr.anmar.franka-payload-mount.v1",
+    "status": "category_level_research_interface_pending_runtime_and_metrology_iteration",
+    "tcp": "wound_preparation_tcp",
+    "version": "0.1.0"
+  },
+  "name": "DrAnmar Wound Preparation End Effector",
+  "particle_irrigation": {
+    "conservation": "ledger tracks reservoir, emitted, active, aspirated, spilled and discarded volumes",
+    "nominal_jet_speed_m_s": 1.2,
+    "particle_material": "PhysX PBD liquid",
+    "particle_radius_m": 0.00065,
+    "particle_volume_ml": 0.0011503465099894623,
+    "status": "particle-scale proxy_not_cfd_or_clinical_dose_model"
+  },
+  "schema": "dr.anmar.wound-preparation-physics.v1",
+  "status": "research_informed_engineering_model_pending_runtime_metrology_and_clinical_validation",
+  "suction": {
+    "capture_depth_m": 0.026,
+    "capture_radius_m": 0.023,
+    "nominal_max_acceleration_m_s2": 18.0,
+    "status": "task_level_capture_field_pending_pressure_flow_calibration",
+    "swirl_gain": 0.25,
+    "throat_radius_m": 0.0065
+  },
+  "tool": {
+    "brush_bristles": 48,
+    "collection_capacity_ml": 55.0,
+    "irrigation_capacity_ml": 45.0,
+    "irrigation_nozzles": 10,
+    "nominal_total_mass_loaded_empty_collection_kg": 0.49,
+    "suction_slots": 12,
+    "work_plane_z_m": 0.172
+  },
+  "units": "metres-kilograms-seconds",
+  "version": "0.1.0",
+  "wound_demo": {
+    "debris_fragments": 7,
+    "deformable_route": "portable triangular surface cooked at runtime using current PhysX surface-deformable API",
+    "surface_triangles": 5520,
+    "surface_vertices": 2867
+  }
+}

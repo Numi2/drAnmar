@@ -34,3 +34,4 @@ from .psm import *
 from .skin_adhesive import *
 from .skin_stapler import *
 from .star import *
+from .wound_preparation_robot import *

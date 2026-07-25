@@ -179,6 +179,21 @@
       "native_gpu_qualification": "qualified_on_rtx_4090_2026_07_24_partial_18_7477_deg_no_deployment_full_event_24_6002_deg_max_pusher_8_9742_mm_max_fixture_error_0_1207_mm_0_0685_deg",
       "physical_qualification": "blocked_pending_instrumented_physical_trigger_and_pusher_measurements",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-wound-preparation-robot-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_standalone.usda",
+      "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_payload.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_bed_demo.usda",
+      "profile": "physics_next/surgical-preparation/dranmar-wound-preparation-robot-v1.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/interaction_frames.json",
+      "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/wound_preparation_task_contract.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/asset_manifest.json",
+      "live_integration": "franka_panda_link8_replacement_with_irrigation_aspiration_debridement_and_inspection",
+      "deployment": "enabled_for_research_iteration",
+      "native_gpu_qualification": "pending_isaac_sim_cuda_execution",
+      "physical_qualification": "provisional_unmeasured_parameters_active",
+      "clinical_validation": false
     }
   ],
   "validation": {

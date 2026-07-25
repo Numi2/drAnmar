@@ -1,0 +1,271 @@
+{
+  "asset": "DrAnmar Wound Preparation End Effector",
+  "links": {
+    "ContactGuard": {
+      "axis_coverage_ratio": [
+        0.9555555555555556,
+        0.9885057471264368,
+        1.0273972602739725
+      ],
+      "collider_max_m": [
+        0.0258,
+        0.0258,
+        0.00375
+      ],
+      "collider_min_m": [
+        -0.0258,
+        -0.0258,
+        -0.00375
+      ],
+      "deliberate_exclusions": [
+        "thin visual tubing",
+        "camera lenses",
+        "decorative labels",
+        "individual brush bristles"
+      ],
+      "visual_max_m": [
+        0.027,
+        0.026099999999999998,
+        0.0037
+      ],
+      "visual_min_m": [
+        -0.027,
+        -0.026099999999999998,
+        -0.0036
+      ]
+    },
+    "DebridementCarriage": {
+      "axis_coverage_ratio": [
+        0.9876543209876544,
+        1.0434782608695652,
+        0.9999999999999998
+      ],
+      "collider_max_m": [
+        0.012,
+        0.012,
+        0.032
+      ],
+      "collider_min_m": [
+        -0.012,
+        -0.012,
+        -0.003999999999999998
+      ],
+      "deliberate_exclusions": [
+        "thin visual tubing",
+        "camera lenses",
+        "decorative labels",
+        "individual brush bristles"
+      ],
+      "visual_max_m": [
+        0.0115,
+        0.0115,
+        0.0325
+      ],
+      "visual_min_m": [
+        -0.012799999999999999,
+        -0.0115,
+        -0.0035000000000000014
+      ]
+    },
+    "DebridementRotor": {
+      "axis_coverage_ratio": [
+        0.9152542372881355,
+        0.9152542372881355,
+        1.06138064912641
+      ],
+      "collider_max_m": [
+        0.0108,
+        0.0108,
+        0.007
+      ],
+      "collider_min_m": [
+        -0.0108,
+        -0.0108,
+        -0.0115
+      ],
+      "deliberate_exclusions": [
+        "thin visual tubing",
+        "camera lenses",
+        "decorative labels",
+        "individual brush bristles"
+      ],
+      "visual_max_m": [
+        0.011800000000000001,
+        0.011800000000000001,
+        0.00643012746202485
+      ],
+      "visual_min_m": [
+        -0.011800000000000001,
+        -0.011800000000000001,
+        -0.011
+      ]
+    },
+    "IrrigationReservoir": {
+      "axis_coverage_ratio": [
+        0.9705882352941176,
+        0.9705882352941176,
+        0.9210526315789473
+      ],
+      "collider_max_m": [
+        0.0165,
+        0.0165,
+        0.035
+      ],
+      "collider_min_m": [
+        -0.0165,
+        -0.0165,
+        -0.035
+      ],
+      "deliberate_exclusions": [
+        "thin visual tubing",
+        "camera lenses",
+        "decorative labels",
+        "individual brush bristles"
+      ],
+      "visual_max_m": [
+        0.017,
+        0.017,
+        0.038000000000000006
+      ],
+      "visual_min_m": [
+        -0.017,
+        -0.017,
+        -0.038000000000000006
+      ]
+    },
+    "IrrigationValve": {
+      "axis_coverage_ratio": [
+        0.8727272727272727,
+        0.8727272727272727,
+        0.9545454545454547
+      ],
+      "collider_max_m": [
+        0.0048,
+        0.0048,
+        0.0105
+      ],
+      "collider_min_m": [
+        -0.0048,
+        -0.0048,
+        -0.0105
+      ],
+      "deliberate_exclusions": [
+        "thin visual tubing",
+        "camera lenses",
+        "decorative labels",
+        "individual brush bristles"
+      ],
+      "visual_max_m": [
+        0.0055,
+        0.0055,
+        0.012
+      ],
+      "visual_min_m": [
+        -0.0055,
+        -0.0055,
+        -0.01
+      ]
+    },
+    "Mount": {
+      "axis_coverage_ratio": [
+        1.0199999999999998,
+        0.973293768545994,
+        1.1158112447829085
+      ],
+      "collider_max_m": [
+        0.051,
+        0.041,
+        0.17800000000000002
+      ],
+      "collider_min_m": [
+        -0.051,
+        -0.041,
+        0.0
+      ],
+      "deliberate_exclusions": [
+        "thin visual tubing",
+        "camera lenses",
+        "decorative labels",
+        "individual brush bristles"
+      ],
+      "visual_max_m": [
+        0.05,
+        0.04125,
+        0.15952518925782253
+      ],
+      "visual_min_m": [
+        -0.05,
+        -0.043000000000000003,
+        0.0
+      ]
+    },
+    "SuctionValve": {
+      "axis_coverage_ratio": [
+        0.8160000000000001,
+        1.02,
+        0.5925925925925926
+      ],
+      "collider_max_m": [
+        0.0102,
+        0.0102,
+        0.002
+      ],
+      "collider_min_m": [
+        -0.0102,
+        -0.0102,
+        -0.002
+      ],
+      "deliberate_exclusions": [
+        "thin visual tubing",
+        "camera lenses",
+        "decorative labels",
+        "individual brush bristles"
+      ],
+      "visual_max_m": [
+        0.015,
+        0.01,
+        0.005
+      ],
+      "visual_min_m": [
+        -0.01,
+        -0.01,
+        -0.00175
+      ]
+    },
+    "WasteCanister": {
+      "axis_coverage_ratio": [
+        0.9722222222222224,
+        0.9722222222222224,
+        0.9090909090909091
+      ],
+      "collider_max_m": [
+        0.0175,
+        0.0175,
+        0.035
+      ],
+      "collider_min_m": [
+        -0.0175,
+        -0.0175,
+        -0.035
+      ],
+      "deliberate_exclusions": [
+        "thin visual tubing",
+        "camera lenses",
+        "decorative labels",
+        "individual brush bristles"
+      ],
+      "visual_max_m": [
+        0.018,
+        0.018,
+        0.038500000000000006
+      ],
+      "visual_min_m": [
+        -0.018,
+        -0.018,
+        -0.038500000000000006
+      ]
+    }
+  },
+  "schema": "dr.anmar.collider-coverage.v1",
+  "version": "0.1.0"
+}
