@@ -10,19 +10,25 @@ hardware communication, synthetic data, and deployment infrastructure.
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import os
 import shutil
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
+from dr_anmar_asset_registry import (
+    PORTFOLIO_PATH_FIELDS,
+    catalog_lock_digest,
+    load_policy,
+    load_portfolio,
+    policy_release_path,
+    resolve_repository_artifact,
+)
 
 APP_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-I4H_ROOT = Path(
-    os.environ.get("DR_ANMAR_I4H_ROOT", APP_ROOT / "vendor/i4h-workflows-current")
-).expanduser()
+I4H_ROOT = Path(os.environ.get("DR_ANMAR_I4H_ROOT", APP_ROOT / "vendor/i4h-workflows-current")).expanduser()
 I4H_RELEASE = os.environ.get("DR_ANMAR_I4H_RELEASE", "v0.7.0")
 I4H_RELEASE_COMMIT = os.environ.get(
     "DR_ANMAR_I4H_RELEASE_COMMIT",
@@ -38,61 +44,17 @@ I4H_ASSET_HASH = os.environ.get("DR_ANMAR_I4H_ASSET_HASH", "724f82e")
 I4H_ASSET_CATALOG_ROOT = Path(
     os.environ.get("DR_ANMAR_I4H_ASSET_CATALOG_ROOT", APP_ROOT / "vendor/i4h-asset-catalog-current")
 ).expanduser()
-I4H_ASSET_DOWNLOAD_DIR = Path(
-    os.environ.get("I4H_ASSET_DOWNLOAD_DIR", APP_ROOT / "assets/i4h-catalog")
-).expanduser()
+I4H_ASSET_DOWNLOAD_DIR = Path(os.environ.get("I4H_ASSET_DOWNLOAD_DIR", APP_ROOT / "assets/i4h-catalog")).expanduser()
 HOLOHUB_CLI_COMMIT = os.environ.get(
     "DR_ANMAR_HOLOHUB_CLI_COMMIT",
     "f7e791dac061e01c560d3a2c5b7da82350915b69",
-)
-
-_PORTFOLIO_PATH_FIELDS = frozenset(
-    {
-        "asset",
-        "auxiliary_asset",
-        "base_layer",
-        "explicit_tetmesh",
-        "geometry_layer",
-        "gpu_report",
-        "interaction_frames",
-        "material_texture",
-        "materials_layer",
-        "operating_scene",
-        "payload_asset",
-        "physics_layer",
-        "physx_layer",
-        "profile",
-        "qualification",
-        "report",
-        "rigid_proxy",
-        "runtime",
-        "task_contract",
-        "training_contract",
-        "workcell_asset",
-    }
 )
 
 
 def _repository_artifact_path(relative_path: str) -> Path:
     """Resolve one normalized portfolio path without permitting root escape."""
 
-    pure = PurePosixPath(relative_path)
-    if (
-        not relative_path
-        or "\x00" in relative_path
-        or "\\" in relative_path
-        or pure.is_absolute()
-        or any(part in {"", ".", ".."} for part in pure.parts)
-    ):
-        raise ValueError(f"Unsafe Dr.Anmar portfolio path: {relative_path!r}")
-    candidate = (REPOSITORY_ROOT / Path(*pure.parts)).resolve()
-    try:
-        candidate.relative_to(REPOSITORY_ROOT.resolve())
-    except ValueError as error:
-        raise ValueError(
-            f"Dr.Anmar portfolio path escapes the repository: {relative_path!r}"
-        ) from error
-    return candidate
+    return resolve_repository_artifact(relative_path, REPOSITORY_ROOT)
 
 
 def _dr_anmar_portfolio_assets() -> tuple[list[dict[str, Any]], Path, str | None]:
@@ -100,10 +62,8 @@ def _dr_anmar_portfolio_assets() -> tuple[list[dict[str, Any]], Path, str | None
 
     portfolio_path = REPOSITORY_ROOT / "physics_next/dr-anmar-assets.json"
     try:
-        portfolio = json.loads(portfolio_path.read_text(encoding="utf-8"))
+        portfolio = load_portfolio(REPOSITORY_ROOT)
         entries = portfolio["assets"]
-        if not isinstance(entries, list):
-            raise ValueError("assets must be a list")
     except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
         return [], portfolio_path, str(error)
 
@@ -127,7 +87,7 @@ def _dr_anmar_portfolio_assets() -> tuple[list[dict[str, Any]], Path, str | None
         except ValueError as error:
             return [], portfolio_path, f"{asset_id}: {error}"
         artifacts: dict[str, dict[str, Any]] = {}
-        for key in sorted(_PORTFOLIO_PATH_FIELDS):
+        for key in sorted(PORTFOLIO_PATH_FIELDS):
             value = entry.get(key)
             if not isinstance(value, str) or not value:
                 continue
@@ -154,8 +114,7 @@ def _dr_anmar_portfolio_assets() -> tuple[list[dict[str, Any]], Path, str | None
                 "catalog_entry_present": True,
                 "local_path": str(local_path),
                 "local_ready": local_path.is_file(),
-                "artifact_closure_ready": bool(artifacts)
-                and all(item["ready"] for item in artifacts.values()),
+                "artifact_closure_ready": bool(artifacts) and all(item["ready"] for item in artifacts.values()),
                 "artifacts": artifacts,
                 "remote_url": None,
                 "representation": entry.get("live_integration"),
@@ -168,6 +127,77 @@ def _dr_anmar_portfolio_assets() -> tuple[list[dict[str, Any]], Path, str | None
             }
         )
     return assets, portfolio_path, None
+
+
+def _dr_anmar_release_lock_payload() -> dict[str, Any]:
+    """Expose the immutable local catalog identity without rehashing at request time."""
+
+    try:
+        policy = load_policy(REPOSITORY_ROOT)
+        lock_path = policy_release_path(policy, "lock_path", REPOSITORY_ROOT)
+        lock_bytes = lock_path.read_bytes()
+        lock = json.loads(lock_bytes)
+        assets = lock.get("assets", ())
+        portfolio = lock.get("portfolio", {}).get("assets", ())
+        digest_matches = lock.get("catalog_sha256") == catalog_lock_digest(lock)
+        return {
+            "ready": bool(
+                lock.get("schema") == "dr.anmar.asset-catalog-lock.v2"
+                and isinstance(assets, list)
+                and isinstance(portfolio, list)
+                and lock.get("clinical_validation") is False
+                and digest_matches
+            ),
+            "path": str(lock_path),
+            "schema": lock.get("schema"),
+            "catalog_version": lock.get("catalog_version"),
+            "catalog_sha256": lock.get("catalog_sha256"),
+            "self_digest_matches": digest_matches,
+            "lock_file_sha256": hashlib.sha256(lock_bytes).hexdigest(),
+            "asset_units": len(assets) if isinstance(assets, list) else 0,
+            "portfolio_assets": len(portfolio) if isinstance(portfolio, list) else 0,
+            "clinical_validation": lock.get("clinical_validation"),
+            "verification": "run scripts/dr_anmar_asset_registry.py verify",
+        }
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+        return {
+            "ready": False,
+            "path": None,
+            "error": str(error),
+        }
+
+
+def _i4h_installation_receipt_payload() -> dict[str, Any]:
+    """Report whether a recorded partial i4h installation matches the active pin."""
+
+    receipt_path = APP_ROOT / "run/i4h_asset_catalog.json"
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+        return {
+            "ready": False,
+            "path": str(receipt_path),
+            "error": str(error),
+        }
+    bundles = receipt.get("bundles", {})
+    pins_match = bool(
+        receipt.get("schema") == "dr.anmar.i4h-asset-installation.v2"
+        and receipt.get("catalog_release") == I4H_ASSET_CATALOG_RELEASE
+        and receipt.get("catalog_commit") == I4H_ASSET_CATALOG_COMMIT
+        and receipt.get("asset_version") == I4H_ASSET_VERSION
+        and receipt.get("asset_hash") == I4H_ASSET_HASH
+    )
+    return {
+        "ready": bool(pins_match and isinstance(bundles, dict) and bundles),
+        "path": str(receipt_path),
+        "schema": receipt.get("schema"),
+        "pins_match": pins_match,
+        "recorded_bundles": sorted(bundles) if isinstance(bundles, dict) else [],
+        "cache_file_count": receipt.get("cache_file_count"),
+        "cache_bytes": receipt.get("cache_bytes"),
+        "integrity_status": "recorded_not_rehashed",
+        "verification": "python3 scripts/dr_anmar_i4h_receipt.py verify",
+    }
 
 
 def runtime_prerequisites() -> dict[str, Any]:
@@ -186,8 +216,15 @@ def runtime_prerequisites() -> dict[str, Any]:
     except OSError:
         workflow_head = None
     return {
-        "container_runtime": {"ready": bool(docker), "path": docker, "label": "Docker Engine"},
-        "nvidia_gpu_device": {"ready": Path("/dev/nvidia0").exists(), "path": "/dev/nvidia0"},
+        "container_runtime": {
+            "ready": bool(docker),
+            "path": docker,
+            "label": "Docker Engine",
+        },
+        "nvidia_gpu_device": {
+            "ready": Path("/dev/nvidia0").exists(),
+            "path": "/dev/nvidia0",
+        },
         "rti_dds_license": {"ready": rti_path.is_file(), "path": str(rti_path)},
         "holohub_cli_pin": {
             "ready": installed_cli_commit == HOLOHUB_CLI_COMMIT,
@@ -207,28 +244,53 @@ WORKFLOW_BINDINGS = {
     "robotic_surgery": {
         "title": "Robotic surgery",
         "directory": "workflows/robotic_surgery",
-        "provides": ["dvrk", "star", "surgical_tasks", "reinforcement_learning", "imitation_learning"],
+        "provides": [
+            "dvrk",
+            "star",
+            "surgical_tasks",
+            "reinforcement_learning",
+            "imitation_learning",
+        ],
         "doctor_summary": "Practise surgical subtasks, collect demonstrations, and evaluate supervised autonomy.",
         "doctor_default_mode": "lift_needle_organs",
     },
     "robotic_ultrasound": {
         "title": "Robotic ultrasound",
         "directory": "workflows/robotic_ultrasound",
-        "provides": ["b_mode_ultrasound", "probe_pose", "acoustic_simulation", "holoscan", "pi0", "groot"],
+        "provides": [
+            "b_mode_ultrasound",
+            "probe_pose",
+            "acoustic_simulation",
+            "holoscan",
+            "pi0",
+            "groot",
+        ],
         "doctor_summary": "Learn probe positioning and image acquisition with simulated B-mode feedback.",
         "doctor_default_mode": "teleop_with_ultrasound",
     },
     "telesurgery": {
         "title": "Telesurgery",
         "directory": "workflows/telesurgery",
-        "provides": ["xr", "haptics", "video_streaming", "rti_dds", "hardware_in_the_loop"],
+        "provides": [
+            "xr",
+            "haptics",
+            "video_streaming",
+            "rti_dds",
+            "hardware_in_the_loop",
+        ],
         "doctor_summary": "Study remote control, latency, haptic feedback, handover, and sim-to-real interfaces.",
         "doctor_default_mode": None,
     },
     "so_arm_starter": {
         "title": "SO-ARM + GR00T starter",
         "directory": "workflows/so_arm_starter",
-        "provides": ["wrist_camera", "room_camera", "teleoperation", "lerobot", "groot"],
+        "provides": [
+            "wrist_camera",
+            "room_camera",
+            "teleoperation",
+            "lerobot",
+            "groot",
+        ],
         "doctor_summary": "Learn the full collect, train, evaluate, and deploy loop on an accessible robot arm.",
         "doctor_default_mode": "sim_keyboard",
     },
@@ -244,7 +306,10 @@ WORKFLOW_BINDINGS = {
             "groot",
             "online_rl",
         ],
-        "doctor_summary": "Use NVIDIA's rigid and surface-deformable precision-manipulation references as expert research starting points.",
+        "doctor_summary": (
+            "Use NVIDIA's rigid and surface-deformable precision-manipulation references as expert research starting"
+            " points."
+        ),
         "doctor_default_mode": None,
         "expert_source_only": True,
     },
@@ -260,15 +325,26 @@ WORKFLOW_BINDINGS = {
             "groot",
             "openpi",
         ],
-        "doctor_summary": "Run NVIDIA's native surgical environments and use the same contracts for demonstrations, datasets, policies, and evaluation.",
+        "doctor_summary": (
+            "Run NVIDIA's native surgical environments and use the same contracts for demonstrations, datasets,"
+            " policies, and evaluation."
+        ),
         "doctor_default_mode": "surgical_reach_psm",
         "agentic_yaml_contract": True,
     },
     "catheter_navigation": {
         "title": "Endoluminal navigation",
         "directory": "workflows/catheter_navigation",
-        "provides": ["fluoroscopy", "dsa", "xpbd_catheter", "vasculature_digital_twin", "ct_ingestion"],
-        "doctor_summary": "Study patient-specific endovascular navigation with NVIDIA's fluoroscopy and catheter-physics workflow.",
+        "provides": [
+            "fluoroscopy",
+            "dsa",
+            "xpbd_catheter",
+            "vasculature_digital_twin",
+            "ct_ingestion",
+        ],
+        "doctor_summary": (
+            "Study patient-specific endovascular navigation with NVIDIA's fluoroscopy and catheter-physics workflow."
+        ),
         "doctor_default_mode": "interactive_viewport",
     },
 }
@@ -312,7 +388,10 @@ def agentic_runtime_prerequisites() -> dict[str, Any]:
     return {
         "uv": {"ready": uv_path is not None, "path": uv_path},
         "git": {"ready": bool(shutil.which("git")), "path": shutil.which("git")},
-        "nvidia_gpu_device": {"ready": Path("/dev/nvidia0").exists(), "path": "/dev/nvidia0"},
+        "nvidia_gpu_device": {
+            "ready": Path("/dev/nvidia0").exists(),
+            "path": "/dev/nvidia0",
+        },
         "agentic_python": {
             "ready": workflow_python is not None,
             "path": str(workflow_python) if workflow_python else None,
@@ -422,14 +501,39 @@ def asset_catalog_payload() -> dict[str, Any]:
         ("dvrk_ecm", "Robots/dVRK/ECM/ecm.usd", "surgical_core", False),
         ("star", "Robots/STAR/star.usd", "surgical_core", False),
         ("suture_needle", "Props/SutureNeedle/needle.usd", "surgical_core", False),
-        ("suture_needle_sdf", "Props/SutureNeedle/needle_sdf.usd", "surgical_core", False),
+        (
+            "suture_needle_sdf",
+            "Props/SutureNeedle/needle_sdf.usd",
+            "surgical_core",
+            False,
+        ),
         ("suture_pad", "Props/SuturePad/suture_pad.usd", "surgical_core", False),
         ("surgical_table", "Props/Table/table.usd", "surgical_core", False),
-        ("surgical_scissors", "Props/SurgicalInstruments/SurgicalScissors.usd", "surgical_core", False),
-        ("surgical_tray", "Props/SurgicalInstruments/SurgicalTray.usd", "surgical_core", False),
+        (
+            "surgical_scissors",
+            "Props/SurgicalInstruments/SurgicalScissors.usd",
+            "surgical_core",
+            False,
+        ),
+        (
+            "surgical_tray",
+            "Props/SurgicalInstruments/SurgicalTray.usd",
+            "surgical_core",
+            False,
+        ),
         ("organs", "Props/Organs/organs.usd", "surgical_anatomy", False),
-        ("ultrasound_fixture", "Props/UltrasoundCameraFixture/fixture.usda", "ultrasound", False),
-        ("kuka_lbr7_med", "Robots/KUKA_LBR/LBR7_R800_Med/LBR7Med.urdf", "medical_robots", False),
+        (
+            "ultrasound_fixture",
+            "Props/UltrasoundCameraFixture/fixture.usda",
+            "ultrasound",
+            False,
+        ),
+        (
+            "kuka_lbr7_med",
+            "Robots/KUKA_LBR/LBR7_R800_Med/LBR7Med.urdf",
+            "medical_robots",
+            False,
+        ),
         ("kinova_kima", "Robots/Kinova/KIMA/USD/L3M/L3M.usd", "medical_robots", False),
         (
             "deformable_cloth",
@@ -462,10 +566,10 @@ def asset_catalog_payload() -> dict[str, Any]:
             }
         )
 
-    dr_anmar_assets, portfolio_path, portfolio_error = (
-        _dr_anmar_portfolio_assets()
-    )
+    dr_anmar_assets, portfolio_path, portfolio_error = _dr_anmar_portfolio_assets()
     assets.extend(dr_anmar_assets)
+    dr_anmar_release_lock = _dr_anmar_release_lock_payload()
+    i4h_installation_receipt = _i4h_installation_receipt_payload()
 
     arena_constants = I4H_ROOT / "workflows/agentic/arena/arena/assets/constants.py"
     arena_asset_root = None
@@ -478,9 +582,7 @@ def asset_catalog_payload() -> dict[str, Any]:
         pass
 
     source_ready = (
-        checkout_head == I4H_ASSET_CATALOG_COMMIT
-        and installed_hash == I4H_ASSET_HASH
-        and catalog_path.is_file()
+        checkout_head == I4H_ASSET_CATALOG_COMMIT and installed_hash == I4H_ASSET_HASH and catalog_path.is_file()
     )
     return {
         "release": I4H_ASSET_CATALOG_RELEASE,
@@ -496,12 +598,11 @@ def asset_catalog_payload() -> dict[str, Any]:
         "remote_root": remote_root,
         "dr_anmar_portfolio_path": str(portfolio_path),
         "dr_anmar_portfolio_error": portfolio_error,
+        "dr_anmar_release_lock": dr_anmar_release_lock,
+        "i4h_installation_receipt": i4h_installation_receipt,
         "assets": assets,
         "ready_assets": sum(asset["local_ready"] for asset in assets),
-        "dr_anmar_authored_assets": sum(
-            str(asset.get("provider", "")).startswith("dr_anmar")
-            for asset in assets
-        ),
+        "dr_anmar_authored_assets": sum(str(asset.get("provider", "")).startswith("dr_anmar") for asset in assets),
         "dr_anmar_complete_artifact_closures": sum(
             bool(asset.get("artifact_closure_ready"))
             for asset in assets
@@ -521,7 +622,16 @@ def asset_catalog_payload() -> dict[str, Any]:
 
 def _mode_category(mode_id: str, description: str) -> str:
     words = f"{mode_id} {description}".lower()
-    if any(word in words for word in ("hardware-in-the-loop", "real_deploy", "teleop_real", "clarius", "realsense")):
+    if any(
+        word in words
+        for word in (
+            "hardware-in-the-loop",
+            "real_deploy",
+            "teleop_real",
+            "clarius",
+            "realsense",
+        )
+    ):
         return "hardware"
     if mode_id.startswith("train"):
         return "training"
@@ -531,7 +641,14 @@ def _mode_category(mode_id: str, description: str) -> str:
         return "policy"
     if mode_id in {"replay", "convert", "convert_hdf5"}:
         return "data"
-    if mode_id in {"find_ports", "find_cameras", "calibrate_follower", "calibrate_leader", "download_model", "login_hf"}:
+    if mode_id in {
+        "find_ports",
+        "find_cameras",
+        "calibrate_follower",
+        "calibrate_leader",
+        "download_model",
+        "login_hf",
+    }:
         return "setup"
     return "simulation"
 
@@ -559,7 +676,8 @@ def workflow_modes(workflow_id: str) -> dict[str, Any]:
             "modes": [],
             "expert_source_only": bool(definition.get("expert_source_only")),
             "blocked_reason": (
-                "This upstream workflow has no guarded launch contract; use its reviewed scripts outside the clinician launcher."
+                "This upstream workflow has no guarded launch contract; use its reviewed scripts outside the clinician"
+                " launcher."
                 if definition.get("expert_source_only")
                 else None
             ),
@@ -603,13 +721,19 @@ def workflow_modes(workflow_id: str) -> dict[str, Any]:
         requires_arguments = "requires --run-args" in lower_description
         requires_hardware = any(
             value in lower_description
-            for value in ("hardware-in-the-loop", "real-to-real", "real hardware", "clarius", "realsense")
+            for value in (
+                "hardware-in-the-loop",
+                "real-to-real",
+                "real hardware",
+                "clarius",
+                "realsense",
+            )
         ) or any(value == "--privileged" or value.startswith("/dev") or "/dev:" in value for value in docker_args)
         interactive_auth = mode_id == "login_hf"
         category = _mode_category(mode_id, description)
-        requires_rti = (
-            workflow_id == "robotic_ultrasound" and category not in {"training", "data"}
-        ) or (workflow_id == "so_arm_starter" and mode_id in {"sim_env", "policy"})
+        requires_rti = (workflow_id == "robotic_ultrasound" and category not in {"training", "data"}) or (
+            workflow_id == "so_arm_starter" and mode_id in {"sim_env", "policy"}
+        )
         launchable = not requires_arguments and not requires_hardware and not interactive_auth and category != "setup"
         missing_prerequisites = []
         if launchable and not prerequisites["container_runtime"]["ready"]:
@@ -643,7 +767,14 @@ def workflow_modes(workflow_id: str) -> dict[str, Any]:
                 "runtime_validated": False,
             }
         )
-    modes.sort(key=lambda item: (not item["recommended"], not item["launchable"], item["category"], item["title"]))
+    modes.sort(
+        key=lambda item: (
+            not item["recommended"],
+            not item["launchable"],
+            item["category"],
+            item["title"],
+        )
+    )
     return {
         "default_mode": definition.get("doctor_default_mode") or official.get("default_mode"),
         "official_default_mode": official.get("default_mode"),
@@ -711,7 +842,13 @@ MODALITY_CATALOG = (
         "title": "Contact, force, torque, and deformation",
         "group": "Physical interaction",
         "doctor_value": "Reveals whether the robot completed the motion gently, not only whether it arrived.",
-        "outputs": ["contact_force", "joint_torque", "nodal_displacement", "stress", "deformation_gradient"],
+        "outputs": [
+            "contact_force",
+            "joint_torque",
+            "nodal_displacement",
+            "stress",
+            "deformation_gradient",
+        ],
         "provider": "Isaac Lab contact, articulation, and deformable-object tensors",
         "binding": "robotic_surgery",
         "native": True,
@@ -731,7 +868,13 @@ MODALITY_CATALOG = (
         "title": "Operator gaze and inputs",
         "group": "Human factors",
         "doctor_value": "Captures what the operator attended to and how each command was issued.",
-        "outputs": ["gaze_uv", "gaze_source", "input_source", "actions", "interventions"],
+        "outputs": [
+            "gaze_uv",
+            "gaze_source",
+            "input_source",
+            "actions",
+            "interventions",
+        ],
         "provider": "Dr.Anmar study schema with browser, XR, or external tracker adapters",
         "binding": "telesurgery",
         "native": True,
@@ -751,7 +894,13 @@ MODALITY_CATALOG = (
         "title": "Haptic and XR teleoperation",
         "group": "Teleoperation",
         "doctor_value": "Lets experts demonstrate natural two-handed control while studying latency and handover.",
-        "outputs": ["controller_pose", "buttons", "haptic_command", "latency", "handover_events"],
+        "outputs": [
+            "controller_pose",
+            "buttons",
+            "haptic_command",
+            "latency",
+            "handover_events",
+        ],
         "provider": "Isaac for Healthcare telesurgery workflow and RTI DDS",
         "binding": "telesurgery",
         "native": False,
@@ -777,15 +926,26 @@ POLICY_STARTING_POINTS = (
     {
         "id": "groot",
         "title": "GR00T N1.7",
-        "analogy": "Use a pretrained robot foundation model as a starting point instead of learning everything from zero.",
-        "inputs": ["language goal", "multi-camera video", "embodiment state/action mapping"],
+        "analogy": (
+            "Use a pretrained robot foundation model as a starting point instead of learning everything from zero."
+        ),
+        "inputs": [
+            "language goal",
+            "multi-camera video",
+            "embodiment state/action mapping",
+        ],
         "provider": "NVIDIA Isaac GR00T through Isaac for Healthcare v0.7 Agentic and SO-ARM workflows",
     },
     {
         "id": "reinforcement_learning",
         "title": "Reinforcement Learning",
         "analogy": "The robot practises repeatedly against an explicit simulator score.",
-        "inputs": ["state or observations", "reward", "termination", "safety constraints"],
+        "inputs": [
+            "state or observations",
+            "reward",
+            "termination",
+            "safety constraints",
+        ],
         "provider": "Isaac Lab / ORBIT-Surgical",
     },
 )
@@ -878,7 +1038,14 @@ def study_manifest(
         "workflow_inspection": [workflow_inspection_command(workflow) for workflow in workflows],
         "procedure_vocabulary": {
             "phases": ["setup", "approach", "grasp", "manipulation", "recovery"],
-            "events": ["target_visible", "contact", "grasp", "task_complete", "handoff", "safety_review"],
+            "events": [
+                "target_visible",
+                "contact",
+                "grasp",
+                "task_complete",
+                "handoff",
+                "safety_review",
+            ],
         },
         "study_steps": [
             "Review the clinical question and selected signals.",

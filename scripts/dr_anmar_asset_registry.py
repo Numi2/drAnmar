@@ -25,14 +25,51 @@ from urllib.parse import urlparse
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 POLICY_RELATIVE_PATH = Path("config/dranmar_asset_catalog.json")
+PORTFOLIO_RELATIVE_PATH = Path("physics_next/dr-anmar-assets.json")
 POLICY_SCHEMA = "dr.anmar.asset-catalog-policy.v1"
-LOCK_SCHEMA = "dr.anmar.asset-catalog-lock.v1"
+PORTFOLIO_SCHEMA = "dr.anmar.asset-portfolio.v1"
+LOCK_SCHEMA = "dr.anmar.asset-catalog-lock.v2"
 USD_SUFFIXES = frozenset({".usd", ".usda", ".usdc"})
 _USD_REFERENCE = re.compile(r"@([^@\r\n]+)@")
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{7,64}$")
 _COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 _SKIP_HASH_NAMES = frozenset({".DS_Store", ".gitattributes", ".gitignore"})
 _SKIP_HASH_DIRS = frozenset({".git", "__pycache__"})
+PORTFOLIO_PATH_FIELDS = frozenset(
+    {
+        "asset",
+        "auxiliary_asset",
+        "base_layer",
+        "explicit_tetmesh",
+        "geometry_layer",
+        "gpu_report",
+        "interaction_frames",
+        "material_texture",
+        "materials_layer",
+        "operating_scene",
+        "payload_asset",
+        "physics_layer",
+        "physx_layer",
+        "profile",
+        "qualification",
+        "report",
+        "rigid_proxy",
+        "runtime",
+        "task_contract",
+        "training_contract",
+        "workcell_asset",
+    }
+)
+PORTFOLIO_REQUIRED_FIELDS = frozenset(
+    {
+        "id",
+        "asset",
+        "live_integration",
+        "native_gpu_qualification",
+        "physical_qualification",
+        "clinical_validation",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -66,6 +103,18 @@ def load_policy(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
     return payload
 
 
+def load_portfolio(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
+    """Load the authoritative product-facing asset portfolio."""
+
+    portfolio_path = repository_root / PORTFOLIO_RELATIVE_PATH
+    payload = json.loads(portfolio_path.read_text(encoding="utf-8"))
+    if payload.get("schema") != PORTFOLIO_SCHEMA:
+        raise ValueError(f"Unsupported asset portfolio schema in {portfolio_path}")
+    if not isinstance(payload.get("assets"), list):
+        raise TypeError(f"Asset portfolio entries must be a list in {portfolio_path}")
+    return payload
+
+
 def i4h_provider(policy: Mapping[str, Any]) -> Mapping[str, Any]:
     """Return the pinned external i4h provider contract."""
 
@@ -95,6 +144,37 @@ def _contains(root: Path, candidate: Path) -> bool:
     except ValueError:
         return False
     return True
+
+
+def resolve_repository_artifact(
+    relative_path: str | os.PathLike[str],
+    repository_root: Path = REPOSITORY_ROOT,
+    *,
+    require: bool = False,
+) -> Path:
+    """Resolve one normalized repository artifact and reject root escape."""
+
+    repository_root = repository_root.expanduser().resolve()
+    relative = _safe_relative_path(relative_path)
+    candidate = (repository_root / relative).resolve()
+    if not _contains(repository_root, candidate):
+        raise ValueError(f"Repository artifact escapes the repository: {relative.as_posix()!r}")
+    if require and not candidate.is_file():
+        raise FileNotFoundError(f"Missing repository artifact {relative.as_posix()}: {candidate}")
+    return candidate
+
+
+def policy_release_path(
+    policy: Mapping[str, Any],
+    key: str,
+    repository_root: Path = REPOSITORY_ROOT,
+) -> Path:
+    """Resolve one policy-controlled release artifact inside the repository."""
+
+    value = policy.get("release", {}).get(key)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"Asset catalog policy is missing release.{key}")
+    return resolve_repository_artifact(value, repository_root)
 
 
 def provider_roots(
@@ -346,6 +426,36 @@ def _validate_policy(
     issues: list[CatalogIssue],
 ) -> None:
     upstream = i4h_provider(policy)
+    release = policy.get("release", {})
+    if not isinstance(release, Mapping):
+        _issue(
+            issues,
+            "error",
+            "invalid_release_policy",
+            POLICY_RELATIVE_PATH,
+            "release must be a JSON object.",
+            repository_root,
+        )
+        release = {}
+    if release.get("clinical_validation") is not False:
+        _issue(
+            issues,
+            "error",
+            "unsafe_release_clinical_claim",
+            POLICY_RELATIVE_PATH,
+            "release.clinical_validation must be exactly false.",
+            repository_root,
+        )
+    for requirement in ("lock_required", "generated_catalog_required"):
+        if release.get(requirement) is not True:
+            _issue(
+                issues,
+                "error",
+                "missing_release_gate",
+                POLICY_RELATIVE_PATH,
+                f"release.{requirement} must be exactly true.",
+                repository_root,
+            )
     if not _COMMIT_PATTERN.fullmatch(str(upstream.get("catalog_commit", ""))):
         _issue(
             issues,
@@ -364,6 +474,39 @@ def _validate_policy(
             "The i4h content hash must be a lowercase hexadecimal prefix or SHA-256.",
             repository_root,
         )
+    if upstream.get("license_review_required") is not True:
+        _issue(
+            issues,
+            "error",
+            "i4h_license_review",
+            POLICY_RELATIVE_PATH,
+            "The NVIDIA provider must retain license_review_required=true.",
+            repository_root,
+        )
+    for provider_id, provider in policy.get("providers", {}).items():
+        if not isinstance(provider, Mapping):
+            continue
+        if provider.get("clinical_validation") is not False:
+            _issue(
+                issues,
+                "error",
+                "unsafe_provider_clinical_claim",
+                POLICY_RELATIVE_PATH,
+                f"Provider {provider_id!r} must set clinical_validation=false.",
+                repository_root,
+            )
+    for key in ("lock_path", "catalog_document_path"):
+        try:
+            policy_release_path(policy, key, repository_root)
+        except ValueError as error:
+            _issue(
+                issues,
+                "error",
+                "unsafe_release_artifact",
+                POLICY_RELATIVE_PATH,
+                str(error),
+                repository_root,
+            )
     bundles = policy.get("i4h_bundles", {})
     for bundle_name, paths in bundles.items():
         if not isinstance(paths, list) or not paths:
@@ -388,6 +531,118 @@ def _validate_policy(
                     str(error),
                     repository_root,
                 )
+
+
+def validate_portfolio(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> tuple[CatalogIssue, ...]:
+    """Validate every product-facing asset and its declared artifact closure."""
+
+    repository_root = repository_root.expanduser().resolve()
+    issues: list[CatalogIssue] = []
+    try:
+        portfolio = load_portfolio(repository_root)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+        _issue(
+            issues,
+            "error",
+            "invalid_asset_portfolio",
+            PORTFOLIO_RELATIVE_PATH,
+            str(error),
+            repository_root,
+        )
+        return tuple(issues)
+
+    seen_ids: set[str] = set()
+    for index, entry in enumerate(portfolio["assets"]):
+        location = f"{PORTFOLIO_RELATIVE_PATH.as_posix()}#/assets/{index}"
+        if not isinstance(entry, Mapping):
+            _issue(
+                issues,
+                "error",
+                "invalid_portfolio_entry",
+                location,
+                "Portfolio entries must be JSON objects.",
+                repository_root,
+            )
+            continue
+        asset_id = str(entry.get("id", "")).strip()
+        if not asset_id or asset_id in seen_ids:
+            _issue(
+                issues,
+                "error",
+                "duplicate_portfolio_id",
+                location,
+                f"Missing or duplicate portfolio ID: {asset_id!r}",
+                repository_root,
+            )
+        seen_ids.add(asset_id)
+        missing = sorted(PORTFOLIO_REQUIRED_FIELDS - entry.keys())
+        if missing:
+            _issue(
+                issues,
+                "error",
+                "missing_portfolio_fields",
+                location,
+                f"{asset_id or index}: missing required fields {missing}",
+                repository_root,
+            )
+        if entry.get("clinical_validation") is not False:
+            _issue(
+                issues,
+                "error",
+                "unsafe_clinical_validation_claim",
+                location,
+                f"{asset_id or index}: clinical_validation must be exactly false.",
+                repository_root,
+            )
+        declared_artifacts = 0
+        for key in sorted(PORTFOLIO_PATH_FIELDS):
+            value = entry.get(key)
+            if value is None:
+                continue
+            if not isinstance(value, str) or not value:
+                _issue(
+                    issues,
+                    "error",
+                    "invalid_portfolio_artifact",
+                    location,
+                    f"{asset_id or index}/{key}: artifact path must be a non-empty string.",
+                    repository_root,
+                )
+                continue
+            declared_artifacts += 1
+            try:
+                resolved = resolve_repository_artifact(value, repository_root)
+            except ValueError as error:
+                _issue(
+                    issues,
+                    "error",
+                    "unsafe_portfolio_artifact",
+                    location,
+                    f"{asset_id or index}/{key}: {error}",
+                    repository_root,
+                )
+                continue
+            if not resolved.is_file():
+                _issue(
+                    issues,
+                    "error",
+                    "missing_portfolio_artifact",
+                    location,
+                    f"{asset_id or index}/{key}: {value} is missing.",
+                    repository_root,
+                )
+        if declared_artifacts == 0:
+            _issue(
+                issues,
+                "error",
+                "empty_portfolio_artifact_closure",
+                location,
+                f"{asset_id or index}: no catalog artifacts are declared.",
+                repository_root,
+            )
+    return tuple(issues)
 
 
 def _validate_json_and_usd(
@@ -712,6 +967,8 @@ def validate_catalog(
     *,
     procedures: Sequence[Mapping[str, Any]] | None = None,
     i4h_content_root: Path | None = None,
+    require_release_artifacts: bool = False,
+    lock_path: Path | None = None,
 ) -> dict[str, Any]:
     """Run the simulator-independent catalog gate and return a JSON-ready report."""
 
@@ -720,6 +977,12 @@ def validate_catalog(
     units = discover_asset_units(repository_root, policy=policy)
     issues: list[CatalogIssue] = []
     _validate_policy(policy, repository_root, issues)
+    portfolio_issues = validate_portfolio(repository_root)
+    issues.extend(portfolio_issues)
+    try:
+        portfolio_asset_count = len(load_portfolio(repository_root)["assets"])
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        portfolio_asset_count = 0
     _validate_json_and_usd(repository_root, policy, issues)
     _validate_unit_metadata(units, policy, repository_root, issues)
     if procedures is not None:
@@ -735,6 +998,13 @@ def validate_catalog(
                 repository_root=repository_root,
             )
         )
+    if require_release_artifacts:
+        issues.extend(
+            validate_release_artifacts(
+                repository_root,
+                lock_path=lock_path,
+            )
+        )
     issues.sort(key=lambda item: (item.severity, item.code, item.path, item.message))
     errors = sum(issue.severity == "error" for issue in issues)
     warnings = sum(issue.severity == "warning" for issue in issues)
@@ -743,6 +1013,7 @@ def validate_catalog(
         "catalog_version": policy["catalog_version"],
         "passed": errors == 0,
         "asset_units": len(units),
+        "portfolio_assets": portfolio_asset_count,
         "entrypoints": sum(len(unit.entrypoints) for unit in units),
         "files": sum(unit.file_count for unit in units),
         "bytes": sum(unit.bytes for unit in units),
@@ -765,9 +1036,11 @@ def build_lock(
         include_hashes=True,
         policy=policy,
     )
-    return {
+    portfolio = load_portfolio(repository_root)
+    lock: dict[str, Any] = {
         "schema": LOCK_SCHEMA,
         "catalog_version": policy["catalog_version"],
+        "clinical_validation": False,
         "i4h": {
             "release": upstream["release"],
             "catalog_commit": upstream["catalog_commit"],
@@ -777,14 +1050,135 @@ def build_lock(
         "assets": [
             {
                 "id": unit.asset_id,
+                "provider": unit.provider,
+                "relative_path": unit.relative_path,
                 "entrypoints": list(unit.entrypoints),
+                "metadata": list(unit.metadata),
+                "license_path": unit.license_path,
                 "file_count": unit.file_count,
                 "bytes": unit.bytes,
                 "sha256": unit.sha256,
+                "clinical_validation": False,
             }
             for unit in units
         ],
+        "portfolio": {
+            "schema": portfolio["schema"],
+            "asset_count": len(portfolio["assets"]),
+            "assets": [
+                {
+                    "id": str(entry["id"]),
+                    "asset": str(entry["asset"]),
+                    "artifacts": {
+                        key: str(entry[key])
+                        for key in sorted(PORTFOLIO_PATH_FIELDS)
+                        if isinstance(entry.get(key), str) and entry[key]
+                    },
+                    "native_gpu_qualification": entry["native_gpu_qualification"],
+                    "physical_qualification": entry["physical_qualification"],
+                    "clinical_validation": entry["clinical_validation"],
+                }
+                for entry in sorted(
+                    portfolio["assets"],
+                    key=lambda item: str(item["id"]),
+                )
+            ],
+        },
     }
+    lock["catalog_sha256"] = catalog_lock_digest(lock)
+    return lock
+
+
+def catalog_lock_digest(lock: Mapping[str, Any]) -> str:
+    """Hash the canonical lock payload, excluding its self-digest field."""
+
+    canonical = dict(lock)
+    canonical.pop("catalog_sha256", None)
+    encoded = json.dumps(
+        canonical,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _display_status(value: Any, *, maximum: int = 72) -> str:
+    if isinstance(value, Mapping):
+        value = value.get("status", "structured qualification")
+    rendered = str(value).replace("|", "\\|").replace("_", " ")
+    return rendered if len(rendered) <= maximum else f"{rendered[: maximum - 1]}…"
+
+
+def render_catalog_document(lock: Mapping[str, Any]) -> str:
+    """Render the canonical human-readable catalog from one release lock."""
+
+    upstream = lock["i4h"]
+    assets = lock["assets"]
+    portfolio = lock["portfolio"]["assets"]
+    lines = [
+        "<!-- Generated by scripts/dr_anmar_asset_registry.py; do not edit by hand. -->",
+        "",
+        "# Dr.Anmar simulation asset catalog",
+        "",
+        "This catalog is a human-readable view of the deterministic release lock.",
+        "It records software and asset provenance; it is not clinical-validation evidence.",
+        "",
+        "## Release identity",
+        "",
+        f"- Catalog schema: `{lock['schema']}`",
+        f"- Catalog version: `{lock['catalog_version']}`",
+        f"- Catalog SHA-256: `{lock['catalog_sha256']}`",
+        f"- Local asset units: `{len(assets)}`",
+        f"- Product portfolio assets: `{len(portfolio)}`",
+        "- Clinical validation: `false`",
+        "",
+        "## NVIDIA Isaac for Healthcare provider",
+        "",
+        f"- Release: `{upstream['release']}`",
+        f"- Source commit: `{upstream['catalog_commit']}`",
+        f"- Asset version: `{upstream['asset_version']}`",
+        f"- Content address: `{upstream['content_hash']}`",
+        "",
+        "Downloaded NVIDIA assets retain their provider-specific license terms.",
+        "",
+        "## Local dependency-complete asset units",
+        "",
+        "| Asset unit | Entrypoints | Files | Bytes | SHA-256 | License evidence |",
+        "| --- | ---: | ---: | ---: | --- | --- |",
+    ]
+    for asset in assets:
+        entrypoints = len(asset["entrypoints"])
+        license_path = str(asset.get("license_path") or "missing").replace("|", "\\|")
+        lines.append(
+            f"| `{asset['id']}` | {entrypoints} | {asset['file_count']} | "
+            f"{asset['bytes']} | `{asset['sha256']}` | `{license_path}` |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Product-facing portfolio",
+            "",
+            "| Asset | Primary stage | Native GPU qualification | Physical qualification | Clinical |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+    )
+    for asset in portfolio:
+        lines.append(
+            f"| `{asset['id']}` | `{asset['asset']}` | "
+            f"{_display_status(asset['native_gpu_qualification'])} | "
+            f"{_display_status(asset['physical_qualification'])} | "
+            f"`{str(asset['clinical_validation']).lower()}` |"
+        )
+    lines.extend(
+        [
+            "",
+            "Regenerate this file and its lock only after asset-specific structural,",
+            "native simulation, and applicable physical qualification gates have been reviewed.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def verify_lock(
@@ -793,20 +1187,115 @@ def verify_lock(
 ) -> tuple[str, ...]:
     """Compare a previously generated release lock with the current tree."""
 
+    failures: list[str] = []
     if lock.get("schema") != LOCK_SCHEMA:
         return ("Unsupported or missing asset-catalog lock schema.",)
+    assets = lock.get("assets")
+    if not isinstance(assets, list):
+        return ("Asset-catalog lock assets must be a list.",)
+    asset_ids: list[str] = []
+    for asset in assets:
+        if not isinstance(asset, Mapping) or not isinstance(asset.get("id"), str):
+            failures.append("Asset-catalog lock contains an invalid asset entry.")
+            continue
+        asset_ids.append(str(asset["id"]))
+        if not re.fullmatch(r"[0-9a-f]{64}", str(asset.get("sha256", ""))):
+            failures.append(f"Asset unit has an invalid SHA-256: {asset['id']}")
+    if len(asset_ids) != len(set(asset_ids)):
+        failures.append("Asset-catalog lock contains duplicate asset IDs.")
+    if lock.get("catalog_sha256") != catalog_lock_digest(lock):
+        failures.append("Asset-catalog lock self-digest does not match.")
+    if failures:
+        return tuple(failures)
+
     current = build_lock(repository_root)
-    failures: list[str] = []
     if lock.get("catalog_version") != current["catalog_version"]:
         failures.append("Catalog version does not match the lock.")
     if lock.get("i4h") != current["i4h"]:
         failures.append("Pinned i4h provider does not match the lock.")
-    expected_assets = {str(asset["id"]): asset for asset in lock.get("assets", ())}
+    if lock.get("portfolio") != current["portfolio"]:
+        failures.append("Product asset portfolio changed.")
+    expected_assets = {str(asset["id"]): asset for asset in assets}
     current_assets = {str(asset["id"]): asset for asset in current.get("assets", ())}
     for asset_id in sorted(expected_assets.keys() | current_assets.keys()):
         if expected_assets.get(asset_id) != current_assets.get(asset_id):
             failures.append(f"Asset unit changed: {asset_id}")
     return tuple(failures)
+
+
+def validate_release_artifacts(
+    repository_root: Path = REPOSITORY_ROOT,
+    *,
+    lock_path: Path | None = None,
+) -> tuple[CatalogIssue, ...]:
+    """Verify the checked-in lock and generated catalog against the asset tree."""
+
+    repository_root = repository_root.expanduser().resolve()
+    policy = load_policy(repository_root)
+    issues: list[CatalogIssue] = []
+    canonical_lock_path = policy_release_path(policy, "lock_path", repository_root)
+    selected_lock_path = lock_path.expanduser().resolve() if lock_path is not None else canonical_lock_path
+    try:
+        lock = json.loads(selected_lock_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        _issue(
+            issues,
+            "error",
+            "missing_or_invalid_catalog_lock",
+            selected_lock_path,
+            str(error),
+            repository_root,
+        )
+        return tuple(issues)
+    for failure in verify_lock(lock, repository_root):
+        _issue(
+            issues,
+            "error",
+            "catalog_lock_mismatch",
+            selected_lock_path,
+            failure,
+            repository_root,
+        )
+
+    catalog_path = policy_release_path(
+        policy,
+        "catalog_document_path",
+        repository_root,
+    )
+    try:
+        expected_document = render_catalog_document(lock)
+    except (KeyError, TypeError, ValueError) as error:
+        _issue(
+            issues,
+            "error",
+            "invalid_catalog_document_source",
+            selected_lock_path,
+            str(error),
+            repository_root,
+        )
+        return tuple(issues)
+    try:
+        actual_document = catalog_path.read_text(encoding="utf-8")
+    except OSError as error:
+        _issue(
+            issues,
+            "error",
+            "missing_generated_catalog",
+            catalog_path,
+            str(error),
+            repository_root,
+        )
+    else:
+        if actual_document != expected_document:
+            _issue(
+                issues,
+                "error",
+                "stale_generated_catalog",
+                catalog_path,
+                "Generated catalog.md does not match the canonical release lock.",
+                repository_root,
+            )
+    return tuple(issues)
 
 
 def _procedure_rooms() -> Sequence[Mapping[str, Any]]:
@@ -817,6 +1306,14 @@ def _procedure_rooms() -> Sequence[Mapping[str, Any]]:
 
 def _json_dump(payload: Any) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    path = path.expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp-{os.getpid()}")
+    temporary.write_text(content, encoding="utf-8")
+    os.replace(temporary, path)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -840,7 +1337,12 @@ def _parser() -> argparse.ArgumentParser:
     verify.add_argument(
         "--lock",
         type=Path,
-        help="Also verify a generated asset-catalog lock",
+        help="Verify this lock instead of the policy-defined canonical lock",
+    )
+    verify.add_argument(
+        "--skip-release-artifacts",
+        action="store_true",
+        help="Run structural checks without the canonical lock/catalog gate",
     )
 
     resolve = subparsers.add_parser("resolve", help="Resolve one provider-relative path")
@@ -850,7 +1352,19 @@ def _parser() -> argparse.ArgumentParser:
     resolve.add_argument("--require", action="store_true")
 
     lock = subparsers.add_parser("lock", help="Generate a deterministic release lock")
-    lock.add_argument("--output", type=Path, required=True)
+    lock.add_argument("--output", type=Path)
+
+    catalog = subparsers.add_parser(
+        "catalog",
+        help="Render the human-readable catalog from a release lock",
+    )
+    catalog.add_argument("--lock", type=Path)
+    catalog.add_argument("--output", type=Path)
+    catalog.add_argument(
+        "--check",
+        action="store_true",
+        help="Fail if the output differs instead of writing it",
+    )
     return parser
 
 
@@ -873,13 +1387,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         report = validate_catalog(
             repository_root,
             procedures=_procedure_rooms(),
+            require_release_artifacts=not args.skip_release_artifacts,
+            lock_path=args.lock,
         )
-        if args.lock:
-            lock = json.loads(args.lock.read_text(encoding="utf-8"))
-            lock_failures = verify_lock(lock, repository_root)
-            report["lock_passed"] = not lock_failures
-            report["lock_failures"] = list(lock_failures)
-            report["passed"] = bool(report["passed"] and not lock_failures)
         _json_dump(report)
         return 0 if report["passed"] else 1
     if args.command == "resolve":
@@ -898,14 +1408,43 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "lock":
         payload = build_lock(repository_root)
-        output = args.output.expanduser()
-        output.parent.mkdir(parents=True, exist_ok=True)
-        temporary = output.with_name(f".{output.name}.tmp-{os.getpid()}")
-        temporary.write_text(
-            json.dumps(payload, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
+        policy = load_policy(repository_root)
+        output = (
+            args.output.expanduser()
+            if args.output is not None
+            else policy_release_path(policy, "lock_path", repository_root)
         )
-        os.replace(temporary, output)
+        _atomic_write_text(
+            output,
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        )
+        print(output)
+        return 0
+    if args.command == "catalog":
+        policy = load_policy(repository_root)
+        lock_path = (
+            args.lock.expanduser()
+            if args.lock is not None
+            else policy_release_path(policy, "lock_path", repository_root)
+        )
+        output = (
+            args.output.expanduser()
+            if args.output is not None
+            else policy_release_path(
+                policy,
+                "catalog_document_path",
+                repository_root,
+            )
+        )
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
+        rendered = render_catalog_document(lock)
+        if args.check:
+            try:
+                existing = output.read_text(encoding="utf-8")
+            except OSError:
+                return 1
+            return 0 if existing == rendered else 1
+        _atomic_write_text(output, rendered)
         print(output)
         return 0
     raise AssertionError(f"Unhandled command: {args.command}")

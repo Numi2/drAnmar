@@ -26,6 +26,9 @@ All notable changes to Dr.Anmar will be documented here.
   complete local directory inventory, dependency and metadata gates,
   deterministic release hashing, CI verification, and capability coverage for
   all 19 authoritative DrAnmar portfolio entries.
+- Canonical v2 asset release lock and generated human catalog, fail-closed
+  portfolio/artifact validation, and cumulative content-addressed receipts for
+  partial NVIDIA i4h bundle downloads.
 
 ### Changed
 

@@ -1,7 +1,14 @@
 {
   "schema": "dr.anmar.asset-catalog-policy.v1",
-  "catalog_version": "1.0.0",
+  "catalog_version": "1.1.0",
   "description": "One catalog contract for Dr.Anmar-owned assets and the pinned NVIDIA Isaac for Healthcare provider.",
+  "release": {
+    "lock_path": "config/dranmar_asset_catalog.lock.json",
+    "catalog_document_path": "catalog.md",
+    "clinical_validation": false,
+    "lock_required": true,
+    "generated_catalog_required": true
+  },
   "providers": {
     "dr_anmar": {
       "kind": "local",
@@ -10,7 +17,9 @@
         "."
       ],
       "license_fallback": "LICENSE",
-      "ownership": "Dr.Anmar and retained upstream ORBIT-Surgical asset notices"
+      "ownership": "Dr.Anmar and retained upstream ORBIT-Surgical asset notices",
+      "clinical_validation": false,
+      "license_policy": "nearest asset license or repository fallback"
     },
     "dr_anmar_repository": {
       "kind": "local",
@@ -19,7 +28,9 @@
         "assets/dr_anmar"
       ],
       "license_fallback": "LICENSE",
-      "ownership": "Dr.Anmar repository-local assets"
+      "ownership": "Dr.Anmar repository-local assets",
+      "clinical_validation": false,
+      "license_policy": "nearest asset license or repository fallback"
     },
     "nvidia_i4h": {
       "kind": "external",
@@ -30,7 +41,8 @@
       "content_hash": "724f82e",
       "content_root_environment": "DR_ANMAR_I4H_ASSET_CONTENT_ROOT",
       "default_cache_subpath": "assets/i4h-catalog",
-      "license_review_required": true
+      "license_review_required": true,
+      "clinical_validation": false
     }
   },
   "i4h_bundles": {

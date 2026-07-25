@@ -46,10 +46,14 @@ traversal and workstation-absolute references, checks manifests and licensing
 evidence, and can generate deterministic directory hashes for release locks.
 The hub, workstation, native-room resolver, installers, and capability API use
 the same provider-relative paths instead of maintaining independent root logic.
+The checked-in lock and generated [`catalog.md`](catalog.md) cover all local
+asset units and all 19 product portfolio entries; CI rejects any drift between
+those release artifacts and the repository.
 
 ```bash
 python3 scripts/dr_anmar_asset_registry.py verify
 python3 scripts/dr_anmar_asset_registry.py inventory --hash
+python3 scripts/dr_anmar_i4h_receipt.py verify
 ```
 
 The clinician-facing capability payload is generated from all 19 entries in

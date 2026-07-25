@@ -9,21 +9,26 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from dr_anmar_asset_registry import (
+from dr_anmar_asset_registry import (  # noqa: E402
     build_lock,
+    catalog_lock_digest,
     discover_asset_units,
     load_policy,
     provider_roots,
+    render_catalog_document,
     resolve_provider_asset,
     sha256_of_folder,
     validate_catalog,
+    validate_portfolio,
+    validate_release_artifacts,
     verify_lock,
 )
-from dr_anmar_i4h_adapter import (
+from dr_anmar_i4h_adapter import (  # noqa: E402
     _dr_anmar_portfolio_assets,
     _repository_artifact_path,
+    asset_catalog_payload,
 )
-from dr_anmar_procedures import PROCEDURE_ROOMS
+from dr_anmar_procedures import PROCEDURE_ROOMS  # noqa: E402
 
 
 def test_i4h_provider_is_fully_pinned() -> None:
@@ -83,19 +88,30 @@ def test_catalog_gate_covers_runtime_room_references() -> None:
     assert report["passed"], json.dumps(report["issues"], indent=2)
 
 
+def test_portfolio_contract_covers_every_declared_artifact() -> None:
+    assert validate_portfolio(ROOT) == ()
+
+
 def test_capability_payload_covers_the_authoritative_portfolio() -> None:
-    portfolio = json.loads(
-        (ROOT / "physics_next/dr-anmar-assets.json").read_text(encoding="utf-8")
-    )
+    portfolio = json.loads((ROOT / "physics_next/dr-anmar-assets.json").read_text(encoding="utf-8"))
     assets, portfolio_path, error = _dr_anmar_portfolio_assets()
 
     assert error is None
     assert portfolio_path == ROOT / "physics_next/dr-anmar-assets.json"
-    assert {asset["id"] for asset in assets} == {
-        asset["id"] for asset in portfolio["assets"]
-    }
+    assert {asset["id"] for asset in assets} == {asset["id"] for asset in portfolio["assets"]}
     assert all(asset["local_ready"] for asset in assets)
     assert all(asset["clinical_validation"] is False for asset in assets)
+
+
+def test_capability_payload_exposes_the_release_lock_identity() -> None:
+    release = asset_catalog_payload()["dr_anmar_release_lock"]
+
+    assert release["ready"] is True
+    assert release["schema"] == "dr.anmar.asset-catalog-lock.v2"
+    assert release["self_digest_matches"] is True
+    assert release["clinical_validation"] is False
+    assert release["asset_units"] >= 20
+    assert release["portfolio_assets"] == 19
 
 
 @pytest.mark.parametrize(
@@ -142,6 +158,26 @@ def test_release_lock_detects_asset_change(tmp_path: Path) -> None:
         json.dumps(policy),
         encoding="utf-8",
     )
+    portfolio_root = repository / "physics_next"
+    portfolio_root.mkdir()
+    (portfolio_root / "dr-anmar-assets.json").write_text(
+        json.dumps(
+            {
+                "schema": "dr.anmar.asset-portfolio.v1",
+                "assets": [
+                    {
+                        "id": "fixture",
+                        "asset": "assets/fixture.usda",
+                        "live_integration": "test",
+                        "native_gpu_qualification": "not_run",
+                        "physical_qualification": "not_run",
+                        "clinical_validation": False,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
 
     lock = build_lock(repository)
     assert verify_lock(lock, repository) == ()
@@ -151,3 +187,25 @@ def test_release_lock_detects_asset_change(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert verify_lock(lock, repository) == ("Asset unit changed: dr_anmar:.",)
+
+
+def test_canonical_release_lock_and_generated_catalog_are_current() -> None:
+    policy = load_policy(ROOT)
+    lock_path = ROOT / policy["release"]["lock_path"]
+    catalog_path = ROOT / policy["release"]["catalog_document_path"]
+    lock = json.loads(lock_path.read_text(encoding="utf-8"))
+
+    assert verify_lock(lock, ROOT) == ()
+    assert lock["catalog_sha256"] == catalog_lock_digest(lock)
+    assert catalog_path.read_text(encoding="utf-8") == render_catalog_document(lock)
+    assert validate_release_artifacts(ROOT) == ()
+
+
+def test_release_lock_rejects_duplicate_ids_and_stale_self_digest() -> None:
+    lock = build_lock(ROOT)
+    lock["assets"].append(dict(lock["assets"][0]))
+
+    failures = verify_lock(lock, ROOT)
+
+    assert "Asset-catalog lock contains duplicate asset IDs." in failures
+    assert "Asset-catalog lock self-digest does not match." in failures

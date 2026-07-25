@@ -9,10 +9,15 @@ loading Isaac Sim merely to inspect the tree.
 
 - `config/dranmar_asset_catalog.json` pins the i4h Git release, full commit,
   content version, content hash, supported download bundles, local provider
-  roots, and minimum metadata policy.
+  roots, generated release artifacts, and minimum metadata policy.
+- `config/dranmar_asset_catalog.lock.json` is the checked-in,
+  content-addressed identity of every dependency-complete local asset unit and
+  every product-facing portfolio entry.
+- `catalog.md` is generated from that lock and is the reviewable human index.
 - `scripts/dr_anmar_asset_registry.py` resolves provider-relative paths,
   inventories every local asset family, verifies JSON and textual USDA
-  dependencies, and generates deterministic release locks.
+  dependencies, validates the full product portfolio, and verifies the
+  canonical lock and generated index by default.
 - `scripts/dr_anmar_i4h_adapter.py` derives its Dr.Anmar capability entries
   from the complete 19-entry `physics_next/dr-anmar-assets.json` portfolio,
   including the readiness of every declared artifact closure.
@@ -58,19 +63,21 @@ python3 scripts/dr_anmar_asset_registry.py resolve \
   --require
 ```
 
-Create a release lock after the asset tree has passed its physics and visual
-qualification:
+Update the canonical release artifacts only after the asset tree has passed
+its applicable structural, native-physics, visual, and physical qualification:
 
 ```bash
-python3 scripts/dr_anmar_asset_registry.py lock \
-  --output build/dranmar-asset-catalog.lock.json
-python3 scripts/dr_anmar_asset_registry.py verify \
-  --lock build/dranmar-asset-catalog.lock.json
+python3 scripts/dr_anmar_asset_registry.py lock
+python3 scripts/dr_anmar_asset_registry.py catalog
+python3 scripts/dr_anmar_asset_registry.py verify
 ```
 
-The lock includes one deterministic SHA-256 per asset family. It is a release
-integrity artifact, not evidence that an asset is clinically validated or that
-its Isaac/PhysX behavior passed a GPU qualification.
+The gate fails when the asset tree, portfolio, lock, or generated catalog
+drifts. `verify --skip-release-artifacts` is available only for development
+while preparing a coordinated lock update. The lock includes one deterministic
+SHA-256 per asset family plus an overall self-digest. It is a release integrity
+artifact, not evidence that an asset is clinically validated or that its
+Isaac/PhysX behavior passed a GPU qualification.
 
 ## Adding or importing an asset
 
@@ -85,8 +92,16 @@ its Isaac/PhysX behavior passed a GPU qualification.
 6. Register room-visible entrypoints with a known provider:
    `dr_anmar`, `dr_anmar_repository`, or `nvidia_i4h`.
 7. Run the structural gate, asset-specific tests, and the relevant native
-   Isaac/PhysX qualification before updating a release lock.
+   Isaac/PhysX qualification before updating both canonical release artifacts.
 
 External i4h payloads are downloaded separately and retain their own license
 terms. In particular, research-only or non-commercial assets must never be
 silently promoted into a commercial Dr.Anmar release.
+
+Each partial NVIDIA bundle download receives a v2 installation receipt with a
+SHA-256 over every requested file or directory closure. Verify local bytes
+against that receipt with:
+
+```bash
+python3 scripts/dr_anmar_i4h_receipt.py verify
+```

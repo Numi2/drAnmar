@@ -72,29 +72,14 @@ for path in "${paths[@]}"; do
     --sub-path "${path}"
 done
 
-python3 - "${app_root}/run/i4h_asset_catalog.json" "${bundle}" "${asset_version}" "${asset_hash}" \
-  "${download_dir}/${asset_hash}" "${paths[@]}" <<'PY'
-import json
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
-
-output, bundle, version, content_hash, content_root, *requested = sys.argv[1:]
-root = Path(content_root)
-files = [path for path in root.rglob("*") if path.is_file()]
-manifest = {
-    "schema": "dr.anmar.i4h-asset-catalog-installation.v1",
-    "provider": "NVIDIA Isaac for Healthcare asset catalog",
-    "asset_version": version,
-    "asset_hash": content_hash,
-    "last_retrieved_bundle": bundle,
-    "last_requested_subpaths": requested,
-    "content_root": str(root),
-    "cache_file_count": len(files),
-    "cache_bytes": sum(path.stat().st_size for path in files),
-    "recorded_at": datetime.now(timezone.utc).isoformat(),
-    "license_review_required": True,
-}
-Path(output).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-print(json.dumps(manifest, indent=2))
-PY
+receipt="${app_root}/run/i4h_asset_catalog.json"
+python3 "${project_root}/scripts/dr_anmar_i4h_receipt.py" \
+  --policy-root "${project_root}" \
+  record \
+  --content-root "${download_dir}/${asset_hash}" \
+  --bundle "${bundle}" \
+  --output "${receipt}"
+python3 "${project_root}/scripts/dr_anmar_i4h_receipt.py" \
+  --policy-root "${project_root}" \
+  verify \
+  --receipt "${receipt}"

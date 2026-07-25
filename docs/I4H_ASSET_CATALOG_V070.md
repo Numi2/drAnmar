@@ -89,8 +89,19 @@ Install and retrieve a bundle with:
 ```
 
 The helper writes an installation record to
-`${DR_ANMAR_ROOT}/run/i4h_asset_catalog.json`. Dr.Anmar's capability API reports the source pin, asset content
-address, declared canonical paths, local readiness and the upstream asset root used by NVIDIA Arena.
+`${DR_ANMAR_ROOT}/run/i4h_asset_catalog.json`. The v2 record retains all
+downloaded bundles and hashes each requested file or dependency-complete
+directory from its sorted relative paths and bytes. The fetch command verifies
+the record immediately; it can also be checked later with:
+
+```bash
+python3 scripts/dr_anmar_i4h_receipt.py verify
+```
+
+Dr.Anmar's capability API reports the source pin, asset content address,
+declared canonical paths, receipt status, local readiness, and the upstream
+asset root used by NVIDIA Arena. Reporting a receipt does not replace the
+explicit integrity check or native simulation qualification.
 
 ## Runtime boundary
 
@@ -121,7 +132,10 @@ Arena URL or imply that other v0.7 assets are unchanged.
 | --- | --- |
 | `logs/i4h-asset-catalog-v0.7.0-install.log` | `59a7da099c6c39a2a24b1cd0d8bd66ebb964400f0bb5389f98e0d355bc313e9a` |
 | `logs/i4h-asset-catalog-v0.7.0-surgical-core.log` | `abab52cbb783a87f50bf20dee37e70e8302fa9199bdda2f259f021feec19f5ca` |
-| `run/i4h_asset_catalog.json` | `c7e5ee64c313dd32015e22420bed2a27cae877df759e7cffc446eca5b886142f` |
+| legacy `run/i4h_asset_catalog.json` v1 receipt | `c7e5ee64c313dd32015e22420bed2a27cae877df759e7cffc446eca5b886142f` |
+
+The legacy receipt above records the 2026-07-23 installation evidence. The
+next bundle fetch migrates it to the content-addressed v2 format.
 
 ## Licensing
 
