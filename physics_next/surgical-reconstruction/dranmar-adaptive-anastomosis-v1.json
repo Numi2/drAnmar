@@ -1,0 +1,552 @@
+{
+  "boundaries": [
+    "no_clinical_force_or_pressure_claims",
+    "no_continuous_staple_plasticity",
+    "no_validated_tissue_penetration_or_damage",
+    "no_biochemical_adhesive_or_healing_model",
+    "no_clinical_leak_threshold_claim",
+    "runtime_qualification_required"
+  ],
+  "capture": {
+    "attachment_model": "six_current_vertex_to_xform_attachment_cells_per_side",
+    "hard_release_n": 6.0,
+    "soft_limit_n": 3.5,
+    "target_force_per_side_n": 1.6
+  },
+  "id": "dranmar-adaptive-anastomosis-robot-v1",
+  "leak_test": {
+    "initial_reservoir_ml": 60.0,
+    "maximum_residual_leak_ml_min": 2.0,
+    "model": "lumped_isothermal_pressure_decay_plus_orifice_leak_proxy",
+    "nominal_challenge_pressure_pa": 8000.0,
+    "observation_window_s": 8.0
+  },
+  "mechanism": {
+    "active_joint_count": 14,
+    "active_joint_names": [
+      "left_approximation_joint",
+      "right_approximation_joint",
+      "left_capture_joint",
+      "right_capture_joint",
+      "left_eversion_joint",
+      "right_eversion_joint",
+      "mandrel_extension_joint",
+      "mandrel_expansion_joint",
+      "staple_driver_joint",
+      "collar_carousel_joint",
+      "collar_applicator_joint",
+      "left_occluder_valve_joint",
+      "right_occluder_valve_joint",
+      "pressure_valve_joint"
+    ],
+    "authored_joint_prim_count": 15,
+    "capture_cells_per_side": 6,
+    "collar_capacity": 3,
+    "collar_sector_count": 16,
+    "fixed_joint_names": [
+      "staple_anvil_mount_joint"
+    ],
+    "link_mass_properties": {
+      "CollarApplicator": {
+        "bounds_max_m": [
+          0.009,
+          0.0188,
+          0.0468
+        ],
+        "bounds_min_m": [
+          -0.009,
+          -0.0188,
+          -0.025
+        ],
+        "center_of_mass_m": [
+          0.0,
+          0.0,
+          0.0109
+        ],
+        "diagonal_inertia_kg_m2": [
+          4.0508833333333334e-05,
+          3.378864666666666e-05,
+          1.0716186666666667e-05
+        ],
+        "mass_kg": 0.074,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "CollarCarousel": {
+        "bounds_max_m": [
+          0.031,
+          0.031,
+          0.012
+        ],
+        "bounds_min_m": [
+          -0.031,
+          -0.031,
+          -0.012
+        ],
+        "center_of_mass_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          3.5359999999999993e-05,
+          3.5359999999999993e-05,
+          6.1504e-05
+        ],
+        "mass_kg": 0.096,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "LeftCaptureSleeve": {
+        "bounds_max_m": [
+          0.013000000000000001,
+          0.02,
+          0.02
+        ],
+        "bounds_min_m": [
+          -0.0095,
+          -0.02,
+          -0.02
+        ],
+        "center_of_mass_m": [
+          0.0017500000000000007,
+          0.0,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          1.6266666666666668e-05,
+          1.0706770833333335e-05,
+          1.0706770833333335e-05
+        ],
+        "mass_kg": 0.061,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "LeftCarriage": {
+        "bounds_max_m": [
+          0.018,
+          0.022,
+          0.015
+        ],
+        "bounds_min_m": [
+          -0.018,
+          -0.0231,
+          -0.021
+        ],
+        "center_of_mass_m": [
+          0.0,
+          -0.0005500000000000001,
+          -0.003000000000000001
+        ],
+        "diagonal_inertia_kg_m2": [
+          2.2755068333333334e-05,
+          1.7712000000000003e-05,
+          2.2755068333333334e-05
+        ],
+        "mass_kg": 0.082,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "LeftEversionRing": {
+        "bounds_max_m": [
+          0.005400000000000001,
+          0.0192,
+          0.0192
+        ],
+        "bounds_min_m": [
+          -0.005,
+          -0.0192,
+          -0.0192
+        ],
+        "center_of_mass_m": [
+          0.00020000000000000052,
+          0.0,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          8.35584e-06,
+          4.484373333333332e-06,
+          4.484373333333332e-06
+        ],
+        "mass_kg": 0.034,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "LeftOccluderValve": {
+        "bounds_max_m": [
+          0.006,
+          0.006,
+          0.018000000000000002
+        ],
+        "bounds_min_m": [
+          -0.006,
+          -0.006,
+          -0.009
+        ],
+        "center_of_mass_m": [
+          0.0,
+          0.0,
+          0.004500000000000001
+        ],
+        "diagonal_inertia_kg_m2": [
+          1.3095000000000001e-06,
+          1.3095000000000001e-06,
+          4.32e-07
+        ],
+        "mass_kg": 0.018,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Mandrel": {
+        "bounds_max_m": [
+          0.154,
+          0.0102,
+          0.0102
+        ],
+        "bounds_min_m": [
+          0.0,
+          -0.0102,
+          -0.0102
+        ],
+        "center_of_mass_m": [
+          0.077,
+          0.0,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          4.99392e-06,
+          0.00014479296,
+          0.00014479296
+        ],
+        "mass_kg": 0.072,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "MandrelExpander": {
+        "bounds_max_m": [
+          0.019873002946274667,
+          0.01135,
+          0.009943266739736606
+        ],
+        "bounds_min_m": [
+          -0.019873002946274667,
+          -0.01135,
+          -0.009943266739736606
+        ],
+        "center_of_mass_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          1.9733224632987863e-06,
+          4.2796415961883464e-06,
+          4.5392424662228935e-06
+        ],
+        "mass_kg": 0.026,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "Mount": {
+        "bounds_max_m": [
+          0.1025,
+          0.064,
+          0.2273
+        ],
+        "bounds_min_m": [
+          -0.1025,
+          -0.061,
+          0.0
+        ],
+        "center_of_mass_m": [
+          0.0,
+          0.0015000000000000013,
+          0.11365
+        ],
+        "diagonal_inertia_kg_m2": [
+          0.0027476868416666665,
+          0.0038256868416666665,
+          0.002354041666666666
+        ],
+        "mass_kg": 0.49,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "PressureValve": {
+        "bounds_max_m": [
+          0.006,
+          0.006,
+          0.02
+        ],
+        "bounds_min_m": [
+          -0.006,
+          -0.006,
+          -0.01
+        ],
+        "center_of_mass_m": [
+          0.0,
+          0.0,
+          0.005
+        ],
+        "diagonal_inertia_kg_m2": [
+          1.74e-06,
+          1.74e-06,
+          4.8e-07
+        ],
+        "mass_kg": 0.02,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "RightCaptureSleeve": {
+        "bounds_max_m": [
+          0.0095,
+          0.02,
+          0.02
+        ],
+        "bounds_min_m": [
+          -0.013000000000000001,
+          -0.02,
+          -0.02
+        ],
+        "center_of_mass_m": [
+          -0.0017500000000000007,
+          0.0,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          1.6266666666666668e-05,
+          1.0706770833333335e-05,
+          1.0706770833333335e-05
+        ],
+        "mass_kg": 0.061,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "RightCarriage": {
+        "bounds_max_m": [
+          0.018,
+          0.022,
+          0.015
+        ],
+        "bounds_min_m": [
+          -0.018,
+          -0.0231,
+          -0.021
+        ],
+        "center_of_mass_m": [
+          0.0,
+          -0.0005500000000000001,
+          -0.003000000000000001
+        ],
+        "diagonal_inertia_kg_m2": [
+          2.2755068333333334e-05,
+          1.7712000000000003e-05,
+          2.2755068333333334e-05
+        ],
+        "mass_kg": 0.082,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "RightEversionRing": {
+        "bounds_max_m": [
+          0.005,
+          0.0192,
+          0.0192
+        ],
+        "bounds_min_m": [
+          -0.005400000000000001,
+          -0.0192,
+          -0.0192
+        ],
+        "center_of_mass_m": [
+          -0.00020000000000000052,
+          0.0,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          8.35584e-06,
+          4.484373333333332e-06,
+          4.484373333333332e-06
+        ],
+        "mass_kg": 0.034,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "RightOccluderValve": {
+        "bounds_max_m": [
+          0.006,
+          0.006,
+          0.018000000000000002
+        ],
+        "bounds_min_m": [
+          -0.006,
+          -0.006,
+          -0.009
+        ],
+        "center_of_mass_m": [
+          0.0,
+          0.0,
+          0.004500000000000001
+        ],
+        "diagonal_inertia_kg_m2": [
+          1.3095000000000001e-06,
+          1.3095000000000001e-06,
+          4.32e-07
+        ],
+        "mass_kg": 0.018,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "StapleAnvil": {
+        "bounds_max_m": [
+          0.0030000000000000014,
+          0.0205,
+          0.0205
+        ],
+        "bounds_min_m": [
+          -0.0030000000000000014,
+          -0.0205,
+          -0.0205
+        ],
+        "center_of_mass_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          2.297366666666667e-05,
+          1.1732833333333336e-05,
+          1.1732833333333336e-05
+        ],
+        "mass_kg": 0.082,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "StapleDriver": {
+        "bounds_max_m": [
+          0.006000000000000001,
+          0.021,
+          0.021
+        ],
+        "bounds_min_m": [
+          -0.00422,
+          -0.021,
+          -0.021
+        ],
+        "center_of_mass_m": [
+          0.0008900000000000006,
+          0.0,
+          0.0
+        ],
+        "diagonal_inertia_kg_m2": [
+          3.4692e-05,
+          1.8373075933333333e-05,
+          1.8373075933333333e-05
+        ],
+        "mass_kg": 0.118,
+        "principal_axes_wxyz": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "staple_count": 16,
+    "work_axis_z_m": 0.205
+  },
+  "name": "DrAnmar Adaptive Anastomosis Robot",
+  "patency": {
+    "expanded_reference_radius_m": 0.0105,
+    "mandrel_radius_m": 0.0058,
+    "target_minimum_lumen_radius_m": 0.0085
+  },
+  "reinforcement_collar": {
+    "cure_time_s": 45.0,
+    "final_sector_break_force_n": 2.2,
+    "initial_sector_tack_force_n": 0.18,
+    "stable_bond_carrier": "rigid_proxy_with_independent_left_and_right_sector_attachments",
+    "surface_representation": "connected_triangular_circumferential_ribbon"
+  },
+  "schema": "dranmar.adaptive-anastomosis-profile.v1",
+  "staples": {
+    "forming": "discrete_open_to_formed_state_until_qualified_plasticity_backend",
+    "provisional_pullout_force_per_staple_n": 1.4,
+    "representation": "sixteen_independent_rigid_formed_staples_with_left_and_right_attachment_regions"
+  },
+  "status": "qualified_headless_cuda_standalone_and_franka_pending_physical_metrology_and_clinical_validation",
+  "tissue_demo": {
+    "constitutive_parameters": "provisional_category_level_seeds",
+    "initial_gap_m": 0.02,
+    "outer_diameter_m": 0.024,
+    "representation": "two_watertight_hollow_wall_surface_meshes_prepared_for_current_surface_deformable_cooking",
+    "segment_length_m": 0.065,
+    "solver_mesh_axial_segments": 16,
+    "solver_mesh_circumferential_segments": 32,
+    "surface_self_collision_boundary": "opt_in_after_thickness_and_contact_capacity_tuning",
+    "surface_self_collision_default": false,
+    "wall_thickness_m": 0.0024
+  },
+  "units": "metres-kilograms-seconds",
+  "version": "0.1.0"
+}

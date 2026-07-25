@@ -1,0 +1,294 @@
+{
+  "asset": "dranmar-adaptive-anastomosis-robot-v1",
+  "catalog_subpath": "Props/SurgicalReconstruction/AdaptiveAnastomosisRobot",
+  "file_count": 57,
+  "files": [
+    {
+      "bytes": 61,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/LICENSE.txt",
+      "sha256": "b1dfa2dfca252aa086c890c14107e1377fb5c6958f30251ccc0a7718725f5f37"
+    },
+    {
+      "bytes": 1741,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/README.md",
+      "sha256": "a62201df48212b1e468bb8ebe9b8baf710fce0c6fea6a3bb5ee944f85cdb3178"
+    },
+    {
+      "bytes": 1150,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/adaptive_anastomosis_task_contract.json",
+      "sha256": "2f03487ab880c504db9a4bd1937440fb3646c5c0f3f23a5216fbd8fb471a09d0"
+    },
+    {
+      "bytes": 10755,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/collider_coverage.json",
+      "sha256": "5a901d610630604966d999ee87a87b093c72228bb46cb9a08055c608af02f278"
+    },
+    {
+      "bytes": 7718939,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_payload.usda",
+      "sha256": "05ded3c5e2baccfb3c7956afc6d52989b72e6aa2a43a0820490887ce09a792ec"
+    },
+    {
+      "bytes": 7110308,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_rigid_proxy.usda",
+      "sha256": "7ca27a5e24a4b2e91bcc8d730e0b68133a19b6f6e2ad94f3d7f849e941a2d114"
+    },
+    {
+      "bytes": 7721844,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_standalone.usda",
+      "sha256": "1bd839e3f5b5887fb3ed309b727c1a66a360b65396ca8b56d14e43002c4acb22"
+    },
+    {
+      "bytes": 426654,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_anastomosis_staple.usda",
+      "sha256": "20895fc2aaf5ce2dfc381badf09974a589cf3fbcf1aa4950944d365e251d5889"
+    },
+    {
+      "bytes": 359677,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_hollow_tissue_demo.usda",
+      "sha256": "a01210a26a6c964b088325d22f805972108cedf3f7e8d0b9971dc02c590fea54"
+    },
+    {
+      "bytes": 46704,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_leak_test_droplet.usda",
+      "sha256": "a8ae10daf0d9818575fd98aa9b56415117d24a6b5ec9792f1c8de459110601bf"
+    },
+    {
+      "bytes": 133587,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_reinforcement_collar.usda",
+      "sha256": "6d839b621621e937a53300cab4a5720e0832bd580b6409e2c044a45729555981"
+    },
+    {
+      "bytes": 179374,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_reinforcement_collar_rigid_proxy.usda",
+      "sha256": "3a1635627b3c21feba0abce8c9633010018a5ba2e0bbef58eca67d229fa016b9"
+    },
+    {
+      "bytes": 490,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/franka_mount_contract.json",
+      "sha256": "ad1caa9d99b4dfe64ae0f0c387080a48fb3c7df7c916594e03f4f478243dedc3"
+    },
+    {
+      "bytes": 56792,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_staple_formed.glb",
+      "sha256": "149cdc236983ed1c601bb16986daf71f7e87f944d5748fbfd95e2583fd7b28b8"
+    },
+    {
+      "bytes": 33456,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_staple_open.glb",
+      "sha256": "fc2f8216d6d87dbad88ebff89cd274500590f4ab13ebe5db105ad9d3cf62d520"
+    },
+    {
+      "bytes": 804288,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_align.glb",
+      "sha256": "9358e9a9638f03bc7067ed2a159dbc3ebc7d0fb6736fdb5ff140e922de56e3e6"
+    },
+    {
+      "bytes": 804320,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_approximate.glb",
+      "sha256": "2c06d2daa0849f82d6892bb370af1cdb6dcd04a831972efb808c6bceb1338bca"
+    },
+    {
+      "bytes": 804296,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_capture.glb",
+      "sha256": "0ae31f30d5692a2da9e493100b3727f7a7f66c03e012401c97b2782b2f53f369"
+    },
+    {
+      "bytes": 906260,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_collision_debug.glb",
+      "sha256": "24cb61dd7cfd3854ee6bf131111e604038271b88323d96189c03248a5271ecc6"
+    },
+    {
+      "bytes": 804276,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_complete.glb",
+      "sha256": "d5d66d41997b05789ae55f2139d6d53924e91287942699c9e0f8d97de2d755fb"
+    },
+    {
+      "bytes": 804324,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_evert.glb",
+      "sha256": "1b1e6ff5ed954d21bf4456df27141b390007870784f9e6d08186f5fa4696b9a0"
+    },
+    {
+      "bytes": 804164,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_exploded.glb",
+      "sha256": "50ac07eb3ace89e7e4539d0076afa03f4f809669cb718a992108ca9788d74ea4"
+    },
+    {
+      "bytes": 871008,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_frame_debug.glb",
+      "sha256": "336eb3d8bd648d503e44dee18dc06db6d44b5e80e1b3a14e0d6e03cdb8d3a08a"
+    },
+    {
+      "bytes": 804276,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_inspect.glb",
+      "sha256": "d5d66d41997b05789ae55f2139d6d53924e91287942699c9e0f8d97de2d755fb"
+    },
+    {
+      "bytes": 804276,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_leak_test.glb",
+      "sha256": "0c1fad506a33ed42fc067798b54f87c8e959350344a6490a584dfe5ea69004dd"
+    },
+    {
+      "bytes": 804296,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_reinforce.glb",
+      "sha256": "25ac427302b0ba420bb08b40721befee8ec2eb5dc190e5b48ea8122cd94b20a9"
+    },
+    {
+      "bytes": 804392,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_anastomosis_tool_staple.glb",
+      "sha256": "f32b8228f173ef6a21344a6a2a636a04e51b9a1c8199e491074f22bd30dca4bd"
+    },
+    {
+      "bytes": 862224,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_franka_anastomosis_assembly.glb",
+      "sha256": "b185f750d1e4087b82d72ae96af6deca0979da868067ae2a2ee45587103dd28f"
+    },
+    {
+      "bytes": 57996,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_hollow_tissue_aligned.glb",
+      "sha256": "57ae0e9e935f1aa85c26f73282513b06ed8ca34cf302393d2ff3a51b15efecb5"
+    },
+    {
+      "bytes": 427288,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_hollow_tissue_completed.glb",
+      "sha256": "c4652217182bbb6e1daa42833aa722b3bf92c09682cf9c8e3c9439e0697002cf"
+    },
+    {
+      "bytes": 57996,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_hollow_tissue_initial.glb",
+      "sha256": "3b37246723f08a61ba9b69fd6a54d85c12e7d869bb27c6e571ee0485be3be288"
+    },
+    {
+      "bytes": 33248,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/glb/dranmar_reinforcement_collar.glb",
+      "sha256": "04adda7faa3123b568f8e8df679ca4dbdf9045d6c21d92a5a447b222a1cab30c"
+    },
+    {
+      "bytes": 5968,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/interaction_frames.json",
+      "sha256": "2aa6b5f70765891ce0ea3398ed3584d60fc517f4c08aa062eee2afc0d0286aef"
+    },
+    {
+      "bytes": 12560,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/physics_profile.json",
+      "sha256": "51146846188b2eca520725ba4a89cfea9f48ffa30ec5a5daf179aa221865c1f1"
+    },
+    {
+      "bytes": 4958,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/qualification_report.json",
+      "sha256": "a0ce97983780259e6d33f328a30edbefba05bd734f55427577b1b3b87da9b112"
+    },
+    {
+      "bytes": 4123,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/textures/label_dranmar.png",
+      "sha256": "50f3a7b6e62a6fb0dc8344d4e5f7c4fea44db3b0e4eb27ad736d9ea0811822e0"
+    },
+    {
+      "bytes": 249811,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/textures/metal_microtexture.png",
+      "sha256": "f022576a1f694f69e7bec50c108ff30b2c6099c0107c17cf328477969f4f0b84"
+    },
+    {
+      "bytes": 272948,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/textures/polymer_microtexture.png",
+      "sha256": "ce64d0cd6349cdf7f2d479af2a56434d29990171970901d24c2898572b4ce5f2"
+    },
+    {
+      "bytes": 413574,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/textures/reinforcement_collar_basecolor.png",
+      "sha256": "7f4a9daf14cb50e24989179806c2c8996d8c419e4ccf17feefd0a335809c5633"
+    },
+    {
+      "bytes": 289819,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/textures/test_medium_basecolor.png",
+      "sha256": "46b52e857ba59d9871ebb3734feb57b2a4065fc5cef8dacc3be26083ae8491e7"
+    },
+    {
+      "bytes": 332850,
+      "path": "assets/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/textures/tissue_basecolor.png",
+      "sha256": "e2e9cb287aa54cc70ec4107a7c42629207610126cfc0efc71863473c45d28138"
+    },
+    {
+      "bytes": 824,
+      "path": "docs/adaptive_anastomosis_robot/FRANKA_INTEGRATION.md",
+      "sha256": "20ea83be027a26a649074973ff130fc7062ed30a9b62b02fb11ad78f4e21fb50"
+    },
+    {
+      "bytes": 1053,
+      "path": "docs/adaptive_anastomosis_robot/MECHANISM.md",
+      "sha256": "ceb2194c9fdfe12a729a14fbd60969c15ef84fd1d42b147ba5b2b428b225afec"
+    },
+    {
+      "bytes": 1072,
+      "path": "docs/adaptive_anastomosis_robot/PATENCY_AND_LEAK_TEST.md",
+      "sha256": "5c24fa74af98b6ea7509326d4f326f1b2f0aaa83c4b8e849dc7b71ba189974dd"
+    },
+    {
+      "bytes": 2318,
+      "path": "docs/adaptive_anastomosis_robot/PHYSICAL_ANASTOMOSIS.md",
+      "sha256": "3e6b3cd358134836ceccc210908020900a1fab29d3b0022601e87f65b0627a2d"
+    },
+    {
+      "bytes": 1190,
+      "path": "docs/adaptive_anastomosis_robot/VALIDATION.md",
+      "sha256": "2ffe3271f4fc4b6b671e1ba2139d73e4a9a6981ec458e6e1ac3a751ed9abbe22"
+    },
+    {
+      "bytes": 787,
+      "path": "examples/franka_adaptive_anastomosis_scene.py",
+      "sha256": "69fd7ba66024acbbf75346f4a432c6a8e2a9c79a4b7b4c3287bec6ffa54c583c"
+    },
+    {
+      "bytes": 13637,
+      "path": "examples/validate_adaptive_anastomosis_runtime.py",
+      "sha256": "3167175135c8c3a95248bfc3f31f4eaf40ec37f03de064849a4051cf980c6cb7"
+    },
+    {
+      "bytes": 12560,
+      "path": "physics_next/surgical-reconstruction/dranmar-adaptive-anastomosis-v1.json",
+      "sha256": "51146846188b2eca520725ba4a89cfea9f48ffa30ec5a5daf179aa221865c1f1"
+    },
+    {
+      "bytes": 74185,
+      "path": "previews/dranmar_adaptive_anastomosis_robot_full_arm_preview.png",
+      "sha256": "0f9f8871df0445c8ff9bd33a03777d1b7f21b344f91601617e075fd2718dfa18"
+    },
+    {
+      "bytes": 331173,
+      "path": "previews/dranmar_adaptive_anastomosis_robot_preview.png",
+      "sha256": "f8032a11e448596589baeaa23f8b0c7b1e5b62f67844ffe4d6885d3a2c72cde5"
+    },
+    {
+      "bytes": 150191,
+      "path": "scripts/generate_dranmar_adaptive_anastomosis_robot.py",
+      "sha256": "15780c7257355e9566f766aa4dd426f252c9409dda6da9ee6750920253da1c2a"
+    },
+    {
+      "bytes": 5731,
+      "path": "scripts/install_into_dranmar.py",
+      "sha256": "5fcbcfe16b2d69ebe3e63ff547ab56e3a2ae15312edd570d387d175e9be52b8b"
+    },
+    {
+      "bytes": 78,
+      "path": "scripts/requirements_adaptive_anastomosis_generation.txt",
+      "sha256": "a645d183e5e1df4e7e0806a12edfa332c7fcc8c96bed41b8ec6410b689c76f70"
+    },
+    {
+      "bytes": 9324,
+      "path": "scripts/validate_dranmar_adaptive_anastomosis_robot.py",
+      "sha256": "b160e6962f8088327dadcb8a8af93a92de6398deae9832d072800f5ff8af6103"
+    },
+    {
+      "bytes": 53462,
+      "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/adaptive_anastomosis_robot.py",
+      "sha256": "4a2d95925487db7a2ff9ddb059ff2d763f29cbae4836507a86a98a26d93a2f14"
+    },
+    {
+      "bytes": 5278,
+      "path": "tests/test_adaptive_anastomosis_robot.py",
+      "sha256": "164263a4a1330f39e05ed6acf1cc49950a86b9e7989c94364a2ce3e591d7cc14"
+    }
+  ],
+  "schema": "dranmar.asset-manifest.v1",
+  "version": "0.1.0"
+}

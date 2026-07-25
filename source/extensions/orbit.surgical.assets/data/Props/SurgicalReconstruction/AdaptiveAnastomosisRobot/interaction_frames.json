@@ -1,0 +1,337 @@
+{
+  "asset": "dranmar-adaptive-anastomosis-robot-v1",
+  "frames": {
+    "anastomosis_tcp": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.205
+      ],
+      "role": "coaxial anastomosis tool center point"
+    },
+    "camera_left": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        -0.014,
+        -0.059,
+        0.092
+      ],
+      "role": "left RGB camera optical frame"
+    },
+    "camera_right": {
+      "orientation_wxyz": [
+        0.70710678,
+        0.70710678,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.014,
+        -0.059,
+        0.092
+      ],
+      "role": "right RGB camera optical frame"
+    },
+    "collar_application": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "CollarApplicator",
+      "position": [
+        0,
+        0,
+        0.028
+      ],
+      "role": "reinforcement collar placement frame"
+    },
+    "count_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.035
+      ],
+      "role": "inventory and counting reference"
+    },
+    "disposal_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.02
+      ],
+      "role": "end effector disposal reference"
+    },
+    "leak_observation": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        -0.035,
+        0.205
+      ],
+      "role": "external seam leak observation reference"
+    },
+    "left_capture_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftCaptureSleeve",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "left tissue capture center"
+    },
+    "left_eversion_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftEversionRing",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "left eversion contact ring"
+    },
+    "left_tissue_edge_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "LeftCaptureSleeve",
+      "position": [
+        0.01,
+        0,
+        0
+      ],
+      "role": "left tissue edge target"
+    },
+    "lumen_axis_reference": {
+      "orientation_wxyz": [
+        0.70710678,
+        0,
+        0.70710678,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.205
+      ],
+      "role": "positive local X lumen axis"
+    },
+    "mandrel_tip": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mandrel",
+      "position": [
+        0.146,
+        0,
+        0
+      ],
+      "role": "atraumatic lumen insertion tip"
+    },
+    "panda_link8_mount": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "Franka panda_link8 mounting frame"
+    },
+    "patency_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "MandrelExpander",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "minimum-lumen patency measurement center"
+    },
+    "pressure_inlet": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mandrel",
+      "position": [
+        0.072,
+        0,
+        0
+      ],
+      "role": "leak-test medium inlet"
+    },
+    "pressure_sensor": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0.047,
+        0.03,
+        0.09
+      ],
+      "role": "lumen pressure measurement reference"
+    },
+    "right_capture_center": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightCaptureSleeve",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "right tissue capture center"
+    },
+    "right_eversion_contact": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightEversionRing",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "right eversion contact ring"
+    },
+    "right_tissue_edge_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "RightCaptureSleeve",
+      "position": [
+        -0.01,
+        0,
+        0
+      ],
+      "role": "right tissue edge target"
+    },
+    "seam_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "Mount",
+      "position": [
+        0,
+        0,
+        0.205
+      ],
+      "role": "target anastomosis seam center"
+    },
+    "staple_anvil_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "StapleAnvil",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "role": "circumferential anvil ring center"
+    },
+    "staple_crown_reference": {
+      "orientation_wxyz": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "parent_link": "StapleDriver",
+      "position": [
+        -0.005,
+        0,
+        0
+      ],
+      "role": "circumferential staple deployment plane"
+    }
+  },
+  "schema": "dranmar.interaction-frames.v1",
+  "units": "m"
+}

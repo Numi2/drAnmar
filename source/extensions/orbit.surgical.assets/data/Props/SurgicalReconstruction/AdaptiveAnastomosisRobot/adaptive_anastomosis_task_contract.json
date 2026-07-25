@@ -1,0 +1,52 @@
+{
+  "clinical_validation": false,
+  "failure_modes": [
+    "capture_loss",
+    "torsional_misalignment",
+    "lumen_obstruction",
+    "edge_inversion",
+    "incomplete_apposition",
+    "staple_misfire",
+    "staple_pullout",
+    "collar_delamination",
+    "pressure_test_leak",
+    "tissue_crush",
+    "wall_cut_through",
+    "mandrel_entrapment",
+    "instrument_collision"
+  ],
+  "phases": [
+    "inspect",
+    "capture",
+    "align",
+    "mandrel",
+    "approximate",
+    "evert",
+    "staple",
+    "release_capture",
+    "reinforce",
+    "occlude",
+    "pressurize",
+    "verify",
+    "complete",
+    "abort"
+  ],
+  "procedure": "end_to_end_hollow_tissue_anastomosis",
+  "schema": "dranmar.adaptive-anastomosis-task.v1",
+  "success_metrics": [
+    "lumen_axis_error_deg",
+    "centerline_offset_m",
+    "minimum_lumen_radius_m",
+    "patency_area_fraction",
+    "edge_apposition_gap_m",
+    "eversion_height_m",
+    "retained_staple_fraction",
+    "reinforcement_bond_fraction",
+    "pressure_decay_pa_s",
+    "residual_leak_ml_min",
+    "integrated_leak_volume_ml",
+    "capture_force_n",
+    "procedure_time_s",
+    "tissue_damage_proxy"
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "asset": "dranmar-adaptive-anastomosis-robot-v1",
+  "clinical_validation": false,
+  "date_utc": "2026-07-25",
+  "hardware": {
+    "compute_capability": "8.9",
+    "driver_version": "580.159.03",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_memory_mib": 24564,
+    "host": "gilgamesh-System-Product-Name",
+    "operating_system": "Ubuntu 24.04",
+    "kernel": "Linux 7.0.0-28-generic x86_64"
+  },
+  "input_hashes_sha256": {
+    "adaptive_anastomosis_robot.py": "4a2d95925487db7a2ff9ddb059ff2d763f29cbae4836507a86a98a26d93a2f14",
+    "dranmar_adaptive_anastomosis_tool_payload.usda": "05ded3c5e2baccfb3c7956afc6d52989b72e6aa2a43a0820490887ce09a792ec",
+    "dranmar_adaptive_anastomosis_tool_standalone.usda": "1bd839e3f5b5887fb3ed309b727c1a66a360b65396ca8b56d14e43002c4acb22",
+    "dranmar_hollow_tissue_demo.usda": "a01210a26a6c964b088325d22f805972108cedf3f7e8d0b9971dc02c590fea54",
+    "validate_adaptive_anastomosis_runtime.py": "3167175135c8c3a95248bfc3f31f4eaf40ec37f03de064849a4051cf980c6cb7"
+  },
+  "matrix": [
+    {
+      "active_attachment_count": 66,
+      "capture_attachment_count_created": 12,
+      "capture_released": true,
+      "collar_attachment_count": 32,
+      "collar_cure_fraction": 1.0,
+      "deformable_surface_count": 2,
+      "engine_error_count": 0,
+      "finite_joint_state": true,
+      "fixture_attachment_count": 2,
+      "joint_count": 14,
+      "leak_particle_count": 8,
+      "patency_passed": true,
+      "pressure_decay_average_leak_ml_min": 0.029554968929044877,
+      "pressure_decay_final_pressure_pa": 7778.3377330321655,
+      "pressure_decay_observation_s": 8.099999999999987,
+      "pressure_decay_passed": true,
+      "representation": "standalone",
+      "simulation_steps": 120,
+      "staple_attachment_count": 32,
+      "staple_count": 16,
+      "status": "pass"
+    },
+    {
+      "active_attachment_count": 66,
+      "capture_attachment_count_created": 12,
+      "capture_released": true,
+      "collar_attachment_count": 32,
+      "collar_cure_fraction": 1.0,
+      "deformable_surface_count": 2,
+      "engine_error_count": 0,
+      "finite_joint_state": true,
+      "fixture_attachment_count": 2,
+      "joint_count": 21,
+      "leak_particle_count": 8,
+      "patency_passed": true,
+      "pressure_decay_average_leak_ml_min": 0.029554968929044877,
+      "pressure_decay_final_pressure_pa": 7778.3377330321655,
+      "pressure_decay_observation_s": 8.099999999999987,
+      "pressure_decay_passed": true,
+      "representation": "franka",
+      "simulation_steps": 120,
+      "staple_attachment_count": 32,
+      "staple_count": 16,
+      "status": "pass"
+    }
+  ],
+  "medical_device": false,
+  "nvidia_eula_accepted_by_user": true,
+  "prequalification_corrections": [
+    "Replaced filled-cylinder collision proxies for annular capture, eversion, centering, anvil, and driver mechanisms with discrete circumferential contact sectors.",
+    "Bounded each watertight hollow-tissue solver surface to a 16 by 32 axial/circumferential mesh and made uncalibrated inner/outer-wall self-collision opt-in.",
+    "Authored and verified current OmniPhysicsVtxXformAttachment schemas rather than trusting legacy command return values.",
+    "Derived the Franka mount body and local frame from the stock panda_hand_joint before deactivating the standard hand and fingers."
+  ],
+  "qualification_scope": {
+    "covered": [
+      "Standalone 14-DOF articulation discovery and finite CUDA stepping.",
+      "Combined Franka 7-DOF arm plus 14-DOF payload articulation and stock hand-frame replacement.",
+      "Two current surface-deformable tissue cooks and two kinematic distal-fixture attachments.",
+      "Creation and release of 12 temporary capture attachments.",
+      "Deployment of 16 retained staples with 32 independent tissue-leg attachments.",
+      "Curing of 32 bilateral reinforcement-collar sector attachments.",
+      "Conserved eight-particle visible leak route, provisional patency evaluation, and 8.1-second pressure-decay verification."
+    ],
+    "not_covered": [
+      "Clinical performance, safety, sterility, or patient use.",
+      "Calibrated tissue constitutive behavior, tissue damage, ischemia, staple penetration, or continuous metal plasticity.",
+      "Biochemical collar adhesion, healing, biological integration, or validated sector strength.",
+      "Calibrated lumen sensing, pressure instrumentation, fluid-structure interaction, or clinical acceptance thresholds.",
+      "Opt-in tissue wall self-collision, hardware-in-the-loop sensing, or instrumented physical bench metrology."
+    ]
+  },
+  "runtime": {
+    "device": "cuda:0",
+    "isaac_lab_version": "6.1.16",
+    "isaac_sim_version": "6.0.1.0",
+    "physics_backend": "PhysX GPU",
+    "remote_repository_base_commit": "72a4ad7f01b6ab7b6a399a4b3fccbf8c99683130"
+  },
+  "schema": "dranmar.adaptive-anastomosis-qualification.v1",
+  "status": "passed_headless_cuda_matrix",
+  "test_medium_conservation_error_ml": 0.0
+}

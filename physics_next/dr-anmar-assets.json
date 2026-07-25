@@ -228,6 +228,23 @@
       "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1",
       "physical_qualification": "provisional_parameters_pending_instrumented_hemostasis_bench",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-adaptive-anastomosis-robot-v1",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_standalone.usda",
+      "payload_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_payload.usda",
+      "auxiliary_asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_hollow_tissue_demo.usda",
+      "profile": "physics_next/surgical-reconstruction/dranmar-adaptive-anastomosis-v1.json",
+      "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/interaction_frames.json",
+      "task_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/adaptive_anastomosis_task_contract.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/asset_manifest.json",
+      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/qualification_report.json",
+      "live_integration": "franka_verified_stock_hand_frame_replacement_and_standalone_articulation",
+      "live_behavior": "bilateral_surface_deformables_distal_fixtures_temporary_capture_retained_staple_ring_collar_sector_bonds_patency_particles_and_pressure_decay",
+      "deployment": "enabled_for_research_iteration",
+      "native_gpu_qualification": "qualified_on_numi_rtx_4090_2026_07_25_isaac_lab_6_1_16_isaac_sim_6_0_1",
+      "physical_qualification": "provisional_parameters_pending_instrumented_anastomosis_bench",
+      "clinical_validation": false
     }
   ],
   "validation": {

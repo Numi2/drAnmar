@@ -1,0 +1,470 @@
+{
+  "asset": "dranmar-adaptive-anastomosis-robot-v1",
+  "links": [
+    {
+      "axis_coverage_ratio": [
+        1.024390243902439,
+        0.816,
+        1.0030796304443466
+      ],
+      "collider_bounds_max_m": [
+        0.105,
+        0.051,
+        0.22799999999999998
+      ],
+      "collider_bounds_min_m": [
+        -0.105,
+        -0.051,
+        0.0
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "Mount",
+      "visual_bounds_max_m": [
+        0.1025,
+        0.064,
+        0.2273
+      ],
+      "visual_bounds_min_m": [
+        -0.1025,
+        -0.061,
+        0.0
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0555555555555556,
+        1.0199556541019956,
+        0.8888888888888888
+      ],
+      "collider_bounds_max_m": [
+        0.019,
+        0.023,
+        0.016
+      ],
+      "collider_bounds_min_m": [
+        -0.019,
+        -0.023,
+        -0.016
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "LeftCarriage",
+      "visual_bounds_max_m": [
+        0.018,
+        0.022,
+        0.015
+      ],
+      "visual_bounds_min_m": [
+        -0.018,
+        -0.0231,
+        -0.021
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.8444444444444444,
+        1.05,
+        1.05
+      ],
+      "collider_bounds_max_m": [
+        0.0095,
+        0.021,
+        0.021
+      ],
+      "collider_bounds_min_m": [
+        -0.0095,
+        -0.021,
+        -0.021
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "LeftCaptureSleeve",
+      "visual_bounds_max_m": [
+        0.013000000000000001,
+        0.02,
+        0.02
+      ],
+      "visual_bounds_min_m": [
+        -0.0095,
+        -0.02,
+        -0.02
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.6730769230769231,
+        0.8854166666666669,
+        0.8854166666666669
+      ],
+      "collider_bounds_max_m": [
+        0.003500000000000001,
+        0.017,
+        0.017
+      ],
+      "collider_bounds_min_m": [
+        -0.003500000000000001,
+        -0.017,
+        -0.017
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "LeftEversionRing",
+      "visual_bounds_max_m": [
+        0.005400000000000001,
+        0.0192,
+        0.0192
+      ],
+      "visual_bounds_min_m": [
+        -0.005,
+        -0.0192,
+        -0.0192
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0555555555555556,
+        1.0199556541019956,
+        0.8888888888888888
+      ],
+      "collider_bounds_max_m": [
+        0.019,
+        0.023,
+        0.016
+      ],
+      "collider_bounds_min_m": [
+        -0.019,
+        -0.023,
+        -0.016
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "RightCarriage",
+      "visual_bounds_max_m": [
+        0.018,
+        0.022,
+        0.015
+      ],
+      "visual_bounds_min_m": [
+        -0.018,
+        -0.0231,
+        -0.021
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.8444444444444444,
+        1.05,
+        1.05
+      ],
+      "collider_bounds_max_m": [
+        0.0095,
+        0.021,
+        0.021
+      ],
+      "collider_bounds_min_m": [
+        -0.0095,
+        -0.021,
+        -0.021
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "RightCaptureSleeve",
+      "visual_bounds_max_m": [
+        0.0095,
+        0.02,
+        0.02
+      ],
+      "visual_bounds_min_m": [
+        -0.013000000000000001,
+        -0.02,
+        -0.02
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.6730769230769231,
+        0.8854166666666669,
+        0.8854166666666669
+      ],
+      "collider_bounds_max_m": [
+        0.003500000000000001,
+        0.017,
+        0.017
+      ],
+      "collider_bounds_min_m": [
+        -0.003500000000000001,
+        -0.017,
+        -0.017
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "RightEversionRing",
+      "visual_bounds_max_m": [
+        0.005,
+        0.0192,
+        0.0192
+      ],
+      "visual_bounds_min_m": [
+        -0.005400000000000001,
+        -0.0192,
+        -0.0192
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        0.948051948051948,
+        0.6372549019607843,
+        0.6372549019607843
+      ],
+      "collider_bounds_max_m": [
+        0.1525,
+        0.0065,
+        0.0065
+      ],
+      "collider_bounds_min_m": [
+        0.006500000000000006,
+        -0.0065,
+        -0.0065
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "Mandrel",
+      "visual_bounds_max_m": [
+        0.154,
+        0.0102,
+        0.0102
+      ],
+      "visual_bounds_min_m": [
+        0.0,
+        -0.0102,
+        -0.0102
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.1070294740797617,
+        1.0308370044052864,
+        1.1062762659318328
+      ],
+      "collider_bounds_max_m": [
+        0.022,
+        0.0117,
+        0.011000000000000001
+      ],
+      "collider_bounds_min_m": [
+        -0.022,
+        -0.0117,
+        -0.011000000000000001
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "MandrelExpander",
+      "visual_bounds_max_m": [
+        0.019873002946274667,
+        0.01135,
+        0.009943266739736606
+      ],
+      "visual_bounds_min_m": [
+        -0.019873002946274667,
+        -0.01135,
+        -0.009943266739736606
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.1666666666666665,
+        1.024390243902439,
+        1.024390243902439
+      ],
+      "collider_bounds_max_m": [
+        0.0035000000000000014,
+        0.021,
+        0.021
+      ],
+      "collider_bounds_min_m": [
+        -0.0035000000000000014,
+        -0.021,
+        -0.021
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "StapleAnvil",
+      "visual_bounds_max_m": [
+        0.0030000000000000014,
+        0.0205,
+        0.0205
+      ],
+      "visual_bounds_min_m": [
+        -0.0030000000000000014,
+        -0.0205,
+        -0.0205
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.4677103718199611,
+        1.0476190476190474,
+        1.0476190476190474
+      ],
+      "collider_bounds_max_m": [
+        0.005000000000000002,
+        0.022,
+        0.022
+      ],
+      "collider_bounds_min_m": [
+        -0.01,
+        -0.022,
+        -0.022
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "StapleDriver",
+      "visual_bounds_max_m": [
+        0.006000000000000001,
+        0.021,
+        0.021
+      ],
+      "visual_bounds_min_m": [
+        -0.00422,
+        -0.021,
+        -0.021
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0645161290322582,
+        1.0645161290322582,
+        0.8333333333333334
+      ],
+      "collider_bounds_max_m": [
+        0.033,
+        0.033,
+        0.01
+      ],
+      "collider_bounds_min_m": [
+        -0.033,
+        -0.033,
+        -0.01
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "CollarCarousel",
+      "visual_bounds_max_m": [
+        0.031,
+        0.031,
+        0.012
+      ],
+      "visual_bounds_min_m": [
+        -0.031,
+        -0.031,
+        -0.012
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.1111111111111112,
+        0.8111702127659574,
+        0.9644846796657383
+      ],
+      "collider_bounds_max_m": [
+        0.01,
+        0.01525,
+        0.043250000000000004
+      ],
+      "collider_bounds_min_m": [
+        -0.01,
+        -0.01525,
+        -0.026
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "CollarApplicator",
+      "visual_bounds_max_m": [
+        0.009,
+        0.0188,
+        0.0468
+      ],
+      "visual_bounds_min_m": [
+        -0.009,
+        -0.0188,
+        -0.025
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0833333333333333,
+        1.0833333333333333,
+        0.8148148148148147
+      ],
+      "collider_bounds_max_m": [
+        0.0065,
+        0.0065,
+        0.015
+      ],
+      "collider_bounds_min_m": [
+        -0.0065,
+        -0.0065,
+        -0.006999999999999999
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "LeftOccluderValve",
+      "visual_bounds_max_m": [
+        0.006,
+        0.006,
+        0.018000000000000002
+      ],
+      "visual_bounds_min_m": [
+        -0.006,
+        -0.006,
+        -0.009
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0833333333333333,
+        1.0833333333333333,
+        0.8148148148148147
+      ],
+      "collider_bounds_max_m": [
+        0.0065,
+        0.0065,
+        0.015
+      ],
+      "collider_bounds_min_m": [
+        -0.0065,
+        -0.0065,
+        -0.006999999999999999
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "RightOccluderValve",
+      "visual_bounds_max_m": [
+        0.006,
+        0.006,
+        0.018000000000000002
+      ],
+      "visual_bounds_min_m": [
+        -0.006,
+        -0.006,
+        -0.009
+      ]
+    },
+    {
+      "axis_coverage_ratio": [
+        1.0833333333333333,
+        1.0833333333333333,
+        0.8
+      ],
+      "collider_bounds_max_m": [
+        0.0065,
+        0.0065,
+        0.016
+      ],
+      "collider_bounds_min_m": [
+        -0.0065,
+        -0.0065,
+        -0.008
+      ],
+      "deliberate_insets": "thin contact and attachment volumes are role-specific and not intended to cover decorative geometry",
+      "link": "PressureValve",
+      "visual_bounds_max_m": [
+        0.006,
+        0.006,
+        0.02
+      ],
+      "visual_bounds_min_m": [
+        -0.006,
+        -0.006,
+        -0.01
+      ]
+    }
+  ],
+  "schema": "dranmar.collider-coverage.v1"
+}
