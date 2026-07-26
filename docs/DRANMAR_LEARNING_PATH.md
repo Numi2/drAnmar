@@ -54,10 +54,16 @@ stage gate.
 The Stage 2 dual policy observes position and axis-angle orientation error for
 both tool tips. Its 12-dimensional action is assembled from two independent
 six-dimensional controller outputs before the learned coordination residual is
-applied. A versioned 0.25 dual-loop gain prevents the two-controller scene from
-overshooting the qualified pose envelope. The observation offsets, controller
-scales, initialization method, held-out seeds, and promotion threshold are
-versioned in the learning-path contract.
+applied. A versioned 0.25 dual-loop gain bounds the physical IK delta after
+action clipping. The observation offsets, controller scales, initialization
+method, held-out seeds, and promotion threshold are versioned in the
+learning-path contract.
+
+Stage 2 is deliberately collision-disabled free-space control qualification.
+It proves simultaneous two-tool kinematics without allowing collision impulses
+to contaminate the controller measurement. It does not establish collision
+avoidance or contact competence. Stage 3 turns contact back on and requires
+measured contact, stability, force, slip, and drop evidence.
 
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,

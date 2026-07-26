@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+import isaaclab.sim as sim_utils
 from isaaclab.controllers.differential_ik_cfg import DifferentialIKControllerCfg
 from isaaclab.envs.mdp.actions.actions_cfg import DifferentialInverseKinematicsActionCfg
 from isaaclab.utils.configclass import configclass
@@ -25,6 +26,11 @@ class PSMReachEnvCfg(joint_pos_env_cfg.PSMReachEnvCfg):
         # We switch here to a stiffer PD controller for IK tracking to be better.
         self.scene.robot_1 = PSM_HIGH_PD_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot_1",
+            spawn=PSM_HIGH_PD_CFG.spawn.replace(
+                collision_props=sim_utils.CollisionPropertiesCfg(
+                    collision_enabled=False
+                )
+            ),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
                 pos=(0.2, 0.0, 0.15),
                 rot=(1.0, 0.0, 0.0, 0.0),
@@ -32,6 +38,11 @@ class PSMReachEnvCfg(joint_pos_env_cfg.PSMReachEnvCfg):
         )
         self.scene.robot_2 = PSM_HIGH_PD_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot_2",
+            spawn=PSM_HIGH_PD_CFG.spawn.replace(
+                collision_props=sim_utils.CollisionPropertiesCfg(
+                    collision_enabled=False
+                )
+            ),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
                 pos=(-0.2, 0.0, 0.15),
                 rot=(1.0, 0.0, 0.0, 0.0),

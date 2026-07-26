@@ -51,6 +51,11 @@ class PSMReachEnvCfg(ReachEnvCfg):
         # switch robot to PSM
         self.scene.robot_1 = PSM_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot_1",
+            spawn=PSM_CFG.spawn.replace(
+                collision_props=sim_utils.CollisionPropertiesCfg(
+                    collision_enabled=False
+                )
+            ),
             init_state=PSM_CFG.init_state.replace(
                 pos=(0.2, 0.0, 0.15),
                 rot=(1.0, 0.0, 0.0, 0.0),
@@ -58,6 +63,11 @@ class PSMReachEnvCfg(ReachEnvCfg):
         )
         self.scene.robot_2 = PSM_CFG.replace(
             prim_path="{ENV_REGEX_NS}/Robot_2",
+            spawn=PSM_CFG.spawn.replace(
+                collision_props=sim_utils.CollisionPropertiesCfg(
+                    collision_enabled=False
+                )
+            ),
             init_state=PSM_CFG.init_state.replace(
                 pos=(-0.2, 0.0, 0.15),
                 rot=(1.0, 0.0, 0.0, 0.0),

@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.5.0",
+  "schema_version": "1.6.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -52,6 +52,7 @@
       "method": "dual_analytic_relative_ik_base_plus_learned_coordination_residual",
       "default_updates": 32,
       "dual_loop_gain": 0.25,
+      "contact_mode": "disabled_free_space_control_qualification",
       "ppo_role": "learn_bounded_coordination_residual_only_if_held_out_gate_fails"
     }
   },

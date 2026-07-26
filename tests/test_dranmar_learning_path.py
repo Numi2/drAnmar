@@ -36,6 +36,10 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         in manifest["defaults"]["dual_reach_observation_contract"]
     )
     assert manifest["defaults"]["stage_2_initialization"]["dual_loop_gain"] == 0.25
+    assert (
+        manifest["defaults"]["stage_2_initialization"]["contact_mode"]
+        == "disabled_free_space_control_qualification"
+    )
 
 
 def test_frontier_imports_and_runner_contract() -> None:
@@ -128,6 +132,7 @@ def test_dual_reach_policy_observes_two_pose_errors_and_uses_residual_base() -> 
     assert ik_source.count(
         "scale=(0.0025, 0.0025, 0.0025, 0.0125, 0.0125, 0.0125)"
     ) == 2
+    assert ik_source.count("collision_enabled=False") == 2
     for offset in (46, 49, 52, 55):
         assert f"start={offset}" in benchmark_source
     ast.parse(cfg_source)
