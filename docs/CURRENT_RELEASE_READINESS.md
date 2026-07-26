@@ -19,7 +19,9 @@ The current source gate establishes:
 - portfolio, catalog, generated index, release lock, multimodal bundles, and
   public-source policy are content-consistent;
 - the complete locked non-Isaac Python and browser test suites pass;
-- GitHub's clean-runner `Repository contracts` workflow is green;
+- the last fully constructed GitHub clean-runner `Repository contracts` run
+  is green; a later run stopped at submodule checkout during a publication
+  race and was deliberately not rerun, avoiding unnecessary hosted CI spend;
 - public services default to loopback and non-loopback binding fails closed
   without explicit opt-in, authentication, TLS termination, and firewall
   confirmation;
@@ -30,6 +32,26 @@ The current source gate establishes:
 
 These are repository and supply-chain statements. They do not establish
 native PhysX behavior or tissue fidelity.
+
+## Current exact-stack native observation
+
+On 2026-07-26, revision `efda24f` was exercised on an RTX 4090 through the
+receipt-verified `config/physics-next-lock.json` stack:
+
+- the repaired rigid abdominal proxy passed NVIDIA Asset Validator with zero
+  blockers and zero issues in the relevant PhysicsRules and
+  SimReadyAssetRules categories;
+- the dynamic-patient source validator passed its implemented scope;
+- the full patient scene initialized ten explicit-TetMesh wound edges,
+  completed 720 CUDA physics steps, and wrote a camera frame with no recorded
+  CUDA or PhysX error; and
+- the scene used 60 explicitly labelled prepositioned fixture bonds to preserve
+  the camera presentation. Those bonds are not contact-qualified grasp
+  evidence.
+
+This is a narrow native smoke observation, not repeated physics qualification,
+constitutive calibration, physical incision propagation, calibrated
+wound-edge grasping, or clinical evidence.
 
 ## Intended laparotomy behavior
 

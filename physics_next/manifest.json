@@ -77,8 +77,8 @@
       "contract": "softmimicgen.json"
     },
     "isaac_lab": {
-      "ref": "release/3.0.0-beta2",
-      "revision": "51b4fb54184fa7c0a406643129953a8b26136230"
+      "ref": "pinned-commit",
+      "revision": "51104d55d46192f9c981f2b63007d5156e141cec"
     },
     "cressim_mpm": {
       "ref": "v2.2.0",

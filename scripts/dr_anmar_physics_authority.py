@@ -22,6 +22,7 @@ from typing import Any
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = REPOSITORY_ROOT / "physics_next/manifest.json"
+DEFAULT_PHYSICS_NEXT_LOCK = REPOSITORY_ROOT / "config/physics-next-lock.json"
 SUPPORTED_BACKENDS = {
     "physx_rigid",
     "physx_fem",
@@ -41,6 +42,23 @@ def _module_available(name: str) -> bool:
     try:
         return importlib.util.find_spec(name) is not None
     except (ImportError, ModuleNotFoundError, ValueError):
+        return False
+
+
+def _verified_runtime_receipt(next_root: Path, lock_path: Path) -> bool:
+    receipt_path = next_root / "runtime.json"
+    ready_path = next_root / "READY"
+    if not receipt_path.is_file() or not ready_path.is_file():
+        return False
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        return (
+            receipt.get("ready") is True
+            and receipt.get("lock_sha256") == _sha256(lock_path)
+            and ready_path.read_text(encoding="utf-8").strip()
+            == _sha256(receipt_path)
+        )
+    except (OSError, ValueError, TypeError):
         return False
 
 
@@ -93,6 +111,16 @@ class PhysicsAuthority:
             unknown = set(candidates) - SUPPORTED_BACKENDS
             if unknown:
                 raise ValueError(f"Physics route {procedure} references unknown backends: {sorted(unknown)}")
+        physics_next_lock = json.loads(
+            DEFAULT_PHYSICS_NEXT_LOCK.read_text(encoding="utf-8")
+        )
+        if (
+            self.manifest["source_pins"]["isaac_lab"]["revision"]
+            != physics_next_lock["sources"]["isaaclab"]["revision"]
+        ):
+            raise ValueError(
+                "Physics manifest Isaac Lab pin must match physics-next lock"
+            )
 
     @property
     def requested_backend(self) -> str:
@@ -125,6 +153,13 @@ class PhysicsAuthority:
         next_root = Path(
             os.environ.get("DR_ANMAR_PHYSICS_NEXT_ROOT", data_root / "physics-next")
         ).expanduser()
+        physics_next_lock = json.loads(
+            DEFAULT_PHYSICS_NEXT_LOCK.read_text(encoding="utf-8")
+        )
+        receipt_verified = _verified_runtime_receipt(
+            next_root,
+            DEFAULT_PHYSICS_NEXT_LOCK,
+        )
         return {
             "schema": self.manifest["schema"],
             "runtime_family": runtime_family,
@@ -141,11 +176,18 @@ class PhysicsAuthority:
             "manifest_sha256": _sha256(self.manifest_path),
             "backend": self.manifest["backends"][effective],
             "next_runtime": {
-                "isaac_sim": "6.0.1.0",
-                "isaac_lab": "3.0.0-beta2",
+                "isaac_sim": physics_next_lock["simulator"]["version"],
+                "isaac_lab": physics_next_lock["sources"]["isaaclab"][
+                    "revision"
+                ],
+                "torch": physics_next_lock["runtime_packages"]["torch"],
+                "installation_profile": physics_next_lock[
+                    "dependency_policy"
+                ]["isaaclab_install_profile"],
                 "newton": "VBD experimental integration",
                 "isolated": True,
-                "ready_marker": (next_root / "READY").is_file(),
+                "ready_marker": receipt_verified,
+                "receipt_verified": receipt_verified,
                 "module_probe_current_process": {
                     "isaaclab": _module_available("isaaclab"),
                     "isaaclab_newton": _module_available("isaaclab_newton"),

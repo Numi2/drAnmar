@@ -93,6 +93,31 @@ benchmark remains pending that explicit activation.
 All entries are simulation-training assets. Their repository and native-runtime
 evidence does not establish real-world correlation or clinical evidence.
 
+## 2026-07-26 — current locked laparotomy smoke
+
+- Installed the isolated `core` profile from
+  `config/physics-next-lock.json`: Isaac Sim 6.0.1.0, Isaac Lab revision
+  `51104d55d46192f9c981f2b63007d5156e141cec`, Torch/Torchvision/Torchaudio
+  2.11.0 CUDA 12.8, and CRESSim-MPM revision
+  `09aa5009b8580351f516b6df7660e87821fc5eb6`.
+- The pip runtime deliberately retains Isaac Sim's CUDA 13 libraries alongside
+  Isaac Lab's CUDA 12.8 Torch libraries. Removing the CUDA 13 cuDNN package
+  caused native startup to fail on `libcudnn.so.9`; restoring the upstream
+  dual-library layout corrected startup.
+- Dependency verification accepted exactly the six overrides declared by the
+  pinned Isaac Lab `pyproject.toml` and rejected any missing or unexpected
+  conflict. The content-addressed runtime receipt verifies the lock, package
+  freeze, dependency report, and both source revisions.
+- NVIDIA Asset Validator reported zero blockers and zero issues for the
+  repaired rigid abdominal proxy under PhysicsRules and SimReadyAssetRules.
+- The full dynamic-patient laparotomy scene activated ten explicit-TetMesh
+  wound edges, completed 720 CUDA steps, and wrote a 900 by 900 camera capture.
+  No CUDA or PhysX error was recorded in the run log.
+- The 60 prepositioned wound-edge fixture bonds in that scene are a
+  camera-presentation mechanism, not contact-qualified grasp evidence. This
+  single smoke does not close repeatability, calibration, live topology
+  change, physical incision, grasp, or clinical gates.
+
 ## 2026-07-24 — laparotomy sponge integration
 
 - Added the independently authored Apache-2.0 asset at

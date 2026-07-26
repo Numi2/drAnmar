@@ -254,8 +254,10 @@ Open [http://localhost:2360](http://localhost:2360).
 The simulator backend requires Linux x86-64 and a compatible NVIDIA GPU. The
 browser, source, and documentation can be inspected on macOS and Windows.
 Recorded native-simulator lanes include Isaac Sim 5.1 / Isaac Lab 2.3.2 and
-Isaac Sim 6.0.1.0 / Isaac Lab 6.1.16; use the exact stack named by the evidence
-artifact you are reproducing.
+Isaac Sim 6.0.1.0. The current isolated lane is defined by
+`config/physics-next-lock.json`, including full source revisions and exact
+Torch packages; use the exact stack named by the evidence artifact you are
+reproducing.
 
 See [SECURITY.md](SECURITY.md) before exposing Doctor Studio beyond a trusted
 LAN or private VPN.
