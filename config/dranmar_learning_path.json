@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.28.0",
+  "schema_version": "1.29.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -79,6 +79,8 @@
       "carry_lateral_action_limit": 0.1,
       "carry_vertical_action_limit": 0.18,
       "carry_vertical_action_limit_source": "isaac_lab_parallel_1200_env_full_population_first_outcome_sweep_997_of_1200_successes",
+      "carry_target_height_offset_m": 0.0,
+      "carry_target_height_offset_source": "bounded_challenger_axis_with_unchanged_success_target_tolerance_and_dwell",
       "carry_axis_contract": "independently_bounded_lateral_and_vertical_translation",
       "residual_phase": "latched_carry_only",
       "residual_axes": [

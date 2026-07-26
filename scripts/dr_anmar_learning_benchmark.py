@@ -306,6 +306,7 @@ def _lift_teacher_action(
     carry_action_limit: float = 0.1,
     carry_lateral_action_limit: float | None = None,
     carry_vertical_action_limit: float | None = 0.18,
+    carry_target_height_offset: float = 0.0,
     grasp_offset: tuple[float, float, float] | None = None,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
@@ -365,6 +366,7 @@ def _lift_teacher_action(
         target_position[:, 2] - lateral_clearance_below_target
     )
     carry_target = target_position.clone()
+    carry_target[:, 2] += carry_target_height_offset
     carry_target[:, :2] = torch.where(
         vertical_only.unsqueeze(-1),
         object_position[:, :2],
@@ -657,6 +659,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     "carry_action_limit": 0.1,
                     "carry_lateral_action_limit": 0.1,
                     "carry_vertical_action_limit": 0.18,
+                    "carry_target_height_offset_m": 0.0,
                 }
                 if "Lift-Block-PSM-IK-Rel" in args.task
                 else None
@@ -1031,6 +1034,7 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
 _LIFT_SWEEP_PARAMETERS = {
     "carry_action_limit",
     "carry_lateral_action_limit",
+    "carry_target_height_offset",
     "carry_vertical_action_limit",
     "close_distance",
     "lateral_alignment_threshold",
@@ -1339,6 +1343,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         initial_target_xy = policy_observation[:, 36:38].clone()
         first_lift_history = {
             "ever_bilateral_contact": torch.zeros_like(first_unresolved),
+            "ever_airborne_transport": torch.zeros_like(first_unresolved),
+            "ever_midair_bilateral_contact_loss": torch.zeros_like(
+                first_unresolved
+            ),
             "ever_above_minimum_height": torch.zeros_like(first_unresolved),
             "ever_goal_position_inside": torch.zeros_like(first_unresolved),
             "ever_goal_orientation_inside": torch.zeros_like(first_unresolved),
@@ -1404,8 +1412,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         & first_linear_speed_inside
                         & first_angular_speed_inside
                     )
+                    first_airborne_transport = first_object_height > 0.03
+                    first_midair_bilateral_contact_loss = (
+                        (
+                            first_lift_history["ever_airborne_transport"]
+                            | first_airborne_transport
+                        )
+                        & first_lift_history["ever_bilateral_contact"]
+                        & ~first_bilateral_contact
+                        & first_airborne_transport
+                    )
                     for key, value in (
                         ("ever_bilateral_contact", first_bilateral_contact),
+                        (
+                            "ever_airborne_transport",
+                            first_airborne_transport,
+                        ),
+                        (
+                            "ever_midair_bilateral_contact_loss",
+                            first_midair_bilateral_contact_loss,
+                        ),
                         (
                             "ever_above_minimum_height",
                             first_above_minimum_height,
@@ -1502,6 +1528,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 if first_lift_history is not None:
                     for key in (
                         "ever_bilateral_contact",
+                        "ever_airborne_transport",
                         "ever_above_minimum_height",
                         "ever_goal_position_inside",
                         "ever_goal_orientation_inside",
@@ -1749,6 +1776,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 first_failed
                 & first_lift_history["ever_instantaneous_success"]
             )
+            failed_after_midair_contact_loss = (
+                first_failed
+                & first_lift_history["ever_midair_bilateral_contact_loss"]
+            )
+            successful_after_midair_contact_loss = (
+                first_outcome_success
+                & first_lift_history["ever_midair_bilateral_contact_loss"]
+            )
 
             def cohort_stats(mask) -> dict[str, float | int | None]:
                 count = int(mask.sum().item())
@@ -1846,6 +1881,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "outcome_cohorts": {
                     "successful": cohort_stats(first_outcome_success),
                     "failed": cohort_stats(first_failed),
+                },
+                "retention_diagnostics": {
+                    "airborne_height_threshold_m": 0.03,
+                    "failed_after_midair_bilateral_contact_loss": int(
+                        failed_after_midair_contact_loss.sum().item()
+                    ),
+                    "successful_after_midair_bilateral_contact_loss": int(
+                        successful_after_midair_contact_loss.sum().item()
+                    ),
                 },
                 "success_by_initial_target_xy_distance": target_distance_bins,
             }

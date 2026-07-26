@@ -73,6 +73,7 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     carry_action_limit: float = 0.1
     carry_lateral_action_limit: float = 0.1
     carry_vertical_action_limit: float = 0.18
+    carry_target_height_offset: float = 0.0
     residual_scale: float = 0.03
 
 

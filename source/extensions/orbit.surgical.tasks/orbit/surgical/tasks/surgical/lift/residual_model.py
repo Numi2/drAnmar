@@ -40,6 +40,7 @@ class LiftResidualMLPModel(MLPModel):
         carry_action_limit: float = 0.1,
         carry_lateral_action_limit: float | None = None,
         carry_vertical_action_limit: float | None = 0.18,
+        carry_target_height_offset: float = 0.0,
         residual_scale: float = 0.03,
         **kwargs,
     ) -> None:
@@ -72,6 +73,7 @@ class LiftResidualMLPModel(MLPModel):
             if carry_vertical_action_limit is None
             else carry_vertical_action_limit
         )
+        self.carry_target_height_offset = carry_target_height_offset
         self.residual_scale = residual_scale
 
         final_linear = next(
@@ -167,6 +169,7 @@ class LiftResidualMLPModel(MLPModel):
             target_position[:, 2] - self.lateral_clearance_below_target
         )
         carry_target = target_position.clone()
+        carry_target[:, 2] += self.carry_target_height_offset
         carry_target[:, :2] = torch.where(
             vertical_only.unsqueeze(-1),
             object_position[:, :2],
@@ -301,6 +304,7 @@ class _LiftResidualExport(nn.Module):
         self.carry_vertical_action_limit = (
             model.carry_vertical_action_limit
         )
+        self.carry_target_height_offset = model.carry_target_height_offset
         self.residual_scale = model.residual_scale
 
     def _base_action(self, obs: torch.Tensor) -> torch.Tensor:
@@ -362,6 +366,7 @@ class _LiftResidualExport(nn.Module):
             target_position[:, 2] - self.lateral_clearance_below_target
         )
         carry_target = target_position.clone()
+        carry_target[:, 2] += self.carry_target_height_offset
         carry_target[:, :2] = torch.where(
             vertical_only.unsqueeze(-1),
             object_position[:, :2],

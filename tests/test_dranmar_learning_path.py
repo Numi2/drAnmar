@@ -80,6 +80,12 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     )
     assert (
         manifest["defaults"]["stage_3_initialization"][
+            "carry_target_height_offset_m"
+        ]
+        == 0.0
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
             "close_distance_to_grasp_m"
         ]
         == 0.005
@@ -345,6 +351,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "self.carry_action_limit = carry_action_limit" in model_source
     assert "self.carry_lateral_action_limit = (" in model_source
     assert "self.carry_vertical_action_limit = (" in model_source
+    assert (
+        "self.carry_target_height_offset = carry_target_height_offset"
+        in model_source
+    )
+    assert "carry_target[:, 2] += self.carry_target_height_offset" in model_source
     assert "carry_error_action[:, :2].clamp(" in model_source
     assert "carry_error_action[:, 2:].clamp(" in model_source
     assert "object_angular_velocity / self.carry_angular_velocity_scale" not in model_source
@@ -363,6 +374,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"no_bilateral_contact"' in benchmark_source
     assert '"contact_without_minimum_height"' in benchmark_source
     assert '"minimum_height_without_goal_position"' in benchmark_source
+    assert '"ever_midair_bilateral_contact_loss"' in benchmark_source
+    assert '"retention_diagnostics"' in benchmark_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source
     assert '"success_by_initial_target_xy_distance"' in benchmark_source
