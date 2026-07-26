@@ -345,6 +345,8 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
     assert "required_receiver_only_steps: int = 10" in state_source
     assert "pickup_clearance: float = 0.01" in state_source
     assert "clearance >= pickup_clearance" in state_source
+    assert "reset_height_offset: float = -0.05" in state_source
+    assert 'state["support_height_w"]' in state_source
     assert "allowed_receiver_contact_flicker_steps: int = 1" in state_source
     assert "receiver_follows" in state_source
     assert '"premature_release"' in state_source

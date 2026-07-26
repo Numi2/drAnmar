@@ -33,6 +33,7 @@ def handover_state(
     required_receiver_only_steps: int = 10,
     allowed_receiver_contact_flicker_steps: int = 1,
     receiver_follow_tolerance: float = 0.005,
+    reset_height_offset: float = -0.05,
     command_name: str = "receiver_pose",
 ) -> dict[str, Any]:
     """Update and return the monotonic physical handover phase.
@@ -47,10 +48,15 @@ def handover_state(
     state = getattr(env, "_dr_anmar_handover_state", None)
     if state is None:
         obj: RigidObject = env.scene["object"]
+        support_height_w = (
+            mdp_common.as_torch(obj.data.default_root_state)[:, 2]
+            + reset_height_offset
+        )
         state = {
             "phase": torch.zeros(env.num_envs, dtype=torch.long, device=env.device),
             "rewarded_phase": torch.zeros(env.num_envs, dtype=torch.long, device=env.device),
             "start_object_pos": mdp_common.as_torch(obj.data.root_pos_w).clone(),
+            "support_height_w": support_height_w,
             "last_reset_step": torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device),
             "receiver_only_consecutive": torch.zeros(
                 env.num_envs, dtype=torch.long, device=env.device
@@ -97,6 +103,7 @@ def handover_state(
     state["receiver_acquisition_offset_w"][reset] = 0.0
     object_pos_w = mdp_common.as_torch(obj.data.root_pos_w)
     state["start_object_pos"][reset] = object_pos_w[reset]
+    state["start_object_pos"][reset, 2] = state["support_height_w"][reset]
     state["last_reset_step"][reset] = step
     if state["last_step"] == step and not bool(torch.any(reset)):
         return state
@@ -128,7 +135,7 @@ def handover_state(
     receiver_distance = torch.linalg.vector_norm(
         receiver_position_w - object_pos_w, dim=-1
     )
-    clearance = object_pos_w[:, 2] - state["start_object_pos"][:, 2]
+    clearance = object_pos_w[:, 2] - state["support_height_w"]
     lifted = clearance >= pickup_clearance
     pos_error, rot_error = mdp_common.object_goal_errors(
         env, command_name, SceneEntityCfg("robot_2"), SceneEntityCfg("object")
