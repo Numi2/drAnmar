@@ -9,7 +9,7 @@ It records software and asset provenance; it is not clinical-validation evidence
 
 - Catalog schema: `dr.anmar.asset-catalog-lock.v3`
 - Catalog version: `1.2.0`
-- Catalog SHA-256: `7d033824a33dbb2305d8155aad79da522e8c5a82949807dffd2ca21b06512344`
+- Catalog SHA-256: `85cb6ff39d4f66668d959f12255afc08f6b3298518c7aa624c2afd669985a31c`
 - Local asset units: `28`
 - Product portfolio assets: `20`
 - Clinical validation: `false`
@@ -28,7 +28,7 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 | Asset unit | Entrypoints | Files | Bytes | SHA-256 | License evidence |
 | --- | ---: | ---: | ---: | --- | --- |
 | `dr_anmar:Environments/SurgicalAutonomy/AutonomousRescueOR` | 11 | 78 | 16742130 | `dedcca9f13b6840e8c2197468daa40cc18198a0c8dcbc9cdd2cb7d7c8d8569f1` | `source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/LICENSE.txt` |
-| `dr_anmar:Props/Patients/DynamicAbdominalPatient` | 3 | 84 | 21857721 | `bea74f6560d5888ff831a735ff2c0967f1924af172cc4ab51cf11c05ac4fb265` | `source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/LICENSE.txt` |
+| `dr_anmar:Props/Patients/DynamicAbdominalPatient` | 3 | 84 | 20467152 | `ea112b9589204b4fda15c2d32ae4e4741bdb699231221a4e902ba4429155bef9` | `source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalAssessment/PerfusionViabilityRobot` | 7 | 49 | 35118832 | `f4bd998140b6e1c59f3f67af3cf3f9d698f6cf7a7002b8a0cd1f040d0e609b34` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/ClosureRobot` | 6 | 134 | 14929244 | `fa67ba1568caf9fe7d6fa8a6cb61bc897280abacd565321b1e4fae5ac5bce56b` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/ClosureRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/Needle` | 1 | 9 | 2523083 | `5fc31f57028c9eda6004b0f4b4258bfeb66f737bc88a61928209c9fbb6bfe81a` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/LICENSE.txt` |

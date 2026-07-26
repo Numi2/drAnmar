@@ -15,11 +15,6 @@ section passes from a clean clone.
 
 ### OpenUSD and catalog
 
-- Repair and deterministically regenerate the Dynamic Abdominal Patient rigid
-  proxy that currently fails native OpenUSD parsing.
-- Require `Sdf.Layer.FindOrOpen` and `Usd.Stage.Open` for every catalog
-  entrypoint; fail on parser errors, missing default prims, or failed
-  composition.
 - Run the Isaac Sim Asset Validator on the supported release stack.
 - Resolve the 14 missing material dependencies or declare, pin, install, and
   verify each external resolver dependency.

@@ -1,0 +1,3 @@
+# Native parser used by repository validation and CI. Do not replace with
+# delimiter counting or a permissive text-only fallback.
+usd-core==25.11

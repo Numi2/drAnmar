@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Deterministic non-Isaac validation for the DrAnmar dynamic abdominal patient.
+"""Deterministic validation for the DrAnmar dynamic abdominal patient.
 
-This validates package structure, OpenUSD source conventions, explicit tetrahedral
-meshes, GLB/PNG/JSON payloads, and solver-independent physiology behavior. It does
-not replace Isaac Sim, PhysX, CUDA, sensor, physical-bench, or clinical validation.
+This requires native OpenUSD parsing and composition, then validates package
+structure, source conventions, explicit tetrahedral meshes, GLB/PNG/JSON
+payloads, and solver-independent physiology behavior. It does not replace Isaac
+Sim, PhysX, CUDA, sensor, physical-bench, or clinical validation.
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ PROFILE_PATH = (
     REPOSITORY_ROOT
     / "physics_next/dynamic-patient/dranmar-dynamic-abdominal-patient-v1.json"
 )
+OPENUSD_VALIDATOR_PATH = REPOSITORY_ROOT / "scripts/validate_openusd_layers.py"
 
 FLOAT = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
 
@@ -51,6 +53,17 @@ def _load_runtime():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _native_openusd_checks() -> dict[str, Any]:
+    spec = importlib.util.spec_from_file_location(
+        "dranmar_native_openusd_validation", OPENUSD_VALIDATOR_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Unable to load native OpenUSD layer validator")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.require_openusd_layers()
 
 
 def _extract_array(text: str, declaration: str, start: int = 0) -> str:
@@ -174,6 +187,7 @@ def _validate_laparotomy_wound(path: Path) -> dict[str, Any]:
 
 
 def _static_payload_checks() -> dict[str, Any]:
+    openusd = _native_openusd_checks()
     usda_files = sorted(ASSET_ROOT.rglob("*.usda"))
     json_files = sorted(ASSET_ROOT.rglob("*.json")) + [PROFILE_PATH]
     glb_files = sorted(ASSET_ROOT.rglob("*.glb"))
@@ -182,6 +196,9 @@ def _static_payload_checks() -> dict[str, Any]:
         RUNTIME_PATH,
         Path(__file__).resolve(),
         REPOSITORY_ROOT / "scripts/generate_dranmar_laparotomy_wound.py",
+        REPOSITORY_ROOT
+        / "scripts/generate_dranmar_dynamic_abdominal_patient_rigid_proxy.py",
+        OPENUSD_VALIDATOR_PATH,
         REPOSITORY_ROOT / "examples/dynamic_abdominal_patient_scene.py",
         REPOSITORY_ROOT / "examples/end_to_end_procedure.py",
     ]
@@ -208,16 +225,10 @@ def _static_payload_checks() -> dict[str, Any]:
     missing_references: list[dict[str, str]] = []
     for path in usda_files:
         text = path.read_text(encoding="utf-8")
-        if text.count("{") != text.count("}"):
-            raise AssertionError(f"{path}: unbalanced braces")
-        if text.count("[") != text.count("]"):
-            raise AssertionError(f"{path}: unbalanced brackets")
         if re.search(r"quat[fdh]?\s+[^=]+\s*=\s*\([^,]+,\s*\(", text):
             raise AssertionError(f"{path}: nested quaternion syntax")
         if re.search(r'^\s*over\s+"[^"]+"\s*\{.*\}\s*$', text, flags=re.MULTILINE):
             raise AssertionError(f"{path}: one-line over declaration")
-        if "defaultPrim" not in text:
-            raise AssertionError(f"{path}: missing defaultPrim")
         for reference in re.findall(r"@([^@]+)@", text):
             if "://" in reference:
                 continue
@@ -226,7 +237,6 @@ def _static_payload_checks() -> dict[str, Any]:
                 missing_references.append({"source": str(path), "reference": reference})
         source_checks[path.relative_to(REPOSITORY_ROOT).as_posix()] = {
             "bytes": path.stat().st_size,
-            "brace_pairs": text.count("{"),
             "flat_quaternion_count": len(
                 re.findall(r"quat[fdh]?\s+[^=]+\s*=\s*\([^()]+\)", text)
             ),
@@ -367,6 +377,7 @@ def _static_payload_checks() -> dict[str, Any]:
         )
 
     return {
+        "native_openusd": openusd,
         "usda_count": len(usda_files),
         "json_count": len(json_files),
         "glb_count": len(glb_files),
@@ -593,11 +604,9 @@ def validate() -> dict[str, Any]:
         "overall_qualified": False,
         "static": static,
         "physiology": physiology,
-        # Retain this key for report consumers. These gates are not executed by
-        # this script even if a separate, retained native evidence artifact is
-        # added later.
+        # Retain this key for report consumers. Native OpenUSD parsing and
+        # composition are executed above and therefore are not listed here.
         "not_executed": [
-            "OpenUSD runtime parse",
             "Isaac Sim execution",
             "PhysX CUDA deformable cooking",
             "PBD fluid execution",

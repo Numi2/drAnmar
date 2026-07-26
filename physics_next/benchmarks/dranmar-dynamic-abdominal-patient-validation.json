@@ -2,7 +2,6 @@
   "asset_id": "dranmar-dynamic-abdominal-patient-v1",
   "intended_use": "simulation_training",
   "not_executed": [
-    "OpenUSD runtime parse",
     "Isaac Sim execution",
     "PhysX CUDA deformable cooking",
     "PBD fluid execution",
@@ -380,8 +379,24 @@
       "tetrahedra_per_body": 864,
       "total_tetrahedra": 8640
     },
+    "native_openusd": {
+      "composed_count": 178,
+      "default_prim_count": 178,
+      "failure_count": 0,
+      "failures": [],
+      "layer_count": 178,
+      "native_binding": "pxr",
+      "openusd_version": "0.25.11",
+      "parsed_count": 178,
+      "passed": true,
+      "required_dependency": "usd-core==25.11",
+      "roots": [
+        "."
+      ],
+      "schema": "dr.anmar.native-openusd-layer-validation.v1"
+    },
     "png_count": 8,
-    "python_count": 5,
+    "python_count": 7,
     "relative_references_complete": true,
     "repository_registration_complete": true,
     "tet_metrics": {
@@ -488,157 +503,126 @@
     "top_level_access_variant_complete": true,
     "usd_sources": {
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_abdominal_adhesions.usda": {
-        "brace_pairs": 20,
         "bytes": 242989,
         "flat_quaternion_count": 12
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_abdominal_wall.usda": {
-        "brace_pairs": 20,
         "bytes": 119776,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_bladder.usda": {
-        "brace_pairs": 10,
         "bytes": 440434,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_bowel_lesion.usda": {
-        "brace_pairs": 9,
         "bytes": 399834,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_colon.usda": {
-        "brace_pairs": 10,
         "bytes": 28540,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_diaphragm.usda": {
-        "brace_pairs": 9,
         "bytes": 210028,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_fascia.usda": {
-        "brace_pairs": 20,
         "bytes": 120535,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_gallbladder.usda": {
-        "brace_pairs": 11,
         "bytes": 444731,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_laparotomy_wound.usda": {
-        "brace_pairs": 78,
         "bytes": 1400386,
         "flat_quaternion_count": 0
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_left_kidney.usda": {
-        "brace_pairs": 10,
         "bytes": 442568,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_liver.usda": {
-        "brace_pairs": 11,
         "bytes": 459458,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_liver_tumor.usda": {
-        "brace_pairs": 10,
         "bytes": 436360,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_major_vessels.usda": {
-        "brace_pairs": 11,
         "bytes": 56285,
         "flat_quaternion_count": 3
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_mesentery.usda": {
-        "brace_pairs": 9,
         "bytes": 75585,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_nerves.usda": {
-        "brace_pairs": 9,
         "bytes": 20268,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_pancreas.usda": {
-        "brace_pairs": 10,
         "bytes": 899106,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_peritoneum.usda": {
-        "brace_pairs": 20,
         "bytes": 120714,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_right_kidney.usda": {
-        "brace_pairs": 10,
         "bytes": 442578,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_skin.usda": {
-        "brace_pairs": 20,
         "bytes": 119604,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_small_bowel.usda": {
-        "brace_pairs": 10,
         "bytes": 154094,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_spleen.usda": {
-        "brace_pairs": 10,
         "bytes": 441711,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_stomach.usda": {
-        "brace_pairs": 11,
         "bytes": 73839,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_subcutaneous_fat.usda": {
-        "brace_pairs": 20,
         "bytes": 119740,
         "flat_quaternion_count": 1
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/anatomy/dranmar_ureters.usda": {
-        "brace_pairs": 10,
         "bytes": 18306,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda": {
-        "brace_pairs": 70,
-        "bytes": 14794,
-        "flat_quaternion_count": 34
+        "bytes": 15610,
+        "flat_quaternion_count": 36
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_operating_scene.usda": {
-        "brace_pairs": 13,
         "bytes": 2628,
         "flat_quaternion_count": 2
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_rigid_proxy.usda": {
-        "brace_pairs": 119,
-        "bytes": 4530257,
-        "flat_quaternion_count": 1
+        "bytes": 3138759,
+        "flat_quaternion_count": 23
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/fluids/bile_particle.usda": {
-        "brace_pairs": 6,
         "bytes": 26998,
         "flat_quaternion_count": 0
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/fluids/blood_particle.usda": {
-        "brace_pairs": 6,
         "bytes": 26911,
         "flat_quaternion_count": 0
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/fluids/irrigation_particle.usda": {
-        "brace_pairs": 6,
         "bytes": 26994,
         "flat_quaternion_count": 0
       },
       "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/fluids/urine_particle.usda": {
-        "brace_pairs": 6,
         "bytes": 27006,
         "flat_quaternion_count": 0
       }
