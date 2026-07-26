@@ -1,55 +1,152 @@
 # Dr.Anmar
 
-**A clinician-centered surgical robotics simulation-training platform for teleoperation, data collection, and policy evaluation.**
+**Contact-driven surgical robotics for simulation, clinician demonstration,
+robot learning, and patient-effect evaluation.**
 
-Dr.Anmar integrates interactive surgical workspaces, articulated robot systems, OpenUSD assets, PhysX mechanics,
-multimodal sensing, demonstration recording, and reproducible experiment contracts. The platform is designed to
-connect a clinician's procedural intent to inspectable robot behavior without hiding the underlying simulator,
-control, data, or validation boundaries.
-
-Dr.Anmar owns the doctor-facing workflow, procedure rooms, interaction contracts, safety controls, evidence
-pipeline, and study lifecycle. NVIDIA Isaac Sim, Isaac Lab, PhysX, ORBIT-Surgical-derived task foundations, and
-optional providers execute bounded technical roles. The complete ownership and provenance model is documented in
-[`docs/OWNERSHIP.md`](docs/OWNERSHIP.md).
-
-> [!CAUTION]
-> Dr.Anmar is software for simulation training, synthetic data, and evaluation.
-> Real-world and clinical evidence are not established. It is not a medical
-> device and must not be used for diagnosis, treatment, patient-specific
-> planning, or control of physical surgical hardware.
+[![Research software](https://img.shields.io/badge/status-research%20software-5b5bd6)](docs/EVIDENCE_LEVELS.md)
+[![Isaac Sim](https://img.shields.io/badge/runtime-Isaac%20Sim-76b900)](https://developer.nvidia.com/isaac/sim)
+[![Isaac Lab](https://img.shields.io/badge/robot%20learning-Isaac%20Lab-76b900)](https://isaac-sim.github.io/IsaacLab/)
+[![OpenUSD](https://img.shields.io/badge/scenes-OpenUSD-5b5bd6)](https://openusd.org/)
+[![Assets](https://img.shields.io/badge/assets-dr--assets-0ea5e9)](https://github.com/Numi2/dr-assets)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)](LICENSE)
 
 <p align="center">
-  <img src="docs/screenshots/dr-anmar-live-controls-2026.gif" width="960" alt="Dr.Anmar operating room with live simulated surgical instruments, anatomy, cameras, controls, and guidance">
+  <a href="https://github.com/Numi2/dr-assets">
+    <img src="https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/hero-autonomous-rescue-or.png"
+         width="100%"
+         alt="Dr.Anmar Autonomous Rescue OR with patient, intervention stations, robot workcells, resuscitation, and physiological monitoring">
+  </a>
 </p>
 
-## Product scope
+<p align="center">
+  <em>Autonomous Rescue OR — robot intervention, patient state, tools,
+  resuscitation, and monitoring in one composable research scene.</em>
+</p>
 
-Dr.Anmar supports four connected activities:
+> A robot may command motion and intervention intent. It may not write the
+> patient outcome.
 
-1. **Simulation:** compose articulated instruments, anatomy, sensors, contacts, deformables, particles, and
-   task-specific mechanics in versioned OpenUSD scenes.
-2. **Human demonstration:** control one or two instruments by keyboard, game controller, voice, or camera-native
-   hand tracking while preserving audited command and simulator state.
-3. **Robot learning:** record synchronized observations and actions, construct dataset cards, train bounded
-   imitation- or reinforcement-learning experiments, and compare policies under controlled perturbations.
-4. **Evaluation:** reproduce task phases and failures, measure native simulator outcomes, retain provenance, and
-   distinguish repository verification and native-simulator evidence from real-world, clinical, and regulatory evidence.
+Dr.Anmar owns the clinician-facing workflow, procedure rooms, robot-control
+contracts, patient-effect architecture, demonstration pipeline, evaluation
+surface, and evidence lifecycle. NVIDIA Isaac Sim, Isaac Lab, PhysX,
+ORBIT-Surgical-derived foundations, and optional providers perform bounded
+technical roles.
 
-The platform is intended for reproducible engineering studies. Every quantitative result must be interpreted
-within the exact asset revision, software stack, hardware, scenario, and measurement contract that produced it.
-The active release boundary is recorded in
-[`docs/CURRENT_RELEASE_READINESS.md`](docs/CURRENT_RELEASE_READINESS.md); only
-genuinely unresolved gates remain in
-[`docs/VALIDATION_BACKLOG.md`](docs/VALIDATION_BACKLOG.md).
+The result is a research platform in which robot behavior stays inspectable:
+articulations and contacts advance in the simulator, post-physics evidence
+drives patient effects, and learning algorithms receive reward only after the
+environment computes the resulting benefit or harm.
 
-### Executable Autonomous Rescue policy loop
+> [!CAUTION]
+> Dr.Anmar is research software for simulation, synthetic data, and evaluation.
+> It is not clinically validated, is not a medical device, and must not control
+> physical surgical hardware or be used for patient care.
 
-Autonomous Rescue OR has a closed imitation-learning loop: record contact-driven
-expert episodes, pack whole episodes, train Robomimic BC, load one immutable
-checkpoint into the live room, and evaluate seeded rollouts against patient
-effects. The policy can emit bounded robot actions only. Bilateral contact,
-compression, perfusion, overload, vital signs, release, and success remain
-post-physics outputs of the patient runtime.
+## Robotics first
+
+| Robot layer | Dr.Anmar responsibility |
+| --- | --- |
+| **Control** | Bounded Cartesian or joint commands, instrument selection, gripper state, immediate stop, operator takeover, and command provenance |
+| **Simulation** | Articulations, rigid and deformable contact, attachments, particles, sensors, tool state, and procedure geometry |
+| **Patient effects** | Bleeding, perfusion, repair integrity, fluid balance, ventilation, oxygenation, tissue damage, and physiological response |
+| **Learning** | Causally aligned observations and actions, complete-episode datasets, policy loading, seeded rollout evaluation, and failure analysis |
+
+The browser never declares contact, repair, division, perfusion, or success.
+Those remain environment-owned outputs.
+
+## Current robotic systems
+
+Dr.Anmar currently integrates seven procedure-focused robot systems plus the
+multi-arm OncoSurgery training cell. Each system ships with a standalone
+mechanism, a composable robot payload, OpenUSD assets, interaction frames,
+controller/task contracts, and a named evidence boundary.
+
+| System | Robotic capability | Research surface |
+| --- | --- | --- |
+| [Wound preparation](docs/VALIDATION.md) | Contact-guarded debridement, irrigation, aspiration, interchangeable cartridges | Contact work, debris release, fluid accounting |
+| [Atraumatic exposure](docs/atraumatic_exposure_robot/VALIDATION.md) | Bilateral distributed soft-tissue capture, lift, pitch, hold, and release | Force symmetry, visibility, capture retention |
+| [Adaptive hemostasis](docs/adaptive_hemostasis_robot/VALIDATION.md) | Compression, irrigation, suction, clip delivery, patching, pressure verification | Flow reduction, retained repair, overload damage |
+| [Adaptive anastomosis](docs/adaptive_anastomosis_robot/VALIDATION.md) | Alignment, approximation, eversion, stapling, reinforcement, leak and patency assessment | Closure geometry, retention, pressure decay |
+| [Adaptive seal and divide](docs/adaptive_seal_divide_robot/VALIDATION.md) | Centering, compression, sealing, guarded division, irrigation and suction | Seal state, energy observables, blade interlock |
+| [SafePlane dissection](docs/safeplane_dissection_robot/VALIDATION.md) | Distributed traction, blunt spreading, hydrodissection, guarded scissors and spatula | Protected-structure clearance and continuity |
+| [Perfusion viability](docs/perfusion_viability_robot/VALIDATION.md) | Registered RGB, NIR/ICG, speckle, thermal, oxygenation, Doppler and ultrasound sensing | Multimodal fusion, fault diagnosis, abstention |
+| [OncoSurgery cell](docs/SURGICAL_ONCOLOGY.md) | Three-station resection, margin sensing, specimen handling and cavity verification | Resection topology, protected structures, margin state |
+
+### Procedure-scale systems
+
+| Oncologic resection | SafePlane dissection |
+| --- | --- |
+| [![Three-arm oncologic resection cell](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/oncologic-resection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalOncology/OncoSurgeryCell) | [![Exploded SafePlane dissection mechanism](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/safeplane-dissection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalDissection/SafePlaneDissectionRobot) |
+| Three coordinated stations for sensing, resection, margin assessment, and specimen handling. | Interchangeable traction, hydro, blunt, scissors, energy, and sensing components. |
+
+| Adaptive hemostasis | Adaptive anastomosis |
+| --- | --- |
+| [![Adaptive hemostasis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/adaptive-hemostasis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot) | [![Adaptive anastomosis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/adaptive-anastomosis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot) |
+| Compression, clip, patch, suction, irrigation, and verification modes. | Alignment, approximation, staple formation, reinforcement, leak test, and patency. |
+
+| Perfusion viability | Dynamic abdominal patient |
+| --- | --- |
+| [![Multimodal perfusion assessment instrument](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/perfusion-viability.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalAssessment/PerfusionViabilityRobot) | [![Dynamic abdominal patient](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/dynamic-abdominal-patient.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/Patients/DynamicAbdominalPatient) |
+| Registered multimodal sensing with explicit validity and abstention behavior. | Layered abdominal access, organs, pathology, respiration, wound margins, and physiology. |
+
+Robotic motion media belongs beside the exact replay that produced it. The
+front page therefore uses revision-stable system and mechanism views; procedure
+video should come from complete replays that visibly include approach, contact,
+patient effect, release, and recovery rather than phase labels alone.
+
+## Contact-owned patient effects
+
+The learning environment owns the transition from intervention to outcome.
+Temporary effects require current evidence; retained repairs require persistent
+attachment and integrity.
+
+| Uncontrolled vessel | Temporary compression | Retained repair |
+| --- | --- | --- |
+| ![Uncontrolled vessel](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/effect-vessel-bleeding.png) | ![Compressed vessel](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/effect-vessel-compressed.png) | ![Retained vessel repair](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/effect-vessel-repaired.png) |
+| Flow and blood loss remain active. | Benefit expires when bilateral contact disappears. | Benefit persists only while repair attachment and integrity remain valid. |
+
+```mermaid
+flowchart LR
+    A["Clinician or policy<br/>motion + intervention intent"] --> B["Robot controller<br/>bounded commands"]
+    B --> C["Isaac Sim + PhysX<br/>articulation + contact"]
+    C --> D["Post-physics evidence<br/>force, geometry, flow,<br/>pressure, attachment, dwell"]
+    D --> E["Dr.Anmar patient effects<br/>conservation + damage + repair"]
+    E --> F["Patient state<br/>bleeding, MAP, perfusion,<br/>oxygenation, integrity"]
+    F --> G["Transition reward<br/>improvement minus harm"]
+    G --> A
+    A -. "no outcome write path" .-> D
+```
+
+Examples of mutually supported evidence:
+
+| Intervention | Environment-owned evidence | Failure remains visible |
+| --- | --- | --- |
+| Compress or clip | Bilateral force, symmetry, separation, placement, speed, retained attachment | Release, migration, overload, distal perfusion loss |
+| Patch or anastomose | Distributed contact, closure gap, integrity, pressure hold, leaked particles | Delamination, residual leak, stenosis, rupture |
+| Infuse | Plunger travel, outlet flow, reservoir loss, access attachment, line pressure | Disconnection, occlusion, overpressure, extravasation |
+| Ventilate | Airway attachment, valve travel, delivered/leaked flow, pressure, oxygen fraction, chest excursion | Leak, unsafe pressure, inadequate delivery |
+
+The complete mechanics and learning contracts live in the canonical
+[Dr.Anmar asset catalog](https://github.com/Numi2/dr-assets).
+
+## Executable Autonomous Rescue learning loop
+
+Autonomous Rescue OR connects clinician demonstration to policy evaluation
+without giving the policy patient-outcome controls:
+
+```text
+record complete expert episode
+        ↓
+pack causally aligned observations and actions
+        ↓
+train behavior cloning policy
+        ↓
+load immutable checkpoint into the live room
+        ↓
+run seeded patient-effect rollouts
+        ↓
+compare benefit, harm, release, and failure
+```
 
 ```bash
 ./dr_anmar_rescue_il.sh policy-room /path/to/model_epoch_200.pth 2361
@@ -57,345 +154,95 @@ post-physics outputs of the patient runtime.
 ./dr_anmar_rescue_il.sh evaluate-policy 2361 20 --continue-on-error
 ```
 
-Every policy rollout is recorded with its checkpoint SHA-256 and
-patient-effect outcome. It is labeled `learned_policy_rollout` and is never
-automatically accepted as an expert Behavior Cloning reference.
-
-## Asset catalog and reproducibility
-
-Dr.Anmar uses one provider-aware asset registry for repository assets and the
-pinned NVIDIA Isaac for Healthcare v0.7.0 catalog. It inventories complete
-asset directories, validates relative USD dependency closure, rejects path
-traversal and workstation-absolute references, checks manifests and licensing
-evidence, and can generate deterministic directory hashes for release locks.
-The hub, workstation, native-room resolver, installers, and capability API use
-the same provider-relative paths instead of maintaining independent root logic.
-The checked-in lock and generated [`catalog.md`](catalog.md) cover all local
-asset units and all 21 product portfolio entries; CI rejects any drift between
-those release artifacts and the repository.
-
-```bash
-python3 scripts/dr_anmar_asset_registry.py verify
-python3 scripts/dr_anmar_asset_registry.py inventory --hash
-python3 scripts/dr_anmar_i4h_receipt.py verify
-```
-
-The clinician-facing capability payload is generated from all 21 entries in
-`physics_next/dr-anmar-assets.json`, including every declared profile, runtime,
-report, native-evidence, and composition artifact. Repository verification is
-not a substitute for native-simulator, real-world, biomechanical, or clinical
-evidence. The generated
-[`dranmar-portfolio-evidence-index.json`](physics_next/benchmarks/dranmar-portfolio-evidence-index.json)
-content-addresses every declared artifact and binds it to the parent and asset
-submodule revisions that contain it. An evidence artifact's own tested
-revision remains authoritative for what actually ran. See
-[`docs/ASSET_CATALOG.md`](docs/ASSET_CATALOG.md).
-
-Dr.Anmar does not use “validated” as a catch-all. Product capability,
-repository verification, native-simulator evidence, real-world evidence, and
-clinical evidence are separate claims. See
-[`docs/EVIDENCE_LEVELS.md`](docs/EVIDENCE_LEVELS.md).
-
-Generative video is supported only as a content-addressed, non-authoritative
-observation asset. Dr.Anmar verifies media geometry, color assumptions,
-timestamps, action semantics, stale-input stops, safe model handling, and
-evidence boundaries before accepting a bundle. Generated pixels never author
-physics, robot control, patient effects, or success. See
-[`docs/MULTIMODAL_GENERATIVE_ASSETS.md`](docs/MULTIMODAL_GENERATIVE_ASSETS.md).
-
-## Dr.Anmar robot systems
-
-Seven procedure-specific systems are available as simulation-training
-workcells. A generic native bench recorded on 25 July 2026 established
-workcell selection, simulator stepping, non-empty camera output, no reported
-fatal error, and clean shutdown. It did not record the parent or asset
-submodule revision and did not execute every complete procedure controller or
-deformable-cooking route. Asset-specific evidence therefore remains the
-authority for stronger claims. Each system provides:
-
-- a standalone articulated mechanism for isolated development;
-- a composable payload mounted to an Isaac Lab Franka articulation;
-- deterministic source generation and asset manifests;
-- OpenUSD, GLB, texture, interaction-frame, controller, and task contracts;
-- CPU-side structural and controller tests; and
-- a headless CUDA diagnostic or asset-specific validation program.
-
-The animations below were rendered directly from the complete Franka-mounted OpenUSD assemblies in Isaac Lab on
-an NVIDIA RTX 4090. Each clip opens on the full robot, then moves to the authored tool center point and procedure
-fixture while the mechanism executes its phase targets. They are simulation visualizations, not
-physical-performance or clinical evidence.
-
-### Wound preparation robot
-
-<p align="center">
-  <img src="docs/screenshots/robots/wound-preparation-isaac-lab.gif" width="800" alt="Dr.Anmar wound preparation robot moving through inspect, contact, irrigation, debridement, aspiration, and rinse phases in Isaac Lab">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/robots/wound-preparation-contact-debridement.gif" width="395" alt="Close Isaac Lab view of the wound preparation robot moving through contact and debridement targets">
-  <img src="docs/screenshots/robots/wound-preparation-irrigation-aspiration.gif" width="395" alt="Close Isaac Lab view of the wound preparation robot moving through irrigation and aspiration targets">
-</p>
-
-An articulated concentric work head combines a compliant contact guard, interchangeable debridement cartridge,
-multi-nozzle irrigation, annular aspiration, and explicit fluid-volume accounting. The simulation model represents
-adhered debris release through accumulated contact work and conserves emitted, active, aspirated, spilled, and
-discarded particle volume.
-
-These three clips come from the same fresh Isaac Lab run. The first preserves the complete Franka workcell
-context; the two shorter clips retain the simulated frames while focusing the contact/debridement and
-irrigation/aspiration portions of the sequence.
-
-The asset-specific runtime program is designed to inspect both standalone and
-Franka-mounted representations, the five tool joints, deformable-wound cooking,
-debris attachments, particle accounting, finite state, and engine diagnostics.
-The retained generic bench does not establish that complete matrix. See
-[`docs/VALIDATION.md`](docs/VALIDATION.md).
-
-### Atraumatic exposure robot
-
-<p align="center">
-  <img src="docs/screenshots/robots/atraumatic-exposure-isaac-lab.gif" width="800" alt="Dr.Anmar atraumatic exposure robot deploying and retracting bilateral tissue-contact pads in Isaac Lab">
-</p>
-
-The exposure system uses symmetric carriages, independent lift and pitch axes, compliant pad travel, and twelve
-distributed capture cells. Fenestrated and microcup pad variants share one articulation and force/visibility
-control contract, enabling controlled comparison of contact geometry without changing the experimental interface.
-
-The asset-specific runtime program is designed to inspect both pad geometries
-in standalone and Franka-mounted representations, including articulation
-state, tissue-flap cooking, anchors, capture constraints, controller output,
-and engine diagnostics. The retained generic bench establishes composition and
-visibility only. See
-[`docs/atraumatic_exposure_robot/VALIDATION.md`](docs/atraumatic_exposure_robot/VALIDATION.md).
-
-### Adaptive hemostasis robot
-
-<p align="center">
-  <img src="docs/screenshots/robots/adaptive-hemostasis-isaac-lab.gif" width="800" alt="Dr.Anmar adaptive hemostasis robot progressing through compression, clip placement, patch application, and verification phases in Isaac Lab">
-</p>
-
-This system combines bilateral compression, irrigation and annular suction, clip delivery, patch application, and
-a reduced-order pressure/flow verification model. Its runtime contract separates temporary compression,
-retained-clip, and patch-bond attachments so that control phases and failure conditions remain independently
-inspectable.
-
-The asset-specific validation contract checks vessel schemas, all eleven tool
-joints, attachment lifecycles, particle-volume bookkeeping, suction capture,
-provisional retention and cure thresholds, pressure-challenge integration,
-finite state, and engine diagnostics. A current complete native matrix is not
-established by the generic bench. See
-[`docs/adaptive_hemostasis_robot/VALIDATION.md`](docs/adaptive_hemostasis_robot/VALIDATION.md).
-
-### Adaptive anastomosis robot
-
-<p align="center">
-  <img src="docs/screenshots/robots/adaptive-anastomosis-isaac-lab.gif" width="800" alt="Dr.Anmar adaptive anastomosis robot aligning, everting, stapling, reinforcing, and pressure-testing a simulated lumen in Isaac Lab">
-</p>
-
-The anastomosis system provides bilateral circumferential capture, coaxial tissue approximation, an expandable
-lumen mandrel, independent eversion, a sixteen-position staple crown, reinforcement-collar application, temporary
-occlusion, and a pressure-decay test model.
-
-The asset-specific runtime program is designed to inspect the 14-DoF standalone
-mechanism and 21-DoF Franka assembly, tissue cooking, temporary capture
-attachments, retained staples, cured collar attachments, particle accounting,
-patency evaluation, pressure decay, finite state, and engine diagnostics. A
-current complete native matrix is not established by the generic bench. See
-[`docs/adaptive_anastomosis_robot/VALIDATION.md`](docs/adaptive_anastomosis_robot/VALIDATION.md).
-
-### Adaptive seal-and-divide robot
-
-<p align="center">
-  <img src="docs/screenshots/robots/adaptive-seal-divide-isaac-lab.gif" width="800" alt="Dr.Anmar adaptive seal-and-divide robot centering, compressing, sealing, and dividing simulated tissue in Isaac Lab">
-</p>
-
-The seal-and-divide system integrates tissue centering, symmetric jaw compression, guarded blade travel,
-irrigation, suction, energy-state estimation, thermal and impedance observables, seal verification, and explicit
-blade-before-seal interlocks.
-
-The asset-specific runtime program is designed to check two cooked vessel
-surfaces, distal fixtures, bridge and compression attachments, retained seal
-bands, the division interlock, temporary-constraint release, joint counts,
-finite state, and engine diagnostics in standalone and Franka-mounted
-representations. A current complete native matrix is not established by the
-generic bench. See
-[`docs/adaptive_seal_divide_robot/VALIDATION.md`](docs/adaptive_seal_divide_robot/VALIDATION.md).
-
-### SafePlane dissection robot
-
-The SafePlane system combines bilateral distributed traction with blunt
-spreading, seven-port hydrodissection, guarded articulated micro-scissors, and
-a retractable low-energy spatula. Independent vessel, nerve, and duct assets
-retain explicit continuity and modality-specific clearance interlocks; an
-override produces inspectable simulated injury state rather than bypassing the
-physical model.
-
-Its asset-specific runtime program is designed to inspect the 17-DoF standalone
-mechanism and 24-DoF Franka assembly, tissue cooking, fixtures, traction and
-bridge attachments, protected-structure continuity, particle accounting,
-finite state, and engine diagnostics. A current complete native matrix is not
-established by the generic bench. See
-[`docs/safeplane_dissection_robot/VALIDATION.md`](docs/safeplane_dissection_robot/VALIDATION.md).
-
-### Perfusion and tissue-viability robot
-
-<p align="center">
-  <img src="docs/screenshots/robots/perfusion-viability-overview.png" width="800" alt="Dr.Anmar multimodal perfusion and tissue-viability robot with registered sensing and regional viability maps">
-</p>
-
-The perfusion system registers stereo RGB, NIR/ICG, laser speckle, thermal,
-surface oxygenation, depth, Doppler, and ultrasound sensing around one TCP.
-Its estimator is blind to scenario labels and latent flow state, fuses
-temporal ICG evidence, removes failed modalities, tracks conserved contrast and
-coupling gel, and explicitly abstains on invalid registration, timing,
-coverage, or confidence.
-
-The v0.1.1 CUDA matrix covers both the 12-DoF standalone mechanism and 19-DoF
-Franka assembly for 260 steps, six nonconstant rendered camera streams, finite
-depth, a cooked tissue surface with two fixtures, blind diagnosis of six
-modeled faults, force-coupled probe contact, evidence-based intervention, and
-three loaded-arm poses with the authored 2.537 kg payload. See
-[`docs/perfusion_viability_robot/VALIDATION.md`](docs/perfusion_viability_robot/VALIDATION.md).
-
-### Surgical-oncology training cell
-
-The OncoSurgery Cell integrates a payload-backed 22-joint tumor-resection tool,
-a 3,028-cell liver tumor field, 96 explicit resection bonds, protected vascular
-and bile-duct interlocks, registered RGB/depth, NIR, hyperspectral, ultrasound,
-OCT, and Raman contracts, specimen containment and orientation, cavity
-verification, and corrective resection.
-
-Its Isaac Lab runtime provides standalone, rigid-proxy, Franka-mounted, liver,
-specimen, and three-station workcell factories; bounded reset-time domain
-randomization; a 12-term policy observation; dense safety-aware reward; and a
-contract-gated final margin report. The imported USDA layers were repaired and
-wrapped with lightweight relative-payload interfaces, and the Franka payload
-representations now share a consistent authored 2.5534 kg mass. The native
-tissue route couples the task to the Dynamic Patient liver's explicit
-tetrahedral PhysX GPU volume deformable while retaining the registered
-resection graph for irreversible topology changes. Recorded native CUDA evidence
-now records a passing RTX 4090 non-contact volume-stability lane with 274 live
-tetrahedral nodes, bounded displacement and speed, and zero engine errors.
-Robot-tissue contact, rendered sensors, Franka payload behavior, and all
-real-world, biomechanical, and clinical evidence remain explicit promotion
-gates. See
-[`docs/SURGICAL_ONCOLOGY.md`](docs/SURGICAL_ONCOLOGY.md).
-
-## Platform architecture
-
-```text
-Clinician / researcher
-        │
-        ▼
-Doctor Studio ── control, guidance, study configuration, review
-        │
-        ▼
-Dr.Anmar hub ── authentication, operator lease, lifecycle, provenance
-        │
-        ▼
-Isaac worker ── task, robot, sensor, controller, recorder bindings
-        │
-        ├── Isaac Lab articulation and task APIs
-        ├── PhysX rigid, deformable, attachment, and particle mechanics
-        ├── OpenUSD scenes, materials, assets, and variants
-        └── optional bounded NVIDIA / SonoGym workflows
-        │
-        ▼
-Evidence ── trajectories, manifests, metrics, logs, dataset cards
-```
-
-This separation is intentional:
-
-- the browser never determines physical contact, attachment, puncture, division, or task success;
-- visible controls are converted into bounded robot commands and audited;
-- native simulator state is the authority for mechanics and outcomes;
-- provider-specific behavior remains behind explicit adapters;
-- downloaded assets, demonstrations, checkpoints, logs, and runtime state remain outside Git; and
-- promotion claims are limited to the evidence recorded for the exact tested configuration.
+Robot, contact, vessel, vital-sign, fluid-balance, and causal camera signals
+are observations. Patient-effect fields are excluded from the policy action
+space, and train/validation masks are assigned at complete-episode boundaries.
 
 ## Doctor Studio
 
-Doctor Studio presents the simulator as a procedural workspace rather than an infrastructure console. It includes:
+Doctor Studio is the clinician-facing workspace for live simulation,
+teleoperation, demonstration recording, guidance, policy comparison, and
+failure analysis.
 
-- guided robotics lessons expressed in clinical language;
-- live OpenUSD operating and simulation-training rooms;
-- keyboard and game-controller bimanual control;
-- camera-native one- or two-hand webcam teleoperation;
-- bounded voice commands with a matching typed-command fallback;
-- immediate stop, pause, takeover, and camera controls;
-- demonstration recording, replay, and clinician-selected references;
-- Skills Twin trajectory and phase analysis;
-- seeded Failure Lab perturbations and policy evaluation; and
-- multimodal study manifests for RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact,
-  deformation, operator input, and procedure annotations.
+| Live operating room | Skills Twin |
+| --- | --- |
+| ![Dr.Anmar live operating room](docs/screenshots/dr-anmar-live-operating-room-2026.png) | ![Dr.Anmar Skills Twin](docs/screenshots/dr-anmar-skills-twin-2026.png) |
+| Robot control, cameras, guidance, immediate stop, recording, and room state. | Phase timing, trajectory inspection, replay comparison, and clinician-selected references. |
 
-The interaction model and safety behavior are documented in
-[`docs/KEYBOARD_CONTROLS.md`](docs/KEYBOARD_CONTROLS.md) and
-[`docs/WEBCAM_TELEOPERATION.md`](docs/WEBCAM_TELEOPERATION.md). The multimodal data contract is described in
-[`docs/MULTIMODAL_STUDIES.md`](docs/MULTIMODAL_STUDIES.md).
+| Multimodal study lab | Policy lab |
+| --- | --- |
+| ![Dr.Anmar multimodal study lab](docs/screenshots/dr-anmar-multimodal-lab-2026.png) | ![Dr.Anmar policy lab](docs/screenshots/doctor-studio-policy-lab.png) |
+| RGB, depth, segmentation, point clouds, wrist cameras, pose, torque, contact, and annotations. | Seeded evaluation, perturbation, failure review, and bounded policy comparison. |
 
-## Evidence model
+Control and data contracts:
 
-Dr.Anmar uses five distinct evidence levels:
+- [Keyboard and controller interaction](docs/KEYBOARD_CONTROLS.md)
+- [Camera-native hand teleoperation](docs/WEBCAM_TELEOPERATION.md)
+- [Multimodal studies](docs/MULTIMODAL_STUDIES.md)
+- [Executable expert guidance](docs/EXECUTABLE_EXPERT_GUIDANCE.md)
+
+## Platform architecture
+
+```mermaid
+flowchart TD
+    A["Clinician / researcher"] --> B["Doctor Studio<br/>control, guidance, studies, review"]
+    B --> C["Dr.Anmar hub<br/>identity, operator lease, lifecycle, provenance"]
+    C --> D["Isaac worker<br/>task, robot, sensor, controller, recorder"]
+    D --> E["Isaac Lab<br/>articulation + learning"]
+    D --> F["PhysX<br/>rigid + deformable + particles"]
+    D --> G["OpenUSD<br/>scenes + assets + variants"]
+    D --> H["Evidence<br/>trajectories + metrics + dataset cards"]
+```
+
+Downloaded assets, checkpoints, demonstrations, logs, and runtime state remain
+outside Git. The repository contains the code, contracts, authored assets,
+documentation, and revision-bound evidence references needed to reproduce a
+study.
+
+## Evidence boundary
+
+Dr.Anmar keeps five claims separate:
 
 | Level | Establishes | Does not establish |
 | --- | --- | --- |
-| Product capability | The asset or workcell is integrated and available for its stated simulation-training workflow | Numerical fidelity |
-| Repository verification | Assets, schemas, manifests, hashes, paths, controller invariants, and package consistency pass | Native engine behavior |
-| Native-simulator evidence | A named revision ran on a recorded Isaac/PhysX stack and hardware configuration | Generalization or real-world behavior |
-| Real-world evidence | Instrumented hardware, materials, sensors, or wet/dry-bench measurements support a specific correlation claim | Clinical effectiveness |
-| Clinical evidence | A defined clinical study and review support a specific clinical claim | Claims outside that study |
+| Product capability | A workflow is integrated and available | Numerical fidelity |
+| Repository verification | Source, schemas, manifests, paths, and contracts are internally consistent | Native engine behavior |
+| Native-simulator evidence | A named revision ran on a recorded simulator, stack, and GPU | Real-world transfer |
+| Real-world evidence | Instrumented hardware or bench data support a specific correlation | Clinical effectiveness |
+| Clinical evidence | A defined clinical study supports a specific claim | Claims outside that study |
 
-Dr.Anmar’s current robot evidence ranges from repository verification and
-generic native composition smoke tests to bounded asset-specific native
-evidence. Evidence status is not transferable between workcells, revisions,
-representations, simulator stacks, or physics configurations. Mechanical
-constants, tissue parameters, pressure/flow thresholds, energy models, contact
-limits, damage proxies, and success thresholds remain engineering parameters
-unless a robot-specific artifact records instrumented real-world evidence.
+Current parameters are engineering parameters unless a robot-specific artifact
+records instrumented calibration. Evidence does not transfer automatically
+between workcells, revisions, representations, simulator versions, GPUs, or
+physics configurations.
 
-## Requirements
+Start with:
 
-The simulator runtime requires a Linux x86-64 system with a compatible NVIDIA GPU. Source, documentation, and
-browser code can be inspected on macOS or Windows, but this project's Isaac Sim backend does not execute there.
-
-Recorded native-simulator lanes currently include:
-
-- Isaac Sim 5.1 with Isaac Lab 2.3.2 for the stable operating-room workflow; and
-- Isaac Sim 6.0.1.0 with Isaac Lab 6.1.16 for the surface-deformable robot evidence lane.
-
-Python 3.10 or newer is required inside the corresponding Isaac environment. NVIDIA components and optional
-provider assets retain their own licenses and are not redistributed by this repository.
+- [Current release readiness](docs/CURRENT_RELEASE_READINESS.md)
+- [Revision-bound portfolio evidence](physics_next/benchmarks/dranmar-portfolio-evidence-index.json)
+- [Evidence levels](docs/EVIDENCE_LEVELS.md)
+- [Validation backlog](docs/VALIDATION_BACKLOG.md)
 
 ## Quick start
 
-Clone the repository outside the Isaac Lab checkout:
+The asset catalog is a pinned submodule, so clone recursively:
 
 ```bash
-git clone https://github.com/Numi2/drAnmar.git
+git clone --recurse-submodules https://github.com/Numi2/drAnmar.git
 cd drAnmar
 cp .env.example .env
 ```
 
-Set `ISAAC_PYTHON` in `.env` to the Python executable in the selected Isaac environment. Runtime data defaults to
-`~/.local/share/dr-anmar`; change `DR_ANMAR_ROOT` to relocate it. For a shared workstation, configure a long random
-`DR_ANMAR_ACCESS_TOKEN`, use `DR_ANMAR_COOKIE_SECURE=1` behind HTTPS, and keep the services on a trusted LAN or
-private VPN.
-
-Install the local extensions:
+Set `ISAAC_PYTHON` in `.env` to the selected Isaac environment, then install
+the local extensions and start Doctor Studio:
 
 ```bash
 export IsaacLab_PATH=/absolute/path/to/IsaacLab
 ./orbitsurgical.sh
-```
-
-Start Doctor Studio:
-
-```bash
 ./dr_anmar_suite.sh start
 ```
 
-Open [http://localhost:2360](http://localhost:2360). Service controls are:
+Open [http://localhost:2360](http://localhost:2360).
 
 ```bash
 ./dr_anmar_suite.sh status
@@ -404,113 +251,51 @@ Open [http://localhost:2360](http://localhost:2360). Service controls are:
 ./dr_anmar_suite.sh stop
 ```
 
-See [`SECURITY.md`](SECURITY.md) before allowing access from another machine.
+The simulator backend requires Linux x86-64 and a compatible NVIDIA GPU. The
+browser, source, and documentation can be inspected on macOS and Windows.
+Recorded native-simulator lanes include Isaac Sim 5.1 / Isaac Lab 2.3.2 and
+Isaac Sim 6.0.1.0 / Isaac Lab 6.1.16; use the exact stack named by the evidence
+artifact you are reproducing.
 
-## Reproducing native-simulator evidence
+See [SECURITY.md](SECURITY.md) before exposing Doctor Studio beyond a trusted
+LAN or private VPN.
 
-Run a robot's static validator and unit tests before its CUDA runtime test. For example:
-
-```bash
-python3 scripts/validate_dranmar_wound_preparation_robot.py --require-usdchecker
-python3 -m unittest -v tests/test_wound_preparation_robot.py
-
-./isaaclab.sh -p examples/validate_wound_preparation_runtime.py \
-  --headless --device cuda:0 --representation standalone
-./isaaclab.sh -p examples/validate_wound_preparation_runtime.py \
-  --headless --device cuda:0 --representation franka
-```
-
-Equivalent validators and runtime programs are included for the exposure,
-hemostasis, anastomosis, seal-and-divide, SafePlane dissection, and perfusion
-viability systems. Do not transfer a passing result between robot revisions,
-representations, simulator versions, GPUs, or physics configurations.
-
-The Isaac Lab documentation GIFs can be regenerated with:
-
-```bash
-./isaaclab.sh -p scripts/capture_dranmar_robot_gif.py \
-  --headless --enable_cameras --device cuda:0 \
-  --robot adaptive-hemostasis \
-  --output docs/screenshots/robots/adaptive-hemostasis-isaac-lab.gif
-```
-
-Valid robot identifiers are `wound-preparation`, `atraumatic-exposure`, `adaptive-hemostasis`,
-`adaptive-anastomosis`, and `adaptive-seal-divide`.
-
-For a provider asset already mirrored onto the runtime machine, pass
-`--franka-usd /absolute/path/to/franka.usd`; omit it to use Isaac Lab's configured
-Franka asset location.
-
-## Command-line workflows
-
-```bash
-# Inspect registered environments and curriculum content
-./dr_anmar.sh list
-./dr_anmar.sh catalog
-./dr_anmar.sh doctor
-
-# Run a bounded task smoke session
-./dr_anmar.sh smoke Isaac-Lift-Needle-PSM-IK-Rel-v0 120
-
-# Start a training experiment
-./dr_anmar_train.sh rsl_rl \
-  Isaac-Lift-Needle-PSM-IK-Rel-v0 \
-  --num_envs 256 \
-  --max_iterations 1000
-```
-
-## Repository structure
+## Repository map
 
 ```text
-web/                  Doctor Studio browser application
-scripts/              Hub, workers, control adapters, generators, and checks
-examples/             Native CUDA evidence programs
-tests/                Controller and package regression tests
-source/extensions/    Simulator tasks and articulated robot assets
-source/standalone/    Teleoperation, data, training, and policy workflows
-physics_next/         Versioned next-generation physics contracts
-docs/                 Architecture, mechanisms, evidence, and validation records
-dr_anmar_*.sh         Portable service, runtime, and training launchers
+web/                    Doctor Studio browser application
+scripts/                Hub, workers, control adapters, generators
+examples/               Native CUDA evidence programs
+source/extensions/      Simulator tasks and robot integrations
+source/standalone/      Teleoperation, data, training, policy workflows
+source/extensions/orbit.surgical.assets/
+                        Pinned canonical dr-assets repository
+physics_next/           Next-generation mechanics and evidence contracts
+docs/                   Architecture, mechanisms, operation, evidence
+dr_anmar_*.sh           Service, runtime, asset, and training launchers
 ```
 
-## Development checks
+## Research navigation
 
-Run the public-release checks before submitting changes:
+- [Ownership and provenance](docs/OWNERSHIP.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Asset catalog](docs/ASSET_CATALOG.md)
+- [Native suture mechanics](docs/DR_ANMAR_SUTURE_4_0.md)
+- [Warp suture research backend](docs/DR_ANMAR_WARP_SUTURE.md)
+- [Dynamic-patient boundary](docs/DYNAMIC_PATIENT_VALIDATION_BOUNDARY.md)
+- [Multimodal study contract](docs/MULTIMODAL_STUDIES.md)
+- [Contributing](CONTRIBUTING.md)
 
-```bash
-python3 scripts/check_public_release.py
-python3 scripts/audit_project_consistency.py
-python3 scripts/audit_keyboard_controls.py
-python3 scripts/check_web_syntax.py
-python3 -m compileall -q scripts source
-bash -n dr_anmar.sh dr_anmar_suite.sh dr_anmar_train.sh \
-  dr_anmar_workstation.sh orbitsurgical.sh
-```
+## Ownership, attribution, and license
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`NOTICE.md`](NOTICE.md), and the
-[`validation backlog`](docs/VALIDATION_BACKLOG.md).
+Dr.Anmar owns the product workflow, procedure rooms, robot integrations,
+patient-effect architecture, learning interface, and evidence lifecycle in this
+repository. The compatibility namespace and identified task/robot foundations
+retain their ORBIT-Surgical-derived BSD-3-Clause attribution. NVIDIA Isaac Sim,
+Isaac Lab, PhysX, Isaac for Healthcare, and optional providers retain their own
+licenses and are not bundled unless explicitly documented.
 
-## Citation
-
-If ORBIT-Surgical-derived components contribute to published research, cite:
-
-```bibtex
-@article{yu2024orbit,
-  title={ORBIT-Surgical: An Open-Simulation Framework for Learning Surgical Augmented Dexterity},
-  author={Yu, Qinxi and Moghani, Masoud and Dharmarajan, Karthik and Schorp, Vincent and
-          Panitch, William Chung-Ho and Liu, Jingzhou and Hari, Kush and Huang, Huang and
-          Mittal, Mayank and Goldberg, Ken and others},
-  journal={arXiv preprint arXiv:2404.16027},
-  year={2024}
-}
-```
-
-Publications using Dr.Anmar should additionally report the repository revision, robot asset manifest, simulator
-and Isaac Lab versions, GPU/driver, scenario and seed, control policy, sensor
+Dr.Anmar is distributed under the [BSD 3-Clause License](LICENSE). Publications
+should report the Dr.Anmar revision, pinned `dr-assets` revision, simulator and
+Isaac Lab versions, GPU/driver, scenario and seed, control policy, sensor
 profile, and applicable evidence artifact.
-
-## License
-
-Dr.Anmar and the included ORBIT-Surgical-derived source are distributed under the
-[`BSD 3-Clause License`](LICENSE). Isaac Sim, Isaac Lab, NVIDIA assets, SonoGym, and other optional dependencies
-retain their own licenses and terms.

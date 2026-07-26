@@ -47,17 +47,16 @@ keeps these decisions separate:
 
 The user interface therefore distinguishes a completed teaching run from an approved expert reference.
 
-## Live examples
-
-### Dual-instrument needle handover
+## Live review surface
 
 <p align="center">
-  <img src="screenshots/expert-guidance-needle-handover.gif" width="960" alt="Live dual-instrument needle-handover simulation expert with phase and control feedback">
+  <img src="screenshots/doctor-studio-guided-learning.png" width="960" alt="Dr.Anmar guided learning workspace with operative view, phase rail, controls, and feedback">
 </p>
 
-The capture shows both instruments entering the shared workspace and the live phase rail advancing through
-manipulation and recovery. The run saved 687 robot-state frames plus 64 camera frames. Large approach, align and
-contact residuals correctly prevented it from becoming a Behavior Cloning reference.
+The guided-learning workspace keeps the operative view, phase rail, control
+authority, safety feedback, and recording state visible together. Failed or
+incomplete robot runs belong in evidence and debugging records; they are not
+used as product demonstrations.
 
 ## Research data contract
 
@@ -70,8 +69,9 @@ Each run synchronizes the available members of this contract:
 - needle, thread, tissue, cutting, vascular, ultrasound or recovery mechanics when active;
 - controller status, completed phases, warnings and reference-qualification state.
 
-The GIFs are documentation captures only. Training and evaluation consume the checksummed NPZ/JSON
-demonstration pair, never pixels extracted from the GIF.
+Documentation images are presentation surfaces only. Training and evaluation
+consume synchronized robot, simulator, sensor, event, and outcome records—not
+pixels extracted from documentation media.
 
 ## Remaining work
 
