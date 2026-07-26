@@ -1190,6 +1190,11 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         "carry_vertical_action_limit",
         "lateral_clearance_below_target",
     }
+    needle_approach_sweep = needle_task and args.parameter in {
+        "close_distance",
+        "lateral_alignment_threshold",
+        "slow_approach_action_limit",
+    }
     needle_environment_sweep = (
         needle_task
         and args.parameter in _ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS
@@ -1198,12 +1203,13 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         needle_grasp_sweep
         or needle_orientation_sweep
         or needle_transport_sweep
+        or needle_approach_sweep
         or needle_environment_sweep
     ):
         return _fail(
             "needle controller-sweep requires a needle grasp-frame or "
-            "carry-controller parameter, or a full-population physical challenger "
-            "until a contact-qualified needle controller exists"
+            "approach/carry-controller parameter, or a full-population physical "
+            "challenger until a contact-qualified needle controller exists"
         )
     if block_task and needle_grasp_sweep:
         return _fail("needle_grasp_arc_fraction requires the needle lift task")
@@ -1275,6 +1281,7 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
     elif (
         needle_orientation_sweep
         or needle_transport_sweep
+        or needle_approach_sweep
         or needle_environment_sweep
     ):
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
@@ -1398,7 +1405,7 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                             _NEEDLE_PROVISIONAL_ORIENTATION_VELOCITY_DAMPING_S
                         ),
                     }
-                elif needle_transport_sweep:
+                elif needle_transport_sweep or needle_approach_sweep:
                     controller_kwargs = {
                         "grasp_offset": needle_grasp_offsets[group_index],
                         "carry_orientation_action_limit": (
