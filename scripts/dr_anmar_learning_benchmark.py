@@ -308,6 +308,7 @@ def _lift_teacher_action(
     carry_vertical_action_limit: float | None = 0.18,
     carry_orientation_action_limit: float | None = None,
     carry_orientation_scale: float = 0.05,
+    carry_orientation_velocity_damping_s: float = 0.0,
     carry_target_height_offset: float = 0.0,
     grasp_offset: tuple[float, float, float] | None = None,
 ):
@@ -415,12 +416,18 @@ def _lift_teacher_action(
 
         object_orientation = policy_obs[:, 26:30]
         target_orientation = policy_obs[:, 39:43]
+        object_angular_velocity = policy_obs[:, 33:36]
         object_to_target = quat_mul(
             target_orientation,
             quat_conjugate(object_orientation),
         )
         carry_orientation_action = (
-            axis_angle_from_quat(object_to_target) / carry_orientation_scale
+            (
+                axis_angle_from_quat(object_to_target)
+                - carry_orientation_velocity_damping_s
+                * object_angular_velocity
+            )
+            / carry_orientation_scale
         ).clamp(
             -carry_orientation_action_limit,
             carry_orientation_action_limit,
@@ -1061,6 +1068,7 @@ _LIFT_SWEEP_PARAMETERS = {
     "carry_action_limit",
     "carry_lateral_action_limit",
     "carry_orientation_action_limit",
+    "carry_orientation_velocity_damping_s",
     "carry_target_height_offset",
     "carry_vertical_action_limit",
     "close_distance",
@@ -1096,8 +1104,13 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         "needle_grasp_arc_fraction",
         "needle_grasp_z_offset",
     }
-    needle_orientation_sweep = (
-        needle_task and args.parameter == "carry_orientation_action_limit"
+    needle_orientation_sweep = needle_task and args.parameter in {
+        "carry_orientation_action_limit",
+        "carry_orientation_velocity_damping_s",
+    }
+    needle_orientation_damping_sweep = (
+        needle_task
+        and args.parameter == "carry_orientation_velocity_damping_s"
     )
     if needle_task and not (needle_grasp_sweep or needle_orientation_sweep):
         return _fail(
@@ -1109,6 +1122,14 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
     values = [float(value) for value in args.values.split(",") if value.strip()]
     if len(values) < 2:
         return _fail("controller-sweep requires at least two comma-separated values")
+    if args.parameter == "carry_orientation_action_limit" and any(
+        value <= 0.0 for value in values
+    ):
+        return _fail("carry_orientation_action_limit must be positive")
+    if args.parameter == "carry_orientation_velocity_damping_s" and any(
+        value < 0.0 for value in values
+    ):
+        return _fail("carry_orientation_velocity_damping_s must be non-negative")
     if args.num_envs % len(values):
         return _fail("number of environments must divide evenly across sweep values")
     environment_level_parameter = (
@@ -1250,6 +1271,8 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                         "grasp_offset": needle_grasp_offsets[group_index],
                         args.parameter: value,
                     }
+                    if needle_orientation_damping_sweep:
+                        controller_kwargs["carry_orientation_action_limit"] = 0.05
                 else:
                     controller_kwargs = (
                         {}
