@@ -84,8 +84,10 @@ bilateral-contact carry, limiting each 50 Hz command to 1 mm. Carry lifts
 vertically until the object is within 20 mm of target height before allowing
 lateral goal tracking. This avoids striking the object root before the jaws
 establish contact and prevents lateral carry from stripping a low-clearance
-grasp. Stage 4 reuses the same orientation-qualified contract for needle
-lifting.
+grasp. Once physics-owned object height rises above 18 mm, carry and gripper
+closure remain latched until the object drops below that threshold, preventing
+contact-sensor flicker from restarting the approach phase. Stage 4 reuses the
+same orientation-qualified contract for needle lifting.
 
 Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift
 objects therefore use the explicit identity `(0, 0, 0, 1)`. This prevents the

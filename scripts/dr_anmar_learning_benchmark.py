@@ -302,6 +302,7 @@ def _lift_teacher_action(
     slow_approach_action_limit: float = 0.1,
     normalized_contact_threshold: float = 0.002,
     lateral_clearance_below_target: float = 0.02,
+    carry_latch_below_target: float = 0.062,
     carry_action_limit: float = 0.1,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
@@ -332,6 +333,10 @@ def _lift_teacher_action(
         contact_forces > normalized_contact_threshold,
         dim=-1,
     )
+    lifted_carry = object_position[:, 2] > (
+        target_position[:, 2] - carry_latch_below_target
+    )
+    carry_mode = bilateral_contact | lifted_carry
     approach_action = (
         (approach_position - ee_position) / position_scale
     ).clamp(-1.0, 1.0)
@@ -357,7 +362,7 @@ def _lift_teacher_action(
         (carry_target - object_position) / position_scale
     ).clamp(-carry_action_limit, carry_action_limit)
     translation_action = torch.where(
-        bilateral_contact.unsqueeze(-1),
+        carry_mode.unsqueeze(-1),
         carry_action,
         approach_action,
     )
@@ -371,7 +376,7 @@ def _lift_teacher_action(
     ) | torch.any(
         contact_forces > normalized_contact_threshold,
         dim=-1,
-    )
+    ) | lifted_carry
     gripper_action = torch.where(
         closing,
         -torch.ones_like(grasp_distance),
@@ -607,6 +612,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     "slow_approach_action_limit": 0.1,
                     "normalized_contact_threshold": 0.002,
                     "lateral_clearance_below_target_m": 0.02,
+                    "carry_latch_below_target_m": 0.062,
                     "carry_action_limit": 0.1,
                 }
                 if "Lift-Block-PSM-IK-Rel" in args.task

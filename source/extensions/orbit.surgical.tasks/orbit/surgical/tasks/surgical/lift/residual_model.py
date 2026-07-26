@@ -31,6 +31,7 @@ class LiftResidualMLPModel(MLPModel):
         slow_approach_action_limit: float = 0.1,
         normalized_contact_threshold: float = 0.002,
         lateral_clearance_below_target: float = 0.02,
+        carry_latch_below_target: float = 0.062,
         carry_action_limit: float = 0.1,
         residual_scale: float = 0.2,
         **kwargs,
@@ -49,6 +50,7 @@ class LiftResidualMLPModel(MLPModel):
         self.slow_approach_action_limit = slow_approach_action_limit
         self.normalized_contact_threshold = normalized_contact_threshold
         self.lateral_clearance_below_target = lateral_clearance_below_target
+        self.carry_latch_below_target = carry_latch_below_target
         self.carry_action_limit = carry_action_limit
         self.residual_scale = residual_scale
 
@@ -97,6 +99,10 @@ class LiftResidualMLPModel(MLPModel):
             contact_forces > self.normalized_contact_threshold,
             dim=-1,
         )
+        lifted_carry = object_position[:, 2] > (
+            target_position[:, 2] - self.carry_latch_below_target
+        )
+        carry_mode = bilateral_contact | lifted_carry
         approach_action = (
             (approach_position - ee_position) / self.position_scale
         ).clamp(-1.0, 1.0)
@@ -122,7 +128,7 @@ class LiftResidualMLPModel(MLPModel):
             (carry_target - object_position) / self.position_scale
         ).clamp(-self.carry_action_limit, self.carry_action_limit)
         translation_action = torch.where(
-            bilateral_contact.unsqueeze(-1),
+            carry_mode.unsqueeze(-1),
             carry_action,
             approach_action,
         )
@@ -137,7 +143,7 @@ class LiftResidualMLPModel(MLPModel):
         ) | torch.any(
             contact_forces > self.normalized_contact_threshold,
             dim=-1,
-        )
+        ) | lifted_carry
         gripper_action = torch.where(
             closing,
             -torch.ones_like(grasp_distance),
@@ -202,6 +208,7 @@ class _LiftResidualExport(nn.Module):
         self.lateral_clearance_below_target = (
             model.lateral_clearance_below_target
         )
+        self.carry_latch_below_target = model.carry_latch_below_target
         self.carry_action_limit = model.carry_action_limit
         self.residual_scale = model.residual_scale
 
@@ -242,6 +249,10 @@ class _LiftResidualExport(nn.Module):
             contact_forces > self.normalized_contact_threshold,
             dim=-1,
         )
+        lifted_carry = object_position[:, 2] > (
+            target_position[:, 2] - self.carry_latch_below_target
+        )
+        carry_mode = bilateral_contact | lifted_carry
         approach_action = (
             (approach_position - ee_position) / self.position_scale
         ).clamp(-1.0, 1.0)
@@ -267,7 +278,7 @@ class _LiftResidualExport(nn.Module):
             (carry_target - object_position) / self.position_scale
         ).clamp(-self.carry_action_limit, self.carry_action_limit)
         translation_action = torch.where(
-            bilateral_contact.unsqueeze(-1),
+            carry_mode.unsqueeze(-1),
             carry_action,
             approach_action,
         )
@@ -281,7 +292,7 @@ class _LiftResidualExport(nn.Module):
         ) | torch.any(
             contact_forces > self.normalized_contact_threshold,
             dim=-1,
-        )
+        ) | lifted_carry
         gripper_action = torch.where(
             closing,
             -torch.ones_like(grasp_distance),

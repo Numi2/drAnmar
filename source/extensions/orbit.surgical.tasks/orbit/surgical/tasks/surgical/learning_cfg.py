@@ -64,6 +64,7 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     slow_approach_action_limit: float = 0.1
     normalized_contact_threshold: float = 0.002
     lateral_clearance_below_target: float = 0.02
+    carry_latch_below_target: float = 0.062
     carry_action_limit: float = 0.1
     residual_scale: float = 0.2
 
