@@ -190,7 +190,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     ).read_text()
     launcher_source = (ROOT / "dr_anmar_learning.sh").read_text()
 
-    assert "LIFT_INITIAL_OBJECT_HEIGHT_M = 0.025" in cfg_source
+    assert "LIFT_INITIAL_OBJECT_HEIGHT_M = 0.003" in cfg_source
     assert "LIFT_MINIMUM_SUCCESS_HEIGHT_M = 0.06" in cfg_source
     assert "LIFT_TARGET_OBJECT_HEIGHT_M = 0.08" in cfg_source
     assert "LIFT_SUCCESS_DWELL_STEPS = 10" in cfg_source

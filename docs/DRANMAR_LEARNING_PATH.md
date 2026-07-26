@@ -66,7 +66,8 @@ avoidance or contact competence. Stage 3 turns contact back on and requires
 measured contact, stability, force, slip, and drop evidence.
 
 Stage 3 uses an analytic approach-grasp-lift base with a bounded learned
-residual. The block begins at 2.5 cm, the commanded target is 8 cm, and success
+residual. The block begins at the measured 3 mm table-rest height, the
+commanded target is 8 cm, and success
 requires the object to remain above 6 cm for ten consecutive 50 Hz control
 steps. Every one of those steps must also satisfy bilateral PhysX contact,
 goal-pose, object-speed, and force-termination constraints. This 0.2-second

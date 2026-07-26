@@ -86,7 +86,7 @@
       "task": "DrAnmar-Lift-Block-PSM-IK-Rel-v0",
       "qualification_contract": {
         "control_hz": 50,
-        "initial_object_height_m": 0.025,
+        "initial_object_height_m": 0.003,
         "target_object_height_m": 0.08,
         "minimum_success_height_m": 0.06,
         "sustained_success_steps": 10,
