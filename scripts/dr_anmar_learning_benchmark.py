@@ -1454,6 +1454,16 @@ def _handover_controller_sweep(
     maximum_receiver_bilateral_contact = torch.zeros_like(
         minimum_giver_grasp_distance
     )
+    minimum_receiver_grasp_distance = torch.full_like(
+        minimum_giver_grasp_distance,
+        float("inf"),
+    )
+    maximum_receiver_jaw_1_contact = torch.zeros_like(
+        minimum_giver_grasp_distance
+    )
+    maximum_receiver_jaw_2_contact = torch.zeros_like(
+        minimum_giver_grasp_distance
+    )
     initial_giver_state = {
         "ee_position_robot_frame_m": obs["policy"][0, 32:35].tolist(),
         "object_position_robot_frame_m": obs["policy"][0, 46:49].tolist(),
@@ -1503,6 +1513,18 @@ def _handover_controller_sweep(
                 maximum_giver_translation_action[group_index] = torch.maximum(
                     maximum_giver_translation_action[group_index],
                     actions[start:stop, :3].abs().max().double(),
+                )
+                receiver_ee = group_obs["policy"][:, 39:42]
+                receiver_grasp = group_obs["policy"][:, 53:56].clone()
+                receiver_grasp[:, 0] += receiver_offset[0]
+                receiver_grasp[:, 1] += receiver_offset[1]
+                receiver_grasp[:, 2] += receiver_offset[2]
+                minimum_receiver_grasp_distance[group_index] = torch.minimum(
+                    minimum_receiver_grasp_distance[group_index],
+                    torch.linalg.vector_norm(
+                        receiver_grasp - receiver_ee,
+                        dim=-1,
+                    ).min().double(),
                 )
 
             obs, _, terminated, time_out_flags, _ = env.step(actions)
@@ -1611,6 +1633,14 @@ def _handover_controller_sweep(
                         .values.max()
                         .double(),
                     )
+                    maximum_receiver_jaw_1_contact[group_index] = torch.maximum(
+                        maximum_receiver_jaw_1_contact[group_index],
+                        receiver_forces[start:stop, 0][active].max().double(),
+                    )
+                    maximum_receiver_jaw_2_contact[group_index] = torch.maximum(
+                        maximum_receiver_jaw_2_contact[group_index],
+                        receiver_forces[start:stop, 1][active].max().double(),
+                    )
             unresolved &= ~first_done
             if not unresolved.any():
                 break
@@ -1672,6 +1702,15 @@ def _handover_controller_sweep(
                     ),
                     "maximum_receiver_bilateral_contact_n": float(
                         maximum_receiver_bilateral_contact[group_index].item()
+                    ),
+                    "minimum_receiver_grasp_distance_m": float(
+                        minimum_receiver_grasp_distance[group_index].item()
+                    ),
+                    "maximum_receiver_jaw_1_contact_n": float(
+                        maximum_receiver_jaw_1_contact[group_index].item()
+                    ),
+                    "maximum_receiver_jaw_2_contact_n": float(
+                        maximum_receiver_jaw_2_contact[group_index].item()
                     ),
                 }
             )
