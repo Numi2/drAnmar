@@ -301,7 +301,7 @@ def _lift_teacher_action(
     slow_approach_radius: float = 0.02,
     slow_approach_action_limit: float = 0.1,
     normalized_contact_threshold: float = 0.002,
-    carry_action_limit: float = 0.02,
+    carry_action_limit: float = 0.1,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
     import torch
@@ -596,7 +596,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     "slow_approach_radius_m": 0.02,
                     "slow_approach_action_limit": 0.1,
                     "normalized_contact_threshold": 0.002,
-                    "carry_action_limit": 0.02,
+                    "carry_action_limit": 0.1,
                 }
                 if "Lift-Block-PSM-IK-Rel" in args.task
                 else None

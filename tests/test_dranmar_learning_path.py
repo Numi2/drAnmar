@@ -50,7 +50,7 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         manifest["defaults"]["stage_3_initialization"]["slow_approach_action_limit"]
         == 0.1
     )
-    assert manifest["defaults"]["stage_3_initialization"]["carry_action_limit"] == 0.02
+    assert manifest["defaults"]["stage_3_initialization"]["carry_action_limit"] == 0.1
     stage_3 = stages[2]
     contract = stage_3["qualification_contract"]
     assert contract["initial_object_height_m"] == 0.015
