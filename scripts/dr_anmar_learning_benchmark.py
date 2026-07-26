@@ -785,7 +785,10 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
     )
     manager = env.unwrapped.termination_manager
     term_counts = {name: 0 for name in manager.active_terms}
-    action_dim = env.unwrapped.action_manager.action_dim
+    action_manager = env.unwrapped.action_manager
+    action_dim = getattr(action_manager, "total_action_dim", None)
+    if action_dim is None:
+        action_dim = action_manager.action_dim
     action = torch.zeros(
         env.unwrapped.num_envs,
         action_dim,
@@ -795,7 +798,8 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
     started = time.perf_counter()
     try:
         for _ in range(args.num_frames):
-            obs, _, dones, _ = env.step(action)
+            obs, _, terminated, time_outs, _ = env.step(action)
+            dones = terminated | time_outs
             done_count += int(dones.sum().item())
             for name in manager.active_terms:
                 term_counts[name] += int(manager.get_term(name).sum().item())

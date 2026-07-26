@@ -95,6 +95,8 @@ def test_launcher_starts_simulator_before_task_registration() -> None:
     assert "def _reach_error_offsets(" in benchmark_source
     assert "def _pretrain(" in benchmark_source
     assert "def _probe(" in benchmark_source
+    assert '"total_action_dim"' in benchmark_source
+    assert "terminated, time_outs" in benchmark_source
     assert "termination_term_counts" in benchmark_source
     assert "initial_procedure_state" in benchmark_source
     assert '"pose_diagnostics": pose_diagnostics' in benchmark_source
