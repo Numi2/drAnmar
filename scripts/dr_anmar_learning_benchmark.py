@@ -668,6 +668,10 @@ def _handover_teacher_action(
         giver_contacts > normalized_contact_threshold,
         dim=-1,
     )
+    giver_any_contact = torch.any(
+        giver_contacts > normalized_contact_threshold,
+        dim=-1,
+    )
     receiver_any_contact = torch.any(
         receiver_contacts > normalized_contact_threshold,
         dim=-1,
@@ -716,9 +720,14 @@ def _handover_teacher_action(
     )
     giver_retreat = torch.zeros_like(giver_translation)
     giver_retreat[:, 2] = carry_lateral_action_limit
+    giver_release_translation = torch.where(
+        ((phase == 3) & giver_any_contact).unsqueeze(-1),
+        torch.zeros_like(giver_translation),
+        giver_retreat,
+    )
     giver_translation = torch.where(
         (phase >= 3).unsqueeze(-1),
-        giver_retreat,
+        giver_release_translation,
         giver_translation,
     )
     receiver_wait = torch.zeros_like(receiver_approach)
@@ -825,6 +834,11 @@ def _handover_teacher_action(
     ).clamp(
         -receiver_orientation_action_limit,
         receiver_orientation_action_limit,
+    )
+    receiver_orientation_action = torch.where(
+        (phase < 3).unsqueeze(-1),
+        receiver_orientation_action,
+        torch.zeros_like(receiver_orientation_action),
     )
     giver_action = torch.cat(
         (
@@ -2246,6 +2260,8 @@ def _handover_controller_sweep(
                 "receiver_close_distance_m": 0.001,
                 "receiver_contact_centering_action_limit": 0.005,
                 "receiver_waits_for_presentation": True,
+                "giver_holds_position_until_release": True,
+                "receiver_orientation_frozen_after_acquisition": True,
             },
             "parameter": parameter,
             "initial_giver_state": initial_giver_state,

@@ -495,6 +495,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "receiver_contact_centering_action_limit: float = 0.005" in benchmark_source
     assert "receiver_roll_offsets = [math.pi] * len(values)" in benchmark_source
     assert "giver_bilateral_contact = torch.all(" in benchmark_source
+    assert "giver_any_contact = torch.any(" in benchmark_source
     assert "giver_target_orientation[:, 3] = 1.0" in benchmark_source
     assert "giver_orientation_action" in benchmark_source
     assert "receiver_any_contact = torch.any(" in benchmark_source
@@ -509,6 +510,13 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"giver_move_into_receiver_range"' in benchmark_source
     assert "receiver_wait = torch.zeros_like(receiver_approach)" in benchmark_source
     assert '"receiver_waits_for_presentation": True' in benchmark_source
+    assert "((phase == 3) & giver_any_contact)" in benchmark_source
+    assert '"giver_holds_position_until_release": True' in benchmark_source
+    assert (
+        '"receiver_orientation_frozen_after_acquisition": True'
+        in benchmark_source
+    )
+    assert "(phase < 3).unsqueeze(-1)" in benchmark_source
     assert (
         '"camera_mode": "focused_environment_neighborhood_oblique"'
         in benchmark_source

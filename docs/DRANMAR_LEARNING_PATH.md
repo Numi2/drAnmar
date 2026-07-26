@@ -156,8 +156,11 @@ pose is likewise diagnostic only.
 
 The analytic seed controller executes the task in three explicit physical
 segments: the closer arm picks up the needle, transports it into the shared
-workspace, and holds it still while the other arm acquires it. The receiver
-waits during pickup and transport; it approaches only after the giver reaches
+workspace while the receiver remains still, and presents it for acquisition.
+Once the receiver acquires the needle, the giver opens without retreating
+until native giver contact is gone, while the receiver freezes its wrist
+orientation to avoid twisting the grasp during release. The receiver waits
+during pickup and transport; it approaches only after the giver reaches
 the shared presentation point. The two PSM roots are 10 cm apart; the current
 seed moves the needle 3.5 cm from the giver toward the receiver, keeping both
 instruments inside comfortable reach. Reaching that authored exchange point
