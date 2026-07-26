@@ -492,7 +492,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "giver_carry_mode = (phase >= 1) & (phase <= 2)" in benchmark_source
     assert "presentation_fraction_from_giver: float = 0.5" in benchmark_source
     assert "((phase == 2) & ~presentation_ready)" in benchmark_source
-    assert '"camera_mode": "full_environment_grid_birds_eye"' in benchmark_source
+    assert '"camera_mode": "full_environment_grid_oblique"' in benchmark_source
     assert 'env_cfg.viewer.origin_type = "world"' in benchmark_source
     assert "env_cfg.viewer.eye = camera_eye" in benchmark_source
     assert "env_cfg.viewer.lookat = camera_target" in benchmark_source
