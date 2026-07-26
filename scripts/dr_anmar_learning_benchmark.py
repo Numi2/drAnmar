@@ -362,10 +362,27 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             for name, _, _ in error_offsets
         }
         simultaneous_pose_inside = torch.zeros(1, device=agent_cfg.device)
+        diagnostic_trace_frames = {
+            0,
+            1,
+            2,
+            5,
+            10,
+            20,
+            40,
+            80,
+            120,
+            149,
+            150,
+            300,
+            args.validation_frames - 1,
+        }
+        pose_diagnostic_trace = []
         with torch.no_grad():
-            for _ in range(args.validation_frames):
+            for frame_index in range(args.validation_frames):
                 policy_obs = obs["policy"]
                 pose_inside_terms = []
+                trace_entry = {"frame": frame_index, "arms": {}}
                 for name, position_start, orientation_start in error_offsets:
                     position_error = torch.linalg.vector_norm(
                         policy_obs[:, position_start : position_start + 3],
@@ -389,12 +406,34 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                             pose_inside.sum().to(position_error.dtype),
                         )
                     )
+                    if frame_index in diagnostic_trace_frames:
+                        trace_entry["arms"][name] = {
+                            "mean_position_error_m": float(
+                                position_error.mean().item()
+                            ),
+                            "mean_orientation_error_rad": float(
+                                orientation_error.mean().item()
+                            ),
+                        }
                 if pose_inside_terms:
                     simultaneous = pose_inside_terms[0]
                     for pose_inside in pose_inside_terms[1:]:
                         simultaneous = simultaneous & pose_inside
                     simultaneous_pose_inside += simultaneous.sum()
                 actions = policy(obs)
+                if frame_index in diagnostic_trace_frames:
+                    for action_index, (name, _, _) in enumerate(error_offsets):
+                        action_start = action_index * 6
+                        trace_entry["arms"][name]["mean_abs_action"] = float(
+                            actions[
+                                :,
+                                action_start : action_start + 6,
+                            ]
+                            .abs()
+                            .mean()
+                            .item()
+                        )
+                    pose_diagnostic_trace.append(trace_entry)
                 obs, _, dones, _ = env.step(actions)
                 successes = env.unwrapped.termination_manager.get_term("success")
                 obs = obs.to(agent_cfg.device)
@@ -469,6 +508,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     else None
                 ),
                 "pose_diagnostics": pose_diagnostics,
+                "pose_diagnostic_trace": pose_diagnostic_trace,
             },
             "wall_time_s": duration,
             "simulated_frames": simulated_frames,
