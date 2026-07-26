@@ -38,11 +38,12 @@ def handover_state(
 ) -> dict[str, Any]:
     """Update and return the monotonic physical handover phase.
 
-    Phases are: 0 Arm 1 approach, 1 Arm 1 grasp, 2 lifted presentation,
-    3 receiver acquisition, 4 Arm 2-only ownership. Pickup and acquisition
-    accept bilateral PhysX contact in three of five control steps. Retention
-    permits one missing contact frame only while the elevated needle preserves
-    its receiver-relative offset.
+    Phases are: 0 closest-arm approach, 1 giver grasp, 2 lifted presentation,
+    3 receiver acquisition, 4 receiver-only ownership. The giver identity is
+    latched at reset from the two physical tool-tip distances to the needle.
+    Pickup and acquisition accept bilateral PhysX contact in three of five
+    control steps. Retention permits one missing contact frame only while the
+    elevated needle preserves its receiver-relative offset.
     """
     step = _step_number(env)
     state = getattr(env, "_dr_anmar_handover_state", None)
@@ -54,6 +55,9 @@ def handover_state(
         )
         state = {
             "phase": torch.zeros(env.num_envs, dtype=torch.long, device=env.device),
+            "giver_is_robot_1": torch.ones(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
             "rewarded_phase": torch.zeros(env.num_envs, dtype=torch.long, device=env.device),
             "start_object_pos": mdp_common.as_torch(obj.data.root_pos_w).clone(),
             "support_height_w": support_height_w,
@@ -91,6 +95,24 @@ def handover_state(
         setattr(env, "_dr_anmar_handover_state", state)
     obj = env.scene["object"]
     reset = (env.episode_length_buf == 0) & (state["last_reset_step"] != step)
+    object_pos_w = mdp_common.as_torch(obj.data.root_pos_w)
+    robot_1_frame: FrameTransformer = env.scene["ee_1_frame"]
+    robot_2_frame: FrameTransformer = env.scene["ee_2_frame"]
+    robot_1_position_w = mdp_common.as_torch(
+        robot_1_frame.data.target_pos_w
+    )[:, 0, :]
+    robot_2_position_w = mdp_common.as_torch(
+        robot_2_frame.data.target_pos_w
+    )[:, 0, :]
+    robot_1_distance = torch.linalg.vector_norm(
+        robot_1_position_w - object_pos_w, dim=-1
+    )
+    robot_2_distance = torch.linalg.vector_norm(
+        robot_2_position_w - object_pos_w, dim=-1
+    )
+    state["giver_is_robot_1"][reset] = (
+        robot_1_distance[reset] <= robot_2_distance[reset]
+    )
     state["phase"][reset] = 0
     state["rewarded_phase"][reset] = 0
     state["receiver_only_consecutive"][reset] = 0
@@ -101,18 +123,28 @@ def handover_state(
     state["premature_release"][reset] = False
     state["receiver_retention_failed"][reset] = False
     state["receiver_acquisition_offset_w"][reset] = 0.0
-    object_pos_w = mdp_common.as_torch(obj.data.root_pos_w)
     state["start_object_pos"][reset] = object_pos_w[reset]
     state["start_object_pos"][reset, 2] = state["support_height_w"][reset]
     state["last_reset_step"][reset] = step
     if state["last_step"] == step and not bool(torch.any(reset)):
         return state
 
-    giver_contact_now = mdp_common.bilateral_contact(
+    robot_1_contact_now = mdp_common.bilateral_contact(
         env, "robot_1_jaw_1_object_contact", "robot_1_jaw_2_object_contact", contact_threshold
     )
-    receiver_contact_now = mdp_common.bilateral_contact(
+    robot_2_contact_now = mdp_common.bilateral_contact(
         env, "robot_2_jaw_1_object_contact", "robot_2_jaw_2_object_contact", contact_threshold
+    )
+    giver_is_robot_1 = state["giver_is_robot_1"]
+    giver_contact_now = torch.where(
+        giver_is_robot_1,
+        robot_1_contact_now,
+        robot_2_contact_now,
+    )
+    receiver_contact_now = torch.where(
+        giver_is_robot_1,
+        robot_2_contact_now,
+        robot_1_contact_now,
     )
     state["giver_contact_history"] = torch.roll(
         state["giver_contact_history"], shifts=-1, dims=-1
@@ -128,10 +160,11 @@ def handover_state(
     receiver_contact = (
         state["receiver_contact_history"].sum(dim=-1) >= contact_required_steps
     )
-    receiver_frame: FrameTransformer = env.scene["ee_2_frame"]
-    receiver_position_w = mdp_common.as_torch(
-        receiver_frame.data.target_pos_w
-    )[:, 0, :]
+    receiver_position_w = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        robot_2_position_w,
+        robot_1_position_w,
+    )
     receiver_distance = torch.linalg.vector_norm(
         receiver_position_w - object_pos_w, dim=-1
     )
@@ -145,12 +178,17 @@ def handover_state(
     phase = state["phase"]
     phase[(phase == 0) & giver_contact] = 1
     before_acquisition = (phase >= 1) & (phase < 3)
-    giver_gripper_action = mdp_common.as_torch(
+    physical_action = mdp_common.as_torch(
         env.action_manager.action
+    )
+    giver_open_action = torch.where(
+        giver_is_robot_1,
+        physical_action[:, 6],
+        physical_action[:, 13],
     )
     state["premature_release"] |= (
         before_acquisition
-        & (giver_gripper_action[:, 6] > 0.0)
+        & (giver_open_action > 0.0)
     )
     phase[
         (phase == 1)
@@ -219,6 +257,9 @@ def handover_state(
             "last_step": step,
             "giver_contact": giver_contact,
             "receiver_contact": receiver_contact,
+            "giver_is_robot_1": giver_is_robot_1,
+            "robot_1_contact_now": robot_1_contact_now,
+            "robot_2_contact_now": robot_2_contact_now,
             "giver_contact_now": giver_contact_now,
             "receiver_contact_now": receiver_contact_now,
             "receiver_distance": receiver_distance,

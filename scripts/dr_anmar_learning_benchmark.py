@@ -526,7 +526,7 @@ def _handover_teacher_action(
     carry_lateral_action_limit: float = 0.06,
     carry_vertical_action_limit: float = 0.10,
 ):
-    """Stage a physical Arm 1 pickup and Arm 2 custody transfer."""
+    """Stage a closest-arm pickup and other-arm physical custody transfer."""
     import math
 
     import torch
@@ -536,14 +536,57 @@ def _handover_teacher_action(
     )
 
     policy_obs = obs["policy"]
-    giver_ee = policy_obs[:, 32:35]
-    giver_orientation = policy_obs[:, 35:39]
-    receiver_ee = policy_obs[:, 39:42]
-    receiver_orientation = policy_obs[:, 42:46]
-    object_in_giver = policy_obs[:, 46:49]
-    object_in_receiver = policy_obs[:, 53:56]
-    giver_contacts = policy_obs[:, 66:68]
-    receiver_contacts = policy_obs[:, 68:70]
+    giver_is_robot_1 = policy_obs[:, 82] > 0.5
+
+    def select_role(robot_1_value, robot_2_value, use_robot_1):
+        return torch.where(
+            use_robot_1.unsqueeze(-1),
+            robot_1_value,
+            robot_2_value,
+        )
+
+    giver_ee = select_role(
+        policy_obs[:, 32:35],
+        policy_obs[:, 39:42],
+        giver_is_robot_1,
+    )
+    giver_orientation = select_role(
+        policy_obs[:, 35:39],
+        policy_obs[:, 42:46],
+        giver_is_robot_1,
+    )
+    receiver_ee = select_role(
+        policy_obs[:, 32:35],
+        policy_obs[:, 39:42],
+        ~giver_is_robot_1,
+    )
+    receiver_orientation = select_role(
+        policy_obs[:, 35:39],
+        policy_obs[:, 42:46],
+        ~giver_is_robot_1,
+    )
+    object_pose_in_giver = select_role(
+        policy_obs[:, 46:53],
+        policy_obs[:, 53:60],
+        giver_is_robot_1,
+    )
+    object_pose_in_receiver = select_role(
+        policy_obs[:, 46:53],
+        policy_obs[:, 53:60],
+        ~giver_is_robot_1,
+    )
+    object_in_giver = object_pose_in_giver[:, :3]
+    object_in_receiver = object_pose_in_receiver[:, :3]
+    giver_contacts = select_role(
+        policy_obs[:, 66:68],
+        policy_obs[:, 68:70],
+        giver_is_robot_1,
+    )
+    receiver_contacts = select_role(
+        policy_obs[:, 66:68],
+        policy_obs[:, 68:70],
+        ~giver_is_robot_1,
+    )
     phase = torch.argmax(policy_obs[:, 77:82], dim=-1)
 
     def approach_action(
@@ -745,7 +788,7 @@ def _handover_teacher_action(
         quat_mul,
     )
 
-    giver_object_orientation = policy_obs[:, 49:53]
+    giver_object_orientation = object_pose_in_giver[:, 3:7]
     giver_object_angular_velocity = policy_obs[:, 63:66]
     giver_target_orientation = torch.zeros_like(
         giver_object_orientation
@@ -789,15 +832,34 @@ def _handover_teacher_action(
         -receiver_orientation_action_limit,
         receiver_orientation_action_limit,
     )
-    return torch.cat(
+    giver_action = torch.cat(
         (
             giver_translation,
             giver_orientation_action,
             giver_gripper,
+        ),
+        dim=-1,
+    )
+    receiver_action = torch.cat(
+        (
             receiver_translation,
             receiver_orientation_action,
             receiver_gripper,
         ),
+        dim=-1,
+    )
+    robot_1_action = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        giver_action,
+        receiver_action,
+    )
+    robot_2_action = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        receiver_action,
+        giver_action,
+    )
+    return torch.cat(
+        (robot_1_action, robot_2_action),
         dim=-1,
     ).clamp(-1.0, 1.0)
 
@@ -1434,7 +1496,7 @@ def _handover_controller_sweep(
     args: argparse.Namespace,
     repo_root: Path,
 ) -> int:
-    """Compare Arm 2 grasp points for the staged physical needle handover."""
+    """Compare receiver grasp points for the staged physical needle handover."""
     import math
 
     import gymnasium as gym
@@ -2141,8 +2203,8 @@ def _handover_controller_sweep(
                 if args.video
                 else None
             ),
-            "giver": "robot_1",
-            "receiver": "robot_2",
+            "giver": "closest_tool_tip_selected_per_environment_at_reset",
+            "receiver": "other_tool",
             "giver_grasp_arc_fraction": 0.4,
             "handover_motion_contract": {
                 "sequence": [

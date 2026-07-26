@@ -134,17 +134,19 @@ combined 2,228/2,400 rate is 92.83%; the maximum measured needle force was
 0.99 N and no protected-surface force was observed.
 
 Stage 6 certifies physical ownership transfer rather than final
-precision-placement quality. Robot 1 must establish native bilateral needle
-contact in at least three of five control steps and lift the needle at least
-10 mm above its episode-start support height. Robot 2 must then establish its
-own three-of-five bilateral contact window while Robot 1 still owns the
-needle. Robot 1 releases, and Robot 2 retains the elevated needle for ten
-50 Hz control steps (0.2 seconds). One missing receiver-contact frame is
-allowed only when the needle remains elevated and preserves the
-receiver-relative acquisition offset. Commanded closure cannot advance a
-phase without native filtered contact. A drop, premature giver release,
-receiver loss during retention, 5 N needle-force violation, 2 N unintended
-contact violation, or timeout is failure.
+precision-placement quality. At reset, the tool tip with the shorter physical
+path to the needle is latched as the giver; the other arm is the receiver.
+The giver must establish native bilateral needle contact in at least three of
+five control steps and lift the needle at least 10 mm above its episode-start
+support height. The receiver must then establish its own three-of-five
+bilateral contact window while the giver still owns the needle. The giver
+releases, and the receiver retains the elevated needle for ten 50 Hz control
+steps (0.2 seconds). One missing receiver-contact frame is allowed only when
+the needle remains elevated and preserves the receiver-relative acquisition
+offset. Commanded closure cannot advance a phase without native filtered
+contact. A drop, premature giver release, receiver loss during retention, 5 N
+needle-force violation, 2 N unintended contact violation, or timeout is
+failure.
 
 Final target position, needle orientation, post-handover retreat, predefined
 arc regions, jaw-retreat distance, long dual-grasp dwell, perfect RCM motion,
@@ -153,11 +155,12 @@ They remain diagnostics and later curriculum objectives. A receiver recovery
 pose is likewise diagnostic only.
 
 The analytic seed controller executes the task in three explicit physical
-segments: Robot 1 picks up the needle, transports it into the centered shared
-workspace, and holds it still while Robot 2 acquires it. The two PSM roots are
-10 cm apart and the exchange point is 5 cm from each root, providing both
-instruments comfortable reach margin. Reaching that authored exchange point
-organizes the demonstration but is not part of the success predicate.
+segments: the closer arm picks up the needle, transports it into the shared
+workspace, and holds it still while the other arm acquires it. The two PSM
+roots are 10 cm apart; the current seed moves the needle 3.5 cm from the giver
+toward the receiver, keeping both instruments inside comfortable reach.
+Reaching that authored exchange point organizes the demonstration but is not
+part of the success predicate.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter

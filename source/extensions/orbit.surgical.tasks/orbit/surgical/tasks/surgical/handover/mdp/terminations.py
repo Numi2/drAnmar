@@ -21,12 +21,12 @@ def successful_handover(env: ManagerBasedRLEnv) -> torch.Tensor:
 
 
 def premature_giver_release(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Fail when Arm 1 loses custody before Arm 2 physically acquires it."""
+    """Fail when the selected giver loses custody before receiver acquisition."""
     return handover_state(env)["premature_release"]
 
 
 def receiver_retention_lost(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Fail when Arm 2 loses the needle during its retention check."""
+    """Fail when the selected receiver loses the needle during retention."""
     return handover_state(env)["receiver_retention_failed"]
 
 

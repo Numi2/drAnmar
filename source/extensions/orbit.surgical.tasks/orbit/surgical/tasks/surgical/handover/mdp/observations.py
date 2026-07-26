@@ -45,3 +45,9 @@ def jaw_contact_forces(
 def handover_phase(env: ManagerBasedRLEnv) -> torch.Tensor:
     """One-hot physical phase: approach, grasp, present, dual grasp, recovery."""
     return functional.one_hot(handover_state(env)["phase"], num_classes=5).float()
+
+
+def giver_identity(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """One-hot physical giver identity selected by reset-time proximity."""
+    giver_index = (~handover_state(env)["giver_is_robot_1"]).long()
+    return functional.one_hot(giver_index, num_classes=2).float()

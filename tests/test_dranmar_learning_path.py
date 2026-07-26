@@ -323,7 +323,7 @@ def test_dual_robot_configs_do_not_mutate_shallow_copies() -> None:
         ast.parse(source)
 
 
-def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
+def test_handover_requires_closest_arm_physical_transfer() -> None:
     state_source = (
         TASK_ROOT / "surgical/handover/mdp/state.py"
     ).read_text()
@@ -338,7 +338,12 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
 
     assert '"robot_1_jaw_1_object_contact"' in state_source
     assert '"robot_2_jaw_1_object_contact"' in state_source
-    assert 'receiver_frame: FrameTransformer = env.scene["ee_2_frame"]' in state_source
+    assert '"giver_is_robot_1"' in state_source
+    assert "robot_1_distance[reset] <= robot_2_distance[reset]" in state_source
+    assert "receiver_position_w = torch.where(" in state_source
+    assert "giver_identity = ObsTerm(func=mdp.giver_identity)" in cfg_source
+    assert "func=mdp.role_end_effector_object_distance" in cfg_source
+    assert "func=mdp.role_bilateral_grasp" in cfg_source
     assert "giver_contact_history" in state_source
     assert "receiver_contact_history" in state_source
     assert "contact_required_steps: int = 3" in state_source
@@ -350,7 +355,8 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
     assert "allowed_receiver_contact_flicker_steps: int = 1" in state_source
     assert "receiver_follows" in state_source
     assert '"premature_release"' in state_source
-    assert "giver_gripper_action[:, 6] > 0.0" in state_source
+    assert "physical_action[:, 6]" in state_source
+    assert "physical_action[:, 13]" in state_source
     assert "& ~state[\"premature_release\"]" in state_source
     assert "(phase == 2) & giver_contact & receiver_contact" in state_source
     assert '"receiver_retention_failed"' in state_source
@@ -359,7 +365,7 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
     assert "receiver_pose = mdp.UniformPoseCommandCfg(" in cfg_source
     assert 'asset_name="robot_2"' in cfg_source
     assert "self.commands.receiver_pose.body_name" in needle_source
-    assert contract["direction"] == "robot_1_giver_to_robot_2_receiver"
+    assert contract["direction"] == "closest_arm_giver_to_other_arm_receiver"
     assert contract["requires_receiver_goal_pose"] is False
     assert contract["minimum_pickup_clearance_m"] == 0.01
     assert contract["contact_window_steps"] == 5

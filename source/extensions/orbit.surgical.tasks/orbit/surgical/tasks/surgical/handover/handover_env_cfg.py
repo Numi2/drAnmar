@@ -177,6 +177,7 @@ class ObservationsCfg:
         )
         receiver_goal = ObsTerm(func=mdp.generated_commands, params={"command_name": "receiver_pose"})
         handover_phase = ObsTerm(func=mdp.handover_phase)
+        giver_identity = ObsTerm(func=mdp.giver_identity)
         actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
@@ -213,33 +214,29 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     giver_reach = RewTerm(
-        func=mdp.end_effector_object_distance,
-        params={"std": 0.06, "frame_name": "ee_1_frame", "minimum_phase": 0},
+        func=mdp.role_end_effector_object_distance,
+        params={"std": 0.06, "role": "giver", "minimum_phase": 0},
         weight=2.0,
     )
 
     giver_grasp = RewTerm(
-        func=mdp.bilateral_grasp,
+        func=mdp.role_bilateral_grasp,
         params={
-            "sensor_1_name": "robot_1_jaw_1_object_contact",
-            "sensor_2_name": "robot_1_jaw_2_object_contact",
-            "threshold": 0.01,
+            "role": "giver",
         },
         weight=4.0,
     )
 
     receiver_reach = RewTerm(
-        func=mdp.end_effector_object_distance,
-        params={"std": 0.06, "frame_name": "ee_2_frame", "minimum_phase": 1},
+        func=mdp.role_end_effector_object_distance,
+        params={"std": 0.06, "role": "receiver", "minimum_phase": 1},
         weight=3.0,
     )
 
     receiver_grasp = RewTerm(
-        func=mdp.bilateral_grasp,
+        func=mdp.role_bilateral_grasp,
         params={
-            "sensor_1_name": "robot_2_jaw_1_object_contact",
-            "sensor_2_name": "robot_2_jaw_2_object_contact",
-            "threshold": 0.01,
+            "role": "receiver",
             "minimum_phase": 2,
         },
         weight=5.0,
