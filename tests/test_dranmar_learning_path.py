@@ -25,7 +25,7 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     assert manifest["defaults"]["success_source"] == "isaac_lab_termination_manager"
     assert (
         manifest["defaults"]["stage_1_initialization"]["method"]
-        == "analytic_relative_ik_teacher_behavior_cloning"
+        == "analytic_relative_ik_base_plus_learned_residual"
     )
 
 
@@ -83,8 +83,14 @@ def test_reach_policy_observes_direct_pose_error() -> None:
     assert "target_relative_orientation = ObsTerm(" in cfg_source
     assert "pose_command_orientation_error_vector" in reward_source
     assert "quat_box_minus(desired_quat_w, current_quat_w)" in reward_source
+    residual_source = (
+        TASK_ROOT / "surgical/reach/residual_model.py"
+    ).read_text()
+    assert "class ReachResidualMLPModel(MLPModel):" in residual_source
+    assert "self._base_action(obs) + self.residual_scale * residual" in residual_source
     ast.parse(cfg_source)
     ast.parse(reward_source)
+    ast.parse(residual_source)
 
 
 def test_launcher_fits_parallel_worlds_to_live_ram_and_vram() -> None:

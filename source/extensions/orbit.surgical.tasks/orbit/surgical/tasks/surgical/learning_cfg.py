@@ -14,12 +14,42 @@ from isaaclab.utils.configclass import configclass
 from isaaclab_rl.rsl_rl import RslRlMLPModelCfg, RslRlOnPolicyRunnerCfg, RslRlPpoAlgorithmCfg
 
 
+@configclass
+class DrAnmarReachResidualModelCfg(RslRlMLPModelCfg):
+    """Residual actor anchored by the Stage 1 analytic relative-IK teacher."""
+
+    class_name = (
+        "orbit.surgical.tasks.surgical.reach.residual_model:"
+        "ReachResidualMLPModel"
+    )
+    position_error_start: int = 23
+    orientation_error_start: int = 26
+    position_scale: float = 0.01
+    orientation_scale: float = 0.05
+    residual_scale: float = 0.25
+
+
 def _actor(hidden_dims: list[int], *, initial_std: float = 1.0) -> RslRlMLPModelCfg:
     return RslRlMLPModelCfg(
         hidden_dims=hidden_dims,
         activation="elu",
         obs_normalization=True,
         distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(init_std=initial_std),
+    )
+
+
+def reach_residual_actor(
+    hidden_dims: list[int],
+    *,
+    initial_std: float = 0.25,
+) -> DrAnmarReachResidualModelCfg:
+    return DrAnmarReachResidualModelCfg(
+        hidden_dims=hidden_dims,
+        activation="elu",
+        obs_normalization=True,
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(
+            init_std=initial_std
+        ),
     )
 
 

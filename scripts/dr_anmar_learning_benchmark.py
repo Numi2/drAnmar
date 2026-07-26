@@ -233,7 +233,7 @@ def _reach_teacher_action(obs, *, position_scale: float, orientation_scale: floa
 
 
 def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
-    """Initialize the reach actor from the controller encoded by its action space."""
+    """Initialize and validate the analytic-base residual reach actor."""
     import gymnasium as gym
     import torch
     import torch.nn.functional as functional
@@ -315,7 +315,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "training",
-            "algorithm": "analytic_relative_ik_teacher_behavior_cloning",
+            "algorithm": "analytic_relative_ik_base_plus_learned_residual",
             "task": args.task,
             "seed": args.seed,
             "requested_num_envs": args.requested_num_envs,
@@ -671,7 +671,7 @@ def _parser() -> argparse.ArgumentParser:
     pretrain = subparsers.add_parser("pretrain")
     pretrain.add_argument("--task", required=True)
     pretrain.add_argument("--num_envs", type=int, required=True)
-    pretrain.add_argument("--updates", type=int, default=400)
+    pretrain.add_argument("--updates", type=int, default=32)
     pretrain.add_argument("--validation_frames", type=int, default=500)
     pretrain.add_argument("--learning_rate", type=float, default=3e-4)
     pretrain.add_argument("--weight_decay", type=float, default=1e-6)

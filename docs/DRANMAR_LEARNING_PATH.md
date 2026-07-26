@@ -44,10 +44,11 @@ It is a control qualification task, not a surgical-skill claim.
 ## Efficient training contract
 
 Stage 1 does not spend PPO samples rediscovering the relative Cartesian
-controller already encoded by the action space. It first trains the policy
-against an analytic relative-IK teacher online across all 1,200 worlds, then
-uses deterministic held-out evaluation. PPO is reserved for residual
-refinement only when that initialized policy misses the gate.
+controller already encoded by the action space. Its actor is an analytic
+relative-IK base policy plus a bounded learned residual. The residual network
+starts at zero, so the first frozen policy already reproduces the qualified
+controller exactly. PPO is reserved for learning small residual corrections
+only when deterministic held-out evaluation misses the gate.
 
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,
@@ -116,7 +117,7 @@ Then:
 # Measure ten iterations without claiming convergence
 ./dr_anmar_learning.sh benchmark
 
-# Initialize Stage 1 from the analytic relative-IK teacher
+# Initialize and validate the analytic-base residual Stage 1 policy
 ./dr_anmar_learning.sh pretrain
 
 # PPO refinement when deterministic held-out evaluation still misses its gate

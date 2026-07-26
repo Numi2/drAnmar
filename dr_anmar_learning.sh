@@ -90,7 +90,7 @@ case "${command}" in
         require_runtime
         task="${2:-${DR_ANMAR_TASK}}"
         num_envs="${3:-${DR_ANMAR_NUM_ENVS}}"
-        updates="${4:-400}"
+        updates="${4:-32}"
         validation_frames="${5:-500}"
         output="${6:-${DR_ANMAR_LEARNING_OUTPUT}/pretrain}"
         mkdir -p "${output}"
