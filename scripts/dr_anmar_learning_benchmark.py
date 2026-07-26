@@ -295,7 +295,7 @@ def _lift_teacher_action(
     *,
     position_scale: float,
     approach_height: float = 0.02,
-    grasp_height: float = 0.008,
+    grasp_height: float = 0.0,
     lateral_alignment_threshold: float = 0.004,
     close_distance: float = 0.003,
     slow_approach_radius: float = 0.02,
@@ -590,7 +590,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             "teacher_controller": (
                 {
                     "approach_height_m": 0.02,
-                    "grasp_height_m": 0.008,
+                    "grasp_height_m": 0.0,
                     "lateral_alignment_threshold_m": 0.004,
                     "close_distance_to_grasp_m": 0.003,
                     "slow_approach_radius_m": 0.02,

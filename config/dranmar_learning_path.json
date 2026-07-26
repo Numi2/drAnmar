@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.12.0",
+  "schema_version": "1.13.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -59,7 +59,7 @@
       "method": "analytic_grasp_lift_base_plus_learned_residual",
       "default_updates": 32,
       "approach_height_m": 0.02,
-      "grasp_height_m": 0.008,
+      "grasp_height_m": 0.0,
       "lateral_alignment_threshold_m": 0.004,
       "close_distance_to_grasp_m": 0.003,
       "slow_approach_radius_m": 0.02,

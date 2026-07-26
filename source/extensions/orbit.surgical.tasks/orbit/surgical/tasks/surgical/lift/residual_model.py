@@ -24,7 +24,7 @@ class LiftResidualMLPModel(MLPModel):
         contact_force_start: int = 43,
         position_scale: float = 0.01,
         approach_height: float = 0.02,
-        grasp_height: float = 0.008,
+        grasp_height: float = 0.0,
         lateral_alignment_threshold: float = 0.004,
         close_distance: float = 0.003,
         slow_approach_radius: float = 0.02,

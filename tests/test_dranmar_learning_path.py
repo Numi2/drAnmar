@@ -45,7 +45,7 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         == "analytic_grasp_lift_base_plus_learned_residual"
     )
     assert manifest["defaults"]["stage_3_initialization"]["approach_height_m"] == 0.02
-    assert manifest["defaults"]["stage_3_initialization"]["grasp_height_m"] == 0.008
+    assert manifest["defaults"]["stage_3_initialization"]["grasp_height_m"] == 0.0
     assert (
         manifest["defaults"]["stage_3_initialization"]["slow_approach_action_limit"]
         == 0.1
