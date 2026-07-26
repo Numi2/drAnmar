@@ -1681,6 +1681,11 @@ def _handover_controller_sweep(
     timeouts = torch.zeros_like(completed)
     hard_failures = torch.zeros_like(completed)
     procedural_failures = torch.zeros_like(completed)
+    retention_failure_causes = {
+        "low_clearance": torch.zeros_like(completed),
+        "receiver_follow_error": torch.zeros_like(completed),
+        "receiver_contact_loss": torch.zeros_like(completed),
+    }
     hard_failure_names = (
         "object_dropping",
         "excessive_object_force",
@@ -1970,6 +1975,28 @@ def _handover_controller_sweep(
                     failure_term_counts[name][group_index] += (
                         first & term[start:stop]
                     ).sum()
+                receiver_retention_failure = (
+                    first
+                    & failure_terms["receiver_retention_lost"][start:stop]
+                )
+                for cause, state_name in (
+                    (
+                        "low_clearance",
+                        "last_retention_failure_low_clearance",
+                    ),
+                    (
+                        "receiver_follow_error",
+                        "last_retention_failure_follow_error",
+                    ),
+                    (
+                        "receiver_contact_loss",
+                        "last_retention_failure_contact_loss",
+                    ),
+                ):
+                    retention_failure_causes[cause][group_index] += (
+                        receiver_retention_failure
+                        & handover_state_data[state_name][start:stop]
+                    ).sum()
                 timeouts[group_index] += (
                     first
                     & time_out_term[start:stop]
@@ -2095,6 +2122,10 @@ def _handover_controller_sweep(
                         name: int(counts[group_index].item())
                         for name, counts in failure_term_counts.items()
                         if name in procedural_failure_names
+                    },
+                    "receiver_retention_failure_causes": {
+                        name: int(counts[group_index].item())
+                        for name, counts in retention_failure_causes.items()
                     },
                     "failure_term_counts": {
                         name: int(counts[group_index].item())

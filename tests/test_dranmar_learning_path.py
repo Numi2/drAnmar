@@ -362,6 +362,10 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert "& ~state[\"premature_release\"]" in state_source
     assert "(phase == 2) & giver_contact & receiver_contact" in state_source
     assert '"receiver_retention_failed"' in state_source
+    assert '"retention_failure_low_clearance"' in state_source
+    assert '"retention_failure_follow_error"' in state_source
+    assert '"retention_failure_contact_loss"' in state_source
+    assert '"last_retention_failure_contact_loss"' in state_source
     assert "receiver_distance < presentation_distance" not in state_source
     assert 'command_name: str = "receiver_pose"' in state_source
     assert "receiver_pose = mdp.UniformPoseCommandCfg(" in cfg_source
@@ -483,6 +487,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "record)" in launcher_source
     assert "def _controller_sweep(" in benchmark_source
     assert "def _handover_controller_sweep(" in benchmark_source
+    assert '"receiver_retention_failure_causes"' in benchmark_source
     assert "def _handover_teacher_action(" in benchmark_source
     assert '"receiver_grasp_z_offset"' in benchmark_source
     assert '"receiver_roll_offset_rad"' in benchmark_source

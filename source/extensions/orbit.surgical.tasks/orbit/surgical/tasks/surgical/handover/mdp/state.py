@@ -87,6 +87,24 @@ def handover_state(
             "receiver_retention_failed": torch.zeros(
                 env.num_envs, dtype=torch.bool, device=env.device
             ),
+            "retention_failure_low_clearance": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "retention_failure_follow_error": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "retention_failure_contact_loss": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "last_retention_failure_low_clearance": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "last_retention_failure_follow_error": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "last_retention_failure_contact_loss": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
             "receiver_acquisition_offset_w": torch.zeros(
                 (env.num_envs, 3), dtype=torch.float32, device=env.device
             ),
@@ -121,7 +139,19 @@ def handover_state(
     state["receiver_loss_consecutive"][reset] = 0
     state["giver_release_observed"][reset] = False
     state["premature_release"][reset] = False
+    state["last_retention_failure_low_clearance"][reset] = state[
+        "retention_failure_low_clearance"
+    ][reset]
+    state["last_retention_failure_follow_error"][reset] = state[
+        "retention_failure_follow_error"
+    ][reset]
+    state["last_retention_failure_contact_loss"][reset] = state[
+        "retention_failure_contact_loss"
+    ][reset]
     state["receiver_retention_failed"][reset] = False
+    state["retention_failure_low_clearance"][reset] = False
+    state["retention_failure_follow_error"][reset] = False
+    state["retention_failure_contact_loss"][reset] = False
     state["receiver_acquisition_offset_w"][reset] = 0.0
     state["start_object_pos"][reset] = object_pos_w[reset]
     state["start_object_pos"][reset, 2] = state["support_height_w"][reset]
@@ -233,16 +263,28 @@ def handover_state(
         & receiver_follows
         & (receiver_contact_now | receiver_flicker_allowed)
     )
-    state["receiver_retention_failed"] |= (
+    retention_failure_low_clearance = retention_active & ~lifted
+    retention_failure_follow_error = retention_active & ~receiver_follows
+    retention_failure_contact_loss = (
         retention_active
         & (
-            ~lifted
-            | ~receiver_follows
-            | (
-                state["receiver_loss_consecutive"]
-                > allowed_receiver_contact_flicker_steps
-            )
+            state["receiver_loss_consecutive"]
+            > allowed_receiver_contact_flicker_steps
         )
+    )
+    state["retention_failure_low_clearance"] |= (
+        retention_failure_low_clearance
+    )
+    state["retention_failure_follow_error"] |= (
+        retention_failure_follow_error
+    )
+    state["retention_failure_contact_loss"] |= (
+        retention_failure_contact_loss
+    )
+    state["receiver_retention_failed"] |= (
+        retention_failure_low_clearance
+        | retention_failure_follow_error
+        | retention_failure_contact_loss
     )
     state["receiver_only_consecutive"][:] = torch.where(
         receiver_only,
