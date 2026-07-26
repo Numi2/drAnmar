@@ -1183,9 +1183,13 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         needle_task
         and args.parameter == "carry_orientation_velocity_damping_s"
     )
-    needle_transport_sweep = (
-        needle_task and args.parameter == "carry_goal_action_limit"
-    )
+    needle_transport_sweep = needle_task and args.parameter in {
+        "carry_action_limit",
+        "carry_goal_action_limit",
+        "carry_lateral_action_limit",
+        "carry_vertical_action_limit",
+        "lateral_clearance_below_target",
+    }
     needle_environment_sweep = (
         needle_task
         and args.parameter in _ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS
