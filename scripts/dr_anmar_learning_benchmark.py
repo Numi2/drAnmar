@@ -938,6 +938,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     import torch
     from rsl_rl.runners import OnPolicyRunner
 
+    from isaaclab.managers import SceneEntityCfg
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 
     checkpoint = Path(args.checkpoint).expanduser().resolve()
@@ -970,12 +971,44 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     failure_distribution = {name: 0 for name in failure_names}
     lift_diagnostics = None
     lift_mdp_common = None
+    procedure_diagnostic_trace = None
+    diagnostic_trace_frames = {
+        0,
+        1,
+        2,
+        5,
+        10,
+        20,
+        40,
+        80,
+        120,
+        149,
+        150,
+        300,
+        args.num_frames - 1,
+    }
     if "Lift-" in args.task:
         from orbit.surgical.tasks.surgical import mdp_common as lift_mdp_common
 
+        procedure_diagnostic_trace = []
         lift_diagnostics = {
             "samples": torch.zeros(1, device=env.unwrapped.device),
             "bilateral_contact": torch.zeros(1, device=env.unwrapped.device),
+            "above_minimum_height": torch.zeros(1, device=env.unwrapped.device),
+            "goal_position_inside": torch.zeros(1, device=env.unwrapped.device),
+            "goal_orientation_inside": torch.zeros(
+                1, device=env.unwrapped.device
+            ),
+            "linear_speed_inside": torch.zeros(1, device=env.unwrapped.device),
+            "angular_speed_inside": torch.zeros(1, device=env.unwrapped.device),
+            "instantaneous_success": torch.zeros(1, device=env.unwrapped.device),
+            "goal_position_error_sum": torch.zeros(
+                1, device=env.unwrapped.device
+            ),
+            "goal_orientation_error_sum": torch.zeros(
+                1, device=env.unwrapped.device
+            ),
+            "object_height_sum": torch.zeros(1, device=env.unwrapped.device),
             "maximum_object_force_n": torch.zeros(1, device=env.unwrapped.device),
             "maximum_non_object_force_n": torch.zeros(
                 1, device=env.unwrapped.device
@@ -989,7 +1022,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     obs = env.get_observations()
     started = time.perf_counter()
     try:
-        for _ in range(args.num_frames):
+        for frame_index in range(args.num_frames):
             with torch.inference_mode():
                 actions = policy(obs)
                 obs, reward, dones, extras = env.step(actions)
@@ -1015,6 +1048,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 for name, value in term_values.items():
                     termination_counts[name] += int(value.sum().item())
                 if lift_diagnostics is not None:
+                    assert lift_mdp_common is not None
+                    assert procedure_diagnostic_trace is not None
                     forces = lift_mdp_common.paired_contact_forces(
                         env.unwrapped,
                         "jaw_1_object_contact",
@@ -1034,10 +1069,58 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     object_height = lift_mdp_common.as_torch(
                         env.unwrapped.scene["object"].data.root_pos_w
                     )[:, 2]
+                    goal_position_error, goal_orientation_error = (
+                        lift_mdp_common.object_goal_errors(
+                            env.unwrapped,
+                            "object_pose",
+                            SceneEntityCfg("robot"),
+                            SceneEntityCfg("object"),
+                        )
+                    )
+                    motion = lift_mdp_common.object_motion(env.unwrapped)
+                    bilateral_contact = torch.all(forces > 0.01, dim=-1)
+                    above_minimum_height = object_height > 0.06
+                    goal_position_inside = goal_position_error < 0.015
+                    goal_orientation_inside = goal_orientation_error < 0.35
+                    linear_speed_inside = motion[:, 0] < 0.08
+                    angular_speed_inside = motion[:, 1] < 1.5
+                    instantaneous_success = (
+                        bilateral_contact
+                        & above_minimum_height
+                        & goal_position_inside
+                        & goal_orientation_inside
+                        & linear_speed_inside
+                        & angular_speed_inside
+                    )
                     lift_diagnostics["samples"] += env.unwrapped.num_envs
-                    lift_diagnostics["bilateral_contact"] += torch.all(
-                        forces > 0.01, dim=-1
-                    ).sum()
+                    lift_diagnostics["bilateral_contact"] += (
+                        bilateral_contact.sum()
+                    )
+                    lift_diagnostics["above_minimum_height"] += (
+                        above_minimum_height.sum()
+                    )
+                    lift_diagnostics["goal_position_inside"] += (
+                        goal_position_inside.sum()
+                    )
+                    lift_diagnostics["goal_orientation_inside"] += (
+                        goal_orientation_inside.sum()
+                    )
+                    lift_diagnostics["linear_speed_inside"] += (
+                        linear_speed_inside.sum()
+                    )
+                    lift_diagnostics["angular_speed_inside"] += (
+                        angular_speed_inside.sum()
+                    )
+                    lift_diagnostics["instantaneous_success"] += (
+                        instantaneous_success.sum()
+                    )
+                    lift_diagnostics["goal_position_error_sum"] += (
+                        goal_position_error.sum()
+                    )
+                    lift_diagnostics["goal_orientation_error_sum"] += (
+                        goal_orientation_error.sum()
+                    )
+                    lift_diagnostics["object_height_sum"] += object_height.sum()
                     lift_diagnostics["maximum_object_force_n"] = torch.maximum(
                         lift_diagnostics["maximum_object_force_n"],
                         forces.max(),
@@ -1052,6 +1135,50 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         lift_diagnostics["maximum_object_height_m"],
                         object_height.max(),
                     )
+                    if frame_index in diagnostic_trace_frames:
+                        ee_position = lift_mdp_common.as_torch(
+                            env.unwrapped.scene["ee_frame"].data.target_pos_w
+                        )[:, 0, :]
+                        object_position = lift_mdp_common.as_torch(
+                            env.unwrapped.scene["object"].data.root_pos_w
+                        )
+                        procedure_diagnostic_trace.append(
+                            {
+                                "frame": frame_index,
+                                "bilateral_contact_fraction": float(
+                                    bilateral_contact.float().mean().item()
+                                ),
+                                "instantaneous_success_fraction": float(
+                                    instantaneous_success.float().mean().item()
+                                ),
+                                "mean_end_effector_object_distance_m": float(
+                                    torch.linalg.vector_norm(
+                                        object_position - ee_position,
+                                        dim=-1,
+                                    )
+                                    .mean()
+                                    .item()
+                                ),
+                                "mean_object_height_m": float(
+                                    object_height.mean().item()
+                                ),
+                                "mean_goal_position_error_m": float(
+                                    goal_position_error.mean().item()
+                                ),
+                                "mean_goal_orientation_error_rad": float(
+                                    goal_orientation_error.mean().item()
+                                ),
+                                "mean_object_linear_speed_m_s": float(
+                                    motion[:, 0].mean().item()
+                                ),
+                                "mean_object_angular_speed_rad_s": float(
+                                    motion[:, 1].mean().item()
+                                ),
+                                "maximum_object_force_n": float(
+                                    forces.max().item()
+                                ),
+                            }
+                        )
                 policy.reset(dones)
             rewards.append(float(reward.float().mean().item()))
             done_count += int(dones.sum().item())
@@ -1065,6 +1192,59 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             procedure_diagnostics = {
                 "bilateral_contact_frame_rate": (
                     float(lift_diagnostics["bilateral_contact"].item()) / samples
+                    if samples
+                    else None
+                ),
+                "above_minimum_height_frame_rate": (
+                    float(lift_diagnostics["above_minimum_height"].item())
+                    / samples
+                    if samples
+                    else None
+                ),
+                "goal_position_inside_frame_rate": (
+                    float(lift_diagnostics["goal_position_inside"].item())
+                    / samples
+                    if samples
+                    else None
+                ),
+                "goal_orientation_inside_frame_rate": (
+                    float(lift_diagnostics["goal_orientation_inside"].item())
+                    / samples
+                    if samples
+                    else None
+                ),
+                "linear_speed_inside_frame_rate": (
+                    float(lift_diagnostics["linear_speed_inside"].item())
+                    / samples
+                    if samples
+                    else None
+                ),
+                "angular_speed_inside_frame_rate": (
+                    float(lift_diagnostics["angular_speed_inside"].item())
+                    / samples
+                    if samples
+                    else None
+                ),
+                "instantaneous_success_frame_rate": (
+                    float(lift_diagnostics["instantaneous_success"].item())
+                    / samples
+                    if samples
+                    else None
+                ),
+                "mean_goal_position_error_m": (
+                    float(lift_diagnostics["goal_position_error_sum"].item())
+                    / samples
+                    if samples
+                    else None
+                ),
+                "mean_goal_orientation_error_rad": (
+                    float(lift_diagnostics["goal_orientation_error_sum"].item())
+                    / samples
+                    if samples
+                    else None
+                ),
+                "mean_object_height_m": (
+                    float(lift_diagnostics["object_height_sum"].item()) / samples
                     if samples
                     else None
                 ),
@@ -1105,6 +1285,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "failure_distribution": failure_distribution,
             "termination_term_counts": termination_counts,
             "procedure_diagnostics": procedure_diagnostics,
+            "procedure_diagnostic_trace": procedure_diagnostic_trace,
             "process_peak_memory_mib": _peak_process_memory_mib(),
             "success_rate": success_count / done_count if done_count else None,
             "checkpoint": {
