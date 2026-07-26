@@ -1367,6 +1367,31 @@ def _handover_controller_sweep(
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
     env = gym.make(args.task, cfg=env_cfg)
     obs, _ = env.reset()
+
+    def world_state_snapshot():
+        robot = env.unwrapped.scene["robot_1"]
+        obj = env.unwrapped.scene["object"]
+        ee_frame = env.unwrapped.scene["ee_1_frame"]
+        return {
+            "robot_root_position_world_m": (
+                mdp_common.as_torch(robot.data.root_pos_w)[0].tolist()
+            ),
+            "robot_root_orientation_world_wxyz": (
+                mdp_common.as_torch(robot.data.root_quat_w)[0].tolist()
+            ),
+            "ee_position_world_m": (
+                mdp_common.as_torch(
+                    ee_frame.data.target_pos_w
+                )[0, 0].tolist()
+            ),
+            "object_position_world_m": (
+                mdp_common.as_torch(obj.data.root_pos_w)[0].tolist()
+            ),
+            "object_default_root_pose": (
+                mdp_common.as_torch(obj.data.default_root_pose)[0].tolist()
+            ),
+        }
+
     group_size = env.unwrapped.num_envs // len(values)
     unresolved = torch.ones(
         env.unwrapped.num_envs,
@@ -1404,6 +1429,7 @@ def _handover_controller_sweep(
     initial_giver_state = {
         "ee_position_robot_frame_m": obs["policy"][0, 32:35].tolist(),
         "object_position_robot_frame_m": obs["policy"][0, 46:49].tolist(),
+        "world": world_state_snapshot(),
     }
     manager = env.unwrapped.termination_manager
     sensor_names = (
@@ -1593,6 +1619,7 @@ def _handover_controller_sweep(
                 "object_position_robot_frame_m": (
                     obs["policy"][0, 46:49].tolist()
                 ),
+                "world": world_state_snapshot(),
             },
             "receiver_grasp_frame_source": (
                 NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE
