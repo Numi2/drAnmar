@@ -1001,6 +1001,197 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
         env.close()
 
 
+_LIFT_SWEEP_PARAMETERS = {
+    "carry_action_limit",
+    "close_distance",
+    "lateral_alignment_threshold",
+    "lateral_clearance_below_target",
+    "slow_approach_action_limit",
+}
+
+
+def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
+    """Compare analytic lift-controller variants from one shared reset batch."""
+    import gymnasium as gym
+    import torch
+
+    from orbit.surgical.tasks.surgical import mdp_common
+
+    if "Lift-Block-PSM-IK-Rel" not in args.task:
+        return _fail("controller-sweep currently supports the block lift task")
+    if args.parameter not in _LIFT_SWEEP_PARAMETERS:
+        return _fail(f"unsupported controller-sweep parameter: {args.parameter}")
+    values = [float(value) for value in args.values.split(",") if value.strip()]
+    if len(values) < 2:
+        return _fail("controller-sweep requires at least two comma-separated values")
+    if args.num_envs % len(values):
+        return _fail("number of environments must divide evenly across sweep values")
+
+    env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
+    env = gym.make(args.task, cfg=env_cfg)
+    obs, _ = env.reset()
+    group_size = env.unwrapped.num_envs // len(values)
+    unresolved = torch.ones(
+        env.unwrapped.num_envs,
+        dtype=torch.bool,
+        device=env.unwrapped.device,
+    )
+    completed = torch.zeros(len(values), dtype=torch.int64, device=env.unwrapped.device)
+    successes = torch.zeros_like(completed)
+    timeouts = torch.zeros_like(completed)
+    hard_failures = torch.zeros_like(completed)
+    contact_frames = torch.zeros(len(values), dtype=torch.float64, device=env.unwrapped.device)
+    angular_valid_frames = torch.zeros_like(contact_frames)
+    above_height_frames = torch.zeros_like(contact_frames)
+    active_samples = torch.zeros_like(contact_frames)
+    maximum_force = torch.zeros_like(contact_frames)
+    manager = env.unwrapped.termination_manager
+    started = time.perf_counter()
+    try:
+        for _ in range(args.num_frames):
+            was_unresolved = unresolved.clone()
+            actions = torch.zeros(
+                env.unwrapped.num_envs,
+                7,
+                device=env.unwrapped.device,
+            )
+            for group_index, value in enumerate(values):
+                start = group_index * group_size
+                stop = start + group_size
+                controller_kwargs = {args.parameter: value}
+                group_obs = {
+                    name: observation[start:stop]
+                    for name, observation in obs.items()
+                }
+                actions[start:stop] = _lift_teacher_action(
+                    group_obs,
+                    position_scale=0.01,
+                    **controller_kwargs,
+                )
+
+            obs, _, terminated, time_out_flags, _ = env.step(actions)
+            dones = terminated | time_out_flags
+            success_term = manager.get_term("success")
+            hard_failure = (
+                manager.get_term("object_dropping")
+                | manager.get_term("excessive_object_force")
+                | manager.get_term("protected_surface_force")
+            )
+            time_out_term = manager.get_term("time_out")
+            first_done = was_unresolved & dones
+
+            forces = mdp_common.paired_contact_forces(
+                env.unwrapped,
+                "jaw_1_object_contact",
+                "jaw_2_object_contact",
+            )
+            motion = mdp_common.object_motion(env.unwrapped)
+            object_height = mdp_common.as_torch(
+                env.unwrapped.scene["object"].data.root_pos_w
+            )[:, 2]
+            for group_index in range(len(values)):
+                start = group_index * group_size
+                stop = start + group_size
+                active = was_unresolved[start:stop]
+                first = first_done[start:stop]
+                completed[group_index] += first.sum()
+                successes[group_index] += (
+                    first & success_term[start:stop] & ~hard_failure[start:stop]
+                ).sum()
+                hard_failures[group_index] += (
+                    first & hard_failure[start:stop]
+                ).sum()
+                timeouts[group_index] += (
+                    first
+                    & time_out_term[start:stop]
+                    & ~success_term[start:stop]
+                    & ~hard_failure[start:stop]
+                ).sum()
+                if active.any():
+                    group_forces = forces[start:stop]
+                    active_samples[group_index] += active.sum()
+                    contact_frames[group_index] += (
+                        torch.all(group_forces > 0.01, dim=-1) & active
+                    ).sum()
+                    angular_valid_frames[group_index] += (
+                        (motion[start:stop, 1] < 1.5) & active
+                    ).sum()
+                    above_height_frames[group_index] += (
+                        (object_height[start:stop] > 0.06) & active
+                    ).sum()
+                    maximum_force[group_index] = torch.maximum(
+                        maximum_force[group_index],
+                        group_forces[active].max().double(),
+                    )
+            unresolved &= ~first_done
+            if not unresolved.any():
+                break
+
+        duration = time.perf_counter() - started
+        results = []
+        for index, value in enumerate(values):
+            completed_count = int(completed[index].item())
+            sample_count = float(active_samples[index].item())
+            success_count = int(successes[index].item())
+            results.append(
+                {
+                    "value": value,
+                    "assigned_environments": group_size,
+                    "completed_episodes": completed_count,
+                    "successful_episodes": success_count,
+                    "success_rate": (
+                        success_count / completed_count if completed_count else None
+                    ),
+                    "time_outs": int(timeouts[index].item()),
+                    "hard_failures": int(hard_failures[index].item()),
+                    "bilateral_contact_frame_rate": (
+                        float(contact_frames[index].item()) / sample_count
+                        if sample_count
+                        else None
+                    ),
+                    "angular_speed_inside_frame_rate": (
+                        float(angular_valid_frames[index].item()) / sample_count
+                        if sample_count
+                        else None
+                    ),
+                    "above_minimum_height_frame_rate": (
+                        float(above_height_frames[index].item()) / sample_count
+                        if sample_count
+                        else None
+                    ),
+                    "maximum_object_force_n": float(maximum_force[index].item()),
+                }
+            )
+        evidence = {
+            "schema_version": "dranmar-controller-sweep-evidence-1.0",
+            "kind": "controller_sweep",
+            "task": args.task,
+            "seed": args.seed,
+            "num_envs": env.unwrapped.num_envs,
+            "frames_per_env": args.num_frames,
+            "parameter": args.parameter,
+            "values": values,
+            "shared_reset_distribution": True,
+            "first_terminal_outcome_per_environment": True,
+            "results": results,
+            "wall_time_s": duration,
+            "total_fps": (
+                env.unwrapped.num_envs * args.num_frames / duration
+                if duration > 0
+                else None
+            ),
+            "runtime": _runtime_evidence(repo_root),
+        }
+        _write_evidence(
+            Path(args.output_path),
+            "dranmar_controller_sweep",
+            evidence,
+        )
+        return 0
+    finally:
+        env.close()
+
+
 def _play(args: argparse.Namespace, repo_root: Path) -> int:
     import gymnasium as gym
     import torch
@@ -1385,6 +1576,16 @@ def _parser() -> argparse.ArgumentParser:
     probe.add_argument("--output_path", required=True)
     probe.add_argument("--benchmark_formatter", default="schema,json")
 
+    controller_sweep = subparsers.add_parser("controller-sweep")
+    controller_sweep.add_argument("--task", required=True)
+    controller_sweep.add_argument("--num_envs", type=int, required=True)
+    controller_sweep.add_argument("--num_frames", type=int, default=500)
+    controller_sweep.add_argument("--parameter", required=True)
+    controller_sweep.add_argument("--values", required=True)
+    controller_sweep.add_argument("--seed", type=int, default=17)
+    controller_sweep.add_argument("--output_path", required=True)
+    controller_sweep.add_argument("--benchmark_formatter", default="schema,json")
+
     train = subparsers.add_parser("train")
     train.add_argument("--task", required=True)
     train.add_argument("--num_envs", type=int, required=True)
@@ -1506,6 +1707,8 @@ def main(argv: list[str]) -> int:
 
         if args.mode == "probe":
             result = _probe(args, repo_root)
+        elif args.mode == "controller-sweep":
+            result = _controller_sweep(args, repo_root)
         elif args.mode == "train":
             result = _train(args, repo_root)
         elif args.mode == "pretrain":

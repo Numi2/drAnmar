@@ -15,8 +15,9 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|smoke|benchmark|sweep|pretrain|train|play|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|smoke|benchmark|sweep|pretrain|train|play|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
+    echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  benchmark [task] [num_envs] [iterations] [output]"
     echo "  sweep     [task] [iterations] [comma-separated env counts] [output]"
     echo "  pretrain  [task] [num_envs] [updates] [validation_frames] [output]"
@@ -76,6 +77,26 @@ case "${command}" in
             --task "${task}" \
             --num_envs "${num_envs}" \
             --num_frames "${frames}" \
+            --seed "${DR_ANMAR_SEED}" \
+            --benchmark_formatter schema,json \
+            --output_path "${output}"
+        ;;
+    controller-sweep)
+        require_runtime
+        task="${2:-DrAnmar-Lift-Block-PSM-IK-Rel-v0}"
+        num_envs="${3:-${DR_ANMAR_NUM_ENVS}}"
+        frames="${4:-500}"
+        parameter="${5:-close_distance}"
+        values="${6:-0.001,0.002,0.003,0.004,0.005,0.006}"
+        output="${7:-${DR_ANMAR_LEARNING_OUTPUT}/controller-sweep}"
+        mkdir -p "${output}"
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" controller-sweep \
+            --task "${task}" \
+            --num_envs "${num_envs}" \
+            --num_frames "${frames}" \
+            --parameter "${parameter}" \
+            --values "${values}" \
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
             --output_path "${output}"

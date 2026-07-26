@@ -264,6 +264,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         TASK_ROOT / "surgical/lift/config/block/agents/rsl_rl_cfg.py"
     ).read_text()
     launcher_source = (ROOT / "dr_anmar_learning.sh").read_text()
+    benchmark_source = (ROOT / "scripts/dr_anmar_learning_benchmark.py").read_text()
 
     assert "LIFT_INITIAL_OBJECT_HEIGHT_M = 0.015" in cfg_source
     assert "LIFT_MINIMUM_SUCCESS_HEIGHT_M = 0.06" in cfg_source
@@ -305,6 +306,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "carry_mode = bilateral_contact | lifted_carry" in model_source
     assert "lift_residual_actor([256, 128, 64], initial_std=0.01)" in agent_source
     assert "probe)" in launcher_source
+    assert "controller-sweep)" in launcher_source
+    assert "def _controller_sweep(" in benchmark_source
+    assert "first_terminal_outcome_per_environment" in benchmark_source
     for source in (
         cfg_source,
         reward_source,
