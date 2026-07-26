@@ -106,17 +106,19 @@ The carry controller also exposes a bounded vertical target-offset challenger.
 Its versioned default remains zero until a complete 1,200-world first-outcome
 comparison earns promotion; the actual 8 cm goal, 15 mm pose tolerance,
 ten-step dwell, and force terminations remain unchanged during that comparison.
-The controller lifts vertically until the object is within 20 mm of target
-height before allowing lateral goal tracking. Once physics-owned object height
-rises above 18 mm, carry and gripper closure remain latched until the object
-drops below that threshold, preventing contact-sensor flicker from restarting
-the approach phase. Held-out play evidence separately records the longest
-consecutive bilateral jaw-contact loss after the object rose above 30 mm, with
-2-, 5-, and 10-control-step cohorts split by terminal success and failure. This
-retention diagnostic never contributes reward or success credit; it
-distinguishes transient contact-manifold flicker from mid-air slips that would
-otherwise appear only as timeouts. Stage 4 requires its own contact-calibrated
-needle grasp frame before promotion.
+The controller lifts vertically until the object is within 40 mm of target
+height before allowing simultaneous lateral goal tracking. A full-population
+1,200-environment first-outcome sweep measured 1,023 strict successes at this
+clearance, up from 997 at 20 mm, with no hard termination. Once physics-owned
+object height rises above 18 mm, carry and gripper closure remain latched until
+the object drops below that threshold, preventing contact-sensor flicker from
+restarting the approach phase. Held-out play evidence separately records the
+longest consecutive bilateral jaw-contact loss after the object rose above
+30 mm, with 2-, 5-, and 10-control-step cohorts split by terminal success and
+failure. This retention diagnostic never contributes reward or success credit;
+it distinguishes transient contact-manifold flicker from mid-air slips that
+would otherwise appear only as timeouts. Stage 4 requires its own
+contact-calibrated needle grasp frame before promotion.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.1 N·m actuator effort limit. Physical-parameter

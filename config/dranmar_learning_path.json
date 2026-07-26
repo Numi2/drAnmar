@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.31.0",
+  "schema_version": "1.32.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -77,7 +77,8 @@
       "gripper_effort_limit_nm": 0.1,
       "gripper_physical_parameter_source": "source/extensions/orbit.surgical.assets/config/psm_foundation.json",
       "gripper_physical_challenger_contract": "one_repeated_value_across_the_full_1200_environment_population_with_unchanged_reward_success_force_and_dwell_gates",
-      "lateral_clearance_below_target_m": 0.02,
+      "lateral_clearance_below_target_m": 0.04,
+      "lateral_clearance_below_target_source": "isaac_lab_parallel_1200_env_full_population_first_outcome_sweep_1023_of_1200_successes",
       "carry_latch_below_target_m": 0.062,
       "carry_action_limit": 0.1,
       "carry_lateral_action_limit": 0.1,

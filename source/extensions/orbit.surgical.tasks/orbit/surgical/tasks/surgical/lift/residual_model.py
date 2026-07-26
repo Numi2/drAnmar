@@ -35,7 +35,7 @@ class LiftResidualMLPModel(MLPModel):
         slow_approach_radius: float = 0.02,
         slow_approach_action_limit: float = 0.1,
         normalized_contact_threshold: float = 0.002,
-        lateral_clearance_below_target: float = 0.02,
+        lateral_clearance_below_target: float = 0.04,
         carry_latch_below_target: float = 0.062,
         carry_action_limit: float = 0.1,
         carry_lateral_action_limit: float | None = None,

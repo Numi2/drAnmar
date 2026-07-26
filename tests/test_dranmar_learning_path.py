@@ -143,7 +143,13 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         manifest["defaults"]["stage_3_initialization"][
             "lateral_clearance_below_target_m"
         ]
-        == 0.02
+        == 0.04
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
+            "lateral_clearance_below_target_source"
+        ]
+        == "isaac_lab_parallel_1200_env_full_population_first_outcome_sweep_1023_of_1200_successes"
     )
     assert (
         manifest["defaults"]["stage_3_initialization"][
