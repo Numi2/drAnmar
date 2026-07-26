@@ -49,12 +49,20 @@ class PSMReachEnvCfg(ReachEnvCfg):
         )
 
         # switch robot to PSM
-        self.scene.robot_1 = PSM_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_1")
-        self.scene.robot_1.init_state.pos = (0.2, 0.0, 0.15)
-        self.scene.robot_1.init_state.rot = (1.0, 0.0, 0.0, 0.0)
-        self.scene.robot_2 = PSM_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_2")
-        self.scene.robot_2.init_state.pos = (-0.2, 0.0, 0.15)
-        self.scene.robot_2.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        self.scene.robot_1 = PSM_CFG.replace(
+            prim_path="{ENV_REGEX_NS}/Robot_1",
+            init_state=PSM_CFG.init_state.replace(
+                pos=(0.2, 0.0, 0.15),
+                rot=(1.0, 0.0, 0.0, 0.0),
+            ),
+        )
+        self.scene.robot_2 = PSM_CFG.replace(
+            prim_path="{ENV_REGEX_NS}/Robot_2",
+            init_state=PSM_CFG.init_state.replace(
+                pos=(-0.2, 0.0, 0.15),
+                rot=(1.0, 0.0, 0.0, 0.0),
+            ),
+        )
         # override rewards
         self.rewards.end_effector_1_position_tracking.params["asset_cfg"].body_names = ["psm_tool_tip_link"]
         self.rewards.end_effector_1_orientation_tracking.params["asset_cfg"].body_names = ["psm_tool_tip_link"]

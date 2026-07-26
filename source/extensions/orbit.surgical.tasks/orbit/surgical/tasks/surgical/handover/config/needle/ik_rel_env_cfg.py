@@ -23,14 +23,22 @@ class NeedleHandoverEnvCfg(joint_pos_env_cfg.NeedleHandoverEnvCfg):
 
         # Set PSM as robot
         # We switch here to a stiffer PD controller for IK tracking to be better.
-        self.scene.robot_1 = PSM_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_1")
-        self.scene.robot_1.spawn.activate_contact_sensors = True
-        self.scene.robot_1.init_state.pos = (0.2, 0.0, 0.15)
-        self.scene.robot_1.init_state.rot = (1.0, 0.0, 0.0, 0.0)
-        self.scene.robot_2 = PSM_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot_2")
-        self.scene.robot_2.spawn.activate_contact_sensors = True
-        self.scene.robot_2.init_state.pos = (-0.2, 0.0, 0.15)
-        self.scene.robot_2.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        self.scene.robot_1 = PSM_HIGH_PD_CFG.replace(
+            prim_path="{ENV_REGEX_NS}/Robot_1",
+            spawn=PSM_HIGH_PD_CFG.spawn.replace(activate_contact_sensors=True),
+            init_state=PSM_HIGH_PD_CFG.init_state.replace(
+                pos=(0.2, 0.0, 0.15),
+                rot=(1.0, 0.0, 0.0, 0.0),
+            ),
+        )
+        self.scene.robot_2 = PSM_HIGH_PD_CFG.replace(
+            prim_path="{ENV_REGEX_NS}/Robot_2",
+            spawn=PSM_HIGH_PD_CFG.spawn.replace(activate_contact_sensors=True),
+            init_state=PSM_HIGH_PD_CFG.init_state.replace(
+                pos=(-0.2, 0.0, 0.15),
+                rot=(1.0, 0.0, 0.0, 0.0),
+            ),
+        )
 
         # Set actions for the specific robot type (PSM)
         self.actions.robot_1_body_action = DifferentialInverseKinematicsActionCfg(

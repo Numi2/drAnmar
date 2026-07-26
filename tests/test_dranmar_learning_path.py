@@ -128,6 +128,28 @@ def test_dual_reach_policy_observes_two_pose_errors_and_uses_residual_base() -> 
     ast.parse(agent_source)
 
 
+def test_dual_robot_configs_do_not_mutate_shallow_copies() -> None:
+    config_paths = (
+        *(
+            TASK_ROOT / f"surgical/reach_dual/config/{robot}/{control}_env_cfg.py"
+            for robot in ("psm", "star")
+            for control in ("joint_pos", "ik_abs", "ik_rel")
+        ),
+        *(
+            TASK_ROOT / f"surgical/handover/config/{prop}/{control}_env_cfg.py"
+            for prop in ("block", "needle")
+            for control in ("joint_pos", "ik_abs", "ik_rel")
+        ),
+    )
+    for path in config_paths:
+        source = path.read_text()
+        assert ".init_state.pos =" not in source, path
+        assert ".init_state.rot =" not in source, path
+        assert ".spawn.activate_contact_sensors =" not in source, path
+        assert "init_state=" in source, path
+        ast.parse(source)
+
+
 def test_launcher_fits_parallel_worlds_to_live_ram_and_vram() -> None:
     scope = runpy.run_path(str(ROOT / "scripts/dr_anmar_learning_benchmark.py"))
     fit = scope["_fit_num_envs_to_memory"]
