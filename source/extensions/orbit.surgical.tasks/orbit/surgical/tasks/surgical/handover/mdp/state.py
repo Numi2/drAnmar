@@ -33,7 +33,6 @@ def handover_state(
     required_receiver_only_steps: int = 10,
     allowed_receiver_contact_flicker_steps: int = 1,
     receiver_follow_tolerance: float = 0.005,
-    release_loss_steps: int = 5,
     command_name: str = "receiver_pose",
 ) -> dict[str, Any]:
     """Update and return the monotonic physical handover phase.
@@ -66,9 +65,6 @@ def handover_state(
                 dtype=torch.bool,
                 device=env.device,
             ),
-            "giver_loss_consecutive": torch.zeros(
-                env.num_envs, dtype=torch.long, device=env.device
-            ),
             "receiver_loss_consecutive": torch.zeros(
                 env.num_envs, dtype=torch.long, device=env.device
             ),
@@ -94,7 +90,6 @@ def handover_state(
     state["receiver_only_consecutive"][reset] = 0
     state["giver_contact_history"][reset] = False
     state["receiver_contact_history"][reset] = False
-    state["giver_loss_consecutive"][reset] = 0
     state["receiver_loss_consecutive"][reset] = 0
     state["giver_release_observed"][reset] = False
     state["premature_release"][reset] = False
@@ -144,14 +139,12 @@ def handover_state(
     phase[(phase == 0) & giver_contact] = 1
     phase[(phase == 1) & giver_contact & lifted] = 2
     before_acquisition = (phase >= 1) & (phase < 3)
-    state["giver_loss_consecutive"][:] = torch.where(
-        before_acquisition & ~giver_contact_now,
-        state["giver_loss_consecutive"] + 1,
-        torch.zeros_like(state["giver_loss_consecutive"]),
+    giver_gripper_action = mdp_common.as_torch(
+        env.action_manager.action
     )
     state["premature_release"] |= (
         before_acquisition
-        & (state["giver_loss_consecutive"] >= release_loss_steps)
+        & (giver_gripper_action[:, 6] > 0.0)
     )
     receiver_acquired = (
         (phase == 2) & giver_contact & receiver_contact

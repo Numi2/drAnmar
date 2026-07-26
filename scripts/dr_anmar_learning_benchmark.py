@@ -521,7 +521,7 @@ def _handover_teacher_action(
     receiver_contact_centering_action_limit: float = 0.03,
     normalized_contact_threshold: float = 0.002,
     presentation_fraction_from_giver: float = 0.25,
-    presentation_height_in_robot_frame: float = -0.13,
+    presentation_height_in_robot_frame: float = -0.07,
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_latch_height_in_robot_frame: float = -0.132,
     carry_lateral_action_limit: float = 0.1,
