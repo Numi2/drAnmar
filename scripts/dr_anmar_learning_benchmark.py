@@ -301,6 +301,7 @@ def _lift_teacher_action(
     slow_approach_radius: float = 0.02,
     slow_approach_action_limit: float = 0.1,
     normalized_contact_threshold: float = 0.002,
+    carry_angular_velocity_scale: float = 2.5,
     carry_action_limit: float = 0.1,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
@@ -311,6 +312,7 @@ def _lift_teacher_action(
     object_position = policy_obs[:, 23:26]
     target_position = policy_obs[:, 36:39]
     contact_forces = policy_obs[:, 43:45]
+    object_angular_velocity = policy_obs[:, 33:36]
 
     ee_to_object = object_position - ee_position
     lateral_distance = torch.linalg.vector_norm(ee_to_object[:, :2], dim=-1)
@@ -351,7 +353,14 @@ def _lift_teacher_action(
         carry_action,
         approach_action,
     )
-    orientation_action = torch.zeros_like(translation_action)
+    carry_orientation_action = (
+        -object_angular_velocity / carry_angular_velocity_scale
+    ).clamp(-1.0, 1.0)
+    orientation_action = torch.where(
+        bilateral_contact.unsqueeze(-1),
+        carry_orientation_action,
+        torch.zeros_like(carry_orientation_action),
+    )
     body_action = torch.cat(
         (translation_action, orientation_action),
         dim=-1,
@@ -596,6 +605,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     "slow_approach_radius_m": 0.02,
                     "slow_approach_action_limit": 0.1,
                     "normalized_contact_threshold": 0.002,
+                    "carry_angular_velocity_scale_rad_s": 2.5,
                     "carry_action_limit": 0.1,
                 }
                 if "Lift-Block-PSM-IK-Rel" in args.task

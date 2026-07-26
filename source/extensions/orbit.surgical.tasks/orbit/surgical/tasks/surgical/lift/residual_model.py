@@ -20,6 +20,7 @@ class LiftResidualMLPModel(MLPModel):
         *args,
         end_effector_position_start: int = 16,
         object_position_start: int = 23,
+        object_velocity_start: int = 30,
         target_position_start: int = 36,
         contact_force_start: int = 43,
         position_scale: float = 0.01,
@@ -30,6 +31,7 @@ class LiftResidualMLPModel(MLPModel):
         slow_approach_radius: float = 0.02,
         slow_approach_action_limit: float = 0.1,
         normalized_contact_threshold: float = 0.002,
+        carry_angular_velocity_scale: float = 2.5,
         carry_action_limit: float = 0.1,
         residual_scale: float = 0.2,
         **kwargs,
@@ -37,6 +39,7 @@ class LiftResidualMLPModel(MLPModel):
         super().__init__(*args, **kwargs)
         self.end_effector_position_start = end_effector_position_start
         self.object_position_start = object_position_start
+        self.object_velocity_start = object_velocity_start
         self.target_position_start = target_position_start
         self.contact_force_start = contact_force_start
         self.position_scale = position_scale
@@ -47,6 +50,7 @@ class LiftResidualMLPModel(MLPModel):
         self.slow_approach_radius = slow_approach_radius
         self.slow_approach_action_limit = slow_approach_action_limit
         self.normalized_contact_threshold = normalized_contact_threshold
+        self.carry_angular_velocity_scale = carry_angular_velocity_scale
         self.carry_action_limit = carry_action_limit
         self.residual_scale = residual_scale
 
@@ -73,6 +77,10 @@ class LiftResidualMLPModel(MLPModel):
         contact_forces = raw[
             :,
             self.contact_force_start : self.contact_force_start + 2,
+        ]
+        object_angular_velocity = raw[
+            :,
+            self.object_velocity_start + 3 : self.object_velocity_start + 6,
         ]
         ee_to_object = object_position - ee_position
         lateral_distance = torch.linalg.vector_norm(ee_to_object[:, :2], dim=-1)
@@ -115,7 +123,14 @@ class LiftResidualMLPModel(MLPModel):
             carry_action,
             approach_action,
         )
-        orientation_action = torch.zeros_like(translation_action)
+        carry_orientation_action = (
+            -object_angular_velocity / self.carry_angular_velocity_scale
+        ).clamp(-1.0, 1.0)
+        orientation_action = torch.where(
+            bilateral_contact.unsqueeze(-1),
+            carry_orientation_action,
+            torch.zeros_like(carry_orientation_action),
+        )
         body_action = torch.cat(
             (translation_action, orientation_action),
             dim=-1,
@@ -178,6 +193,7 @@ class _LiftResidualExport(nn.Module):
         )
         self.end_effector_position_start = model.end_effector_position_start
         self.object_position_start = model.object_position_start
+        self.object_velocity_start = model.object_velocity_start
         self.target_position_start = model.target_position_start
         self.contact_force_start = model.contact_force_start
         self.position_scale = model.position_scale
@@ -188,6 +204,7 @@ class _LiftResidualExport(nn.Module):
         self.slow_approach_radius = model.slow_approach_radius
         self.slow_approach_action_limit = model.slow_approach_action_limit
         self.normalized_contact_threshold = model.normalized_contact_threshold
+        self.carry_angular_velocity_scale = model.carry_angular_velocity_scale
         self.carry_action_limit = model.carry_action_limit
         self.residual_scale = model.residual_scale
 
@@ -208,6 +225,10 @@ class _LiftResidualExport(nn.Module):
         contact_forces = obs[
             :,
             self.contact_force_start : self.contact_force_start + 2,
+        ]
+        object_angular_velocity = obs[
+            :,
+            self.object_velocity_start + 3 : self.object_velocity_start + 6,
         ]
         ee_to_object = object_position - ee_position
         lateral_distance = torch.linalg.vector_norm(ee_to_object[:, :2], dim=-1)
@@ -248,7 +269,14 @@ class _LiftResidualExport(nn.Module):
             carry_action,
             approach_action,
         )
-        orientation_action = torch.zeros_like(translation_action)
+        carry_orientation_action = (
+            -object_angular_velocity / self.carry_angular_velocity_scale
+        ).clamp(-1.0, 1.0)
+        orientation_action = torch.where(
+            bilateral_contact.unsqueeze(-1),
+            carry_orientation_action,
+            torch.zeros_like(carry_orientation_action),
+        )
         body_action = torch.cat(
             (translation_action, orientation_action),
             dim=-1,

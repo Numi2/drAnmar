@@ -53,6 +53,7 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     )
     end_effector_position_start: int = 16
     object_position_start: int = 23
+    object_velocity_start: int = 30
     target_position_start: int = 36
     contact_force_start: int = 43
     position_scale: float = 0.01
@@ -63,6 +64,7 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     slow_approach_radius: float = 0.02
     slow_approach_action_limit: float = 0.1
     normalized_contact_threshold: float = 0.002
+    carry_angular_velocity_scale: float = 2.5
     carry_action_limit: float = 0.1
     residual_scale: float = 0.2
 
