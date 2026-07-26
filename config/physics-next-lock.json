@@ -9,10 +9,16 @@
     "version": "6.0.1.0",
     "extra_index_url": "https://pypi.nvidia.com"
   },
+  "runtime_packages": {
+    "isaacsim": "6.0.1.0",
+    "torch": "2.11.0+cu128",
+    "torchvision": "0.26.0+cu128",
+    "torchaudio": "2.11.0+cu128"
+  },
   "sources": {
     "isaaclab": {
       "repository": "https://github.com/isaac-sim/IsaacLab.git",
-      "revision": "af1bab4dc173ba69b08fab779c14ead61d13fd33"
+      "revision": "51104d55d46192f9c981f2b63007d5156e141cec"
     },
     "cressim_mpm": {
       "repository": "https://github.com/yafei-ou/CRESSim-MPM.git",

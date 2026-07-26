@@ -54,6 +54,9 @@ def verify(next_root: Path, lock_path: Path) -> list[str]:
         failures.append("physics-next lock digest mismatch")
     if freeze_path.is_file() and receipt.get("python_freeze_sha256") != _sha256(freeze_path):
         failures.append("Python dependency freeze digest mismatch")
+    for package_name, expected_version in lock["runtime_packages"].items():
+        if receipt.get("packages", {}).get(package_name) != expected_version:
+            failures.append(f"{package_name} runtime package mismatch")
     for source_id, relative in (
         ("isaaclab", "IsaacLab"),
         ("cressim_mpm", "CRESSim-MPM"),

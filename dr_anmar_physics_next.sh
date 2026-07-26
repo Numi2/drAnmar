@@ -96,6 +96,7 @@ install_runtime() {
         git fetch --depth 1 origin "${cressim_commit}"
         git checkout --detach "${cressim_commit}"
         [[ "$(git rev-parse HEAD)" == "${cressim_commit}" ]]
+        "${env_root}/bin/python" -m pip check
         "${env_root}/bin/python" -m pip freeze --all > "${next_root}/python-freeze.txt"
         ISAACLAB_COMMIT="${isaaclab_commit}" CRESSIM_COMMIT="${cressim_commit}" \
             "${env_root}/bin/python" - "${lock_path}" "${next_root}/python-freeze.txt" <<PY > "${next_root}/runtime.json"
@@ -106,6 +107,8 @@ import os
 import platform
 import subprocess
 import sys
+
+lock = json.load(open(sys.argv[1], encoding="utf-8"))
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -131,6 +134,24 @@ try:
 except (OSError, subprocess.SubprocessError):
     driver = []
 
+installed_packages = {
+    name: package(name)
+    for name in lock["runtime_packages"]
+}
+package_mismatches = {
+    name: {
+        "expected": expected,
+        "observed": installed_packages.get(name),
+    }
+    for name, expected in lock["runtime_packages"].items()
+    if installed_packages.get(name) != expected
+}
+if package_mismatches:
+    raise SystemExit(
+        "runtime package lock mismatch: "
+        + json.dumps(package_mismatches, sort_keys=True)
+    )
+
 receipt = {
     "schema": "dr.anmar.physics-next-installation.v1",
     "ready": True,
@@ -139,10 +160,7 @@ receipt = {
     "python": platform.python_version(),
     "platform": platform.platform(),
     "gpu_driver": driver,
-    "packages": {
-        name: package(name)
-        for name in ("isaacsim", "isaaclab", "torch", "warp-lang")
-    },
+    "packages": installed_packages,
     "sources": {
         "isaaclab": os.environ["ISAACLAB_COMMIT"],
         "cressim_mpm": os.environ["CRESSIM_COMMIT"],
