@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.9.0",
+  "schema_version": "1.10.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -95,6 +95,7 @@
       "qualification_contract": {
         "control_hz": 50,
         "initial_object_height_m": 0.004,
+        "initial_object_quaternion_xyzw": [0.0, 0.0, 0.0, 1.0],
         "target_object_height_m": 0.08,
         "minimum_success_height_m": 0.06,
         "sustained_success_steps": 10,
@@ -115,6 +116,16 @@
       "stage": 4,
       "name": "contact_qualified_needle_lift",
       "task": "DrAnmar-Lift-Needle-PSM-IK-Rel-v0",
+      "qualification_contract": {
+        "control_hz": 50,
+        "initial_object_height_m": 0.001,
+        "initial_object_quaternion_xyzw": [0.0, 0.0, 0.0, 1.0],
+        "target_object_height_m": 0.08,
+        "minimum_success_height_m": 0.06,
+        "sustained_success_steps": 10,
+        "requires_orientation_alignment": true,
+        "requires_physics_owned_object_motion": true
+      },
       "promotion": {
         "minimum_success_rate": 0.8,
         "held_out_seed_passes": 3

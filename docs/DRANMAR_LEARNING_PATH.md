@@ -83,6 +83,12 @@ velocity feedback. It limits Cartesian carry action to 0.15, targeting at most
 1.5 mm per 50 Hz command, tapers position correction inside 7.5 mm, and opposes
 measured angular motion through the relative-IK orientation command.
 
+Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift
+objects therefore use the explicit identity `(0, 0, 0, 1)`. This prevents the
+legacy `(w, x, y, z)` identity from becoming a 180-degree X rotation, which
+would create a π-radian goal error before the first action. The needle begins
+at a collision-clear 1 mm support height based on its scaled mesh bounds.
+
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,
 adaptive-KL PPO, and task-specific rollout lengths. PhysX scenes use Fabric

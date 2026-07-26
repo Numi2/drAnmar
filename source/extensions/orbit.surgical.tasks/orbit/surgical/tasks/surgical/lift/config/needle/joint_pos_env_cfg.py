@@ -12,7 +12,10 @@ from isaaclab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
 from isaaclab.utils.configclass import configclass
 
 from orbit.surgical.tasks.surgical.lift import mdp
-from orbit.surgical.tasks.surgical.lift.lift_env_cfg import LiftEnvCfg
+from orbit.surgical.tasks.surgical.lift.lift_env_cfg import (
+    ISAAC_IDENTITY_QUATERNION_XYZW,
+    LiftEnvCfg,
+)
 
 ##
 # Pre-defined configs
@@ -23,6 +26,8 @@ from orbit.surgical.assets.psm import (  # isort: skip
     psm_gripper_close_command_expr,
     psm_gripper_open_command_expr,
 )
+
+NEEDLE_INITIAL_OBJECT_HEIGHT_M = 0.001
 
 
 @configclass
@@ -61,7 +66,10 @@ class NeedleLiftEnvCfg(LiftEnvCfg):
         # Set Suture Needle as object
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.015), rot=(1, 0, 0, 0)),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(0.0, 0.0, NEEDLE_INITIAL_OBJECT_HEIGHT_M),
+                rot=ISAAC_IDENTITY_QUATERNION_XYZW,
+            ),
             spawn=UsdFileCfg(
                 usd_path=f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/Surgical_needle/needle_sdf.usd",
                 scale=(0.4, 0.4, 0.4),

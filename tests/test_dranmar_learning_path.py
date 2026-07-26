@@ -58,7 +58,17 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     assert contract["sustained_success_steps"] / contract["control_hz"] == 0.2
     assert contract["block_orientation_invariant"] is True
     assert contract["requires_stable_angular_motion"] is True
+    assert contract["initial_object_quaternion_xyzw"] == [0.0, 0.0, 0.0, 1.0]
     assert contract["requires_physics_owned_object_motion"] is True
+    needle_contract = stages[3]["qualification_contract"]
+    assert needle_contract["initial_object_height_m"] == 0.001
+    assert needle_contract["initial_object_quaternion_xyzw"] == [
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+    ]
+    assert needle_contract["requires_orientation_alignment"] is True
 
 
 def test_frontier_imports_and_runner_contract() -> None:
@@ -199,6 +209,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     block_source = (
         TASK_ROOT / "surgical/lift/config/block/joint_pos_env_cfg.py"
     ).read_text()
+    needle_source = (
+        TASK_ROOT / "surgical/lift/config/needle/joint_pos_env_cfg.py"
+    ).read_text()
     model_source = (
         TASK_ROOT / "surgical/lift/residual_model.py"
     ).read_text()
@@ -222,7 +235,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         == 1
     )
     assert "LIFT_INITIAL_OBJECT_HEIGHT_M" in block_source
+    assert "ISAAC_IDENTITY_QUATERNION_XYZW" in block_source
     assert 'orientation_threshold"] = 3.2' in block_source
+    assert "NEEDLE_INITIAL_OBJECT_HEIGHT_M = 0.001" in needle_source
+    assert "ISAAC_IDENTITY_QUATERNION_XYZW" in needle_source
+    assert "rot=(1, 0, 0, 0)" not in block_source
+    assert "rot=(1, 0, 0, 0)" not in needle_source
     assert "class LiftResidualMLPModel(MLPModel):" in model_source
     assert "bilateral_contact.unsqueeze(-1)" in model_source
     assert "self.carry_action_limit = carry_action_limit" in model_source
@@ -234,6 +252,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         reward_source,
         termination_source,
         block_source,
+        needle_source,
         model_source,
         agent_source,
     ):

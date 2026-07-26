@@ -13,6 +13,7 @@ from isaaclab.utils.configclass import configclass
 
 from orbit.surgical.tasks.surgical.lift import mdp
 from orbit.surgical.tasks.surgical.lift.lift_env_cfg import (
+    ISAAC_IDENTITY_QUATERNION_XYZW,
     LIFT_INITIAL_OBJECT_HEIGHT_M,
     LiftEnvCfg,
 )
@@ -66,7 +67,7 @@ class BlockLiftEnvCfg(LiftEnvCfg):
             prim_path="{ENV_REGEX_NS}/Object",
             init_state=RigidObjectCfg.InitialStateCfg(
                 pos=(0.0, 0.0, LIFT_INITIAL_OBJECT_HEIGHT_M),
-                rot=(1, 0, 0, 0),
+                rot=ISAAC_IDENTITY_QUATERNION_XYZW,
             ),
             spawn=UsdFileCfg(
                 usd_path=f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/Surgical_block/block.usd",
