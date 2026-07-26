@@ -374,7 +374,7 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
                 "rot=(0.0, 0.0, 0.0, 1.0)"
             ) >= 2
             assert "pos=(0.2, 0.0, 0.15)" not in robot_cfg_source
-            assert "pos=(0.0, 0.0, 0.15)" in robot_cfg_source
+            assert "pos=(-0.1, 0.0, 0.15)" in robot_cfg_source
     for source in (state_source, cfg_source, needle_source):
         ast.parse(source)
 
@@ -482,15 +482,14 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "receiver_contact_centering_action_limit: float = 0.03" in benchmark_source
     assert "receiver_roll_offsets = [math.pi] * len(values)" in benchmark_source
     assert "giver_bilateral_contact = torch.all(" in benchmark_source
-    assert "carry_latch_height_in_robot_frame: float = -0.132" in benchmark_source
-    assert "giver_bilateral_contact | giver_carry_latched" in benchmark_source
     assert "giver_target_orientation[:, 3] = 1.0" in benchmark_source
     assert "giver_orientation_action" in benchmark_source
     assert "receiver_any_contact = torch.any(" in benchmark_source
     assert "& receiver_any_contact" in benchmark_source
     assert "giver_carry_mode.unsqueeze(-1)" in benchmark_source
-    assert "presentation_fraction_from_giver: float = 0.25" in benchmark_source
-    assert "((phase == 2) & ~giver_lifted)" in benchmark_source
+    assert "giver_carry_mode = (phase >= 1) & (phase <= 2)" in benchmark_source
+    assert "presentation_fraction_from_giver: float = 0.5" in benchmark_source
+    assert "((phase == 2) & ~presentation_ready)" in benchmark_source
     assert 'play.add_argument("--video", action="store_true")' in benchmark_source
     assert 'play.add_argument("--video_chunk_length", type=int)' in benchmark_source
     assert 'enable_cameras=bool(getattr(args, "video", False))' in benchmark_source

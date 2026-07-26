@@ -152,6 +152,13 @@ and zero incidental sub-limit contact are not Stage 6 success requirements.
 They remain diagnostics and later curriculum objectives. A receiver recovery
 pose is likewise diagnostic only.
 
+The analytic seed controller executes the task in three explicit physical
+segments: Robot 1 picks up the needle, transports it into the centered shared
+workspace, and holds it still while Robot 2 acquires it. The two PSM roots are
+10 cm apart and the exchange point is 5 cm from each root, providing both
+instruments comfortable reach margin. Reaching that authored exchange point
+organizes the demonstration but is not part of the success predicate.
+
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter
 challengers cannot be sharded within one replicated PhysX scene, so the sweep

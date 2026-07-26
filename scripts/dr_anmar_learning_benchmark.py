@@ -520,10 +520,9 @@ def _handover_teacher_action(
     slow_approach_action_limit: float = 0.1,
     receiver_contact_centering_action_limit: float = 0.03,
     normalized_contact_threshold: float = 0.002,
-    presentation_fraction_from_giver: float = 0.25,
+    presentation_fraction_from_giver: float = 0.5,
     presentation_height_in_robot_frame: float = -0.07,
     minimum_lift_height_in_robot_frame: float = -0.139,
-    carry_latch_height_in_robot_frame: float = -0.132,
     carry_lateral_action_limit: float = 0.1,
     carry_vertical_action_limit: float = 0.18,
 ):
@@ -630,19 +629,7 @@ def _handover_teacher_action(
         receiver_contacts > normalized_contact_threshold,
         dim=-1,
     )
-    giver_lifted = (
-        object_in_giver[:, 2] > minimum_lift_height_in_robot_frame
-    )
-    giver_carry_latched = (
-        object_in_giver[:, 2] > carry_latch_height_in_robot_frame
-    )
-    giver_carry_mode = (
-        (
-            (phase == 1)
-            & (giver_bilateral_contact | giver_carry_latched)
-        )
-        | ((phase == 2) & (giver_bilateral_contact | giver_lifted))
-    )
+    giver_carry_mode = (phase >= 1) & (phase <= 2)
 
     receiver_stage_target = presentation_in_receiver.clone()
     receiver_stage_target[:, 2] = (
@@ -669,6 +656,13 @@ def _handover_teacher_action(
         ),
         dim=-1,
     )
+    presentation_ready = (
+        torch.linalg.vector_norm(
+            giver_target - object_in_giver,
+            dim=-1,
+        )
+        < 0.005
+    )
 
     giver_translation = torch.where(
         giver_carry_mode.unsqueeze(-1),
@@ -694,7 +688,7 @@ def _handover_teacher_action(
     receiver_translation = torch.where(
         (
             (phase <= 1)
-            | ((phase == 2) & ~giver_lifted)
+            | ((phase == 2) & ~presentation_ready)
         ).unsqueeze(-1),
         receiver_stage,
         receiver_approach,
