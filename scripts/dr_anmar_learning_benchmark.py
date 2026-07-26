@@ -515,7 +515,7 @@ def _handover_teacher_action(
     approach_height: float = 0.02,
     lateral_alignment_threshold: float = 0.005,
     close_distance: float = 0.005,
-    receiver_close_distance: float = 0.0015,
+    receiver_close_distance: float = 0.005,
     slow_approach_radius: float = 0.02,
     slow_approach_action_limit: float = 0.1,
     receiver_contact_centering_action_limit: float = 0.03,
@@ -738,13 +738,36 @@ def _handover_teacher_action(
         -torch.ones_like(receiver_distance),
         torch.ones_like(receiver_distance),
     ).unsqueeze(-1)
-    zero_orientation = torch.zeros_like(giver_translation)
     from isaaclab.utils.math import (
         axis_angle_from_quat,
         quat_conjugate,
         quat_mul,
     )
 
+    giver_object_orientation = policy_obs[:, 49:53]
+    giver_object_angular_velocity = policy_obs[:, 63:66]
+    giver_target_orientation = torch.zeros_like(
+        giver_object_orientation
+    )
+    giver_target_orientation[:, 3] = 1.0
+    giver_orientation_error = axis_angle_from_quat(
+        quat_mul(
+            giver_target_orientation,
+            quat_conjugate(giver_object_orientation),
+        )
+    )
+    giver_orientation_action = (
+        (
+            giver_orientation_error
+            - 0.001 * giver_object_angular_velocity
+        )
+        / orientation_scale
+    ).clamp(-0.035, 0.035)
+    giver_orientation_action = torch.where(
+        giver_carry_mode.unsqueeze(-1),
+        giver_orientation_action,
+        torch.zeros_like(giver_orientation_action),
+    )
     receiver_roll = torch.zeros_like(giver_orientation)
     half_roll = 0.5 * receiver_roll_offset_rad
     receiver_roll[:, 2] = math.sin(half_roll)
@@ -768,7 +791,7 @@ def _handover_teacher_action(
     return torch.cat(
         (
             giver_translation,
-            zero_orientation,
+            giver_orientation_action,
             giver_gripper,
             receiver_translation,
             receiver_orientation_action,
