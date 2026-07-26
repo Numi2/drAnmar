@@ -1,5 +1,12 @@
 # Dr.Anmar complete repository and asset audit
 
+> Historical snapshot: this report records the pre-remediation state inspected
+> on 26 July 2026. Its findings and qualification matrix are intentionally
+> preserved as audit evidence and are no longer the current status. Use
+> [`CURRENT_RELEASE_READINESS.md`](CURRENT_RELEASE_READINESS.md) and
+> [`VALIDATION_BACKLOG.md`](VALIDATION_BACKLOG.md) for the active state and
+> unresolved gates.
+
 Date: 26 July 2026
 
 Audited parent revision: `d606aa60937ba9381941771792671a7ab61223b1`

@@ -64,6 +64,7 @@ from dr_anmar_tissue_model import (
     sample_tissue_episode_parameters,
     stable_physx_proxy_parameters,
 )
+from dr_anmar_telemetry import DEMONSTRATION_SCHEMA, build_array_contract
 from dr_anmar_operator import validate_bind_security
 
 
@@ -943,6 +944,8 @@ class SharedState:
     has_grippers: bool
     robot_names: list[str]
     robot_body_names: dict[str, list[str]]
+    robot_joint_names: dict[str, list[str]]
+    robot_joint_units: dict[str, dict[str, list[str]]]
     anatomy_showcase: str | None = None
     anatomy_scene_id: str = ""
     anatomy_asset: str = ""
@@ -3266,6 +3269,36 @@ def depth_to_point_cloud(depth_m: np.ndarray, intrinsics: np.ndarray, stride: in
     return points
 
 
+def camera_pose_world(camera: Any) -> tuple[np.ndarray, np.ndarray] | None:
+    """Read the post-step camera pose in Isaac Lab's world quaternion convention."""
+
+    data = getattr(camera, "data", None)
+    position = getattr(data, "pos_w", None)
+    quaternion = getattr(data, "quat_w_world", None)
+    if position is None or quaternion is None:
+        return None
+    try:
+        position_array = (
+            position[0].detach().cpu().numpy().astype(np.float32)
+        )
+        quaternion_array = (
+            quaternion[0].detach().cpu().numpy().astype(np.float32)
+        )
+    except (AttributeError, IndexError, TypeError, RuntimeError):
+        return None
+    if (
+        position_array.shape != (3,)
+        or quaternion_array.shape != (4,)
+        or not np.isfinite(position_array).all()
+        or not np.isfinite(quaternion_array).all()
+    ):
+        return None
+    norm = float(np.linalg.norm(quaternion_array))
+    if norm <= 1.0e-8:
+        return None
+    return position_array, quaternion_array / norm
+
+
 def camera_semantic_labels(camera) -> dict[str, Any]:
     """Normalize Isaac Lab camera metadata across single- and multi-env layouts."""
 
@@ -3438,14 +3471,12 @@ def compare_demonstrations(candidate_path: Path, reference_path: Path) -> dict[s
 
 
 def reference_tool_path(path: Path, max_points_per_tool: int = 54) -> tuple[np.ndarray, np.ndarray]:
-    """Extract registered task-native tool-tip paths, with a legacy mobility fallback."""
+    """Extract registered task-native tool-tip paths and fail closed otherwise."""
     manifest = read_demo_manifest(path)
     body_names_by_robot = manifest.get("robot_body_names", {})
-    allow_legacy_fallback = not str(manifest.get("schema", "")).startswith("dr.anmar.demonstration.v2")
     preferred_tip_names = ("psm_tool_tip_link", "endo360_needle", "ecm_end_link", "tool_tip", "end_effector")
     with np.load(path, allow_pickle=False) as data:
         candidates: list[np.ndarray] = []
-        legacy_candidates: list[tuple[float, np.ndarray]] = []
         for key in data.files:
             if not key.endswith("_body_positions_w"):
                 continue
@@ -3460,15 +3491,10 @@ def reference_tool_path(path: Path, max_points_per_tool: int = 54) -> tuple[np.n
             )
             if preferred_index is not None and preferred_index < positions.shape[1]:
                 candidates.append(positions[:, preferred_index, :3])
-                continue
-            if allow_legacy_fallback:
-                path_lengths = np.sum(np.linalg.norm(np.diff(positions, axis=0), axis=2), axis=0)
-                body_index = int(np.argmax(path_lengths))
-                legacy_candidates.append((float(path_lengths[body_index]), positions[:, body_index, :3]))
     if not candidates:
-        if not legacy_candidates:
-            raise ValueError("The reference has no registered task-native tool-tip trajectory")
-        candidates = [max(legacy_candidates, key=lambda item: item[0])[1]]
+        raise ValueError(
+            "The reference has no registered task-native tool-tip trajectory"
+        )
     all_points = []
     all_phases = []
     for tool_path in candidates:
@@ -3729,6 +3755,8 @@ class BoundedCaptureSpool:
         "depth_m": "endoscope_depth_m",
         "semantic_id": "endoscope_semantic_id",
         "point_cloud_camera_m": "endoscope_point_cloud_camera_m",
+        "camera_position_w": "endoscope_camera_position_w",
+        "camera_quaternion_w": "endoscope_camera_quaternion_w",
     }
 
     def __init__(self, demo_dir: Path) -> None:
@@ -4066,6 +4094,14 @@ def save_demo(
             write_npz_from_hdf5(path, arrays)
             times = np.asarray(arrays.get("time_s", []), dtype=np.float64).reshape(-1)
             array_shapes = {key: list(value.shape) for key, value in arrays.items()}
+            array_descriptors = {
+                key: {
+                    "shape": list(value.shape),
+                    "dtype": str(value.dtype),
+                    "stream": str(value.attrs.get("capture_kind", "control")),
+                }
+                for key, value in arrays.items()
+            }
             array_keys = set(arrays)
         if training_hdf5_path is not None:
             if state.procedure.get("autonomous_rescue_or"):
@@ -4162,12 +4198,24 @@ def save_demo(
         procedure_annotations = list(state.procedure_events)
         camera_intrinsics = state.camera_intrinsics
         semantic_labels = dict(state.semantic_labels)
+        robot_joint_names = {
+            name: list(names)
+            for name, names in state.robot_joint_names.items()
+        }
+        robot_joint_units = json.loads(json.dumps(state.robot_joint_units))
+    array_contract = build_array_contract(
+        array_descriptors,
+        control_frames=control_frame_count,
+        vision_frames=vision_frame_count,
+    )
     manifest = {
-        "schema": "dr.anmar.demonstration.v2",
+        "schema": DEMONSTRATION_SCHEMA,
         "simulation_only": True,
         "task": state.task,
         "robots": state.robot_names,
         "robot_body_names": state.robot_body_names,
+        "robot_joint_names": robot_joint_names,
+        "robot_joint_units": robot_joint_units,
         "action_dim": state.action_dim,
         "action_contract": ACTION_CONTRACT if state.native_psm_policy_contract else NON_PSM_ACTION_CONTRACT,
         "started_at": started_at,
@@ -4179,6 +4227,17 @@ def save_demo(
         "control_hz": round(observed_control_hz, 2),
         "control_hz_nominal": 50,
         "arrays": array_shapes,
+        "array_contract": array_contract,
+        "clock_contract": {
+            "source": "time.monotonic",
+            "control_time_array": "time_s",
+            "vision_time_array": (
+                "endoscope_time_s"
+                if "endoscope_time_s" in array_keys
+                else None
+            ),
+            "alignment": "timestamps share the recording-start origin",
+        },
         "data_file": name,
         "data_bytes": path.stat().st_size,
         "training_hdf5": training_hdf5_path.name if training_hdf5_path is not None else None,
@@ -4211,13 +4270,27 @@ def save_demo(
             "instrument_wrist_rgb_hz": 5 if "wrist_1_rgb" in array_keys else 0,
             "instrument_wrist_camera_count": sum(1 for key in ("wrist_1_rgb", "wrist_2_rgb") if key in array_keys),
             "camera_intrinsics": camera_intrinsics,
+            "camera_extrinsics": (
+                {
+                    "position_array": "endoscope_camera_position_w",
+                    "quaternion_array": "endoscope_camera_quaternion_w",
+                    "coordinate_frame": "world",
+                    "quaternion_convention": "wxyz",
+                    "sample_alignment": "endoscope_time_s",
+                }
+                if "endoscope_camera_position_w" in array_keys
+                else None
+            ),
             "semantic_labels": semantic_labels,
             "simulator_outcome": "environment_reward, termination, truncation, and success when exposed by the task",
             "contact": "maximum force per available contact sensor",
             "deformable_tissue": "nodal displacement, deformation-gradient proxy, and simulator stress when exposed",
             "physics_state": "Native Isaac Lab contact, rigid-body, articulation and deformable telemetry when exposed by the active backend",
             "robot_and_anatomy_pose": "world-frame tool bodies, task objects, and showcase anatomy transform at 50 Hz",
-            "joint_torque": "applied and computed joint torque when exposed by the articulation",
+            "joint_effort": (
+                "applied and computed values in per-joint N for prismatic "
+                "coordinates and N*m for revolute coordinates"
+            ),
             "operator_study": "input source, normalized gaze/attention coordinates, procedure phase, and event codes at 50 Hz",
             "autonomous_rescue_patient_effects": (
                 "fixed-width contact, vessel, vital-sign, and fluid-balance "
@@ -6613,6 +6686,42 @@ def main() -> None:
         robot_names = all_robot_names
     robots = {name: scene[name] for name in robot_names}
     robot_body_names = {name: list(getattr(robot, "body_names", [])) for name, robot in robots.items()}
+    robot_joint_names = {
+        name: list(getattr(robot, "joint_names", []))
+        for name, robot in robots.items()
+    }
+    joint_kinds_by_name: dict[str, str] = {}
+    for prim in suture_stage.Traverse():
+        if prim.IsA(UsdPhysics.PrismaticJoint):
+            joint_kinds_by_name[prim.GetName()] = "prismatic"
+        elif prim.IsA(UsdPhysics.RevoluteJoint):
+            joint_kinds_by_name[prim.GetName()] = "revolute"
+    robot_joint_units: dict[str, dict[str, list[str]]] = {}
+    for name, joint_names in robot_joint_names.items():
+        kinds = [joint_kinds_by_name.get(joint_name, "unknown") for joint_name in joint_names]
+        if "unknown" in kinds:
+            missing = [
+                joint_name
+                for joint_name, kind in zip(joint_names, kinds, strict=True)
+                if kind == "unknown"
+            ]
+            raise RuntimeError(
+                f"Cannot establish joint units for {name}: {', '.join(missing)}"
+            )
+        robot_joint_units[name] = {
+            "coordinate": [
+                "m" if kind == "prismatic" else "rad"
+                for kind in kinds
+            ],
+            "velocity": [
+                "m/s" if kind == "prismatic" else "rad/s"
+                for kind in kinds
+            ],
+            "effort": [
+                "N" if kind == "prismatic" else "N*m"
+                for kind in kinds
+            ],
+        }
     stapler_articulation = (
         scene.articulations.get("stapler_test_device")
         if stapler_test_cell_enabled
@@ -8326,6 +8435,8 @@ def main() -> None:
         has_grippers=has_grippers,
         robot_names=robot_names,
         robot_body_names=robot_body_names,
+        robot_joint_names=robot_joint_names,
+        robot_joint_units=robot_joint_units,
         anatomy_showcase=str(procedure.get("anatomy_focus") or "Operative field"),
         anatomy_scene_id=args_cli.anatomy_scene_id,
         anatomy_asset=(
@@ -12572,6 +12683,12 @@ def main() -> None:
                     "rgb": np.asarray(observation, dtype=np.uint8),
                     "sensor_dropout_active": np.array(dropout_active, dtype=np.bool_),
                 }
+                sampled_camera_pose = camera_pose_world(camera)
+                if sampled_camera_pose is not None:
+                    (
+                        vision_frame["camera_position_w"],
+                        vision_frame["camera_quaternion_w"],
+                    ) = sampled_camera_pose
                 vision_frame["mean_luminance"] = np.array(np.asarray(observation, dtype=np.float32).mean() / 255.0, dtype=np.float32)
                 depth_tensor = camera.data.output.get("distance_to_image_plane")
                 if depth_tensor is not None:

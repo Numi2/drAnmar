@@ -37,6 +37,10 @@ Dr.Anmar supports four connected activities:
 
 The platform is intended for reproducible engineering studies. Every quantitative result must be interpreted
 within the exact asset revision, software stack, hardware, scenario, and measurement contract that produced it.
+The active release boundary is recorded in
+[`docs/CURRENT_RELEASE_READINESS.md`](docs/CURRENT_RELEASE_READINESS.md); only
+genuinely unresolved gates remain in
+[`docs/VALIDATION_BACKLOG.md`](docs/VALIDATION_BACKLOG.md).
 
 ### Executable Autonomous Rescue policy loop
 
@@ -80,7 +84,12 @@ The clinician-facing capability payload is generated from all 21 entries in
 `physics_next/dr-anmar-assets.json`, including every declared profile, runtime,
 report, native-evidence, and composition artifact. Repository verification is
 not a substitute for native-simulator, real-world, biomechanical, or clinical
-evidence. See [`docs/ASSET_CATALOG.md`](docs/ASSET_CATALOG.md).
+evidence. The generated
+[`dranmar-portfolio-evidence-index.json`](physics_next/benchmarks/dranmar-portfolio-evidence-index.json)
+content-addresses every declared artifact and binds it to the parent and asset
+submodule revisions that contain it. An evidence artifact's own tested
+revision remains authoritative for what actually ran. See
+[`docs/ASSET_CATALOG.md`](docs/ASSET_CATALOG.md).
 
 Dr.Anmar does not use “validated” as a catch-all. Product capability,
 repository verification, native-simulator evidence, real-world evidence, and

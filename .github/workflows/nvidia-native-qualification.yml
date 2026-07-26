@@ -3,7 +3,7 @@ name: NVIDIA native qualification
 on:
   workflow_dispatch:
     inputs:
-      steps:
+      step_count:
         description: Native simulator steps per smoke lane
         required: true
         default: "240"
@@ -21,7 +21,6 @@ jobs:
       - dranmar-nvidia
     timeout-minutes: 90
     env:
-      DR_ANMAR_ROOT: ${{ runner.temp }}/dranmar-native-runtime
       OMNI_KIT_ACCEPT_EULA: "YES"
     steps:
       - name: Check out exact Dr.Anmar tree
@@ -41,17 +40,21 @@ jobs:
       - name: Run generic startup and camera smoke
         shell: bash
         run: |
-          ./dr_anmar.sh smoke Isaac-Reach-PSM-v0 "${{ inputs.steps }}"
+          ./dr_anmar.sh smoke Isaac-Reach-PSM-v0 "${{ inputs.step_count }}"
 
       - name: Run dynamic laparotomy native scene
         shell: bash
+        env:
+          DR_ANMAR_ROOT: ${{ runner.temp }}/dranmar-native-runtime
         run: |
           mkdir -p "${DR_ANMAR_ROOT}/run/qualification"
-          ./dr_anmar.sh laparotomy "${{ inputs.steps }}" \
+          ./dr_anmar.sh laparotomy "${{ inputs.step_count }}" \
             "${DR_ANMAR_ROOT}/run/qualification/laparotomy.png"
 
       - name: Run dynamic-patient retained source validation
         shell: bash
+        env:
+          DR_ANMAR_ROOT: ${{ runner.temp }}/dranmar-native-runtime
         run: |
           "${ISAAC_PYTHON}" scripts/validate_dranmar_dynamic_abdominal_patient.py \
             --output "${DR_ANMAR_ROOT}/run/qualification/dynamic-patient-source.json"

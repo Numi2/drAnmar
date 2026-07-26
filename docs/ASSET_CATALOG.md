@@ -14,6 +14,10 @@ without loading Isaac Sim merely to inspect the tree.
   content-addressed identity of every dependency-complete local asset unit and
   every product-facing portfolio entry.
 - `catalog.md` is generated from that lock and is the reviewable human index.
+- `physics_next/benchmarks/dranmar-portfolio-evidence-index.json` binds every
+  portfolio claim to content-addressed declared artifacts and the parent or
+  asset-submodule revision that contains them. A native artifact's own tested
+  revision remains the execution authority.
 - `scripts/dr_anmar_asset_registry.py` resolves provider-relative paths,
   inventories every local asset family, verifies JSON and textual USDA
   dependencies, validates the full product portfolio, and verifies the
@@ -62,6 +66,7 @@ Validate multimodal bundles and the deterministic action fixture:
 ```bash
 python3 scripts/generate_dranmar_multimodal_fixture.py --check
 python3 scripts/dr_anmar_multimodal_assets.py
+python3 scripts/generate_dranmar_evidence_index.py --check
 ```
 
 Resolve a path exactly as the hub and workstation do:

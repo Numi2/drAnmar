@@ -33,6 +33,26 @@ Documentation GIFs are visual explanations only. They are not dataset inputs and
 NPZ/JSON trajectory pair. See [`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md) for the phase,
 qualification and capture contract.
 
+## Demonstration integrity
+
+New captures use `dr.anmar.demonstration.v3`. The manifest retains the exact
+robot body and joint ordering; coordinate, velocity, and effort units for every
+joint; a shared monotonic clock contract; camera intrinsics; world-frame camera
+extrinsics aligned to every vision sample; array shapes, dtypes, units,
+coordinate frames, and authority; and the NPZ SHA-256.
+
+Validate a retained capture before replay, training, or analysis:
+
+```bash
+python3 scripts/dr_anmar_telemetry.py /path/to/demonstration.json
+```
+
+The validator rejects hash drift, missing arrays, frame-count mismatches,
+non-monotonic control or vision clocks, invalid depth, non-unit world
+quaternions, inconsistent joint ordering/units, and invalid camera
+intrinsics. This establishes dataset integrity, not sensor calibration or
+ground-truth accuracy; those native and physical gates remain separate.
+
 ## Generative observations
 
 Generated frames are non-authoritative observations. They cannot supply robot
