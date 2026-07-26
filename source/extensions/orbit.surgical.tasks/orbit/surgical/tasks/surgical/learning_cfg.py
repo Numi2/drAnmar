@@ -63,7 +63,7 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     approach_height: float = 0.02
     grasp_height: float = 0.0
     grasp_offset: tuple[float, float, float] = BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M
-    lateral_alignment_threshold: float = 0.004
+    lateral_alignment_threshold: float = 0.005
     close_distance: float = 0.005
     slow_approach_radius: float = 0.02
     slow_approach_action_limit: float = 0.1

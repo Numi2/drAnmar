@@ -91,6 +91,9 @@ closure timing. A 5 mm close radius achieved 185 of 200 strict successes on
 each of two disjoint world shards; the fine sweep found a stable 4.6–5.0 mm
 plateau, while 5.4 mm fell to 45 of 200. The controller therefore uses the
 repeatable 5 mm boundary and requires a full-world evaluation before promotion.
+Two lateral-alignment sweeps then found a repeatable 4.75–5.5 mm plateau and
+selected its 5 mm center; both tighter 4.5 mm and wider 5.75 mm transitions
+collapsed below 40% on their assigned shards.
 Cartesian commands are capped at 0.1 during the final 20 mm approach and
 throughout bilateral-contact carry, limiting each 50 Hz command to 1 mm. Carry
 lifts vertically until the object is within 20 mm of target height before
