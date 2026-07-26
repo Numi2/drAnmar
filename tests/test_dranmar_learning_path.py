@@ -536,8 +536,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"environments_with_four_jaw_overlap_contact"' in benchmark_source
     assert '"successful_environment_indices"' in benchmark_source
     assert 'handover_sweep.add_argument("--video", action="store_true")' in benchmark_source
-    assert "env_cfg.scene.env_spacing = 100.0" in benchmark_source
-    assert 'env_cfg.viewer.origin_type = "env"' in benchmark_source
+    assert 'env_cfg.viewer.origin_type = "asset_root"' in benchmark_source
+    assert 'env_cfg.viewer.asset_name = "robot_1"' in benchmark_source
     assert "DR_ANMAR_HANDOVER_VIDEO_ENV_INDEX" in launcher_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source
