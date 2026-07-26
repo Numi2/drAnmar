@@ -1513,7 +1513,7 @@ def _handover_controller_sweep(
             (grid_side - 1) * float(env_cfg.scene.env_spacing),
             1.0,
         )
-        camera_eye = (0.0, -0.95 * grid_span, 0.70 * grid_span)
+        camera_eye = (0.0, -0.475 * grid_span, 0.35 * grid_span)
         camera_target = (0.0, 0.0, 0.05)
         env_cfg.viewer.resolution = (
             args.video_width,
