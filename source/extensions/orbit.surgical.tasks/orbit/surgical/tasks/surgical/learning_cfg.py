@@ -15,6 +15,7 @@ from isaaclab_rl.rsl_rl import RslRlMLPModelCfg, RslRlOnPolicyRunnerCfg, RslRlPp
 
 from orbit.surgical.tasks.surgical.lift.grasp_frames import (
     BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M,
+    NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
 )
 
 
@@ -57,7 +58,10 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     )
     end_effector_position_start: int = 16
     object_position_start: int = 23
+    object_orientation_start: int = 26
+    object_angular_velocity_start: int = 33
     target_position_start: int = 36
+    target_orientation_start: int = 39
     contact_force_start: int = 43
     position_scale: float = 0.01
     approach_height: float = 0.02
@@ -73,6 +77,9 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     carry_action_limit: float = 0.1
     carry_lateral_action_limit: float = 0.1
     carry_vertical_action_limit: float = 0.18
+    carry_orientation_action_limit: float = 0.0
+    carry_orientation_scale: float = 0.05
+    carry_orientation_velocity_damping_s: float = 0.0
     carry_target_height_offset: float = 0.0
     residual_scale: float = 0.03
 
@@ -129,6 +136,20 @@ def lift_residual_actor(
             init_std=initial_std
         ),
     )
+
+
+def needle_lift_residual_actor(
+    hidden_dims: list[int],
+    *,
+    initial_std: float = 0.01,
+) -> DrAnmarLiftResidualModelCfg:
+    """Needle lift actor anchored by the measured provisional controller."""
+
+    actor = lift_residual_actor(hidden_dims, initial_std=initial_std)
+    actor.grasp_offset = NEEDLE_PROVISIONAL_GRASP_OFFSET_M
+    actor.carry_orientation_action_limit = 0.035
+    actor.carry_orientation_velocity_damping_s = 0.001
+    return actor
 
 
 def _critic(hidden_dims: list[int]) -> RslRlMLPModelCfg:

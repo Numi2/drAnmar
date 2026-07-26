@@ -11,6 +11,8 @@ import torch
 from rsl_rl.models import MLPModel
 from torch import nn
 
+from isaaclab.utils.math import axis_angle_from_quat, quat_conjugate, quat_mul
+
 from .grasp_frames import BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M
 
 
@@ -22,7 +24,10 @@ class LiftResidualMLPModel(MLPModel):
         *args,
         end_effector_position_start: int = 16,
         object_position_start: int = 23,
+        object_orientation_start: int = 26,
+        object_angular_velocity_start: int = 33,
         target_position_start: int = 36,
+        target_orientation_start: int = 39,
         contact_force_start: int = 43,
         position_scale: float = 0.01,
         approach_height: float = 0.02,
@@ -40,6 +45,9 @@ class LiftResidualMLPModel(MLPModel):
         carry_action_limit: float = 0.1,
         carry_lateral_action_limit: float | None = None,
         carry_vertical_action_limit: float | None = 0.18,
+        carry_orientation_action_limit: float = 0.0,
+        carry_orientation_scale: float = 0.05,
+        carry_orientation_velocity_damping_s: float = 0.0,
         carry_target_height_offset: float = 0.0,
         residual_scale: float = 0.03,
         **kwargs,
@@ -47,7 +55,10 @@ class LiftResidualMLPModel(MLPModel):
         super().__init__(*args, **kwargs)
         self.end_effector_position_start = end_effector_position_start
         self.object_position_start = object_position_start
+        self.object_orientation_start = object_orientation_start
+        self.object_angular_velocity_start = object_angular_velocity_start
         self.target_position_start = target_position_start
+        self.target_orientation_start = target_orientation_start
         self.contact_force_start = contact_force_start
         self.position_scale = position_scale
         self.approach_height = approach_height
@@ -72,6 +83,13 @@ class LiftResidualMLPModel(MLPModel):
             carry_action_limit
             if carry_vertical_action_limit is None
             else carry_vertical_action_limit
+        )
+        self.carry_orientation_action_limit = (
+            carry_orientation_action_limit
+        )
+        self.carry_orientation_scale = carry_orientation_scale
+        self.carry_orientation_velocity_damping_s = (
+            carry_orientation_velocity_damping_s
         )
         self.carry_target_height_offset = carry_target_height_offset
         self.residual_scale = residual_scale
@@ -197,6 +215,42 @@ class LiftResidualMLPModel(MLPModel):
             approach_action,
         )
         orientation_action = torch.zeros_like(translation_action)
+        if self.carry_orientation_action_limit > 0.0:
+            object_orientation = raw[
+                :,
+                self.object_orientation_start : self.object_orientation_start
+                + 4,
+            ]
+            target_orientation = raw[
+                :,
+                self.target_orientation_start : self.target_orientation_start
+                + 4,
+            ]
+            object_angular_velocity = raw[
+                :,
+                self.object_angular_velocity_start : self.object_angular_velocity_start
+                + 3,
+            ]
+            object_to_target = quat_mul(
+                target_orientation,
+                quat_conjugate(object_orientation),
+            )
+            carry_orientation_action = (
+                (
+                    axis_angle_from_quat(object_to_target)
+                    - self.carry_orientation_velocity_damping_s
+                    * object_angular_velocity
+                )
+                / self.carry_orientation_scale
+            ).clamp(
+                -self.carry_orientation_action_limit,
+                self.carry_orientation_action_limit,
+            )
+            orientation_action = torch.where(
+                carry_mode.unsqueeze(-1),
+                carry_orientation_action,
+                orientation_action,
+            )
         body_action = torch.cat(
             (translation_action, orientation_action),
             dim=-1,
@@ -280,7 +334,12 @@ class _LiftResidualExport(nn.Module):
         )
         self.end_effector_position_start = model.end_effector_position_start
         self.object_position_start = model.object_position_start
+        self.object_orientation_start = model.object_orientation_start
+        self.object_angular_velocity_start = (
+            model.object_angular_velocity_start
+        )
         self.target_position_start = model.target_position_start
+        self.target_orientation_start = model.target_orientation_start
         self.contact_force_start = model.contact_force_start
         self.position_scale = model.position_scale
         self.approach_height = model.approach_height
@@ -303,6 +362,13 @@ class _LiftResidualExport(nn.Module):
         )
         self.carry_vertical_action_limit = (
             model.carry_vertical_action_limit
+        )
+        self.carry_orientation_action_limit = (
+            model.carry_orientation_action_limit
+        )
+        self.carry_orientation_scale = model.carry_orientation_scale
+        self.carry_orientation_velocity_damping_s = (
+            model.carry_orientation_velocity_damping_s
         )
         self.carry_target_height_offset = model.carry_target_height_offset
         self.residual_scale = model.residual_scale
@@ -394,6 +460,42 @@ class _LiftResidualExport(nn.Module):
             approach_action,
         )
         orientation_action = torch.zeros_like(translation_action)
+        if self.carry_orientation_action_limit > 0.0:
+            object_orientation = obs[
+                :,
+                self.object_orientation_start : self.object_orientation_start
+                + 4,
+            ]
+            target_orientation = obs[
+                :,
+                self.target_orientation_start : self.target_orientation_start
+                + 4,
+            ]
+            object_angular_velocity = obs[
+                :,
+                self.object_angular_velocity_start : self.object_angular_velocity_start
+                + 3,
+            ]
+            object_to_target = quat_mul(
+                target_orientation,
+                quat_conjugate(object_orientation),
+            )
+            carry_orientation_action = (
+                (
+                    axis_angle_from_quat(object_to_target)
+                    - self.carry_orientation_velocity_damping_s
+                    * object_angular_velocity
+                )
+                / self.carry_orientation_scale
+            ).clamp(
+                -self.carry_orientation_action_limit,
+                self.carry_orientation_action_limit,
+            )
+            orientation_action = torch.where(
+                carry_mode.unsqueeze(-1),
+                carry_orientation_action,
+                orientation_action,
+            )
         body_action = torch.cat(
             (translation_action, orientation_action),
             dim=-1,

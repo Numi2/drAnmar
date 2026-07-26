@@ -464,6 +464,19 @@ def _teacher_action(
 ):
     if "Lift-Block-PSM-IK-Rel" in task:
         return _lift_teacher_action(obs, position_scale=position_scale)
+    if "Lift-Needle-PSM-IK-Rel" in task:
+        from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+            NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+        )
+
+        return _lift_teacher_action(
+            obs,
+            position_scale=position_scale,
+            grasp_offset=NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+            carry_orientation_action_limit=0.035,
+            carry_orientation_scale=orientation_scale,
+            carry_orientation_velocity_damping_s=0.001,
+        )
     return _reach_teacher_action(
         obs,
         task,
@@ -473,7 +486,7 @@ def _teacher_action(
 
 
 def _pretraining_algorithm(task: str) -> str:
-    if "Lift-Block-PSM-IK-Rel" in task:
+    if "Lift-" in task:
         return "analytic_grasp_lift_base_plus_learned_residual"
     return "analytic_relative_ik_base_plus_learned_residual"
 
@@ -486,6 +499,10 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     from orbit.surgical.tasks.surgical.lift.grasp_frames import (
         BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M,
         BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_SOURCE,
+        NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE,
+        NEEDLE_PROVISIONAL_ARC_FRACTION,
+        NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+        NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
     )
     from rsl_rl.runners import OnPolicyRunner
 
@@ -677,7 +694,38 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                 "orientation_rad": args.orientation_scale,
             },
             "teacher_controller": (
-                {
+                (
+                    {
+                        "approach_height_m": 0.02,
+                        "grasp_height_m": 0.0,
+                        "grasp_offset_m": list(
+                            NEEDLE_PROVISIONAL_GRASP_OFFSET_M
+                        ),
+                        "grasp_offset_source": (
+                            f"{NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE};"
+                            f"provisional_arc_fraction="
+                            f"{NEEDLE_PROVISIONAL_ARC_FRACTION};"
+                            f"provisional_z_offset_m="
+                            f"{NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M}"
+                        ),
+                        "lateral_alignment_threshold_m": 0.005,
+                        "close_distance_to_grasp_m": 0.005,
+                        "slow_approach_radius_m": 0.02,
+                        "slow_approach_action_limit": 0.1,
+                        "normalized_contact_threshold": 0.002,
+                        "lateral_clearance_below_target_m": 0.04,
+                        "carry_latch_below_target_m": 0.062,
+                        "carry_action_limit": 0.1,
+                        "carry_lateral_action_limit": 0.1,
+                        "carry_vertical_action_limit": 0.18,
+                        "carry_orientation_action_limit": 0.035,
+                        "carry_orientation_scale_rad": args.orientation_scale,
+                        "carry_orientation_velocity_damping_s": 0.001,
+                        "carry_target_height_offset_m": 0.0,
+                        "qualification_status": "provisional_not_stage_qualified",
+                    }
+                    if "Lift-Needle-PSM-IK-Rel" in args.task
+                    else {
                     "approach_height_m": 0.02,
                     "grasp_height_m": 0.0,
                     "grasp_offset_m": list(BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M),
@@ -693,8 +741,9 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     "carry_lateral_action_limit": 0.1,
                     "carry_vertical_action_limit": 0.18,
                     "carry_target_height_offset_m": 0.0,
-                }
-                if "Lift-Block-PSM-IK-Rel" in args.task
+                    }
+                )
+                if "Lift-" in args.task
                 else None
             ),
             "loss": {

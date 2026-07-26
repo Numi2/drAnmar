@@ -332,6 +332,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     agent_source = (
         TASK_ROOT / "surgical/lift/config/block/agents/rsl_rl_cfg.py"
     ).read_text()
+    needle_agent_source = (
+        TASK_ROOT / "surgical/lift/config/needle/agents/rsl_rl_cfg.py"
+    ).read_text()
     launcher_source = (ROOT / "dr_anmar_learning.sh").read_text()
     benchmark_source = (ROOT / "scripts/dr_anmar_learning_benchmark.py").read_text()
 
@@ -384,7 +387,13 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "object_angular_velocity / self.carry_angular_velocity_scale" not in model_source
     assert "target_position[:, 2] - self.lateral_clearance_below_target" in model_source
     assert "carry_mode = bilateral_contact | lifted_carry" in model_source
+    assert "axis_angle_from_quat(object_to_target)" in model_source
+    assert "self.carry_orientation_velocity_damping_s" in model_source
     assert "lift_residual_actor([256, 128, 64], initial_std=0.01)" in agent_source
+    assert (
+        "needle_lift_residual_actor([256, 128, 64], initial_std=0.01)"
+        in needle_agent_source
+    )
     assert "probe)" in launcher_source
     assert "controller-sweep)" in launcher_source
     assert "record)" in launcher_source
@@ -430,6 +439,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         needle_source,
         model_source,
         agent_source,
+        needle_agent_source,
     ):
         ast.parse(source)
 
