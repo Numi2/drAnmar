@@ -655,7 +655,7 @@ def _handover_teacher_action(
         giver_translation,
     )
     receiver_translation = torch.where(
-        (phase == 0).unsqueeze(-1),
+        (phase <= 1).unsqueeze(-1),
         receiver_stage,
         receiver_approach,
     )
