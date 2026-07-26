@@ -94,16 +94,20 @@ repeatable 5 mm boundary and requires a full-world evaluation before promotion.
 Two lateral-alignment sweeps then found a repeatable 4.75–5.5 mm plateau and
 selected its 5 mm center; both tighter 4.5 mm and wider 5.75 mm transitions
 collapsed below 40% on their assigned shards.
-Cartesian commands are capped at 0.1 during the final 20 mm approach and
-throughout bilateral-contact carry, limiting each 50 Hz command to 1 mm. Carry
-uses independently bounded lateral and vertical translation so lateral
-transport can be slowed without weakening height recovery. It lifts vertically
-until the object is within 20 mm of target height before allowing lateral goal
-tracking. This prevents lateral carry from stripping a low-clearance grasp.
-Once physics-owned object height rises above 18 mm, carry and gripper closure
-remain latched until the object drops below that threshold, preventing
-contact-sensor flicker from restarting the approach phase. Stage 4 requires its
-own contact-calibrated needle grasp frame before promotion.
+Cartesian commands are capped at 0.1 during the final 20 mm approach. During
+bilateral-contact carry, lateral translation remains capped at 0.1 while
+vertical recovery is capped at 0.18, corresponding to at most 1.0 mm lateral
+and 1.8 mm vertical per 50 Hz command. A full-population 1,200-environment
+first-outcome sweep measured 997 strict successes at the 0.18 vertical limit,
+up from 870 at 0.1, with no hard termination. The maximum observed object
+contact force was 2.70 N: above the versioned 1 N soft penalty but below the
+unchanged 5 N hard termination, so held-out force evidence is still required.
+The controller lifts vertically until the object is within 20 mm of target
+height before allowing lateral goal tracking. Once physics-owned object height
+rises above 18 mm, carry and gripper closure remain latched until the object
+drops below that threshold, preventing contact-sensor flicker from restarting
+the approach phase. Stage 4 requires its own contact-calibrated needle grasp
+frame before promotion.
 
 Stage 3 residual PPO cannot modify the proven approach, gripper, or orientation
 commands. It receives only a bounded `(x, y, z)` correction after physics-owned

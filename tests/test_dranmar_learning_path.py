@@ -70,7 +70,13 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         manifest["defaults"]["stage_3_initialization"][
             "carry_vertical_action_limit"
         ]
-        == 0.1
+        == 0.18
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
+            "carry_vertical_action_limit_source"
+        ]
+        == "isaac_lab_parallel_1200_env_full_population_first_outcome_sweep_997_of_1200_successes"
     )
     assert (
         manifest["defaults"]["stage_3_initialization"][

@@ -305,7 +305,7 @@ def _lift_teacher_action(
     carry_latch_below_target: float = 0.062,
     carry_action_limit: float = 0.1,
     carry_lateral_action_limit: float | None = None,
-    carry_vertical_action_limit: float | None = None,
+    carry_vertical_action_limit: float | None = 0.18,
     grasp_offset: tuple[float, float, float] | None = None,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
@@ -656,7 +656,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     "carry_latch_below_target_m": 0.062,
                     "carry_action_limit": 0.1,
                     "carry_lateral_action_limit": 0.1,
-                    "carry_vertical_action_limit": 0.1,
+                    "carry_vertical_action_limit": 0.18,
                 }
                 if "Lift-Block-PSM-IK-Rel" in args.task
                 else None
