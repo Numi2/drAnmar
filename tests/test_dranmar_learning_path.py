@@ -47,13 +47,13 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     assert manifest["defaults"]["stage_3_initialization"]["approach_height_m"] == 0.02
     assert manifest["defaults"]["stage_3_initialization"]["grasp_height_m"] == 0.0
     assert manifest["defaults"]["stage_3_initialization"]["grasp_offset_m"] == [
-        0.0055,
         0.0,
-        -0.0060057354,
+        0.0,
+        -0.002,
     ]
     assert (
         manifest["defaults"]["stage_3_initialization"]["grasp_offset_source"]
-        == "closed_composed_mesh_volume_centroid"
+        == "isaac_lab_1200_env_contact_sweep"
     )
     assert (
         manifest["defaults"]["stage_3_initialization"]["slow_approach_action_limit"]

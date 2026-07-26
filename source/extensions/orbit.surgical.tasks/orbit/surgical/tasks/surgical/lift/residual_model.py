@@ -11,7 +11,7 @@ import torch
 from rsl_rl.models import MLPModel
 from torch import nn
 
-from .grasp_frames import BLOCK_PHYSICAL_GRASP_OFFSET_M
+from .grasp_frames import BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M
 
 
 class LiftResidualMLPModel(MLPModel):
@@ -27,7 +27,9 @@ class LiftResidualMLPModel(MLPModel):
         position_scale: float = 0.01,
         approach_height: float = 0.02,
         grasp_height: float = 0.0,
-        grasp_offset: tuple[float, float, float] = BLOCK_PHYSICAL_GRASP_OFFSET_M,
+        grasp_offset: tuple[
+            float, float, float
+        ] = BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M,
         lateral_alignment_threshold: float = 0.004,
         close_distance: float = 0.003,
         slow_approach_radius: float = 0.02,

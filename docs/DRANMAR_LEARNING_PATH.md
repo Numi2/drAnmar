@@ -77,19 +77,19 @@ envelopes, not clinically calibrated tissue limits.
 
 Stage 3 preserves orientation qualification; the corrected identity
 quaternion makes that contract physically possible at reset. Its analytic base
-approaches from 20 mm above the block's physical grasp frame and closes only
-within 3 mm of that waypoint. The frame is the closed composed mesh's
-volume centroid: `(0.0055, 0.0, -0.0060057354)` metres from the authored
-root. Targeting the authored root would place the jaws near an upper side edge
-and create an avoidable closure moment. Cartesian commands are capped at 0.1
-during the final 20 mm approach and throughout bilateral-contact carry,
-limiting each 50 Hz command to 1 mm. Carry lifts vertically until the object is
-within 20 mm of target height before allowing lateral goal tracking. This
-prevents lateral carry from stripping a low-clearance grasp. Once
-physics-owned object height rises above 18 mm, carry and gripper closure remain
-latched until the object drops below that threshold, preventing contact-sensor
-flicker from restarting the approach phase. Stage 4 requires its own
-asset-derived needle grasp frame before promotion.
+approaches from 20 mm above the block's contact-calibrated grasp frame and
+closes only within 3 mm of that waypoint. A bounded 1,200-environment Isaac Lab
+sweep selected `(0.0, 0.0, -0.002)` metres from the authored root. The
+closed-mesh volume centroid was rejected because the PSM tool-tip frame is not
+the jaw collision center; commanding that centroid eliminated completed lifts.
+Cartesian commands are capped at 0.1 during the final 20 mm approach and
+throughout bilateral-contact carry, limiting each 50 Hz command to 1 mm. Carry
+lifts vertically until the object is within 20 mm of target height before
+allowing lateral goal tracking. This prevents lateral carry from stripping a
+low-clearance grasp. Once physics-owned object height rises above 18 mm, carry
+and gripper closure remain latched until the object drops below that threshold,
+preventing contact-sensor flicker from restarting the approach phase. Stage 4
+requires its own contact-calibrated needle grasp frame before promotion.
 
 Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift
 objects therefore use the explicit identity `(0, 0, 0, 1)`. This prevents the

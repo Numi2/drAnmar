@@ -311,10 +311,10 @@ def _lift_teacher_action(
 
     if grasp_offset is None:
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
-            BLOCK_PHYSICAL_GRASP_OFFSET_M,
+            BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M,
         )
 
-        grasp_offset = BLOCK_PHYSICAL_GRASP_OFFSET_M
+        grasp_offset = BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M
 
     policy_obs = obs["policy"]
     ee_position = policy_obs[:, 16:19]
@@ -424,8 +424,8 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     import torch
     import torch.nn.functional as functional
     from orbit.surgical.tasks.surgical.lift.grasp_frames import (
-        BLOCK_PHYSICAL_GRASP_OFFSET_M,
-        BLOCK_PHYSICAL_GRASP_OFFSET_SOURCE,
+        BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M,
+        BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_SOURCE,
     )
     from rsl_rl.runners import OnPolicyRunner
 
@@ -620,8 +620,8 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                 {
                     "approach_height_m": 0.02,
                     "grasp_height_m": 0.0,
-                    "grasp_offset_m": list(BLOCK_PHYSICAL_GRASP_OFFSET_M),
-                    "grasp_offset_source": BLOCK_PHYSICAL_GRASP_OFFSET_SOURCE,
+                    "grasp_offset_m": list(BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M),
+                    "grasp_offset_source": BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_SOURCE,
                     "lateral_alignment_threshold_m": 0.004,
                     "close_distance_to_grasp_m": 0.003,
                     "slow_approach_radius_m": 0.02,
