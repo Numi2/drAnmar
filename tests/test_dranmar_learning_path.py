@@ -464,6 +464,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"receiver_grasp_z_offset"' in benchmark_source
     assert '"receiver_roll_offset_rad"' in benchmark_source
     assert "receiver_target_orientation = quat_mul(" in benchmark_source
+    assert "receiver_roll_offsets = [math.pi] * len(values)" in benchmark_source
     assert "giver_bilateral_contact = torch.all(" in benchmark_source
     assert "giver_carry_mode.unsqueeze(-1)" in benchmark_source
     assert "((phase == 2) & ~giver_lifted)" in benchmark_source

@@ -1426,6 +1426,7 @@ def _handover_controller_sweep(
             (geometry_offset[0], geometry_offset[1], value)
             for value in values
         ]
+        receiver_roll_offsets = [math.pi] * len(values)
     elif parameter == "receiver_roll_offset_rad":
         if any(not -math.pi <= value <= math.pi for value in values):
             return _fail("receiver roll offsets must be within +/- pi rad")
