@@ -28,7 +28,6 @@ def handover_state(
     env: ManagerBasedRLEnv,
     contact_threshold: float = 0.01,
     minimum_height: float = 0.06,
-    presentation_distance: float = 0.05,
     required_receiver_only_steps: int = 10,
     command_name: str = "receiver_pose",
 ) -> dict[str, Any]:
@@ -82,7 +81,7 @@ def handover_state(
 
     phase = state["phase"]
     phase[(phase == 0) & giver_contact] = 1
-    phase[(phase == 1) & giver_contact & lifted & (receiver_distance < presentation_distance)] = 2
+    phase[(phase == 1) & giver_contact & lifted] = 2
     phase[(phase == 2) & giver_contact & receiver_contact] = 3
     receiver_only = (
         (phase == 3)

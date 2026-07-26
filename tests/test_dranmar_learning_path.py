@@ -342,6 +342,8 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
     assert "receiver_only_consecutive" in state_source
     assert "required_receiver_only_steps: int = 10" in state_source
     assert "object_pos_w[:, 2] > minimum_height" in state_source
+    assert "(phase == 1) & giver_contact & lifted" in state_source
+    assert "receiver_distance < presentation_distance" not in state_source
     assert 'command_name: str = "receiver_pose"' in state_source
     assert "receiver_pose = mdp.UniformPoseCommandCfg(" in cfg_source
     assert 'asset_name="robot_2"' in cfg_source
@@ -457,7 +459,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "def _handover_teacher_action(" in benchmark_source
     assert "giver_bilateral_contact = torch.all(" in benchmark_source
     assert "giver_carry_mode.unsqueeze(-1)" in benchmark_source
-    assert "(phase <= 1).unsqueeze(-1)" in benchmark_source
+    assert "((phase == 2) & ~giver_lifted)" in benchmark_source
     assert 'play.add_argument("--video", action="store_true")' in benchmark_source
     assert 'play.add_argument("--video_chunk_length", type=int)' in benchmark_source
     assert 'enable_cameras=bool(getattr(args, "video", False))' in benchmark_source
