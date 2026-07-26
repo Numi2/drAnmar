@@ -15,7 +15,7 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|smoke|benchmark|sweep|pretrain|train|play|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|smoke|benchmark|sweep|pretrain|train|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
     echo "  benchmark [task] [num_envs] [iterations] [output]"
@@ -23,6 +23,7 @@ usage() {
     echo "  pretrain  [task] [num_envs] [updates] [validation_frames] [output]"
     echo "  train     [task] [num_envs] [iterations] [output]"
     echo "  play      CHECKPOINT [task] [num_envs] [frames] [output]"
+    echo "  record    CHECKPOINT [task] [frames] [output]"
     echo "  tqta-start  [task] [tracker]"
     echo "  tqta-ingest TRACKER EVIDENCE_JSON..."
     echo "  tqta-report [tracker]"
@@ -171,6 +172,29 @@ case "${command}" in
             --num_envs "${num_envs}" \
             --num_frames "${frames}" \
             --seed "${DR_ANMAR_SEED}" \
+            --benchmark_formatter schema,json \
+            --output_path "${output}"
+        ;;
+    record)
+        require_runtime
+        checkpoint="${2:-}"
+        if [[ -z "${checkpoint}" ]]; then
+            usage
+            exit 2
+        fi
+        task="${3:-${DR_ANMAR_TASK}}"
+        frames="${4:-500}"
+        output="${5:-${DR_ANMAR_LEARNING_OUTPUT}/record}"
+        mkdir -p "${output}/videos"
+        "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
+            --task "${task}" \
+            --checkpoint "${checkpoint}" \
+            --num_envs 1 \
+            --num_frames "${frames}" \
+            --seed "${DR_ANMAR_SEED}" \
+            --video \
+            --video_length "${frames}" \
+            --video_folder "${output}/videos" \
             --benchmark_formatter schema,json \
             --output_path "${output}"
         ;;

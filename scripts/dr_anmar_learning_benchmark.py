@@ -1205,7 +1205,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(f"checkpoint not found: {checkpoint}")
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
-    env = gym.make(args.task, cfg=env_cfg)
+    env_kwargs: dict[str, Any] = {"cfg": env_cfg}
+    if args.video:
+        env_kwargs["render_mode"] = "rgb_array"
+    env = gym.make(args.task, **env_kwargs)
+    if args.video:
+        video_folder = Path(
+            args.video_folder or Path(args.output_path).resolve() / "videos"
+        ).resolve()
+        video_folder.mkdir(parents=True, exist_ok=True)
+        env = gym.wrappers.RecordVideo(
+            env,
+            video_folder=str(video_folder),
+            step_trigger=lambda step: step == 0,
+            video_length=args.video_length or args.num_frames,
+            name_prefix=f"{args.task}-seed{args.seed}",
+            disable_logger=True,
+        )
     env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     runner.load(str(checkpoint))
@@ -1919,6 +1935,9 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--num_frames", type=int, required=True)
     play.add_argument("--seed", type=int, default=2361)
     play.add_argument("--output_path", required=True)
+    play.add_argument("--video", action="store_true")
+    play.add_argument("--video_length", type=int)
+    play.add_argument("--video_folder")
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 
@@ -1988,7 +2007,7 @@ def main(argv: list[str]) -> int:
 
     app = AppLauncher(
         headless=True,
-        enable_cameras=False,
+        enable_cameras=bool(getattr(args, "video", False)),
         multi_gpu=False,
         anti_aliasing=0,
         denoiser=False,

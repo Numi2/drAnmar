@@ -331,7 +331,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "lift_residual_actor([256, 128, 64], initial_std=0.01)" in agent_source
     assert "probe)" in launcher_source
     assert "controller-sweep)" in launcher_source
+    assert "record)" in launcher_source
     assert "def _controller_sweep(" in benchmark_source
+    assert 'play.add_argument("--video", action="store_true")' in benchmark_source
+    assert 'enable_cameras=bool(getattr(args, "video", False))' in benchmark_source
     assert "first_terminal_outcome_per_environment" in benchmark_source
     assert '"all_episode_totals"' in benchmark_source
     assert '"first_episode_lift_diagnostics"' in benchmark_source
