@@ -15,7 +15,8 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|smoke|benchmark|sweep|pretrain|train|play|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|smoke|benchmark|sweep|pretrain|train|play|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  benchmark [task] [num_envs] [iterations] [output]"
     echo "  sweep     [task] [iterations] [comma-separated env counts] [output]"
     echo "  pretrain  [task] [num_envs] [updates] [validation_frames] [output]"
@@ -62,6 +63,22 @@ case "${command}" in
     list)
         require_runtime
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" list
+        ;;
+    probe)
+        require_runtime
+        task="${2:-${DR_ANMAR_TASK}}"
+        num_envs="${3:-${DR_ANMAR_NUM_ENVS}}"
+        frames="${4:-10}"
+        output="${5:-${DR_ANMAR_LEARNING_OUTPUT}/probe}"
+        mkdir -p "${output}"
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" probe \
+            --task "${task}" \
+            --num_envs "${num_envs}" \
+            --num_frames "${frames}" \
+            --seed "${DR_ANMAR_SEED}" \
+            --benchmark_formatter schema,json \
+            --output_path "${output}"
         ;;
     smoke)
         require_runtime

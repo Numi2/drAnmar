@@ -29,6 +29,15 @@ from . import mdp
 # Scene definition
 ##
 
+LIFT_INITIAL_OBJECT_HEIGHT_M = 0.025
+LIFT_MINIMUM_SUCCESS_HEIGHT_M = 0.06
+LIFT_TARGET_OBJECT_HEIGHT_M = 0.08
+LIFT_SUCCESS_DWELL_STEPS = 10
+LIFT_CONTACT_THRESHOLD_N = 0.01
+LIFT_OBJECT_FORCE_SOFT_LIMIT_N = 1.0
+LIFT_OBJECT_FORCE_HARD_LIMIT_N = 5.0
+LIFT_PROTECTED_SURFACE_FORCE_HARD_LIMIT_N = 2.0
+
 
 @configclass
 class ObjectTableSceneCfg(InteractiveSceneCfg):
@@ -95,7 +104,7 @@ class CommandsCfg:
         ranges=mdp.UniformPoseCommandCfg.Ranges(
             pos_x=(-0.05, 0.05),
             pos_y=(-0.05, 0.05),
-            pos_z=(-0.12, -0.12),
+            pos_z=(-0.07, -0.07),
             roll=(0.0, 0.0),
             pitch=(0.0, 0.0),
             yaw=(0.0, 0.0),
@@ -165,17 +174,29 @@ class RewardsCfg:
 
     bilateral_grasp = RewTerm(func=mdp.bilateral_grasp, params={"threshold": 0.01}, weight=4.0)
 
-    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.025}, weight=6.0)
+    lifting_object = RewTerm(
+        func=mdp.object_is_lifted,
+        params={"minimal_height": LIFT_MINIMUM_SUCCESS_HEIGHT_M},
+        weight=6.0,
+    )
 
     object_goal_tracking = RewTerm(
         func=mdp.object_goal_distance,
-        params={"std": 0.08, "minimal_height": 0.025, "command_name": "object_pose"},
+        params={
+            "std": 0.08,
+            "minimal_height": LIFT_MINIMUM_SUCCESS_HEIGHT_M,
+            "command_name": "object_pose",
+        },
         weight=8.0,
     )
 
     object_goal_tracking_fine_grained = RewTerm(
         func=mdp.object_goal_distance,
-        params={"std": 0.015, "minimal_height": 0.025, "command_name": "object_pose"},
+        params={
+            "std": 0.015,
+            "minimal_height": LIFT_MINIMUM_SUCCESS_HEIGHT_M,
+            "command_name": "object_pose",
+        },
         weight=6.0,
     )
 
@@ -192,36 +213,42 @@ class RewardsCfg:
     )
 
     success = RewTerm(
-        func=mdp.successful_lift,
+        func=mdp.sustained_lift_success,
         params={
+            "required_consecutive_steps": LIFT_SUCCESS_DWELL_STEPS,
             "command_name": "object_pose",
+            "minimum_height": LIFT_MINIMUM_SUCCESS_HEIGHT_M,
             "position_threshold": 0.015,
             "orientation_threshold": 0.35,
-            "contact_threshold": 0.01,
+            "contact_threshold": LIFT_CONTACT_THRESHOLD_N,
             "maximum_linear_speed": 0.08,
             "maximum_angular_speed": 1.5,
         },
         weight=30.0,
     )
     success_rate = RewTerm(
-        func=mdp.sticky_success_rate,
+        func=mdp.sustained_lift_success,
         params={
-            "success_fn": mdp.successful_lift,
-            "success_params": {
-                "command_name": "object_pose",
-                "position_threshold": 0.015,
-                "orientation_threshold": 0.35,
-                "contact_threshold": 0.01,
-                "maximum_linear_speed": 0.08,
-                "maximum_angular_speed": 1.5,
-            },
+            "required_consecutive_steps": LIFT_SUCCESS_DWELL_STEPS,
+            "publish_metric": True,
+            "return_zero": True,
+            "command_name": "object_pose",
+            "minimum_height": LIFT_MINIMUM_SUCCESS_HEIGHT_M,
+            "position_threshold": 0.015,
+            "orientation_threshold": 0.35,
+            "contact_threshold": LIFT_CONTACT_THRESHOLD_N,
+            "maximum_linear_speed": 0.08,
+            "maximum_angular_speed": 1.5,
         },
         weight=0.0,
     )
 
     object_force_excess = RewTerm(
         func=mdp.contact_force_excess,
-        params={"sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"), "soft_limit": 1.0},
+        params={
+            "sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"),
+            "soft_limit": LIFT_OBJECT_FORCE_SOFT_LIMIT_N,
+        },
         weight=-0.5,
     )
 
@@ -261,12 +288,14 @@ class TerminationsCfg:
     )
 
     success = DoneTerm(
-        func=mdp.successful_lift,
+        func=mdp.sustained_lift_success,
         params={
+            "required_consecutive_steps": LIFT_SUCCESS_DWELL_STEPS,
             "command_name": "object_pose",
+            "minimum_height": LIFT_MINIMUM_SUCCESS_HEIGHT_M,
             "position_threshold": 0.015,
             "orientation_threshold": 0.35,
-            "contact_threshold": 0.01,
+            "contact_threshold": LIFT_CONTACT_THRESHOLD_N,
             "maximum_linear_speed": 0.08,
             "maximum_angular_speed": 1.5,
         },
@@ -274,12 +303,18 @@ class TerminationsCfg:
 
     excessive_object_force = DoneTerm(
         func=mdp.excessive_contact_force,
-        params={"sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"), "hard_limit": 5.0},
+        params={
+            "sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"),
+            "hard_limit": LIFT_OBJECT_FORCE_HARD_LIMIT_N,
+        },
     )
 
     protected_surface_force = DoneTerm(
         func=mdp.excessive_non_object_contact_force,
-        params={"sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"), "hard_limit": 2.0},
+        params={
+            "sensor_names": ("jaw_1_object_contact", "jaw_2_object_contact"),
+            "hard_limit": LIFT_PROTECTED_SURFACE_FORCE_HARD_LIMIT_N,
+        },
     )
 
 

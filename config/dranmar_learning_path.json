@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.6.0",
+  "schema_version": "1.7.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -54,6 +54,11 @@
       "dual_loop_gain": 0.25,
       "contact_mode": "disabled_free_space_control_qualification",
       "ppo_role": "learn_bounded_coordination_residual_only_if_held_out_gate_fails"
+    },
+    "stage_3_initialization": {
+      "method": "analytic_grasp_lift_base_plus_learned_residual",
+      "default_updates": 32,
+      "ppo_role": "learn_bounded_contact_residual_only_if_held_out_gate_fails"
     }
   },
   "stages": [
@@ -79,6 +84,18 @@
       "stage": 3,
       "name": "contact_qualified_block_lift",
       "task": "DrAnmar-Lift-Block-PSM-IK-Rel-v0",
+      "qualification_contract": {
+        "control_hz": 50,
+        "initial_object_height_m": 0.025,
+        "target_object_height_m": 0.08,
+        "minimum_success_height_m": 0.06,
+        "sustained_success_steps": 10,
+        "bilateral_contact_threshold_n": 0.01,
+        "object_force_soft_limit_n": 1.0,
+        "object_force_hard_limit_n": 5.0,
+        "protected_surface_force_hard_limit_n": 2.0,
+        "requires_physics_owned_object_motion": true
+      },
       "promotion": {
         "minimum_success_rate": 0.85,
         "held_out_seed_passes": 3

@@ -10,6 +10,7 @@ import torch
 from isaaclab.managers import SceneEntityCfg
 
 from orbit.surgical.tasks.surgical import mdp_common
+from .rewards import successful_lift  # noqa: F401
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -25,32 +26,6 @@ def object_reached_goal(
     """Legacy position-only goal predicate retained for downstream configs."""
     pos_error, _ = mdp_common.object_goal_errors(env, command_name, robot_cfg, object_cfg)
     return pos_error < threshold
-
-
-def successful_lift(
-    env: ManagerBasedRLEnv,
-    command_name: str = "object_pose",
-    position_threshold: float = 0.015,
-    orientation_threshold: float = 0.35,
-    contact_threshold: float = 0.01,
-    maximum_linear_speed: float = 0.08,
-    maximum_angular_speed: float = 1.5,
-    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-    sensor_1_name: str = "jaw_1_object_contact",
-    sensor_2_name: str = "jaw_2_object_contact",
-) -> torch.Tensor:
-    """Terminate only after a grasped, aligned, stable placement at the goal."""
-    pos_error, rot_error = mdp_common.object_goal_errors(env, command_name, robot_cfg, object_cfg)
-    motion = mdp_common.object_motion(env, object_cfg)
-    grasped = mdp_common.bilateral_contact(env, sensor_1_name, sensor_2_name, contact_threshold)
-    return (
-        grasped
-        & (pos_error < position_threshold)
-        & (rot_error < orientation_threshold)
-        & (motion[:, 0] < maximum_linear_speed)
-        & (motion[:, 1] < maximum_angular_speed)
-    )
 
 
 def excessive_contact_force(

@@ -12,7 +12,10 @@ from isaaclab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
 from isaaclab.utils.configclass import configclass
 
 from orbit.surgical.tasks.surgical.lift import mdp
-from orbit.surgical.tasks.surgical.lift.lift_env_cfg import LiftEnvCfg
+from orbit.surgical.tasks.surgical.lift.lift_env_cfg import (
+    LIFT_INITIAL_OBJECT_HEIGHT_M,
+    LiftEnvCfg,
+)
 
 ##
 # Pre-defined configs
@@ -61,7 +64,10 @@ class BlockLiftEnvCfg(LiftEnvCfg):
         # Set Peg Block as object
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.025), rot=(1, 0, 0, 0)),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(0.0, 0.0, LIFT_INITIAL_OBJECT_HEIGHT_M),
+                rot=(1, 0, 0, 0),
+            ),
             spawn=UsdFileCfg(
                 usd_path=f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/Surgical_block/block.usd",
                 scale=(0.011, 0.011, 0.011),

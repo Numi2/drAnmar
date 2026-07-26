@@ -722,6 +722,122 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         env.close()
 
 
+def _lift_procedure_snapshot(env) -> dict[str, Any]:
+    """Summarize simulator-owned lift geometry, motion, and contact state."""
+    import torch
+
+    from orbit.surgical.tasks.surgical import mdp_common
+
+    unwrapped = env.unwrapped
+    object_pos = mdp_common.as_torch(unwrapped.scene["object"].data.root_pos_w)
+    ee_pos = mdp_common.as_torch(
+        unwrapped.scene["ee_frame"].data.target_pos_w
+    )[:, 0, :]
+    distance = torch.linalg.vector_norm(object_pos - ee_pos, dim=-1)
+    forces = mdp_common.paired_contact_forces(
+        unwrapped,
+        "jaw_1_object_contact",
+        "jaw_2_object_contact",
+    )
+    non_object_forces = torch.stack(
+        (
+            mdp_common.non_object_contact_force_magnitude(
+                unwrapped, "jaw_1_object_contact"
+            ),
+            mdp_common.non_object_contact_force_magnitude(
+                unwrapped, "jaw_2_object_contact"
+            ),
+        ),
+        dim=-1,
+    )
+    motion = mdp_common.object_motion(unwrapped)
+
+    def stats(value) -> dict[str, float]:
+        return {
+            "minimum": float(value.min().item()),
+            "mean": float(value.float().mean().item()),
+            "maximum": float(value.max().item()),
+        }
+
+    return {
+        "object_height_m": stats(object_pos[:, 2]),
+        "end_effector_object_distance_m": stats(distance),
+        "jaw_object_force_n": stats(forces),
+        "jaw_non_object_force_n": stats(non_object_forces),
+        "object_linear_speed_m_s": stats(motion[:, 0]),
+        "object_angular_speed_rad_s": stats(motion[:, 1]),
+        "bilateral_contact_fraction": float(
+            torch.all(forces > 0.01, dim=-1).float().mean().item()
+        ),
+    }
+
+
+def _probe(args: argparse.Namespace, repo_root: Path) -> int:
+    """Exercise a task without training and record its native runtime contract."""
+    import gymnasium as gym
+    import torch
+
+    env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
+    env = gym.make(args.task, cfg=env_cfg)
+    obs, _ = env.reset()
+    initial_procedure_state = (
+        _lift_procedure_snapshot(env) if "Lift-" in args.task else None
+    )
+    manager = env.unwrapped.termination_manager
+    term_counts = {name: 0 for name in manager.active_terms}
+    action_dim = env.unwrapped.action_manager.action_dim
+    action = torch.zeros(
+        env.unwrapped.num_envs,
+        action_dim,
+        device=env.unwrapped.device,
+    )
+    done_count = 0
+    started = time.perf_counter()
+    try:
+        for _ in range(args.num_frames):
+            obs, _, dones, _ = env.step(action)
+            done_count += int(dones.sum().item())
+            for name in manager.active_terms:
+                term_counts[name] += int(manager.get_term(name).sum().item())
+        duration = time.perf_counter() - started
+        final_procedure_state = (
+            _lift_procedure_snapshot(env) if "Lift-" in args.task else None
+        )
+        evidence = {
+            "schema_version": "dranmar-learning-evidence-1.0",
+            "kind": "task_probe",
+            "task": args.task,
+            "seed": args.seed,
+            "requested_num_envs": args.requested_num_envs,
+            "num_envs": env.unwrapped.num_envs,
+            "trusted_requested_num_envs": args.trusted_requested_num_envs,
+            "free_gpu_memory_before_launch_mib": args.free_gpu_memory_before_launch_mib,
+            "system_memory_total_mib": args.system_memory_total_mib,
+            "system_memory_available_before_launch_mib": (
+                args.system_memory_available_before_launch_mib
+            ),
+            "frames_per_env": args.num_frames,
+            "policy_observation_shape": list(obs["policy"].shape),
+            "action_shape": [env.unwrapped.num_envs, action_dim],
+            "completed_episodes": done_count,
+            "termination_term_counts": term_counts,
+            "initial_procedure_state": initial_procedure_state,
+            "final_procedure_state": final_procedure_state,
+            "wall_time_s": duration,
+            "total_fps": (
+                env.unwrapped.num_envs * args.num_frames / duration
+                if duration > 0
+                else None
+            ),
+            "process_peak_memory_mib": _peak_process_memory_mib(),
+            "runtime": _runtime_evidence(repo_root),
+        }
+        _write_evidence(Path(args.output_path), "dranmar_probe", evidence)
+        return 0
+    finally:
+        env.close()
+
+
 def _play(args: argparse.Namespace, repo_root: Path) -> int:
     import gymnasium as gym
     import torch
@@ -748,6 +864,33 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     rewards: list[float] = []
     done_count = 0
     success_count = 0
+    termination_manager = env.unwrapped.termination_manager
+    termination_names = list(termination_manager.active_terms)
+    termination_counts = {name: 0 for name in termination_names}
+    failure_names = [
+        name for name in termination_names if name not in {"success", "time_out"}
+    ]
+    if "time_out" in termination_names:
+        failure_names.append("time_out")
+    failure_distribution = {name: 0 for name in failure_names}
+    lift_diagnostics = None
+    lift_mdp_common = None
+    if "Lift-" in args.task:
+        from orbit.surgical.tasks.surgical import mdp_common as lift_mdp_common
+
+        lift_diagnostics = {
+            "samples": torch.zeros(1, device=env.unwrapped.device),
+            "bilateral_contact": torch.zeros(1, device=env.unwrapped.device),
+            "maximum_object_force_n": torch.zeros(1, device=env.unwrapped.device),
+            "maximum_non_object_force_n": torch.zeros(
+                1, device=env.unwrapped.device
+            ),
+            "maximum_object_height_m": torch.full(
+                (1,),
+                -torch.inf,
+                device=env.unwrapped.device,
+            ),
+        }
     obs = env.get_observations()
     started = time.perf_counter()
     try:
@@ -755,7 +898,65 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             with torch.inference_mode():
                 actions = policy(obs)
                 obs, reward, dones, extras = env.step(actions)
-                successes = env.unwrapped.termination_manager.get_term("success")
+                term_values = {
+                    name: termination_manager.get_term(name)
+                    for name in termination_names
+                }
+                hard_failure = torch.zeros_like(dones, dtype=torch.bool)
+                for name in failure_names:
+                    if name != "time_out":
+                        hard_failure |= term_values[name]
+                successes = term_values["success"] & ~hard_failure
+                unassigned_failures = dones & ~successes
+                for name in failure_names:
+                    assigned = unassigned_failures & term_values[name]
+                    failure_distribution[name] += int(assigned.sum().item())
+                    unassigned_failures &= ~assigned
+                if unassigned_failures.any().item():
+                    failure_distribution.setdefault("unclassified", 0)
+                    failure_distribution["unclassified"] += int(
+                        unassigned_failures.sum().item()
+                    )
+                for name, value in term_values.items():
+                    termination_counts[name] += int(value.sum().item())
+                if lift_diagnostics is not None:
+                    forces = lift_mdp_common.paired_contact_forces(
+                        env.unwrapped,
+                        "jaw_1_object_contact",
+                        "jaw_2_object_contact",
+                    )
+                    non_object_forces = torch.stack(
+                        (
+                            lift_mdp_common.non_object_contact_force_magnitude(
+                                env.unwrapped, "jaw_1_object_contact"
+                            ),
+                            lift_mdp_common.non_object_contact_force_magnitude(
+                                env.unwrapped, "jaw_2_object_contact"
+                            ),
+                        ),
+                        dim=-1,
+                    )
+                    object_height = lift_mdp_common.as_torch(
+                        env.unwrapped.scene["object"].data.root_pos_w
+                    )[:, 2]
+                    lift_diagnostics["samples"] += env.unwrapped.num_envs
+                    lift_diagnostics["bilateral_contact"] += torch.all(
+                        forces > 0.01, dim=-1
+                    ).sum()
+                    lift_diagnostics["maximum_object_force_n"] = torch.maximum(
+                        lift_diagnostics["maximum_object_force_n"],
+                        forces.max(),
+                    )
+                    lift_diagnostics["maximum_non_object_force_n"] = (
+                        torch.maximum(
+                            lift_diagnostics["maximum_non_object_force_n"],
+                            non_object_forces.max(),
+                        )
+                    )
+                    lift_diagnostics["maximum_object_height_m"] = torch.maximum(
+                        lift_diagnostics["maximum_object_height_m"],
+                        object_height.max(),
+                    )
                 policy.reset(dones)
             rewards.append(float(reward.float().mean().item()))
             done_count += int(dones.sum().item())
@@ -763,6 +964,25 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         duration = time.perf_counter() - started
         jit_path = export_dir / "policy.pt"
         onnx_path = export_dir / "policy.onnx"
+        procedure_diagnostics = None
+        if lift_diagnostics is not None:
+            samples = float(lift_diagnostics["samples"].item())
+            procedure_diagnostics = {
+                "bilateral_contact_frame_rate": (
+                    float(lift_diagnostics["bilateral_contact"].item()) / samples
+                    if samples
+                    else None
+                ),
+                "maximum_object_force_n": float(
+                    lift_diagnostics["maximum_object_force_n"].item()
+                ),
+                "maximum_non_object_force_n": float(
+                    lift_diagnostics["maximum_non_object_force_n"].item()
+                ),
+                "maximum_object_height_m": float(
+                    lift_diagnostics["maximum_object_height_m"].item()
+                ),
+            }
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -787,9 +1007,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "completed_episodes": done_count,
             "successful_episodes": success_count,
             "failed_episodes": done_count - success_count,
-            "failure_distribution": {
-                "time_out": done_count - success_count,
-            },
+            "failure_distribution": failure_distribution,
+            "termination_term_counts": termination_counts,
+            "procedure_diagnostics": procedure_diagnostics,
             "process_peak_memory_mib": _peak_process_memory_mib(),
             "success_rate": success_count / done_count if done_count else None,
             "checkpoint": {
@@ -812,6 +1032,14 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="DrAnmar Learning Path runtime")
     subparsers = parser.add_subparsers(dest="mode", required=True)
     subparsers.add_parser("list")
+
+    probe = subparsers.add_parser("probe")
+    probe.add_argument("--task", required=True)
+    probe.add_argument("--num_envs", type=int, required=True)
+    probe.add_argument("--num_frames", type=int, default=10)
+    probe.add_argument("--seed", type=int, default=17)
+    probe.add_argument("--output_path", required=True)
+    probe.add_argument("--benchmark_formatter", default="schema,json")
 
     train = subparsers.add_parser("train")
     train.add_argument("--task", required=True)
@@ -932,7 +1160,9 @@ def main(argv: list[str]) -> int:
         )
         import orbit.surgical.tasks  # noqa: F401
 
-        if args.mode == "train":
+        if args.mode == "probe":
+            result = _probe(args, repo_root)
+        elif args.mode == "train":
             result = _train(args, repo_root)
         elif args.mode == "pretrain":
             result = _pretrain(args, repo_root)

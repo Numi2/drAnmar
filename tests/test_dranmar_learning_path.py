@@ -40,6 +40,16 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         manifest["defaults"]["stage_2_initialization"]["contact_mode"]
         == "disabled_free_space_control_qualification"
     )
+    assert (
+        manifest["defaults"]["stage_3_initialization"]["method"]
+        == "analytic_grasp_lift_base_plus_learned_residual"
+    )
+    stage_3 = stages[2]
+    contract = stage_3["qualification_contract"]
+    assert contract["initial_object_height_m"] < contract["minimum_success_height_m"]
+    assert contract["minimum_success_height_m"] < contract["target_object_height_m"]
+    assert contract["sustained_success_steps"] / contract["control_hz"] == 0.2
+    assert contract["requires_physics_owned_object_motion"] is True
 
 
 def test_frontier_imports_and_runner_contract() -> None:
@@ -84,6 +94,9 @@ def test_launcher_starts_simulator_before_task_registration() -> None:
     assert "def _reach_teacher_action(" in benchmark_source
     assert "def _reach_error_offsets(" in benchmark_source
     assert "def _pretrain(" in benchmark_source
+    assert "def _probe(" in benchmark_source
+    assert "termination_term_counts" in benchmark_source
+    assert "initial_procedure_state" in benchmark_source
     assert '"pose_diagnostics": pose_diagnostics' in benchmark_source
     assert '"pose_diagnostic_trace": pose_diagnostic_trace' in benchmark_source
 
@@ -159,6 +172,38 @@ def test_dual_robot_configs_do_not_mutate_shallow_copies() -> None:
         assert ".init_state.rot =" not in source, path
         assert ".spawn.activate_contact_sensors =" not in source, path
         assert "init_state=" in source, path
+        ast.parse(source)
+
+
+def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> None:
+    cfg_source = (
+        TASK_ROOT / "surgical/lift/lift_env_cfg.py"
+    ).read_text()
+    reward_path = TASK_ROOT / "surgical/lift/mdp/rewards.py"
+    termination_path = TASK_ROOT / "surgical/lift/mdp/terminations.py"
+    reward_source = reward_path.read_text()
+    termination_source = termination_path.read_text()
+    block_source = (
+        TASK_ROOT / "surgical/lift/config/block/joint_pos_env_cfg.py"
+    ).read_text()
+    launcher_source = (ROOT / "dr_anmar_learning.sh").read_text()
+
+    assert "LIFT_INITIAL_OBJECT_HEIGHT_M = 0.025" in cfg_source
+    assert "LIFT_MINIMUM_SUCCESS_HEIGHT_M = 0.06" in cfg_source
+    assert "LIFT_TARGET_OBJECT_HEIGHT_M = 0.08" in cfg_source
+    assert "LIFT_SUCCESS_DWELL_STEPS = 10" in cfg_source
+    assert "pos_z=(-0.07, -0.07)" in cfg_source
+    assert cfg_source.count("func=mdp.sustained_lift_success") == 3
+    assert "class sustained_lift_success(ManagerTermBase):" in reward_source
+    assert "root_pos_w)[:, 2] > minimum_height" in reward_source
+    assert (
+        reward_source.count("def successful_lift(")
+        + termination_source.count("def successful_lift(")
+        == 1
+    )
+    assert "LIFT_INITIAL_OBJECT_HEIGHT_M" in block_source
+    assert "probe)" in launcher_source
+    for source in (cfg_source, reward_source, termination_source, block_source):
         ast.parse(source)
 
 

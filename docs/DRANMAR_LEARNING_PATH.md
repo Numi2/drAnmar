@@ -65,6 +65,15 @@ to contaminate the controller measurement. It does not establish collision
 avoidance or contact competence. Stage 3 turns contact back on and requires
 measured contact, stability, force, slip, and drop evidence.
 
+Stage 3 uses an analytic approach-grasp-lift base with a bounded learned
+residual. The block begins at 2.5 cm, the commanded target is 8 cm, and success
+requires the object to remain above 6 cm for ten consecutive 50 Hz control
+steps. Every one of those steps must also satisfy bilateral PhysX contact,
+goal-pose, object-speed, and force-termination constraints. This 0.2-second
+dwell prevents a single contact impulse or initial-state coincidence from
+being counted as a lift. The force limits are versioned simulator research
+envelopes, not clinically calibrated tissue limits.
+
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,
 adaptive-KL PPO, and task-specific rollout lengths. PhysX scenes use Fabric
@@ -125,6 +134,14 @@ Then:
 
 # Confirm frontier runtime registration
 ./dr_anmar_learning.sh list
+
+# Inspect native observation/action shapes, initial geometry, contacts, and
+# termination terms before spending samples on a new task
+DR_ANMAR_TRUST_REQUESTED_NUM_ENVS=1 \
+./dr_anmar_learning.sh probe \
+  DrAnmar-Lift-Block-PSM-IK-Rel-v0 \
+  1200 10 \
+  output/dranmar-learning/probe/lift-block-psm-1200-v1
 
 # Create one native environment and complete one PPO iteration
 ./dr_anmar_learning.sh smoke

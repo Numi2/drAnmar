@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import torch
 
 from isaaclab.assets import RigidObject
-from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import ManagerTermBase, SceneEntityCfg
 from isaaclab.sensors import FrameTransformer
 
 from orbit.surgical.tasks.surgical import mdp_common
@@ -114,6 +114,7 @@ def stable_object_motion(
 def successful_lift(
     env: ManagerBasedRLEnv,
     command_name: str,
+    minimum_height: float,
     position_threshold: float,
     orientation_threshold: float,
     contact_threshold: float,
@@ -125,16 +126,59 @@ def successful_lift(
     sensor_2_name: str = "jaw_2_object_contact",
 ) -> torch.Tensor:
     """Sparse procedure completion for a grasped, aligned, stable object at goal."""
+    obj: RigidObject = env.scene[object_cfg.name]
     pos_error, rot_error = mdp_common.object_goal_errors(env, command_name, robot_cfg, object_cfg)
     motion = mdp_common.object_motion(env, object_cfg)
     grasped = mdp_common.bilateral_contact(env, sensor_1_name, sensor_2_name, contact_threshold)
     return (
         grasped
+        & (mdp_common.as_torch(obj.data.root_pos_w)[:, 2] > minimum_height)
         & (pos_error < position_threshold)
         & (rot_error < orientation_threshold)
         & (motion[:, 0] < maximum_linear_speed)
         & (motion[:, 1] < maximum_angular_speed)
     ).float()
+
+
+class sustained_lift_success(ManagerTermBase):
+    """Require physics-qualified lift success for consecutive control steps."""
+
+    def __init__(self, cfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self._consecutive = torch.zeros(env.num_envs, dtype=torch.int64, device=env.device)
+        self._succeeded = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        self._publish_metric = bool(cfg.params.get("publish_metric", False))
+
+    def reset(self, env_ids: torch.Tensor):
+        if len(env_ids) == 0:
+            return
+        if self._publish_metric:
+            self._env.extras.setdefault("log", {})["Metrics/success_rate"] = (
+                self._succeeded[env_ids].float().mean().item()
+            )
+        self._consecutive[env_ids] = 0
+        self._succeeded[env_ids] = False
+
+    def __call__(
+        self,
+        env: ManagerBasedRLEnv,
+        required_consecutive_steps: int,
+        publish_metric: bool = False,
+        return_zero: bool = False,
+        **success_params,
+    ) -> torch.Tensor:
+        del publish_metric
+        current = successful_lift(env, **success_params).bool()
+        self._consecutive[:] = torch.where(
+            current,
+            self._consecutive + 1,
+            torch.zeros_like(self._consecutive),
+        )
+        sustained = self._consecutive >= required_consecutive_steps
+        self._succeeded |= sustained
+        if return_zero:
+            return torch.zeros(env.num_envs, device=env.device)
+        return sustained
 
 
 def contact_force_excess(
