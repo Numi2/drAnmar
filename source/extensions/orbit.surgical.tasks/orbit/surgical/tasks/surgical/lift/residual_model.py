@@ -11,6 +11,8 @@ import torch
 from rsl_rl.models import MLPModel
 from torch import nn
 
+from .grasp_frames import BLOCK_PHYSICAL_GRASP_OFFSET_M
+
 
 class LiftResidualMLPModel(MLPModel):
     """Approach, grasp, and lift with physics contact as the phase transition."""
@@ -25,6 +27,7 @@ class LiftResidualMLPModel(MLPModel):
         position_scale: float = 0.01,
         approach_height: float = 0.02,
         grasp_height: float = 0.0,
+        grasp_offset: tuple[float, float, float] = BLOCK_PHYSICAL_GRASP_OFFSET_M,
         lateral_alignment_threshold: float = 0.004,
         close_distance: float = 0.003,
         slow_approach_radius: float = 0.02,
@@ -44,6 +47,9 @@ class LiftResidualMLPModel(MLPModel):
         self.position_scale = position_scale
         self.approach_height = approach_height
         self.grasp_height = grasp_height
+        self.grasp_offset_x = float(grasp_offset[0])
+        self.grasp_offset_y = float(grasp_offset[1])
+        self.grasp_offset_z = float(grasp_offset[2])
         self.lateral_alignment_threshold = lateral_alignment_threshold
         self.close_distance = close_distance
         self.slow_approach_radius = slow_approach_radius
@@ -78,12 +84,14 @@ class LiftResidualMLPModel(MLPModel):
             :,
             self.contact_force_start : self.contact_force_start + 2,
         ]
-        ee_to_object = object_position - ee_position
-        lateral_distance = torch.linalg.vector_norm(ee_to_object[:, :2], dim=-1)
-        above_object = object_position.clone()
-        above_object[:, 2] += self.approach_height
         grasp_position = object_position.clone()
-        grasp_position[:, 2] += self.grasp_height
+        grasp_position[:, 0] += self.grasp_offset_x
+        grasp_position[:, 1] += self.grasp_offset_y
+        grasp_position[:, 2] += self.grasp_offset_z + self.grasp_height
+        ee_to_grasp = grasp_position - ee_position
+        lateral_distance = torch.linalg.vector_norm(ee_to_grasp[:, :2], dim=-1)
+        above_object = grasp_position.clone()
+        above_object[:, 2] += self.approach_height
         grasp_distance = torch.linalg.vector_norm(
             grasp_position - ee_position,
             dim=-1,
@@ -200,6 +208,9 @@ class _LiftResidualExport(nn.Module):
         self.position_scale = model.position_scale
         self.approach_height = model.approach_height
         self.grasp_height = model.grasp_height
+        self.grasp_offset_x = model.grasp_offset_x
+        self.grasp_offset_y = model.grasp_offset_y
+        self.grasp_offset_z = model.grasp_offset_z
         self.lateral_alignment_threshold = model.lateral_alignment_threshold
         self.close_distance = model.close_distance
         self.slow_approach_radius = model.slow_approach_radius
@@ -230,12 +241,14 @@ class _LiftResidualExport(nn.Module):
             :,
             self.contact_force_start : self.contact_force_start + 2,
         ]
-        ee_to_object = object_position - ee_position
-        lateral_distance = torch.linalg.vector_norm(ee_to_object[:, :2], dim=-1)
-        above_object = object_position.clone()
-        above_object[:, 2] += self.approach_height
         grasp_position = object_position.clone()
-        grasp_position[:, 2] += self.grasp_height
+        grasp_position[:, 0] += self.grasp_offset_x
+        grasp_position[:, 1] += self.grasp_offset_y
+        grasp_position[:, 2] += self.grasp_offset_z + self.grasp_height
+        ee_to_grasp = grasp_position - ee_position
+        lateral_distance = torch.linalg.vector_norm(ee_to_grasp[:, :2], dim=-1)
+        above_object = grasp_position.clone()
+        above_object[:, 2] += self.approach_height
         grasp_distance = torch.linalg.vector_norm(
             grasp_position - ee_position,
             dim=-1,

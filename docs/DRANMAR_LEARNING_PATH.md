@@ -77,17 +77,19 @@ envelopes, not clinically calibrated tissue limits.
 
 Stage 3 preserves orientation qualification; the corrected identity
 quaternion makes that contract physically possible at reset. Its analytic base
-approaches from 20 mm above the object, targets the object root as the grasp
-frame, and closes only within 3 mm of that grasp waypoint. Cartesian
-commands are capped at 0.1 during the final 20 mm approach and throughout
-bilateral-contact carry, limiting each 50 Hz command to 1 mm. Carry lifts
-vertically until the object is within 20 mm of target height before allowing
-lateral goal tracking. This avoids striking the object root before the jaws
-establish contact and prevents lateral carry from stripping a low-clearance
-grasp. Once physics-owned object height rises above 18 mm, carry and gripper
-closure remain latched until the object drops below that threshold, preventing
-contact-sensor flicker from restarting the approach phase. Stage 4 reuses the
-same orientation-qualified contract for needle lifting.
+approaches from 20 mm above the block's physical grasp frame and closes only
+within 3 mm of that waypoint. The frame is the closed composed mesh's
+volume centroid: `(0.0055, 0.0, -0.0060057354)` metres from the authored
+root. Targeting the authored root would place the jaws near an upper side edge
+and create an avoidable closure moment. Cartesian commands are capped at 0.1
+during the final 20 mm approach and throughout bilateral-contact carry,
+limiting each 50 Hz command to 1 mm. Carry lifts vertically until the object is
+within 20 mm of target height before allowing lateral goal tracking. This
+prevents lateral carry from stripping a low-clearance grasp. Once
+physics-owned object height rises above 18 mm, carry and gripper closure remain
+latched until the object drops below that threshold, preventing contact-sensor
+flicker from restarting the approach phase. Stage 4 requires its own
+asset-derived needle grasp frame before promotion.
 
 Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift
 objects therefore use the explicit identity `(0, 0, 0, 1)`. This prevents the

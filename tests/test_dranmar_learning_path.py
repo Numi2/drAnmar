@@ -46,6 +46,15 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     )
     assert manifest["defaults"]["stage_3_initialization"]["approach_height_m"] == 0.02
     assert manifest["defaults"]["stage_3_initialization"]["grasp_height_m"] == 0.0
+    assert manifest["defaults"]["stage_3_initialization"]["grasp_offset_m"] == [
+        0.0055,
+        0.0,
+        -0.0060057354,
+    ]
+    assert (
+        manifest["defaults"]["stage_3_initialization"]["grasp_offset_source"]
+        == "closed_composed_mesh_volume_centroid"
+    )
     assert (
         manifest["defaults"]["stage_3_initialization"]["slow_approach_action_limit"]
         == 0.1
@@ -257,6 +266,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "class LiftResidualMLPModel(MLPModel):" in model_source
     assert "carry_mode.unsqueeze(-1)" in model_source
     assert "self.grasp_height = grasp_height" in model_source
+    assert "self.grasp_offset_x = float(grasp_offset[0])" in model_source
+    assert "grasp_position[:, 2] += self.grasp_offset_z + self.grasp_height" in model_source
     assert "self.slow_approach_action_limit = slow_approach_action_limit" in model_source
     assert "self.carry_action_limit = carry_action_limit" in model_source
     assert "object_angular_velocity / self.carry_angular_velocity_scale" not in model_source

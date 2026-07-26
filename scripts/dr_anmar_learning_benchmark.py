@@ -304,9 +304,17 @@ def _lift_teacher_action(
     lateral_clearance_below_target: float = 0.02,
     carry_latch_below_target: float = 0.062,
     carry_action_limit: float = 0.1,
+    grasp_offset: tuple[float, float, float] | None = None,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
     import torch
+
+    if grasp_offset is None:
+        from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+            BLOCK_PHYSICAL_GRASP_OFFSET_M,
+        )
+
+        grasp_offset = BLOCK_PHYSICAL_GRASP_OFFSET_M
 
     policy_obs = obs["policy"]
     ee_position = policy_obs[:, 16:19]
@@ -314,12 +322,14 @@ def _lift_teacher_action(
     target_position = policy_obs[:, 36:39]
     contact_forces = policy_obs[:, 43:45]
 
-    ee_to_object = object_position - ee_position
-    lateral_distance = torch.linalg.vector_norm(ee_to_object[:, :2], dim=-1)
-    above_object = object_position.clone()
-    above_object[:, 2] += approach_height
     grasp_position = object_position.clone()
-    grasp_position[:, 2] += grasp_height
+    grasp_position[:, 0] += grasp_offset[0]
+    grasp_position[:, 1] += grasp_offset[1]
+    grasp_position[:, 2] += grasp_offset[2] + grasp_height
+    ee_to_grasp = grasp_position - ee_position
+    lateral_distance = torch.linalg.vector_norm(ee_to_grasp[:, :2], dim=-1)
+    above_object = grasp_position.clone()
+    above_object[:, 2] += approach_height
     grasp_distance = torch.linalg.vector_norm(
         grasp_position - ee_position,
         dim=-1,
@@ -413,6 +423,10 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     import gymnasium as gym
     import torch
     import torch.nn.functional as functional
+    from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+        BLOCK_PHYSICAL_GRASP_OFFSET_M,
+        BLOCK_PHYSICAL_GRASP_OFFSET_SOURCE,
+    )
     from rsl_rl.runners import OnPolicyRunner
 
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
@@ -606,6 +620,8 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                 {
                     "approach_height_m": 0.02,
                     "grasp_height_m": 0.0,
+                    "grasp_offset_m": list(BLOCK_PHYSICAL_GRASP_OFFSET_M),
+                    "grasp_offset_source": BLOCK_PHYSICAL_GRASP_OFFSET_SOURCE,
                     "lateral_alignment_threshold_m": 0.004,
                     "close_distance_to_grasp_m": 0.003,
                     "slow_approach_radius_m": 0.02,
