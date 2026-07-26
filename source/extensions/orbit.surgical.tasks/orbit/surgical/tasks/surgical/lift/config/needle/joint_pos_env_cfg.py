@@ -14,6 +14,9 @@ from isaaclab.utils.configclass import configclass
 from orbit.surgical.tasks.surgical.lift import mdp
 from orbit.surgical.tasks.surgical.lift.lift_env_cfg import (
     ISAAC_IDENTITY_QUATERNION_XYZW,
+    LIFT_CONTACT_THRESHOLD_N,
+    LIFT_MINIMUM_SUCCESS_HEIGHT_M,
+    LIFT_SUCCESS_DWELL_STEPS,
     LiftEnvCfg,
 )
 
@@ -62,6 +65,28 @@ class NeedleLiftEnvCfg(LiftEnvCfg):
         )
         # Set the body name for the end effector
         self.commands.object_pose.body_name = "psm_tool_tip_link"
+
+        # Needle pickup is complete once native bilateral jaw contact lifts the
+        # needle clear of the surface for a short anti-glitch dwell. Commanded
+        # pose and orientation remain diagnostics for later handover stages.
+        pickup_params = {
+            "required_consecutive_steps": LIFT_SUCCESS_DWELL_STEPS,
+            "minimum_height": LIFT_MINIMUM_SUCCESS_HEIGHT_M,
+            "contact_threshold": LIFT_CONTACT_THRESHOLD_N,
+        }
+        self.rewards.success.func = mdp.sustained_pickup_success
+        self.rewards.success.params = pickup_params
+        self.rewards.success_rate.func = mdp.sustained_pickup_success
+        self.rewards.success_rate.params = {
+            **pickup_params,
+            "publish_metric": True,
+            "return_zero": True,
+        }
+        self.terminations.success.func = mdp.sustained_pickup_success
+        self.terminations.success.params = pickup_params
+        self.rewards.object_goal_tracking.weight = 0.0
+        self.rewards.object_goal_tracking_fine_grained.weight = 0.0
+        self.rewards.object_goal_orientation.weight = 0.0
 
         # Set Suture Needle as object
         self.scene.object = RigidObjectCfg(

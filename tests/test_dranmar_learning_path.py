@@ -182,7 +182,12 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         0.0,
         1.0,
     ]
-    assert needle_contract["requires_orientation_alignment"] is True
+    assert needle_contract["requires_goal_pose_alignment"] is False
+    assert needle_contract["requires_orientation_alignment"] is False
+    assert (
+        needle_contract["success_definition"]
+        == "native_bilateral_jaw_contact_and_minimum_height_sustained_without_hard_failure"
+    )
 
 
 def test_frontier_imports_and_runner_contract() -> None:
@@ -357,8 +362,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert 'orientation_threshold"] = 3.2' not in block_source
     assert "NEEDLE_INITIAL_OBJECT_HEIGHT_M = 0.001" in needle_source
     assert "ISAAC_IDENTITY_QUATERNION_XYZW" in needle_source
+    assert "mdp.sustained_pickup_success" in needle_source
+    assert "self.rewards.object_goal_tracking.weight = 0.0" in needle_source
+    assert "self.rewards.object_goal_orientation.weight = 0.0" in needle_source
     assert "rot=(1, 0, 0, 0)" not in block_source
     assert "rot=(1, 0, 0, 0)" not in needle_source
+    assert "class sustained_pickup_success(ManagerTermBase):" in reward_source
     assert "class LiftResidualMLPModel(MLPModel):" in model_source
     assert "carry_mode.unsqueeze(-1)" in model_source
     assert "self.grasp_height = grasp_height" in model_source

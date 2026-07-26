@@ -204,6 +204,58 @@ class sustained_lift_success(ManagerTermBase):
         return sustained
 
 
+class sustained_pickup_success(ManagerTermBase):
+    """Require a bilateral, physics-owned pickup for consecutive control steps."""
+
+    def __init__(self, cfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self._consecutive = torch.zeros(env.num_envs, dtype=torch.int64, device=env.device)
+        self._succeeded = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+        self._publish_metric = bool(cfg.params.get("publish_metric", False))
+
+    def reset(self, env_ids: torch.Tensor):
+        if len(env_ids) == 0:
+            return
+        if self._publish_metric:
+            self._env.extras.setdefault("log", {})["Metrics/success_rate"] = (
+                self._succeeded[env_ids].float().mean().item()
+            )
+        self._consecutive[env_ids] = 0
+        self._succeeded[env_ids] = False
+
+    def __call__(
+        self,
+        env: ManagerBasedRLEnv,
+        required_consecutive_steps: int,
+        minimum_height: float,
+        contact_threshold: float,
+        publish_metric: bool = False,
+        return_zero: bool = False,
+        object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+        sensor_1_name: str = "jaw_1_object_contact",
+        sensor_2_name: str = "jaw_2_object_contact",
+    ) -> torch.Tensor:
+        del publish_metric
+        current = object_is_lifted(
+            env,
+            minimal_height=minimum_height,
+            contact_threshold=contact_threshold,
+            object_cfg=object_cfg,
+            sensor_1_name=sensor_1_name,
+            sensor_2_name=sensor_2_name,
+        ).bool()
+        self._consecutive[:] = torch.where(
+            current,
+            self._consecutive + 1,
+            torch.zeros_like(self._consecutive),
+        )
+        sustained = self._consecutive >= required_consecutive_steps
+        self._succeeded |= sustained
+        if return_zero:
+            return torch.zeros(env.num_envs, device=env.device)
+        return sustained
+
+
 def contact_force_excess(
     env: ManagerBasedRLEnv, sensor_names: tuple[str, ...], soft_limit: float
 ) -> torch.Tensor:

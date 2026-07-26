@@ -181,12 +181,24 @@
         "target_object_height_m": 0.08,
         "minimum_success_height_m": 0.06,
         "sustained_success_steps": 10,
-        "requires_orientation_alignment": true,
+        "bilateral_contact_threshold_n": 0.01,
+        "object_force_hard_limit_n": 5.0,
+        "protected_surface_force_hard_limit_n": 2.0,
+        "success_definition": "native_bilateral_jaw_contact_and_minimum_height_sustained_without_hard_failure",
+        "requires_goal_pose_alignment": false,
+        "requires_orientation_alignment": false,
+        "goal_pose_and_orientation_role": "advanced_transport_and_handover_readiness_diagnostics",
         "requires_physics_owned_object_motion": true
       },
       "promotion": {
         "minimum_success_rate": 0.8,
-        "held_out_seed_passes": 3
+        "held_out_seed_passes": 3,
+        "episode_accounting": "first_terminal_outcome_per_environment",
+        "required_failure_strata": [
+          "no_bilateral_contact",
+          "contact_without_minimum_height",
+          "qualified_pickup_without_sustained_dwell"
+        ]
       }
     },
     {

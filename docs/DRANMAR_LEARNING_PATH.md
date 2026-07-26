@@ -118,7 +118,15 @@ longest consecutive bilateral jaw-contact loss after the object rose above
 failure. This retention diagnostic never contributes reward or success credit;
 it distinguishes transient contact-manifold flicker from mid-air slips that
 would otherwise appear only as timeouts. Stage 4 requires its own
-contact-calibrated needle grasp frame before promotion.
+contact-calibrated needle grasp frame before promotion. Its primary
+achievement is physical needle pickup: both native jaw contacts must exceed
+0.01 N while the needle root remains above 6 cm for ten consecutive 50 Hz
+control steps. This short dwell rejects a one-frame collision spike; it does
+not require the needle to settle at an arbitrary commanded pose. The unchanged
+5 N object-force and 2 N protected-surface hard terminations still veto
+success. Goal position, orientation, and motion stability remain recorded as
+transport-quality diagnostics for physical handover, but they do not gate
+needle-pickup completion or contribute goal-tracking reward in Stage 4.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter
