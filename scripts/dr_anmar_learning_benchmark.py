@@ -1084,7 +1084,7 @@ _ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS = {
     "gripper_close_rad",
     "gripper_effort_limit_nm",
 }
-_NEEDLE_PROVISIONAL_ORIENTATION_ACTION_LIMIT = 0.05
+_NEEDLE_PROVISIONAL_ORIENTATION_ACTION_LIMIT = 0.035
 _NEEDLE_PROVISIONAL_ORIENTATION_VELOCITY_DAMPING_S = 0.001
 
 
@@ -1114,10 +1114,19 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         needle_task
         and args.parameter == "carry_orientation_velocity_damping_s"
     )
-    if needle_task and not (needle_grasp_sweep or needle_orientation_sweep):
+    needle_environment_sweep = (
+        needle_task
+        and args.parameter in _ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS
+    )
+    if needle_task and not (
+        needle_grasp_sweep
+        or needle_orientation_sweep
+        or needle_environment_sweep
+    ):
         return _fail(
             "needle controller-sweep requires a needle grasp-frame or "
-            "carry-orientation parameter until a contact-qualified needle controller exists"
+            "carry-orientation parameter, or a full-population physical challenger "
+            "until a contact-qualified needle controller exists"
         )
     if block_task and needle_grasp_sweep:
         return _fail("needle_grasp_arc_fraction requires the needle lift task")
@@ -1182,7 +1191,7 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                 f"{NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE};"
                 f"fixed_arc_fraction={NEEDLE_PROVISIONAL_ARC_FRACTION}"
             )
-    elif needle_orientation_sweep:
+    elif needle_orientation_sweep or needle_environment_sweep:
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
             NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE,
             NEEDLE_PROVISIONAL_ARC_FRACTION,
@@ -1294,6 +1303,16 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                         controller_kwargs[
                             "carry_orientation_velocity_damping_s"
                         ] = _NEEDLE_PROVISIONAL_ORIENTATION_VELOCITY_DAMPING_S
+                elif needle_environment_sweep:
+                    controller_kwargs = {
+                        "grasp_offset": needle_grasp_offsets[group_index],
+                        "carry_orientation_action_limit": (
+                            _NEEDLE_PROVISIONAL_ORIENTATION_ACTION_LIMIT
+                        ),
+                        "carry_orientation_velocity_damping_s": (
+                            _NEEDLE_PROVISIONAL_ORIENTATION_VELOCITY_DAMPING_S
+                        ),
+                    }
                 else:
                     controller_kwargs = (
                         {}
