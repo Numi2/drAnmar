@@ -1648,6 +1648,15 @@ def _handover_controller_sweep(
             disable_logger=True,
         )
     obs, _ = env.reset()
+    initial_giver_is_robot_1 = obs["policy"][:, 82] > 0.5
+    initial_robot_1_distance = torch.linalg.vector_norm(
+        obs["policy"][:, 46:49] - obs["policy"][:, 32:35],
+        dim=-1,
+    )
+    initial_robot_2_distance = torch.linalg.vector_norm(
+        obs["policy"][:, 53:56] - obs["policy"][:, 39:42],
+        dim=-1,
+    )
 
     def world_state_snapshot():
         robot = env.unwrapped.scene["robot_1"]
@@ -2070,6 +2079,12 @@ def _handover_controller_sweep(
                         receiver_offsets[group_index]
                     ),
                     "assigned_environments": group_size,
+                    "robot_1_selected_as_giver": int(
+                        initial_giver_is_robot_1[start:stop].sum().item()
+                    ),
+                    "robot_2_selected_as_giver": int(
+                        (~initial_giver_is_robot_1[start:stop]).sum().item()
+                    ),
                     "completed_episodes": completed_count,
                     "successful_episodes": success_count,
                     "success_rate": (
@@ -2205,6 +2220,23 @@ def _handover_controller_sweep(
             ),
             "giver": "closest_tool_tip_selected_per_environment_at_reset",
             "receiver": "other_tool",
+            "giver_selection": {
+                "rule": "minimum_reset_tool_tip_to_needle_distance",
+                "robot_1_selected_count": int(
+                    initial_giver_is_robot_1.sum().item()
+                ),
+                "robot_2_selected_count": int(
+                    (~initial_giver_is_robot_1).sum().item()
+                ),
+                "robot_1_initial_distance_m": {
+                    "minimum": float(initial_robot_1_distance.min().item()),
+                    "maximum": float(initial_robot_1_distance.max().item()),
+                },
+                "robot_2_initial_distance_m": {
+                    "minimum": float(initial_robot_2_distance.min().item()),
+                    "maximum": float(initial_robot_2_distance.max().item()),
+                },
+            },
             "giver_grasp_arc_fraction": 0.4,
             "handover_motion_contract": {
                 "sequence": [

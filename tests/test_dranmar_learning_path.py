@@ -486,6 +486,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"receiver_roll_offset_rad"' in benchmark_source
     assert '"presentation_fraction_from_giver"' in benchmark_source
     assert "selected_receiver_z_offset = -0.0019" in benchmark_source
+    assert '"rule": "minimum_reset_tool_tip_to_needle_distance"' in benchmark_source
+    assert '"robot_1_selected_as_giver"' in benchmark_source
+    assert '"robot_2_selected_as_giver"' in benchmark_source
     assert "receiver_target_orientation = quat_mul(" in benchmark_source
     assert "receiver_orientation_action_limit: float = 0.6" in benchmark_source
     assert "receiver_close_distance: float = 0.001" in benchmark_source
