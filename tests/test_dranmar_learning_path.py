@@ -18,6 +18,11 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     assert all(stage["task"].startswith("DrAnmar-") for stage in stages)
     assert manifest["defaults"]["held_out_seeds"]
     assert manifest["defaults"]["num_envs"] == 1200
+    assert (
+        "target_relative_axis_angle_orientation"
+        in manifest["defaults"]["reach_observation_contract"]
+    )
+    assert manifest["defaults"]["success_source"] == "isaac_lab_termination_manager"
 
 
 def test_frontier_imports_and_runner_contract() -> None:
@@ -58,6 +63,22 @@ def test_launcher_starts_simulator_before_task_registration() -> None:
     )
     assert "export_policy_to_jit" in benchmark_source
     assert "export_policy_to_onnx" in benchmark_source
+    assert 'termination_manager.get_term("success")' in benchmark_source
+
+
+def test_reach_policy_observes_direct_pose_error() -> None:
+    cfg_source = (
+        TASK_ROOT / "surgical/reach/reach_env_cfg.py"
+    ).read_text()
+    reward_source = (
+        TASK_ROOT / "surgical/reach/mdp/rewards.py"
+    ).read_text()
+    assert "target_relative_position = ObsTerm(" in cfg_source
+    assert "target_relative_orientation = ObsTerm(" in cfg_source
+    assert "pose_command_orientation_error_vector" in reward_source
+    assert "quat_box_minus(desired_quat_w, current_quat_w)" in reward_source
+    ast.parse(cfg_source)
+    ast.parse(reward_source)
 
 
 def test_launcher_fits_parallel_worlds_to_live_ram_and_vram() -> None:

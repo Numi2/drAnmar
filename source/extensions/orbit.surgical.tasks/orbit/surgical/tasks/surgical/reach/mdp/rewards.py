@@ -15,7 +15,12 @@ import torch
 from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import FrameTransformer
-from isaaclab.utils.math import combine_frame_transforms, quat_apply_inverse, quat_error_magnitude
+from isaaclab.utils.math import (
+    combine_frame_transforms,
+    quat_apply_inverse,
+    quat_box_minus,
+    quat_error_magnitude,
+)
 
 from ...mdp_common import as_torch
 
@@ -56,6 +61,27 @@ def pose_command_error_vector(
 ) -> torch.Tensor:
     """Direct target-relative tool position for sample-efficient learning."""
     return pose_command_errors(env, command_name, robot_cfg, frame_cfg)[0]
+
+
+def pose_command_orientation_error_vector(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
+) -> torch.Tensor:
+    """Direct target-relative axis-angle orientation error in the robot root frame."""
+    robot: Articulation = env.scene[robot_cfg.name]
+    frame: FrameTransformer = env.scene[frame_cfg.name]
+    command = env.command_manager.get_command(command_name)
+
+    root_pos_w = as_torch(robot.data.root_pos_w)
+    root_quat_w = as_torch(robot.data.root_quat_w)
+    _, desired_quat_w = combine_frame_transforms(
+        root_pos_w, root_quat_w, command[:, :3], command[:, 3:7]
+    )
+    current_quat_w = as_torch(frame.data.target_quat_w)[:, 0, :]
+    orientation_error_w = quat_box_minus(desired_quat_w, current_quat_w)
+    return quat_apply_inverse(root_quat_w, orientation_error_w)
 
 
 def position_command_error(

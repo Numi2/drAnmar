@@ -31,12 +31,13 @@ This stage is small enough to expose infrastructure and reward defects quickly:
 
 - one PSM and one stable target per episode;
 - bounded relative Cartesian actions;
-- direct target-relative position in the policy observation;
+- direct target-relative position and axis-angle orientation in the policy
+  observation;
 - normalized actor and critic observations;
 - bounded coarse and fine pose rewards;
 - an explicit position-and-orientation success envelope;
 - immediate episode completion on success; and
-- sticky per-episode success reporting at `Metrics/success_rate`.
+- direct success measurement from Isaac Lab's `success` termination tensor.
 
 It is a control qualification task, not a surgical-skill claim.
 
@@ -134,9 +135,10 @@ the manifest. Promotion requires:
 6. a fresh benchmark if the robot, asset, physics, reward, observation, or
    runtime contract changes.
 
-Early stopping reduces wasted compute after the success metric has remained
-above its threshold for the declared window. It does not replace held-out
-evaluation.
+Early stopping counts completed and successful episodes directly from Isaac
+Lab's termination manager. It reduces wasted compute after the exact episode
+success rate has remained above its threshold for the declared window. It does
+not replace held-out evaluation.
 
 ## Evidence boundary
 

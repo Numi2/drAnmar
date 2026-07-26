@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -20,7 +20,16 @@
     "training_seeds": [17, 43, 89],
     "held_out_seeds": [2361, 4099, 7919],
     "success_threshold": 0.95,
-    "success_window": 10
+    "success_window": 10,
+    "reach_observation_contract": [
+      "joint_position",
+      "joint_velocity",
+      "commanded_pose",
+      "target_relative_position",
+      "target_relative_axis_angle_orientation",
+      "previous_action"
+    ],
+    "success_source": "isaac_lab_termination_manager"
   },
   "stages": [
     {

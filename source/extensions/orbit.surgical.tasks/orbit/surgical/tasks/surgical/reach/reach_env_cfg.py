@@ -88,6 +88,11 @@ class ObservationsCfg:
             params={"command_name": "ee_pose"},
             clip=(-0.25, 0.25),
         )
+        target_relative_orientation = ObsTerm(
+            func=mdp.pose_command_orientation_error_vector,
+            params={"command_name": "ee_pose"},
+            clip=(-3.1416, 3.1416),
+        )
         actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
@@ -126,10 +131,10 @@ class RewardsCfg:
     )
     end_effector_orientation_tracking = RewTerm(
         func=mdp.orientation_command_tanh,
-        weight=0.5,
+        weight=2.0,
         params={
             "command_name": "ee_pose",
-            "std": 0.25,
+            "std": 0.20,
             "asset_cfg": SceneEntityCfg("robot", body_names=MISSING),
         },
     )

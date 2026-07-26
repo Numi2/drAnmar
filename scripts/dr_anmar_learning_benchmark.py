@@ -14,6 +14,7 @@ import importlib.metadata as metadata
 import json
 import os
 import resource
+import statistics
 import subprocess
 import sys
 import time
@@ -215,13 +216,110 @@ def _load_configs(task: str, num_envs: int, seed: int):
     return env_cfg, agent_cfg
 
 
+class _EarlyStopConverged(Exception):
+    """Raised after the direct simulator success rate satisfies its gate."""
+
+
+class _TerminationSuccessEarlyStop:
+    """Track exact episode success from Isaac Lab termination tensors."""
+
+    def __init__(
+        self,
+        env,
+        runner,
+        threshold: float,
+        window: int,
+        num_steps_per_env: int,
+        stop_on_convergence: bool = True,
+        success_term: str = "success",
+    ) -> None:
+        self.env = env
+        self.runner = runner
+        self.threshold = threshold
+        self.window = window
+        self.num_steps_per_env = num_steps_per_env
+        self.stop_on_convergence = stop_on_convergence
+        self.success_term = success_term
+        self.history: list[float] = []
+        self._step_count = 0
+        self._iteration_successes = 0
+        self._iteration_completed = 0
+        self._orig_step = env.step
+        self.tracker = self
+
+    def __enter__(self):
+        self.env.step = self._step
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        self.env.step = self._orig_step
+        if exc_type is _EarlyStopConverged:
+            self._runner_cleanup()
+            print(
+                "[DrAnmar] Early stop: direct termination success converged at "
+                f"iteration {self.framework_iteration_count} "
+                f"(tail mean {self.tail_mean:.4f})"
+            )
+            return True
+        return False
+
+    def _step(self, actions):
+        result = self._orig_step(actions)
+        dones = result[2]
+        success = self.env.unwrapped.termination_manager.get_term(self.success_term)
+        self._iteration_successes += int(success.sum().item())
+        self._iteration_completed += int(dones.sum().item())
+        self._step_count += 1
+
+        current_rate = (
+            self._iteration_successes / self._iteration_completed
+            if self._iteration_completed
+            else 0.0
+        )
+        result[3].setdefault("log", {})["Metrics/success_rate"] = current_rate
+
+        if self._step_count % self.num_steps_per_env == 0:
+            self.history.append(current_rate)
+            self._iteration_successes = 0
+            self._iteration_completed = 0
+            if self.stop_on_convergence and self.converged:
+                raise _EarlyStopConverged()
+        return result
+
+    def _runner_cleanup(self) -> None:
+        if self.runner.logger.writer is not None:
+            iteration = self.runner.current_learning_iteration
+            self.runner.save(
+                os.path.join(self.runner.logger.log_dir, f"model_{iteration}.pt")
+            )
+            self.runner.logger.stop_logging_writer()
+
+    @property
+    def framework_iteration_count(self) -> int:
+        return max(
+            self._step_count // self.num_steps_per_env,
+            self.runner.current_learning_iteration + 1,
+        )
+
+    @property
+    def converged(self) -> bool:
+        return len(self.history) >= self.window and all(
+            value >= self.threshold for value in self.history[-self.window :]
+        )
+
+    @property
+    def tail_mean(self) -> float:
+        if not self.history:
+            return 0.0
+        return statistics.mean(self.history[-self.window :])
+
+
 def _train(args: argparse.Namespace, repo_root: Path) -> int:
     import gymnasium as gym
     import torch
     from rsl_rl.runners import OnPolicyRunner
 
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
-    from scripts.benchmarks.early_stop import RslRlEarlyStopWrapper
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
     agent_cfg.max_iterations = args.max_iterations
@@ -243,7 +341,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
     runner.logger.git_status_repos = []
 
     started = time.perf_counter()
-    early = RslRlEarlyStopWrapper(
+    early = _TerminationSuccessEarlyStop(
         env,
         runner,
         threshold=args.success_threshold,
@@ -309,17 +407,6 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         env.close()
 
 
-def _metric_value(extras: dict, key: str) -> float | None:
-    import torch
-
-    value = extras.get("log", {}).get(key)
-    if value is None:
-        return None
-    if isinstance(value, torch.Tensor):
-        return float(value.float().mean().item())
-    return float(value)
-
-
 def _play(args: argparse.Namespace, repo_root: Path) -> int:
     import gymnasium as gym
     import torch
@@ -344,8 +431,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     runner.export_policy_to_onnx(path=str(export_dir), filename="policy.onnx")
 
     rewards: list[float] = []
-    success_rates: list[float] = []
     done_count = 0
+    success_count = 0
     obs = env.get_observations()
     started = time.perf_counter()
     try:
@@ -353,12 +440,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             with torch.inference_mode():
                 actions = policy(obs)
                 obs, reward, dones, extras = env.step(actions)
+                successes = env.unwrapped.termination_manager.get_term("success")
                 policy.reset(dones)
             rewards.append(float(reward.float().mean().item()))
             done_count += int(dones.sum().item())
-            success = _metric_value(extras, "Metrics/success_rate")
-            if success is not None:
-                success_rates.append(success)
+            success_count += int(successes.sum().item())
         duration = time.perf_counter() - started
         jit_path = export_dir / "policy.pt"
         onnx_path = export_dir / "policy.onnx"
@@ -384,10 +470,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "mean_reward": sum(rewards) / len(rewards) if rewards else None,
             "completed_episodes": done_count,
+            "successful_episodes": success_count,
+            "failed_episodes": done_count - success_count,
             "process_peak_memory_mib": _peak_process_memory_mib(),
-            "success_rate": (
-                sum(success_rates) / len(success_rates) if success_rates else None
-            ),
+            "success_rate": success_count / done_count if done_count else None,
             "checkpoint": {
                 "path": str(checkpoint),
                 "sha256": _sha256(checkpoint),
