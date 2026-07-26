@@ -41,8 +41,6 @@ class DrAnmarDualReachResidualModelCfg(DrAnmarReachResidualModelCfg):
     arm_1_orientation_error_start: int = 49
     arm_2_position_error_start: int = 52
     arm_2_orientation_error_start: int = 55
-    position_scale: float = 0.04
-    orientation_scale: float = 0.20
 
 
 def _actor(hidden_dims: list[int], *, initial_std: float = 1.0) -> RslRlMLPModelCfg:

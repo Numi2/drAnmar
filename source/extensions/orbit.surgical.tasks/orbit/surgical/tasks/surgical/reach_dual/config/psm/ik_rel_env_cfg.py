@@ -50,7 +50,7 @@ class PSMReachEnvCfg(joint_pos_env_cfg.PSMReachEnvCfg):
             ],
             body_name="psm_tool_tip_link",
             controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
-            scale=(0.01, 0.01, 0.01, 0.05, 0.05, 0.05),
+            scale=(0.0025, 0.0025, 0.0025, 0.0125, 0.0125, 0.0125),
             clip={".*": (-1.0, 1.0)},
         )
         self.actions.arm_2_action = DifferentialInverseKinematicsActionCfg(
@@ -65,7 +65,7 @@ class PSMReachEnvCfg(joint_pos_env_cfg.PSMReachEnvCfg):
             ],
             body_name="psm_tool_tip_link",
             controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
-            scale=(0.01, 0.01, 0.01, 0.05, 0.05, 0.05),
+            scale=(0.0025, 0.0025, 0.0025, 0.0125, 0.0125, 0.0125),
             clip={".*": (-1.0, 1.0)},
         )
 

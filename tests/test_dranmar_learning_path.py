@@ -79,7 +79,6 @@ def test_launcher_starts_simulator_before_task_registration() -> None:
     assert 'termination_manager.get_term("success")' in benchmark_source
     assert "def _reach_teacher_action(" in benchmark_source
     assert "def _reach_error_offsets(" in benchmark_source
-    assert "def _reach_action_scales(" in benchmark_source
     assert "def _pretrain(" in benchmark_source
     assert '"pose_diagnostics": pose_diagnostics' in benchmark_source
     assert '"pose_diagnostic_trace": pose_diagnostic_trace' in benchmark_source
@@ -123,11 +122,12 @@ def test_dual_reach_policy_observes_two_pose_errors_and_uses_residual_base() -> 
     assert "target_2_relative_orientation = ObsTerm(" in cfg_source
     assert "class DualReachResidualMLPModel(ReachResidualMLPModel):" in model_source
     assert "dual_reach_residual_actor([256, 128, 64])" in agent_source
-    learning_source = (
-        TASK_ROOT / "surgical/learning_cfg.py"
+    ik_source = (
+        TASK_ROOT / "surgical/reach_dual/config/psm/ik_rel_env_cfg.py"
     ).read_text()
-    assert "position_scale: float = 0.04" in learning_source
-    assert "orientation_scale: float = 0.20" in learning_source
+    assert ik_source.count(
+        "scale=(0.0025, 0.0025, 0.0025, 0.0125, 0.0125, 0.0125)"
+    ) == 2
     for offset in (46, 49, 52, 55):
         assert f"start={offset}" in benchmark_source
     ast.parse(cfg_source)

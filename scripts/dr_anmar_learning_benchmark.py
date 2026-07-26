@@ -290,16 +290,6 @@ def _reach_error_offsets(task: str) -> tuple[tuple[str, int, int], ...]:
     return ()
 
 
-def _reach_action_scales(
-    task: str,
-    position_scale: float,
-    orientation_scale: float,
-) -> tuple[float, float]:
-    if "Reach-Dual-PSM-IK-Rel" in task:
-        return position_scale * 4.0, orientation_scale * 4.0
-    return position_scale, orientation_scale
-
-
 def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     """Initialize and validate the analytic-base residual reach actor."""
     import gymnasium as gym
@@ -336,19 +326,14 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     losses: list[float] = []
     teacher_successes = 0
     teacher_completed = 0
-    action_position_scale, action_orientation_scale = _reach_action_scales(
-        args.task,
-        args.position_scale,
-        args.orientation_scale,
-    )
     started = time.perf_counter()
     try:
         for _ in range(args.updates):
             teacher_actions = _reach_teacher_action(
                 obs,
                 args.task,
-                position_scale=action_position_scale,
-                orientation_scale=action_orientation_scale,
+                position_scale=args.position_scale,
+                orientation_scale=args.orientation_scale,
             )
             policy.update_normalization(obs)
             predicted_actions = policy(obs)
@@ -496,8 +481,8 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             "learning_rate": args.learning_rate,
             "weight_decay": args.weight_decay,
             "teacher_action_scales": {
-                "position_m": action_position_scale,
-                "orientation_rad": action_orientation_scale,
+                "position_m": args.position_scale,
+                "orientation_rad": args.orientation_scale,
             },
             "loss": {
                 "initial": losses[0] if losses else None,
