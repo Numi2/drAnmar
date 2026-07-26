@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "bytes": 16741124,
+      "bytes": 16741550,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_autonomous_rescue_or.usda",
@@ -49,7 +49,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Environments/SurgicalAutonomy/AutonomousRescueOR",
-      "sha256": "12688d4224a5b92e8b6482ffbf1d3b1d492e00a5376b091f583003b213303b77"
+      "sha256": "40792c21a8102f7419a985003c8528c6d8ac20316369d74742a63366b0a2d05d"
     },
     {
       "bytes": 21857721,
@@ -682,7 +682,7 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "bbea5d8589013c90b969855189ec720be24fb8517be0183d00ad32f61e2200d6",
+  "catalog_sha256": "aa21f6778bbd5a56957328deca5996de9497d0371211cdca4da43863761a9a2f",
   "catalog_version": "1.2.0",
   "clinical_validation": false,
   "i4h": {

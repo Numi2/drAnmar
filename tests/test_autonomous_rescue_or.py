@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
-ASSET_MODULES = ROOT / (
-    "source/extensions/orbit.surgical.assets/orbit/surgical/assets"
-)
+ASSET_MODULES = ROOT / ("source/extensions/orbit.surgical.assets/orbit/surgical/assets")
 
 
 def load_rescue_modules():
@@ -66,6 +63,28 @@ def frame(
     )
 
 
+def pump_frame(
+    runtime,
+    step,
+    *,
+    channel="blood_product",
+    position_m,
+    reservoir_mass_g,
+):
+    _, rescue = runtime
+    return rescue.PumpEvidenceFrame(
+        physics_step=step,
+        simulation_time_s=step * 0.05,
+        dt_s=0.05,
+        channel_id=channel,
+        access_attachment_count=1,
+        plunger_position_m=position_m,
+        downstream_flow_ml_s=600.0,
+        reservoir_mass_g=reservoir_mass_g,
+        line_pressure_kpa=10.0,
+    )
+
+
 def test_policy_intent_cannot_write_patient_outcomes():
     modules = load_rescue_modules()
     _, rescue = modules
@@ -83,6 +102,106 @@ def test_policy_intent_cannot_write_patient_outcomes():
     assert dict(before) == dict(after)
     with pytest.raises(ValueError, match="cannot author patient outcomes"):
         runtime.request_action(action, hemostasis_verified=True)
+
+
+@pytest.mark.parametrize(
+    ("action", "reason"),
+    (
+        (
+            ("unknown-station", "gantry", "adaptive_hemostasis", "clip"),
+            "unknown_robot_station",
+        ),
+        (
+            ("unknown-tool", "rescue", "mystery_tool", "clip"),
+            "unknown_registered_tool",
+        ),
+        (
+            ("wrong-tool", "rescue", "closure_robot", "clip"),
+            "tool_lacks_requested_capability",
+        ),
+        (
+            (
+                "wrong-system-station",
+                "rescue",
+                "adaptive_hemostasis",
+                "transfuse",
+            ),
+            "system_intent_requires_system_station",
+        ),
+    ),
+)
+def test_policy_action_admission_fails_closed(action, reason):
+    modules = load_rescue_modules()
+    _, rescue = modules
+    runtime = rescue.AutonomousRescueORRuntime(seed=19)
+    action_id, station_id, tool_id, requested_action = action
+
+    record = runtime.request_action(
+        rescue.PolicyAction(
+            action_id,
+            station_id,
+            tool_id,
+            "rescue_vessel",
+            requested_action,
+        )
+    )
+
+    assert record.status is rescue.ActionStatus.REJECTED
+    assert record.reason == reason
+
+
+def test_policy_action_admission_accepts_registered_capability_and_unique_id():
+    modules = load_rescue_modules()
+    _, rescue = modules
+    runtime = rescue.AutonomousRescueORRuntime(seed=23)
+    action = rescue.PolicyAction(
+        "clip-admitted",
+        "rescue",
+        "adaptive_hemostasis",
+        "rescue_vessel",
+        "clip",
+    )
+
+    accepted = runtime.request_action(action)
+    duplicate = runtime.request_action(action)
+    system_action = runtime.request_action(
+        rescue.PolicyAction(
+            "transfuse-admitted",
+            "system",
+            "resuscitation_module",
+            "patient",
+            "transfuse",
+        )
+    )
+
+    assert accepted.status is rescue.ActionStatus.REQUESTED
+    assert duplicate.status is rescue.ActionStatus.REJECTED
+    assert duplicate.reason == "duplicate_action_id"
+    assert system_action.status is rescue.ActionStatus.REQUESTED
+
+
+def test_every_protocol_tool_declares_its_requested_capability():
+    modules = load_rescue_modules()
+    _, rescue = modules
+    tools = rescue._load_contract("tools")
+    protocols = rescue._load_contract("rescue_protocols")
+    tool_capabilities = {
+        item["id"]: set(item["capabilities"]) for item in tools["tools"]
+    }
+
+    mismatches = []
+    for protocol_id, actions in protocols["protocols"].items():
+        for action in actions:
+            tool_id = action.get("tool")
+            if tool_id is None:
+                continue
+            capability = action["capability"]
+            if capability not in tool_capabilities.get(tool_id, set()):
+                mismatches.append(
+                    f"{protocol_id}/{action['id']}: " f"{tool_id} lacks {capability}"
+                )
+
+    assert mismatches == []
 
 
 def test_unilateral_contact_does_not_create_hemostasis():
@@ -140,9 +259,7 @@ def test_complication_and_rescue_plan_come_from_scene_state():
     modules = load_rescue_modules()
     _, rescue = modules
     runtime = rescue.AutonomousRescueORRuntime(seed=5)
-    observation = runtime.advance_scene(
-        frame(modules, 1, left=0.0, right=0.0)
-    )
+    observation = runtime.advance_scene(frame(modules, 1, left=0.0, right=0.0))
     assert observation["active_complications"][0]["id"] == "catastrophic_hemorrhage"
     assert observation["rescue_plan"]["protocol_id"] == "hemorrhage_control"
 
@@ -172,3 +289,75 @@ def test_repair_effect_requires_geometry_and_retention():
     assert repair["approximation_fraction"] == pytest.approx(1.0)
     assert repair["retention_fraction"] == pytest.approx(1.0)
     assert repair["leak_rate_ml_s"] == pytest.approx(0.0)
+
+
+def test_resource_ledger_rejects_nonfinite_consumption_without_mutation():
+    modules = load_rescue_modules()
+    _, rescue = modules
+    ledger = rescue.ResourceLedger({"blood_products_ml": 1200.0})
+    before = dict(ledger.snapshot())
+
+    with pytest.raises(ValueError, match="finite and positive"):
+        ledger.consume("blood_products_ml", float("nan"))
+
+    assert dict(ledger.snapshot()) == before
+    assert ledger.consumed == {}
+
+
+def test_resuscitation_inventory_rejection_is_fail_closed():
+    modules = load_rescue_modules()
+    _, rescue = modules
+    runtime = rescue.AutonomousRescueORRuntime(seed=13)
+    runtime.advance_resuscitation(
+        pump_frame(
+            modules,
+            1,
+            position_m=0.0,
+            reservoir_mass_g=500.0,
+        )
+    )
+    runtime.resources.resources["blood_products_ml"] = 0.0
+    before = runtime.resuscitation.snapshot()
+
+    with pytest.raises(RuntimeError, match="insufficient blood_products_ml"):
+        runtime.advance_resuscitation(
+            pump_frame(
+                modules,
+                2,
+                position_m=0.018,
+                reservoir_mass_g=468.2,
+            )
+        )
+
+    after = runtime.resuscitation.snapshot()
+    assert after == before
+    assert runtime.resources.available("blood_products_ml") == 0.0
+
+
+def test_resuscitation_withdrawal_conserves_runtime_inventory():
+    modules = load_rescue_modules()
+    _, rescue = modules
+    runtime = rescue.AutonomousRescueORRuntime(seed=17)
+    runtime.advance_resuscitation(
+        pump_frame(
+            modules,
+            1,
+            position_m=0.0,
+            reservoir_mass_g=500.0,
+        )
+    )
+    before = runtime.resources.available("blood_products_ml")
+    runtime.advance_resuscitation(
+        pump_frame(
+            modules,
+            2,
+            position_m=0.018,
+            reservoir_mass_g=468.2,
+        )
+    )
+
+    channel = runtime.resuscitation.snapshot().channels["blood_product"]
+    assert channel["withdrawn_from_reservoir_ml"] == pytest.approx(30.0)
+    assert runtime.resources.available("blood_products_ml") == pytest.approx(
+        before - 30.0
+    )
