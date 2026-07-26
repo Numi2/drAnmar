@@ -35,6 +35,7 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         "arm_2_target_relative_axis_angle_orientation"
         in manifest["defaults"]["dual_reach_observation_contract"]
     )
+    assert manifest["defaults"]["stage_2_initialization"]["dual_loop_gain"] == 0.25
 
 
 def test_frontier_imports_and_runner_contract() -> None:
@@ -78,6 +79,7 @@ def test_launcher_starts_simulator_before_task_registration() -> None:
     assert 'termination_manager.get_term("success")' in benchmark_source
     assert "def _reach_teacher_action(" in benchmark_source
     assert "def _reach_error_offsets(" in benchmark_source
+    assert "def _reach_action_scales(" in benchmark_source
     assert "def _pretrain(" in benchmark_source
     assert '"pose_diagnostics": pose_diagnostics' in benchmark_source
     assert '"pose_diagnostic_trace": pose_diagnostic_trace' in benchmark_source
@@ -121,6 +123,11 @@ def test_dual_reach_policy_observes_two_pose_errors_and_uses_residual_base() -> 
     assert "target_2_relative_orientation = ObsTerm(" in cfg_source
     assert "class DualReachResidualMLPModel(ReachResidualMLPModel):" in model_source
     assert "dual_reach_residual_actor([256, 128, 64])" in agent_source
+    learning_source = (
+        TASK_ROOT / "surgical/learning_cfg.py"
+    ).read_text()
+    assert "position_scale: float = 0.04" in learning_source
+    assert "orientation_scale: float = 0.20" in learning_source
     for offset in (46, 49, 52, 55):
         assert f"start={offset}" in benchmark_source
     ast.parse(cfg_source)

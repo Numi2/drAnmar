@@ -54,9 +54,10 @@ stage gate.
 The Stage 2 dual policy observes position and axis-angle orientation error for
 both tool tips. Its 12-dimensional action is assembled from two independent
 six-dimensional controller outputs before the learned coordination residual is
-applied. The observation offsets, controller scales, initialization method,
-held-out seeds, and promotion threshold are versioned in the learning-path
-contract.
+applied. A versioned 0.25 dual-loop gain prevents the two-controller scene from
+overshooting the qualified pose envelope. The observation offsets, controller
+scales, initialization method, held-out seeds, and promotion threshold are
+versioned in the learning-path contract.
 
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,
