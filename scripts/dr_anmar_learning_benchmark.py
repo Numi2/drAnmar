@@ -508,7 +508,10 @@ def _handover_teacher_action(
     obs,
     *,
     receiver_grasp_offset: tuple[float, float, float],
+    receiver_roll_offset_rad: float = 0.0,
     position_scale: float = 0.01,
+    orientation_scale: float = 0.05,
+    receiver_orientation_action_limit: float = 0.3,
     approach_height: float = 0.02,
     lateral_alignment_threshold: float = 0.005,
     close_distance: float = 0.005,
@@ -521,6 +524,8 @@ def _handover_teacher_action(
     carry_vertical_action_limit: float = 0.18,
 ):
     """Stage a physical Arm 1 pickup and Arm 2 custody transfer."""
+    import math
+
     import torch
 
     from orbit.surgical.tasks.surgical.lift.grasp_frames import (
@@ -529,7 +534,9 @@ def _handover_teacher_action(
 
     policy_obs = obs["policy"]
     giver_ee = policy_obs[:, 32:35]
+    giver_orientation = policy_obs[:, 35:39]
     receiver_ee = policy_obs[:, 39:42]
+    receiver_orientation = policy_obs[:, 42:46]
     object_in_giver = policy_obs[:, 46:49]
     object_in_receiver = policy_obs[:, 53:56]
     giver_contacts = policy_obs[:, 66:68]
@@ -701,13 +708,39 @@ def _handover_teacher_action(
         torch.ones_like(receiver_distance),
     ).unsqueeze(-1)
     zero_orientation = torch.zeros_like(giver_translation)
+    from isaaclab.utils.math import (
+        axis_angle_from_quat,
+        quat_conjugate,
+        quat_mul,
+    )
+
+    receiver_roll = torch.zeros_like(giver_orientation)
+    half_roll = 0.5 * receiver_roll_offset_rad
+    receiver_roll[:, 2] = math.sin(half_roll)
+    receiver_roll[:, 3] = math.cos(half_roll)
+    receiver_target_orientation = quat_mul(
+        receiver_roll,
+        giver_orientation,
+    )
+    receiver_orientation_error = axis_angle_from_quat(
+        quat_mul(
+            receiver_target_orientation,
+            quat_conjugate(receiver_orientation),
+        )
+    )
+    receiver_orientation_action = (
+        receiver_orientation_error / orientation_scale
+    ).clamp(
+        -receiver_orientation_action_limit,
+        receiver_orientation_action_limit,
+    )
     return torch.cat(
         (
             giver_translation,
             zero_orientation,
             giver_gripper,
             receiver_translation,
-            zero_orientation,
+            receiver_orientation_action,
             receiver_gripper,
         ),
         dim=-1,
@@ -1347,6 +1380,8 @@ def _handover_controller_sweep(
     repo_root: Path,
 ) -> int:
     """Compare Arm 2 grasp points for the staged physical needle handover."""
+    import math
+
     import gymnasium as gym
     import torch
 
@@ -1367,6 +1402,7 @@ def _handover_controller_sweep(
         return _fail("number of environments must divide evenly across sweep values")
     parameter = args.parameter
     receiver_offsets = []
+    receiver_roll_offsets = [0.0] * len(values)
     fixed_receiver_arc_fraction = 0.65
     if parameter == "receiver_arc_fraction":
         if any(not 0.0 <= value <= 1.0 for value in values):
@@ -1390,10 +1426,25 @@ def _handover_controller_sweep(
             (geometry_offset[0], geometry_offset[1], value)
             for value in values
         ]
+    elif parameter == "receiver_roll_offset_rad":
+        if any(not -math.pi <= value <= math.pi for value in values):
+            return _fail("receiver roll offsets must be within +/- pi rad")
+        geometry_offset = needle_geometry_grasp_offset_m(
+            fixed_receiver_arc_fraction
+        )
+        receiver_offsets = [
+            (
+                geometry_offset[0],
+                geometry_offset[1],
+                NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
+            )
+            for _ in values
+        ]
+        receiver_roll_offsets = values
     else:
         return _fail(
             "handover-sweep parameter must be receiver_arc_fraction "
-            "or receiver_grasp_z_offset"
+            "receiver_grasp_z_offset, or receiver_roll_offset_rad"
         )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
@@ -1515,6 +1566,9 @@ def _handover_controller_sweep(
                 actions[start:stop] = _handover_teacher_action(
                     group_obs,
                     receiver_grasp_offset=receiver_offset,
+                    receiver_roll_offset_rad=(
+                        receiver_roll_offsets[group_index]
+                    ),
                 )
                 giver_ee = group_obs["policy"][:, 32:35]
                 giver_grasp = group_obs["policy"][:, 46:49].clone()
@@ -1682,6 +1736,9 @@ def _handover_controller_sweep(
                     ),
                     "receiver_grasp_z_offset_m": (
                         receiver_offsets[group_index][2]
+                    ),
+                    "receiver_roll_offset_rad": (
+                        receiver_roll_offsets[group_index]
                     ),
                     "receiver_grasp_offset_m": list(
                         receiver_offsets[group_index]
