@@ -38,7 +38,7 @@ class LiftResidualMLPModel(MLPModel):
         lateral_clearance_below_target: float = 0.02,
         carry_latch_below_target: float = 0.062,
         carry_action_limit: float = 0.1,
-        residual_scale: float = 0.2,
+        residual_scale: float = 0.03,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -67,6 +67,39 @@ class LiftResidualMLPModel(MLPModel):
         )
         nn.init.zeros_(final_linear.weight)
         nn.init.zeros_(final_linear.bias)
+        # The standard RSL-RL Gaussian acts on the complete policy output.  For
+        # this residual controller the only stochastic degrees of freedom are
+        # the carry-phase XYZ corrections below, so keep their exploration
+        # scale fixed instead of allowing PPO to inflate it.
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(self.distribution, parameter_name, None)
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
+    def _carry_state_from_raw(
+        self, raw: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        object_position = raw[
+            :,
+            self.object_position_start : self.object_position_start + 3,
+        ]
+        target_position = raw[
+            :,
+            self.target_position_start : self.target_position_start + 3,
+        ]
+        contact_forces = raw[
+            :,
+            self.contact_force_start : self.contact_force_start + 2,
+        ]
+        bilateral_contact = torch.all(
+            contact_forces > self.normalized_contact_threshold,
+            dim=-1,
+        )
+        lifted_carry = object_position[:, 2] > (
+            target_position[:, 2] - self.carry_latch_below_target
+        )
+        return bilateral_contact | lifted_carry, lifted_carry
 
     def _base_action_from_raw(self, raw: torch.Tensor) -> torch.Tensor:
         ee_position = raw[
@@ -105,14 +138,7 @@ class LiftResidualMLPModel(MLPModel):
             grasp_position,
         )
 
-        bilateral_contact = torch.all(
-            contact_forces > self.normalized_contact_threshold,
-            dim=-1,
-        )
-        lifted_carry = object_position[:, 2] > (
-            target_position[:, 2] - self.carry_latch_below_target
-        )
-        carry_mode = bilateral_contact | lifted_carry
+        carry_mode, lifted_carry = self._carry_state_from_raw(raw)
         approach_action = (
             (approach_position - ee_position) / self.position_scale
         ).clamp(-1.0, 1.0)
@@ -173,15 +199,36 @@ class LiftResidualMLPModel(MLPModel):
         stochastic_output: bool = False,
     ) -> torch.Tensor:
         latent = self.get_latent(obs, masks, hidden_state)
-        residual = self.mlp(latent)
-        mean = (
-            self._base_action(obs) + self.residual_scale * residual
-        ).clamp(-1.0, 1.0)
+        raw = torch.cat([obs[group] for group in self.obs_groups], dim=-1)
+        carry_mode, _ = self._carry_state_from_raw(raw)
+        residual = torch.tanh(self.mlp(latent))
+        translation_residual = (
+            self.residual_scale
+            * residual[:, :3]
+            * carry_mode.unsqueeze(-1).to(residual.dtype)
+        )
+        safe_residual = torch.cat(
+            (translation_residual, torch.zeros_like(residual[:, 3:])),
+            dim=-1,
+        )
+        mean = (self._base_action_from_raw(raw) + safe_residual).clamp(
+            -1.0, 1.0
+        )
         if self.distribution is None:
             return mean
         if stochastic_output:
             self.distribution.update(mean)
-            return self.distribution.sample()
+            sampled = self.distribution.sample()
+            carry_translation = torch.where(
+                carry_mode.unsqueeze(-1),
+                sampled[:, :3],
+                mean[:, :3],
+            )
+            # Preserve the analytic approach, wrist orientation, and binary
+            # gripper even during PPO rollout collection.  This closes the
+            # train/serve gap that previously let Gaussian exploration bypass
+            # the deterministic residual mask.
+            return torch.cat((carry_translation, mean[:, 3:]), dim=-1)
         return self.distribution.deterministic_output(mean)
 
     def as_jit(self) -> nn.Module:
@@ -317,8 +364,37 @@ class _LiftResidualExport(nn.Module):
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
         base = self._base_action(obs)
-        residual = self.mlp(self.obs_normalizer(obs))
-        output = (base + self.residual_scale * residual).clamp(-1.0, 1.0)
+        residual = torch.tanh(self.mlp(self.obs_normalizer(obs)))
+        object_position = obs[
+            :,
+            self.object_position_start : self.object_position_start + 3,
+        ]
+        target_position = obs[
+            :,
+            self.target_position_start : self.target_position_start + 3,
+        ]
+        contact_forces = obs[
+            :,
+            self.contact_force_start : self.contact_force_start + 2,
+        ]
+        bilateral_contact = torch.all(
+            contact_forces > self.normalized_contact_threshold,
+            dim=-1,
+        )
+        lifted_carry = object_position[:, 2] > (
+            target_position[:, 2] - self.carry_latch_below_target
+        )
+        carry_mode = bilateral_contact | lifted_carry
+        translation_residual = (
+            self.residual_scale
+            * residual[:, :3]
+            * carry_mode.unsqueeze(-1).to(residual.dtype)
+        )
+        safe_residual = torch.cat(
+            (translation_residual, torch.zeros_like(residual[:, 3:])),
+            dim=-1,
+        )
+        output = (base + safe_residual).clamp(-1.0, 1.0)
         return self.deterministic_output(output)
 
     @torch.jit.export

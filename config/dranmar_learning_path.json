@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.22.0",
+  "schema_version": "1.23.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -74,6 +74,15 @@
       "lateral_clearance_below_target_m": 0.02,
       "carry_latch_below_target_m": 0.062,
       "carry_action_limit": 0.1,
+      "residual_phase": "latched_carry_only",
+      "residual_axes": [
+        "x",
+        "y",
+        "z"
+      ],
+      "residual_action_limit": 0.03,
+      "residual_initial_std": 0.01,
+      "residual_exploration_std_learning": "fixed",
       "ppo_role": "learn_bounded_contact_residual_only_if_held_out_gate_fails"
     }
   },

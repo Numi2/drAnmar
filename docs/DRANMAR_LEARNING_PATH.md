@@ -95,6 +95,14 @@ and gripper closure remain latched until the object drops below that threshold,
 preventing contact-sensor flicker from restarting the approach phase. Stage 4
 requires its own contact-calibrated needle grasp frame before promotion.
 
+Stage 3 residual PPO cannot modify the proven approach, gripper, or orientation
+commands. It receives only a bounded `(x, y, z)` correction after physics-owned
+contact or lifted-object height has latched carry mode. The residual action
+limit is `0.03`; its Gaussian exploration standard deviation is fixed at
+`0.01`, and samples are applied only to carry translation. This preserves the
+analytic approach, wrist orientation, and binary gripper during both training
+and serving while allowing PPO to reduce transport timeouts.
+
 Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift
 objects therefore use the explicit identity `(0, 0, 0, 1)`. This prevents the
 legacy `(w, x, y, z)` identity from becoming a 180-degree X rotation, which

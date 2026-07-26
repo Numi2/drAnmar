@@ -14,4 +14,4 @@ from orbit.surgical.tasks.surgical.learning_cfg import (
 @configclass
 class LiftBlockPPORunnerCfg(DrAnmarManipulationPPORunnerCfg):
     experiment_name = "dranmar_block_lift"
-    actor = lift_residual_actor([256, 128, 64])
+    actor = lift_residual_actor([256, 128, 64], initial_std=0.01)

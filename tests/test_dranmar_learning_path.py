@@ -61,6 +61,29 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     )
     assert manifest["defaults"]["stage_3_initialization"]["carry_action_limit"] == 0.1
     assert (
+        manifest["defaults"]["stage_3_initialization"]["residual_phase"]
+        == "latched_carry_only"
+    )
+    assert manifest["defaults"]["stage_3_initialization"]["residual_axes"] == [
+        "x",
+        "y",
+        "z",
+    ]
+    assert (
+        manifest["defaults"]["stage_3_initialization"]["residual_action_limit"]
+        == 0.03
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"]["residual_initial_std"]
+        == 0.01
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
+            "residual_exploration_std_learning"
+        ]
+        == "fixed"
+    )
+    assert (
         manifest["defaults"]["stage_3_initialization"][
             "lateral_clearance_below_target_m"
         ]
@@ -268,12 +291,19 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "self.grasp_height = grasp_height" in model_source
     assert "self.grasp_offset_x = float(grasp_offset[0])" in model_source
     assert "grasp_position[:, 2] += self.grasp_offset_z + self.grasp_height" in model_source
+    assert "residual = torch.tanh(self.mlp(latent))" in model_source
+    assert "carry_mode.unsqueeze(-1).to(residual.dtype)" in model_source
+    assert "torch.zeros_like(residual[:, 3:])" in model_source
+    assert 'for parameter_name in ("std_param", "log_std_param")' in model_source
+    assert "parameter.requires_grad_(False)" in model_source
+    assert "sampled[:, :3]" in model_source
+    assert "mean[:, 3:]" in model_source
     assert "self.slow_approach_action_limit = slow_approach_action_limit" in model_source
     assert "self.carry_action_limit = carry_action_limit" in model_source
     assert "object_angular_velocity / self.carry_angular_velocity_scale" not in model_source
     assert "target_position[:, 2] - self.lateral_clearance_below_target" in model_source
     assert "carry_mode = bilateral_contact | lifted_carry" in model_source
-    assert "lift_residual_actor([256, 128, 64])" in agent_source
+    assert "lift_residual_actor([256, 128, 64], initial_std=0.01)" in agent_source
     assert "probe)" in launcher_source
     for source in (
         cfg_source,
