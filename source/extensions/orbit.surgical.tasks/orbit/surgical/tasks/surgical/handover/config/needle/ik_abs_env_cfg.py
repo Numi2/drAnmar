@@ -28,7 +28,7 @@ class NeedleHandoverEnvCfg(joint_pos_env_cfg.NeedleHandoverEnvCfg):
             spawn=PSM_HIGH_PD_CFG.spawn.replace(activate_contact_sensors=True),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
                 pos=(-0.2, 0.0, 0.15),
-                rot=(1.0, 0.0, 0.0, 0.0),
+                rot=(0.0, 0.0, 0.0, 1.0),
             ),
         )
         self.scene.robot_2 = PSM_HIGH_PD_CFG.replace(
@@ -36,7 +36,7 @@ class NeedleHandoverEnvCfg(joint_pos_env_cfg.NeedleHandoverEnvCfg):
             spawn=PSM_HIGH_PD_CFG.spawn.replace(activate_contact_sensors=True),
             init_state=PSM_HIGH_PD_CFG.init_state.replace(
                 pos=(0.2, 0.0, 0.15),
-                rot=(1.0, 0.0, 0.0, 0.0),
+                rot=(0.0, 0.0, 0.0, 1.0),
             ),
         )
 

@@ -348,6 +348,16 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
     assert "self.commands.receiver_pose.body_name" in needle_source
     assert contract["direction"] == "robot_1_giver_to_robot_2_receiver"
     assert contract["requires_receiver_goal_pose"] is False
+    for prop in ("block", "needle"):
+        for control in ("joint_pos", "ik_abs", "ik_rel"):
+            robot_cfg_source = (
+                TASK_ROOT
+                / f"surgical/handover/config/{prop}/{control}_env_cfg.py"
+            ).read_text()
+            assert "rot=(1.0, 0.0, 0.0, 0.0)" not in robot_cfg_source
+            assert robot_cfg_source.count(
+                "rot=(0.0, 0.0, 0.0, 1.0)"
+            ) >= 2
     for source in (state_source, cfg_source, needle_source):
         ast.parse(source)
 
