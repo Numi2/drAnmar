@@ -360,6 +360,8 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
             assert robot_cfg_source.count(
                 "rot=(0.0, 0.0, 0.0, 1.0)"
             ) >= 2
+            assert "pos=(0.2, 0.0, 0.15)" not in robot_cfg_source
+            assert "pos=(0.0, 0.0, 0.15)" in robot_cfg_source
     for source in (state_source, cfg_source, needle_source):
         ast.parse(source)
 

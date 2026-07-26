@@ -44,7 +44,7 @@ class NeedleHandoverEnvCfg(HandoverEnvCfg):
             prim_path="{ENV_REGEX_NS}/Robot_2",
             spawn=PSM_CFG.spawn.replace(activate_contact_sensors=True),
             init_state=PSM_CFG.init_state.replace(
-                pos=(0.2, 0.0, 0.15),
+                pos=(0.0, 0.0, 0.15),
                 rot=(0.0, 0.0, 0.0, 1.0),
             ),
         )
