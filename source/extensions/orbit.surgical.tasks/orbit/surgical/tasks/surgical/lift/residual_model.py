@@ -31,7 +31,7 @@ class LiftResidualMLPModel(MLPModel):
             float, float, float
         ] = BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M,
         lateral_alignment_threshold: float = 0.004,
-        close_distance: float = 0.003,
+        close_distance: float = 0.005,
         slow_approach_radius: float = 0.02,
         slow_approach_action_limit: float = 0.1,
         normalized_contact_threshold: float = 0.002,

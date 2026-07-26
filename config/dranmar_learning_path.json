@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.23.0",
+  "schema_version": "1.24.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -67,7 +67,8 @@
       ],
       "grasp_offset_source": "isaac_lab_parallel_1200_env_first_outcome_contact_sweep",
       "lateral_alignment_threshold_m": 0.004,
-      "close_distance_to_grasp_m": 0.003,
+      "close_distance_to_grasp_m": 0.005,
+      "close_distance_source": "two_independent_1200_env_shared_distribution_first_outcome_sweeps",
       "slow_approach_radius_m": 0.02,
       "slow_approach_action_limit": 0.1,
       "normalized_contact_threshold": 0.002,

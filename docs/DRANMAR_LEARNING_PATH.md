@@ -78,7 +78,7 @@ envelopes, not clinically calibrated tissue limits.
 Stage 3 preserves orientation qualification; the corrected identity
 quaternion makes that contract physically possible at reset. Its analytic base
 approaches from 20 mm above the block's contact-calibrated grasp frame and
-closes only within 3 mm of that waypoint. A parallel 1,200-environment Isaac
+closes within 5 mm of that waypoint. A parallel 1,200-environment Isaac
 Lab sweep compared six offsets from the same reset distribution and counted
 only the first terminal outcome per world. It selected
 `(0.0, 0.0, -0.0014)` metres from the authored root: 167 of its 200 assigned
@@ -86,6 +86,11 @@ worlds reached strict success, tied for the best measured rate while producing
 the lowest mean object angular speed. The closed-mesh volume centroid was
 rejected because the PSM tool-tip frame is not the jaw collision center;
 commanding that centroid eliminated completed lifts.
+Two subsequent shared-distribution 1,200-environment sweeps isolated jaw
+closure timing. A 5 mm close radius achieved 185 of 200 strict successes on
+each of two disjoint world shards; the fine sweep found a stable 4.6–5.0 mm
+plateau, while 5.4 mm fell to 45 of 200. The controller therefore uses the
+repeatable 5 mm boundary and requires a full-world evaluation before promotion.
 Cartesian commands are capped at 0.1 during the final 20 mm approach and
 throughout bilateral-contact carry, limiting each 50 Hz command to 1 mm. Carry
 lifts vertically until the object is within 20 mm of target height before

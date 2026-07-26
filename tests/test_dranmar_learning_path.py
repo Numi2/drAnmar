@@ -61,6 +61,16 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     )
     assert manifest["defaults"]["stage_3_initialization"]["carry_action_limit"] == 0.1
     assert (
+        manifest["defaults"]["stage_3_initialization"][
+            "close_distance_to_grasp_m"
+        ]
+        == 0.005
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"]["close_distance_source"]
+        == "two_independent_1200_env_shared_distribution_first_outcome_sweeps"
+    )
+    assert (
         manifest["defaults"]["stage_3_initialization"]["residual_phase"]
         == "latched_carry_only"
     )
@@ -290,6 +300,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "class LiftResidualMLPModel(MLPModel):" in model_source
     assert "carry_mode.unsqueeze(-1)" in model_source
     assert "self.grasp_height = grasp_height" in model_source
+    assert "close_distance: float = 0.005" in model_source
     assert "self.grasp_offset_x = float(grasp_offset[0])" in model_source
     assert "grasp_position[:, 2] += self.grasp_offset_z + self.grasp_height" in model_source
     assert "residual = torch.tanh(self.mlp(latent))" in model_source
