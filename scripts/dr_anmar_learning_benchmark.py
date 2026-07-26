@@ -607,6 +607,14 @@ def _handover_teacher_action(
         ),
         dim=-1,
     )
+    giver_bilateral_contact = torch.all(
+        giver_contacts > normalized_contact_threshold,
+        dim=-1,
+    )
+    giver_carry_mode = (
+        ((phase == 1) & giver_bilateral_contact)
+        | (phase == 2)
+    )
 
     receiver_stage_target = midpoint_in_receiver.clone()
     receiver_stage_target[:, 2] = (
@@ -635,7 +643,7 @@ def _handover_teacher_action(
     )
 
     giver_translation = torch.where(
-        ((phase == 1) | (phase == 2)).unsqueeze(-1),
+        giver_carry_mode.unsqueeze(-1),
         giver_carry,
         giver_approach,
     )

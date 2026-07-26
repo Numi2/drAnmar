@@ -455,6 +455,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "def _controller_sweep(" in benchmark_source
     assert "def _handover_controller_sweep(" in benchmark_source
     assert "def _handover_teacher_action(" in benchmark_source
+    assert "giver_bilateral_contact = torch.all(" in benchmark_source
+    assert "giver_carry_mode.unsqueeze(-1)" in benchmark_source
     assert 'play.add_argument("--video", action="store_true")' in benchmark_source
     assert 'play.add_argument("--video_chunk_length", type=int)' in benchmark_source
     assert 'enable_cameras=bool(getattr(args, "video", False))' in benchmark_source
