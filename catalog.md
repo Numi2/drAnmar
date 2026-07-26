@@ -9,7 +9,7 @@ It records software and asset provenance; it is not clinical-validation evidence
 
 - Catalog schema: `dr.anmar.asset-catalog-lock.v3`
 - Catalog version: `1.3.0`
-- Catalog SHA-256: `e2623fa36645e50b01cb4b49b29afac2101bc8e9199f6122f968a51aaec4786a`
+- Catalog SHA-256: `4b3a5a037a9175f33d3d8c710fa2ea4f86623b71a9c9f1a79802db4605a98cc8`
 - Local asset units: `29`
 - Product portfolio assets: `21`
 - Clinical validation: `false`
@@ -106,7 +106,7 @@ and clinical evidence are deliberately separate claims.
 | `dranmar-atraumatic-exposure-robot-v1` | runtime composition observed current native matrix not yet established | pad contact force capture quality and instrumented retraction bench evi… | `not established` |
 | `dranmar-autonomous-rescue-or-v0.4.0` | native multiarm and deformable runtime evidence not yet recorded for v0… | contact flow tissue and resuscitation bench evidence not yet established | `not established` |
 | `dranmar-cosmos-h-dreams-source-audit-v1` | native execution not yet recorded for this bundle | paired capture and instrumented bench evidence not yet established | `not established` |
-| `dranmar-dynamic-abdominal-patient-v1` | native cuda execution not yet recorded | anatomy mechanics and physiology bench correlation not yet established | `not established` |
+| `dranmar-dynamic-abdominal-patient-v1` | recorded surface deformable access transition only volume deformables p… | anatomy mechanics and physiology bench correlation not yet established | `not established` |
 | `dranmar-oncosurgery-cell-v1` | non contact dynamic volume stability recorded on rtx 4090 2026 07 25 co… | instrumented payload tissue sensor energy and specimen bench evidence n… | `not established` |
 | `dranmar-perfusion-viability-robot-v1` | standalone loaded franka and serialized six camera depth matrix recorde… | sensor calibration flow bench and tissue correlation not yet established | `not established` |
 | `dranmar-safeplane-dissection-robot-v1` | runtime composition observed current native matrix not yet established | contact derived bridge work release and instrumented dissection bench e… | `not established` |

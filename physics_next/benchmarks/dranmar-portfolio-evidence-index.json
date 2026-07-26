@@ -1,0 +1,1579 @@
+{
+  "asset_count": 21,
+  "assets": [
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 8,
+      "artifacts": [
+        {
+          "bytes": 1169,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
+          "revision_authority": "parent_repository",
+          "role": "asset",
+          "sha256": "626c4b8527ff6c483ab36c6da82d4f469eeaa5be156d2bda82aa7f082c0b7970"
+        },
+        {
+          "bytes": 3220,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/needle/DrAnmarNeedle_base.usda",
+          "revision_authority": "parent_repository",
+          "role": "base_layer",
+          "sha256": "5285f826d880f88da9b33278b834cfe3c89673056dbde1f46c4e1e554cc57367"
+        },
+        {
+          "bytes": 50761,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/needle/DrAnmarNeedle_geometry.usd",
+          "revision_authority": "parent_repository",
+          "role": "geometry_layer",
+          "sha256": "84a2993c9a4bfa84d57e2f9982660760481fab9f6060b0ea03ee7e19ab7c06db"
+        },
+        {
+          "bytes": 990,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/needle/DrAnmarNeedle_materials.usda",
+          "revision_authority": "parent_repository",
+          "role": "materials_layer",
+          "sha256": "9dd03f4ff1664d2e397ac44f7671cf1e34859c22e269eacc01fa3b60e3df73d4"
+        },
+        {
+          "bytes": 39301,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/needle/DrAnmarNeedle_physics.usda",
+          "revision_authority": "parent_repository",
+          "role": "physics_layer",
+          "sha256": "9496fbf6230616ca417d4e3e58f78e985c64d3ea0c8265db07abe3caa63409de"
+        },
+        {
+          "bytes": 10575,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/needle/DrAnmarNeedle_physx.usda",
+          "revision_authority": "parent_repository",
+          "role": "physx_layer",
+          "sha256": "7ca145bb49852b13d14b4afa79e5ee54feeaca77f0dd0881142b71f5ee5cd42d"
+        },
+        {
+          "bytes": 19601,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/needles/dr-anmar-needle-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "309981bb46ab14c86a6964d58dd623d9756c972f7ca83f7f0d1771af66d60d85"
+        },
+        {
+          "bytes": 23534,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.suture-asset-report.v15"
+          },
+          "path": "assets/dr_anmar/suture/DrAnmarSuture4_0.report.json",
+          "revision_authority": "parent_repository",
+          "role": "report",
+          "sha256": "c4e6d5715412b8fb1ccf5da2ed75f8e09a7dbbbdd27ef6da60a4e6af6094711e"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "native_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "instrumented_metrology_and_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_training_workcell_composition"
+      },
+      "id": "dr-anmar-needle"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 10,
+      "artifacts": [
+        {
+          "bytes": 689,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
+          "revision_authority": "parent_repository",
+          "role": "asset",
+          "sha256": "9306e69e540eecea5f2e5621cda7591eebe98f4705a1896a43d7b25dc5bf3787"
+        },
+        {
+          "bytes": 1516,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_base.usda",
+          "revision_authority": "parent_repository",
+          "role": "base_layer",
+          "sha256": "2f67b32f3d0b42826ead6b67bb51f9b63eae95f1b93250587d05be734626b134"
+        },
+        {
+          "bytes": 5060786,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_geometry.usd",
+          "revision_authority": "parent_repository",
+          "role": "geometry_layer",
+          "sha256": "f39b8b37597212b5d23ddcc53720c76320ea00807d748838b44820657ead7c41"
+        },
+        {
+          "bytes": 51778,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/suture/textures/DrAnmarSuture4_0_braid_normal_roughness.png",
+          "revision_authority": "parent_repository",
+          "role": "material_texture",
+          "sha256": "47f55dfefbed80d9a12b5a12819fee2249af39caaa776ac877a88defde36f243"
+        },
+        {
+          "bytes": 2931,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_materials.usda",
+          "revision_authority": "parent_repository",
+          "role": "materials_layer",
+          "sha256": "a6e69d382187bb1a772e2e5b51075141e3f2aa7abadf5e906db3312849b1757b"
+        },
+        {
+          "bytes": 2819,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "passed": true,
+            "schema": "dr.anmar.warp-suture-native-simulator-evidence.v1"
+          },
+          "path": "physics_next/benchmarks/dr-anmar-warp-suture-native-simulator-evidence.json",
+          "revision_authority": "parent_repository",
+          "role": "native_evidence",
+          "sha256": "dbee1d69ee8196dc8d2fe6896e0b771167dc606a8bdc5b6a8e0c9244bd894543"
+        },
+        {
+          "bytes": 1172959,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_physics.usda",
+          "revision_authority": "parent_repository",
+          "role": "physics_layer",
+          "sha256": "9bd9aa9746ff5d1b4ce9f70ddfd738928fd579b1ab8e2ab1970890efa57c8780"
+        },
+        {
+          "bytes": 278290,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_physx.usda",
+          "revision_authority": "parent_repository",
+          "role": "physx_layer",
+          "sha256": "3a3486f46ca81e93d6d88a2755732b66577e9066fd335e161a29df1d82d22641"
+        },
+        {
+          "bytes": 25456,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/sutures/dr-anmar-suture-4-0.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "7e0c1c383386d6707d4c9a1f1e17634768af2b56f9bf53c89a59678afbe3491d"
+        },
+        {
+          "bytes": 23534,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.suture-asset-report.v15"
+          },
+          "path": "assets/dr_anmar/suture/DrAnmarSuture4_0.report.json",
+          "revision_authority": "parent_repository",
+          "role": "report",
+          "sha256": "c4e6d5715412b8fb1ccf5da2ed75f8e09a7dbbbdd27ef6da60a4e6af6094711e"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "warp_gpu_engineering_run_recorded_native_physx_convergence_not_yet_established",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "straight_knotted_damage_and_swage_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_training_workcell_composition"
+      },
+      "id": "dr-anmar-suture-4-0-braided-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 4,
+      "artifacts": [
+        {
+          "bytes": 172856,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
+          "revision_authority": "parent_repository",
+          "role": "asset",
+          "sha256": "771bb4557a516ea2e879a6de83ae2ecd8bd273ef4567eed150998dd9af334f04"
+        },
+        {
+          "bytes": 771159,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
+          "revision_authority": "parent_repository",
+          "role": "explicit_tetmesh",
+          "sha256": "89d5c54a7e8670e25150cc1f51be8192d72b37c17cc38b2d0b5109105288dbb2"
+        },
+        {
+          "bytes": 11818,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "43f20f9644b02bf9e770b46e6ce94a943ea0caf4fd25574d0ce07455df0d44ea"
+        },
+        {
+          "bytes": 2573,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.suturable-tissue-asset-report.v2"
+          },
+          "path": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.report.json",
+          "revision_authority": "parent_repository",
+          "role": "report",
+          "sha256": "0e0dc345d443f4a3d3cb5c52e821993dba11cfbff8be2bceabec58d8f2e24255"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "native_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "deformation_puncture_pullout_and_closure_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_training_workcell_composition"
+      },
+      "id": "dr-anmar-suturable-tissue-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 5,
+      "artifacts": [
+        {
+          "bytes": 651356,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
+          "revision_authority": "parent_repository",
+          "role": "asset",
+          "sha256": "68a9e73f41532fb62155e93443edb50edf204baf2091ecc4c42c97a4ed02ebb3"
+        },
+        {
+          "bytes": 158576,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
+          "revision_authority": "parent_repository",
+          "role": "auxiliary_asset",
+          "sha256": "6dc1b0ff46b0442a3f34ba1fae61e57ad4be607445b69ac4664c0bfff219d3e5"
+        },
+        {
+          "bytes": 2623254,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/hemostasis/DrAnmarVessel.tet.usda",
+          "revision_authority": "parent_repository",
+          "role": "explicit_tetmesh",
+          "sha256": "aecc39546499856d38fd878d808d60668382c4688a5c7c434dac1cef2c292fe7"
+        },
+        {
+          "bytes": 13643,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/vessels/dr-anmar-hemostasis-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "335123722101a2e126a35fc04788b7a32caf5ab873f35066a9bedddb2f0c7edb"
+        },
+        {
+          "bytes": 2331,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.hemostasis-asset-report.v2"
+          },
+          "path": "assets/dr_anmar/hemostasis/DrAnmarHemostasis.report.json",
+          "revision_authority": "parent_repository",
+          "role": "report",
+          "sha256": "9542d112fb8cda4b9f4c91a0e26bfcae74f3ca2a124dd29b6bc3c40e9308d2fc"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "native_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "closure_leak_retention_and_damage_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_training_workcell_composition"
+      },
+      "id": "dr-anmar-hemostasis-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 5,
+      "artifacts": [
+        {
+          "bytes": 103985,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_unfolded.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "72ab904e110de0c045a3d02bb620269ee65af77d812939c41a370952f568bd95"
+        },
+        {
+          "bytes": 190824,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/lap_sponge_folded_proxy.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "de38620d24d1acb65e66d10820f57146906dcc6958689a665c2736825a219aa2"
+        },
+        {
+          "bytes": 5786,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/benchmarks/dr-anmar-laparotomy-sponge-validation.json",
+          "revision_authority": "parent_repository",
+          "role": "gpu_report",
+          "sha256": "18102d6f9d761ecf47e0f51b0e534f3aa0058e96437c9ea5bbd6ba695fe74155"
+        },
+        {
+          "bytes": 6976,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-count/dr-anmar-laparotomy-sponge-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "2b7ca7b5a1c40de2e4822bd00a806305308915101da846c57ae8c4c047795844"
+        },
+        {
+          "bytes": 5786,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.laparotomy-sponge-validation.v1"
+          },
+          "path": "physics_next/benchmarks/dr-anmar-laparotomy-sponge-validation.json",
+          "revision_authority": "parent_repository",
+          "role": "report",
+          "sha256": "18102d6f9d761ecf47e0f51b0e534f3aa0058e96437c9ea5bbd6ba695fe74155"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "rigid_and_surface_cuda_runs_recorded_on_isaac_sim_5_1_and_6_0",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "category_grounded_parameters_without_instrumented_bench_correlation",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_simulation_training"
+      },
+      "id": "dr-anmar-laparotomy-sponge-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 4,
+      "artifacts": [
+        {
+          "bytes": 1449840,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/dranmar_needle.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "6be56beeee3bf51928e36162b18a8b88ed76447a1a366338df37dd8887687bce"
+        },
+        {
+          "bytes": 1473,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "b97db52b4b36390a934dd1adf9cefbb36cabf755e496f4ab499e4969a66ffa38"
+        },
+        {
+          "bytes": 1881,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/physics_profile.json",
+          "revision_authority": "asset_submodule",
+          "role": "profile",
+          "sha256": "746b3199e63cc42fefe42b94e883fb329f88c5f50c82844aa77c8573c39e9b6e"
+        },
+        {
+          "bytes": 2436,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.asset-integration-report.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/integration_report.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "423be53ccafce1777909e6e37c3ec58002641148bdef78bb7fc0d318e6a964fb"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "category_level_parameters_without_instrumented_bench_correlation",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_simulation_training"
+      },
+      "id": "dr-anmar-needle-system-v0.3.0"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 6,
+      "artifacts": [
+        {
+          "bytes": 5326089,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/dranmar_needle_thread.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "603b16a53289c09572b4e8597b834e902f79b595456a47c307a1b149caa468b9"
+        },
+        {
+          "bytes": 5329942,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/dranmar_needle_thread_extended.usda",
+          "revision_authority": "asset_submodule",
+          "role": "extended_asset",
+          "sha256": "667ea7627d7a72454369b73ac531ca2d5da5f34e8887e849a24bf8d4346dceb1"
+        },
+        {
+          "bytes": 3194,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "bf6b3210d832453f26499da1dcbc1359de5b4d082fd6ade76707ea3610c56c9f"
+        },
+        {
+          "bytes": 2078,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/physics_profile.json",
+          "revision_authority": "asset_submodule",
+          "role": "profile",
+          "sha256": "fae9502014289ea046d3e83dfc268ca3e611f67f5e24c1c2df16792adbddaec9"
+        },
+        {
+          "bytes": 2436,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.asset-integration-report.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/integration_report.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "423be53ccafce1777909e6e37c3ec58002641148bdef78bb7fc0d318e6a964fb"
+        },
+        {
+          "bytes": 4856570,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/dranmar_needle_thread_rigid_proxy.usda",
+          "revision_authority": "asset_submodule",
+          "role": "rigid_proxy",
+          "sha256": "2a51b1c997e82d204a922114c1f98e8e91343e4c531b8eff5bb90a385a848c2a"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "native_cuda_execution_not_yet_recorded",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "thread_joint_and_swage_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_simulation_training"
+      },
+      "id": "dr-anmar-needle-thread-system-v0.3.0"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 6,
+      "artifacts": [
+        {
+          "bytes": 4444874,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_articulated.usda",
+          "revision_authority": "asset_submodule",
+          "role": "articulated_asset",
+          "sha256": "c0155ae1d0eed6fd80256e72716cf42b5020be0981c6ae23df9f766b77b2e761"
+        },
+        {
+          "bytes": 4059549,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_rigid_proxy.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "40b8cfda7798fe3c1bbf382f8ca3cf57a6cefa952442a1c08dddebab43254501"
+        },
+        {
+          "bytes": 47317,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_staple.usda",
+          "revision_authority": "asset_submodule",
+          "role": "deployed_staple_asset",
+          "sha256": "676e983e68748e959918ef1c1bc01c28925e84a9c079d2fd090ff301f280e2a1"
+        },
+        {
+          "bytes": 3787,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "8c2f5798e810563dbe4d025fe9c2b6ccd0f29b1f4b76e94b74a15cf9078440cd"
+        },
+        {
+          "bytes": 33905,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/physics_profile.json",
+          "revision_authority": "asset_submodule",
+          "role": "profile",
+          "sha256": "ccbe8ea92644bb6cb6e8e76720e9a487bc0bd4620fb752ea56e9587ffaf5bb38"
+        },
+        {
+          "bytes": 2583,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "schema": "dr.anmar.skin-stapler-integration.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/integration_report.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "e0055b3e5bf9ebac18dae8cf435b575cf3696a1b25005951d641472e7984405b"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "articulated_test_cell_run_recorded_on_rtx_4090_2026_07_24",
+        "product_capability": "simulation_training_instrument",
+        "real_world_evidence": "instrumented_stapler_measurements_not_yet_established",
+        "software_evidence": "repository_verified_asset_and_mechanism_contracts",
+        "training_readiness": "available_for_simulation_training"
+      },
+      "id": "dr-anmar-skin-stapler-v0.2.0"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 7,
+      "artifacts": [
+        {
+          "bytes": 1627508,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_articulated.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "73dddfc9d1968c4bf31dcb174f9d1053934f8f0ebf01a3fbccdad077c7e2e5c4"
+        },
+        {
+          "bytes": 414202,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_bead.usda",
+          "revision_authority": "asset_submodule",
+          "role": "bead_asset",
+          "sha256": "abb38a71c81e359fffba83ef0195a535ad0b31557d13b232a60b491d64e79749"
+        },
+        {
+          "bytes": 543514,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_cap.usda",
+          "revision_authority": "asset_submodule",
+          "role": "cap_asset",
+          "sha256": "6bc3ec9f625360f8f786b506ab87fab02597162729b44ad10763f09ff5420d9e"
+        },
+        {
+          "bytes": 5174,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "b4ed5d22313317fd7206cafcdf6afaedf12888a1871a7773a31c95e04434ccd2"
+        },
+        {
+          "bytes": 6070,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-closure/dranmar-skin-adhesive-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "0e0b2903b2e6f256f02215ec1f2483de69c1ee65929a45c48d62363280faf36f"
+        },
+        {
+          "bytes": 8978,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.asset-package.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "b5d058e651333b9bd23b484f8227ecde178950d94abc473b03a41bc5a9f912e6"
+        },
+        {
+          "bytes": 1463649,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/skin_adhesive_applicator_rigid_proxy.usda",
+          "revision_authority": "asset_submodule",
+          "role": "rigid_proxy",
+          "sha256": "612c5d5df1d1c02ffe935417b7e230289a4c8f39bb6739b394436dea85d58891"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "live_native_cuda_execution_not_yet_recorded",
+        "product_capability": "simulation_training_instrument",
+        "real_world_evidence": "instrumented_adhesive_delivery_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_and_mechanism_contracts",
+        "training_readiness": "available_for_simulation_training"
+      },
+      "id": "dranmar-skin-adhesive-system-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 4,
+      "artifacts": [
+        {
+          "bytes": 8076,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_fixture.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "6554b5761ebe595beeec9cecbb9f5a094d294c0fd4767c37a267abcc7a2c6803"
+        },
+        {
+          "bytes": 818,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/stapler_test_device.usda",
+          "revision_authority": "asset_submodule",
+          "role": "fixture_articulated_device",
+          "sha256": "e92f7667794c2211181e5c3f674485fe3e8f59d3ccaf1fbfcc068dac4d4b0a3f"
+        },
+        {
+          "bytes": 4444874,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/skin_stapler_articulated.usda",
+          "revision_authority": "asset_submodule",
+          "role": "mechanism_asset",
+          "sha256": "c0155ae1d0eed6fd80256e72716cf42b5020be0981c6ae23df9f766b77b2e761"
+        },
+        {
+          "bytes": 1756,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/StaplerTestCell/native_simulator_evidence.json",
+          "revision_authority": "asset_submodule",
+          "role": "native_evidence",
+          "sha256": "8e4f6cb4dd841ad2a890afc96b46b90569f4fefdeb26dc07007fd5cb9bb13a8c"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "rtx_4090_mechanism_cycle_recorded_2026_07_24_with_partial_and_full_event_telemetry",
+        "product_capability": "mechanism_training_workcell",
+        "real_world_evidence": "instrumented_trigger_and_pusher_measurements_not_yet_established",
+        "software_evidence": "repository_verified_asset_mechanism_and_room_contracts",
+        "training_readiness": "available_for_simulation_training_and_evaluation"
+      },
+      "id": "dr-anmar-stapler-test-cell-v0.1.0"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 7,
+      "artifacts": [
+        {
+          "bytes": 4821620,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_standalone.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "a5bc44ccdadff3749a1dd3b8084b5a937cdd34a98bc45c0db813a0ec0af3fda1"
+        },
+        {
+          "bytes": 1593384,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_bed_demo.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "fc1bba7ce66e13f3bf4f1a3a5c14a04ad30686ce672d5e1b8601297572c22fb2"
+        },
+        {
+          "bytes": 5110,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "4c84a8b9cc771eb38cee46f95525d3a341a6b1ce19e3aa0e1b38165b80c50ecf"
+        },
+        {
+          "bytes": 4821590,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/dranmar_wound_preparation_tool_payload.usda",
+          "revision_authority": "asset_submodule",
+          "role": "payload_asset",
+          "sha256": "1142d27623c446813493c0f07792af8c366eb349e5cbe6a411cd1959b8ca7e49"
+        },
+        {
+          "bytes": 4628,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-preparation/dranmar-wound-preparation-robot-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "f8e2128a5acb4bd913cf7cc23b4eb3fade66d2d42f43fde731c9c95da5b3f7bb"
+        },
+        {
+          "bytes": 23932,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "schema": "dr.anmar.asset-manifest.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "180148a39cbf660f92d7739f2fb74f37c62fcf3b427841deb9148ccccb2755b8"
+        },
+        {
+          "bytes": 1226,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/wound_preparation_task_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "task_contract",
+          "sha256": "f4f2e843c3aeaffa3646991cced6eaa28baa6f63f71568785abfa3a7efb39af4"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "runtime_smoke_recorded_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "contact_derived_debridement_work_fluid_capture_and_instrumented_calibration_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-wound-preparation-robot-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 7,
+      "artifacts": [
+        {
+          "bytes": 8653508,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_standalone.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "738ed48110193f1818bc05f3e46eb9133c3a905d9cc5b6b2ab87887dcc5738e6"
+        },
+        {
+          "bytes": 784244,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_exposure_tissue_demo.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "2074f33a7577d62a9f4347d4709d64ee1aab637fe58a4e6cc87e8acc62055e61"
+        },
+        {
+          "bytes": 6307,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "aad7f1c0961e87e6e90471d08b963143077d0a31a5726ebd29a214ee975a4c76"
+        },
+        {
+          "bytes": 8653478,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/dranmar_atraumatic_exposure_tool_payload.usda",
+          "revision_authority": "asset_submodule",
+          "role": "payload_asset",
+          "sha256": "2c90ed7056b146d3b037b08893609510ac53da95a779f767efb2b964271d4383"
+        },
+        {
+          "bytes": 1957,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-exposure/dranmar-atraumatic-exposure-robot-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "ac210fdbed5cc17f46b8a0697926a1b25e81d830415c78b48550c62874e6c4b5"
+        },
+        {
+          "bytes": 20377,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "schema": "dr.anmar.asset-manifest.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "169f849d761cc58aeddf72c6e5c371c833702aa968313f4d46b04c31ba99706f"
+        },
+        {
+          "bytes": 835,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/surgical_exposure_task_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "task_contract",
+          "sha256": "97017e4859ef937e741237bda058e423c03254025d8629c4bbfda2adcec76b01"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "pad_contact_force_capture_quality_and_instrumented_retraction_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-atraumatic-exposure-robot-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 7,
+      "artifacts": [
+        {
+          "bytes": 3138707,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_standalone.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "f7ef0f5366925cfb2d9a00877ed170d25424b4d92434b82199b5b95a0c1b13ad"
+        },
+        {
+          "bytes": 1606220,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_bleeding_vessel_demo.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "305abe98fd750500dcdc34779750159569c175365efbec171fc1719eec133c74"
+        },
+        {
+          "bytes": 4627,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "f5197729d655bbf3926d6d6f2332eabb85bd965a06e97b7ca0c092b5be987490"
+        },
+        {
+          "bytes": 3137061,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/dranmar_adaptive_hemostasis_tool_payload.usda",
+          "revision_authority": "asset_submodule",
+          "role": "payload_asset",
+          "sha256": "68f86f60386c2eecc7a4489a1a22cd069eaefa330f3e04a41bb3aba51ccf1e23"
+        },
+        {
+          "bytes": 1564,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-hemostasis/dranmar-adaptive-hemostasis-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "dcebb79d4d3f8c175237f7ff0ba53cf4e526dca07d0850398192c6da3fe724ab"
+        },
+        {
+          "bytes": 11630,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "schema": "dranmar.asset-manifest.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "2ed82fc9b5ed6440556e4ce0537cfe0b9936396b368f8feb58e854a8049e044e"
+        },
+        {
+          "bytes": 904,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/adaptive_hemostasis_task_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "task_contract",
+          "sha256": "ede3ef168ea6b15c3582e372d4f1bcef147e4b9720e4b86880302a7e4f49a213"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "occlusion_patch_seal_residual_flow_and_instrumented_hemostasis_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-adaptive-hemostasis-robot-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 7,
+      "artifacts": [
+        {
+          "bytes": 7720756,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_standalone.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "4f978b820ad54d323ad2c2e547fe400d6fbcbb5c2199f2b4f3b1d37132e07e55"
+        },
+        {
+          "bytes": 359659,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_hollow_tissue_demo.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "2082943cb9a29c38201b163a305345f4c8cc473b69aa464e6f1d3b31d4e1f88a"
+        },
+        {
+          "bytes": 5968,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "2aa6b5f70765891ce0ea3398ed3584d60fc517f4c08aa062eee2afc0d0286aef"
+        },
+        {
+          "bytes": 7717851,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/dranmar_adaptive_anastomosis_tool_payload.usda",
+          "revision_authority": "asset_submodule",
+          "role": "payload_asset",
+          "sha256": "d9f69d2216fe68498edd5eb2bdde88840b9b956747fa24c4160810e98da04693"
+        },
+        {
+          "bytes": 12494,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-reconstruction/dranmar-adaptive-anastomosis-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "2d9734ff95444e2a0bebe44d15d675194b42a070ccf9963d07b6a206195f811e"
+        },
+        {
+          "bytes": 12722,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "schema": "dranmar.asset-manifest.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "c747a3638f96e3bd5c0da47ec1345166533f589c158fefe5b458add4f93022ed"
+        },
+        {
+          "bytes": 1150,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/adaptive_anastomosis_task_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "task_contract",
+          "sha256": "2f03487ab880c504db9a4bd1937440fb3646c5c0f3f23a5216fbd8fb471a09d0"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "lumen_seam_leak_and_instrumented_anastomosis_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-adaptive-anastomosis-robot-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 7,
+      "artifacts": [
+        {
+          "bytes": 1219259,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_standalone.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "6ce57385faa79f4c44ae673d18e61f18737fa807d5603b2901aba9319a60fca5"
+        },
+        {
+          "bytes": 462862,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_seal_divide_vessel_demo.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "46003ccfe7ba49f33712047d4e00c39ab285669c9efb435189742096dd6d544f"
+        },
+        {
+          "bytes": 4913,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "327b9b69d36c2f67fa6a05e7216f273484fc8418740dde38c4398fa93119d48f"
+        },
+        {
+          "bytes": 1217714,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/dranmar_adaptive_seal_divide_tool_payload.usda",
+          "revision_authority": "asset_submodule",
+          "role": "payload_asset",
+          "sha256": "0d59378b17d22ed8922a1a95073d653898dc9c36e4bf0ce57d14a7545ffef031"
+        },
+        {
+          "bytes": 2043,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-division/dranmar-adaptive-seal-divide-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "1b75904dfde70280b3325941bb30e13dd1c2ae365af4b152d75c362e0a7874c6"
+        },
+        {
+          "bytes": 12824,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "schema": "dranmar.asset-manifest.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "96e21b2a63a874a5207b9dac965ecf73f24a18141fc30f923aae961c9dc60843"
+        },
+        {
+          "bytes": 1114,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/adaptive_seal_divide_task_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "task_contract",
+          "sha256": "63341cbec3c4b9d1ca25830e83d8ac946fb2a522e069654ed7feec649e599dd8"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "through_thickness_compression_material_and_instrumented_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-adaptive-seal-divide-robot-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 7,
+      "artifacts": [
+        {
+          "bytes": 2420634,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_standalone.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "0fa04347eb75159bcce0bfaa04193af3afbc4f8a0bf2daed7d095ddaf9586348"
+        },
+        {
+          "bytes": 2459618,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_tissue_demo.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "70f31732f07f86568973212b8ca86fc844e731aaa7370a3ce13b8652670d54f8"
+        },
+        {
+          "bytes": 9232,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "bc4dacdb2bdce1ac873eb6a346736dd6824c3b1aa457731296e36fe7e35d68b0"
+        },
+        {
+          "bytes": 2418329,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/dranmar_safeplane_dissection_tool_payload.usda",
+          "revision_authority": "asset_submodule",
+          "role": "payload_asset",
+          "sha256": "0a2ec911be44111b8dcf8eb7885494f706bb896e418f5c4c9fad4b1a2909e813"
+        },
+        {
+          "bytes": 3119,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-dissection/dranmar-safeplane-dissection-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "c14245b75d75c41d4748773e01b23afb47ed00701d53c9bdd2fb82331312009f"
+        },
+        {
+          "bytes": 17395,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "schema": "dranmar.asset-manifest.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "b692957cb5e03b26eb4461870641e74acd5e286f90d9c4764ab0b0ceabb59900"
+        },
+        {
+          "bytes": 1579,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/safeplane_dissection_task_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "task_contract",
+          "sha256": "d03c7edd1b090d7e1caa1b6ab03d55dab20e3cbf2d1aed1b07b1d72beb14f336"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "runtime_composition_observed_current_native_matrix_not_yet_established",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "contact_derived_bridge_work_release_and_instrumented_dissection_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-safeplane-dissection-robot-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 8,
+      "artifacts": [
+        {
+          "bytes": 2771606,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_standalone.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "596b4f5fa6004c44bd92e4bc05596959b3c9049156931cf96f34c660fa52a7f4"
+        },
+        {
+          "bytes": 10592161,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfused_tissue_demo.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "cb2a5e6921ed724da1ff08899b4ef305180d69c7dd2857d5cadd922f99a6c1bf"
+        },
+        {
+          "bytes": 6276,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "eee75fab6bc385fa9db33785af447fc0d77d72c6e5df00d96eb87646e2b885de"
+        },
+        {
+          "bytes": 6588,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "schema": "dranmar.perfusion-viability-native-simulator-evidence.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/native_simulator_evidence.json",
+          "revision_authority": "asset_submodule",
+          "role": "native_evidence",
+          "sha256": "2e9cfca44ddb5316913a18ecb61dfd4807a869ac1c5272d4ea0c0621a9cc8eb2"
+        },
+        {
+          "bytes": 2770140,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/dranmar_perfusion_viability_tool_payload.usda",
+          "revision_authority": "asset_submodule",
+          "role": "payload_asset",
+          "sha256": "306749103753964203a55e1e77fbb500e37b70603d06a2f832e7cc82e66f5cb9"
+        },
+        {
+          "bytes": 2070,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-assessment/dranmar-perfusion-viability-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "0132bd1fadc8c74a9bc8611cc4b14376e8c63298cc28df37d7fe7e9a763006b3"
+        },
+        {
+          "bytes": 645,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.asset-manifest.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "c7dba26e28bc795c5ac89a5f46d3569cc18bf89150250893e13cb58d7c374f63"
+        },
+        {
+          "bytes": 1906,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/perfusion_viability_task_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "task_contract",
+          "sha256": "07dd0c7c4d10b6b6e8b18c2ef39f16b836d7cefe4cd05a72f9b41b37f8147d9c"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "standalone_loaded_franka_and_serialized_six_camera_depth_matrix_recorded_on_rtx_4090_isaac_sim_6_0_1",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "sensor_calibration_flow_bench_and_tissue_correlation_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_and_controller_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-perfusion-viability-robot-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 6,
+      "artifacts": [
+        {
+          "bytes": 15610,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "32a844c2a4bde36f1876b5835b6340a6daa27d05d7bbd24f56d4a46d439f30d1"
+        },
+        {
+          "bytes": 3283,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "machine_readable_summary": {
+            "evidence_not_established": [
+              "native volume deformables",
+              "simultaneous multi-component deformables",
+              "physical incision propagation",
+              "instrumented puncture or cutting",
+              "wound-edge grasp and retraction",
+              "PBD fluid execution",
+              "fluid-structure interaction",
+              "constitutive calibration",
+              "clinical validation"
+            ],
+            "evidence_result": "recorded_with_boundaries",
+            "passed": {
+              "access_transition_completed": true,
+              "access_transition_requested_once": true,
+              "coordinated_access_layers_visibly_opened": true,
+              "current_run_cuda_or_fatal_physx_errors": 0,
+              "cut_event_count_after_transition": 1,
+              "intact_frame_rendered": true,
+              "openusd_scene_loaded": true,
+              "post_open_observation_seconds": 90,
+              "post_open_sim_steps_observed": 153,
+              "psm_tools_started_clear_of_intact_skin": true,
+              "repeat_request_was_idempotent": true,
+              "reset_cleared_cut_event_count": true,
+              "reset_restored_intact_state": true,
+              "surface_deformable_route_created": true
+            },
+            "representation_boundary": {
+              "access_geometry": "camera-readable central retracted opening",
+              "arbitrary_solver_fracture": false,
+              "clinical_fidelity_claimed": false,
+              "detached_cut_piece": false,
+              "physical_cut_path_calibrated": false,
+              "tissue_removed": false,
+              "wound_edge_grasp_and_retraction_evidence": "not_established"
+            },
+            "schema": "dr.anmar.dynamic-abdominal-patient-native-simulator-evidence.v1",
+            "tested_commit": "d786c9ee8dc7c24997c73c4d9643aae40963e115"
+          },
+          "path": "physics_next/benchmarks/dranmar-dynamic-abdominal-patient-native-simulator-evidence.json",
+          "revision_authority": "parent_repository",
+          "role": "native_evidence",
+          "sha256": "b5185dc433efca4eaf2e81c07a396a2becf58af4942d43a8da9045c9d333c735"
+        },
+        {
+          "bytes": 2628,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_operating_scene.usda",
+          "revision_authority": "asset_submodule",
+          "role": "operating_scene",
+          "sha256": "c2e002a66202f5a9db977296b1b8d51f343ff13b0a135564ee67869a82dd8724"
+        },
+        {
+          "bytes": 2622,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/dynamic-patient/dranmar-dynamic-abdominal-patient-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "b656a381ef543fed677e3c9da79c87e3b43c297e91d450741427946392fb21d9"
+        },
+        {
+          "bytes": 3138759,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/dranmar_dynamic_abdominal_patient_rigid_proxy.usda",
+          "revision_authority": "asset_submodule",
+          "role": "rigid_proxy",
+          "sha256": "c395ed3a34c4b571fdf1316ca550d0f82666791c74e612ce5f16935e0fc36da8"
+        },
+        {
+          "bytes": 155960,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/dynamic_abdominal_patient.py",
+          "revision_authority": "asset_submodule",
+          "role": "runtime",
+          "sha256": "ee134889d469af5d3f215aa1f760661fbd8133eebfb7c4296e285f5f4b77ae88"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "recorded_surface_deformable_access_transition_only_volume_deformables_physical_incision_and_wound_edge_grasp_not_established",
+        "product_capability": "interactive_training_patient",
+        "real_world_evidence": "anatomy_mechanics_and_physiology_bench_correlation_not_yet_established",
+        "software_evidence": "repository_verified_asset_runtime_and_state_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-dynamic-abdominal-patient-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 12,
+      "artifacts": [
+        {
+          "bytes": 1293,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncosurgery_tool.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "771c1b09e39f8de4b6f1fb4393376502594391473d94ae775d0f26e06427d256"
+        },
+        {
+          "bytes": 916,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncology_liver.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "cf61cd369b72db64251fb73c6d8270746be8218dcfa4a3addc4dda79458b773f"
+        },
+        {
+          "bytes": 6258,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "9732e61ca3e1f9c0bcd53bde1da8983b8f952326befe810edee0b47cfedb1e26"
+        },
+        {
+          "bytes": 2757,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.oncology-native-simulator-evidence.v1"
+          },
+          "path": "physics_next/benchmarks/dranmar-oncology-native-simulator-evidence.json",
+          "revision_authority": "parent_repository",
+          "role": "native_evidence",
+          "sha256": "0d61141b8adf8f51fd28eb0fa92d23fa7f92a488c51b4109479d91a14b49c7d6"
+        },
+        {
+          "bytes": 110495,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_tumor_resection_tool_payload.usda",
+          "revision_authority": "asset_submodule",
+          "role": "payload_asset",
+          "sha256": "f71deda28064a24d5f48abbdd61279761474c158e5e05b13994cec17cd6ce67d"
+        },
+        {
+          "bytes": 4853,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "physics_next/surgical-oncology/dranmar-oncosurgery-cell-v1.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "34ba734eca657f57d01e29938ec4cb331800270a2cc130edc48906fa990f9c71"
+        },
+        {
+          "bytes": 2635,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.asset-manifest.v1"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "b682a96be146dc3f9fcdf0b6f8c305053f25f384208f9b8df7e3d510829291dc"
+        },
+        {
+          "bytes": 120749,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_tumor_resection_tool_rigid_proxy.usda",
+          "revision_authority": "asset_submodule",
+          "role": "rigid_proxy",
+          "sha256": "c7cbc426099bb8cf175bd5121df90f9b1a53ab20a40330fb480e90bb3e57b2de"
+        },
+        {
+          "bytes": 67733,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/oncologic_resection.py",
+          "revision_authority": "asset_submodule",
+          "role": "runtime",
+          "sha256": "fd9146d882bdc461414524a71de099af815e09c9eff1e6db26b97d9834d77881"
+        },
+        {
+          "bytes": 1530,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/oncologic_resection_task_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "task_contract",
+          "sha256": "4a9dbfca7e35fb710c67f819e2a7335fdb8102768e4bc8d7fcc62dd1fecd954a"
+        },
+        {
+          "bytes": 2865,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/isaac_lab_training_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "training_contract",
+          "sha256": "14d45f5472b159d6d91f2b10bd0b471fde65dc4818a19f4ebba356b094e8ad36"
+        },
+        {
+          "bytes": 501,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/dranmar_oncosurgery_workcell.usda",
+          "revision_authority": "asset_submodule",
+          "role": "workcell_asset",
+          "sha256": "0ea4bd42e73dba4764e014d1dbf59b66ee63d6b3f34ec4282bdb73f95796a5a6"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "non_contact_dynamic_volume_stability_recorded_on_rtx_4090_2026_07_25_contact_sensor_and_franka_matrix_not_yet_recorded",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "instrumented_payload_tissue_sensor_energy_and_specimen_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_task_training_and_runtime_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-oncosurgery-cell-v1"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 9,
+      "artifacts": [
+        {
+          "bytes": 25265,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_autonomous_rescue_or.usda",
+          "revision_authority": "asset_submodule",
+          "role": "asset",
+          "sha256": "ca2a7e5bae3a31a51907ce06ed0ef72896b5821f14546d7c51bc44940d250ee1"
+        },
+        {
+          "bytes": 2234,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_deformable_rescue_suite.usda",
+          "revision_authority": "asset_submodule",
+          "role": "auxiliary_asset",
+          "sha256": "f81fb4f5e36c05561bd931527f205c91084bf8d964aa2f2a8034074adfbd6350"
+        },
+        {
+          "bytes": 1406,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/interaction_frames.json",
+          "revision_authority": "asset_submodule",
+          "role": "interaction_frames",
+          "sha256": "7855aec5d6fa27d341313628336720b4f208a09be870d4fdbc88ba7a5a404fd2"
+        },
+        {
+          "bytes": 36030,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_universal_tool_changer_payload.usda",
+          "revision_authority": "asset_submodule",
+          "role": "payload_asset",
+          "sha256": "81132d05005ad10d769d3e7543c68acf40a4e8912e82d662242b461cb9000545"
+        },
+        {
+          "bytes": 2679,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/physics_profile.json",
+          "revision_authority": "asset_submodule",
+          "role": "profile",
+          "sha256": "ae10bb1e2e42691210717789087083b4ddd3149afb89322940b2952de906acf2"
+        },
+        {
+          "bytes": 3337,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.autonomous-rescue-or-asset-manifest.v2"
+          },
+          "path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/asset_manifest.json",
+          "revision_authority": "asset_submodule",
+          "role": "report",
+          "sha256": "4c25fd2de781af31cf91b559d8fa49260f524332c594ee9d6f9e444d776956e2"
+        },
+        {
+          "bytes": 52955,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/autonomous_rescue_or.py",
+          "revision_authority": "asset_submodule",
+          "role": "runtime",
+          "sha256": "75f83e79c745198c1eebf90d3be590bc41401dd17ea26af06448718fbbe067b0"
+        },
+        {
+          "bytes": 5890,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/benchmark_scenarios.json",
+          "revision_authority": "asset_submodule",
+          "role": "task_contract",
+          "sha256": "eb5766f002414fad3c64973a6d530d02e33540894682855fcacff9b49dae57ec"
+        },
+        {
+          "bytes": 4035,
+          "containing_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+          "path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/imitation_dataset_contract.json",
+          "revision_authority": "asset_submodule",
+          "role": "training_contract",
+          "sha256": "122dddd1a93e243d527d1159e6caf1ebfa546ca8aa2235c363730d5a3299b2ae"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "native_multiarm_and_deformable_runtime_evidence_not_yet_recorded_for_v0_4_0",
+        "product_capability": "executable_training_workcell",
+        "real_world_evidence": "contact_flow_tissue_and_resuscitation_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_runtime_effect_and_orchestration_contracts",
+        "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      "id": "dranmar-autonomous-rescue-or-v0.4.0"
+    },
+    {
+      "all_declared_artifacts_content_addressed": true,
+      "artifact_count": 4,
+      "artifacts": [
+        {
+          "bytes": 8984,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/asset_bundle.json",
+          "revision_authority": "parent_repository",
+          "role": "asset",
+          "sha256": "0ff7445b68e17022d4bd6bce6fe4f20fb8e86758154d1329f763d5ef7b6f7043"
+        },
+        {
+          "bytes": 4126,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/action_contract.json",
+          "revision_authority": "parent_repository",
+          "role": "profile",
+          "sha256": "dd9cf2e04af6b9468ec54e2cfdf3529dbd62f62c7eaa8604a2f39faf04b6b55c"
+        },
+        {
+          "bytes": 5264,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "machine_readable_summary": {
+            "clinical_validation": false,
+            "schema": "dr.anmar.generative-asset-evidence.v1"
+          },
+          "path": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/evidence.json",
+          "revision_authority": "parent_repository",
+          "role": "report",
+          "sha256": "6d74fec2ff5d6e360c9e45fbf1ff55c591e094791bf8716c648ba0855b4b38eb"
+        },
+        {
+          "bytes": 53968,
+          "containing_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+          "path": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/dranmar_action_stream.json",
+          "revision_authority": "parent_repository",
+          "role": "training_contract",
+          "sha256": "d0fce9fed449c44d44cf5524231501d4dde65bcc5cf35633751783cc6b77725c"
+        }
+      ],
+      "claims": {
+        "clinical_validation": false,
+        "native_simulator_evidence": "native_execution_not_yet_recorded_for_this_bundle",
+        "product_capability": "multimodal_simulation_asset_contract",
+        "real_world_evidence": "paired_capture_and_instrumented_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_hash_dimension_timing_authority_and_safety_contracts",
+        "training_readiness": "available_for_safe_multimodal_ingestion_resampling_and_contract_testing"
+      },
+      "id": "dranmar-cosmos-h-dreams-source-audit-v1"
+    }
+  ],
+  "claim_policy": {
+    "clinical_validation": "false unless a scoped clinical artifact is retained",
+    "generic_bench_matrix_exclusion": "startup, selection, stepping, camera output, diagnostics, and shutdown are not complete procedure or deformable evidence",
+    "native_simulator_evidence": "requires an asset-specific native_evidence artifact",
+    "product_capability": "repository integration claim",
+    "real_world_evidence": "requires instrumented physical correlation",
+    "software_evidence": "repository verification only"
+  },
+  "schema": "dr.anmar.portfolio-evidence-index.v1",
+  "source": {
+    "asset_submodule_revision": "10c39a9aa016639cb2723b7d23fd6c1f7e61d496",
+    "generator_path": "scripts/generate_dranmar_evidence_index.py",
+    "generator_sha256": "3aa4903397eca152dc79cecc4af8522f286a3407d0170198ff3ff197fe0a0681",
+    "parent_revision": "2780ac751812c0bc372e24cff2c6ea9194ba1c9f",
+    "portfolio_path": "physics_next/dr-anmar-assets.json",
+    "portfolio_sha256": "c9c32d21af7ebfb9d47d4fec1d1fb7f645f4f9f7e91743a481832608441049c0"
+  }
+}
