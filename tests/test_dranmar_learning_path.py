@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
+import math
 import runpy
 from pathlib import Path
 
@@ -403,6 +404,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"gripper_close_rad"' in benchmark_source
     assert '"gripper_effort_limit_nm"' in benchmark_source
     assert '"environment_level_parameter"' in benchmark_source
+    assert '"needle_grasp_arc_fraction"' in benchmark_source
+    assert '"grasp_offset_m"' in benchmark_source
+    assert '"grasp_frame_source"' in benchmark_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source
     assert '"success_by_initial_target_xy_distance"' in benchmark_source
@@ -418,6 +422,23 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         agent_source,
     ):
         ast.parse(source)
+
+
+def test_needle_geometry_grasp_offsets_follow_composed_arc() -> None:
+    scope = runpy.run_path(str(TASK_ROOT / "surgical/lift/grasp_frames.py"))
+    grasp_offset = scope["needle_geometry_grasp_offset_m"]
+
+    blunt_side = grasp_offset(0.0)
+    one_third = grasp_offset(1.0 / 3.0)
+    sharp_side = grasp_offset(1.0)
+
+    assert math.isclose(blunt_side[0], 0.019154, abs_tol=1e-6)
+    assert math.isclose(blunt_side[1], 0.018817, abs_tol=1e-6)
+    assert math.isclose(one_third[0], 0.0023884, abs_tol=1e-6)
+    assert math.isclose(one_third[1], 0.0092818, abs_tol=1e-6)
+    assert math.isclose(sharp_side[0], 0.019147, abs_tol=1e-6)
+    assert math.isclose(sharp_side[1], -0.019548, abs_tol=1e-6)
+    assert math.isclose(one_third[2], -0.00101704, abs_tol=1e-9)
 
 
 def test_launcher_fits_parallel_worlds_to_live_ram_and_vram() -> None:

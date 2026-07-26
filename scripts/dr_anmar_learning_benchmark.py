@@ -1041,6 +1041,7 @@ _LIFT_SWEEP_PARAMETERS = {
     "gripper_effort_limit_nm",
     "lateral_alignment_threshold",
     "lateral_clearance_below_target",
+    "needle_grasp_arc_fraction",
     "slow_approach_action_limit",
 }
 _ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS = {
@@ -1056,10 +1057,20 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
 
     from orbit.surgical.tasks.surgical import mdp_common
 
-    if "Lift-Block-PSM-IK-Rel" not in args.task:
-        return _fail("controller-sweep currently supports the block lift task")
+    block_task = "Lift-Block-PSM-IK-Rel" in args.task
+    needle_task = "Lift-Needle-PSM-IK-Rel" in args.task
+    if not (block_task or needle_task):
+        return _fail("controller-sweep requires a block or needle IK-relative lift task")
     if args.parameter not in _LIFT_SWEEP_PARAMETERS:
         return _fail(f"unsupported controller-sweep parameter: {args.parameter}")
+    needle_grasp_sweep = args.parameter == "needle_grasp_arc_fraction"
+    if needle_task and not needle_grasp_sweep:
+        return _fail(
+            "needle controller-sweep requires needle_grasp_arc_fraction until "
+            "a contact-qualified needle frame exists"
+        )
+    if block_task and needle_grasp_sweep:
+        return _fail("needle_grasp_arc_fraction requires the needle lift task")
     values = [float(value) for value in args.values.split(",") if value.strip()]
     if len(values) < 2:
         return _fail("controller-sweep requires at least two comma-separated values")
@@ -1073,6 +1084,24 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
             f"{args.parameter} is environment-level; repeat one value "
             "to run a full-population qualification"
         )
+
+    needle_grasp_offsets: list[tuple[float, float, float] | None] = [
+        None for _ in values
+    ]
+    grasp_frame_source = None
+    if needle_grasp_sweep:
+        from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+            NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE,
+            needle_geometry_grasp_offset_m,
+        )
+
+        try:
+            needle_grasp_offsets = [
+                needle_geometry_grasp_offset_m(value) for value in values
+            ]
+        except ValueError as error:
+            return _fail(str(error))
+        grasp_frame_source = NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
     environment_override = None
@@ -1127,11 +1156,16 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
             for group_index, value in enumerate(values):
                 start = group_index * group_size
                 stop = start + group_size
-                controller_kwargs = (
-                    {}
-                    if environment_level_parameter
-                    else {args.parameter: value}
-                )
+                if needle_grasp_sweep:
+                    controller_kwargs = {
+                        "grasp_offset": needle_grasp_offsets[group_index]
+                    }
+                else:
+                    controller_kwargs = (
+                        {}
+                        if environment_level_parameter
+                        else {args.parameter: value}
+                    )
                 group_obs = {
                     name: observation[start:stop]
                     for name, observation in obs.items()
@@ -1209,6 +1243,11 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
             results.append(
                 {
                     "value": value,
+                    "grasp_offset_m": (
+                        list(needle_grasp_offsets[index])
+                        if needle_grasp_offsets[index] is not None
+                        else None
+                    ),
                     "assigned_environments": group_size,
                     "completed_episodes": completed_count,
                     "successful_episodes": success_count,
@@ -1244,6 +1283,7 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
             "frames_per_env": args.num_frames,
             "parameter": args.parameter,
             "values": values,
+            "grasp_frame_source": grasp_frame_source,
             "environment_level_parameter": environment_level_parameter,
             "environment_override": environment_override,
             "shared_reset_distribution": True,
