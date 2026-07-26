@@ -354,6 +354,9 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert 'state["support_height_w"]' in state_source
     assert "allowed_receiver_contact_flicker_steps: int = 1" in state_source
     assert "receiver_follows" in state_source
+    assert "receiver_contact_now" in state_source
+    assert "& ~receiver_contact_now" in state_source
+    assert "& receiver_flicker_allowed" in state_source
     assert '"premature_release"' in state_source
     assert "physical_action[:, 6]" in state_source
     assert "physical_action[:, 13]" in state_source

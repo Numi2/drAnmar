@@ -143,7 +143,9 @@ bilateral contact window while the giver still owns the needle. The giver
 releases, and the receiver retains the elevated needle for ten 50 Hz control
 steps (0.2 seconds). One missing receiver-contact frame is allowed only when
 the needle remains elevated and preserves the receiver-relative acquisition
-offset. Commanded closure cannot advance a phase without native filtered
+offset. While native bilateral receiver contact remains present, that physical
+contact is sufficient; needle-center motion within the closed jaws is not a
+failure. Commanded closure cannot advance a phase without native filtered
 contact. A drop, premature giver release, receiver loss during retention, 5 N
 needle-force violation, 2 N unintended contact violation, or timeout is
 failure.

@@ -260,17 +260,25 @@ def handover_state(
     receiver_only = (
         retention_active
         & lifted
-        & receiver_follows
-        & (receiver_contact_now | receiver_flicker_allowed)
+        & (
+            receiver_contact_now
+            | (
+                receiver_flicker_allowed
+                & receiver_follows
+            )
+        )
     )
     retention_failure_low_clearance = retention_active & ~lifted
-    retention_failure_follow_error = retention_active & ~receiver_follows
+    retention_failure_follow_error = (
+        retention_active
+        & ~receiver_contact_now
+        & receiver_flicker_allowed
+        & ~receiver_follows
+    )
     retention_failure_contact_loss = (
         retention_active
-        & (
-            state["receiver_loss_consecutive"]
-            > allowed_receiver_contact_flicker_steps
-        )
+        & ~receiver_contact_now
+        & ~receiver_flicker_allowed
     )
     state["retention_failure_low_clearance"] |= (
         retention_failure_low_clearance
