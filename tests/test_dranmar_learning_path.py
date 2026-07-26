@@ -196,6 +196,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert cfg_source.count("func=mdp.sustained_lift_success") == 3
     assert "class sustained_lift_success(ManagerTermBase):" in reward_source
     assert "root_pos_w)[:, 2] > minimum_height" in reward_source
+    assert "**success_params" not in reward_source
     assert (
         reward_source.count("def successful_lift(")
         + termination_source.count("def successful_lift(")

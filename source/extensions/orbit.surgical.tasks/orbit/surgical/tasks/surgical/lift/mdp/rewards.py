@@ -163,12 +163,35 @@ class sustained_lift_success(ManagerTermBase):
         self,
         env: ManagerBasedRLEnv,
         required_consecutive_steps: int,
+        command_name: str,
+        minimum_height: float,
+        position_threshold: float,
+        orientation_threshold: float,
+        contact_threshold: float,
+        maximum_linear_speed: float,
+        maximum_angular_speed: float,
         publish_metric: bool = False,
         return_zero: bool = False,
-        **success_params,
+        robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+        object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+        sensor_1_name: str = "jaw_1_object_contact",
+        sensor_2_name: str = "jaw_2_object_contact",
     ) -> torch.Tensor:
         del publish_metric
-        current = successful_lift(env, **success_params).bool()
+        current = successful_lift(
+            env,
+            command_name=command_name,
+            minimum_height=minimum_height,
+            position_threshold=position_threshold,
+            orientation_threshold=orientation_threshold,
+            contact_threshold=contact_threshold,
+            maximum_linear_speed=maximum_linear_speed,
+            maximum_angular_speed=maximum_angular_speed,
+            robot_cfg=robot_cfg,
+            object_cfg=object_cfg,
+            sensor_1_name=sensor_1_name,
+            sensor_2_name=sensor_2_name,
+        ).bool()
         self._consecutive[:] = torch.where(
             current,
             self._consecutive + 1,
