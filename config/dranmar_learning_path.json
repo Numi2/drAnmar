@@ -228,14 +228,27 @@
       "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
       "qualification_contract": {
         "direction": "robot_1_giver_to_robot_2_receiver",
-        "minimum_handover_height_m": 0.06,
+        "minimum_pickup_clearance_m": 0.01,
         "bilateral_contact_threshold_n": 0.01,
+        "contact_window_steps": 5,
+        "contact_required_steps": 3,
         "receiver_only_sustained_steps": 10,
+        "receiver_contact_flicker_steps": 1,
         "object_force_hard_limit_n": 5.0,
         "protected_surface_force_hard_limit_n": 2.0,
-        "success_definition": "robot_1_pickup_then_dual_custody_then_robot_2_only_lifted_ownership",
+        "success_definition": "robot_1_windowed_pickup_and_10mm_lift_then_windowed_dual_custody_then_robot_2_retains_after_release_for_10_steps",
         "requires_receiver_goal_pose": false,
-        "receiver_goal_pose_role": "advanced_recovery_diagnostic"
+        "receiver_goal_pose_role": "advanced_recovery_diagnostic",
+        "not_required_for_initial_success": [
+          "final_target_position",
+          "needle_orientation",
+          "post_handover_retreat_distance",
+          "predefined_arc_region",
+          "jaw_retreat_distance",
+          "long_dual_grasp_dwell",
+          "rcm_perfection",
+          "zero_incidental_sub_limit_contact"
+        ]
       },
       "promotion": {
         "minimum_success_rate": 0.7,

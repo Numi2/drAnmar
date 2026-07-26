@@ -318,6 +318,18 @@ class TerminationsCfg:
         func=mdp.root_height_below_minimum, params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("object")}
     )
 
+    needle_dropped_after_pickup = DoneTerm(
+        func=mdp.needle_dropped_after_pickup
+    )
+
+    premature_giver_release = DoneTerm(
+        func=mdp.premature_giver_release
+    )
+
+    receiver_retention_lost = DoneTerm(
+        func=mdp.receiver_retention_lost
+    )
+
     success = DoneTerm(func=mdp.successful_handover)
 
     excessive_object_force = DoneTerm(

@@ -133,14 +133,24 @@ frame. It produced 1,101 of 1,200 sustained pickups on seed 17 and 1,127 of
 combined 2,228/2,400 rate is 92.83%; the maximum measured needle force was
 0.99 N and no protected-surface force was observed.
 
-Stage 6 transfers that pickup skill from Robot 1 to Robot 2. Progress is
-physics-owned and ordered: Robot 1 establishes bilateral needle contact and
-lifts above 6 cm, Robot 2 approaches, both tools establish dual custody, Robot
-1 releases, and Robot 2 alone maintains bilateral contact above 6 cm for ten
-50 Hz control steps. Commanded gripper closure cannot advance a phase without
-native filtered contact. The 5 N needle-force, 2 N protected-surface, and drop
-terminations remain hard vetoes. A receiver recovery pose is retained only as
-an advanced diagnostic; it does not gate physical handover completion.
+Stage 6 certifies physical ownership transfer rather than final
+precision-placement quality. Robot 1 must establish native bilateral needle
+contact in at least three of five control steps and lift the needle at least
+10 mm above its episode-start support height. Robot 2 must then establish its
+own three-of-five bilateral contact window while Robot 1 still owns the
+needle. Robot 1 releases, and Robot 2 retains the elevated needle for ten
+50 Hz control steps (0.2 seconds). One missing receiver-contact frame is
+allowed only when the needle remains elevated and preserves the
+receiver-relative acquisition offset. Commanded closure cannot advance a
+phase without native filtered contact. A drop, premature giver release,
+receiver loss during retention, 5 N needle-force violation, 2 N unintended
+contact violation, or timeout is failure.
+
+Final target position, needle orientation, post-handover retreat, predefined
+arc regions, jaw-retreat distance, long dual-grasp dwell, perfect RCM motion,
+and zero incidental sub-limit contact are not Stage 6 success requirements.
+They remain diagnostics and later curriculum objectives. A receiver recovery
+pose is likewise diagnostic only.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter

@@ -16,8 +16,23 @@ if TYPE_CHECKING:
 
 
 def successful_handover(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Terminate only after the receiver physically owns a stable object at goal."""
+    """Terminate after ten control steps of receiver-only needle ownership."""
     return handover_state(env)["phase"] >= 4
+
+
+def premature_giver_release(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Fail when Arm 1 loses custody before Arm 2 physically acquires it."""
+    return handover_state(env)["premature_release"]
+
+
+def receiver_retention_lost(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Fail when Arm 2 loses the needle during its retention check."""
+    return handover_state(env)["receiver_retention_failed"]
+
+
+def needle_dropped_after_pickup(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Fail when a previously lifted needle returns to the support surface."""
+    return handover_state(env)["needle_dropped"]
 
 
 def excessive_contact_force(

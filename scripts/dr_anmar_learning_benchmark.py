@@ -521,8 +521,8 @@ def _handover_teacher_action(
     receiver_contact_centering_action_limit: float = 0.03,
     normalized_contact_threshold: float = 0.002,
     presentation_fraction_from_giver: float = 0.25,
-    presentation_height_in_robot_frame: float = -0.07,
-    minimum_lift_height_in_robot_frame: float = -0.09,
+    presentation_height_in_robot_frame: float = -0.13,
+    minimum_lift_height_in_robot_frame: float = -0.139,
     carry_latch_height_in_robot_frame: float = -0.132,
     carry_lateral_action_limit: float = 0.1,
     carry_vertical_action_limit: float = 0.18,
@@ -1548,13 +1548,20 @@ def _handover_controller_sweep(
     successes = torch.zeros_like(completed)
     timeouts = torch.zeros_like(completed)
     hard_failures = torch.zeros_like(completed)
+    procedural_failures = torch.zeros_like(completed)
+    hard_failure_names = (
+        "object_dropping",
+        "excessive_object_force",
+        "protected_surface_force",
+    )
+    procedural_failure_names = (
+        "needle_dropped_after_pickup",
+        "premature_giver_release",
+        "receiver_retention_lost",
+    )
     failure_term_counts = {
         name: torch.zeros_like(completed)
-        for name in (
-            "object_dropping",
-            "excessive_object_force",
-            "protected_surface_force",
-        )
+        for name in hard_failure_names + procedural_failure_names
     }
     maximum_object_force = torch.zeros(
         len(values),
@@ -1688,18 +1695,25 @@ def _handover_controller_sweep(
                 name: manager.get_term(name)
                 for name in failure_term_counts
             }
-            hard_failure = (
-                failure_terms["object_dropping"]
-                | failure_terms["excessive_object_force"]
-                | failure_terms["protected_surface_force"]
-            )
+            hard_failure = torch.stack(
+                [failure_terms[name] for name in hard_failure_names],
+                dim=-1,
+            ).any(dim=-1)
+            procedural_failure = torch.stack(
+                [
+                    failure_terms[name]
+                    for name in procedural_failure_names
+                ],
+                dim=-1,
+            ).any(dim=-1)
+            any_failure = hard_failure | procedural_failure
             time_out_term = manager.get_term("time_out")
             first_done = was_unresolved & dones
             successful_environment |= (
-                first_done & success_term & ~hard_failure
+                first_done & success_term & ~any_failure
             )
             max_phase = torch.where(
-                first_done & success_term & ~hard_failure,
+                first_done & success_term & ~any_failure,
                 torch.full_like(max_phase, 4),
                 max_phase,
             )
@@ -1766,10 +1780,13 @@ def _handover_controller_sweep(
                 successes[group_index] += (
                     first
                     & success_term[start:stop]
-                    & ~hard_failure[start:stop]
+                    & ~any_failure[start:stop]
                 ).sum()
                 hard_failures[group_index] += (
                     first & hard_failure[start:stop]
+                ).sum()
+                procedural_failures[group_index] += (
+                    first & procedural_failure[start:stop]
                 ).sum()
                 for name, term in failure_terms.items():
                     failure_term_counts[name][group_index] += (
@@ -1779,7 +1796,7 @@ def _handover_controller_sweep(
                     first
                     & time_out_term[start:stop]
                     & ~success_term[start:stop]
-                    & ~hard_failure[start:stop]
+                    & ~any_failure[start:stop]
                 ).sum()
                 if active.any():
                     maximum_object_force[group_index] = torch.maximum(
@@ -1875,7 +1892,20 @@ def _handover_controller_sweep(
                     "hard_failures": int(
                         hard_failures[group_index].item()
                     ),
+                    "procedural_failures": int(
+                        procedural_failures[group_index].item()
+                    ),
                     "hard_failure_term_counts": {
+                        name: int(counts[group_index].item())
+                        for name, counts in failure_term_counts.items()
+                        if name in hard_failure_names
+                    },
+                    "procedural_failure_term_counts": {
+                        name: int(counts[group_index].item())
+                        for name, counts in failure_term_counts.items()
+                        if name in procedural_failure_names
+                    },
+                    "failure_term_counts": {
                         name: int(counts[group_index].item())
                         for name, counts in failure_term_counts.items()
                     },

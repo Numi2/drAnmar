@@ -339,10 +339,16 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
     assert '"robot_1_jaw_1_object_contact"' in state_source
     assert '"robot_2_jaw_1_object_contact"' in state_source
     assert 'receiver_frame: FrameTransformer = env.scene["ee_2_frame"]' in state_source
-    assert "receiver_only_consecutive" in state_source
+    assert "giver_contact_history" in state_source
+    assert "receiver_contact_history" in state_source
+    assert "contact_required_steps: int = 3" in state_source
     assert "required_receiver_only_steps: int = 10" in state_source
-    assert "object_pos_w[:, 2] > minimum_height" in state_source
-    assert "(phase == 1) & giver_contact & lifted" in state_source
+    assert "pickup_clearance: float = 0.01" in state_source
+    assert "clearance >= pickup_clearance" in state_source
+    assert "allowed_receiver_contact_flicker_steps: int = 1" in state_source
+    assert "receiver_follows" in state_source
+    assert '"premature_release"' in state_source
+    assert '"receiver_retention_failed"' in state_source
     assert "receiver_distance < presentation_distance" not in state_source
     assert 'command_name: str = "receiver_pose"' in state_source
     assert "receiver_pose = mdp.UniformPoseCommandCfg(" in cfg_source
@@ -350,6 +356,10 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
     assert "self.commands.receiver_pose.body_name" in needle_source
     assert contract["direction"] == "robot_1_giver_to_robot_2_receiver"
     assert contract["requires_receiver_goal_pose"] is False
+    assert contract["minimum_pickup_clearance_m"] == 0.01
+    assert contract["contact_window_steps"] == 5
+    assert contract["contact_required_steps"] == 3
+    assert contract["receiver_contact_flicker_steps"] == 1
     for prop in ("block", "needle"):
         for control in ("joint_pos", "ik_abs", "ik_rel"):
             robot_cfg_source = (
