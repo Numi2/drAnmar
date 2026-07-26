@@ -1084,6 +1084,8 @@ _ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS = {
     "gripper_close_rad",
     "gripper_effort_limit_nm",
 }
+_NEEDLE_PROVISIONAL_ORIENTATION_ACTION_LIMIT = 0.05
+_NEEDLE_PROVISIONAL_ORIENTATION_VELOCITY_DAMPING_S = 0.001
 
 
 def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
@@ -1155,12 +1157,19 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
 
         if args.parameter == "needle_grasp_arc_fraction":
             try:
-                needle_grasp_offsets = [
+                geometry_offsets = [
                     needle_geometry_grasp_offset_m(value) for value in values
                 ]
             except ValueError as error:
                 return _fail(str(error))
-            grasp_frame_source = NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE
+            needle_grasp_offsets = [
+                (offset[0], offset[1], NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M)
+                for offset in geometry_offsets
+            ]
+            grasp_frame_source = (
+                f"{NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE};"
+                f"fixed_z_offset_m={NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M}"
+            )
         else:
             provisional_offset = needle_geometry_grasp_offset_m(
                 NEEDLE_PROVISIONAL_ARC_FRACTION
@@ -1264,7 +1273,13 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                 stop = start + group_size
                 if needle_grasp_sweep:
                     controller_kwargs = {
-                        "grasp_offset": needle_grasp_offsets[group_index]
+                        "grasp_offset": needle_grasp_offsets[group_index],
+                        "carry_orientation_action_limit": (
+                            _NEEDLE_PROVISIONAL_ORIENTATION_ACTION_LIMIT
+                        ),
+                        "carry_orientation_velocity_damping_s": (
+                            _NEEDLE_PROVISIONAL_ORIENTATION_VELOCITY_DAMPING_S
+                        ),
                     }
                 elif needle_orientation_sweep:
                     controller_kwargs = {
@@ -1272,7 +1287,9 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                         args.parameter: value,
                     }
                     if needle_orientation_damping_sweep:
-                        controller_kwargs["carry_orientation_action_limit"] = 0.05
+                        controller_kwargs["carry_orientation_action_limit"] = (
+                            _NEEDLE_PROVISIONAL_ORIENTATION_ACTION_LIMIT
+                        )
                 else:
                     controller_kwargs = (
                         {}
