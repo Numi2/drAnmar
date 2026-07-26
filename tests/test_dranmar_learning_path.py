@@ -344,6 +344,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source
     assert '"success_by_initial_target_xy_distance"' in benchmark_source
+    assert "first_dones = was_first_unresolved & dones.bool()" in benchmark_source
+    assert "first_successes = first_dones & successes.bool()" in benchmark_source
     for source in (
         cfg_source,
         reward_source,

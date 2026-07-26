@@ -1448,12 +1448,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                 for name, value in term_values.items():
                     termination_counts[name] += int(value.sum().item())
-                first_dones = was_first_unresolved & dones
-                first_successes = first_dones & successes
+                first_dones = was_first_unresolved & dones.bool()
+                first_successes = first_dones & successes.bool()
                 first_outcome_success |= first_successes
                 first_unassigned_failures = first_dones & ~first_successes
                 for name in failure_names:
-                    assigned = first_unassigned_failures & term_values[name]
+                    assigned = (
+                        first_unassigned_failures
+                        & term_values[name].bool()
+                    )
                     first_failure_distribution[name] += int(
                         assigned.sum().item()
                     )
@@ -1465,7 +1468,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                 for name, value in term_values.items():
                     first_termination_counts[name] += int(
-                        (first_dones & value).sum().item()
+                        (first_dones & value.bool()).sum().item()
                     )
                 if first_lift_history is not None:
                     for key in (
