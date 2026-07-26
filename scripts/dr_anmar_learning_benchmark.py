@@ -1290,6 +1290,10 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                         controller_kwargs["carry_orientation_action_limit"] = (
                             _NEEDLE_PROVISIONAL_ORIENTATION_ACTION_LIMIT
                         )
+                    else:
+                        controller_kwargs[
+                            "carry_orientation_velocity_damping_s"
+                        ] = _NEEDLE_PROVISIONAL_ORIENTATION_VELOCITY_DAMPING_S
                 else:
                     controller_kwargs = (
                         {}
