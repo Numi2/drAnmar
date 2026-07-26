@@ -67,17 +67,19 @@ from dr_anmar_operator import (
     access_cookie_value,
     access_is_authorized,
     configured_access_token,
+    validate_bind_security,
 )
 from dr_anmar_psm_gripper import CANONICAL_PSM_GRIPPER_PROFILE
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--host", default="0.0.0.0")
+parser.add_argument("--host", default="127.0.0.1")
 parser.add_argument("--port", type=int, default=2360)
 parser.add_argument("--worker_port", type=int, default=2361)
 parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
 args = parser.parse_args()
 args.root = args.root.expanduser().resolve()
+validate_bind_security(args.host)
 
 DR_ANMAR_ROOT = Path(os.environ.get("DR_ANMAR_ROOT", Path.home() / ".local/share/dr-anmar")).expanduser()
 WEB_ROOT = args.root / "web"
@@ -390,7 +392,8 @@ async def protect_browser_requests(request: Request, call_next):
             return HTMLResponse(LOGIN_HTML)
         return JSONResponse({"detail": "Dr.Anmar access token required"}, status_code=401)
     origin = request.headers.get("origin")
-    if request.method not in {"GET", "HEAD", "OPTIONS"} and origin:
+    mutation = request.method not in {"GET", "HEAD", "OPTIONS"}
+    if mutation and origin:
         try:
             from urllib.parse import urlparse
 
@@ -398,10 +401,10 @@ async def protect_browser_requests(request: Request, call_next):
                 return JSONResponse({"detail": "Cross-site state changes are not allowed"}, status_code=403)
         except ValueError:
             return JSONResponse({"detail": "Invalid request origin"}, status_code=403)
-        if request.url.path != "/api/session":
-            claimed, detail = operator_lease.claim(request.headers.get(OPERATOR_HEADER))
-            if not claimed:
-                return JSONResponse({"detail": detail}, status_code=423)
+    if mutation and request.url.path != "/api/session":
+        claimed, detail = operator_lease.claim(request.headers.get(OPERATOR_HEADER))
+        if not claimed:
+            return JSONResponse({"detail": detail}, status_code=423)
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"

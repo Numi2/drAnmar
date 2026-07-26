@@ -30,6 +30,7 @@ POLICY_SCHEMA = "dr.anmar.asset-catalog-policy.v1"
 PORTFOLIO_SCHEMA = "dr.anmar.asset-portfolio.v2"
 LOCK_SCHEMA = "dr.anmar.asset-catalog-lock.v3"
 USD_SUFFIXES = frozenset({".usd", ".usda", ".usdc"})
+DEFAULT_NON_USD_ENTRYPOINT_NAMES = frozenset({"asset_bundle.json"})
 _USD_REFERENCE = re.compile(r"@([^@\r\n]+)@")
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{7,64}$")
 _COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
@@ -296,9 +297,18 @@ def _inventory_search_roots(
     return searches
 
 
-def _asset_unit_directories(search_root: Path) -> tuple[Path, ...]:
+def _asset_unit_directories(
+    search_root: Path,
+    non_usd_entrypoint_names: frozenset[str],
+) -> tuple[Path, ...]:
     candidates = {
-        path.parent for path in search_root.rglob("*") if path.is_file() and path.suffix.lower() in USD_SUFFIXES
+        path.parent
+        for path in search_root.rglob("*")
+        if path.is_file()
+        and (
+            path.suffix.lower() in USD_SUFFIXES
+            or path.name in non_usd_entrypoint_names
+        )
     }
     return tuple(
         sorted(
@@ -337,17 +347,24 @@ def discover_asset_units(
     include_hashes: bool = False,
     policy: Mapping[str, Any] | None = None,
 ) -> tuple[AssetUnit, ...]:
-    """Discover each local folder that directly owns one or more USD stages."""
+    """Discover each local folder that owns a USD stage or data entrypoint."""
 
     repository_root = repository_root.expanduser().resolve()
     policy = load_policy(repository_root) if policy is None else policy
     ignored_names = frozenset(str(name) for name in policy.get("quality", {}).get("ignored_names", ()))
+    non_usd_entrypoint_names = frozenset(
+        str(name)
+        for name in policy.get("quality", {}).get(
+            "non_usd_entrypoint_names",
+            DEFAULT_NON_USD_ENTRYPOINT_NAMES,
+        )
+    )
     units: list[AssetUnit] = []
     for provider_id, provider_root, search_root in _inventory_search_roots(repository_root, policy):
         provider = policy["providers"][provider_id]
         if not search_root.is_dir():
             continue
-        for unit_root in _asset_unit_directories(search_root):
+        for unit_root in _asset_unit_directories(search_root, non_usd_entrypoint_names):
             files = tuple(
                 sorted(
                     (path for path in unit_root.rglob("*") if path.is_file() and path.name not in ignored_names),
@@ -357,7 +374,11 @@ def discover_asset_units(
             entrypoints = tuple(
                 path.relative_to(unit_root).as_posix()
                 for path in files
-                if path.parent == unit_root and path.suffix.lower() in USD_SUFFIXES
+                if path.parent == unit_root
+                and (
+                    path.suffix.lower() in USD_SUFFIXES
+                    or path.name in non_usd_entrypoint_names
+                )
             )
             metadata = tuple(
                 path.relative_to(unit_root).as_posix()
@@ -867,7 +888,7 @@ def _validate_unit_metadata(
                 "error",
                 "missing_entrypoint",
                 unit.relative_path,
-                "Asset unit has no direct USD entrypoint.",
+                "Asset unit has no direct USD or registered data entrypoint.",
                 repository_root,
             )
         if not _requires_metadata(unit, policy):
@@ -1038,6 +1059,44 @@ def validate_catalog(
         portfolio_asset_count = 0
     _validate_json_and_usd(repository_root, policy, issues)
     _validate_unit_metadata(units, policy, repository_root, issues)
+    growth_budgets = policy.get("quality", {}).get("growth_budgets", {})
+    maximum_unit_bytes = int(
+        growth_budgets.get("maximum_asset_unit_bytes", 0) or 0
+    )
+    maximum_catalog_bytes = int(
+        growth_budgets.get("maximum_catalog_bytes", 0) or 0
+    )
+    for unit in units:
+        if maximum_unit_bytes and unit.bytes > maximum_unit_bytes:
+            _issue(
+                issues,
+                "error",
+                "asset_unit_growth_budget_exceeded",
+                unit.relative_path,
+                f"{unit.bytes} bytes exceeds the {maximum_unit_bytes}-byte asset-unit budget.",
+                repository_root,
+            )
+    catalog_bytes = sum(unit.bytes for unit in units)
+    if maximum_catalog_bytes and catalog_bytes > maximum_catalog_bytes:
+        _issue(
+            issues,
+            "error",
+            "catalog_growth_budget_exceeded",
+            "config/dranmar_asset_catalog.json",
+            f"{catalog_bytes} bytes exceeds the {maximum_catalog_bytes}-byte catalog budget.",
+            repository_root,
+        )
+    from dr_anmar_multimodal_assets import validate_all_multimodal_bundles
+
+    for multimodal_issue in validate_all_multimodal_bundles(repository_root):
+        _issue(
+            issues,
+            "error",
+            multimodal_issue.code,
+            multimodal_issue.path,
+            multimodal_issue.message,
+            repository_root,
+        )
     if procedures is not None:
         roots = provider_roots(
             repository_root,
@@ -1069,7 +1128,7 @@ def validate_catalog(
         "portfolio_assets": portfolio_asset_count,
         "entrypoints": sum(len(unit.entrypoints) for unit in units),
         "files": sum(unit.file_count for unit in units),
-        "bytes": sum(unit.bytes for unit in units),
+        "bytes": catalog_bytes,
         "errors": errors,
         "warnings": warnings,
         "issues": [asdict(issue) for issue in issues],

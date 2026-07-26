@@ -22,6 +22,7 @@ export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-${ROOT}/runtime/uv-python
 PYTHON="${ISAAC_PYTHON:-python3}"
 HUB_PORT="${DR_ANMAR_HUB_PORT:-2360}"
 WORKER_PORT="${DR_ANMAR_WORKER_PORT:-2361}"
+HUB_HOST="${DR_ANMAR_HUB_HOST:-127.0.0.1}"
 PID_FILE="${ROOT}/run/hub.pid"
 LOG_FILE="${ROOT}/logs/hub.log"
 
@@ -56,7 +57,7 @@ case "${1:-status}" in
         fi
         if ! hub_running; then
             cd "${ORBIT_ROOT}"
-            nohup "${PYTHON}" scripts/dr_anmar_hub.py --port "${HUB_PORT}" --worker_port "${WORKER_PORT}" --root "${ORBIT_ROOT}" >>"${LOG_FILE}" 2>&1 &
+            nohup "${PYTHON}" scripts/dr_anmar_hub.py --host "${HUB_HOST}" --port "${HUB_PORT}" --worker_port "${WORKER_PORT}" --root "${ORBIT_ROOT}" >>"${LOG_FILE}" 2>&1 &
             echo "$!" >"${PID_FILE}"
         fi
         if ! "${ORBIT_ROOT}/dr_anmar_workstation.sh" status "${WORKER_PORT}" >/dev/null 2>&1; then

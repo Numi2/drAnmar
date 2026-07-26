@@ -53,11 +53,11 @@ References:
 - <https://nvidia-omniverse.github.io/PhysX/physx/5.7.0/docs/GPURigidBodies.html>
 - <https://nvidia-omniverse.github.io/PhysX/ovphysx/latest/simulation_setup/particles.html>
 
-## Run on Gilgamesh
+## Run on the qualified NVIDIA workstation
 
 ```bash
-DR_ANMAR_STABLE_ISAAC_PYTHON=/home/gilgamesh/isaaclab_pip/env_isaaclab/bin/python \
-DR_ANMAR_ROOT=/home/numi/dr_anmar/dr-anmar-runtime \
+DR_ANMAR_STABLE_ISAAC_PYTHON=/path/to/qualified/isaac/python \
+DR_ANMAR_ROOT=/path/to/dr-anmar-runtime \
 ./dr_anmar_suture_warp.sh qualify
 ```
 

@@ -16,6 +16,28 @@ ISAACLAB_ROOT="${NEXT_ROOT}/IsaacLab"
 LOG_ROOT="${NEXT_ROOT}/logs"
 INSTALL_LOG="${LOG_ROOT}/install.log"
 PID_FILE="${NEXT_ROOT}/install.pid"
+LOCK_PATH="${REPOSITORY_ROOT}/config/physics-next-lock.json"
+
+lock_value() {
+    python3 - "${LOCK_PATH}" "$1" <<'PY'
+import json
+import sys
+value = json.load(open(sys.argv[1], encoding="utf-8"))
+for part in sys.argv[2].split("."):
+    value = value[part]
+print(value)
+PY
+}
+
+PYTHON_VERSION="$(lock_value python.version)"
+PIP_VERSION="$(lock_value python.pip)"
+ISAACSIM_VERSION="$(lock_value simulator.version)"
+ISAACLAB_REPOSITORY="$(lock_value sources.isaaclab.repository)"
+ISAACLAB_COMMIT="$(lock_value sources.isaaclab.revision)"
+CRESSIM_REPOSITORY="$(lock_value sources.cressim_mpm.repository)"
+CRESSIM_COMMIT="$(lock_value sources.cressim_mpm.revision)"
+PYTETWILD_VERSION="$(lock_value mesh_environment.pytetwild)"
+SCIPY_VERSION="$(lock_value mesh_environment.scipy)"
 
 mkdir -p "${NEXT_ROOT}" "${LOG_ROOT}"
 
@@ -47,32 +69,95 @@ install_runtime() {
             fi
         }
         trap finish_install EXIT
-        python3.12 -m venv "${env_root}"
-        "${env_root}/bin/python" -m pip install --upgrade pip
-        "${env_root}/bin/python" -m pip install "isaacsim[all,extscache]==6.0.1.0" --extra-index-url https://pypi.nvidia.com
+        lock_path="$4"
+        python_version="$5"
+        pip_version="$6"
+        isaacsim_version="$7"
+        isaaclab_repository="$8"
+        isaaclab_commit="$9"
+        cressim_repository="${10}"
+        cressim_commit="${11}"
+        "python${python_version}" -m venv "${env_root}"
+        "${env_root}/bin/python" -m pip install "pip==${pip_version}"
+        "${env_root}/bin/python" -m pip install "isaacsim[all,extscache]==${isaacsim_version}" --extra-index-url https://pypi.nvidia.com
         if [[ ! -d "${isaaclab_root}/.git" ]]; then
-            git clone --branch release/3.0.0-beta2 --depth 1 https://github.com/isaac-sim/IsaacLab.git "${isaaclab_root}"
+            git clone --filter=blob:none --no-checkout "${isaaclab_repository}" "${isaaclab_root}"
         fi
         cd "${isaaclab_root}"
-        git fetch --depth 1 origin release/3.0.0-beta2
-        git checkout --detach origin/release/3.0.0-beta2
+        git fetch --depth 1 origin "${isaaclab_commit}"
+        git checkout --detach "${isaaclab_commit}"
+        [[ "$(git rev-parse HEAD)" == "${isaaclab_commit}" ]]
         PATH="${env_root}/bin:${PATH}" VIRTUAL_ENV="${env_root}" ./isaaclab.sh --install
         cressim_root="${next_root}/CRESSim-MPM"
         if [[ ! -d "${cressim_root}/.git" ]]; then
-            git clone --branch v2.2.0 --depth 1 https://github.com/yafei-ou/CRESSim-MPM.git "${cressim_root}"
+            git clone --filter=blob:none --no-checkout "${cressim_repository}" "${cressim_root}"
         fi
-        "${env_root}/bin/python" - <<PY > "${next_root}/runtime.json"
+        cd "${cressim_root}"
+        git fetch --depth 1 origin "${cressim_commit}"
+        git checkout --detach "${cressim_commit}"
+        [[ "$(git rev-parse HEAD)" == "${cressim_commit}" ]]
+        "${env_root}/bin/python" -m pip freeze --all > "${next_root}/python-freeze.txt"
+        ISAACLAB_COMMIT="${isaaclab_commit}" CRESSIM_COMMIT="${cressim_commit}" \
+            "${env_root}/bin/python" - "${lock_path}" "${next_root}/python-freeze.txt" <<PY > "${next_root}/runtime.json"
+import hashlib
+import importlib.metadata
 import json
-import isaaclab
-import isaaclab_newton
-import torch
-import warp
-print(json.dumps({"ready": True, "torch": torch.__version__, "cuda": torch.version.cuda, "warp": getattr(warp, "__version__", "unknown")}, sort_keys=True))
+import os
+import platform
+import subprocess
+import sys
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+def package(name):
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+try:
+    driver = subprocess.run(
+        ["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    ).stdout.strip().splitlines()
+except (OSError, subprocess.SubprocessError):
+    driver = []
+
+receipt = {
+    "schema": "dr.anmar.physics-next-installation.v1",
+    "ready": True,
+    "lock_sha256": sha256(sys.argv[1]),
+    "python_freeze_sha256": sha256(sys.argv[2]),
+    "python": platform.python_version(),
+    "platform": platform.platform(),
+    "gpu_driver": driver,
+    "packages": {
+        name: package(name)
+        for name in ("isaacsim", "isaaclab", "torch", "warp-lang")
+    },
+    "sources": {
+        "isaaclab": os.environ["ISAACLAB_COMMIT"],
+        "cressim_mpm": os.environ["CRESSIM_COMMIT"],
+    },
+    "clinical_validation": False,
+}
+print(json.dumps(receipt, indent=2, sort_keys=True))
 PY
         cat "${next_root}/runtime.json"
-        touch "${next_root}/READY"
+        shasum -a 256 "${next_root}/runtime.json" | awk "{print \$1}" > "${next_root}/READY"
         rm -f "${next_root}/INSTALL_FAILED"
-    ' bash "${NEXT_ROOT}" "${ENV_ROOT}" "${ISAACLAB_ROOT}" >>"${INSTALL_LOG}" 2>&1 &
+    ' bash "${NEXT_ROOT}" "${ENV_ROOT}" "${ISAACLAB_ROOT}" "${LOCK_PATH}" \
+        "${PYTHON_VERSION}" "${PIP_VERSION}" "${ISAACSIM_VERSION}" \
+        "${ISAACLAB_REPOSITORY}" "${ISAACLAB_COMMIT}" \
+        "${CRESSIM_REPOSITORY}" "${CRESSIM_COMMIT}" >>"${INSTALL_LOG}" 2>&1 &
     echo "$!" >"${PID_FILE}"
     echo "Started isolated physics-next installation (PID $!)"
     echo "Log: ${INSTALL_LOG}"
@@ -84,7 +169,15 @@ case "${1:-status}" in
         ;;
     status)
         if [[ -f "${NEXT_ROOT}/READY" ]]; then
-            echo "physics-next runtime: ready"
+            if python3 "${REPOSITORY_ROOT}/scripts/verify_dranmar_physics_next_receipt.py" \
+                --root "${NEXT_ROOT}" --lock "${LOCK_PATH}" >/dev/null; then
+                echo "physics-next runtime: ready and receipt-verified"
+            else
+                echo "physics-next runtime: stale or unverifiable" >&2
+                python3 "${REPOSITORY_ROOT}/scripts/verify_dranmar_physics_next_receipt.py" \
+                    --root "${NEXT_ROOT}" --lock "${LOCK_PATH}" >&2
+                exit 1
+            fi
         elif install_running; then
             echo "physics-next runtime: installing (PID $(cat "${PID_FILE}"))"
         elif [[ -f "${NEXT_ROOT}/INSTALL_FAILED" ]]; then
@@ -141,9 +234,11 @@ case "${1:-status}" in
         edge_length="${4:-0.008}"
         mesh_python="${NEXT_ROOT}/env_mesh/bin/python"
         if [[ ! -x "${mesh_python}" ]]; then
-            python3.12 -m venv "${NEXT_ROOT}/env_mesh"
-            "${mesh_python}" -m pip install --upgrade pip
-            "${mesh_python}" -m pip install "pytetwild[all]" scipy
+            "python${PYTHON_VERSION}" -m venv "${NEXT_ROOT}/env_mesh"
+            "${mesh_python}" -m pip install "pip==${PIP_VERSION}"
+            "${mesh_python}" -m pip install \
+                "pytetwild[all]==${PYTETWILD_VERSION}" \
+                "scipy==${SCIPY_VERSION}"
         fi
         "${mesh_python}" "${REPOSITORY_ROOT}/scripts/dr_anmar_tetrahedralize.py" \
             --extraction "${extraction}" --output "${output}" --edge-length-m "${edge_length}" --threads 1

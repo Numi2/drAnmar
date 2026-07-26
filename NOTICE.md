@@ -21,5 +21,13 @@ The optional orthopedic-ultrasound provider installs the MIT-licensed
 downloaded separately from the upstream Hugging Face dataset under CC BY 4.0 and are not redistributed by
 Dr.Anmar. Preserve upstream attribution and review the dataset terms before redistribution or downstream use.
 
-The names ORBIT-Surgical, SonoGym, NVIDIA, Isaac Sim, Isaac Lab, dVRK, and other marks belong to their respective
-owners. Their appearance does not imply endorsement of Dr.Anmar.
+The multimodal catalog references, but does not redistribute, Apache-2.0
+[Cosmos-H-Dreams](https://github.com/isaac-for-healthcare/Cosmos-H-Dreams)
+example assets at a pinned Git revision. Referenced checkpoint and embedding
+artifacts remain external under the NVIDIA Open Model License. Their full
+content hashes, revisions, and loading restrictions are recorded in the
+Dr.Anmar asset bundle.
+
+The names ORBIT-Surgical, SonoGym, Cosmos, NVIDIA, Isaac Sim, Isaac Lab, dVRK,
+and other marks belong to their respective owners. Their appearance does not
+imply endorsement of Dr.Anmar.

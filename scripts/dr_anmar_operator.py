@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import os
 import re
 import threading
@@ -77,3 +78,34 @@ def access_is_authorized(cookie_value: str | None, token: str | None = None) -> 
         return True
     candidate = access_cookie_value(token) if token is not None else (cookie_value or "")
     return hmac.compare_digest(candidate, access_cookie_value(configured))
+
+
+def host_is_loopback(host: str) -> bool:
+    """Return true only for explicit loopback bind targets."""
+    normalized = host.strip().strip("[]").lower()
+    if normalized == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def validate_bind_security(host: str) -> None:
+    """Fail closed before exposing a research-control API beyond loopback."""
+    if host_is_loopback(host):
+        return
+    missing: list[str] = []
+    if os.environ.get("DR_ANMAR_ALLOW_REMOTE", "0") != "1":
+        missing.append("DR_ANMAR_ALLOW_REMOTE=1")
+    if configured_access_token() is None:
+        missing.append("DR_ANMAR_ACCESS_TOKEN=<strong token>")
+    if os.environ.get("DR_ANMAR_TLS_TERMINATED", "0") != "1":
+        missing.append("DR_ANMAR_TLS_TERMINATED=1")
+    if os.environ.get("DR_ANMAR_FIREWALL_CONFIRMED", "0") != "1":
+        missing.append("DR_ANMAR_FIREWALL_CONFIRMED=1")
+    if missing:
+        requirements = ", ".join(missing)
+        raise RuntimeError(
+            f"Refusing non-loopback bind {host!r}; explicitly configure {requirements}"
+        )

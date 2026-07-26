@@ -10,11 +10,13 @@ Sim, PhysX, CUDA, sensor, physical-bench, or clinical validation.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import math
 import py_compile
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -41,6 +43,35 @@ PROFILE_PATH = (
 OPENUSD_VALIDATOR_PATH = REPOSITORY_ROOT / "scripts/validate_openusd_layers.py"
 
 FLOAT = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sha256_tree(root: Path) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        relative = path.relative_to(root).as_posix().encode("utf-8")
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        digest.update(bytes.fromhex(_sha256_file(path)))
+    return digest.hexdigest()
+
+
+def _git_revision(root: Path) -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    ).stdout.strip()
 
 
 def _load_runtime():
@@ -198,6 +229,7 @@ def _static_payload_checks() -> dict[str, Any]:
         REPOSITORY_ROOT / "scripts/generate_dranmar_laparotomy_wound.py",
         REPOSITORY_ROOT
         / "scripts/generate_dranmar_dynamic_abdominal_patient_rigid_proxy.py",
+        REPOSITORY_ROOT / "scripts/refresh_dynamic_patient_asset_manifest.py",
         OPENUSD_VALIDATOR_PATH,
         REPOSITORY_ROOT / "examples/dynamic_abdominal_patient_scene.py",
         REPOSITORY_ROOT / "examples/end_to_end_procedure.py",
@@ -273,6 +305,59 @@ def _static_payload_checks() -> dict[str, Any]:
     anatomy = json.loads(
         (ASSET_ROOT / "anatomy_manifest.json").read_text(encoding="utf-8")
     )
+    asset_manifest = json.loads(
+        (ASSET_ROOT / "asset_manifest.json").read_text(encoding="utf-8")
+    )
+    manifest_paths = {
+        str(entry["path"]) for entry in asset_manifest["files"]
+    }
+    discovered_asset_paths = {
+        "assets/"
+        + path.relative_to(
+            REPOSITORY_ROOT / "source/extensions/orbit.surgical.assets/data"
+        ).as_posix()
+        for path in ASSET_ROOT.rglob("*")
+        if path.is_file() and path.name != "asset_manifest.json"
+    }
+    if manifest_paths != discovered_asset_paths:
+        raise AssertionError(
+            "Dynamic-patient asset manifest file inventory drifted from its "
+            "authoritative asset directory"
+        )
+    profile = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
+    anatomy_summary = {
+        "component_count": len(anatomy["components"]),
+        "explicit_tet_component_count": sum(
+            int(component.get("tetrahedra", 0)) > 0
+            for component in anatomy["components"]
+        ),
+        "explicit_tet_vertices": sum(
+            int(component.get("tet_vertices", 0))
+            for component in anatomy["components"]
+            if int(component.get("tetrahedra", 0)) > 0
+        ),
+        "explicit_tet_tetrahedra": sum(
+            int(component.get("tetrahedra", 0))
+            for component in anatomy["components"]
+        ),
+        "visual_vertex_count": sum(
+            int(component.get("visual_vertices", 0))
+            for component in anatomy["components"]
+        ),
+        "visual_triangle_count": sum(
+            int(component.get("visual_triangles", 0))
+            for component in anatomy["components"]
+        ),
+    }
+    declared_summary = {
+        key: int(profile["anatomy"][key])
+        for key in anatomy_summary
+    }
+    if declared_summary != anatomy_summary:
+        raise AssertionError(
+            "Dynamic-patient profile anatomy totals drifted from the authoritative "
+            f"manifest: declared={declared_summary}, derived={anatomy_summary}"
+        )
     tet_metrics: dict[str, Any] = {}
     volume_cooking_sources: dict[str, Any] = {}
     deformable_hierarchy_roots: dict[str, bool] = {}
@@ -385,6 +470,8 @@ def _static_payload_checks() -> dict[str, Any]:
         "python_count": len(python_files),
         "usd_sources": source_checks,
         "glb_metrics": glb_metrics,
+        "anatomy_summary": anatomy_summary,
+        "asset_manifest_file_count": len(manifest_paths),
         "tet_metrics": tet_metrics,
         "laparotomy_wound_metrics": laparotomy_metrics,
         "access_layer_variant_paths": access_layer_variant_paths,
@@ -592,9 +679,10 @@ def _physiology_checks() -> dict[str, Any]:
     }
 
 
-def validate() -> dict[str, Any]:
+def validate(source_parent_revision: str | None = None) -> dict[str, Any]:
     static = _static_payload_checks()
     physiology = _physiology_checks()
+    submodule_root = REPOSITORY_ROOT / "source/extensions/orbit.surgical.assets"
     return {
         "schema": "dr.anmar.dynamic-abdominal-patient-model-sanity.v1",
         "asset_id": "dranmar-dynamic-abdominal-patient-v1",
@@ -604,6 +692,27 @@ def validate() -> dict[str, Any]:
         "overall_qualified": False,
         "static": static,
         "physiology": physiology,
+        "source_control": {
+            "parent_revision": source_parent_revision or _git_revision(REPOSITORY_ROOT),
+            "asset_submodule_revision": _git_revision(submodule_root),
+        },
+        "input_hashes": {
+            "asset_payload_tree_sha256": _sha256_tree(ASSET_ROOT),
+            "profile_sha256": _sha256_file(PROFILE_PATH),
+            "runtime_sha256": _sha256_file(RUNTIME_PATH),
+            "validator_sha256": _sha256_file(Path(__file__).resolve()),
+            "laparotomy_generator_sha256": _sha256_file(
+                REPOSITORY_ROOT / "scripts/generate_dranmar_laparotomy_wound.py"
+            ),
+            "rigid_proxy_generator_sha256": _sha256_file(
+                REPOSITORY_ROOT
+                / "scripts/generate_dranmar_dynamic_abdominal_patient_rigid_proxy.py"
+            ),
+            "asset_manifest_refresher_sha256": _sha256_file(
+                REPOSITORY_ROOT
+                / "scripts/refresh_dynamic_patient_asset_manifest.py"
+            ),
+        },
         # Retain this key for report consumers. Native OpenUSD parsing and
         # composition are executed above and therefore are not listed here.
         "not_executed": [
@@ -629,12 +738,55 @@ def main() -> None:
             / "dranmar-dynamic-abdominal-patient-validation.json"
         ),
     )
-    args = parser.parse_args()
-    report = validate()
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    parser.add_argument(
+        "--source-parent-revision",
+        help="implementation revision represented by retained evidence",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate with the retained source revision and require byte equality",
+    )
+    args = parser.parse_args()
+    retained: dict[str, Any] | None = None
+    source_parent_revision = args.source_parent_revision
+    if args.check:
+        if not args.output.is_file():
+            raise SystemExit(f"Retained report is missing: {args.output}")
+        retained = json.loads(args.output.read_text(encoding="utf-8"))
+        source_parent_revision = retained["source_control"]["parent_revision"]
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", source_parent_revision, "HEAD"],
+            cwd=REPOSITORY_ROOT,
+            timeout=15,
+        )
+        if ancestor.returncode != 0:
+            raise SystemExit(
+                "Retained dynamic-patient evidence revision is not an ancestor of HEAD"
+            )
+    report = validate(source_parent_revision=source_parent_revision)
+    serialized = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    if args.check:
+        assert retained is not None
+        current = args.output.read_text(encoding="utf-8")
+        if current != serialized:
+            raise SystemExit(
+                "Retained dynamic-patient evidence is stale; regenerate it from "
+                "the recorded implementation revision"
+            )
+        print(
+            json.dumps(
+                {
+                    "passed": True,
+                    "byte_for_byte_reproducible": True,
+                    "output": str(args.output),
+                },
+                indent=2,
+            )
+        )
+        return
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(serialized, encoding="utf-8")
     print(
         json.dumps(
             {

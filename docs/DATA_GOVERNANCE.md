@@ -32,3 +32,17 @@ must not be silently mixed into an approved reference dataset.
 Documentation GIFs are visual explanations only. They are not dataset inputs and do not replace the checksummed
 NPZ/JSON trajectory pair. See [`EXECUTABLE_EXPERT_GUIDANCE.md`](EXECUTABLE_EXPERT_GUIDANCE.md) for the phase,
 qualification and capture contract.
+
+## Generative observations
+
+Generated frames are non-authoritative observations. They cannot supply robot
+commands, physics state, patient effects, complication labels, task success, or
+clinical evidence. A generative asset must bind immutable source and model
+revisions, component hashes, media preprocessing, frame timestamps, action
+dimensions, units, coordinate frames, sample clock, pairing status, and output
+provenance. Unpaired media and action streams fail closed for replay and
+training.
+
+Torch pickle checkpoints and embeddings remain quarantined and runtime-disabled
+until converted to a non-executable tensor container and separately approved.
+See [`MULTIMODAL_GENERATIVE_ASSETS.md`](MULTIMODAL_GENERATIVE_ASSETS.md).

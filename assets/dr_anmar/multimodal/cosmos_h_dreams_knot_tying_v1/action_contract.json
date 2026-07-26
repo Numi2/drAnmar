@@ -1,0 +1,152 @@
+{
+  "schema": "dr.anmar.action-contract.v1",
+  "id": "dr_anmar.nvidia_psm_policy_action.v1",
+  "version": "1.0.0",
+  "description": "Two PSM articulations, each with six raw NVIDIA JointPositionAction inputs and one canonical binary gripper sign.",
+  "action_dim": 14,
+  "dtype": "float32",
+  "sample_hz": 20,
+  "clock": "simulation_time_s",
+  "timebase": "seconds",
+  "stale_timeout_s": 0.25,
+  "maximum_continuous_delta_per_sample": 0.025,
+  "neutral_action": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+  ],
+  "dimensions": [
+    {
+      "name": "psm1_yaw_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm1_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm1_pitch_end_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm1_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm1_main_insertion_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm1_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm1_tool_roll_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm1_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm1_tool_pitch_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm1_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm1_tool_yaw_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm1_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm1_gripper.command",
+      "unit": "canonical_binary_sign",
+      "frame": "psm1_tool",
+      "bounds": [-1.0, 1.0],
+      "allowed_values": [-1.0, 1.0],
+      "interpolation": "hold",
+      "meaning": {
+        "-1.0": "closed",
+        "1.0": "open"
+      }
+    },
+    {
+      "name": "psm2_yaw_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm2_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm2_pitch_end_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm2_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm2_main_insertion_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm2_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm2_tool_roll_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm2_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm2_tool_pitch_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm2_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm2_tool_yaw_joint.input",
+      "unit": "normalized_joint_position_input",
+      "frame": "psm2_articulation",
+      "bounds": [-0.6, 0.6],
+      "interpolation": "linear"
+    },
+    {
+      "name": "psm2_gripper.command",
+      "unit": "canonical_binary_sign",
+      "frame": "psm2_tool",
+      "bounds": [-1.0, 1.0],
+      "allowed_values": [-1.0, 1.0],
+      "interpolation": "hold",
+      "meaning": {
+        "-1.0": "closed",
+        "1.0": "open"
+      }
+    }
+  ],
+  "native_resolution": {
+    "arm": "NVIDIA JointPositionAction with scale 0.5 and default-pose offset",
+    "gripper": "NVIDIA BinaryJointAction",
+    "required_runtime_adapter": "scripts/dr_anmar_psm_native_adapter.py"
+  },
+  "safety": {
+    "outside_trajectory": "neutral_stop",
+    "stale_input": "neutral_stop",
+    "nonfinite_input": "neutral_stop",
+    "generated_media_may_supply_actions": false,
+    "operator_lease_required_for_live_control": true
+  },
+  "clinical_validation": false
+}

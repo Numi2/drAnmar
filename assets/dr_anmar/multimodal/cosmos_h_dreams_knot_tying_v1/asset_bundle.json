@@ -1,0 +1,226 @@
+{
+  "schema": "dr.anmar.multimodal-asset-bundle.v1",
+  "id": "dranmar-cosmos-h-dreams-knot-tying-source-audit-v1",
+  "version": "1.0.0",
+  "title": "Cosmos-H-Dreams knot-tying source audit and safe dual-PSM fixture",
+  "kind": "multimodal_simulation_asset",
+  "ownership": "Dr.Anmar contract and fixture; NVIDIA upstream components referenced without redistribution",
+  "source": {
+    "name": "isaac-for-healthcare/Cosmos-H-Dreams",
+    "repository": "https://github.com/isaac-for-healthcare/Cosmos-H-Dreams",
+    "commit": "a2d67d8ab41607cc2b08e297d19e2df52c66a565",
+    "license": "Apache-2.0",
+    "fetched_at_release": false
+  },
+  "authority": {
+    "visual_observation": "non_authoritative_preview_only",
+    "simulation_state": "openusd_physx_and_timestamped_native_state_only",
+    "robot_control": "never_from_generated_media",
+    "patient_effects": "simulator_mechanics_and_sensors_only"
+  },
+  "components": [
+    {
+      "id": "upstream-conditional-image",
+      "role": "source_image",
+      "storage": "external",
+      "format": "png",
+      "uri": "https://raw.githubusercontent.com/isaac-for-healthcare/Cosmos-H-Dreams/a2d67d8ab41607cc2b08e297d19e2df52c66a565/assets/example_data/offline/episode_001866_frame0.png",
+      "revision": "a2d67d8ab41607cc2b08e297d19e2df52c66a565",
+      "bytes": 189120,
+      "sha256": "78444a610f3f435f3d17d75830decd2a1a08b26b956ffb22fcfb94da21f00dc2",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "upstream-reference-video",
+      "role": "source_video",
+      "storage": "external",
+      "format": "mp4-h264",
+      "uri": "https://raw.githubusercontent.com/isaac-for-healthcare/Cosmos-H-Dreams/a2d67d8ab41607cc2b08e297d19e2df52c66a565/assets/example_data/offline/knot_tying.mp4",
+      "revision": "a2d67d8ab41607cc2b08e297d19e2df52c66a565",
+      "bytes": 10247089,
+      "sha256": "5d1623cbbf862c4ee1e2413864f2fd9821b652049862c46d18ae5b2d93eb2ddb",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "upstream-statistics",
+      "role": "source_statistics",
+      "storage": "external",
+      "format": "json",
+      "uri": "https://raw.githubusercontent.com/isaac-for-healthcare/Cosmos-H-Dreams/a2d67d8ab41607cc2b08e297d19e2df52c66a565/assets/example_data/offline/stats_tabletop.json",
+      "revision": "a2d67d8ab41607cc2b08e297d19e2df52c66a565",
+      "bytes": 13091,
+      "sha256": "a7e1a6391ddb0c5a6fbf02e83e0fd748aefe602d8115f4bc71de66ce40bcada3",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "upstream-action-trajectory",
+      "role": "source_action_stream",
+      "storage": "external",
+      "format": "npy-float32",
+      "uri": "https://raw.githubusercontent.com/isaac-for-healthcare/Cosmos-H-Dreams/a2d67d8ab41607cc2b08e297d19e2df52c66a565/assets/example_data/offline/trajectory.npy",
+      "revision": "a2d67d8ab41607cc2b08e297d19e2df52c66a565",
+      "bytes": 29696,
+      "sha256": "daf64555262c5bf957f73e1b3290385f1b98b1ab70739f958d9a6d6c364b06a7",
+      "license": "Apache-2.0",
+      "allow_pickle": false
+    },
+    {
+      "id": "upstream-inference-manifest",
+      "role": "source_manifest",
+      "storage": "external",
+      "format": "json",
+      "uri": "https://raw.githubusercontent.com/isaac-for-healthcare/Cosmos-H-Dreams/a2d67d8ab41607cc2b08e297d19e2df52c66a565/assets/example_data/offline/suturebot_inference_manifest.json",
+      "revision": "a2d67d8ab41607cc2b08e297d19e2df52c66a565",
+      "bytes": 208,
+      "sha256": "a2980bd5806ddbcd8c56e79cb3f6085ec3ca5d38705736a5b5e2ad1506262a96",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "cosmos-h-dreams-tabletop-checkpoint",
+      "role": "model_checkpoint",
+      "storage": "external",
+      "format": "torch-pickle-zip",
+      "uri": "https://huggingface.co/nvidia/Cosmos-H-Dreams/resolve/2314ef820863b93f74ab8852de93b1e6f491d75c/checkpoints/model_ema_bf16_jhutabletop_288x512_h73.pt",
+      "revision": "2314ef820863b93f74ab8852de93b1e6f491d75c",
+      "bytes": 4258611590,
+      "sha256": "df3d6754a34ada2cf16557d949dca3dc2ac6935d6a80a09c5b6eae075f170038",
+      "license": "NVIDIA-Open-Model-License",
+      "loading": {
+        "runtime_enabled": false,
+        "policy": "quarantined_no_deserialization",
+        "required_future_format": "safetensors_or_other_non_executable_tensor_container",
+        "hash_verification_required_before_any_inspection": true
+      }
+    },
+    {
+      "id": "cosmos-reason1-empty-text-embedding",
+      "role": "text_embedding",
+      "storage": "external",
+      "format": "torch-pickle-zip",
+      "uri": "https://huggingface.co/nvidia/Cosmos-H-Dreams/resolve/2314ef820863b93f74ab8852de93b1e6f491d75c/checkpoints/cr1_empty_string_text_embeddings.pt",
+      "revision": "2314ef820863b93f74ab8852de93b1e6f491d75c",
+      "bytes": 102762305,
+      "sha256": "d1e5d8c335dff55f266d9ca5fc2579874e7115e84a50e48f5494f16ea42fe3a3",
+      "license": "NVIDIA-Open-Model-License",
+      "loading": {
+        "runtime_enabled": false,
+        "policy": "quarantined_no_deserialization",
+        "required_future_format": "safetensors_or_other_non_executable_tensor_container",
+        "hash_verification_required_before_any_inspection": true
+      }
+    },
+    {
+      "id": "dranmar-dual-psm-action-contract",
+      "role": "action_contract",
+      "storage": "local",
+      "format": "json",
+      "path": "action_contract.json",
+      "bytes": 4126,
+      "sha256": "dd9cf2e04af6b9468ec54e2cfdf3529dbd62f62c7eaa8604a2f39faf04b6b55c",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "id": "dranmar-dual-psm-action-fixture",
+      "role": "dranmar_action_stream",
+      "storage": "local",
+      "format": "json",
+      "path": "dranmar_action_stream.json",
+      "bytes": 53968,
+      "sha256": "d0fce9fed449c44d44cf5524231501d4dde65bcc5cf35633751783cc6b77725c",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "id": "static-asset-audit-evidence",
+      "role": "evidence",
+      "storage": "local",
+      "format": "json",
+      "path": "evidence.json",
+      "bytes": 5264,
+      "sha256": "6d74fec2ff5d6e360c9e45fbf1ff55c591e094791bf8716c648ba0855b4b38eb",
+      "license": "BSD-3-Clause"
+    }
+  ],
+  "media_contract": {
+    "source_video": {
+      "width_px": 640,
+      "height_px": 480,
+      "pixel_aspect_ratio": "1:1",
+      "fps": 10.0,
+      "frames": 145,
+      "duration_s": 14.5
+    },
+    "source_color_metadata": "absent",
+    "decoded_color_space": "explicit_srgb_preview_assignment_with_unverified_source_primaries",
+    "alpha": "none",
+    "model_input_transform": {
+      "mode": "letterbox",
+      "source_size_px": [640, 480],
+      "target_size_px": [512, 288],
+      "resized_content_size_px": [384, 288],
+      "padding_left_top_right_bottom_px": [64, 0, 64, 0],
+      "direct_resize_allowed": false,
+      "geometric_aspect_distortion_fraction": 0.0
+    },
+    "output_contract": {
+      "width_px": 512,
+      "height_px": 288,
+      "fps": 10.0,
+      "color_space": "srgb",
+      "frame_timestamps_required": true,
+      "generation_seed_required": true,
+      "model_revision_and_component_hashes_required": true
+    }
+  },
+  "source_action_contract": {
+    "model_action_dim": 44,
+    "statistics_action_dim": 20,
+    "right_padding_dimensions": 24,
+    "normalization": "mean_std",
+    "known_prefix_layout": [
+      "psm1_xyz",
+      "psm1_rotation_6d_column_major",
+      "psm1_gripper",
+      "psm2_xyz",
+      "psm2_rotation_6d_column_major",
+      "psm2_gripper"
+    ],
+    "coordinate_frames": "not_declared_in_source_assets",
+    "sample_clock": "not_declared_in_source_assets",
+    "per_dimension_units": "not_declared_in_source_assets",
+    "dranmar_replay_allowed": false,
+    "dranmar_training_allowed": false,
+    "dranmar_control_allowed": false
+  },
+  "pairing": {
+    "source_video_duration_s": 14.5,
+    "source_trajectory_samples": 168,
+    "source_trajectory_duration_if_10_hz_s": 16.8,
+    "shared_clock": false,
+    "frame_to_action_mapping": false,
+    "source_pairing_status": "rejected_unpaired",
+    "dranmar_control_enabled": false,
+    "dranmar_action_fixture_paired_to_source_media": false
+  },
+  "runtime_contract": {
+    "hashes_verified_before_use": true,
+    "external_download_is_lazy": true,
+    "external_download_default": "disabled",
+    "safe_numpy_loading": "allow_pickle_false",
+    "torch_pickle_loading": "disabled",
+    "timestamp_resampling": "linear_continuous_hold_discrete",
+    "out_of_range_action": "neutral_stop",
+    "stale_action": "neutral_stop_after_0_25_seconds",
+    "nonfinite_action": "neutral_stop",
+    "operator_lease_required": true,
+    "authenticated_tls_transport_required_for_remote_control": true,
+    "generated_success_or_patient_effect_labels_allowed": false
+  },
+  "evidence": {
+    "repository_verification": "available",
+    "native_simulator_evidence": "not_recorded_for_this_bundle",
+    "real_world_evidence": "not_established",
+    "clinical_evidence": "not_established",
+    "fixture_training_reference_eligible": false
+  },
+  "clinical_validation": false
+}

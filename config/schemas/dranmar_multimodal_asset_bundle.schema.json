@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dranmar.example/schemas/dranmar_multimodal_asset_bundle.schema.json",
+  "title": "Dr.Anmar multimodal simulation asset bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "version",
+    "title",
+    "kind",
+    "ownership",
+    "source",
+    "authority",
+    "components",
+    "media_contract",
+    "source_action_contract",
+    "pairing",
+    "runtime_contract",
+    "evidence",
+    "clinical_validation"
+  ],
+  "properties": {
+    "schema": {
+      "const": "dr.anmar.multimodal-asset-bundle.v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "const": "multimodal_simulation_asset"
+    },
+    "ownership": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "repository",
+        "commit",
+        "license",
+        "fetched_at_release"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repository": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fetched_at_release": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authority": {
+      "const": {
+        "visual_observation": "non_authoritative_preview_only",
+        "simulation_state": "openusd_physx_and_timestamped_native_state_only",
+        "robot_control": "never_from_generated_media",
+        "patient_effects": "simulator_mechanics_and_sensors_only"
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    },
+    "media_contract": {
+      "type": "object"
+    },
+    "source_action_contract": {
+      "type": "object"
+    },
+    "pairing": {
+      "type": "object",
+      "required": [
+        "source_pairing_status",
+        "dranmar_control_enabled"
+      ],
+      "properties": {
+        "source_pairing_status": {
+          "const": "rejected_unpaired"
+        },
+        "dranmar_control_enabled": {
+          "const": false
+        }
+      }
+    },
+    "runtime_contract": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "clinical_validation": {
+      "const": false
+    }
+  },
+  "$defs": {
+    "component": {
+      "type": "object",
+      "required": [
+        "id",
+        "role",
+        "storage",
+        "format",
+        "bytes",
+        "sha256",
+        "license"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "source_image",
+            "source_video",
+            "source_statistics",
+            "source_action_stream",
+            "source_manifest",
+            "model_checkpoint",
+            "text_embedding",
+            "action_contract",
+            "dranmar_action_stream",
+            "evidence"
+          ]
+        },
+        "storage": {
+          "enum": [
+            "local",
+            "external"
+          ]
+        },
+        "format": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allow_pickle": {
+          "type": "boolean"
+        },
+        "loading": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "storage": {
+                "const": "local"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "path"
+            ]
+          },
+          "else": {
+            "required": [
+              "uri",
+              "revision"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

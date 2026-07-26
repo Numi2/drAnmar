@@ -41,6 +41,7 @@ REQUIRED = (
     ".env.example",
 )
 RUNTIME_DIRS = ("assets", "downloads", "demos", "logs", "run", "state", "training", "tmp")
+CANONICAL_SOURCE_PREFIXES = ("assets/dr_anmar",)
 FORBIDDEN = (
     ("Gilgamesh user path", re.compile(r"/home/(?:numi|gilgamesh)(?:/|\b)")),
     ("private Gilgamesh address", re.compile(r"\b100[.]98[.]17[.]98\b")),
@@ -78,6 +79,17 @@ def scan_text(content: str, relative: str, problems: list[str]) -> None:
     for label, pattern in FORBIDDEN:
         if pattern.search(content):
             problems.append(f"{label} found in {relative}")
+
+
+def is_forbidden_runtime_path(relative: str) -> bool:
+    """Distinguish committed catalog source from external/generated runtime data."""
+    for source_prefix in CANONICAL_SOURCE_PREFIXES:
+        if relative == source_prefix or relative.startswith(f"{source_prefix}/"):
+            return False
+    return any(
+        relative == runtime_dir or relative.startswith(f"{runtime_dir}/")
+        for runtime_dir in RUNTIME_DIRS
+    )
 
 
 def read_texts_bounded(paths: list[Path], timeout: float = 12.0) -> tuple[dict[Path, str], list[str]]:
@@ -138,9 +150,13 @@ def main() -> int:
         if not (ROOT / relative).is_file():
             problems.append(f"missing required public file: {relative}")
 
-    for relative in RUNTIME_DIRS:
-        if any(item == relative or item.startswith(f"{relative}/") for item in relative_candidates):
-            problems.append(f"generated/runtime directory must not be committed: {relative}/")
+    forbidden_runtime_roots = {
+        item.split("/", 1)[0]
+        for item in relative_candidates
+        if is_forbidden_runtime_path(item)
+    }
+    for relative in sorted(forbidden_runtime_roots):
+        problems.append(f"generated/runtime directory must not be committed: {relative}/")
 
     for path in candidates:
         relative = path.relative_to(ROOT)

@@ -1,0 +1,31 @@
+{
+  "schema": "dr.anmar.physics-next-lock.v1",
+  "python": {
+    "version": "3.12",
+    "pip": "26.1.2"
+  },
+  "simulator": {
+    "distribution": "isaacsim[all,extscache]",
+    "version": "6.0.1.0",
+    "extra_index_url": "https://pypi.nvidia.com"
+  },
+  "sources": {
+    "isaaclab": {
+      "repository": "https://github.com/isaac-sim/IsaacLab.git",
+      "revision": "af1bab4dc173ba69b08fab779c14ead61d13fd33"
+    },
+    "cressim_mpm": {
+      "repository": "https://github.com/yafei-ou/CRESSim-MPM.git",
+      "revision": "09aa5009b8580351f516b6df7660e87821fc5eb6"
+    }
+  },
+  "mesh_environment": {
+    "pytetwild": "0.3.0",
+    "scipy": "1.18.0"
+  },
+  "qualification": {
+    "clinical_validation": false,
+    "physical_calibration_required": true,
+    "exact_stack_native_execution_required": true
+  }
+}

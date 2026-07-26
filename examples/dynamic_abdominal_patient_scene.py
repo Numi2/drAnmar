@@ -159,6 +159,7 @@ def main() -> None:
     capture_paths = capture_laparotomy_wound_edges(
         PATIENT_PATH,
         TOOL_PATH,
+        prepositioned_fixture=True,
     )
     if len(capture_paths) != 60:
         raise RuntimeError(
@@ -166,8 +167,8 @@ def main() -> None:
             f"{len(capture_paths)}"
         )
     print(
-        "[laparotomy] connected 60 distributed capture bonds to the "
-        "Dr.Anmar exposure pads",
+        "[laparotomy] connected 60 prepositioned fixture bonds for the "
+        "camera demonstration; this is not contact-qualified grasp evidence",
         flush=True,
     )
 

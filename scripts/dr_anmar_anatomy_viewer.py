@@ -18,17 +18,20 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from dr_anmar_operator import host_is_loopback
 
 
 parser = argparse.ArgumentParser(description="View an official Dr.Anmar anatomy operating room.")
 parser.add_argument("--scene", type=Path, required=True)
 parser.add_argument("--room_id", required=True)
 parser.add_argument("--room_title", required=True)
-parser.add_argument("--host", default="0.0.0.0")
+parser.add_argument("--host", default="127.0.0.1")
 parser.add_argument("--port", type=int, default=2361)
 parser.add_argument("--camera_width", type=int, default=960)
 parser.add_argument("--camera_height", type=int, default=640)
 args = parser.parse_args()
+if not host_is_loopback(args.host):
+    parser.error("The read-only anatomy worker must remain bound to loopback")
 
 
 APP_HTML = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dr.Anmar Anatomy Operating Room</title><style>

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dranmar.example/schemas/dranmar_timestamped_action_stream.schema.json",
+  "title": "Dr.Anmar timestamped action stream",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "action_contract",
+    "source",
+    "source_generator",
+    "purpose",
+    "paired_visual_observation",
+    "training_reference_eligible",
+    "clinician_review_status",
+    "native_simulator_evidence",
+    "real_world_evidence",
+    "clinical_validation",
+    "sample_hz",
+    "duration_s",
+    "frame_count",
+    "frames"
+  ],
+  "properties": {
+    "schema": {
+      "const": "dr.anmar.timestamped-action-stream.v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action_contract": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_generator": {
+      "type": "string",
+      "minLength": 1
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "paired_visual_observation": {
+      "const": false
+    },
+    "training_reference_eligible": {
+      "const": false
+    },
+    "clinician_review_status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "native_simulator_evidence": {
+      "type": "string",
+      "minLength": 1
+    },
+    "real_world_evidence": {
+      "type": "string",
+      "minLength": 1
+    },
+    "clinical_validation": {
+      "const": false
+    },
+    "sample_hz": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "duration_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "frame_count": {
+      "type": "integer",
+      "minimum": 2
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "timestamp_s",
+          "phase",
+          "action"
+        ],
+        "properties": {
+          "timestamp_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "phase": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 1
+          }
+        }
+      }
+    }
+  }
+}

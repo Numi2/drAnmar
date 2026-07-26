@@ -3,7 +3,7 @@
 set -euo pipefail
 
 COMMAND="${1:-start}"
-SSH_TARGET="${DR_ANMAR_SSH_TARGET:-numi@100.98.17.98}"
+SSH_TARGET="${DR_ANMAR_SSH_TARGET:-}"
 LOCAL_PORT="${DR_ANMAR_LOCAL_PORT:-12360}"
 REMOTE_PORT="${DR_ANMAR_REMOTE_PORT:-2360}"
 STATE_DIR="/tmp/dr-anmar-webcam-${UID}"
@@ -18,7 +18,7 @@ Creates a private SSH tunnel to the Dr.Anmar hub and opens it through the
 browser-trusted 127.0.0.1 origin, allowing webcam access without tailnet HTTPS.
 
 Optional environment overrides:
-  DR_ANMAR_SSH_TARGET   SSH destination (default: numi@100.98.17.98)
+  DR_ANMAR_SSH_TARGET   Required SSH destination (for example user@host)
   DR_ANMAR_LOCAL_PORT   Mac loopback port (default: 12360)
   DR_ANMAR_REMOTE_PORT  Gilgamesh hub port (default: 2360)
   DR_ANMAR_NO_OPEN=1    Start the tunnel without opening a browser
@@ -115,6 +115,10 @@ stop_tunnel() {
 
 validate_port "$LOCAL_PORT"
 validate_port "$REMOTE_PORT"
+if [[ -z "$SSH_TARGET" ]]; then
+  printf 'DR_ANMAR_SSH_TARGET is required (for example user@host).\n' >&2
+  exit 2
+fi
 
 case "$COMMAND" in
   start|open)

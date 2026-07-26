@@ -6,7 +6,9 @@
       0.22
     ],
     "component_count": 23,
-    "explicit_tet_component_count": 7,
+    "explicit_tet_component_count": 9,
+    "explicit_tet_tetrahedra": 14702,
+    "explicit_tet_vertices": 4028,
     "visual_triangle_count": 54976,
     "visual_vertex_count": 27656
   },

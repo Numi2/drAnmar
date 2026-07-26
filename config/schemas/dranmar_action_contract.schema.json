@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dranmar.example/schemas/dranmar_action_contract.schema.json",
+  "title": "Dr.Anmar timestamped simulation action contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "version",
+    "description",
+    "action_dim",
+    "dtype",
+    "sample_hz",
+    "clock",
+    "timebase",
+    "stale_timeout_s",
+    "maximum_continuous_delta_per_sample",
+    "neutral_action",
+    "dimensions",
+    "native_resolution",
+    "safety",
+    "clinical_validation"
+  ],
+  "properties": {
+    "schema": {
+      "const": "dr.anmar.action-contract.v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action_dim": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "dtype": {
+      "enum": [
+        "float32",
+        "float64"
+      ]
+    },
+    "sample_hz": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "clock": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timebase": {
+      "const": "seconds"
+    },
+    "stale_timeout_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "maximum_continuous_delta_per_sample": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "neutral_action": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 1
+    },
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dimension"
+      },
+      "minItems": 1
+    },
+    "native_resolution": {
+      "type": "object"
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "outside_trajectory",
+        "stale_input",
+        "nonfinite_input",
+        "generated_media_may_supply_actions",
+        "operator_lease_required_for_live_control"
+      ],
+      "properties": {
+        "outside_trajectory": {
+          "const": "neutral_stop"
+        },
+        "stale_input": {
+          "const": "neutral_stop"
+        },
+        "nonfinite_input": {
+          "const": "neutral_stop"
+        },
+        "generated_media_may_supply_actions": {
+          "const": false
+        },
+        "operator_lease_required_for_live_control": {
+          "const": true
+        }
+      }
+    },
+    "clinical_validation": {
+      "const": false
+    }
+  },
+  "$defs": {
+    "dimension": {
+      "type": "object",
+      "required": [
+        "name",
+        "unit",
+        "frame",
+        "bounds",
+        "interpolation"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frame": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bounds": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "items": false
+        },
+        "allowed_values": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "interpolation": {
+          "enum": [
+            "linear",
+            "hold"
+          ]
+        },
+        "meaning": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

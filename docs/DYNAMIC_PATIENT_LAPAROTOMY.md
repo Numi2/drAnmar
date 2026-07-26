@@ -18,9 +18,10 @@ laterally.
 
 Each of the ten margins is an explicit volume-deformable hierarchy with an
 authored TetMesh and bound visual mesh. Its outer longitudinal band is attached
-to the patient frame. Its inner band is divided into six capture regions, which
-are attached to the matching exposure-pad collision cells. This produces 60
-distributed tool bonds across the full wound depth.
+to the patient frame. Its inner band is divided into six capture regions.
+Operational attachments are created only for cells qualified by the
+post-physics wound-grasp controller. This can produce up to 60 distributed tool
+bonds across the full wound depth without concentrating load at one node.
 
 This uses the relevant NVIDIA mechanics contracts only:
 
@@ -45,8 +46,14 @@ routes = apply_laparotomy_wound_deformables("/World/Patient")
 attachments = capture_laparotomy_wound_edges(
     "/World/Patient",
     "/World/DrAnmarAtraumaticExposureTool",
+    qualified_cells=patient.wound_grasp.captured_cells,
 )
 ```
+
+`patient.wound_grasp.observe(...)` accepts only post-physics contact-sensor
+evidence and checks cell force, relative speed, edge offset, capture dwell,
+retained contact, slip, and hard overload. Calling the attachment function
+without qualified cells fails closed.
 
 To release the margins without deleting anatomy:
 
@@ -54,11 +61,16 @@ To release the margins without deleting anatomy:
 released = release_laparotomy_wound_edges("/World/Patient")
 ```
 
-The complete interactive scene is:
+The complete camera demonstration is:
 
 ```bash
 ./dr_anmar.sh laparotomy
 ```
+
+That scene opts into `prepositioned_fixture=True` so it can preserve the
+unobstructed camera composition. It demonstrates deformable response and
+distributed attachment motion; it does not qualify autonomous wound-edge
+grasping.
 
 For a bounded headless execution and PNG capture:
 
@@ -74,15 +86,25 @@ python scripts/generate_dranmar_laparotomy_wound.py
 
 ## Incision boundary
 
-`patient.incision` models ordered progression through skin, subcutaneous fat,
-fascia, abdominal wall, and peritoneum. It requires blade contact and checks
-force, alignment, speed, forward travel, and cutting work before releasing
-pre-authored continuity identifiers. It records persistent damage and access
-state.
+`patient.incision` models a median path through skin, subcutaneous tissue,
+linea-alba fascia, and peritoneum. The rectus muscles are separated at the
+midline and are not recorded as transected. It requires post-physics blade
+contact and checks force, alignment, reported versus pose-derived speed,
+monotonic longitudinal travel, lateral midline offset, active-layer depth, and
+cutting work before releasing pre-authored continuity identifiers. It records
+persistent damage and access state.
 
 That controller does not mutate TetMesh topology during simulation. The current
 physical scene starts from the pre-segmented open variant. Arbitrary fracture,
 instrumented puncture, and live remeshing are not claimed.
+
+The anatomical sequence follows the WSES description of a midline incision
+through skin, subcutaneous tissue, linea alba, and peritoneum, and the NCBI
+technique description that muscle should not be encountered in the avascular
+linea-alba plane:
+
+- https://pmc.ncbi.nlm.nih.gov/articles/PMC10373269/
+- https://www.ncbi.nlm.nih.gov/books/NBK525961/
 
 ## Parameter boundary
 

@@ -64,6 +64,7 @@ from dr_anmar_tissue_model import (
     sample_tissue_episode_parameters,
     stable_physx_proxy_parameters,
 )
+from dr_anmar_operator import validate_bind_security
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -132,7 +133,7 @@ NON_PSM_ACTION_CONTRACT = {
 
 parser = argparse.ArgumentParser(description="Run the Dr.Anmar browser workstation.")
 parser.add_argument("--task", default="Isaac-Lift-Needle-PSM-IK-Rel-v0")
-parser.add_argument("--host", default="0.0.0.0")
+parser.add_argument("--host", default="127.0.0.1")
 parser.add_argument("--port", type=int, default=2361)
 parser.add_argument("--demo_dir", type=Path, default=DATA_ROOT / "demos")
 parser.add_argument("--camera_width", type=int, default=960)
@@ -173,6 +174,7 @@ parser.add_argument(
 )
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
+validate_bind_security(args_cli.host)
 _softmimicgen_task = args_cli.task.startswith("Isaac-Thread-PSM-")
 _softmimicgen_root = Path(
     os.environ.get(
@@ -1657,7 +1659,8 @@ def build_web_app(state: SharedState) -> FastAPI:
         if not access_is_authorized(request.cookies.get(ACCESS_COOKIE)):
             return JSONResponse({"detail": "Dr.Anmar access token required"}, status_code=401)
         origin = request.headers.get("origin")
-        if request.method not in {"GET", "HEAD", "OPTIONS"} and origin:
+        mutation = request.method not in {"GET", "HEAD", "OPTIONS"}
+        if mutation and origin:
             try:
                 from urllib.parse import urlparse
 
@@ -1665,6 +1668,7 @@ def build_web_app(state: SharedState) -> FastAPI:
                     return JSONResponse({"detail": "Cross-site state changes are not allowed"}, status_code=403)
             except ValueError:
                 return JSONResponse({"detail": "Invalid request origin"}, status_code=403)
+        if mutation:
             claimed, detail = operator_lease.claim(request.headers.get(OPERATOR_HEADER))
             if not claimed:
                 return JSONResponse({"detail": detail}, status_code=423)

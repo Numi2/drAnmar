@@ -1,0 +1,143 @@
+{
+  "schema": "dr.anmar.generative-asset-evidence.v1",
+  "id": "cosmos-h-dreams-knot-tying-static-asset-audit-2026-07-26",
+  "source_repository": "https://github.com/isaac-for-healthcare/Cosmos-H-Dreams",
+  "source_commit": "a2d67d8ab41607cc2b08e297d19e2df52c66a565",
+  "audit_scope": "tracked_example_assets_and_separately_downloaded_public_model_artifacts",
+  "inspection_mode": "static_files_only",
+  "model_executed": false,
+  "source_assets": {
+    "image": {
+      "path": "assets/example_data/offline/episode_001866_frame0.png",
+      "width_px": 640,
+      "height_px": 480,
+      "channels": 3,
+      "bit_depth": 8,
+      "color_profile": "absent",
+      "relationship": "near_pixel_identical_to_video_frame_zero",
+      "maximum_absolute_channel_difference": 2,
+      "psnr_db": 49.45
+    },
+    "video": {
+      "path": "assets/example_data/offline/knot_tying.mp4",
+      "codec": "h264",
+      "pixel_format": "yuv420p",
+      "width_px": 640,
+      "height_px": 480,
+      "frames": 145,
+      "fps": 10.0,
+      "duration_s": 14.5,
+      "decoded_all_frames": true,
+      "duplicate_or_frozen_frames_detected": false,
+      "scene_cuts_detected": false,
+      "encoded_color_metadata": "absent",
+      "intra_frames": 1,
+      "container_fast_start": false,
+      "near_black_frame_area_fraction_range": [0.34, 0.38],
+      "near_black_area_interpretation": "endoscopic_vignette_not_missing_pixels"
+    },
+    "trajectory": {
+      "path": "assets/example_data/offline/trajectory.npy",
+      "shape": [168, 44],
+      "dtype": "float32",
+      "all_finite": true,
+      "nonzero_dimensions": [0, 1],
+      "motion_pattern": "exact_axis_sweeps_at_plus_or_minus_0_3",
+      "recorded_robot_kinematics": false,
+      "neutral_start": false,
+      "neutral_end": false,
+      "rows_outside_source_q01_q99": 125,
+      "rows_outside_source_observed_min_max": 60,
+      "maximum_raw_dimension_0": 0.02586,
+      "source_observed_maximum_dimension_0": 0.01542,
+      "maximum_raw_dimension_1": 0.01597,
+      "source_observed_maximum_dimension_1": 0.01571
+    },
+    "statistics": {
+      "path": "assets/example_data/offline/stats_tabletop.json",
+      "action_dimensions": 20,
+      "state_dimensions": 16,
+      "internally_consistent": true,
+      "missing_metadata": [
+        "dimension_names_in_combined_blocks",
+        "units",
+        "coordinate_frames",
+        "rotation_convention",
+        "sample_count",
+        "dataset_hash",
+        "base_sample_rate"
+      ]
+    },
+    "source_manifest": {
+      "path": "assets/example_data/offline/suturebot_inference_manifest.json",
+      "binds": [
+        "conditional_image",
+        "action_trajectory",
+        "output_path"
+      ],
+      "does_not_bind": [
+        "source_video",
+        "statistics",
+        "model_checkpoint",
+        "text_embedding",
+        "source_revision",
+        "component_hashes",
+        "configuration",
+        "seed",
+        "frame_rate",
+        "evidence"
+      ]
+    }
+  },
+  "pairing_assessment": {
+    "video_duration_s": 14.5,
+    "trajectory_duration_if_10_hz_s": 16.8,
+    "shared_clock_present": false,
+    "frame_to_action_index_present": false,
+    "pairing_status": "rejected_unpaired"
+  },
+  "model_artifacts": {
+    "checkpoint": {
+      "bytes": 4258611590,
+      "sha256": "df3d6754a34ada2cf16557d949dca3dc2ac6935d6a80a09c5b6eae075f170038",
+      "tensor_storages": 697,
+      "bf16_tensors": 581,
+      "approximate_bf16_values": 2129000000,
+      "nan_or_infinity_detected": false,
+      "action_input_features": 176,
+      "action_shape_interpretation": "4_actions_per_latent_frame_times_44_dimensions",
+      "embedded_training_counters": "implausible_and_not_accepted_as_provenance",
+      "serialization": "torch_pickle_zip",
+      "dranmar_loading_policy": "quarantined_no_deserialization"
+    },
+    "text_embedding": {
+      "bytes": 102762305,
+      "sha256": "d1e5d8c335dff55f266d9ca5fc2579874e7115e84a50e48f5494f16ea42fe3a3",
+      "shape": [1, 512, 100352],
+      "dtype": "bfloat16",
+      "nan_or_infinity_detected": false,
+      "matches_model_cross_attention_input": true,
+      "serialization": "torch_pickle_zip",
+      "dranmar_loading_policy": "quarantined_no_deserialization"
+    }
+  },
+  "dranmar_acceptance": {
+    "visual_preview_source": "accepted_with_geometry_preserving_transform_and_explicit_color_assumption",
+    "source_action_stream": "rejected_for_simulation_replay_training_and_control",
+    "source_video_action_pair": "rejected_unpaired",
+    "model_artifacts": "not_bundled_and_not_runtime_loadable",
+    "generated_frames": "non_authoritative_observations_only",
+    "native_action_fixture": "accepted_for_contract_resampling_and_stale_stop_tests_only",
+    "training_reference": "not_eligible",
+    "native_simulator_evidence": "not_recorded",
+    "real_world_evidence": "not_established",
+    "clinical_evidence": "not_established"
+  },
+  "remaining_evidence_gates": [
+    "capture_simulation_state_actions_and_camera_frames_on_one_clock",
+    "record_native_isaac_physx_revision_hardware_and_measured_outcomes",
+    "compare_task_mechanics_and_patient_effects_with_instrumented_bench_data",
+    "obtain_qualified_clinician_review_before_reference_promotion"
+  ],
+  "clinical_validation": false
+}

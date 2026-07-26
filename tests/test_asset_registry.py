@@ -86,6 +86,11 @@ def test_catalog_gate_covers_runtime_room_references() -> None:
     assert report["asset_units"] >= 20
     assert report["entrypoints"] >= 40
     assert report["passed"], json.dumps(report["issues"], indent=2)
+    assert report["bytes"] <= 512 * 1024 * 1024
+    assert not any(
+        issue["code"].endswith("growth_budget_exceeded")
+        for issue in report["issues"]
+    )
 
 
 def test_portfolio_contract_covers_every_declared_artifact() -> None:
@@ -113,7 +118,7 @@ def test_capability_payload_exposes_the_release_lock_identity() -> None:
     assert release["self_digest_matches"] is True
     assert release["clinical_validation"] is False
     assert release["asset_units"] >= 20
-    assert release["portfolio_assets"] == 20
+    assert release["portfolio_assets"] == 21
 
 
 @pytest.mark.parametrize(

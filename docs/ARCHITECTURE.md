@@ -71,11 +71,12 @@ GIFs and exact evidence are documented in [`EXECUTABLE_EXPERT_GUIDANCE.md`](EXEC
 
 ## Network model
 
-The hub defaults to port 2360 and the worker to port 2361. Both bind to `0.0.0.0` so a trusted device can
-operate the interface. Deployments can require `DR_ANMAR_ACCESS_TOKEN`; shared or non-private deployments must
-also provide HTTPS and set `DR_ANMAR_COOKIE_SECURE=1`. Same-host Origin checks, one-operator leases and
-conservative response headers provide defense in depth, but they do not replace institutional identity,
-authorization and network controls.
+The hub defaults to port 2360 and the worker to port 2361. Both bind to
+`127.0.0.1`. A non-loopback bind fails closed unless the operator explicitly
+enables remote access, configures an access token, and confirms TLS termination
+and firewall controls. Same-host Origin checks, one-operator mutation leases,
+and conservative response headers provide defense in depth, but they do not
+replace institutional identity, authorization, and network controls.
 
 ## Compatibility baseline
 

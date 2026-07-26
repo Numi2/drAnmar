@@ -1,7 +1,7 @@
 {
   "schema": "dr.anmar.asset-catalog-policy.v1",
-  "catalog_version": "1.2.0",
-  "description": "One catalog contract for Dr.Anmar-owned assets and the pinned NVIDIA Isaac for Healthcare provider.",
+  "catalog_version": "1.3.0",
+  "description": "One catalog contract for Dr.Anmar-owned OpenUSD and multimodal simulation assets plus the pinned NVIDIA Isaac for Healthcare provider.",
   "release": {
     "lock_path": "config/dranmar_asset_catalog.lock.json",
     "catalog_document_path": "catalog.md",
@@ -94,20 +94,25 @@
     },
     "metadata_contract_names": [
       "asset_manifest.json",
+      "asset_bundle.json",
       "anatomy_manifest.json",
       "physics_profile.json",
       "mechanics_contract.json",
       "native_simulator_evidence.json",
       "tissue_closure_native_simulator_evidence.json"
     ],
+    "non_usd_entrypoint_names": [
+      "asset_bundle.json"
+    ],
     "ignored_names": [
       ".DS_Store",
       "__pycache__"
     ],
-    "allowed_external_usd_schemes": [
-      "http",
-      "https",
-      "omniverse"
-    ]
+    "growth_budgets": {
+      "maximum_asset_unit_bytes": 67108864,
+      "maximum_catalog_bytes": 536870912,
+      "policy": "Large binary growth requires an explicit reviewed budget change; runtime data remains external."
+    },
+    "allowed_external_usd_schemes": []
   }
 }

@@ -148,6 +148,25 @@ def test_profile_exposes_the_single_lane_and_overall_qualification_boundaries() 
     assert profile["deployment"]["multi_component_deformables_qualified"] is False
     assert profile["deployment"]["native_volume_deformables_qualified"] is False
     assert profile["validation_scope"]["overall_qualified"] is False
+    anatomy = json.loads(
+        (
+            ROOT
+            / "source/extensions/orbit.surgical.assets/data/Props/Patients"
+            / "DynamicAbdominalPatient/anatomy_manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    explicit = [
+        component
+        for component in anatomy["components"]
+        if int(component.get("tetrahedra", 0)) > 0
+    ]
+    assert profile["anatomy"]["explicit_tet_component_count"] == len(explicit)
+    assert profile["anatomy"]["explicit_tet_vertices"] == sum(
+        int(component["tet_vertices"]) for component in explicit
+    )
+    assert profile["anatomy"]["explicit_tet_tetrahedra"] == sum(
+        int(component["tetrahedra"]) for component in explicit
+    )
 
     report = json.loads(
         (

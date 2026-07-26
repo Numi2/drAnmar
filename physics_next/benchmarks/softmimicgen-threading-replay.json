@@ -5,7 +5,7 @@
     7
   ],
   "clinical_validation": false,
-  "dataset": "/home/numi/dr_anmar/native-suture-runtime/SoftMimicGen/datasets/annotated_dataset/annotated_dataset_surgical_threading.hdf5",
+  "dataset": "research/softmimicgen/datasets/annotated_dataset/annotated_dataset_surgical_threading.hdf5",
   "dataset_sha256": "d5b65af699c6c16aa241d1c41a0217e469bcfa1d7235d22de709549c42c1e36a",
   "episode": "demo_0",
   "first_live_success_step": 113,

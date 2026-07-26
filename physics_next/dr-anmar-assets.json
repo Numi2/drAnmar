@@ -403,6 +403,22 @@
       "native_simulator_evidence": "native_multiarm_and_deformable_runtime_evidence_not_yet_recorded_for_v0_4_0",
       "real_world_evidence": "contact_flow_tissue_and_resuscitation_bench_evidence_not_yet_established",
       "clinical_validation": false
+    },
+    {
+      "id": "dranmar-cosmos-h-dreams-source-audit-v1",
+      "asset": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/asset_bundle.json",
+      "profile": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/action_contract.json",
+      "report": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/evidence.json",
+      "training_contract": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/dranmar_action_stream.json",
+      "live_integration": "asset_catalog_release_gate_and_native_psm_action_transport_contract",
+      "live_behavior": "content_addressed_external_media_and_model_references_geometry_preserving_visual_preprocessing_timestamped_dual_psm_fixture_deterministic_resampling_discrete_gripper_hold_and_fail_closed_neutral_stop",
+      "deployment": "enabled_as_non_authoritative_multimodal_contract_fixture",
+      "product_capability": "multimodal_simulation_asset_contract",
+      "training_readiness": "available_for_safe_multimodal_ingestion_resampling_and_contract_testing",
+      "software_evidence": "repository_verified_hash_dimension_timing_authority_and_safety_contracts",
+      "native_simulator_evidence": "native_execution_not_yet_recorded_for_this_bundle",
+      "real_world_evidence": "paired_capture_and_instrumented_bench_evidence_not_yet_established",
+      "clinical_validation": false
     }
   ],
   "evidence_policy": {

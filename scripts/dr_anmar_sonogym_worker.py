@@ -29,7 +29,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
+from dr_anmar_operator import (
+    ACCESS_COOKIE,
+    OPERATOR_HEADER,
+    OperatorLease,
+    access_is_authorized,
+    validate_bind_security,
+)
 
 
 parser = argparse.ArgumentParser(description="Dr.Anmar browser bridge for SonoGym")
@@ -37,7 +43,7 @@ parser.add_argument("--sonogym-root", type=Path, required=True)
 parser.add_argument("--task", required=True)
 parser.add_argument("--procedure-id", required=True)
 parser.add_argument("--title", required=True)
-parser.add_argument("--host", default="0.0.0.0")
+parser.add_argument("--host", default="127.0.0.1")
 parser.add_argument("--port", type=int, default=2361)
 
 from isaaclab.app import AppLauncher
@@ -45,6 +51,7 @@ from isaaclab.app import AppLauncher
 AppLauncher.add_app_launcher_args(parser)
 args = parser.parse_args()
 args.sonogym_root = args.sonogym_root.expanduser().resolve()
+validate_bind_security(args.host)
 
 app_launcher = AppLauncher(args)
 simulation_app = app_launcher.app
@@ -245,15 +252,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def _mutation_allowed(self) -> tuple[bool, str]:
         origin = self.headers.get("origin")
-        if not origin:
-            return True, ""
-        try:
-            origin_host = urlparse(origin).hostname
-            request_host = self.headers.get("host", "").split(":", 1)[0]
-        except ValueError:
-            return False, "Invalid request origin"
-        if origin_host != request_host:
-            return False, "Cross-site state changes are not allowed"
+        if origin:
+            try:
+                origin_host = urlparse(origin).hostname
+                request_host = self.headers.get("host", "").split(":", 1)[0]
+            except ValueError:
+                return False, "Invalid request origin"
+            if origin_host != request_host:
+                return False, "Cross-site state changes are not allowed"
         return operator_lease.claim(self.headers.get(OPERATOR_HEADER))
 
     def do_GET(self) -> None:  # noqa: N802

@@ -1,4 +1,4 @@
-name: Asset catalog
+name: Repository contracts
 
 on:
   pull_request:
@@ -6,40 +6,113 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
-  verify:
+  source-contracts:
+    name: Source, browser, catalog, and unit contracts
     runs-on: ubuntu-latest
     steps:
-      - name: Check out Dr.Anmar
-        uses: actions/checkout@v4
+      - name: Check out exact Dr.Anmar tree
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           submodules: recursive
+          persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Assert exact asset-submodule gitlink
+        shell: bash
+        run: |
+          expected="$(git ls-tree HEAD source/extensions/orbit.surgical.assets | awk '{print $3}')"
+          actual="$(git -C source/extensions/orbit.surgical.assets rev-parse HEAD)"
+          test -n "${expected}"
+          test "${actual}" = "${expected}"
+
+      - name: Set up locked Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.10"
+          cache: pip
 
-      - name: Install validation dependencies
+      - name: Install uv and locked validation environment
         run: |
-          python3 -m pip install \
-            -r scripts/requirements_openusd_validation.txt \
-            pytest
+          python -m pip install uv==0.6.14
+          uv sync --locked --dev
 
-      - name: Require native OpenUSD parsing for every USD layer
+      - name: Compile authored Python and parse shell
         run: |
-          python3 scripts/validate_openusd_layers.py
-          python3 \
-            scripts/generate_dranmar_dynamic_abdominal_patient_rigid_proxy.py \
-            --check
+          uv run python -m compileall -q scripts tests source/extensions/orbit.surgical.assets/orbit/surgical/assets
+          git ls-files '*.sh' -z | xargs -0 -n1 bash -n
 
-      - name: Verify catalog structure, release lock, and generated index
-        run: python3 scripts/dr_anmar_asset_registry.py verify
-
-      - name: Run catalog and OpenUSD validation unit tests
+      - name: Run scoped lint and type gates
         run: |
-          python3 -m pytest -q \
-            tests/test_asset_registry.py \
-            tests/test_dranmar_asset_catalog.py \
-            tests/test_i4h_asset_receipt.py \
-            tests/test_openusd_layer_validation.py
+          validation_python="$(uv run python -c 'import sys; print(sys.executable)')"
+          uv run ruff check \
+            scripts/check_public_release.py \
+            scripts/dr_anmar_asset_registry.py \
+            scripts/dr_anmar_multimodal_assets.py \
+            scripts/dr_anmar_operator.py \
+            scripts/generate_dranmar_multimodal_fixture.py \
+            scripts/install_sufia_assets.py \
+            scripts/localize_openusd_materials.py \
+            scripts/validate_dranmar_dynamic_abdominal_patient.py \
+            scripts/validate_openusd_dependencies.py \
+            scripts/verify_dranmar_physics_next_receipt.py \
+            tests/test_dranmar_operator_security.py \
+            tests/test_install_sufia_assets.py \
+            tests/test_multimodal_assets.py \
+            tests/test_openusd_dependency_validation.py \
+            tests/test_physics_next_lock.py \
+            tests/test_public_release_policy.py
+          uv run pyright --pythonpath "${validation_python}" \
+            scripts/check_public_release.py \
+            scripts/dr_anmar_multimodal_assets.py \
+            scripts/dr_anmar_operator.py \
+            scripts/generate_dranmar_multimodal_fixture.py \
+            scripts/validate_openusd_dependencies.py \
+            scripts/verify_dranmar_physics_next_receipt.py
+
+      - name: Enforce public-release and catalog policies
+        run: |
+          uv run python scripts/check_public_release.py
+          uv run python scripts/refresh_dynamic_patient_asset_manifest.py --check
+          uv run python scripts/generate_dranmar_multimodal_fixture.py --check
+          uv run python scripts/dr_anmar_multimodal_assets.py
+          uv run python scripts/dr_anmar_asset_registry.py verify
+
+      - name: Run complete CPU and browser test suites
+        run: |
+          uv run python -m pytest -q tests
+          node --test tests/hand_control.test.mjs
+
+  native-openusd:
+    name: Native OpenUSD parse, composition, and dependency closure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact Dr.Anmar tree
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install pinned native OpenUSD
+        run: python -m pip install -r scripts/requirements_openusd_validation.txt pytest
+
+      - name: Require native parsing, composition, and closed dependencies
+        run: |
+          python scripts/validate_openusd_layers.py
+          python scripts/validate_openusd_dependencies.py
+          python scripts/localize_openusd_materials.py --check
+          python scripts/generate_dranmar_dynamic_abdominal_patient_rigid_proxy.py --check
+
+      - name: Run focused native OpenUSD tests
+        run: |
+          python -m pytest -q \
+            tests/test_openusd_layer_validation.py \
+            tests/test_openusd_dependency_validation.py

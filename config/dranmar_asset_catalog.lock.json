@@ -52,7 +52,7 @@
       "sha256": "dedcca9f13b6840e8c2197468daa40cc18198a0c8dcbc9cdd2cb7d7c8d8569f1"
     },
     {
-      "bytes": 20467152,
+      "bytes": 20464671,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_dynamic_abdominal_patient.usda",
@@ -75,7 +75,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/Patients/DynamicAbdominalPatient",
-      "sha256": "ea112b9589204b4fda15c2d32ae4e4741bdb699231221a4e902ba4429155bef9"
+      "sha256": "47bfc76f89110506ae604180a5489307b233ce7586e94dd5eb6b1bdb24717aaf"
     },
     {
       "bytes": 35118832,
@@ -488,7 +488,7 @@
       "sha256": "15b8ca1c07f95fa7bfdd9cb9d981689a5164cdc0c3f98ec36b4f773c58967ee8"
     },
     {
-      "bytes": 17062608,
+      "bytes": 17062976,
       "clinical_validation": false,
       "entrypoints": [
         "block.usd"
@@ -499,10 +499,10 @@
       "metadata": [],
       "provider": "dr_anmar",
       "relative_path": "Props/Surgical_block",
-      "sha256": "5738ae5b5c6d70f8efd2c4678ed40761817c4467c408d2517fffdd4535cf5ad3"
+      "sha256": "08e0245c10695d1bf9c93ab4c039a98ea3f540ff193635153049969285d55ed4"
     },
     {
-      "bytes": 1801899,
+      "bytes": 1802638,
       "clinical_validation": false,
       "entrypoints": [
         "needle.usd",
@@ -514,7 +514,7 @@
       "metadata": [],
       "provider": "dr_anmar",
       "relative_path": "Props/Surgical_needle",
-      "sha256": "9e9e4d391bb9ed7a5affac74f770cb6182b082f7deaecccf1e18239e63416386"
+      "sha256": "29dc4940d49f86fa11e3ddcd43c78ce18b890ef539667a3dfa012b68da7bbbfa"
     },
     {
       "bytes": 18839808,
@@ -528,10 +528,10 @@
       "metadata": [],
       "provider": "dr_anmar",
       "relative_path": "Props/Table",
-      "sha256": "4c283affc3ae1f4a7e6998f563aa6c79f3475acb0e607892d5add7bff7accc9c"
+      "sha256": "e803ce27ca757a6da56aa828e2e5dd0e7f26c1fdd3b8b20952129ece8029842b"
     },
     {
-      "bytes": 28457087,
+      "bytes": 28458239,
       "clinical_validation": false,
       "entrypoints": [
         "star.usd"
@@ -542,10 +542,10 @@
       "metadata": [],
       "provider": "dr_anmar",
       "relative_path": "Robots/STAR",
-      "sha256": "ac824746aa60c89f271d79cc9fe1b2bb3deb02ee10e46661e34827d83202642d"
+      "sha256": "7d4420a62f8db2b08e545d817e65ea50b11a74eb19f460a0bc52e6502efc7c52"
     },
     {
-      "bytes": 273493,
+      "bytes": 274543,
       "clinical_validation": false,
       "entrypoints": [
         "ecm.usd"
@@ -556,10 +556,10 @@
       "metadata": [],
       "provider": "dr_anmar",
       "relative_path": "Robots/dVRK/ECM",
-      "sha256": "8564f6b5aaa9238d97b49d8d1bf0b3b629c838da7653ca2edbed6d9282272bbf"
+      "sha256": "47600f1d580529f1de12805a09046f2e603accf855af403b6419ea1e391e86d6"
     },
     {
-      "bytes": 44527516,
+      "bytes": 44532251,
       "clinical_validation": false,
       "entrypoints": [
         "psm.usd",
@@ -572,7 +572,7 @@
       "metadata": [],
       "provider": "dr_anmar",
       "relative_path": "Robots/dVRK/PSM",
-      "sha256": "6b340c68e5ffbe52d99f5a3e606f11f035c51279bfa5a1c5aba5f9c15bd5cee1"
+      "sha256": "a153cb54be657494f834b0a0fcb0b51241fff8b36dac73ddb42b7702cc798c8b"
     },
     {
       "bytes": 3457507,
@@ -594,6 +594,26 @@
       "provider": "dr_anmar_repository",
       "relative_path": "assets/dr_anmar/hemostasis",
       "sha256": "3249e9f6117ba240200a6967c129f05094ab4d5b34e5345e16deaffd7d92155d"
+    },
+    {
+      "bytes": 73383,
+      "clinical_validation": false,
+      "entrypoints": [
+        "asset_bundle.json"
+      ],
+      "file_count": 5,
+      "id": "dr_anmar_repository:assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1",
+      "license_path": "LICENSE",
+      "metadata": [
+        "README.md",
+        "action_contract.json",
+        "asset_bundle.json",
+        "dranmar_action_stream.json",
+        "evidence.json"
+      ],
+      "provider": "dr_anmar_repository",
+      "relative_path": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1",
+      "sha256": "da81602eb767657b7457b8156f2bd9536ed372e95d218a3d777bb4e591ae420f"
     },
     {
       "bytes": 2086740,
@@ -682,8 +702,8 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "85cb6ff39d4f66668d959f12255afc08f6b3298518c7aa624c2afd669985a31c",
-  "catalog_version": "1.2.0",
+  "catalog_sha256": "e2623fa36645e50b01cb4b49b29afac2101bc8e9199f6122f968a51aaec4786a",
+  "catalog_version": "1.3.0",
   "clinical_validation": false,
   "i4h": {
     "asset_version": "0.7.0",
@@ -692,7 +712,7 @@
     "release": "v0.7.0"
   },
   "portfolio": {
-    "asset_count": 20,
+    "asset_count": 21,
     "assets": [
       {
         "artifacts": {
@@ -945,6 +965,22 @@
         "real_world_evidence": "contact_flow_tissue_and_resuscitation_bench_evidence_not_yet_established",
         "software_evidence": "repository_verified_asset_runtime_effect_and_orchestration_contracts",
         "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      {
+        "artifacts": {
+          "asset": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/asset_bundle.json",
+          "profile": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/action_contract.json",
+          "report": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/evidence.json",
+          "training_contract": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/dranmar_action_stream.json"
+        },
+        "asset": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/asset_bundle.json",
+        "clinical_validation": false,
+        "id": "dranmar-cosmos-h-dreams-source-audit-v1",
+        "native_simulator_evidence": "native_execution_not_yet_recorded_for_this_bundle",
+        "product_capability": "multimodal_simulation_asset_contract",
+        "real_world_evidence": "paired_capture_and_instrumented_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_hash_dimension_timing_authority_and_safety_contracts",
+        "training_readiness": "available_for_safe_multimodal_ingestion_resampling_and_contract_testing"
       },
       {
         "artifacts": {

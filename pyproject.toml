@@ -2,6 +2,39 @@
 requires = ["setuptools", "toml"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "dranmar-repository-validation"
+version = "0.1.0"
+description = "Locked non-Isaac validation environment for the Dr.Anmar research repository"
+requires-python = "==3.10.*"
+dependencies = [
+    "fastapi==0.116.1",
+    "h5py==3.14.0",
+    "httpx==0.28.1",
+    "matplotlib==3.10.3",
+    "numpy==2.2.6",
+    "pillow==11.3.0",
+    "pydantic==2.11.7",
+    "pytest==8.4.1",
+    "scipy==1.15.3",
+    "trimesh==4.7.1",
+    "usd-core==25.11",
+    "uvicorn==0.35.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyright==1.1.403",
+    "ruff==0.12.5",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
 [tool.isort]
 
 atomic = true
