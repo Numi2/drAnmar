@@ -24,9 +24,9 @@ def test_installer_consumes_lock_and_writes_hashed_receipt():
     assert "write_dranmar_physics_next_receipt.py" in source
     assert "python-freeze.txt" in source
     assert 'isaaclab.sh --install "${isaaclab_install_profile}"' in source
-    assert source.index('"torch==${torch_version}"') < source.index(
+    assert source.index(
         '"isaacsim[all,extscache]==${isaacsim_version}"'
-    )
+    ) < source.index('"torch==${torch_version}"')
     assert '"torchaudio==${torchaudio_version}"' in source
 
 
@@ -45,7 +45,6 @@ def test_dependency_policy_is_scoped_and_fail_closed():
     policy = lock["dependency_policy"]
     assert policy["isaaclab_install_profile"] == "core"
     assert policy["pytorch_index_url"] == "https://download.pytorch.org/whl/cu128"
-    assert policy["forbidden_distribution_patterns"] == ["*-cu13"]
     assert len(policy["allowed_pip_check_conflicts"]) == 6
     assert all("isaacsim-" in line for line in policy["allowed_pip_check_conflicts"])
 
@@ -71,7 +70,3 @@ def test_dependency_policy_is_scoped_and_fail_closed():
     )
     assert not missing["passed"]
     assert len(missing["missing_expected_conflicts"]) == 1
-    assert module.match_forbidden_distributions(
-        {"torch", "NVIDIA-CUDNN-CU13", "nvidia-cudnn-cu12"},
-        policy["forbidden_distribution_patterns"],
-    ) == ["nvidia-cudnn-cu13"]

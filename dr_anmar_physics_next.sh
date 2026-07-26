@@ -90,11 +90,9 @@ install_runtime() {
         torchaudio_version="${17}"
         "python${python_version}" -m venv "${env_root}"
         "${env_root}/bin/python" -m pip install "pip==${pip_version}"
-        "${env_root}/bin/python" -m pip install \
-            --index-url "${pytorch_index_url}" \
-            "torch==${torch_version}" \
-            "torchvision==${torchvision_version}" \
-            "torchaudio==${torchaudio_version}"
+        # Isaac Sim 6.0.1 supplies CUDA 13 runtime libraries used by its Kit
+        # extensions. Install it before applying the Isaac Lab CUDA 12.8 Torch
+        # override; both library families are required in this pip runtime.
         "${env_root}/bin/python" -m pip install "isaacsim[all,extscache]==${isaacsim_version}" --extra-index-url https://pypi.nvidia.com
         if [[ ! -d "${isaaclab_root}/.git" ]]; then
             git clone --filter=blob:none --no-checkout "${isaaclab_repository}" "${isaaclab_root}"

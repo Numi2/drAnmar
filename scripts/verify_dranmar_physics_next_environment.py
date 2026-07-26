@@ -4,8 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import fnmatch
-import importlib.metadata
 import json
 import subprocess
 import sys
@@ -33,29 +31,6 @@ def evaluate(
     }
 
 
-def match_forbidden_distributions(
-    names: set[str],
-    patterns: list[str],
-) -> list[str]:
-    return sorted(
-        name.lower()
-        for name in names
-        if any(
-            fnmatch.fnmatchcase(name.lower(), pattern)
-            for pattern in patterns
-        )
-    )
-
-
-def find_forbidden_distributions(patterns: list[str]) -> list[str]:
-    names = {
-        str(distribution.metadata["Name"])
-        for distribution in importlib.metadata.distributions()
-        if distribution.metadata["Name"]
-    }
-    return match_forbidden_distributions(names, patterns)
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--lock", type=Path, default=DEFAULT_LOCK)
@@ -76,19 +51,12 @@ def main() -> int:
         *result.stderr.splitlines(),
     ]
     conflict_report = evaluate(lines, allowed)
-    forbidden_distributions = find_forbidden_distributions(
-        lock["dependency_policy"]["forbidden_distribution_patterns"]
-    )
     report = {
         "schema": "dr.anmar.physics-next-dependency-check.v1",
         "pip_check_returncode": result.returncode,
         "override_basis": lock["dependency_policy"]["override_basis"],
         **conflict_report,
-        "forbidden_distributions": forbidden_distributions,
     }
-    report["passed"] = (
-        bool(conflict_report["passed"]) and not forbidden_distributions
-    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n",

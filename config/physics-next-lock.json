@@ -26,9 +26,6 @@
       "isaacsim-core 6.0.1.0 has requirement newton-usd-schemas==0.2.0, but you have newton-usd-schemas 0.4.0.",
       "isaacsim-kernel 6.0.1.0 has requirement typing_extensions==4.12.2, but you have typing-extensions 4.16.0."
     ],
-    "forbidden_distribution_patterns": [
-      "*-cu13"
-    ],
     "override_basis": "IsaacLab 51104d55d46192f9c981f2b63007d5156e141cec pyproject override-dependencies"
   },
   "sources": {
