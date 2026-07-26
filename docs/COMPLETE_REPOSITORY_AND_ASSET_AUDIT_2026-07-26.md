@@ -88,7 +88,7 @@ source, asset, evidence artifact, runtime state, or remote service was changed.
 | OpenUSD dependency closure | Conditional | 14 unresolved material paths across 11 source layers |
 | Dynamic-patient source/physiology validator | Pass for executed scope | `passed=true`, `overall_qualified=false` |
 | Public-release gate | **Fail** | Five reported violation classes |
-| GitHub Actions | **Fail** | Current and seven preceding catalog runs failed |
+| GitHub Actions | **Fail** | The report-publication run and eight preceding catalog runs failed |
 | Git object integrity | Pass | No corrupt Git objects; only unreachable/dangling history objects |
 | Broad lint/type exploration | Not a usable gate | Repository-wide Ruff is not green; Pyright reports 654 errors and 36 warnings, predominantly unscoped upstream/runtime API noise |
 
@@ -158,14 +158,22 @@ but `source/extensions/orbit.surgical.assets` is a Git submodule. The workflow
 does not set `submodules: recursive` and does not run an explicit submodule
 checkout.
 
-The current failing run is:
+The audited revision's failing run is:
 
 <https://github.com/Numi2/drAnmar/actions/runs/30182749224>
 
+The report-publication run reproduced the same failure:
+
+<https://github.com/Numi2/drAnmar/actions/runs/30184732864>
+
 The clean runner saw only 5 asset units and 52 files, then reported 158 errors.
 The same revision, with the submodule present, verifies as 28 units, 866 files,
-and zero catalog issues. The current run and seven preceding runs all failed for
-the same class of missing-content errors.
+and zero catalog issues. The report-publication run and eight preceding runs all
+failed for the same class of missing-content errors.
+
+The publication runner also warns that `actions/checkout@v4` and
+`actions/setup-python@v5` target the deprecated Node.js 20 action runtime and
+are being forced onto Node.js 24.
 
 Impact:
 
