@@ -1,0 +1,3 @@
+[submodule "dr-assets"]
+	path = source/extensions/orbit.surgical.assets
+	url = https://github.com/Numi2/dr-assets.git
