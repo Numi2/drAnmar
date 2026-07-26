@@ -110,11 +110,13 @@ The controller lifts vertically until the object is within 20 mm of target
 height before allowing lateral goal tracking. Once physics-owned object height
 rises above 18 mm, carry and gripper closure remain latched until the object
 drops below that threshold, preventing contact-sensor flicker from restarting
-the approach phase. Held-out play evidence separately records whether bilateral
-jaw contact was lost after the object rose above 30 mm. This retention
-diagnostic never contributes reward or success credit; it exposes mid-air
-slips that would otherwise appear only as timeouts. Stage 4 requires its own
-contact-calibrated needle grasp frame before promotion.
+the approach phase. Held-out play evidence separately records the longest
+consecutive bilateral jaw-contact loss after the object rose above 30 mm, with
+2-, 5-, and 10-control-step cohorts split by terminal success and failure. This
+retention diagnostic never contributes reward or success credit; it
+distinguishes transient contact-manifold flicker from mid-air slips that would
+otherwise appear only as timeouts. Stage 4 requires its own contact-calibrated
+needle grasp frame before promotion.
 
 Stage 3 residual PPO cannot modify the proven approach, gripper, or orientation
 commands. It receives only a bounded `(x, y, z)` correction after physics-owned

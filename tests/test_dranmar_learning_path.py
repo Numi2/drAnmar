@@ -375,6 +375,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"contact_without_minimum_height"' in benchmark_source
     assert '"minimum_height_without_goal_position"' in benchmark_source
     assert '"ever_midair_bilateral_contact_loss"' in benchmark_source
+    assert '"maximum_midair_bilateral_contact_loss_steps"' in benchmark_source
+    assert '"at_least_10_steps"' in benchmark_source
     assert '"retention_diagnostics"' in benchmark_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source

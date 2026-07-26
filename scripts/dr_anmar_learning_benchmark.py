@@ -1347,6 +1347,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "ever_midair_bilateral_contact_loss": torch.zeros_like(
                 first_unresolved
             ),
+            "current_midair_bilateral_contact_loss_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_midair_bilateral_contact_loss_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
             "ever_above_minimum_height": torch.zeros_like(first_unresolved),
             "ever_goal_position_inside": torch.zeros_like(first_unresolved),
             "ever_goal_orientation_inside": torch.zeros_like(first_unresolved),
@@ -1421,6 +1431,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         & first_lift_history["ever_bilateral_contact"]
                         & ~first_bilateral_contact
                         & first_airborne_transport
+                    )
+                    current_midair_loss_steps = torch.where(
+                        was_first_unresolved
+                        & first_midair_bilateral_contact_loss,
+                        first_lift_history[
+                            "current_midair_bilateral_contact_loss_steps"
+                        ]
+                        + 1,
+                        0,
+                    )
+                    first_lift_history[
+                        "current_midair_bilateral_contact_loss_steps"
+                    ] = current_midair_loss_steps
+                    first_lift_history[
+                        "maximum_midair_bilateral_contact_loss_steps"
+                    ] = torch.maximum(
+                        first_lift_history[
+                            "maximum_midair_bilateral_contact_loss_steps"
+                        ],
+                        current_midair_loss_steps,
                     )
                     for key, value in (
                         ("ever_bilateral_contact", first_bilateral_contact),
@@ -1785,6 +1815,44 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 & first_lift_history["ever_midair_bilateral_contact_loss"]
             )
 
+            def retention_cohort_stats(mask) -> dict[str, float | int | None]:
+                count = int(mask.sum().item())
+                maximum_loss_steps = first_lift_history[
+                    "maximum_midair_bilateral_contact_loss_steps"
+                ]
+                if not count:
+                    return {
+                        "count": 0,
+                        "mean_maximum_consecutive_loss_steps": None,
+                        "median_maximum_consecutive_loss_steps": None,
+                        "maximum_consecutive_loss_steps": None,
+                        "at_least_2_steps": 0,
+                        "at_least_5_steps": 0,
+                        "at_least_10_steps": 0,
+                    }
+                cohort_steps = maximum_loss_steps[mask]
+                return {
+                    "count": count,
+                    "mean_maximum_consecutive_loss_steps": float(
+                        cohort_steps.float().mean().item()
+                    ),
+                    "median_maximum_consecutive_loss_steps": float(
+                        cohort_steps.float().median().item()
+                    ),
+                    "maximum_consecutive_loss_steps": int(
+                        cohort_steps.max().item()
+                    ),
+                    "at_least_2_steps": int(
+                        (cohort_steps >= 2).sum().item()
+                    ),
+                    "at_least_5_steps": int(
+                        (cohort_steps >= 5).sum().item()
+                    ),
+                    "at_least_10_steps": int(
+                        (cohort_steps >= 10).sum().item()
+                    ),
+                }
+
             def cohort_stats(mask) -> dict[str, float | int | None]:
                 count = int(mask.sum().item())
                 if not count:
@@ -1889,6 +1957,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "successful_after_midair_bilateral_contact_loss": int(
                         successful_after_midair_contact_loss.sum().item()
+                    ),
+                    "failed_episode_loss_duration": retention_cohort_stats(
+                        first_failed
+                    ),
+                    "successful_episode_loss_duration": (
+                        retention_cohort_stats(first_outcome_success)
                     ),
                 },
                 "success_by_initial_target_xy_distance": target_distance_bins,
