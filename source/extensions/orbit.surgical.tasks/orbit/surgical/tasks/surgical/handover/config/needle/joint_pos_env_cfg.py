@@ -94,7 +94,10 @@ class NeedleHandoverEnvCfg(HandoverEnvCfg):
         # Set Suture Needle as object
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.2, 0.0, 0.05), rot=(1, 0, 0, 0)),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=(-0.2, 0.0, 0.051),
+                rot=(0.0, 0.0, 0.0, 1.0),
+            ),
             spawn=UsdFileCfg(
                 usd_path=f"{ORBITSURGICAL_ASSETS_DATA_DIR}/Props/Surgical_needle/needle_sdf.usd",
                 scale=(0.4, 0.4, 0.4),

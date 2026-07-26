@@ -504,6 +504,202 @@ def _teacher_action(
     )
 
 
+def _handover_teacher_action(
+    obs,
+    *,
+    receiver_grasp_offset: tuple[float, float, float],
+    position_scale: float = 0.01,
+    approach_height: float = 0.02,
+    lateral_alignment_threshold: float = 0.005,
+    close_distance: float = 0.005,
+    slow_approach_radius: float = 0.02,
+    slow_approach_action_limit: float = 0.1,
+    normalized_contact_threshold: float = 0.002,
+    presentation_height_in_robot_frame: float = -0.07,
+    minimum_lift_height_in_robot_frame: float = -0.09,
+    carry_lateral_action_limit: float = 0.1,
+    carry_vertical_action_limit: float = 0.18,
+):
+    """Stage a physical Arm 1 pickup and Arm 2 custody transfer."""
+    import torch
+
+    from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+        NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+    )
+
+    policy_obs = obs["policy"]
+    giver_ee = policy_obs[:, 32:35]
+    receiver_ee = policy_obs[:, 39:42]
+    object_in_giver = policy_obs[:, 46:49]
+    object_in_receiver = policy_obs[:, 53:56]
+    giver_contacts = policy_obs[:, 66:68]
+    receiver_contacts = policy_obs[:, 68:70]
+    phase = torch.argmax(policy_obs[:, 77:82], dim=-1)
+
+    def approach_action(
+        ee_position,
+        object_position,
+        grasp_offset,
+    ):
+        grasp_position = object_position.clone()
+        grasp_position[:, 0] += grasp_offset[0]
+        grasp_position[:, 1] += grasp_offset[1]
+        grasp_position[:, 2] += grasp_offset[2]
+        delta = grasp_position - ee_position
+        lateral_distance = torch.linalg.vector_norm(delta[:, :2], dim=-1)
+        above = grasp_position.clone()
+        above[:, 2] += approach_height
+        target = torch.where(
+            (lateral_distance > lateral_alignment_threshold).unsqueeze(-1),
+            above,
+            grasp_position,
+        )
+        distance = torch.linalg.vector_norm(
+            grasp_position - ee_position,
+            dim=-1,
+        )
+        action = ((target - ee_position) / position_scale).clamp(-1.0, 1.0)
+        action = torch.where(
+            (distance < slow_approach_radius).unsqueeze(-1),
+            action.clamp(
+                -slow_approach_action_limit,
+                slow_approach_action_limit,
+            ),
+            action,
+        )
+        return action, distance
+
+    giver_approach, giver_distance = approach_action(
+        giver_ee,
+        object_in_giver,
+        NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+    )
+    receiver_approach, receiver_distance = approach_action(
+        receiver_ee,
+        object_in_receiver,
+        receiver_grasp_offset,
+    )
+
+    root_2_in_giver = object_in_giver - object_in_receiver
+    midpoint_in_giver = 0.5 * root_2_in_giver
+    midpoint_in_receiver = -0.5 * root_2_in_giver
+    giver_target = midpoint_in_giver.clone()
+    giver_target[:, 2] = presentation_height_in_robot_frame
+    vertical_only = (
+        object_in_giver[:, 2] < minimum_lift_height_in_robot_frame
+    )
+    giver_target[:, :2] = torch.where(
+        vertical_only.unsqueeze(-1),
+        object_in_giver[:, :2],
+        giver_target[:, :2],
+    )
+    giver_error = (giver_target - object_in_giver) / position_scale
+    giver_carry = torch.cat(
+        (
+            giver_error[:, :2].clamp(
+                -carry_lateral_action_limit,
+                carry_lateral_action_limit,
+            ),
+            giver_error[:, 2:].clamp(
+                -carry_vertical_action_limit,
+                carry_vertical_action_limit,
+            ),
+        ),
+        dim=-1,
+    )
+
+    receiver_stage_target = midpoint_in_receiver.clone()
+    receiver_stage_target[:, 2] = (
+        presentation_height_in_robot_frame + approach_height
+    )
+    receiver_stage = (
+        (receiver_stage_target - receiver_ee) / position_scale
+    ).clamp(-carry_lateral_action_limit, carry_lateral_action_limit)
+    receiver_hold_target = midpoint_in_receiver.clone()
+    receiver_hold_target[:, 2] = presentation_height_in_robot_frame
+    receiver_hold_error = (
+        receiver_hold_target - object_in_receiver
+    ) / position_scale
+    receiver_hold = torch.cat(
+        (
+            receiver_hold_error[:, :2].clamp(
+                -carry_lateral_action_limit,
+                carry_lateral_action_limit,
+            ),
+            receiver_hold_error[:, 2:].clamp(
+                -carry_vertical_action_limit,
+                carry_vertical_action_limit,
+            ),
+        ),
+        dim=-1,
+    )
+
+    giver_translation = torch.where(
+        ((phase == 1) | (phase == 2)).unsqueeze(-1),
+        giver_carry,
+        giver_approach,
+    )
+    giver_retreat = torch.zeros_like(giver_translation)
+    giver_retreat[:, 2] = carry_lateral_action_limit
+    giver_translation = torch.where(
+        (phase >= 3).unsqueeze(-1),
+        giver_retreat,
+        giver_translation,
+    )
+    receiver_translation = torch.where(
+        (phase == 0).unsqueeze(-1),
+        receiver_stage,
+        receiver_approach,
+    )
+    receiver_translation = torch.where(
+        (phase >= 3).unsqueeze(-1),
+        receiver_hold,
+        receiver_translation,
+    )
+
+    giver_closing = (
+        (giver_distance < close_distance)
+        | torch.any(
+            giver_contacts > normalized_contact_threshold,
+            dim=-1,
+        )
+        | ((phase >= 1) & (phase <= 2))
+    ) & (phase < 3)
+    receiver_closing = (
+        (phase >= 2)
+        & (
+            (receiver_distance < close_distance)
+            | torch.any(
+                receiver_contacts > normalized_contact_threshold,
+                dim=-1,
+            )
+            | (phase >= 3)
+        )
+    )
+    giver_gripper = torch.where(
+        giver_closing,
+        -torch.ones_like(giver_distance),
+        torch.ones_like(giver_distance),
+    ).unsqueeze(-1)
+    receiver_gripper = torch.where(
+        receiver_closing,
+        -torch.ones_like(receiver_distance),
+        torch.ones_like(receiver_distance),
+    ).unsqueeze(-1)
+    zero_orientation = torch.zeros_like(giver_translation)
+    return torch.cat(
+        (
+            giver_translation,
+            zero_orientation,
+            giver_gripper,
+            receiver_translation,
+            zero_orientation,
+            receiver_gripper,
+        ),
+        dim=-1,
+    ).clamp(-1.0, 1.0)
+
+
 def _pretraining_algorithm(task: str) -> str:
     if "Lift-" in task:
         return "analytic_grasp_lift_base_plus_learned_residual"
@@ -1127,6 +1323,251 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
             "runtime": _runtime_evidence(repo_root),
         }
         _write_evidence(Path(args.output_path), "dranmar_probe", evidence)
+        return 0
+    finally:
+        env.close()
+
+
+def _handover_controller_sweep(
+    args: argparse.Namespace,
+    repo_root: Path,
+) -> int:
+    """Compare Arm 2 grasp points for the staged physical needle handover."""
+    import gymnasium as gym
+    import torch
+
+    from orbit.surgical.tasks.surgical import mdp_common
+    from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+        NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE,
+        NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
+        needle_geometry_grasp_offset_m,
+    )
+
+    if "Handover-Needle-Dual-PSM-IK-Rel" not in args.task:
+        return _fail("handover-sweep requires the dual-PSM IK-relative needle task")
+    values = [float(value) for value in args.values.split(",") if value.strip()]
+    if len(values) < 2:
+        return _fail("handover-sweep requires at least two receiver arc fractions")
+    if any(not 0.0 <= value <= 1.0 for value in values):
+        return _fail("receiver arc fractions must be between 0.0 and 1.0")
+    if args.num_envs % len(values):
+        return _fail("number of environments must divide evenly across sweep values")
+    receiver_offsets = []
+    for value in values:
+        geometry_offset = needle_geometry_grasp_offset_m(value)
+        receiver_offsets.append(
+            (
+                geometry_offset[0],
+                geometry_offset[1],
+                NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
+            )
+        )
+
+    env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
+    env = gym.make(args.task, cfg=env_cfg)
+    obs, _ = env.reset()
+    group_size = env.unwrapped.num_envs // len(values)
+    unresolved = torch.ones(
+        env.unwrapped.num_envs,
+        dtype=torch.bool,
+        device=env.unwrapped.device,
+    )
+    max_phase = torch.argmax(obs["policy"][:, 77:82], dim=-1)
+    completed = torch.zeros(len(values), dtype=torch.int64, device=env.unwrapped.device)
+    successes = torch.zeros_like(completed)
+    timeouts = torch.zeros_like(completed)
+    hard_failures = torch.zeros_like(completed)
+    failure_term_counts = {
+        name: torch.zeros_like(completed)
+        for name in (
+            "object_dropping",
+            "excessive_object_force",
+            "protected_surface_force",
+        )
+    }
+    maximum_object_force = torch.zeros(
+        len(values),
+        dtype=torch.float64,
+        device=env.unwrapped.device,
+    )
+    maximum_non_object_force = torch.zeros_like(maximum_object_force)
+    manager = env.unwrapped.termination_manager
+    sensor_names = (
+        "robot_1_jaw_1_object_contact",
+        "robot_1_jaw_2_object_contact",
+        "robot_2_jaw_1_object_contact",
+        "robot_2_jaw_2_object_contact",
+    )
+    started = time.perf_counter()
+    try:
+        for _ in range(args.num_frames):
+            was_unresolved = unresolved.clone()
+            current_phase = torch.argmax(obs["policy"][:, 77:82], dim=-1)
+            max_phase = torch.maximum(max_phase, current_phase)
+            actions = torch.zeros(
+                env.unwrapped.num_envs,
+                14,
+                device=env.unwrapped.device,
+            )
+            for group_index, receiver_offset in enumerate(receiver_offsets):
+                start = group_index * group_size
+                stop = start + group_size
+                group_obs = {
+                    name: observation[start:stop]
+                    for name, observation in obs.items()
+                }
+                actions[start:stop] = _handover_teacher_action(
+                    group_obs,
+                    receiver_grasp_offset=receiver_offset,
+                )
+
+            obs, _, terminated, time_out_flags, _ = env.step(actions)
+            dones = terminated | time_out_flags
+            success_term = manager.get_term("success")
+            failure_terms = {
+                name: manager.get_term(name)
+                for name in failure_term_counts
+            }
+            hard_failure = (
+                failure_terms["object_dropping"]
+                | failure_terms["excessive_object_force"]
+                | failure_terms["protected_surface_force"]
+            )
+            time_out_term = manager.get_term("time_out")
+            first_done = was_unresolved & dones
+            max_phase = torch.where(
+                first_done & success_term & ~hard_failure,
+                torch.full_like(max_phase, 4),
+                max_phase,
+            )
+
+            giver_forces = mdp_common.paired_contact_forces(
+                env.unwrapped,
+                sensor_names[0],
+                sensor_names[1],
+            )
+            receiver_forces = mdp_common.paired_contact_forces(
+                env.unwrapped,
+                sensor_names[2],
+                sensor_names[3],
+            )
+            object_forces = torch.cat(
+                (giver_forces, receiver_forces),
+                dim=-1,
+            )
+            non_object_forces = mdp_common.maximum_non_object_contact_force(
+                env.unwrapped,
+                sensor_names,
+            )
+            for group_index in range(len(values)):
+                start = group_index * group_size
+                stop = start + group_size
+                active = was_unresolved[start:stop]
+                first = first_done[start:stop]
+                completed[group_index] += first.sum()
+                successes[group_index] += (
+                    first
+                    & success_term[start:stop]
+                    & ~hard_failure[start:stop]
+                ).sum()
+                hard_failures[group_index] += (
+                    first & hard_failure[start:stop]
+                ).sum()
+                for name, term in failure_terms.items():
+                    failure_term_counts[name][group_index] += (
+                        first & term[start:stop]
+                    ).sum()
+                timeouts[group_index] += (
+                    first
+                    & time_out_term[start:stop]
+                    & ~success_term[start:stop]
+                    & ~hard_failure[start:stop]
+                ).sum()
+                if active.any():
+                    maximum_object_force[group_index] = torch.maximum(
+                        maximum_object_force[group_index],
+                        object_forces[start:stop][active].max().double(),
+                    )
+                    maximum_non_object_force[group_index] = torch.maximum(
+                        maximum_non_object_force[group_index],
+                        non_object_forces[start:stop][active].max().double(),
+                    )
+            unresolved &= ~first_done
+            if not unresolved.any():
+                break
+
+        duration = time.perf_counter() - started
+        results = []
+        for group_index, value in enumerate(values):
+            start = group_index * group_size
+            stop = start + group_size
+            completed_count = int(completed[group_index].item())
+            success_count = int(successes[group_index].item())
+            group_max_phase = max_phase[start:stop]
+            results.append(
+                {
+                    "receiver_grasp_arc_fraction": value,
+                    "receiver_grasp_offset_m": list(
+                        receiver_offsets[group_index]
+                    ),
+                    "assigned_environments": group_size,
+                    "completed_episodes": completed_count,
+                    "successful_episodes": success_count,
+                    "success_rate": (
+                        success_count / completed_count
+                        if completed_count
+                        else None
+                    ),
+                    "time_outs": int(timeouts[group_index].item()),
+                    "hard_failures": int(
+                        hard_failures[group_index].item()
+                    ),
+                    "hard_failure_term_counts": {
+                        name: int(counts[group_index].item())
+                        for name, counts in failure_term_counts.items()
+                    },
+                    "maximum_phase_reached": {
+                        str(phase): int((group_max_phase == phase).sum().item())
+                        for phase in range(5)
+                    },
+                    "maximum_object_force_n": float(
+                        maximum_object_force[group_index].item()
+                    ),
+                    "maximum_non_object_force_n": float(
+                        maximum_non_object_force[group_index].item()
+                    ),
+                }
+            )
+        evidence = {
+            "schema_version": "dranmar-handover-sweep-evidence-1.0",
+            "kind": "handover_controller_sweep",
+            "task": args.task,
+            "seed": args.seed,
+            "num_envs": env.unwrapped.num_envs,
+            "frames_per_env": args.num_frames,
+            "first_terminal_outcome_per_environment": True,
+            "giver": "robot_1",
+            "receiver": "robot_2",
+            "giver_grasp_arc_fraction": 0.4,
+            "receiver_grasp_frame_source": (
+                NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE
+            ),
+            "values": values,
+            "results": results,
+            "wall_time_s": duration,
+            "total_fps": (
+                env.unwrapped.num_envs * args.num_frames / duration
+                if duration > 0
+                else None
+            ),
+            "process_peak_memory_mib": _peak_process_memory_mib(),
+            "runtime": _runtime_evidence(repo_root),
+        }
+        _write_evidence(
+            Path(args.output_path),
+            "dranmar_handover_sweep",
+            evidence,
+        )
         return 0
     finally:
         env.close()
@@ -2502,6 +2943,15 @@ def _parser() -> argparse.ArgumentParser:
     controller_sweep.add_argument("--output_path", required=True)
     controller_sweep.add_argument("--benchmark_formatter", default="schema,json")
 
+    handover_sweep = subparsers.add_parser("handover-sweep")
+    handover_sweep.add_argument("--task", required=True)
+    handover_sweep.add_argument("--num_envs", type=int, required=True)
+    handover_sweep.add_argument("--num_frames", type=int, default=1000)
+    handover_sweep.add_argument("--values", required=True)
+    handover_sweep.add_argument("--seed", type=int, default=17)
+    handover_sweep.add_argument("--output_path", required=True)
+    handover_sweep.add_argument("--benchmark_formatter", default="schema,json")
+
     train = subparsers.add_parser("train")
     train.add_argument("--task", required=True)
     train.add_argument("--num_envs", type=int, required=True)
@@ -2631,6 +3081,8 @@ def main(argv: list[str]) -> int:
             result = _probe(args, repo_root)
         elif args.mode == "controller-sweep":
             result = _controller_sweep(args, repo_root)
+        elif args.mode == "handover-sweep":
+            result = _handover_controller_sweep(args, repo_root)
         elif args.mode == "train":
             result = _train(args, repo_root)
         elif args.mode == "pretrain":

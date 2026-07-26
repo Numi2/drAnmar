@@ -15,9 +15,10 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|probe|controller-sweep|smoke|benchmark|sweep|pretrain|train|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
+    echo "Usage: $0 {validate|list|probe|controller-sweep|handover-sweep|smoke|benchmark|sweep|pretrain|train|play|record|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  probe     [task] [num_envs] [frames] [output]"
     echo "  controller-sweep [task] [num_envs] [frames] [parameter] [comma-values] [output]"
+    echo "  handover-sweep [task] [num_envs] [frames] [receiver-arc-values] [output]"
     echo "  benchmark [task] [num_envs] [iterations] [output]"
     echo "  sweep     [task] [iterations] [comma-separated env counts] [output]"
     echo "  pretrain  [task] [num_envs] [updates] [validation_frames] [output]"
@@ -97,6 +98,24 @@ case "${command}" in
             --num_envs "${num_envs}" \
             --num_frames "${frames}" \
             --parameter "${parameter}" \
+            --values "${values}" \
+            --seed "${DR_ANMAR_SEED}" \
+            --benchmark_formatter schema,json \
+            --output_path "${output}"
+        ;;
+    handover-sweep)
+        require_runtime
+        task="${2:-DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0}"
+        num_envs="${3:-${DR_ANMAR_NUM_ENVS}}"
+        frames="${4:-1000}"
+        values="${5:-0.50,0.55,0.60,0.65,0.70,0.75}"
+        output="${6:-${DR_ANMAR_LEARNING_OUTPUT}/handover-sweep}"
+        mkdir -p "${output}"
+        "${DR_ANMAR_ISAAC_PYTHON}" \
+            "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" handover-sweep \
+            --task "${task}" \
+            --num_envs "${num_envs}" \
+            --num_frames "${frames}" \
             --values "${values}" \
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
