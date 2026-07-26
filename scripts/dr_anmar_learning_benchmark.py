@@ -1510,14 +1510,23 @@ def _handover_controller_sweep(
             args.video_width,
             args.video_height,
         )
-        env_cfg.viewer.origin_type = "asset_root"
         env_cfg.viewer.env_index = args.video_env_index
-        env_cfg.viewer.asset_name = "robot_1"
-        env_cfg.viewer.eye = (0.35, 0.25, 0.05)
-        env_cfg.viewer.lookat = (0.05, 0.0, -0.08)
         env_kwargs["render_mode"] = "rgb_array"
     env = gym.make(args.task, **env_kwargs)
     if args.video:
+        env_origin = env.unwrapped.scene.env_origins[
+            args.video_env_index
+        ]
+        camera_eye = env_origin + env_origin.new_tensor(
+            (0.2, 0.2, 0.1)
+        )
+        camera_target = env_origin + env_origin.new_tensor(
+            (-0.15, 0.0, 0.04)
+        )
+        env.unwrapped.sim.set_camera_view(
+            camera_eye.tolist(),
+            camera_target.tolist(),
+        )
         video_folder = Path(
             args.video_folder
             or Path(args.output_path).resolve() / "videos"
