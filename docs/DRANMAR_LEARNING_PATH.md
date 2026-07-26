@@ -75,13 +75,14 @@ dwell prevents a single contact impulse or initial-state coincidence from
 being counted as a lift. The force limits are versioned simulator research
 envelopes, not clinically calibrated tissue limits.
 
-Block rotation is intentionally invariant in Stage 3 because the irregular
-block has multiple rotation-equivalent resting poses. Angular-speed stability
-is still mandatory. Stage 4 introduces orientation-qualified needle lifting.
-After bilateral contact, the Stage 3 base uses object-space position and
-velocity feedback. It limits Cartesian carry action to 0.15, targeting at most
-1.5 mm per 50 Hz command, tapers position correction inside 7.5 mm, and opposes
-measured angular motion through the relative-IK orientation command.
+Stage 3 preserves orientation qualification; the corrected identity
+quaternion makes that contract physically possible at reset. Its analytic base
+approaches from 20 mm above the object, targets an 8 mm grasp offset above the
+object root, and closes only within 3 mm of that grasp waypoint. Cartesian
+commands are capped at 0.1 during the final 20 mm approach and throughout
+bilateral-contact carry, limiting each 50 Hz command to 1 mm. This avoids
+striking the object root before the jaws establish contact. Stage 4 reuses the
+same orientation-qualified contract for needle lifting.
 
 Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift
 objects therefore use the explicit identity `(0, 0, 0, 1)`. This prevents the

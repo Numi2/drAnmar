@@ -44,19 +44,19 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         manifest["defaults"]["stage_3_initialization"]["method"]
         == "analytic_grasp_lift_base_plus_learned_residual"
     )
-    assert manifest["defaults"]["stage_3_initialization"]["carry_action_limit"] == 0.15
+    assert manifest["defaults"]["stage_3_initialization"]["approach_height_m"] == 0.02
+    assert manifest["defaults"]["stage_3_initialization"]["grasp_height_m"] == 0.008
     assert (
-        manifest["defaults"]["stage_3_initialization"][
-            "carry_angular_velocity_scale_rad_s"
-        ]
-        == 2.5
+        manifest["defaults"]["stage_3_initialization"]["slow_approach_action_limit"]
+        == 0.1
     )
+    assert manifest["defaults"]["stage_3_initialization"]["carry_action_limit"] == 0.1
     stage_3 = stages[2]
     contract = stage_3["qualification_contract"]
     assert contract["initial_object_height_m"] < contract["minimum_success_height_m"]
     assert contract["minimum_success_height_m"] < contract["target_object_height_m"]
     assert contract["sustained_success_steps"] / contract["control_hz"] == 0.2
-    assert contract["block_orientation_invariant"] is True
+    assert contract["requires_orientation_alignment"] is True
     assert contract["requires_stable_angular_motion"] is True
     assert contract["initial_object_quaternion_xyzw"] == [0.0, 0.0, 0.0, 1.0]
     assert contract["requires_physics_owned_object_motion"] is True
@@ -236,15 +236,17 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert "LIFT_INITIAL_OBJECT_HEIGHT_M" in block_source
     assert "ISAAC_IDENTITY_QUATERNION_XYZW" in block_source
-    assert 'orientation_threshold"] = 3.2' in block_source
+    assert 'orientation_threshold"] = 3.2' not in block_source
     assert "NEEDLE_INITIAL_OBJECT_HEIGHT_M = 0.001" in needle_source
     assert "ISAAC_IDENTITY_QUATERNION_XYZW" in needle_source
     assert "rot=(1, 0, 0, 0)" not in block_source
     assert "rot=(1, 0, 0, 0)" not in needle_source
     assert "class LiftResidualMLPModel(MLPModel):" in model_source
     assert "bilateral_contact.unsqueeze(-1)" in model_source
+    assert "self.grasp_height = grasp_height" in model_source
+    assert "self.slow_approach_action_limit = slow_approach_action_limit" in model_source
     assert "self.carry_action_limit = carry_action_limit" in model_source
-    assert "object_angular_velocity / self.carry_angular_velocity_scale" in model_source
+    assert "object_angular_velocity / self.carry_angular_velocity_scale" not in model_source
     assert "lift_residual_actor([256, 128, 64])" in agent_source
     assert "probe)" in launcher_source
     for source in (

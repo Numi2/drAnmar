@@ -294,14 +294,14 @@ def _lift_teacher_action(
     obs,
     *,
     position_scale: float,
-    approach_height: float = 0.012,
+    approach_height: float = 0.02,
+    grasp_height: float = 0.008,
     lateral_alignment_threshold: float = 0.004,
-    close_distance: float = 0.006,
+    close_distance: float = 0.003,
+    slow_approach_radius: float = 0.02,
+    slow_approach_action_limit: float = 0.1,
     normalized_contact_threshold: float = 0.002,
-    carry_position_scale: float = 0.05,
-    carry_linear_velocity_scale: float = 0.5,
-    carry_angular_velocity_scale: float = 2.5,
-    carry_action_limit: float = 0.15,
+    carry_action_limit: float = 0.1,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
     import torch
@@ -311,18 +311,21 @@ def _lift_teacher_action(
     object_position = policy_obs[:, 23:26]
     target_position = policy_obs[:, 36:39]
     contact_forces = policy_obs[:, 43:45]
-    object_linear_velocity = policy_obs[:, 30:33]
-    object_angular_velocity = policy_obs[:, 33:36]
 
     ee_to_object = object_position - ee_position
-    object_distance = torch.linalg.vector_norm(ee_to_object, dim=-1)
     lateral_distance = torch.linalg.vector_norm(ee_to_object[:, :2], dim=-1)
     above_object = object_position.clone()
     above_object[:, 2] += approach_height
+    grasp_position = object_position.clone()
+    grasp_position[:, 2] += grasp_height
+    grasp_distance = torch.linalg.vector_norm(
+        grasp_position - ee_position,
+        dim=-1,
+    )
     approach_position = torch.where(
         (lateral_distance > lateral_alignment_threshold).unsqueeze(-1),
         above_object,
-        object_position,
+        grasp_position,
     )
     bilateral_contact = torch.all(
         contact_forces > normalized_contact_threshold,
@@ -331,37 +334,38 @@ def _lift_teacher_action(
     approach_action = (
         (approach_position - ee_position) / position_scale
     ).clamp(-1.0, 1.0)
+    slow_approach_action = approach_action.clamp(
+        -slow_approach_action_limit,
+        slow_approach_action_limit,
+    )
+    approach_action = torch.where(
+        (grasp_distance < slow_approach_radius).unsqueeze(-1),
+        slow_approach_action,
+        approach_action,
+    )
     carry_action = (
-        (target_position - object_position) / carry_position_scale
-        - object_linear_velocity / carry_linear_velocity_scale
+        (target_position - object_position) / position_scale
     ).clamp(-carry_action_limit, carry_action_limit)
     translation_action = torch.where(
         bilateral_contact.unsqueeze(-1),
         carry_action,
         approach_action,
     )
-    carry_orientation_action = (
-        -object_angular_velocity / carry_angular_velocity_scale
-    ).clamp(-1.0, 1.0)
-    orientation_action = torch.where(
-        bilateral_contact.unsqueeze(-1),
-        carry_orientation_action,
-        torch.zeros_like(carry_orientation_action),
-    )
+    orientation_action = torch.zeros_like(translation_action)
     body_action = torch.cat(
         (translation_action, orientation_action),
         dim=-1,
     ).clamp(-1.0, 1.0)
     closing = (
-        object_distance < close_distance
+        grasp_distance < close_distance
     ) | torch.any(
         contact_forces > normalized_contact_threshold,
         dim=-1,
     )
     gripper_action = torch.where(
         closing,
-        -torch.ones_like(object_distance),
-        torch.ones_like(object_distance),
+        -torch.ones_like(grasp_distance),
+        torch.ones_like(grasp_distance),
     ).unsqueeze(-1)
     return torch.cat((body_action, gripper_action), dim=-1)
 
@@ -585,14 +589,14 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             },
             "teacher_controller": (
                 {
-                    "approach_height_m": 0.012,
+                    "approach_height_m": 0.02,
+                    "grasp_height_m": 0.008,
                     "lateral_alignment_threshold_m": 0.004,
-                    "close_distance_m": 0.006,
+                    "close_distance_to_grasp_m": 0.003,
+                    "slow_approach_radius_m": 0.02,
+                    "slow_approach_action_limit": 0.1,
                     "normalized_contact_threshold": 0.002,
-                    "carry_position_scale_m": 0.05,
-                    "carry_linear_velocity_scale_m_s": 0.5,
-                    "carry_angular_velocity_scale_rad_s": 2.5,
-                    "carry_action_limit": 0.15,
+                    "carry_action_limit": 0.1,
                 }
                 if "Lift-Block-PSM-IK-Rel" in args.task
                 else None
@@ -1112,12 +1116,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     bilateral_contact = torch.all(forces > 0.01, dim=-1)
                     above_minimum_height = object_height > 0.06
                     goal_position_inside = goal_position_error < 0.015
-                    orientation_threshold = (
-                        3.2 if "Lift-Block-" in args.task else 0.35
-                    )
-                    goal_orientation_inside = (
-                        goal_orientation_error < orientation_threshold
-                    )
+                    goal_orientation_inside = goal_orientation_error < 0.35
                     linear_speed_inside = motion[:, 0] < 0.08
                     angular_speed_inside = motion[:, 1] < 1.5
                     instantaneous_success = (
