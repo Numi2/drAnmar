@@ -1510,9 +1510,9 @@ def _handover_controller_sweep(
             args.video_width,
             args.video_height,
         )
-        env_cfg.viewer.origin_type = "env"
+        env_cfg.viewer.origin_type = "world"
         env_cfg.viewer.env_index = args.video_env_index
-        env_cfg.viewer.eye = (-0.15, 0.35, 0.18)
+        env_cfg.viewer.eye = (0.2, 0.2, 0.12)
         env_cfg.viewer.lookat = (-0.15, 0.0, 0.05)
         env_kwargs["render_mode"] = "rgb_array"
     env = gym.make(args.task, **env_kwargs)
