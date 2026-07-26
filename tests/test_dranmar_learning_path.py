@@ -535,6 +535,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"environments_with_receiver_bilateral_contact"' in benchmark_source
     assert '"environments_with_four_jaw_overlap_contact"' in benchmark_source
     assert '"successful_environment_indices"' in benchmark_source
+    assert 'handover_sweep.add_argument("--video", action="store_true")' in benchmark_source
+    assert "DR_ANMAR_HANDOVER_VIDEO_ENV_INDEX" in launcher_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source
     assert '"success_by_initial_target_xy_distance"' in benchmark_source

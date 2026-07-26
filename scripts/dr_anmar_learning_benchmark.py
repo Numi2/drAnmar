@@ -1504,7 +1504,32 @@ def _handover_controller_sweep(
         )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
-    env = gym.make(args.task, cfg=env_cfg)
+    env_kwargs: dict[str, Any] = {"cfg": env_cfg}
+    if args.video:
+        env_cfg.viewer.resolution = (
+            args.video_width,
+            args.video_height,
+        )
+        env_cfg.viewer.env_index = args.video_env_index
+        env_kwargs["render_mode"] = "rgb_array"
+    env = gym.make(args.task, **env_kwargs)
+    if args.video:
+        video_folder = Path(
+            args.video_folder
+            or Path(args.output_path).resolve() / "videos"
+        ).resolve()
+        video_folder.mkdir(parents=True, exist_ok=True)
+        env = gym.wrappers.RecordVideo(
+            env,
+            video_folder=str(video_folder),
+            step_trigger=lambda step: step == 0,
+            video_length=args.num_frames,
+            name_prefix=(
+                f"{args.task}-seed{args.seed}"
+                f"-env{args.video_env_index}"
+            ),
+            disable_logger=True,
+        )
     obs, _ = env.reset()
 
     def world_state_snapshot():
@@ -1997,6 +2022,24 @@ def _handover_controller_sweep(
             "num_envs": env.unwrapped.num_envs,
             "frames_per_env": args.num_frames,
             "first_terminal_outcome_per_environment": True,
+            "video_capture": (
+                {
+                    "environment_index": args.video_env_index,
+                    "resolution": [
+                        args.video_width,
+                        args.video_height,
+                    ],
+                    "folder": str(
+                        Path(
+                            args.video_folder
+                            or Path(args.output_path).resolve()
+                            / "videos"
+                        ).resolve()
+                    ),
+                }
+                if args.video
+                else None
+            ),
             "giver": "robot_1",
             "receiver": "robot_2",
             "giver_grasp_arc_fraction": 0.4,
@@ -3416,6 +3459,11 @@ def _parser() -> argparse.ArgumentParser:
     handover_sweep.add_argument("--values", required=True)
     handover_sweep.add_argument("--seed", type=int, default=17)
     handover_sweep.add_argument("--output_path", required=True)
+    handover_sweep.add_argument("--video", action="store_true")
+    handover_sweep.add_argument("--video_env_index", type=int, default=0)
+    handover_sweep.add_argument("--video_width", type=int, default=1280)
+    handover_sweep.add_argument("--video_height", type=int, default=720)
+    handover_sweep.add_argument("--video_folder")
     handover_sweep.add_argument("--benchmark_formatter", default="schema,json")
 
     train = subparsers.add_parser("train")

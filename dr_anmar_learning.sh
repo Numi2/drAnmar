@@ -111,6 +111,18 @@ case "${command}" in
         values="${5:-0.50,0.55,0.60,0.65,0.70,0.75}"
         output="${6:-${DR_ANMAR_LEARNING_OUTPUT}/handover-sweep}"
         mkdir -p "${output}"
+        video_args=()
+        if [[ "${DR_ANMAR_HANDOVER_VIDEO:-0}" == "1" ]]; then
+            video_args=(
+                --video
+                --video_env_index
+                "${DR_ANMAR_HANDOVER_VIDEO_ENV_INDEX:-0}"
+                --video_width
+                "${DR_ANMAR_HANDOVER_VIDEO_WIDTH:-1280}"
+                --video_height
+                "${DR_ANMAR_HANDOVER_VIDEO_HEIGHT:-720}"
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" \
             "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" handover-sweep \
             --task "${task}" \
@@ -120,7 +132,8 @@ case "${command}" in
             --values="${values}" \
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
-            --output_path "${output}"
+            --output_path "${output}" \
+            "${video_args[@]}"
         ;;
     smoke)
         require_runtime
