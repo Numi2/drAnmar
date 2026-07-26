@@ -490,8 +490,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "& receiver_any_contact" in benchmark_source
     assert "giver_carry_mode.unsqueeze(-1)" in benchmark_source
     assert "giver_carry_mode = (phase >= 1) & (phase <= 2)" in benchmark_source
-    assert "presentation_fraction_from_giver: float = 0.5" in benchmark_source
+    assert "presentation_fraction_from_giver: float = 0.35" in benchmark_source
+    assert "presentation_height_in_robot_frame: float = -0.13" in benchmark_source
+    assert "carry_lateral_action_limit: float = 0.06" in benchmark_source
+    assert "carry_vertical_action_limit: float = 0.10" in benchmark_source
     assert "((phase == 2) & ~presentation_ready)" in benchmark_source
+    assert '"arm_1_move_into_arm_2_range"' in benchmark_source
     assert '"camera_mode": "full_environment_grid_oblique"' in benchmark_source
     assert 'env_cfg.viewer.origin_type = "world"' in benchmark_source
     assert "env_cfg.viewer.eye = camera_eye" in benchmark_source

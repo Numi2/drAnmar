@@ -520,11 +520,11 @@ def _handover_teacher_action(
     slow_approach_action_limit: float = 0.1,
     receiver_contact_centering_action_limit: float = 0.03,
     normalized_contact_threshold: float = 0.002,
-    presentation_fraction_from_giver: float = 0.5,
-    presentation_height_in_robot_frame: float = -0.07,
+    presentation_fraction_from_giver: float = 0.35,
+    presentation_height_in_robot_frame: float = -0.13,
     minimum_lift_height_in_robot_frame: float = -0.139,
-    carry_lateral_action_limit: float = 0.1,
-    carry_vertical_action_limit: float = 0.18,
+    carry_lateral_action_limit: float = 0.06,
+    carry_vertical_action_limit: float = 0.10,
 ):
     """Stage a physical Arm 1 pickup and Arm 2 custody transfer."""
     import math
@@ -1514,7 +1514,7 @@ def _handover_controller_sweep(
             1.0,
         )
         camera_eye = (0.0, -0.333 * grid_span, 0.245 * grid_span)
-        camera_target = (0.0, 0.0, 0.05)
+        camera_target = (0.0, 0.0, 0.12)
         env_cfg.viewer.resolution = (
             args.video_width,
             args.video_height,
@@ -2094,6 +2094,18 @@ def _handover_controller_sweep(
             "giver": "robot_1",
             "receiver": "robot_2",
             "giver_grasp_arc_fraction": 0.4,
+            "handover_motion_contract": {
+                "sequence": [
+                    "arm_1_pickup",
+                    "arm_1_move_into_arm_2_range",
+                    "physical_ownership_transfer",
+                ],
+                "presentation_fraction_from_giver": 0.35,
+                "presentation_height_in_robot_frame_m": -0.13,
+                "minimum_lift_height_in_robot_frame_m": -0.139,
+                "carry_lateral_action_limit": 0.06,
+                "carry_vertical_action_limit": 0.10,
+            },
             "parameter": parameter,
             "initial_giver_state": initial_giver_state,
             "final_giver_state": {
