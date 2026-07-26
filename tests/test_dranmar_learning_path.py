@@ -456,6 +456,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "controller-sweep)" in launcher_source
     assert "handover-sweep)" in launcher_source
     assert "DR_ANMAR_HANDOVER_SWEEP_PARAMETER" in launcher_source
+    assert launcher_source.count('--values="${values}"') == 2
     assert "record)" in launcher_source
     assert "def _controller_sweep(" in benchmark_source
     assert "def _handover_controller_sweep(" in benchmark_source

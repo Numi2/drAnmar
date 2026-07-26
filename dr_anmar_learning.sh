@@ -98,7 +98,7 @@ case "${command}" in
             --num_envs "${num_envs}" \
             --num_frames "${frames}" \
             --parameter "${parameter}" \
-            --values "${values}" \
+            --values="${values}" \
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
             --output_path "${output}"
@@ -117,7 +117,7 @@ case "${command}" in
             --num_envs "${num_envs}" \
             --num_frames "${frames}" \
             --parameter "${DR_ANMAR_HANDOVER_SWEEP_PARAMETER:-receiver_arc_fraction}" \
-            --values "${values}" \
+            --values="${values}" \
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
             --output_path "${output}"
