@@ -492,6 +492,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "giver_carry_mode = (phase >= 1) & (phase <= 2)" in benchmark_source
     assert "presentation_fraction_from_giver: float = 0.5" in benchmark_source
     assert "((phase == 2) & ~presentation_ready)" in benchmark_source
+    assert '"camera_mode": "full_environment_grid_birds_eye"' in benchmark_source
+    assert "grid_extent = grid_max - grid_min" in benchmark_source
     assert 'play.add_argument("--video", action="store_true")' in benchmark_source
     assert 'play.add_argument("--video_chunk_length", type=int)' in benchmark_source
     assert 'enable_cameras=bool(getattr(args, "video", False))' in benchmark_source
@@ -537,7 +539,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"successful_environment_indices"' in benchmark_source
     assert 'handover_sweep.add_argument("--video", action="store_true")' in benchmark_source
     assert "env.unwrapped.sim.set_camera_view(" in benchmark_source
-    assert "env.unwrapped.scene.env_origins[" in benchmark_source
+    assert "env_origins = env.unwrapped.scene.env_origins" in benchmark_source
     assert "DR_ANMAR_HANDOVER_VIDEO_ENV_INDEX" in launcher_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source

@@ -1514,14 +1514,21 @@ def _handover_controller_sweep(
         env_kwargs["render_mode"] = "rgb_array"
     env = gym.make(args.task, **env_kwargs)
     if args.video:
-        env_origin = env.unwrapped.scene.env_origins[
-            args.video_env_index
-        ]
-        camera_eye = env_origin + env_origin.new_tensor(
-            (0.2, 0.2, 0.1)
+        env_origins = env.unwrapped.scene.env_origins
+        grid_min = env_origins.amin(dim=0)
+        grid_max = env_origins.amax(dim=0)
+        grid_center = 0.5 * (grid_min + grid_max)
+        grid_extent = grid_max - grid_min
+        grid_span = max(
+            float(grid_extent[0].item()),
+            float(grid_extent[1].item()),
+            1.0,
         )
-        camera_target = env_origin + env_origin.new_tensor(
-            (-0.15, 0.0, 0.04)
+        camera_eye = grid_center + grid_center.new_tensor(
+            (0.0, -0.45 * grid_span, 1.4 * grid_span)
+        )
+        camera_target = grid_center + grid_center.new_tensor(
+            (0.0, 0.0, 0.05)
         )
         env.unwrapped.sim.set_camera_view(
             camera_eye.tolist(),
@@ -2038,6 +2045,7 @@ def _handover_controller_sweep(
             "video_capture": (
                 {
                     "environment_index": args.video_env_index,
+                    "camera_mode": "full_environment_grid_birds_eye",
                     "resolution": [
                         args.video_width,
                         args.video_height,
