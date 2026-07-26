@@ -306,6 +306,8 @@ def _lift_teacher_action(
     carry_action_limit: float = 0.1,
     carry_lateral_action_limit: float | None = None,
     carry_vertical_action_limit: float | None = 0.18,
+    carry_orientation_action_limit: float | None = None,
+    carry_orientation_scale: float = 0.05,
     carry_target_height_offset: float = 0.0,
     grasp_offset: tuple[float, float, float] | None = None,
 ):
@@ -404,6 +406,30 @@ def _lift_teacher_action(
         approach_action,
     )
     orientation_action = torch.zeros_like(translation_action)
+    if carry_orientation_action_limit is not None:
+        from isaaclab.utils.math import (
+            axis_angle_from_quat,
+            quat_conjugate,
+            quat_mul,
+        )
+
+        object_orientation = policy_obs[:, 26:30]
+        target_orientation = policy_obs[:, 39:43]
+        object_to_target = quat_mul(
+            target_orientation,
+            quat_conjugate(object_orientation),
+        )
+        carry_orientation_action = (
+            axis_angle_from_quat(object_to_target) / carry_orientation_scale
+        ).clamp(
+            -carry_orientation_action_limit,
+            carry_orientation_action_limit,
+        )
+        orientation_action = torch.where(
+            carry_mode.unsqueeze(-1),
+            carry_orientation_action,
+            orientation_action,
+        )
     body_action = torch.cat(
         (translation_action, orientation_action),
         dim=-1,
@@ -1034,6 +1060,7 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
 _LIFT_SWEEP_PARAMETERS = {
     "carry_action_limit",
     "carry_lateral_action_limit",
+    "carry_orientation_action_limit",
     "carry_target_height_offset",
     "carry_vertical_action_limit",
     "close_distance",
@@ -1069,10 +1096,13 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         "needle_grasp_arc_fraction",
         "needle_grasp_z_offset",
     }
-    if needle_task and not needle_grasp_sweep:
+    needle_orientation_sweep = (
+        needle_task and args.parameter == "carry_orientation_action_limit"
+    )
+    if needle_task and not (needle_grasp_sweep or needle_orientation_sweep):
         return _fail(
-            "needle controller-sweep requires a needle grasp-frame parameter until "
-            "a contact-qualified needle frame exists"
+            "needle controller-sweep requires a needle grasp-frame or "
+            "carry-orientation parameter until a contact-qualified needle controller exists"
         )
     if block_task and needle_grasp_sweep:
         return _fail("needle_grasp_arc_fraction requires the needle lift task")
@@ -1098,6 +1128,7 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
             NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE,
             NEEDLE_PROVISIONAL_ARC_FRACTION,
+            NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
             needle_geometry_grasp_offset_m,
         )
 
@@ -1121,6 +1152,30 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                 f"{NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE};"
                 f"fixed_arc_fraction={NEEDLE_PROVISIONAL_ARC_FRACTION}"
             )
+    elif needle_orientation_sweep:
+        from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+            NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE,
+            NEEDLE_PROVISIONAL_ARC_FRACTION,
+            NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
+            needle_geometry_grasp_offset_m,
+        )
+
+        provisional_offset = needle_geometry_grasp_offset_m(
+            NEEDLE_PROVISIONAL_ARC_FRACTION
+        )
+        needle_grasp_offsets = [
+            (
+                provisional_offset[0],
+                provisional_offset[1],
+                NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
+            )
+            for _ in values
+        ]
+        grasp_frame_source = (
+            f"{NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE};"
+            f"fixed_arc_fraction={NEEDLE_PROVISIONAL_ARC_FRACTION};"
+            f"fixed_z_offset_m={NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M}"
+        )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
     environment_override = None
@@ -1189,6 +1244,11 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                 if needle_grasp_sweep:
                     controller_kwargs = {
                         "grasp_offset": needle_grasp_offsets[group_index]
+                    }
+                elif needle_orientation_sweep:
+                    controller_kwargs = {
+                        "grasp_offset": needle_grasp_offsets[group_index],
+                        args.parameter: value,
                     }
                 else:
                     controller_kwargs = (
