@@ -30,7 +30,7 @@ class LiftResidualMLPModel(MLPModel):
         slow_approach_radius: float = 0.02,
         slow_approach_action_limit: float = 0.1,
         normalized_contact_threshold: float = 0.002,
-        carry_action_limit: float = 0.1,
+        carry_action_limit: float = 0.02,
         residual_scale: float = 0.2,
         **kwargs,
     ) -> None:

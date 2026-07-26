@@ -79,10 +79,11 @@ Stage 3 preserves orientation qualification; the corrected identity
 quaternion makes that contract physically possible at reset. Its analytic base
 approaches from 20 mm above the object, targets the object root as the grasp
 frame, and closes only within 3 mm of that grasp waypoint. Cartesian
-commands are capped at 0.1 during the final 20 mm approach and throughout
-bilateral-contact carry, limiting each 50 Hz command to 1 mm. This avoids
-striking the object root before the jaws establish contact. Stage 4 reuses the
-same orientation-qualified contract for needle lifting.
+commands are capped at 0.1 during the final 20 mm approach. Bilateral-contact
+carry is capped at 0.02, limiting each 50 Hz lift command to 0.2 mm so the
+low-force grasp does not outrun contact retention. This avoids striking the
+object root before the jaws establish contact. Stage 4 reuses the same
+orientation-qualified contract for needle lifting.
 
 Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift
 objects therefore use the explicit identity `(0, 0, 0, 1)`. This prevents the
