@@ -1434,6 +1434,20 @@ def _handover_controller_sweep(
     maximum_giver_translation_action = torch.zeros_like(
         minimum_giver_grasp_distance
     )
+    maximum_object_height = torch.full_like(
+        minimum_giver_grasp_distance,
+        float("-inf"),
+    )
+    minimum_receiver_distance = torch.full_like(
+        minimum_giver_grasp_distance,
+        float("inf"),
+    )
+    maximum_giver_bilateral_contact = torch.zeros_like(
+        minimum_giver_grasp_distance
+    )
+    maximum_receiver_bilateral_contact = torch.zeros_like(
+        minimum_giver_grasp_distance
+    )
     initial_giver_state = {
         "ee_position_robot_frame_m": obs["policy"][0, 32:35].tolist(),
         "object_position_robot_frame_m": obs["policy"][0, 46:49].tolist(),
@@ -1523,6 +1537,19 @@ def _handover_controller_sweep(
                 env.unwrapped,
                 sensor_names,
             )
+            object_height = mdp_common.as_torch(
+                env.unwrapped.scene["object"].data.root_pos_w
+            )[:, 2]
+            receiver_position = mdp_common.as_torch(
+                env.unwrapped.scene["ee_2_frame"].data.target_pos_w
+            )[:, 0, :]
+            receiver_distance = torch.linalg.vector_norm(
+                receiver_position
+                - mdp_common.as_torch(
+                    env.unwrapped.scene["object"].data.root_pos_w
+                ),
+                dim=-1,
+            )
             for group_index in range(len(values)):
                 start = group_index * group_size
                 stop = start + group_size
@@ -1555,6 +1582,28 @@ def _handover_controller_sweep(
                     maximum_non_object_force[group_index] = torch.maximum(
                         maximum_non_object_force[group_index],
                         non_object_forces[start:stop][active].max().double(),
+                    )
+                    maximum_object_height[group_index] = torch.maximum(
+                        maximum_object_height[group_index],
+                        object_height[start:stop][active].max().double(),
+                    )
+                    minimum_receiver_distance[group_index] = torch.minimum(
+                        minimum_receiver_distance[group_index],
+                        receiver_distance[start:stop][active].min().double(),
+                    )
+                    maximum_giver_bilateral_contact[group_index] = torch.maximum(
+                        maximum_giver_bilateral_contact[group_index],
+                        giver_forces[start:stop][active]
+                        .min(dim=-1)
+                        .values.max()
+                        .double(),
+                    )
+                    maximum_receiver_bilateral_contact[group_index] = torch.maximum(
+                        maximum_receiver_bilateral_contact[group_index],
+                        receiver_forces[start:stop][active]
+                        .min(dim=-1)
+                        .values.max()
+                        .double(),
                     )
             unresolved &= ~first_done
             if not unresolved.any():
@@ -1605,6 +1654,18 @@ def _handover_controller_sweep(
                     ),
                     "maximum_giver_translation_action": float(
                         maximum_giver_translation_action[group_index].item()
+                    ),
+                    "maximum_object_height_m": float(
+                        maximum_object_height[group_index].item()
+                    ),
+                    "minimum_receiver_distance_m": float(
+                        minimum_receiver_distance[group_index].item()
+                    ),
+                    "maximum_giver_bilateral_contact_n": float(
+                        maximum_giver_bilateral_contact[group_index].item()
+                    ),
+                    "maximum_receiver_bilateral_contact_n": float(
+                        maximum_receiver_bilateral_contact[group_index].item()
                     ),
                 }
             )

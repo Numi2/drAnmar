@@ -488,6 +488,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"hard_failure_term_counts"' in benchmark_source
     assert '"goal_orientation_inside_frame_rate"' in benchmark_source
     assert '"maximum_non_object_force_n"' in benchmark_source
+    assert '"maximum_object_height_m"' in benchmark_source
+    assert '"minimum_receiver_distance_m"' in benchmark_source
+    assert '"maximum_giver_bilateral_contact_n"' in benchmark_source
+    assert '"maximum_receiver_bilateral_contact_n"' in benchmark_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source
     assert '"success_by_initial_target_xy_distance"' in benchmark_source
