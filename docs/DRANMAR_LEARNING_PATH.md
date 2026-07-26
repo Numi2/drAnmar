@@ -159,7 +159,10 @@ segments: the closer arm picks up the needle, transports it into the shared
 workspace while the receiver remains still, and presents it for acquisition.
 Once the receiver acquires the needle, the giver opens without retreating
 until native giver contact is gone, while the receiver freezes its wrist
-orientation to avoid twisting the grasp during release. The receiver waits
+orientation to avoid twisting the grasp during release. Release is recognized
+only when the giver is commanded open and its native contact is physically
+gone, so a thin-needle contact flicker cannot start the retention clock early.
+The receiver waits
 during pickup and transport; it approaches only after the giver reaches
 the shared presentation point. The two PSM roots are 10 cm apart; the current
 seed moves the needle 3.5 cm from the giver toward the receiver, keeping both

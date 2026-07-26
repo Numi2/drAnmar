@@ -357,6 +357,8 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert '"premature_release"' in state_source
     assert "physical_action[:, 6]" in state_source
     assert "physical_action[:, 13]" in state_source
+    assert "(giver_open_action > 0.0)" in state_source
+    assert "& ~giver_contact_now" in state_source
     assert "& ~state[\"premature_release\"]" in state_source
     assert "(phase == 2) & giver_contact & receiver_contact" in state_source
     assert '"receiver_retention_failed"' in state_source
@@ -514,6 +516,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"giver_holds_position_until_release": True' in benchmark_source
     assert (
         '"receiver_orientation_frozen_after_acquisition": True'
+        in benchmark_source
+    )
+    assert (
+        '"release_requires_open_command_and_contact_loss": True'
         in benchmark_source
     )
     assert "(phase < 3).unsqueeze(-1)" in benchmark_source

@@ -204,7 +204,9 @@ def handover_state(
     )
     phase[receiver_acquired] = 3
     state["giver_release_observed"] |= (
-        (phase == 3) & ~giver_contact_now
+        (phase == 3)
+        & (giver_open_action > 0.0)
+        & ~giver_contact_now
     )
     receiver_relative_offset = object_pos_w - receiver_position_w
     receiver_follow_error = torch.linalg.vector_norm(

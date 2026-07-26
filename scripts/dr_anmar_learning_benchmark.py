@@ -2262,6 +2262,7 @@ def _handover_controller_sweep(
                 "receiver_waits_for_presentation": True,
                 "giver_holds_position_until_release": True,
                 "receiver_orientation_frozen_after_acquisition": True,
+                "release_requires_open_command_and_contact_loss": True,
             },
             "parameter": parameter,
             "initial_giver_state": initial_giver_state,
