@@ -523,6 +523,7 @@ def _handover_teacher_action(
     presentation_fraction_from_giver: float = 0.25,
     presentation_height_in_robot_frame: float = -0.07,
     minimum_lift_height_in_robot_frame: float = -0.09,
+    carry_latch_height_in_robot_frame: float = -0.132,
     carry_lateral_action_limit: float = 0.1,
     carry_vertical_action_limit: float = 0.18,
 ):
@@ -632,8 +633,14 @@ def _handover_teacher_action(
     giver_lifted = (
         object_in_giver[:, 2] > minimum_lift_height_in_robot_frame
     )
+    giver_carry_latched = (
+        object_in_giver[:, 2] > carry_latch_height_in_robot_frame
+    )
     giver_carry_mode = (
-        ((phase == 1) & giver_bilateral_contact)
+        (
+            (phase == 1)
+            & (giver_bilateral_contact | giver_carry_latched)
+        )
         | ((phase == 2) & (giver_bilateral_contact | giver_lifted))
     )
 

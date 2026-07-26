@@ -469,6 +469,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "receiver_contact_centering_action_limit: float = 0.03" in benchmark_source
     assert "receiver_roll_offsets = [math.pi] * len(values)" in benchmark_source
     assert "giver_bilateral_contact = torch.all(" in benchmark_source
+    assert "carry_latch_height_in_robot_frame: float = -0.132" in benchmark_source
+    assert "giver_bilateral_contact | giver_carry_latched" in benchmark_source
     assert "giver_target_orientation[:, 3] = 1.0" in benchmark_source
     assert "giver_orientation_action" in benchmark_source
     assert "receiver_any_contact = torch.any(" in benchmark_source
