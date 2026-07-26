@@ -1362,20 +1362,38 @@ def _handover_controller_sweep(
         return _fail("handover-sweep requires the dual-PSM IK-relative needle task")
     values = [float(value) for value in args.values.split(",") if value.strip()]
     if len(values) < 2:
-        return _fail("handover-sweep requires at least two receiver arc fractions")
-    if any(not 0.0 <= value <= 1.0 for value in values):
-        return _fail("receiver arc fractions must be between 0.0 and 1.0")
+        return _fail("handover-sweep requires at least two values")
     if args.num_envs % len(values):
         return _fail("number of environments must divide evenly across sweep values")
+    parameter = args.parameter
     receiver_offsets = []
-    for value in values:
-        geometry_offset = needle_geometry_grasp_offset_m(value)
-        receiver_offsets.append(
-            (
-                geometry_offset[0],
-                geometry_offset[1],
-                NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
+    fixed_receiver_arc_fraction = 0.65
+    if parameter == "receiver_arc_fraction":
+        if any(not 0.0 <= value <= 1.0 for value in values):
+            return _fail("receiver arc fractions must be between 0.0 and 1.0")
+        for value in values:
+            geometry_offset = needle_geometry_grasp_offset_m(value)
+            receiver_offsets.append(
+                (
+                    geometry_offset[0],
+                    geometry_offset[1],
+                    NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
+                )
             )
+    elif parameter == "receiver_grasp_z_offset":
+        if any(not -0.02 <= value <= 0.02 for value in values):
+            return _fail("receiver grasp z offsets must be within +/- 0.02 m")
+        geometry_offset = needle_geometry_grasp_offset_m(
+            fixed_receiver_arc_fraction
+        )
+        receiver_offsets = [
+            (geometry_offset[0], geometry_offset[1], value)
+            for value in values
+        ]
+    else:
+        return _fail(
+            "handover-sweep parameter must be receiver_arc_fraction "
+            "or receiver_grasp_z_offset"
         )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
@@ -1655,7 +1673,16 @@ def _handover_controller_sweep(
             group_max_phase = max_phase[start:stop]
             results.append(
                 {
-                    "receiver_grasp_arc_fraction": value,
+                    "parameter": parameter,
+                    "parameter_value": value,
+                    "receiver_grasp_arc_fraction": (
+                        value
+                        if parameter == "receiver_arc_fraction"
+                        else fixed_receiver_arc_fraction
+                    ),
+                    "receiver_grasp_z_offset_m": (
+                        receiver_offsets[group_index][2]
+                    ),
                     "receiver_grasp_offset_m": list(
                         receiver_offsets[group_index]
                     ),
@@ -1725,6 +1752,7 @@ def _handover_controller_sweep(
             "giver": "robot_1",
             "receiver": "robot_2",
             "giver_grasp_arc_fraction": 0.4,
+            "parameter": parameter,
             "initial_giver_state": initial_giver_state,
             "final_giver_state": {
                 "ee_position_robot_frame_m": (
@@ -3133,6 +3161,10 @@ def _parser() -> argparse.ArgumentParser:
     handover_sweep.add_argument("--task", required=True)
     handover_sweep.add_argument("--num_envs", type=int, required=True)
     handover_sweep.add_argument("--num_frames", type=int, default=1000)
+    handover_sweep.add_argument(
+        "--parameter",
+        default="receiver_arc_fraction",
+    )
     handover_sweep.add_argument("--values", required=True)
     handover_sweep.add_argument("--seed", type=int, default=17)
     handover_sweep.add_argument("--output_path", required=True)

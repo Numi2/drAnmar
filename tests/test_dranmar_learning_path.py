@@ -455,10 +455,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "probe)" in launcher_source
     assert "controller-sweep)" in launcher_source
     assert "handover-sweep)" in launcher_source
+    assert "DR_ANMAR_HANDOVER_SWEEP_PARAMETER" in launcher_source
     assert "record)" in launcher_source
     assert "def _controller_sweep(" in benchmark_source
     assert "def _handover_controller_sweep(" in benchmark_source
     assert "def _handover_teacher_action(" in benchmark_source
+    assert '"receiver_grasp_z_offset"' in benchmark_source
     assert "giver_bilateral_contact = torch.all(" in benchmark_source
     assert "giver_carry_mode.unsqueeze(-1)" in benchmark_source
     assert "((phase == 2) & ~giver_lifted)" in benchmark_source
