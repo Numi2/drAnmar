@@ -349,6 +349,8 @@ def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
     assert "receiver_follows" in state_source
     assert '"premature_release"' in state_source
     assert "giver_gripper_action[:, 6] > 0.0" in state_source
+    assert "& ~state[\"premature_release\"]" in state_source
+    assert "(phase == 2) & giver_contact & receiver_contact" in state_source
     assert '"receiver_retention_failed"' in state_source
     assert "receiver_distance < presentation_distance" not in state_source
     assert 'command_name: str = "receiver_pose"' in state_source

@@ -137,7 +137,6 @@ def handover_state(
 
     phase = state["phase"]
     phase[(phase == 0) & giver_contact] = 1
-    phase[(phase == 1) & giver_contact & lifted] = 2
     before_acquisition = (phase >= 1) & (phase < 3)
     giver_gripper_action = mdp_common.as_torch(
         env.action_manager.action
@@ -146,6 +145,11 @@ def handover_state(
         before_acquisition
         & (giver_gripper_action[:, 6] > 0.0)
     )
+    phase[
+        (phase == 1)
+        & lifted
+        & ~state["premature_release"]
+    ] = 2
     receiver_acquired = (
         (phase == 2) & giver_contact & receiver_contact
     )
