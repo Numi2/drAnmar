@@ -60,6 +60,7 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     lateral_alignment_threshold: float = 0.004
     close_distance: float = 0.006
     normalized_contact_threshold: float = 0.002
+    carry_action_limit: float = 0.1
     residual_scale: float = 0.2
 
 

@@ -29,7 +29,9 @@ from . import mdp
 # Scene definition
 ##
 
-LIFT_INITIAL_OBJECT_HEIGHT_M = 0.003
+# The block collision mesh reaches 3.85 mm below its root after asset scale.
+# Four millimeters clears the table without adding a free-fall transient.
+LIFT_INITIAL_OBJECT_HEIGHT_M = 0.004
 LIFT_MINIMUM_SUCCESS_HEIGHT_M = 0.06
 LIFT_TARGET_OBJECT_HEIGHT_M = 0.08
 LIFT_SUCCESS_DWELL_STEPS = 10

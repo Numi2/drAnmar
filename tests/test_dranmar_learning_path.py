@@ -44,11 +44,14 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         manifest["defaults"]["stage_3_initialization"]["method"]
         == "analytic_grasp_lift_base_plus_learned_residual"
     )
+    assert manifest["defaults"]["stage_3_initialization"]["carry_action_limit"] == 0.1
     stage_3 = stages[2]
     contract = stage_3["qualification_contract"]
     assert contract["initial_object_height_m"] < contract["minimum_success_height_m"]
     assert contract["minimum_success_height_m"] < contract["target_object_height_m"]
     assert contract["sustained_success_steps"] / contract["control_hz"] == 0.2
+    assert contract["block_orientation_invariant"] is True
+    assert contract["requires_stable_angular_motion"] is True
     assert contract["requires_physics_owned_object_motion"] is True
 
 
@@ -198,7 +201,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     ).read_text()
     launcher_source = (ROOT / "dr_anmar_learning.sh").read_text()
 
-    assert "LIFT_INITIAL_OBJECT_HEIGHT_M = 0.003" in cfg_source
+    assert "LIFT_INITIAL_OBJECT_HEIGHT_M = 0.004" in cfg_source
     assert "LIFT_MINIMUM_SUCCESS_HEIGHT_M = 0.06" in cfg_source
     assert "LIFT_TARGET_OBJECT_HEIGHT_M = 0.08" in cfg_source
     assert "LIFT_SUCCESS_DWELL_STEPS = 10" in cfg_source
@@ -213,8 +216,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         == 1
     )
     assert "LIFT_INITIAL_OBJECT_HEIGHT_M" in block_source
+    assert 'orientation_threshold"] = 3.2' in block_source
     assert "class LiftResidualMLPModel(MLPModel):" in model_source
     assert "bilateral_contact.unsqueeze(-1)" in model_source
+    assert "self.carry_action_limit = carry_action_limit" in model_source
     assert "lift_residual_actor([256, 128, 64])" in agent_source
     assert "probe)" in launcher_source
     for source in (

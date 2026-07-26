@@ -98,6 +98,14 @@ class BlockLiftEnvCfg(LiftEnvCfg):
             ],
         )
 
+        # Stage 3 isolates grasp-and-lift competence. The irregular block can
+        # settle in rotation-equivalent poses; needle orientation is qualified
+        # separately in Stage 4. Angular-speed stability remains mandatory.
+        self.rewards.object_goal_orientation.weight = 0.0
+        self.rewards.success.params["orientation_threshold"] = 3.2
+        self.rewards.success_rate.params["orientation_threshold"] = 3.2
+        self.terminations.success.params["orientation_threshold"] = 3.2
+
 
 @configclass
 class BlockLiftEnvCfg_PLAY(BlockLiftEnvCfg):

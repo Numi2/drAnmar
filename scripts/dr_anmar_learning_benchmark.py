@@ -298,6 +298,7 @@ def _lift_teacher_action(
     lateral_alignment_threshold: float = 0.004,
     close_distance: float = 0.006,
     normalized_contact_threshold: float = 0.002,
+    carry_action_limit: float = 0.1,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
     import torch
@@ -322,15 +323,21 @@ def _lift_teacher_action(
         contact_forces > normalized_contact_threshold,
         dim=-1,
     )
-    translation_error = torch.where(
+    approach_action = (
+        (approach_position - ee_position) / position_scale
+    ).clamp(-1.0, 1.0)
+    carry_action = (
+        (target_position - object_position) / position_scale
+    ).clamp(-carry_action_limit, carry_action_limit)
+    translation_action = torch.where(
         bilateral_contact.unsqueeze(-1),
-        target_position - object_position,
-        approach_position - ee_position,
+        carry_action,
+        approach_action,
     )
     body_action = torch.cat(
         (
-            translation_error / position_scale,
-            torch.zeros_like(translation_error),
+            translation_action,
+            torch.zeros_like(translation_action),
         ),
         dim=-1,
     ).clamp(-1.0, 1.0)
@@ -571,6 +578,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     "lateral_alignment_threshold_m": 0.004,
                     "close_distance_m": 0.006,
                     "normalized_contact_threshold": 0.002,
+                    "carry_action_limit": 0.1,
                 }
                 if "Lift-Block-PSM-IK-Rel" in args.task
                 else None
@@ -817,6 +825,7 @@ def _lift_procedure_snapshot(env) -> dict[str, Any]:
     """Summarize simulator-owned lift geometry, motion, and contact state."""
     import torch
 
+    from isaaclab.managers import SceneEntityCfg
     from orbit.surgical.tasks.surgical import mdp_common
 
     unwrapped = env.unwrapped
@@ -842,6 +851,12 @@ def _lift_procedure_snapshot(env) -> dict[str, Any]:
         dim=-1,
     )
     motion = mdp_common.object_motion(unwrapped)
+    goal_position_error, goal_orientation_error = mdp_common.object_goal_errors(
+        unwrapped,
+        "object_pose",
+        SceneEntityCfg("robot"),
+        SceneEntityCfg("object"),
+    )
 
     def stats(value) -> dict[str, float]:
         return {
@@ -857,6 +872,8 @@ def _lift_procedure_snapshot(env) -> dict[str, Any]:
         "jaw_non_object_force_n": stats(non_object_forces),
         "object_linear_speed_m_s": stats(motion[:, 0]),
         "object_angular_speed_rad_s": stats(motion[:, 1]),
+        "goal_position_error_m": stats(goal_position_error),
+        "goal_orientation_error_rad": stats(goal_orientation_error),
         "bilateral_contact_fraction": float(
             torch.all(forces > 0.01, dim=-1).float().mean().item()
         ),

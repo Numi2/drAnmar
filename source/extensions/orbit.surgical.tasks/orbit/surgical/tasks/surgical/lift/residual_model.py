@@ -27,6 +27,7 @@ class LiftResidualMLPModel(MLPModel):
         lateral_alignment_threshold: float = 0.004,
         close_distance: float = 0.006,
         normalized_contact_threshold: float = 0.002,
+        carry_action_limit: float = 0.1,
         residual_scale: float = 0.2,
         **kwargs,
     ) -> None:
@@ -40,6 +41,7 @@ class LiftResidualMLPModel(MLPModel):
         self.lateral_alignment_threshold = lateral_alignment_threshold
         self.close_distance = close_distance
         self.normalized_contact_threshold = normalized_contact_threshold
+        self.carry_action_limit = carry_action_limit
         self.residual_scale = residual_scale
 
         final_linear = next(
@@ -83,15 +85,21 @@ class LiftResidualMLPModel(MLPModel):
             contact_forces > self.normalized_contact_threshold,
             dim=-1,
         )
-        translation_error = torch.where(
+        approach_action = (
+            (approach_position - ee_position) / self.position_scale
+        ).clamp(-1.0, 1.0)
+        carry_action = (
+            (target_position - object_position) / self.position_scale
+        ).clamp(-self.carry_action_limit, self.carry_action_limit)
+        translation_action = torch.where(
             bilateral_contact.unsqueeze(-1),
-            target_position - object_position,
-            approach_position - ee_position,
+            carry_action,
+            approach_action,
         )
         body_action = torch.cat(
             (
-                translation_error / self.position_scale,
-                torch.zeros_like(translation_error),
+                translation_action,
+                torch.zeros_like(translation_action),
             ),
             dim=-1,
         ).clamp(-1.0, 1.0)
@@ -160,6 +168,7 @@ class _LiftResidualExport(nn.Module):
         self.lateral_alignment_threshold = model.lateral_alignment_threshold
         self.close_distance = model.close_distance
         self.normalized_contact_threshold = model.normalized_contact_threshold
+        self.carry_action_limit = model.carry_action_limit
         self.residual_scale = model.residual_scale
 
     def _base_action(self, obs: torch.Tensor) -> torch.Tensor:
@@ -194,15 +203,21 @@ class _LiftResidualExport(nn.Module):
             contact_forces > self.normalized_contact_threshold,
             dim=-1,
         )
-        translation_error = torch.where(
+        approach_action = (
+            (approach_position - ee_position) / self.position_scale
+        ).clamp(-1.0, 1.0)
+        carry_action = (
+            (target_position - object_position) / self.position_scale
+        ).clamp(-self.carry_action_limit, self.carry_action_limit)
+        translation_action = torch.where(
             bilateral_contact.unsqueeze(-1),
-            target_position - object_position,
-            approach_position - ee_position,
+            carry_action,
+            approach_action,
         )
         body_action = torch.cat(
             (
-                translation_error / self.position_scale,
-                torch.zeros_like(translation_error),
+                translation_action,
+                torch.zeros_like(translation_action),
             ),
             dim=-1,
         ).clamp(-1.0, 1.0)

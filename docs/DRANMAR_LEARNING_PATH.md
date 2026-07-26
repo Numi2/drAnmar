@@ -66,7 +66,7 @@ avoidance or contact competence. Stage 3 turns contact back on and requires
 measured contact, stability, force, slip, and drop evidence.
 
 Stage 3 uses an analytic approach-grasp-lift base with a bounded learned
-residual. The block begins at the measured 3 mm table-rest height, the
+residual. The block begins at a collision-clear 4 mm table-rest height, the
 commanded target is 8 cm, and success
 requires the object to remain above 6 cm for ten consecutive 50 Hz control
 steps. Every one of those steps must also satisfy bilateral PhysX contact,
@@ -74,6 +74,12 @@ goal-pose, object-speed, and force-termination constraints. This 0.2-second
 dwell prevents a single contact impulse or initial-state coincidence from
 being counted as a lift. The force limits are versioned simulator research
 envelopes, not clinically calibrated tissue limits.
+
+Block rotation is intentionally invariant in Stage 3 because the irregular
+block has multiple rotation-equivalent resting poses. Angular-speed stability
+is still mandatory. Stage 4 introduces orientation-qualified needle lifting.
+After bilateral contact, the Stage 3 base limits Cartesian carry action to 0.1,
+targeting at most 1 mm per 50 Hz command before learned residuals.
 
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,
