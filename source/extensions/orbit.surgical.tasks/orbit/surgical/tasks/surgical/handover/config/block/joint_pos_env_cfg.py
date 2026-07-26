@@ -36,7 +36,7 @@ class BlockHandoverEnvCfg(HandoverEnvCfg):
             prim_path="{ENV_REGEX_NS}/Robot_1",
             spawn=PSM_CFG.spawn.replace(activate_contact_sensors=True),
             init_state=PSM_CFG.init_state.replace(
-                pos=(0.2, 0.0, 0.15),
+                pos=(-0.2, 0.0, 0.15),
                 rot=(1.0, 0.0, 0.0, 0.0),
             ),
         )
@@ -44,7 +44,7 @@ class BlockHandoverEnvCfg(HandoverEnvCfg):
             prim_path="{ENV_REGEX_NS}/Robot_2",
             spawn=PSM_CFG.spawn.replace(activate_contact_sensors=True),
             init_state=PSM_CFG.init_state.replace(
-                pos=(-0.2, 0.0, 0.15),
+                pos=(0.2, 0.0, 0.15),
                 rot=(1.0, 0.0, 0.0, 0.0),
             ),
         )
@@ -89,7 +89,7 @@ class BlockHandoverEnvCfg(HandoverEnvCfg):
             close_command_expr=psm_gripper_close_command_expr(),
         )
         # Set the body name for the end effector
-        self.commands.ee_1_pose.body_name = "psm_tool_tip_link"
+        self.commands.receiver_pose.body_name = "psm_tool_tip_link"
 
         # Set Peg Block as object
         self.scene.object = RigidObjectCfg(

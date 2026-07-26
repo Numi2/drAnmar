@@ -323,6 +323,35 @@ def test_dual_robot_configs_do_not_mutate_shallow_copies() -> None:
         ast.parse(source)
 
 
+def test_handover_requires_arm_1_to_arm_2_physical_transfer() -> None:
+    state_source = (
+        TASK_ROOT / "surgical/handover/mdp/state.py"
+    ).read_text()
+    cfg_source = (
+        TASK_ROOT / "surgical/handover/handover_env_cfg.py"
+    ).read_text()
+    needle_source = (
+        TASK_ROOT / "surgical/handover/config/needle/joint_pos_env_cfg.py"
+    ).read_text()
+    manifest = json.loads((ROOT / "config/dranmar_learning_path.json").read_text())
+    contract = manifest["stages"][5]["qualification_contract"]
+
+    assert '"robot_1_jaw_1_object_contact"' in state_source
+    assert '"robot_2_jaw_1_object_contact"' in state_source
+    assert 'receiver_frame: FrameTransformer = env.scene["ee_2_frame"]' in state_source
+    assert "receiver_only_consecutive" in state_source
+    assert "required_receiver_only_steps: int = 10" in state_source
+    assert "object_pos_w[:, 2] > minimum_height" in state_source
+    assert 'command_name: str = "receiver_pose"' in state_source
+    assert "receiver_pose = mdp.UniformPoseCommandCfg(" in cfg_source
+    assert 'asset_name="robot_2"' in cfg_source
+    assert "self.commands.receiver_pose.body_name" in needle_source
+    assert contract["direction"] == "robot_1_giver_to_robot_2_receiver"
+    assert contract["requires_receiver_goal_pose"] is False
+    for source in (state_source, cfg_source, needle_source):
+        ast.parse(source)
+
+
 def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> None:
     cfg_source = (
         TASK_ROOT / "surgical/lift/lift_env_cfg.py"

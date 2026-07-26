@@ -99,8 +99,8 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
 class CommandsCfg:
     """Command terms for the MDP."""
 
-    ee_1_pose = mdp.UniformPoseCommandCfg(
-        asset_name="robot_1",
+    receiver_pose = mdp.UniformPoseCommandCfg(
+        asset_name="robot_2",
         body_name=MISSING,  # will be set by agent env cfg
         resampling_time_range=(30.0, 30.0),
         debug_vis=False,
@@ -114,8 +114,8 @@ class CommandsCfg:
         ),
     )
     # set the scale of the visualization markers to (0.01, 0.01, 0.01)
-    ee_1_pose.goal_pose_visualizer_cfg.markers["frame"].scale = (0.01, 0.01, 0.01)
-    ee_1_pose.current_pose_visualizer_cfg.markers["frame"].scale = (0.01, 0.01, 0.01)
+    receiver_pose.goal_pose_visualizer_cfg.markers["frame"].scale = (0.01, 0.01, 0.01)
+    receiver_pose.current_pose_visualizer_cfg.markers["frame"].scale = (0.01, 0.01, 0.01)
 
 @configclass
 class ActionsCfg:
@@ -175,7 +175,7 @@ class ObservationsCfg:
             },
             clip=(0.0, 5.0),
         )
-        receiver_goal = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_1_pose"})
+        receiver_goal = ObsTerm(func=mdp.generated_commands, params={"command_name": "receiver_pose"})
         handover_phase = ObsTerm(func=mdp.handover_phase)
         actions = ObsTerm(func=mdp.last_action)
 
@@ -214,15 +214,15 @@ class RewardsCfg:
 
     giver_reach = RewTerm(
         func=mdp.end_effector_object_distance,
-        params={"std": 0.06, "frame_name": "ee_2_frame", "minimum_phase": 0},
+        params={"std": 0.06, "frame_name": "ee_1_frame", "minimum_phase": 0},
         weight=2.0,
     )
 
     giver_grasp = RewTerm(
         func=mdp.bilateral_grasp,
         params={
-            "sensor_1_name": "robot_2_jaw_1_object_contact",
-            "sensor_2_name": "robot_2_jaw_2_object_contact",
+            "sensor_1_name": "robot_1_jaw_1_object_contact",
+            "sensor_2_name": "robot_1_jaw_2_object_contact",
             "threshold": 0.01,
         },
         weight=4.0,
@@ -230,15 +230,15 @@ class RewardsCfg:
 
     receiver_reach = RewTerm(
         func=mdp.end_effector_object_distance,
-        params={"std": 0.06, "frame_name": "ee_1_frame", "minimum_phase": 1},
+        params={"std": 0.06, "frame_name": "ee_2_frame", "minimum_phase": 1},
         weight=3.0,
     )
 
     receiver_grasp = RewTerm(
         func=mdp.bilateral_grasp,
         params={
-            "sensor_1_name": "robot_1_jaw_1_object_contact",
-            "sensor_2_name": "robot_1_jaw_2_object_contact",
+            "sensor_1_name": "robot_2_jaw_1_object_contact",
+            "sensor_2_name": "robot_2_jaw_2_object_contact",
             "threshold": 0.01,
             "minimum_phase": 2,
         },
@@ -254,7 +254,7 @@ class RewardsCfg:
     receiver_goal = RewTerm(
         func=mdp.receiver_goal_tracking,
         params={"position_std": 0.04, "orientation_std": 0.5},
-        weight=8.0,
+        weight=0.0,
     )
 
     phase_progress = RewTerm(func=mdp.phase_progress, weight=10.0)

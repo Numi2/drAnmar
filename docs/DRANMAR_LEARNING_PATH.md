@@ -133,6 +133,15 @@ frame. It produced 1,101 of 1,200 sustained pickups on seed 17 and 1,127 of
 combined 2,228/2,400 rate is 92.83%; the maximum measured needle force was
 0.99 N and no protected-surface force was observed.
 
+Stage 6 transfers that pickup skill from Robot 1 to Robot 2. Progress is
+physics-owned and ordered: Robot 1 establishes bilateral needle contact and
+lifts above 6 cm, Robot 2 approaches, both tools establish dual custody, Robot
+1 releases, and Robot 2 alone maintains bilateral contact above 6 cm for ten
+50 Hz control steps. Commanded gripper closure cannot advance a phase without
+native filtered contact. The 5 N needle-force, 2 N protected-surface, and drop
+terminations remain hard vetoes. A receiver recovery pose is retained only as
+an advanced diagnostic; it does not gate physical handover completion.
+
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter
 challengers cannot be sharded within one replicated PhysX scene, so the sweep

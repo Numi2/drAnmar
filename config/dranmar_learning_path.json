@@ -226,6 +226,17 @@
       "stage": 6,
       "name": "physical_needle_handover",
       "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
+      "qualification_contract": {
+        "direction": "robot_1_giver_to_robot_2_receiver",
+        "minimum_handover_height_m": 0.06,
+        "bilateral_contact_threshold_n": 0.01,
+        "receiver_only_sustained_steps": 10,
+        "object_force_hard_limit_n": 5.0,
+        "protected_surface_force_hard_limit_n": 2.0,
+        "success_definition": "robot_1_pickup_then_dual_custody_then_robot_2_only_lifted_ownership",
+        "requires_receiver_goal_pose": false,
+        "receiver_goal_pose_role": "advanced_recovery_diagnostic"
+      },
       "promotion": {
         "minimum_success_rate": 0.7,
         "held_out_seed_passes": 3
