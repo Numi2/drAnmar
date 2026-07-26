@@ -496,6 +496,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert 'env_cfg.viewer.origin_type = "world"' in benchmark_source
     assert "env_cfg.viewer.eye = camera_eye" in benchmark_source
     assert "env_cfg.viewer.lookat = camera_target" in benchmark_source
+    assert '"travel_fraction_of_grid_span": 0.30' in benchmark_source
+    assert "flow_eased = 0.5 - 0.5 * math.cos(" in benchmark_source
     assert 'play.add_argument("--video", action="store_true")' in benchmark_source
     assert 'play.add_argument("--video_chunk_length", type=int)' in benchmark_source
     assert 'enable_cameras=bool(getattr(args, "video", False))' in benchmark_source

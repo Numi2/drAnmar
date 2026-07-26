@@ -1513,7 +1513,7 @@ def _handover_controller_sweep(
             (grid_side - 1) * float(env_cfg.scene.env_spacing),
             1.0,
         )
-        camera_eye = (0.0, -0.475 * grid_span, 0.35 * grid_span)
+        camera_eye = (0.0, -0.333 * grid_span, 0.245 * grid_span)
         camera_target = (0.0, 0.0, 0.05)
         env_cfg.viewer.resolution = (
             args.video_width,
@@ -1678,7 +1678,33 @@ def _handover_controller_sweep(
     )
     started = time.perf_counter()
     try:
-        for _ in range(args.num_frames):
+        for frame_index in range(args.num_frames):
+            if args.video:
+                flow_progress = frame_index / max(
+                    args.num_frames - 1,
+                    1,
+                )
+                flow_eased = 0.5 - 0.5 * math.cos(
+                    math.pi * flow_progress
+                )
+                flow_x = (flow_eased - 0.5) * 0.30 * grid_span
+                flow_y = (
+                    0.04
+                    * math.sin(math.pi * flow_progress)
+                    * grid_span
+                )
+                env.unwrapped.sim.set_camera_view(
+                    (
+                        camera_eye[0] + flow_x,
+                        camera_eye[1] + flow_y,
+                        camera_eye[2],
+                    ),
+                    (
+                        camera_target[0] + flow_x,
+                        camera_target[1] + flow_y,
+                        camera_target[2],
+                    ),
+                )
             was_unresolved = unresolved.clone()
             current_phase = torch.argmax(obs["policy"][:, 77:82], dim=-1)
             max_phase = torch.maximum(max_phase, current_phase)
@@ -2044,6 +2070,12 @@ def _handover_controller_sweep(
                     "camera_mode": "full_environment_grid_oblique",
                     "camera_eye_world_m": list(camera_eye),
                     "camera_target_world_m": list(camera_target),
+                    "camera_flow": {
+                        "axis": "world_x",
+                        "easing": "cosine",
+                        "travel_fraction_of_grid_span": 0.30,
+                        "forward_arc_fraction_of_grid_span": 0.04,
+                    },
                     "resolution": [
                         args.video_width,
                         args.video_height,
