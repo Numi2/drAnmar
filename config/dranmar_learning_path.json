@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -29,7 +29,12 @@
       "target_relative_axis_angle_orientation",
       "previous_action"
     ],
-    "success_source": "isaac_lab_termination_manager"
+    "success_source": "isaac_lab_termination_manager",
+    "stage_1_initialization": {
+      "method": "analytic_relative_ik_teacher_behavior_cloning",
+      "default_updates": 400,
+      "ppo_role": "residual_refinement_only_if_held_out_gate_fails"
+    }
   },
   "stages": [
     {

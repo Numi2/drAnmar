@@ -23,6 +23,10 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         in manifest["defaults"]["reach_observation_contract"]
     )
     assert manifest["defaults"]["success_source"] == "isaac_lab_termination_manager"
+    assert (
+        manifest["defaults"]["stage_1_initialization"]["method"]
+        == "analytic_relative_ik_teacher_behavior_cloning"
+    )
 
 
 def test_frontier_imports_and_runner_contract() -> None:
@@ -64,6 +68,8 @@ def test_launcher_starts_simulator_before_task_registration() -> None:
     assert "export_policy_to_jit" in benchmark_source
     assert "export_policy_to_onnx" in benchmark_source
     assert 'termination_manager.get_term("success")' in benchmark_source
+    assert "def _reach_teacher_action(" in benchmark_source
+    assert "def _pretrain(" in benchmark_source
 
 
 def test_reach_policy_observes_direct_pose_error() -> None:

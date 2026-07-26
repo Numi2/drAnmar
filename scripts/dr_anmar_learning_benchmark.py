@@ -216,6 +216,168 @@ def _load_configs(task: str, num_envs: int, seed: int):
     return env_cfg, agent_cfg
 
 
+def _reach_teacher_action(obs, *, position_scale: float, orientation_scale: float):
+    """Map the explicit pose-error observation to the relative-IK action."""
+    import torch
+
+    policy_obs = obs["policy"]
+    position_error = policy_obs[:, 23:26]
+    orientation_error = policy_obs[:, 26:29]
+    return torch.cat(
+        (
+            position_error / position_scale,
+            orientation_error / orientation_scale,
+        ),
+        dim=-1,
+    ).clamp(-1.0, 1.0)
+
+
+def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
+    """Initialize the reach actor from the controller encoded by its action space."""
+    import gymnasium as gym
+    import torch
+    import torch.nn.functional as functional
+    from rsl_rl.runners import OnPolicyRunner
+
+    from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
+
+    env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+    run_dir = Path(args.output_path).resolve() / "runs" / timestamp
+    run_dir.mkdir(parents=True, exist_ok=True)
+    env_cfg.log_dir = str(run_dir)
+
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+
+    env = gym.make(args.task, cfg=env_cfg)
+    env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+    runner = OnPolicyRunner(
+        env, agent_cfg.to_dict(), log_dir=str(run_dir), device=agent_cfg.device
+    )
+    runner.logger.git_status_repos = []
+    policy = runner.alg.get_policy()
+    policy.train()
+    optimizer = torch.optim.AdamW(
+        policy.parameters(),
+        lr=args.learning_rate,
+        weight_decay=args.weight_decay,
+    )
+
+    obs = env.get_observations().to(agent_cfg.device)
+    losses: list[float] = []
+    teacher_successes = 0
+    teacher_completed = 0
+    started = time.perf_counter()
+    try:
+        for _ in range(args.updates):
+            teacher_actions = _reach_teacher_action(
+                obs,
+                position_scale=args.position_scale,
+                orientation_scale=args.orientation_scale,
+            )
+            policy.update_normalization(obs)
+            predicted_actions = policy(obs)
+            loss = functional.smooth_l1_loss(predicted_actions, teacher_actions)
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.0)
+            optimizer.step()
+            losses.append(float(loss.detach().item()))
+
+            with torch.inference_mode():
+                obs, _, dones, _ = env.step(teacher_actions)
+                successes = env.unwrapped.termination_manager.get_term("success")
+            obs = obs.to(agent_cfg.device)
+            teacher_successes += int(successes.sum().item())
+            teacher_completed += int(dones.sum().item())
+
+        policy.eval()
+        obs, _ = env.reset()
+        obs = obs.to(agent_cfg.device)
+        validation_successes = 0
+        validation_completed = 0
+        with torch.inference_mode():
+            for _ in range(args.validation_frames):
+                actions = policy(obs)
+                obs, _, dones, _ = env.step(actions)
+                successes = env.unwrapped.termination_manager.get_term("success")
+                obs = obs.to(agent_cfg.device)
+                validation_successes += int(successes.sum().item())
+                validation_completed += int(dones.sum().item())
+
+        duration = time.perf_counter() - started
+        checkpoint = run_dir / "model_final.pt"
+        runner.save(str(checkpoint))
+        simulated_frames = env.unwrapped.num_envs * (
+            args.updates + args.validation_frames
+        )
+        evidence = {
+            "schema_version": "dranmar-learning-evidence-1.0",
+            "kind": "training",
+            "algorithm": "analytic_relative_ik_teacher_behavior_cloning",
+            "task": args.task,
+            "seed": args.seed,
+            "requested_num_envs": args.requested_num_envs,
+            "num_envs": env.unwrapped.num_envs,
+            "trusted_requested_num_envs": args.trusted_requested_num_envs,
+            "free_gpu_memory_before_launch_mib": args.free_gpu_memory_before_launch_mib,
+            "system_memory_total_mib": args.system_memory_total_mib,
+            "system_memory_available_before_launch_mib": (
+                args.system_memory_available_before_launch_mib
+            ),
+            "updates": args.updates,
+            "learning_rate": args.learning_rate,
+            "weight_decay": args.weight_decay,
+            "teacher_action_scales": {
+                "position_m": args.position_scale,
+                "orientation_rad": args.orientation_scale,
+            },
+            "loss": {
+                "initial": losses[0] if losses else None,
+                "final": losses[-1] if losses else None,
+                "minimum": min(losses) if losses else None,
+            },
+            "teacher_rollout": {
+                "completed_episodes": teacher_completed,
+                "successful_episodes": teacher_successes,
+                "success_rate": (
+                    teacher_successes / teacher_completed
+                    if teacher_completed
+                    else None
+                ),
+            },
+            "deterministic_validation": {
+                "frames_per_env": args.validation_frames,
+                "completed_episodes": validation_completed,
+                "successful_episodes": validation_successes,
+                "success_rate": (
+                    validation_successes / validation_completed
+                    if validation_completed
+                    else None
+                ),
+            },
+            "wall_time_s": duration,
+            "simulated_frames": simulated_frames,
+            "total_fps": simulated_frames / duration if duration > 0 else None,
+            "checkpoint": {
+                "path": str(checkpoint),
+                "sha256": _sha256(checkpoint),
+            },
+            "gpu_peak_memory_bytes": (
+                torch.cuda.max_memory_allocated()
+                if torch.cuda.is_available()
+                else None
+            ),
+            "process_peak_memory_mib": _peak_process_memory_mib(),
+            "runtime": _runtime_evidence(repo_root),
+        }
+        _write_evidence(Path(args.output_path), "dranmar_pretraining", evidence)
+        return 0
+    finally:
+        env.close()
+
+
 class _EarlyStopConverged(Exception):
     """Raised after the direct simulator success rate satisfies its gate."""
 
@@ -506,6 +668,19 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--success_threshold", type=float, default=0.95)
     train.add_argument("--success_window", type=int, default=10)
 
+    pretrain = subparsers.add_parser("pretrain")
+    pretrain.add_argument("--task", required=True)
+    pretrain.add_argument("--num_envs", type=int, required=True)
+    pretrain.add_argument("--updates", type=int, default=400)
+    pretrain.add_argument("--validation_frames", type=int, default=500)
+    pretrain.add_argument("--learning_rate", type=float, default=3e-4)
+    pretrain.add_argument("--weight_decay", type=float, default=1e-6)
+    pretrain.add_argument("--position_scale", type=float, default=0.01)
+    pretrain.add_argument("--orientation_scale", type=float, default=0.05)
+    pretrain.add_argument("--seed", type=int, default=17)
+    pretrain.add_argument("--output_path", required=True)
+    pretrain.add_argument("--benchmark_formatter", default="schema,json")
+
     play = subparsers.add_parser("play")
     play.add_argument("--task", required=True)
     play.add_argument("--checkpoint", required=True)
@@ -601,7 +776,12 @@ def main(argv: list[str]) -> int:
         )
         import orbit.surgical.tasks  # noqa: F401
 
-        result = _train(args, repo_root) if args.mode == "train" else _play(args, repo_root)
+        if args.mode == "train":
+            result = _train(args, repo_root)
+        elif args.mode == "pretrain":
+            result = _pretrain(args, repo_root)
+        else:
+            result = _play(args, repo_root)
         del cuda_context_guard
     except BaseException:
         traceback.print_exc()

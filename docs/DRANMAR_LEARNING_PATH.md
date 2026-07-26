@@ -43,6 +43,12 @@ It is a control qualification task, not a surgical-skill claim.
 
 ## Efficient training contract
 
+Stage 1 does not spend PPO samples rediscovering the relative Cartesian
+controller already encoded by the action space. It first trains the policy
+against an analytic relative-IK teacher online across all 1,200 worlds, then
+uses deterministic held-out evaluation. PPO is reserved for residual
+refinement only when that initialized policy misses the gate.
+
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,
 adaptive-KL PPO, and task-specific rollout lengths. PhysX scenes use Fabric
@@ -110,7 +116,10 @@ Then:
 # Measure ten iterations without claiming convergence
 ./dr_anmar_learning.sh benchmark
 
-# Train with success-based early stopping
+# Initialize Stage 1 from the analytic relative-IK teacher
+./dr_anmar_learning.sh pretrain
+
+# PPO refinement when deterministic held-out evaluation still misses its gate
 ./dr_anmar_learning.sh train
 
 # Evaluate a frozen checkpoint
