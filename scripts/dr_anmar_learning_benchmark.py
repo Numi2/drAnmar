@@ -309,6 +309,8 @@ def _lift_teacher_action(
     carry_orientation_action_limit: float | None = None,
     carry_orientation_scale: float = 0.05,
     carry_orientation_velocity_damping_s: float = 0.0,
+    carry_goal_action_limit: float | None = None,
+    carry_goal_position_radius: float = 0.015,
     carry_target_height_offset: float = 0.0,
     grasp_offset: tuple[float, float, float] | None = None,
 ):
@@ -401,6 +403,23 @@ def _lift_teacher_action(
         ),
         dim=-1,
     )
+    if carry_goal_action_limit is not None:
+        goal_error_action = (
+            target_position - object_position
+        ) / position_scale
+        goal_action = goal_error_action.clamp(
+            -carry_goal_action_limit,
+            carry_goal_action_limit,
+        )
+        inside_goal_radius = torch.linalg.vector_norm(
+            target_position - object_position,
+            dim=-1,
+        ) < carry_goal_position_radius
+        carry_action = torch.where(
+            inside_goal_radius.unsqueeze(-1),
+            goal_action,
+            carry_action,
+        )
     translation_action = torch.where(
         carry_mode.unsqueeze(-1),
         carry_action,
@@ -1115,6 +1134,7 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
 
 _LIFT_SWEEP_PARAMETERS = {
     "carry_action_limit",
+    "carry_goal_action_limit",
     "carry_lateral_action_limit",
     "carry_orientation_action_limit",
     "carry_orientation_velocity_damping_s",
@@ -1163,6 +1183,9 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         needle_task
         and args.parameter == "carry_orientation_velocity_damping_s"
     )
+    needle_transport_sweep = (
+        needle_task and args.parameter == "carry_goal_action_limit"
+    )
     needle_environment_sweep = (
         needle_task
         and args.parameter in _ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS
@@ -1170,11 +1193,12 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
     if needle_task and not (
         needle_grasp_sweep
         or needle_orientation_sweep
+        or needle_transport_sweep
         or needle_environment_sweep
     ):
         return _fail(
             "needle controller-sweep requires a needle grasp-frame or "
-            "carry-orientation parameter, or a full-population physical challenger "
+            "carry-controller parameter, or a full-population physical challenger "
             "until a contact-qualified needle controller exists"
         )
     if block_task and needle_grasp_sweep:
@@ -1190,6 +1214,10 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         value < 0.0 for value in values
     ):
         return _fail("carry_orientation_velocity_damping_s must be non-negative")
+    if args.parameter == "carry_goal_action_limit" and any(
+        value <= 0.0 for value in values
+    ):
+        return _fail("carry_goal_action_limit must be positive")
     if args.num_envs % len(values):
         return _fail("number of environments must divide evenly across sweep values")
     environment_level_parameter = (
@@ -1240,7 +1268,11 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                 f"{NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE};"
                 f"fixed_arc_fraction={NEEDLE_PROVISIONAL_ARC_FRACTION}"
             )
-    elif needle_orientation_sweep or needle_environment_sweep:
+    elif (
+        needle_orientation_sweep
+        or needle_transport_sweep
+        or needle_environment_sweep
+    ):
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
             NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE,
             NEEDLE_PROVISIONAL_ARC_FRACTION,
@@ -1361,6 +1393,17 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                         "carry_orientation_velocity_damping_s": (
                             _NEEDLE_PROVISIONAL_ORIENTATION_VELOCITY_DAMPING_S
                         ),
+                    }
+                elif needle_transport_sweep:
+                    controller_kwargs = {
+                        "grasp_offset": needle_grasp_offsets[group_index],
+                        "carry_orientation_action_limit": (
+                            _NEEDLE_PROVISIONAL_ORIENTATION_ACTION_LIMIT
+                        ),
+                        "carry_orientation_velocity_damping_s": (
+                            _NEEDLE_PROVISIONAL_ORIENTATION_VELOCITY_DAMPING_S
+                        ),
+                        args.parameter: value,
                     }
                 else:
                     controller_kwargs = (

@@ -421,6 +421,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"needle_grasp_z_offset"' in benchmark_source
     assert '"carry_orientation_action_limit"' in benchmark_source
     assert '"carry_orientation_velocity_damping_s"' in benchmark_source
+    assert '"carry_goal_action_limit"' in benchmark_source
     assert '"grasp_offset_m"' in benchmark_source
     assert '"grasp_frame_source"' in benchmark_source
     assert '"hard_failure_term_counts"' in benchmark_source
