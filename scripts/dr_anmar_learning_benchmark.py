@@ -1458,7 +1458,9 @@ def _handover_controller_sweep(
     parameter = args.parameter
     receiver_offsets = []
     receiver_roll_offsets = [0.0] * len(values)
+    presentation_fractions = [0.35] * len(values)
     fixed_receiver_arc_fraction = 0.65
+    selected_receiver_z_offset = -0.0019
     if parameter == "receiver_arc_fraction":
         if any(not 0.0 <= value <= 1.0 for value in values):
             return _fail("receiver arc fractions must be between 0.0 and 1.0")
@@ -1497,10 +1499,29 @@ def _handover_controller_sweep(
             for _ in values
         ]
         receiver_roll_offsets = values
+    elif parameter == "presentation_fraction_from_giver":
+        if any(not 0.1 <= value <= 0.9 for value in values):
+            return _fail(
+                "presentation fractions must be between 0.1 and 0.9"
+            )
+        geometry_offset = needle_geometry_grasp_offset_m(
+            fixed_receiver_arc_fraction
+        )
+        receiver_offsets = [
+            (
+                geometry_offset[0],
+                geometry_offset[1],
+                selected_receiver_z_offset,
+            )
+            for _ in values
+        ]
+        receiver_roll_offsets = [math.pi] * len(values)
+        presentation_fractions = values
     else:
         return _fail(
             "handover-sweep parameter must be receiver_arc_fraction "
-            "receiver_grasp_z_offset, or receiver_roll_offset_rad"
+            "receiver_grasp_z_offset, receiver_roll_offset_rad, or "
+            "presentation_fraction_from_giver"
         )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
@@ -1748,6 +1769,9 @@ def _handover_controller_sweep(
                     receiver_roll_offset_rad=(
                         receiver_roll_offsets[group_index]
                     ),
+                    presentation_fraction_from_giver=(
+                        presentation_fractions[group_index]
+                    ),
                 )
                 giver_ee = group_obs["policy"][:, 32:35]
                 giver_grasp = group_obs["policy"][:, 46:49].clone()
@@ -1976,6 +2000,9 @@ def _handover_controller_sweep(
                     ),
                     "receiver_roll_offset_rad": (
                         receiver_roll_offsets[group_index]
+                    ),
+                    "presentation_fraction_from_giver": (
+                        presentation_fractions[group_index]
                     ),
                     "receiver_grasp_offset_m": list(
                         receiver_offsets[group_index]
