@@ -1509,7 +1509,7 @@ def _handover_controller_sweep(
     receiver_roll_offsets = [0.0] * len(values)
     presentation_fractions = [0.35] * len(values)
     fixed_receiver_arc_fraction = 0.65
-    selected_receiver_z_offset = -0.0019
+    selected_receiver_z_offset = -0.0018
     if parameter == "receiver_arc_fraction":
         if any(not 0.0 <= value <= 1.0 for value in values):
             return _fail("receiver arc fractions must be between 0.0 and 1.0")
