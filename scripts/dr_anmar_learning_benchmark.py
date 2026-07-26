@@ -285,7 +285,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             optimizer.step()
             losses.append(float(loss.detach().item()))
 
-            with torch.inference_mode():
+            with torch.no_grad():
                 obs, _, dones, _ = env.step(teacher_actions)
                 successes = env.unwrapped.termination_manager.get_term("success")
             obs = obs.to(agent_cfg.device)
@@ -297,7 +297,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
         obs = obs.to(agent_cfg.device)
         validation_successes = 0
         validation_completed = 0
-        with torch.inference_mode():
+        with torch.no_grad():
             for _ in range(args.validation_frames):
                 actions = policy(obs)
                 obs, _, dones, _ = env.step(actions)
