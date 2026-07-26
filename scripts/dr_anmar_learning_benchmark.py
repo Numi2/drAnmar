@@ -290,8 +290,89 @@ def _reach_error_offsets(task: str) -> tuple[tuple[str, int, int], ...]:
     return ()
 
 
+def _lift_teacher_action(
+    obs,
+    *,
+    position_scale: float,
+    approach_height: float = 0.012,
+    lateral_alignment_threshold: float = 0.004,
+    close_distance: float = 0.006,
+    normalized_contact_threshold: float = 0.002,
+):
+    """Contact-conditioned analytic approach, grasp, and lift action."""
+    import torch
+
+    policy_obs = obs["policy"]
+    ee_position = policy_obs[:, 16:19]
+    object_position = policy_obs[:, 23:26]
+    target_position = policy_obs[:, 36:39]
+    contact_forces = policy_obs[:, 43:45]
+
+    ee_to_object = object_position - ee_position
+    object_distance = torch.linalg.vector_norm(ee_to_object, dim=-1)
+    lateral_distance = torch.linalg.vector_norm(ee_to_object[:, :2], dim=-1)
+    above_object = object_position.clone()
+    above_object[:, 2] += approach_height
+    approach_position = torch.where(
+        (lateral_distance > lateral_alignment_threshold).unsqueeze(-1),
+        above_object,
+        object_position,
+    )
+    bilateral_contact = torch.all(
+        contact_forces > normalized_contact_threshold,
+        dim=-1,
+    )
+    translation_error = torch.where(
+        bilateral_contact.unsqueeze(-1),
+        target_position - object_position,
+        approach_position - ee_position,
+    )
+    body_action = torch.cat(
+        (
+            translation_error / position_scale,
+            torch.zeros_like(translation_error),
+        ),
+        dim=-1,
+    ).clamp(-1.0, 1.0)
+    closing = (
+        object_distance < close_distance
+    ) | torch.any(
+        contact_forces > normalized_contact_threshold,
+        dim=-1,
+    )
+    gripper_action = torch.where(
+        closing,
+        -torch.ones_like(object_distance),
+        torch.ones_like(object_distance),
+    ).unsqueeze(-1)
+    return torch.cat((body_action, gripper_action), dim=-1)
+
+
+def _teacher_action(
+    obs,
+    task: str,
+    *,
+    position_scale: float,
+    orientation_scale: float,
+):
+    if "Lift-Block-PSM-IK-Rel" in task:
+        return _lift_teacher_action(obs, position_scale=position_scale)
+    return _reach_teacher_action(
+        obs,
+        task,
+        position_scale=position_scale,
+        orientation_scale=orientation_scale,
+    )
+
+
+def _pretraining_algorithm(task: str) -> str:
+    if "Lift-Block-PSM-IK-Rel" in task:
+        return "analytic_grasp_lift_base_plus_learned_residual"
+    return "analytic_relative_ik_base_plus_learned_residual"
+
+
 def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
-    """Initialize and validate the analytic-base residual reach actor."""
+    """Initialize and validate a task-declared analytic-base residual actor."""
     import gymnasium as gym
     import torch
     import torch.nn.functional as functional
@@ -329,7 +410,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     started = time.perf_counter()
     try:
         for _ in range(args.updates):
-            teacher_actions = _reach_teacher_action(
+            teacher_actions = _teacher_action(
                 obs,
                 args.task,
                 position_scale=args.position_scale,
@@ -466,7 +547,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "training",
-            "algorithm": "analytic_relative_ik_base_plus_learned_residual",
+            "algorithm": _pretraining_algorithm(args.task),
             "task": args.task,
             "seed": args.seed,
             "requested_num_envs": args.requested_num_envs,
@@ -484,6 +565,16 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                 "position_m": args.position_scale,
                 "orientation_rad": args.orientation_scale,
             },
+            "teacher_controller": (
+                {
+                    "approach_height_m": 0.012,
+                    "lateral_alignment_threshold_m": 0.004,
+                    "close_distance_m": 0.006,
+                    "normalized_contact_threshold": 0.002,
+                }
+                if "Lift-Block-PSM-IK-Rel" in args.task
+                else None
+            ),
             "loss": {
                 "initial": losses[0] if losses else None,
                 "final": losses[-1] if losses else None,

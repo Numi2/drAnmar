@@ -92,6 +92,8 @@ def test_launcher_starts_simulator_before_task_registration() -> None:
     assert "export_policy_to_onnx" in benchmark_source
     assert 'termination_manager.get_term("success")' in benchmark_source
     assert "def _reach_teacher_action(" in benchmark_source
+    assert "def _lift_teacher_action(" in benchmark_source
+    assert "analytic_grasp_lift_base_plus_learned_residual" in benchmark_source
     assert "def _reach_error_offsets(" in benchmark_source
     assert "def _pretrain(" in benchmark_source
     assert "def _probe(" in benchmark_source
@@ -188,6 +190,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     block_source = (
         TASK_ROOT / "surgical/lift/config/block/joint_pos_env_cfg.py"
     ).read_text()
+    model_source = (
+        TASK_ROOT / "surgical/lift/residual_model.py"
+    ).read_text()
+    agent_source = (
+        TASK_ROOT / "surgical/lift/config/block/agents/rsl_rl_cfg.py"
+    ).read_text()
     launcher_source = (ROOT / "dr_anmar_learning.sh").read_text()
 
     assert "LIFT_INITIAL_OBJECT_HEIGHT_M = 0.003" in cfg_source
@@ -205,8 +213,18 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         == 1
     )
     assert "LIFT_INITIAL_OBJECT_HEIGHT_M" in block_source
+    assert "class LiftResidualMLPModel(MLPModel):" in model_source
+    assert "bilateral_contact.unsqueeze(-1)" in model_source
+    assert "lift_residual_actor([256, 128, 64])" in agent_source
     assert "probe)" in launcher_source
-    for source in (cfg_source, reward_source, termination_source, block_source):
+    for source in (
+        cfg_source,
+        reward_source,
+        termination_source,
+        block_source,
+        model_source,
+        agent_source,
+    ):
         ast.parse(source)
 
 

@@ -43,6 +43,26 @@ class DrAnmarDualReachResidualModelCfg(DrAnmarReachResidualModelCfg):
     arm_2_orientation_error_start: int = 55
 
 
+@configclass
+class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
+    """Contact-conditioned Stage 3 actor with a bounded learned residual."""
+
+    class_name = (
+        "orbit.surgical.tasks.surgical.lift.residual_model:"
+        "LiftResidualMLPModel"
+    )
+    end_effector_position_start: int = 16
+    object_position_start: int = 23
+    target_position_start: int = 36
+    contact_force_start: int = 43
+    position_scale: float = 0.01
+    approach_height: float = 0.012
+    lateral_alignment_threshold: float = 0.004
+    close_distance: float = 0.006
+    normalized_contact_threshold: float = 0.002
+    residual_scale: float = 0.2
+
+
 def _actor(hidden_dims: list[int], *, initial_std: float = 1.0) -> RslRlMLPModelCfg:
     return RslRlMLPModelCfg(
         hidden_dims=hidden_dims,
@@ -73,6 +93,21 @@ def dual_reach_residual_actor(
     initial_std: float = 0.25,
 ) -> DrAnmarDualReachResidualModelCfg:
     return DrAnmarDualReachResidualModelCfg(
+        hidden_dims=hidden_dims,
+        activation="elu",
+        obs_normalization=True,
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(
+            init_std=initial_std
+        ),
+    )
+
+
+def lift_residual_actor(
+    hidden_dims: list[int],
+    *,
+    initial_std: float = 0.25,
+) -> DrAnmarLiftResidualModelCfg:
+    return DrAnmarLiftResidualModelCfg(
         hidden_dims=hidden_dims,
         activation="elu",
         obs_normalization=True,
