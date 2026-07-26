@@ -523,8 +523,8 @@ def _handover_teacher_action(
     presentation_fraction_from_giver: float = 0.35,
     presentation_height_in_robot_frame: float = -0.13,
     minimum_lift_height_in_robot_frame: float = -0.139,
-    carry_lateral_action_limit: float = 0.06,
-    carry_vertical_action_limit: float = 0.10,
+    carry_lateral_action_limit: float = 0.10,
+    carry_vertical_action_limit: float = 0.18,
 ):
     """Stage a closest-arm pickup and other-arm physical custody transfer."""
     import math
@@ -673,7 +673,10 @@ def _handover_teacher_action(
         receiver_contacts > normalized_contact_threshold,
         dim=-1,
     )
-    giver_carry_mode = (phase >= 1) & (phase <= 2)
+    giver_carry_mode = (
+        giver_bilateral_contact
+        | ((phase >= 1) & (phase <= 2))
+    ) & (phase < 3)
 
     presentation_ready = (
         torch.linalg.vector_norm(
@@ -2265,8 +2268,9 @@ def _handover_controller_sweep(
                 "presentation_fraction_from_giver": 0.35,
                 "presentation_height_in_robot_frame_m": -0.13,
                 "minimum_lift_height_in_robot_frame_m": -0.139,
-                "carry_lateral_action_limit": 0.06,
-                "carry_vertical_action_limit": 0.10,
+                "carry_lateral_action_limit": 0.10,
+                "carry_vertical_action_limit": 0.18,
+                "giver_carry_latches_on_current_bilateral_contact": True,
                 "receiver_close_distance_m": 0.001,
                 "receiver_contact_centering_action_limit": 0.005,
                 "receiver_waits_for_presentation": True,
