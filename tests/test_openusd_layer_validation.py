@@ -53,3 +53,28 @@ def test_repository_discovery_includes_the_abdominal_rigid_proxy() -> None:
         "DynamicAbdominalPatient/"
         "dranmar_dynamic_abdominal_patient_rigid_proxy.usda"
     ) in relative
+
+
+def test_abdominal_rigid_proxy_keeps_physics_material_under_looks() -> None:
+    from pxr import Usd
+
+    proxy = (
+        REPOSITORY_ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/Patients"
+        / "DynamicAbdominalPatient"
+        / "dranmar_dynamic_abdominal_patient_rigid_proxy.usda"
+    )
+    stage = Usd.Stage.Open(str(proxy))
+    assert stage is not None
+
+    root = "/DrAnmarDynamicAbdominalPatientRigidProxy"
+    material_path = f"{root}/Looks/TablePhysics"
+    material = stage.GetPrimAtPath(material_path)
+    assert material.IsValid()
+    assert material.GetTypeName() == "Material"
+    assert not stage.GetPrimAtPath(f"{root}/PhysicsMaterials").IsValid()
+
+    binding = stage.GetPrimAtPath(f"{root}/Collisions/TorsoCollider").GetRelationship(
+        "material:binding:physics"
+    )
+    assert [str(path) for path in binding.GetTargets()] == [material_path]

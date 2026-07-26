@@ -160,7 +160,6 @@ def _author_proxy(destination: Path) -> None:
     UsdGeom.Scope.Define(stage, f"/{PROXY_ROOT}/Looks")
     UsdGeom.Scope.Define(stage, f"/{PROXY_ROOT}/Visuals")
     UsdGeom.Scope.Define(stage, f"/{PROXY_ROOT}/Collisions")
-    UsdGeom.Scope.Define(stage, f"/{PROXY_ROOT}/PhysicsMaterials")
 
     copied_materials: set[str] = set()
     modules = (Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade)
@@ -173,7 +172,7 @@ def _author_proxy(destination: Path) -> None:
         )
 
     physics_material = UsdShade.Material.Define(
-        stage, f"/{PROXY_ROOT}/PhysicsMaterials/TablePhysics"
+        stage, f"/{PROXY_ROOT}/Looks/TablePhysics"
     )
     physics_api = UsdPhysics.MaterialAPI.Apply(physics_material.GetPrim())
     physics_api.CreateStaticFrictionAttr(0.50)
