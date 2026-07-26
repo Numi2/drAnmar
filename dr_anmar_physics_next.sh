@@ -90,6 +90,11 @@ install_runtime() {
         torchaudio_version="${17}"
         "python${python_version}" -m venv "${env_root}"
         "${env_root}/bin/python" -m pip install "pip==${pip_version}"
+        "${env_root}/bin/python" -m pip install \
+            --index-url "${pytorch_index_url}" \
+            "torch==${torch_version}" \
+            "torchvision==${torchvision_version}" \
+            "torchaudio==${torchaudio_version}"
         "${env_root}/bin/python" -m pip install "isaacsim[all,extscache]==${isaacsim_version}" --extra-index-url https://pypi.nvidia.com
         if [[ ! -d "${isaaclab_root}/.git" ]]; then
             git clone --filter=blob:none --no-checkout "${isaaclab_repository}" "${isaaclab_root}"
@@ -119,81 +124,10 @@ install_runtime() {
             --lock "${lock_path}" \
             --output "${dependency_check}"
         "${env_root}/bin/python" -m pip freeze --all > "${next_root}/python-freeze.txt"
-        ISAACLAB_COMMIT="${isaaclab_commit}" CRESSIM_COMMIT="${cressim_commit}" \
-            "${env_root}/bin/python" - "${lock_path}" "${next_root}/python-freeze.txt" "${dependency_check}" <<PY > "${next_root}/runtime.json"
-import hashlib
-import importlib.metadata
-import json
-import os
-import platform
-import subprocess
-import sys
-
-lock = json.load(open(sys.argv[1], encoding="utf-8"))
-
-def sha256(path):
-    digest = hashlib.sha256()
-    with open(path, "rb") as stream:
-        while chunk := stream.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-def package(name):
-    try:
-        return importlib.metadata.version(name)
-    except importlib.metadata.PackageNotFoundError:
-        return None
-
-try:
-    driver = subprocess.run(
-        ["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=15,
-    ).stdout.strip().splitlines()
-except (OSError, subprocess.SubprocessError):
-    driver = []
-
-installed_packages = {
-    name: package(name)
-    for name in lock["runtime_packages"]
-}
-package_mismatches = {
-    name: {
-        "expected": expected,
-        "observed": installed_packages.get(name),
-    }
-    for name, expected in lock["runtime_packages"].items()
-    if installed_packages.get(name) != expected
-}
-if package_mismatches:
-    raise SystemExit(
-        "runtime package lock mismatch: "
-        + json.dumps(package_mismatches, sort_keys=True)
-    )
-
-receipt = {
-    "schema": "dr.anmar.physics-next-installation.v1",
-    "ready": True,
-    "lock_sha256": sha256(sys.argv[1]),
-    "python_freeze_sha256": sha256(sys.argv[2]),
-    "dependency_check_sha256": sha256(sys.argv[3]),
-    "dependency_check": json.load(open(sys.argv[3], encoding="utf-8")),
-    "python": platform.python_version(),
-    "platform": platform.platform(),
-    "gpu_driver": driver,
-    "packages": installed_packages,
-    "sources": {
-        "isaaclab": os.environ["ISAACLAB_COMMIT"],
-        "cressim_mpm": os.environ["CRESSIM_COMMIT"],
-    },
-    "clinical_validation": False,
-}
-print(json.dumps(receipt, indent=2, sort_keys=True))
-PY
-        cat "${next_root}/runtime.json"
-        shasum -a 256 "${next_root}/runtime.json" | awk "{print \$1}" > "${next_root}/READY"
+        "${env_root}/bin/python" \
+            "${repository_root}/scripts/write_dranmar_physics_next_receipt.py" \
+            --root "${next_root}" \
+            --lock "${lock_path}"
         rm -f "${next_root}/INSTALL_FAILED"
     ' bash "${NEXT_ROOT}" "${ENV_ROOT}" "${ISAACLAB_ROOT}" "${LOCK_PATH}" \
         "${PYTHON_VERSION}" "${PIP_VERSION}" "${ISAACSIM_VERSION}" \
