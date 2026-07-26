@@ -465,6 +465,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"receiver_roll_offset_rad"' in benchmark_source
     assert "receiver_target_orientation = quat_mul(" in benchmark_source
     assert "receiver_orientation_action_limit: float = 0.6" in benchmark_source
+    assert "receiver_close_distance: float = 0.0015" in benchmark_source
+    assert "receiver_contact_centering_action_limit: float = 0.03" in benchmark_source
     assert "receiver_roll_offsets = [math.pi] * len(values)" in benchmark_source
     assert "giver_bilateral_contact = torch.all(" in benchmark_source
     assert "receiver_any_contact = torch.any(" in benchmark_source
@@ -510,6 +512,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"minimum_receiver_grasp_distance_m"' in benchmark_source
     assert '"maximum_receiver_jaw_1_contact_n"' in benchmark_source
     assert '"maximum_receiver_jaw_2_contact_n"' in benchmark_source
+    assert '"environments_with_receiver_bilateral_contact"' in benchmark_source
+    assert '"environments_with_four_jaw_overlap_contact"' in benchmark_source
+    assert '"successful_environment_indices"' in benchmark_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source
     assert '"success_by_initial_target_xy_distance"' in benchmark_source

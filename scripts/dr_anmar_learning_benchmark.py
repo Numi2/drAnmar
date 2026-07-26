@@ -515,8 +515,10 @@ def _handover_teacher_action(
     approach_height: float = 0.02,
     lateral_alignment_threshold: float = 0.005,
     close_distance: float = 0.005,
+    receiver_close_distance: float = 0.0015,
     slow_approach_radius: float = 0.02,
     slow_approach_action_limit: float = 0.1,
+    receiver_contact_centering_action_limit: float = 0.03,
     normalized_contact_threshold: float = 0.002,
     presentation_fraction_from_giver: float = 0.25,
     presentation_height_in_robot_frame: float = -0.07,
@@ -695,6 +697,17 @@ def _handover_teacher_action(
         receiver_hold,
         receiver_translation,
     )
+    receiver_contact_imbalance = (
+        receiver_contacts[:, 1] - receiver_contacts[:, 0]
+    )
+    receiver_contact_centering = torch.sign(
+        receiver_contact_imbalance
+    ) * receiver_contact_centering_action_limit
+    receiver_translation[:, 2] += torch.where(
+        (phase == 2) & receiver_any_contact,
+        receiver_contact_centering,
+        torch.zeros_like(receiver_contact_centering),
+    )
 
     giver_closing = (
         (giver_distance < close_distance)
@@ -707,7 +720,7 @@ def _handover_teacher_action(
     receiver_closing = (
         (phase >= 2)
         & (
-            (receiver_distance < close_distance)
+            (receiver_distance < receiver_close_distance)
             | torch.any(
                 receiver_contacts > normalized_contact_threshold,
                 dim=-1,
@@ -1555,6 +1568,23 @@ def _handover_controller_sweep(
     maximum_receiver_jaw_2_contact = torch.zeros_like(
         minimum_giver_grasp_distance
     )
+    ever_receiver_jaw_1_contact = torch.zeros(
+        env.unwrapped.num_envs,
+        dtype=torch.bool,
+        device=env.unwrapped.device,
+    )
+    ever_receiver_jaw_2_contact = torch.zeros_like(
+        ever_receiver_jaw_1_contact
+    )
+    ever_receiver_bilateral_contact = torch.zeros_like(
+        ever_receiver_jaw_1_contact
+    )
+    ever_four_jaw_overlap_contact = torch.zeros_like(
+        ever_receiver_jaw_1_contact
+    )
+    successful_environment = torch.zeros_like(
+        ever_receiver_jaw_1_contact
+    )
     initial_giver_state = {
         "ee_position_robot_frame_m": obs["policy"][0, 32:35].tolist(),
         "object_position_robot_frame_m": obs["policy"][0, 46:49].tolist(),
@@ -1635,6 +1665,9 @@ def _handover_controller_sweep(
             )
             time_out_term = manager.get_term("time_out")
             first_done = was_unresolved & dones
+            successful_environment |= (
+                first_done & success_term & ~hard_failure
+            )
             max_phase = torch.where(
                 first_done & success_term & ~hard_failure,
                 torch.full_like(max_phase, 4),
@@ -1650,6 +1683,28 @@ def _handover_controller_sweep(
                 env.unwrapped,
                 sensor_names[2],
                 sensor_names[3],
+            )
+            giver_bilateral_now = torch.all(
+                giver_forces > 0.01,
+                dim=-1,
+            )
+            receiver_bilateral_now = torch.all(
+                receiver_forces > 0.01,
+                dim=-1,
+            )
+            ever_receiver_jaw_1_contact |= (
+                was_unresolved & (receiver_forces[:, 0] > 0.01)
+            )
+            ever_receiver_jaw_2_contact |= (
+                was_unresolved & (receiver_forces[:, 1] > 0.01)
+            )
+            ever_receiver_bilateral_contact |= (
+                was_unresolved & receiver_bilateral_now
+            )
+            ever_four_jaw_overlap_contact |= (
+                was_unresolved
+                & giver_bilateral_now
+                & receiver_bilateral_now
             )
             object_forces = torch.cat(
                 (giver_forces, receiver_forces),
@@ -1833,6 +1888,27 @@ def _handover_controller_sweep(
                     ),
                     "maximum_receiver_jaw_2_contact_n": float(
                         maximum_receiver_jaw_2_contact[group_index].item()
+                    ),
+                    "environments_with_receiver_jaw_1_contact": int(
+                        ever_receiver_jaw_1_contact[start:stop].sum().item()
+                    ),
+                    "environments_with_receiver_jaw_2_contact": int(
+                        ever_receiver_jaw_2_contact[start:stop].sum().item()
+                    ),
+                    "environments_with_receiver_bilateral_contact": int(
+                        ever_receiver_bilateral_contact[start:stop].sum().item()
+                    ),
+                    "environments_with_four_jaw_overlap_contact": int(
+                        ever_four_jaw_overlap_contact[start:stop].sum().item()
+                    ),
+                    "successful_environment_indices": (
+                        torch.nonzero(
+                            successful_environment[start:stop],
+                            as_tuple=False,
+                        )
+                        .squeeze(-1)
+                        .add(start)
+                        .tolist()
                     ),
                 }
             )
