@@ -77,7 +77,9 @@ def test_launcher_starts_simulator_before_task_registration() -> None:
     assert "export_policy_to_onnx" in benchmark_source
     assert 'termination_manager.get_term("success")' in benchmark_source
     assert "def _reach_teacher_action(" in benchmark_source
+    assert "def _reach_error_offsets(" in benchmark_source
     assert "def _pretrain(" in benchmark_source
+    assert '"pose_diagnostics": pose_diagnostics' in benchmark_source
 
 
 def test_reach_policy_observes_direct_pose_error() -> None:

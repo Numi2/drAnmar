@@ -279,6 +279,17 @@ def _reach_teacher_action(
     raise ValueError(f"no analytic reach teacher is declared for task: {task}")
 
 
+def _reach_error_offsets(task: str) -> tuple[tuple[str, int, int], ...]:
+    if "Reach-Dual-PSM-IK-Rel" in task:
+        return (
+            ("arm_1", 46, 49),
+            ("arm_2", 52, 55),
+        )
+    if "Reach-PSM-IK-Rel" in task:
+        return (("arm", 23, 26),)
+    return ()
+
+
 def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     """Initialize and validate the analytic-base residual reach actor."""
     import gymnasium as gym
@@ -345,8 +356,44 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
         obs = obs.to(agent_cfg.device)
         validation_successes = 0
         validation_completed = 0
+        error_offsets = _reach_error_offsets(args.task)
+        diagnostic_totals = {
+            name: torch.zeros(6, device=agent_cfg.device)
+            for name, _, _ in error_offsets
+        }
+        simultaneous_pose_inside = torch.zeros(1, device=agent_cfg.device)
         with torch.no_grad():
             for _ in range(args.validation_frames):
+                policy_obs = obs["policy"]
+                pose_inside_terms = []
+                for name, position_start, orientation_start in error_offsets:
+                    position_error = torch.linalg.vector_norm(
+                        policy_obs[:, position_start : position_start + 3],
+                        dim=-1,
+                    )
+                    orientation_error = torch.linalg.vector_norm(
+                        policy_obs[:, orientation_start : orientation_start + 3],
+                        dim=-1,
+                    )
+                    position_inside = position_error < 0.01
+                    orientation_inside = orientation_error < 0.15
+                    pose_inside = position_inside & orientation_inside
+                    pose_inside_terms.append(pose_inside)
+                    diagnostic_totals[name] += torch.stack(
+                        (
+                            position_error.new_tensor(position_error.numel()),
+                            position_error.sum(),
+                            orientation_error.sum(),
+                            position_inside.sum().to(position_error.dtype),
+                            orientation_inside.sum().to(position_error.dtype),
+                            pose_inside.sum().to(position_error.dtype),
+                        )
+                    )
+                if pose_inside_terms:
+                    simultaneous = pose_inside_terms[0]
+                    for pose_inside in pose_inside_terms[1:]:
+                        simultaneous = simultaneous & pose_inside
+                    simultaneous_pose_inside += simultaneous.sum()
                 actions = policy(obs)
                 obs, _, dones, _ = env.step(actions)
                 successes = env.unwrapped.termination_manager.get_term("success")
@@ -360,6 +407,23 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
         simulated_frames = env.unwrapped.num_envs * (
             args.updates + args.validation_frames
         )
+        pose_diagnostics = {}
+        for name, totals in diagnostic_totals.items():
+            values = totals.cpu().tolist()
+            samples = int(values[0])
+            pose_diagnostics[name] = {
+                "samples": samples,
+                "mean_position_error_m": values[1] / samples,
+                "mean_orientation_error_rad": values[2] / samples,
+                "position_inside_rate": values[3] / samples,
+                "orientation_inside_rate": values[4] / samples,
+                "pose_inside_rate": values[5] / samples,
+            }
+        if error_offsets:
+            pose_diagnostics["simultaneous_pose_inside_rate"] = (
+                float(simultaneous_pose_inside.item())
+                / (env.unwrapped.num_envs * args.validation_frames)
+            )
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "training",
@@ -404,6 +468,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     if validation_completed
                     else None
                 ),
+                "pose_diagnostics": pose_diagnostics,
             },
             "wall_time_s": duration,
             "simulated_frames": simulated_frames,
