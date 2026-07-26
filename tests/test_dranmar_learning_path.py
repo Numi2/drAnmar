@@ -496,10 +496,15 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "carry_vertical_action_limit: float = 0.10" in benchmark_source
     assert "((phase == 2) & ~presentation_ready)" in benchmark_source
     assert '"arm_1_move_into_arm_2_range"' in benchmark_source
-    assert '"camera_mode": "full_environment_grid_oblique"' in benchmark_source
+    assert (
+        '"camera_mode": "focused_environment_neighborhood_oblique"'
+        in benchmark_source
+    )
     assert 'env_cfg.viewer.origin_type = "world"' in benchmark_source
     assert "env_cfg.viewer.eye = camera_eye" in benchmark_source
     assert "env_cfg.viewer.lookat = camera_target" in benchmark_source
+    assert "camera_focus = env.unwrapped.scene.env_origins[" in benchmark_source
+    assert "camera_visual_span = min(grid_span, 5.0)" in benchmark_source
     assert '"travel_fraction_of_grid_span": 0.30' in benchmark_source
     assert "flow_eased = 0.5 - 0.5 * math.cos(" in benchmark_source
     assert 'play.add_argument("--video", action="store_true")' in benchmark_source

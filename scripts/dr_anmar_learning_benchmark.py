@@ -1513,7 +1513,12 @@ def _handover_controller_sweep(
             (grid_side - 1) * float(env_cfg.scene.env_spacing),
             1.0,
         )
-        camera_eye = (0.0, -0.333 * grid_span, 0.245 * grid_span)
+        camera_visual_span = min(grid_span, 5.0)
+        camera_eye = (
+            0.0,
+            -0.333 * camera_visual_span,
+            0.245 * camera_visual_span,
+        )
         camera_target = (0.0, 0.0, 0.12)
         env_cfg.viewer.resolution = (
             args.video_width,
@@ -1526,6 +1531,19 @@ def _handover_controller_sweep(
         env_kwargs["render_mode"] = "rgb_array"
     env = gym.make(args.task, **env_kwargs)
     if args.video:
+        camera_focus = env.unwrapped.scene.env_origins[
+            args.video_env_index
+        ]
+        camera_eye = (
+            camera_eye[0] + float(camera_focus[0].item()),
+            camera_eye[1] + float(camera_focus[1].item()),
+            camera_eye[2],
+        )
+        camera_target = (
+            camera_target[0] + float(camera_focus[0].item()),
+            camera_target[1] + float(camera_focus[1].item()),
+            camera_target[2],
+        )
         env.unwrapped.sim.set_camera_view(
             camera_eye,
             camera_target,
@@ -1687,11 +1705,15 @@ def _handover_controller_sweep(
                 flow_eased = 0.5 - 0.5 * math.cos(
                     math.pi * flow_progress
                 )
-                flow_x = (flow_eased - 0.5) * 0.30 * grid_span
+                flow_x = (
+                    (flow_eased - 0.5)
+                    * 0.30
+                    * camera_visual_span
+                )
                 flow_y = (
                     0.04
                     * math.sin(math.pi * flow_progress)
-                    * grid_span
+                    * camera_visual_span
                 )
                 env.unwrapped.sim.set_camera_view(
                     (
@@ -2067,7 +2089,8 @@ def _handover_controller_sweep(
             "video_capture": (
                 {
                     "environment_index": args.video_env_index,
-                    "camera_mode": "full_environment_grid_oblique",
+                    "camera_mode": "focused_environment_neighborhood_oblique",
+                    "focus_environment_index": args.video_env_index,
                     "camera_eye_world_m": list(camera_eye),
                     "camera_target_world_m": list(camera_target),
                     "camera_flow": {
