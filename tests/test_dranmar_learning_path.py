@@ -53,6 +53,7 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     assert manifest["defaults"]["stage_3_initialization"]["carry_action_limit"] == 0.1
     stage_3 = stages[2]
     contract = stage_3["qualification_contract"]
+    assert contract["initial_object_height_m"] == 0.015
     assert contract["initial_object_height_m"] < contract["minimum_success_height_m"]
     assert contract["minimum_success_height_m"] < contract["target_object_height_m"]
     assert contract["sustained_success_steps"] / contract["control_hz"] == 0.2
@@ -220,7 +221,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     ).read_text()
     launcher_source = (ROOT / "dr_anmar_learning.sh").read_text()
 
-    assert "LIFT_INITIAL_OBJECT_HEIGHT_M = 0.004" in cfg_source
+    assert "LIFT_INITIAL_OBJECT_HEIGHT_M = 0.015" in cfg_source
     assert "LIFT_MINIMUM_SUCCESS_HEIGHT_M = 0.06" in cfg_source
     assert "LIFT_TARGET_OBJECT_HEIGHT_M = 0.08" in cfg_source
     assert "LIFT_SUCCESS_DWELL_STEPS = 10" in cfg_source

@@ -66,7 +66,7 @@ avoidance or contact competence. Stage 3 turns contact back on and requires
 measured contact, stability, force, slip, and drop evidence.
 
 Stage 3 uses an analytic approach-grasp-lift base with a bounded learned
-residual. The block begins at a collision-clear 4 mm table-rest height, the
+residual. The block begins at a collision-clear 15 mm root height, the
 commanded target is 8 cm, and success
 requires the object to remain above 6 cm for ten consecutive 50 Hz control
 steps. Every one of those steps must also satisfy bilateral PhysX contact,
@@ -87,8 +87,11 @@ same orientation-qualified contract for needle lifting.
 Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift
 objects therefore use the explicit identity `(0, 0, 0, 1)`. This prevents the
 legacy `(w, x, y, z)` identity from becoming a 180-degree X rotation, which
-would create a π-radian goal error before the first action. The needle begins
-at a collision-clear 1 mm support height based on its scaled mesh bounds.
+would create a π-radian goal error before the first action. In that identity
+orientation, the composed and scaled block collision mesh reaches 14.613 mm
+below its root; a 15 mm root height clears the approximately 0.2 mm table top.
+The needle begins at a collision-clear 1 mm support height based on its scaled
+mesh bounds.
 
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,
