@@ -135,6 +135,9 @@ class _ReachResidualOnnxExport(_ReachResidualExport):
         self.verbose = verbose
         self.input_size = model.obs_dim
 
+    def get_dummy_inputs(self) -> tuple[torch.Tensor]:
+        return (torch.zeros(1, self.input_size),)
+
     @property
     def input_names(self) -> list[str]:
         return ["obs"]
