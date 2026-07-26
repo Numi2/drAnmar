@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Minimal scene configuration for the DrAnmar Adaptive Anastomosis Robot."""
 from isaaclab.scene import InteractiveSceneCfg
-from isaaclab.utils import configclass
+from isaaclab.utils.configclass import configclass
 from orbit.surgical.assets.adaptive_anastomosis_robot import (
     make_franka_adaptive_anastomosis_robot_cfg,
     spawn_hollow_tissue_demo,

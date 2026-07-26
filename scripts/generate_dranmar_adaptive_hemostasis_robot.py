@@ -1629,7 +1629,7 @@ def make_franka_adaptive_hemostasis_robot_cfg(*, prim_path="/World/Robot", clip_
     _check(clip_state,VALID_BINARY_STATES,"clip_state");_check(patch_state,VALID_BINARY_STATES,"patch_state");_check(irrigation_state,VALID_IRRIGATION_STATES,"irrigation_state");_check(collection_state,VALID_COLLECTION_STATES,"collection_state")
     import isaaclab.sim as sim_utils
     from isaaclab.actuators import ImplicitActuatorCfg
-    from isaaclab.utils import configclass
+    from isaaclab.utils.configclass import configclass
     from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
     from isaaclab_assets.robots.franka import FRANKA_PANDA_CFG
     @configclass

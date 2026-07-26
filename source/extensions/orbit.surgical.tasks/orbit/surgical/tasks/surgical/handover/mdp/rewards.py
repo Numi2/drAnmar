@@ -24,7 +24,11 @@ def end_effector_object_distance(
 ) -> torch.Tensor:
     obj: RigidObject = env.scene["object"]
     frame: FrameTransformer = env.scene[frame_name]
-    distance = torch.linalg.vector_norm(frame.data.target_pos_w[:, 0, :] - obj.data.root_pos_w, dim=-1)
+    distance = torch.linalg.vector_norm(
+        mdp_common.as_torch(frame.data.target_pos_w)[:, 0, :]
+        - mdp_common.as_torch(obj.data.root_pos_w),
+        dim=-1,
+    )
     active = handover_state(env)["phase"] >= minimum_phase
     return active.float() * (1.0 - torch.tanh(distance / std))
 

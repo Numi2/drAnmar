@@ -9,7 +9,7 @@ It records software and asset provenance; it is not clinical-validation evidence
 
 - Catalog schema: `dr.anmar.asset-catalog-lock.v3`
 - Catalog version: `1.3.0`
-- Catalog SHA-256: `05f5590aae69d0632d9dc6a4b6c17e7925727c83e4c0e23b1f3e46f8612a872b`
+- Catalog SHA-256: `0ffaf59b036c2cc9ceb90054277657dcbc0049a3b95a55c9db6b7c9aa4abf237`
 - Local asset units: `29`
 - Product portfolio assets: `21`
 - Clinical validation: `false`
@@ -37,13 +37,13 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 | `dr_anmar:Props/SurgicalClosure/SkinStapler` | 3 | 72 | 59730460 | `3e1bba9536a83a97fe3acce31428f64c0452895d2ed79d9761ad74579f3880cb` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/StaplerTestCell` | 2 | 5 | 17479 | `65e5f6ec510adb66583068b3d8aaac244d29ddf295ce0993c9eaa339c2a444fc` | `LICENSE` |
 | `dr_anmar:Props/SurgicalCount/LaparotomySponge` | 2 | 13 | 1308151 | `a87f97bc68aa68d08404508cb50c4155d868444e9d9f44f6e4b6e300f7bed64e` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalDissection/SafePlaneDissectionRobot` | 13 | 58 | 25738964 | `8cc405d14ddc3a5a25c63c7b036e86ed46847349b0b2ede993f5c217da7d5b3c` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalDivision/AdaptiveSealDivideRobot` | 7 | 40 | 9744362 | `a35d033cdebcd0bc9a42ebb5be471a79d9e06ce17da13cdf406e7abfb51db254` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalExposure/AtraumaticExposureRobot` | 6 | 35 | 37326399 | `28c0e7f65deebcb6c5f9ae7b4d18793cf3f9217a4558e9ff497909835d4aed7a` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalHemostasis/AdaptiveHemostasisRobot` | 8 | 38 | 18737089 | `25525ebd1a3c4398b89056e57097b6e04d53bcd8567f16593e17875989fe2820` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalDissection/SafePlaneDissectionRobot` | 13 | 58 | 25738964 | `72223e889ba08d96d1c1e0bfdcb69ab44216f1605573f7bd816105b8eb303042` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalDivision/AdaptiveSealDivideRobot` | 7 | 40 | 9744362 | `7ded4e78d8882250ee6b90858d03939b54b5a3061b72a81c9dbcf6436aa04872` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalExposure/AtraumaticExposureRobot` | 6 | 35 | 37326399 | `622c2ddaf04e161ea7f862247adf09ec000bcbd282498f7ba605aabc68ffc1f7` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalHemostasis/AdaptiveHemostasisRobot` | 8 | 38 | 18737089 | `03314e37e248c200e236087d561974fecede1cc2f6d9773068d705e4b5cf8daf` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalOncology/OncoSurgeryCell` | 13 | 59 | 12671992 | `2970dc0bfd6695c35762e648f1dc681a5654b8ffe9c72665052c1b14c2ab44dd` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalPreparation/WoundPreparationRobot` | 9 | 43 | 26825404 | `f8ae0a42466d7156ea4d0bf944e25d0e037d38b59b97cb253cfd1e889d475146` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalReconstruction/AdaptiveAnastomosisRobot` | 8 | 41 | 36651526 | `15b8ca1c07f95fa7bfdd9cb9d981689a5164cdc0c3f98ec36b4f773c58967ee8` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalPreparation/WoundPreparationRobot` | 9 | 43 | 26825404 | `654f5e14927c94432af165f92c806f7d3c2841a1b93a7685184e7662df6a288e` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalReconstruction/AdaptiveAnastomosisRobot` | 8 | 41 | 36651526 | `500276bee068aff195ce6a832c7326ffce23068850e371541c65288db3b75dcb` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/LICENSE.txt` |
 | `dr_anmar:Props/Surgical_block` | 1 | 1 | 17062976 | `08e0245c10695d1bf9c93ab4c039a98ea3f540ff193635153049969285d55ed4` | `LICENSE` |
 | `dr_anmar:Props/Surgical_needle` | 2 | 2 | 1802638 | `29dc4940d49f86fa11e3ddcd43c78ce18b890ef539667a3dfa012b68da7bbbfa` | `LICENSE` |
 | `dr_anmar:Props/Table` | 1 | 1 | 18839808 | `e803ce27ca757a6da56aa828e2e5dd0e7f26c1fdd3b8b20952129ece8029842b` | `LICENSE` |

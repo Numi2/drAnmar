@@ -7,4 +7,5 @@
 
 from isaaclab.envs.mdp import *  # noqa: F401, F403
 
+from ...mdp_common import sticky_success_rate  # noqa: F401
 from .rewards import *  # noqa: F401, F403

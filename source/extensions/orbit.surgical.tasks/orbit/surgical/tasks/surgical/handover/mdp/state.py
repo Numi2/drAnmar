@@ -49,7 +49,7 @@ def handover_state(
         state = {
             "phase": torch.zeros(env.num_envs, dtype=torch.long, device=env.device),
             "rewarded_phase": torch.zeros(env.num_envs, dtype=torch.long, device=env.device),
-            "start_object_pos": obj.data.root_pos_w.clone(),
+            "start_object_pos": mdp_common.as_torch(obj.data.root_pos_w).clone(),
             "last_reset_step": torch.full((env.num_envs,), -1, dtype=torch.long, device=env.device),
             "last_step": -1,
         }
@@ -58,7 +58,8 @@ def handover_state(
     reset = (env.episode_length_buf == 0) & (state["last_reset_step"] != step)
     state["phase"][reset] = 0
     state["rewarded_phase"][reset] = 0
-    state["start_object_pos"][reset] = obj.data.root_pos_w[reset]
+    object_pos_w = mdp_common.as_torch(obj.data.root_pos_w)
+    state["start_object_pos"][reset] = object_pos_w[reset]
     state["last_reset_step"][reset] = step
     if state["last_step"] == step and not bool(torch.any(reset)):
         return state
@@ -71,9 +72,9 @@ def handover_state(
     )
     receiver_frame: FrameTransformer = env.scene["ee_1_frame"]
     receiver_distance = torch.linalg.vector_norm(
-        receiver_frame.data.target_pos_w[:, 0, :] - obj.data.root_pos_w, dim=-1
+        mdp_common.as_torch(receiver_frame.data.target_pos_w)[:, 0, :] - object_pos_w, dim=-1
     )
-    lifted = (obj.data.root_pos_w[:, 2] - state["start_object_pos"][:, 2]) > minimum_lift
+    lifted = (object_pos_w[:, 2] - state["start_object_pos"][:, 2]) > minimum_lift
     pos_error, rot_error = mdp_common.object_goal_errors(
         env, command_name, SceneEntityCfg("robot_1"), SceneEntityCfg("object")
     )

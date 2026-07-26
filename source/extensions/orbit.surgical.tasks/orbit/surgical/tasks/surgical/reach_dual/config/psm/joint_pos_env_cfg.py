@@ -12,7 +12,7 @@ from isaaclab.assets import AssetBaseCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import FrameTransformerCfg
-from isaaclab.utils import configclass
+from isaaclab.utils.configclass import configclass
 
 import orbit.surgical.tasks.surgical.reach_dual.mdp as mdp
 from orbit.surgical.tasks.surgical.reach_dual.reach_env_cfg import ReachEnvCfg
@@ -38,7 +38,7 @@ class PSMReachEnvCfg(ReachEnvCfg):
         # simulation settings
         self.viewer.eye = (0.0, 0.5, 0.2)
         self.viewer.lookat = (0.0, 0.0, 0.05)
-        self.scene.replicate_physics = False
+        self.scene.replicate_physics = True
 
         self.scene.table = AssetBaseCfg(
             prim_path="{ENV_REGEX_NS}/Table",
@@ -92,7 +92,7 @@ class PSMReachEnvCfg(ReachEnvCfg):
         self.commands.ee_1_pose = mdp.UniformPoseCommandCfg(
             asset_name="robot_1",
             body_name="psm_tool_tip_link",
-            resampling_time_range=(4.0, 4.0),
+            resampling_time_range=(10.0, 10.0),
             debug_vis=False,
             ranges=mdp.UniformPoseCommandCfg.Ranges(
                 pos_x=(-0.07, 0.07),
@@ -110,7 +110,7 @@ class PSMReachEnvCfg(ReachEnvCfg):
         self.commands.ee_2_pose = mdp.UniformPoseCommandCfg(
             asset_name="robot_2",
             body_name="psm_tool_tip_link",
-            resampling_time_range=(4.0, 4.0),
+            resampling_time_range=(10.0, 10.0),
             debug_vis=False,
             ranges=mdp.UniformPoseCommandCfg.Ranges(
                 pos_x=(-0.07, 0.07),

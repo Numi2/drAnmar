@@ -21,7 +21,7 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg, UsdFileCfg
-from isaaclab.utils import configclass
+from isaaclab.utils.configclass import configclass
 
 from . import mdp
 
@@ -203,6 +203,21 @@ class RewardsCfg:
         },
         weight=30.0,
     )
+    success_rate = RewTerm(
+        func=mdp.sticky_success_rate,
+        params={
+            "success_fn": mdp.successful_lift,
+            "success_params": {
+                "command_name": "object_pose",
+                "position_threshold": 0.015,
+                "orientation_threshold": 0.35,
+                "contact_threshold": 0.01,
+                "maximum_linear_speed": 0.08,
+                "maximum_angular_speed": 1.5,
+            },
+        },
+        weight=0.0,
+    )
 
     object_force_excess = RewTerm(
         func=mdp.contact_force_excess,
@@ -273,11 +288,11 @@ class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
     action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-1, "num_steps": 10000}
+        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-2, "num_steps": 20_000}
     )
 
     joint_vel = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -1e-1, "num_steps": 10000}
+        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -1e-3, "num_steps": 20_000}
     )
 
 
@@ -291,7 +306,11 @@ class LiftEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
     # Scene settings
-    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(
+        num_envs=4096,
+        env_spacing=2.5,
+        clone_in_fabric=True,
+    )
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()

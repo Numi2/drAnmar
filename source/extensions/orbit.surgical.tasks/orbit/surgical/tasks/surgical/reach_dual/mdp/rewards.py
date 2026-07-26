@@ -1,50 +1,47 @@
 # Copyright (c) 2024, The ORBIT-Surgical Project Developers.
+# Copyright (c) 2026, Dr.Anmar Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from __future__ import annotations
+"""Shared pose-reaching terms for Dr.Anmar dual-arm learning."""
 
-import torch
-from typing import TYPE_CHECKING
-
-from isaaclab.assets import RigidObject
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.utils.math import combine_frame_transforms, quat_error_magnitude, quat_mul
 
-if TYPE_CHECKING:
-    from isaaclab.envs import ManagerBasedRLEnv
-
-
-def position_command_error(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg) -> torch.Tensor:
-    """Penalize tracking of the position error using L2-norm.
-
-    The function computes the position error between the desired position (from the command) and the
-    current position of the asset's body (in world frame). The position error is computed as the L2-norm
-    of the difference between the desired and current positions.
-    """
-    # extract the asset (to enable type hinting)
-    asset: RigidObject = env.scene[asset_cfg.name]
-    command = env.command_manager.get_command(command_name)
-    # obtain the desired and current positions
-    des_pos_b = command[:, :3]
-    des_pos_w, _ = combine_frame_transforms(asset.data.root_state_w[:, :3], asset.data.root_state_w[:, 3:7], des_pos_b)
-    curr_pos_w = asset.data.body_state_w[:, asset_cfg.body_ids[0], :3]  # type: ignore
-    return torch.norm(curr_pos_w - des_pos_w, dim=1)
+from ...reach.mdp.rewards import (  # noqa: F401
+    orientation_command_error,
+    orientation_command_tanh,
+    pose_command_error_vector,
+    pose_command_errors,
+    position_command_error,
+    position_command_tanh,
+    success_bonus,
+    successful_reach,
+)
 
 
-def orientation_command_error(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg) -> torch.Tensor:
-    """Penalize tracking orientation error using shortest path.
-
-    The function computes the orientation error between the desired orientation (from the command) and the
-    current orientation of the asset's body (in world frame). The orientation error is computed as the shortest
-    path between the desired and current orientations.
-    """
-    # extract the asset (to enable type hinting)
-    asset: RigidObject = env.scene[asset_cfg.name]
-    command = env.command_manager.get_command(command_name)
-    # obtain the desired and current orientations
-    des_quat_b = command[:, 3:7]
-    des_quat_w = quat_mul(asset.data.root_state_w[:, 3:7], des_quat_b)
-    curr_quat_w = asset.data.body_state_w[:, asset_cfg.body_ids[0], 3:7]  # type: ignore
-    return quat_error_magnitude(curr_quat_w, des_quat_w)
+def successful_dual_reach(
+    env,
+    command_1_name,
+    command_2_name,
+    position_threshold,
+    orientation_threshold,
+):
+    """Require both tools to satisfy their pose envelopes simultaneously."""
+    first = successful_reach(
+        env,
+        command_1_name,
+        position_threshold,
+        orientation_threshold,
+        robot_cfg=SceneEntityCfg("robot_1"),
+        frame_cfg=SceneEntityCfg("ee_1_frame"),
+    )
+    second = successful_reach(
+        env,
+        command_2_name,
+        position_threshold,
+        orientation_threshold,
+        robot_cfg=SceneEntityCfg("robot_2"),
+        frame_cfg=SceneEntityCfg("ee_2_frame"),
+    )
+    return first & second

@@ -28,7 +28,7 @@ def object_is_lifted(
     """Reward lifting only while both jaws physically contact the object."""
     obj: RigidObject = env.scene[object_cfg.name]
     grasped = mdp_common.bilateral_contact(env, sensor_1_name, sensor_2_name, contact_threshold)
-    return ((obj.data.root_pos_w[:, 2] > minimal_height) & grasped).float()
+    return ((mdp_common.as_torch(obj.data.root_pos_w)[:, 2] > minimal_height) & grasped).float()
 
 
 def object_ee_distance(
@@ -40,7 +40,11 @@ def object_ee_distance(
     """Reward measured end-effector proximity to the object."""
     obj: RigidObject = env.scene[object_cfg.name]
     ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
-    distance = torch.linalg.vector_norm(obj.data.root_pos_w - ee_frame.data.target_pos_w[:, 0, :], dim=-1)
+    distance = torch.linalg.vector_norm(
+        mdp_common.as_torch(obj.data.root_pos_w)
+        - mdp_common.as_torch(ee_frame.data.target_pos_w)[:, 0, :],
+        dim=-1,
+    )
     return 1.0 - torch.tanh(distance / std)
 
 
@@ -59,7 +63,7 @@ def object_goal_distance(
     obj: RigidObject = env.scene[object_cfg.name]
     distance, _ = mdp_common.object_goal_errors(env, command_name, robot_cfg, object_cfg)
     grasped = mdp_common.bilateral_contact(env, sensor_1_name, sensor_2_name, contact_threshold)
-    return ((obj.data.root_pos_w[:, 2] > minimal_height) & grasped).float() * (
+    return ((mdp_common.as_torch(obj.data.root_pos_w)[:, 2] > minimal_height) & grasped).float() * (
         1.0 - torch.tanh(distance / std)
     )
 

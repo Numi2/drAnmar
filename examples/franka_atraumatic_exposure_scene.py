@@ -11,7 +11,7 @@ app = AppLauncher(args).app
 import isaaclab.sim as sim_utils
 from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
 from isaaclab.assets import AssetBaseCfg
-from isaaclab.utils import configclass
+from isaaclab.utils.configclass import configclass
 from orbit.surgical.assets.atraumatic_exposure_robot import (
     make_franka_exposure_robot_cfg,
     spawn_exposure_tissue_demo,

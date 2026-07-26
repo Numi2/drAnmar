@@ -1,4 +1,5 @@
 # Copyright (c) 2024, The ORBIT-Surgical Project Developers.
+# Copyright (c) 2026, Dr.Anmar Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -17,8 +18,8 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
-from isaaclab.utils import configclass
-from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
+from isaaclab.utils.configclass import configclass
+from isaaclab.utils.noise import UniformNoiseCfg as Unoise
 
 from . import mdp
 
@@ -82,6 +83,11 @@ class ObservationsCfg:
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         pose_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "ee_pose"})
+        target_relative_position = ObsTerm(
+            func=mdp.pose_command_error_vector,
+            params={"command_name": "ee_pose"},
+            clip=(-0.25, 0.25),
+        )
         actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
@@ -103,16 +109,50 @@ class EventCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    # task terms
+    # Bounded coarse-to-fine shaping preserves a useful gradient near success.
     end_effector_position_tracking = RewTerm(
-        func=mdp.position_command_error,
-        weight=-0.2,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+        func=mdp.position_command_tanh,
+        weight=1.0,
+        params={
+            "command_name": "ee_pose",
+            "std": 0.10,
+            "asset_cfg": SceneEntityCfg("robot", body_names=MISSING),
+        },
+    )
+    position_fine = RewTerm(
+        func=mdp.position_command_tanh,
+        weight=1.5,
+        params={"command_name": "ee_pose", "std": 0.02},
     )
     end_effector_orientation_tracking = RewTerm(
-        func=mdp.orientation_command_error,
-        weight=-0.05,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=MISSING), "command_name": "ee_pose"},
+        func=mdp.orientation_command_tanh,
+        weight=0.5,
+        params={
+            "command_name": "ee_pose",
+            "std": 0.25,
+            "asset_cfg": SceneEntityCfg("robot", body_names=MISSING),
+        },
+    )
+    success = RewTerm(
+        func=mdp.success_bonus,
+        weight=2.0,
+        params={
+            "command_name": "ee_pose",
+            "position_threshold": 0.008,
+            "orientation_threshold": 0.12,
+        },
+    )
+    success_rate = RewTerm(
+        func=mdp.sticky_success_rate,
+        weight=0.0,
+        params={
+            "success_fn": mdp.successful_reach,
+            "success_params": {
+                "command_name": "ee_pose",
+                "position_threshold": 0.008,
+                "orientation_threshold": 0.12,
+            },
+        },
     )
 
     # action penalty
@@ -129,6 +169,14 @@ class TerminationsCfg:
     """Termination terms for the MDP."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    success = DoneTerm(
+        func=mdp.successful_reach,
+        params={
+            "command_name": "ee_pose",
+            "position_threshold": 0.008,
+            "orientation_threshold": 0.12,
+        },
+    )
 
 
 @configclass
@@ -136,7 +184,7 @@ class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
     action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -0.005, "num_steps": 4500}
+        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -0.001, "num_steps": 20_000}
     )
 
 
@@ -150,7 +198,11 @@ class ReachEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the reach end-effector pose tracking environment."""
 
     # Scene settings
-    scene: ReachSceneCfg = ReachSceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: ReachSceneCfg = ReachSceneCfg(
+        num_envs=4096,
+        env_spacing=2.5,
+        clone_in_fabric=True,
+    )
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()

@@ -158,6 +158,24 @@ Robot, contact, vessel, vital-sign, fluid-balance, and causal camera signals
 are observations. Patient-effect fields are excluded from the policy action
 space, and train/validation masks are assigned at complete-episode boundaries.
 
+## DrAnmar Learning Path
+
+The reinforcement-learning path now starts with one measurable PSM pose-control
+skill and promotes policies through dual-tool coordination, contact-qualified
+lift, and physical handover. It uses stable `DrAnmar-*` task IDs, current
+RSL-RL actor/critic configuration, GPU-native scene cloning, success-based early
+stopping, live RAM/VRAM fitting, and typed benchmark evidence.
+
+```bash
+./dr_anmar_learning.sh validate
+./dr_anmar_learning.sh smoke
+./dr_anmar_learning.sh sweep
+./dr_anmar_learning.sh train
+```
+
+See the complete [DrAnmar Learning Path](docs/DRANMAR_LEARNING_PATH.md) for task
+stages, efficiency controls, promotion gates, and evidence boundaries.
+
 ## Doctor Studio
 
 Doctor Studio is the clinician-facing workspace for live simulation,

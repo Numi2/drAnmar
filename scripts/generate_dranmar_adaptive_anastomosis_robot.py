@@ -2063,7 +2063,7 @@ def make_franka_adaptive_anastomosis_robot_cfg(
     _check(collection_state,VALID_COLLECTION_STATES,"collection_state")
     import isaaclab.sim as sim_utils
     from isaaclab.actuators import ImplicitActuatorCfg
-    from isaaclab.utils import configclass
+    from isaaclab.utils.configclass import configclass
     from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
     from isaaclab_assets.robots.franka import FRANKA_PANDA_CFG
     @configclass
@@ -2543,7 +2543,7 @@ def example_scene() -> str:
     return textwrap.dedent('''#!/usr/bin/env python3
 """Minimal scene configuration for the DrAnmar Adaptive Anastomosis Robot."""
 from isaaclab.scene import InteractiveSceneCfg
-from isaaclab.utils import configclass
+from isaaclab.utils.configclass import configclass
 from orbit.surgical.assets.adaptive_anastomosis_robot import (
     make_franka_adaptive_anastomosis_robot_cfg,
     spawn_hollow_tissue_demo,

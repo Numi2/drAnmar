@@ -21,7 +21,7 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg
 from isaaclab.sim.spawners.from_files.from_files_cfg import GroundPlaneCfg, UsdFileCfg
-from isaaclab.utils import configclass
+from isaaclab.utils.configclass import configclass
 
 from . import mdp
 
@@ -259,6 +259,11 @@ class RewardsCfg:
 
     phase_progress = RewTerm(func=mdp.phase_progress, weight=10.0)
     success = RewTerm(func=mdp.successful_handover, weight=40.0)
+    success_rate = RewTerm(
+        func=mdp.sticky_success_rate,
+        params={"success_fn": mdp.successful_handover},
+        weight=0.0,
+    )
 
     object_force_excess = RewTerm(
         func=mdp.contact_force_excess,
@@ -347,7 +352,7 @@ class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
     action_rate = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-1, "num_steps": 10000}
+        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-2, "num_steps": 20_000}
     )
 
 
@@ -361,7 +366,11 @@ class HandoverEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the handover environment."""
 
     # Scene settings
-    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: ObjectTableSceneCfg = ObjectTableSceneCfg(
+        num_envs=4096,
+        env_spacing=2.5,
+        clone_in_fabric=True,
+    )
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()

@@ -11,7 +11,7 @@ import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.sensors import FrameTransformerCfg
-from isaaclab.utils import configclass
+from isaaclab.utils.configclass import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 
 import orbit.surgical.tasks.surgical.reach.mdp as mdp
@@ -60,8 +60,8 @@ class STARReachEnvCfg(ReachEnvCfg):
         self.commands.ee_pose = mdp.UniformPoseCommandCfg(
             asset_name="robot",
             body_name="endo360_needle",
-            resampling_time_range=(4.0, 4.0),
-            debug_vis=True,
+            resampling_time_range=(10.0, 10.0),
+            debug_vis=False,
             ranges=mdp.UniformPoseCommandCfg.Ranges(
                 pos_x=(0.45, 0.55),
                 pos_y=(0.0, 0.3),
