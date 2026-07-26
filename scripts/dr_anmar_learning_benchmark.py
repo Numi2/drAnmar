@@ -1037,9 +1037,15 @@ _LIFT_SWEEP_PARAMETERS = {
     "carry_target_height_offset",
     "carry_vertical_action_limit",
     "close_distance",
+    "gripper_close_rad",
+    "gripper_effort_limit_nm",
     "lateral_alignment_threshold",
     "lateral_clearance_below_target",
     "slow_approach_action_limit",
+}
+_ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS = {
+    "gripper_close_rad",
+    "gripper_effort_limit_nm",
 }
 
 
@@ -1059,8 +1065,38 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail("controller-sweep requires at least two comma-separated values")
     if args.num_envs % len(values):
         return _fail("number of environments must divide evenly across sweep values")
+    environment_level_parameter = (
+        args.parameter in _ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS
+    )
+    if environment_level_parameter and len(set(values)) != 1:
+        return _fail(
+            f"{args.parameter} is environment-level; repeat one value "
+            "to run a full-population qualification"
+        )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
+    environment_override = None
+    if args.parameter == "gripper_close_rad":
+        if not 0.0 <= values[0] <= 0.5:
+            return _fail("gripper_close_rad must be between 0.0 and 0.5")
+        from orbit.surgical.assets.psm import psm_gripper_command_expr
+
+        env_cfg.actions.gripper_action.close_command_expr = (
+            psm_gripper_command_expr(values[0])
+        )
+        environment_override = {
+            "gripper_close_rad": values[0],
+            "close_command_expr": (
+                env_cfg.actions.gripper_action.close_command_expr
+            ),
+        }
+    elif args.parameter == "gripper_effort_limit_nm":
+        if values[0] <= 0.0:
+            return _fail("gripper_effort_limit_nm must be positive")
+        env_cfg.scene.robot.actuators["psm_tool"].effort_limit_sim = values[0]
+        environment_override = {
+            "gripper_effort_limit_nm": values[0],
+        }
     env = gym.make(args.task, cfg=env_cfg)
     obs, _ = env.reset()
     group_size = env.unwrapped.num_envs // len(values)
@@ -1091,7 +1127,11 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
             for group_index, value in enumerate(values):
                 start = group_index * group_size
                 stop = start + group_size
-                controller_kwargs = {args.parameter: value}
+                controller_kwargs = (
+                    {}
+                    if environment_level_parameter
+                    else {args.parameter: value}
+                )
                 group_obs = {
                     name: observation[start:stop]
                     for name, observation in obs.items()
@@ -1204,6 +1244,8 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
             "frames_per_env": args.num_frames,
             "parameter": args.parameter,
             "values": values,
+            "environment_level_parameter": environment_level_parameter,
+            "environment_override": environment_override,
             "shared_reset_distribution": True,
             "first_terminal_outcome_per_environment": True,
             "results": results,

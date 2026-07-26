@@ -85,6 +85,16 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         == 0.0
     )
     assert (
+        manifest["defaults"]["stage_3_initialization"]["gripper_close_rad"]
+        == 0.07
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
+            "gripper_effort_limit_nm"
+        ]
+        == 0.1
+    )
+    assert (
         manifest["defaults"]["stage_3_initialization"][
             "close_distance_to_grasp_m"
         ]
@@ -378,6 +388,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"maximum_midair_bilateral_contact_loss_steps"' in benchmark_source
     assert '"at_least_10_steps"' in benchmark_source
     assert '"retention_diagnostics"' in benchmark_source
+    assert '"gripper_close_rad"' in benchmark_source
+    assert '"gripper_effort_limit_nm"' in benchmark_source
+    assert '"environment_level_parameter"' in benchmark_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source
     assert '"success_by_initial_target_xy_distance"' in benchmark_source
