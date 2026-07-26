@@ -15,6 +15,19 @@
     "torchvision": "0.26.0+cu128",
     "torchaudio": "2.11.0+cu128"
   },
+  "dependency_policy": {
+    "isaaclab_install_profile": "core",
+    "pytorch_index_url": "https://download.pytorch.org/whl/cu128",
+    "allowed_pip_check_conflicts": [
+      "isaacsim-core 6.0.1.0 has requirement llvmlite==0.46.0, but you have llvmlite 0.48.0.",
+      "isaacsim-core 6.0.1.0 has requirement mujoco==3.8.0, but you have mujoco 3.10.0.",
+      "isaacsim-core 6.0.1.0 has requirement mujoco-warp==3.8.0.3, but you have mujoco-warp 3.10.0.3.",
+      "isaacsim-core 6.0.1.0 has requirement newton[sim]==1.2.1, but you have newton 1.5.0.dev0.",
+      "isaacsim-core 6.0.1.0 has requirement newton-usd-schemas==0.2.0, but you have newton-usd-schemas 0.4.0.",
+      "isaacsim-kernel 6.0.1.0 has requirement typing_extensions==4.12.2, but you have typing-extensions 4.16.0."
+    ],
+    "override_basis": "IsaacLab 51104d55d46192f9c981f2b63007d5156e141cec pyproject override-dependencies"
+  },
   "sources": {
     "isaaclab": {
       "repository": "https://github.com/isaac-sim/IsaacLab.git",

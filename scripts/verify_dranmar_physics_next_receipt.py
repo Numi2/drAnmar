@@ -39,11 +39,14 @@ def verify(next_root: Path, lock_path: Path) -> list[str]:
     failures: list[str] = []
     receipt_path = next_root / "runtime.json"
     freeze_path = next_root / "python-freeze.txt"
+    dependency_check_path = next_root / "dependency-check.json"
     ready_path = next_root / "READY"
     if not receipt_path.is_file():
         return [f"missing receipt: {receipt_path}"]
     if not freeze_path.is_file():
         failures.append(f"missing dependency freeze: {freeze_path}")
+    if not dependency_check_path.is_file():
+        failures.append(f"missing dependency check: {dependency_check_path}")
     if not ready_path.is_file():
         failures.append(f"missing readiness digest: {ready_path}")
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
@@ -54,6 +57,19 @@ def verify(next_root: Path, lock_path: Path) -> list[str]:
         failures.append("physics-next lock digest mismatch")
     if freeze_path.is_file() and receipt.get("python_freeze_sha256") != _sha256(freeze_path):
         failures.append("Python dependency freeze digest mismatch")
+    if (
+        dependency_check_path.is_file()
+        and receipt.get("dependency_check_sha256") != _sha256(dependency_check_path)
+    ):
+        failures.append("Python dependency-check digest mismatch")
+    if dependency_check_path.is_file():
+        dependency_check = json.loads(
+            dependency_check_path.read_text(encoding="utf-8")
+        )
+        if not dependency_check.get("passed"):
+            failures.append("Python dependency check did not pass")
+        if receipt.get("dependency_check") != dependency_check:
+            failures.append("dependency check receipt mismatch")
     for package_name, expected_version in lock["runtime_packages"].items():
         if receipt.get("packages", {}).get(package_name) != expected_version:
             failures.append(f"{package_name} runtime package mismatch")

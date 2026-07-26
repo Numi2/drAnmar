@@ -38,6 +38,11 @@ CRESSIM_REPOSITORY="$(lock_value sources.cressim_mpm.repository)"
 CRESSIM_COMMIT="$(lock_value sources.cressim_mpm.revision)"
 PYTETWILD_VERSION="$(lock_value mesh_environment.pytetwild)"
 SCIPY_VERSION="$(lock_value mesh_environment.scipy)"
+ISAACLAB_INSTALL_PROFILE="$(lock_value dependency_policy.isaaclab_install_profile)"
+PYTORCH_INDEX_URL="$(lock_value dependency_policy.pytorch_index_url)"
+TORCH_VERSION="$(lock_value runtime_packages.torch)"
+TORCHVISION_VERSION="$(lock_value runtime_packages.torchvision)"
+TORCHAUDIO_VERSION="$(lock_value runtime_packages.torchaudio)"
 
 mkdir -p "${NEXT_ROOT}" "${LOG_ROOT}"
 
@@ -77,6 +82,12 @@ install_runtime() {
         isaaclab_commit="$9"
         cressim_repository="${10}"
         cressim_commit="${11}"
+        repository_root="${12}"
+        isaaclab_install_profile="${13}"
+        pytorch_index_url="${14}"
+        torch_version="${15}"
+        torchvision_version="${16}"
+        torchaudio_version="${17}"
         "python${python_version}" -m venv "${env_root}"
         "${env_root}/bin/python" -m pip install "pip==${pip_version}"
         "${env_root}/bin/python" -m pip install "isaacsim[all,extscache]==${isaacsim_version}" --extra-index-url https://pypi.nvidia.com
@@ -87,7 +98,13 @@ install_runtime() {
         git fetch --depth 1 origin "${isaaclab_commit}"
         git checkout --detach "${isaaclab_commit}"
         [[ "$(git rev-parse HEAD)" == "${isaaclab_commit}" ]]
-        PATH="${env_root}/bin:${PATH}" VIRTUAL_ENV="${env_root}" ./isaaclab.sh --install
+        PATH="${env_root}/bin:${PATH}" VIRTUAL_ENV="${env_root}" \
+            ./isaaclab.sh --install "${isaaclab_install_profile}"
+        "${env_root}/bin/python" -m pip install \
+            --index-url "${pytorch_index_url}" \
+            "torch==${torch_version}" \
+            "torchvision==${torchvision_version}" \
+            "torchaudio==${torchaudio_version}"
         cressim_root="${next_root}/CRESSim-MPM"
         if [[ ! -d "${cressim_root}/.git" ]]; then
             git clone --filter=blob:none --no-checkout "${cressim_repository}" "${cressim_root}"
@@ -96,10 +113,14 @@ install_runtime() {
         git fetch --depth 1 origin "${cressim_commit}"
         git checkout --detach "${cressim_commit}"
         [[ "$(git rev-parse HEAD)" == "${cressim_commit}" ]]
-        "${env_root}/bin/python" -m pip check
+        dependency_check="${next_root}/dependency-check.json"
+        "${env_root}/bin/python" \
+            "${repository_root}/scripts/verify_dranmar_physics_next_environment.py" \
+            --lock "${lock_path}" \
+            --output "${dependency_check}"
         "${env_root}/bin/python" -m pip freeze --all > "${next_root}/python-freeze.txt"
         ISAACLAB_COMMIT="${isaaclab_commit}" CRESSIM_COMMIT="${cressim_commit}" \
-            "${env_root}/bin/python" - "${lock_path}" "${next_root}/python-freeze.txt" <<PY > "${next_root}/runtime.json"
+            "${env_root}/bin/python" - "${lock_path}" "${next_root}/python-freeze.txt" "${dependency_check}" <<PY > "${next_root}/runtime.json"
 import hashlib
 import importlib.metadata
 import json
@@ -157,6 +178,8 @@ receipt = {
     "ready": True,
     "lock_sha256": sha256(sys.argv[1]),
     "python_freeze_sha256": sha256(sys.argv[2]),
+    "dependency_check_sha256": sha256(sys.argv[3]),
+    "dependency_check": json.load(open(sys.argv[3], encoding="utf-8")),
     "python": platform.python_version(),
     "platform": platform.platform(),
     "gpu_driver": driver,
@@ -175,7 +198,10 @@ PY
     ' bash "${NEXT_ROOT}" "${ENV_ROOT}" "${ISAACLAB_ROOT}" "${LOCK_PATH}" \
         "${PYTHON_VERSION}" "${PIP_VERSION}" "${ISAACSIM_VERSION}" \
         "${ISAACLAB_REPOSITORY}" "${ISAACLAB_COMMIT}" \
-        "${CRESSIM_REPOSITORY}" "${CRESSIM_COMMIT}" >>"${INSTALL_LOG}" 2>&1 &
+        "${CRESSIM_REPOSITORY}" "${CRESSIM_COMMIT}" \
+        "${REPOSITORY_ROOT}" "${ISAACLAB_INSTALL_PROFILE}" \
+        "${PYTORCH_INDEX_URL}" "${TORCH_VERSION}" "${TORCHVISION_VERSION}" \
+        "${TORCHAUDIO_VERSION}" >>"${INSTALL_LOG}" 2>&1 &
     echo "$!" >"${PID_FILE}"
     echo "Started isolated physics-next installation (PID $!)"
     echo "Log: ${INSTALL_LOG}"
