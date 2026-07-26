@@ -515,6 +515,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "((phase == 3) & giver_any_contact)" in benchmark_source
     assert '"giver_holds_position_until_release": True' in benchmark_source
     assert (
+        '"receiver_holds_position_after_acquisition": True'
+        in benchmark_source
+    )
+    assert "receiver_hold_target" not in benchmark_source
+    assert (
         '"receiver_orientation_frozen_after_acquisition": True'
         in benchmark_source
     )

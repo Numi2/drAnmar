@@ -637,9 +637,6 @@ def _handover_teacher_action(
     presentation_in_giver = (
         presentation_fraction_from_giver * root_2_in_giver
     )
-    presentation_in_receiver = (
-        (presentation_fraction_from_giver - 1.0) * root_2_in_giver
-    )
     giver_target = presentation_in_giver.clone()
     giver_target[:, 2] = presentation_height_in_robot_frame
     vertical_only = (
@@ -678,24 +675,6 @@ def _handover_teacher_action(
     )
     giver_carry_mode = (phase >= 1) & (phase <= 2)
 
-    receiver_hold_target = presentation_in_receiver.clone()
-    receiver_hold_target[:, 2] = presentation_height_in_robot_frame
-    receiver_hold_error = (
-        receiver_hold_target - object_in_receiver
-    ) / position_scale
-    receiver_hold = torch.cat(
-        (
-            receiver_hold_error[:, :2].clamp(
-                -carry_lateral_action_limit,
-                carry_lateral_action_limit,
-            ),
-            receiver_hold_error[:, 2:].clamp(
-                -carry_vertical_action_limit,
-                carry_vertical_action_limit,
-            ),
-        ),
-        dim=-1,
-    )
     presentation_ready = (
         torch.linalg.vector_norm(
             giver_target - object_in_giver,
@@ -741,7 +720,7 @@ def _handover_teacher_action(
     )
     receiver_translation = torch.where(
         (phase >= 3).unsqueeze(-1),
-        receiver_hold,
+        torch.zeros_like(receiver_translation),
         receiver_translation,
     )
     receiver_contact_imbalance = (
@@ -2261,6 +2240,7 @@ def _handover_controller_sweep(
                 "receiver_contact_centering_action_limit": 0.005,
                 "receiver_waits_for_presentation": True,
                 "giver_holds_position_until_release": True,
+                "receiver_holds_position_after_acquisition": True,
                 "receiver_orientation_frozen_after_acquisition": True,
                 "release_requires_open_command_and_contact_loss": True,
             },
