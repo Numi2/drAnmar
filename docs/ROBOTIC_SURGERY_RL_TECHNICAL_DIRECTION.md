@@ -49,7 +49,8 @@ idempotent.
 
 The learning strategy is:
 
-1. use state-based PPO to qualify motor control and expose simulator defects;
+1. reuse a qualified analytic controller or imitation policy as the bounded
+   action base, then learn only the residual behavior the task still needs;
 2. use clinician demonstrations plus Isaac Lab Mimic and deformable-data
    generation to learn contact-rich skills;
 3. compare recurrent behavior cloning, action-chunking transformers, and
@@ -126,7 +127,7 @@ flowchart LR
 
 | Method | Dr.Anmar use | Decision |
 | --- | --- | --- |
-| RSL-RL PPO | Reach, dual-arm coordination, grasp approach, curriculum teachers | Primary state-policy baseline |
+| RSL-RL PPO | Bounded residual improvement around qualified controllers or imitation policies | Primary online-RL implementation |
 | Recurrent behavior cloning | Fast demonstration baseline and rescue-policy continuity | Always benchmark |
 | ACT / action chunking | Precise multi-step manipulation with correlated motion | Primary visuomotor candidate |
 | Diffusion policy | Multimodal demonstrations and bimanual dexterity | Primary visuomotor candidate |
@@ -160,8 +161,10 @@ single PSM reach
 ```
 
 This is infrastructure and control qualification. It is not a surgical
-autonomy claim. PPO is appropriate here because observations are compact,
-rewards can be made causal, and thousands of worlds can run in parallel.
+autonomy claim. The Stage 1 PSM actor now combines the relative-IK controller
+with a zero-initialized bounded neural residual. The controller cleared the
+held-out gate without PPO refinement; later foundation tasks use PPO only when
+the frozen analytic-base or imitation policy leaves a measured failure gap.
 
 ### Track B — demonstrations and data quality
 
@@ -326,7 +329,7 @@ Reward is a training signal. It is never evidence by itself.
 | Scene and asset authority | OpenUSD |
 | Stable simulation baseline | Isaac Sim + PhysX |
 | Robot-learning environment | Isaac Lab manager-based environments |
-| State-policy training | RSL-RL PPO |
+| State-policy training | RSL-RL residual PPO around a qualified controller or imitation base |
 | Demonstration augmentation | Isaac Lab Mimic |
 | Imitation training | Robomimic plus Dr.Anmar ACT/diffusion candidates |
 | Deformable frontier | Newton/Warp and measured Dr.Anmar solver integrations |
@@ -342,9 +345,9 @@ state, patient effects, or safety evidence.
 
 ## Immediate execution order
 
-1. Instrument the active PSM learning harness with TQTA, GPU-hours-to-gate,
-   samples-to-gate, and expert-minutes-to-gate.
-2. Finish and freeze the active PSM reach/lift/handover motor ladder.
+1. Keep the qualified PSM reach residual-policy checkpoint and failure corpus
+   as the warm start for later skills.
+2. Finish and freeze the remaining dual-reach/lift/handover motor ladder.
 3. Add a single canonical dataset schema shared by teleoperation, Isaac Lab
    Mimic, Robomimic, ACT, and diffusion policies.
 4. Make needle lift repeatable without teleportation or hidden attachment.

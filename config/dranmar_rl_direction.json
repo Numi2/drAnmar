@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "name": "Dr.Anmar Robotic Surgery RL Direction",
   "status": "adopted_research_direction",
   "scope": [
@@ -51,7 +51,7 @@
       "NVIDIA PhysX"
     ],
     "learning_environment": "NVIDIA Isaac Lab manager-based environments",
-    "state_policy_trainer": "RSL-RL PPO",
+    "state_policy_trainer": "RSL-RL residual PPO around a qualified controller or imitation base",
     "imitation_data": [
       "Isaac Lab Mimic",
       "Robomimic"
@@ -178,7 +178,7 @@
   "algorithm_portfolio": [
     {
       "id": "rsl_rl_ppo",
-      "role": "motor_foundation_and_privileged_teacher",
+      "role": "bounded_residual_improvement_after_controller_or_imitation_bootstrap",
       "status": "primary"
     },
     {
@@ -238,7 +238,9 @@
       "id": "motor_foundations",
       "existing_contract": "config/dranmar_learning_path.json",
       "methods": [
-        "state_based_PPO",
+        "analytic_or_imitation_base_policy",
+        "zero_initialized_bounded_residual",
+        "state_based_residual_PPO",
         "privileged_observations"
       ]
     },
@@ -333,6 +335,7 @@
       "counterexample_mining",
       "early_stop_on_invalid_evidence",
       "warm_start_from_compatible_skill",
+      "controller_or_imitation_base_before_online_RL",
       "fixed_budget_candidate_race",
       "successive_halving",
       "failure_cluster_targeted_curriculum"
