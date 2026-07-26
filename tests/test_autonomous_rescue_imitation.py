@@ -16,9 +16,11 @@ from dr_anmar_expert import ExpertDemonstrationController  # noqa: E402
 from dr_anmar_rescue_dataset import (  # noqa: E402
     CONTACT_FEATURES,
     FLUID_BALANCE_FEATURES,
+    OBSERVATION_KEYS,
     SCHEMA,
     VESSEL_FEATURES,
     VITAL_SIGN_FEATURES,
+    build_rescue_policy_observation,
     merge_rescue_training_hdf5,
     write_rescue_training_hdf5,
 )
@@ -79,6 +81,54 @@ def test_rescue_expert_requires_observed_patient_effect() -> None:
     assert expert.phase == "verify"
     assert command.phase_changed is True
     assert expert.rescue_peak_compression_fraction == 0.4
+
+
+def test_live_rescue_observation_matches_training_contract() -> None:
+    observation = build_rescue_policy_observation(
+        joint_positions=(
+            np.arange(7, dtype=np.float32),
+            np.arange(7, dtype=np.float32) + 10.0,
+        ),
+        joint_velocities=(
+            np.arange(7, dtype=np.float32) + 20.0,
+            np.arange(7, dtype=np.float32) + 30.0,
+        ),
+        tool_positions_w=np.asarray(
+            ((0.1, 0.2, 0.3), (0.4, 0.5, 0.6)),
+            dtype=np.float32,
+        ),
+        target_position_w=np.asarray(
+            (0.5, 0.7, 0.9),
+            dtype=np.float32,
+        ),
+        rescue_contact={
+            "left_normal_force_n": 1.2,
+            "right_normal_force_n": 1.1,
+        },
+        rescue_vessel={"distal_perfusion_fraction": 0.8},
+        rescue_vital_signs={"heart_rate_bpm": 90.0},
+        rescue_fluid_balance={"intravascular_volume_ml": 4200.0},
+        procedure_phase=5,
+        sensor_authority=True,
+        tool_position_valid=np.asarray((1.0, 0.0)),
+        selected_arm=2,
+    )
+
+    assert tuple(observation) == OBSERVATION_KEYS
+    assert all(value.dtype == np.float32 for value in observation.values())
+    assert all(value.ndim == 1 for value in observation.values())
+    np.testing.assert_allclose(
+        observation["target_relative_tool_positions"],
+        np.asarray(
+            (0.4, 0.5, 0.6, 0.1, 0.2, 0.3),
+            dtype=np.float32,
+        ),
+        atol=1.0e-7,
+    )
+    np.testing.assert_array_equal(
+        observation["selected_arm"],
+        np.asarray((0.0, 1.0)),
+    )
 
 
 def _write_capture(path: Path, frames: int = 5) -> None:

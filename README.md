@@ -38,6 +38,25 @@ Dr.Anmar supports four connected activities:
 The platform is intended for reproducible engineering studies. Every quantitative result must be interpreted
 within the exact asset revision, software stack, hardware, scenario, and measurement contract that produced it.
 
+### Executable Autonomous Rescue policy loop
+
+Autonomous Rescue OR has a closed imitation-learning loop: record contact-driven
+expert episodes, pack whole episodes, train Robomimic BC, load one immutable
+checkpoint into the live room, and evaluate seeded rollouts against patient
+effects. The policy can emit bounded robot actions only. Bilateral contact,
+compression, perfusion, overload, vital signs, release, and success remain
+post-physics outputs of the patient runtime.
+
+```bash
+./dr_anmar_rescue_il.sh policy-room /path/to/model_epoch_200.pth 2361
+./dr_anmar_rescue_il.sh rollout 2361
+./dr_anmar_rescue_il.sh evaluate-policy 2361 20 --continue-on-error
+```
+
+Every policy rollout is recorded with its checkpoint SHA-256 and
+patient-effect outcome. It is labeled `learned_policy_rollout` and is never
+automatically accepted as an expert Behavior Cloning reference.
+
 ## Asset catalog and reproducibility
 
 Dr.Anmar uses one provider-aware asset registry for repository assets and the

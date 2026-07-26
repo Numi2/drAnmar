@@ -98,6 +98,27 @@ OBSERVATION_KEYS = (
 )
 
 
+def rescue_policy_observation_shapes(
+    arms: int,
+) -> dict[str, tuple[int, ...]]:
+    if arms < 1:
+        raise ValueError("rescue policy requires at least one PSM")
+    return {
+        "joint_pos": (arms * 7,),
+        "joint_vel": (arms * 7,),
+        "tool_positions_w": (arms * 3,),
+        "target_relative_tool_positions": (arms * 3,),
+        "rescue_contact": (len(CONTACT_FEATURES),),
+        "rescue_vessel": (len(VESSEL_FEATURES),),
+        "rescue_vital_signs": (len(VITAL_SIGN_FEATURES),),
+        "rescue_fluid_balance": (len(FLUID_BALANCE_FEATURES),),
+        "procedure_phase": (1,),
+        "sensor_authority": (1,),
+        "tool_position_valid": (arms,),
+        "selected_arm": (arms,),
+    }
+
+
 def rescue_vector(
     values: Mapping[str, Any],
     features: Sequence[str],
@@ -137,6 +158,190 @@ def _as_feature_matrix(values: np.ndarray) -> np.ndarray:
     return values.reshape(values.shape[0], -1).astype(np.float32, copy=False)
 
 
+def build_rescue_policy_observations(
+    *,
+    joint_positions: Sequence[np.ndarray],
+    joint_velocities: Sequence[np.ndarray],
+    tool_positions_w: np.ndarray,
+    target_position_w: np.ndarray,
+    rescue_contact: np.ndarray,
+    rescue_vessel: np.ndarray,
+    rescue_vital_signs: np.ndarray,
+    rescue_fluid_balance: np.ndarray,
+    procedure_phase: np.ndarray,
+    sensor_authority: np.ndarray,
+    tool_position_valid: np.ndarray,
+    selected_arm: np.ndarray,
+) -> dict[str, np.ndarray]:
+    """Build the canonical batched observation consumed by rescue policies.
+
+    This function is the single training-serving contract. The dataset
+    exporter and the live workstation both call it so a policy cannot receive
+    a subtly different feature ordering or target-relative convention at
+    rollout time.
+    """
+
+    tools = np.asarray(tool_positions_w, dtype=np.float32)
+    target = np.asarray(target_position_w, dtype=np.float32)
+    if tools.ndim != 3 or tools.shape[2] != 3:
+        raise ValueError(
+            "rescue tool positions must have shape (frames, arms, 3)"
+        )
+    frames = int(tools.shape[0])
+    if target.shape != (frames, 3):
+        raise ValueError(
+            "rescue target positions must have shape (frames, 3)"
+        )
+    arms = int(tools.shape[1])
+    if (
+        not joint_positions
+        or len(joint_positions) != len(joint_velocities)
+        or len(joint_positions) != arms
+    ):
+        raise ValueError(
+            "rescue observations require matching joint state for every arm"
+        )
+
+    def matrix(name: str, values: np.ndarray) -> np.ndarray:
+        array = np.asarray(values)
+        if array.ndim == 0 or array.shape[0] != frames:
+            raise ValueError(
+                f"rescue observation {name} is not frame-aligned"
+            )
+        result = _as_feature_matrix(array)
+        if not np.isfinite(result).all():
+            raise ValueError(
+                f"rescue observation {name} contains NaN or infinity"
+            )
+        return result
+
+    position_matrices = [
+        matrix(f"joint_pos[{index}]", values)
+        for index, values in enumerate(joint_positions)
+    ]
+    velocity_matrices = [
+        matrix(f"joint_vel[{index}]", values)
+        for index, values in enumerate(joint_velocities)
+    ]
+    relative = target[:, None, :] - tools
+    observations = {
+        "joint_pos": np.concatenate(position_matrices, axis=1),
+        "joint_vel": np.concatenate(velocity_matrices, axis=1),
+        "tool_positions_w": matrix("tool_positions_w", tools),
+        "target_relative_tool_positions": matrix(
+            "target_relative_tool_positions",
+            relative,
+        ),
+        "rescue_contact": matrix("rescue_contact", rescue_contact),
+        "rescue_vessel": matrix("rescue_vessel", rescue_vessel),
+        "rescue_vital_signs": matrix(
+            "rescue_vital_signs",
+            rescue_vital_signs,
+        ),
+        "rescue_fluid_balance": matrix(
+            "rescue_fluid_balance",
+            rescue_fluid_balance,
+        ),
+        "procedure_phase": matrix("procedure_phase", procedure_phase),
+        "sensor_authority": matrix("sensor_authority", sensor_authority),
+        "tool_position_valid": matrix(
+            "tool_position_valid",
+            tool_position_valid,
+        ),
+        "selected_arm": matrix("selected_arm", selected_arm),
+    }
+    if tuple(observations) != OBSERVATION_KEYS:
+        raise RuntimeError("canonical rescue observation order drifted")
+    expected_shapes = rescue_policy_observation_shapes(arms)
+    for name, shape in expected_shapes.items():
+        if observations[name].shape != (frames, *shape):
+            raise ValueError(
+                f"rescue observation {name} has shape "
+                f"{observations[name].shape}; "
+                f"expected {(frames, *shape)}"
+            )
+    return observations
+
+
+def build_rescue_policy_observation(
+    *,
+    joint_positions: Sequence[np.ndarray],
+    joint_velocities: Sequence[np.ndarray],
+    tool_positions_w: np.ndarray,
+    target_position_w: np.ndarray,
+    rescue_contact: Mapping[str, Any],
+    rescue_vessel: Mapping[str, Any],
+    rescue_vital_signs: Mapping[str, Any],
+    rescue_fluid_balance: Mapping[str, Any],
+    procedure_phase: int,
+    sensor_authority: bool,
+    tool_position_valid: np.ndarray,
+    selected_arm: int,
+) -> dict[str, np.ndarray]:
+    """Build one unbatched live policy observation.
+
+    ``selected_arm`` uses the runtime's one-based PSM numbering. Zero means
+    that no contact-authoritative arm is currently selected.
+    """
+
+    arms = int(np.asarray(tool_positions_w).shape[0])
+    if not 0 <= selected_arm <= arms:
+        raise ValueError(
+            f"selected rescue arm {selected_arm} is outside 0..{arms}"
+        )
+    selected_arm_one_hot = np.zeros(arms, dtype=np.float32)
+    if selected_arm:
+        selected_arm_one_hot[selected_arm - 1] = 1.0
+    batched = build_rescue_policy_observations(
+        joint_positions=[
+            np.asarray(values)[None, ...]
+            for values in joint_positions
+        ],
+        joint_velocities=[
+            np.asarray(values)[None, ...]
+            for values in joint_velocities
+        ],
+        tool_positions_w=np.asarray(
+            tool_positions_w,
+            dtype=np.float32,
+        )[None, ...],
+        target_position_w=np.asarray(
+            target_position_w,
+            dtype=np.float32,
+        )[None, ...],
+        rescue_contact=rescue_vector(
+            rescue_contact,
+            CONTACT_FEATURES,
+        )[None, ...],
+        rescue_vessel=rescue_vector(
+            rescue_vessel,
+            VESSEL_FEATURES,
+        )[None, ...],
+        rescue_vital_signs=rescue_vector(
+            rescue_vital_signs,
+            VITAL_SIGN_FEATURES,
+        )[None, ...],
+        rescue_fluid_balance=rescue_vector(
+            rescue_fluid_balance,
+            FLUID_BALANCE_FEATURES,
+        )[None, ...],
+        procedure_phase=np.asarray([procedure_phase], dtype=np.float32),
+        sensor_authority=np.asarray(
+            [sensor_authority],
+            dtype=np.float32,
+        ),
+        tool_position_valid=np.asarray(
+            tool_position_valid,
+            dtype=np.float32,
+        )[None, ...],
+        selected_arm=selected_arm_one_hot[None, ...],
+    )
+    return {
+        name: np.ascontiguousarray(values[0], dtype=np.float32)
+        for name, values in batched.items()
+    }
+
+
 def _write_array(
     group: h5py.Group,
     name: str,
@@ -171,73 +376,60 @@ def _transition_observations(
         )
         for name in robot_names
     ]
-    tools = _read_required(
-        source,
-        "rescue_tool_positions_w",
-        frames,
-    ).astype(np.float32, copy=False)
-    target = _read_required(
-        source,
-        "rescue_target_position_w",
-        frames,
-    ).astype(np.float32, copy=False)
-    if tools.ndim != 3 or tools.shape[2] != 3:
-        raise ValueError(
-            "rescue_tool_positions_w must have shape (frames, arms, 3)"
-        )
-    if target.shape != (frames, 3):
-        raise ValueError(
-            "rescue_target_position_w must have shape (frames, 3)"
-        )
-    relative = target[:, None, :] - tools
-    observations = {
-        "joint_pos": np.concatenate(joint_positions, axis=1),
-        "joint_vel": np.concatenate(joint_velocities, axis=1),
-        "tool_positions_w": tools.reshape(frames, -1),
-        "target_relative_tool_positions": relative.reshape(frames, -1),
-        "rescue_contact": _as_feature_matrix(
-            _read_required(source, "rescue_measured_contact", frames)
+    return build_rescue_policy_observations(
+        joint_positions=joint_positions,
+        joint_velocities=joint_velocities,
+        tool_positions_w=_read_required(
+            source,
+            "rescue_tool_positions_w",
+            frames,
         ),
-        "rescue_vessel": _as_feature_matrix(
-            _read_required(source, "rescue_vessel_state", frames)
+        target_position_w=_read_required(
+            source,
+            "rescue_target_position_w",
+            frames,
         ),
-        "rescue_vital_signs": _as_feature_matrix(
-            _read_required(source, "rescue_vital_signs", frames)
+        rescue_contact=_read_required(
+            source,
+            "rescue_measured_contact",
+            frames,
         ),
-        "rescue_fluid_balance": _as_feature_matrix(
-            _read_required(source, "rescue_fluid_balance", frames)
+        rescue_vessel=_read_required(
+            source,
+            "rescue_vessel_state",
+            frames,
         ),
-        "procedure_phase": _as_feature_matrix(
-            _read_required(source, "procedure_phase_code", frames)
+        rescue_vital_signs=_read_required(
+            source,
+            "rescue_vital_signs",
+            frames,
         ),
-        "sensor_authority": _as_feature_matrix(
-            _read_required(
-                source,
-                "rescue_sensor_authority_available",
-                frames,
-            )
+        rescue_fluid_balance=_read_required(
+            source,
+            "rescue_fluid_balance",
+            frames,
         ),
-        "tool_position_valid": _as_feature_matrix(
-            _read_required(
-                source,
-                "rescue_tool_position_valid",
-                frames,
-            )
+        procedure_phase=_read_required(
+            source,
+            "procedure_phase_code",
+            frames,
         ),
-        "selected_arm": _as_feature_matrix(
-            _read_required(
-                source,
-                "rescue_selected_arm_one_hot",
-                frames,
-            )
+        sensor_authority=_read_required(
+            source,
+            "rescue_sensor_authority_available",
+            frames,
         ),
-    }
-    for name, values in observations.items():
-        if not np.isfinite(values).all():
-            raise ValueError(
-                f"rescue observation {name} contains NaN or infinity"
-            )
-    return observations
+        tool_position_valid=_read_required(
+            source,
+            "rescue_tool_position_valid",
+            frames,
+        ),
+        selected_arm=_read_required(
+            source,
+            "rescue_selected_arm_one_hot",
+            frames,
+        ),
+    )
 
 
 def _write_optional_aligned_vision(

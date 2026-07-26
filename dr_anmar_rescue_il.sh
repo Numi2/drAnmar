@@ -22,6 +22,21 @@ case "${command_name}" in
         exec "${REPOSITORY_ROOT}/dr_anmar_workstation.sh" \
             start "${port}" "${TASK}" "${PROCEDURE}"
         ;;
+    policy-room)
+        checkpoint="${2:?A trained Robomimic checkpoint is required}"
+        port="${3:-2361}"
+        if [[ ! -f "${checkpoint}" ]]; then
+            echo "Checkpoint not found: ${checkpoint}" >&2
+            exit 2
+        fi
+        checkpoint="$(
+            cd -- "$(dirname -- "${checkpoint}")"
+            printf '%s/%s\n' "$(pwd)" "$(basename -- "${checkpoint}")"
+        )"
+        exec env DR_ANMAR_RESCUE_BC_CHECKPOINT="${checkpoint}" \
+            "${REPOSITORY_ROOT}/dr_anmar_workstation.sh" \
+            restart "${port}" "${TASK}" "${PROCEDURE}"
+        ;;
     expert)
         port="${2:-2361}"
         curl --fail --silent --show-error \
@@ -35,6 +50,23 @@ case "${command_name}" in
         shift "$(( $# >= 3 ? 3 : $# ))"
         exec "${PYTHON}" \
             "${REPOSITORY_ROOT}/scripts/collect_autonomous_rescue_experts.py" \
+            --url "http://127.0.0.1:${port}" \
+            --episodes "${episodes}" \
+            "$@"
+        ;;
+    rollout)
+        port="${2:-2361}"
+        curl --fail --silent --show-error \
+            --request POST \
+            "http://127.0.0.1:${port}/api/rescue-policy/start"
+        printf '\n'
+        ;;
+    evaluate-policy)
+        port="${2:-2361}"
+        episodes="${3:-10}"
+        shift "$(( $# >= 3 ? 3 : $# ))"
+        exec "${PYTHON}" \
+            "${REPOSITORY_ROOT}/scripts/evaluate_autonomous_rescue_policy.py" \
             --url "http://127.0.0.1:${port}" \
             --episodes "${episodes}" \
             "$@"
@@ -69,14 +101,19 @@ case "${command_name}" in
         cat >&2 <<'EOF'
 Usage:
   dr_anmar_rescue_il.sh room [PORT]
+  dr_anmar_rescue_il.sh policy-room CHECKPOINT.pth [PORT]
   dr_anmar_rescue_il.sh expert [PORT]
   dr_anmar_rescue_il.sh collect [PORT] [EPISODES] [collector arguments...]
+  dr_anmar_rescue_il.sh rollout [PORT]
+  dr_anmar_rescue_il.sh evaluate-policy [PORT] [EPISODES] [evaluator arguments...]
   dr_anmar_rescue_il.sh episodes [DEMO_DIR]
   dr_anmar_rescue_il.sh pack OUTPUT.hdf5 EPISODE.hdf5...
   dr_anmar_rescue_il.sh train DATASET.hdf5 [Robomimic arguments...]
 
 The expert command starts a reset, records the contact-driven rescue episode,
 and saves both the workstation NPZ and transition-aligned HDF5 training file.
+The policy room loads one fixed checkpoint before serving; rollout and
+evaluate-policy execute it while patient outcomes remain physics-derived.
 EOF
         exit 2
         ;;

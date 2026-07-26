@@ -156,6 +156,21 @@ parser.add_argument(
     default=os.environ.get("DR_ANMAR_SENSOR_PROFILE", "research"),
     help="all profiles include one down-axis RGB camera per PSM; efficient=left RGB, stereo=left RGB-D+right RGB, research=full research sensors",
 )
+parser.add_argument(
+    "--rescue_bc_checkpoint",
+    type=Path,
+    default=(
+        Path(os.environ["DR_ANMAR_RESCUE_BC_CHECKPOINT"])
+        if os.environ.get("DR_ANMAR_RESCUE_BC_CHECKPOINT")
+        else None
+    ),
+    help="Robomimic checkpoint executable only in the Autonomous Rescue OR room",
+)
+parser.add_argument(
+    "--rescue_policy_max_steps",
+    type=int,
+    default=int(os.environ.get("DR_ANMAR_RESCUE_POLICY_MAX_STEPS", "1500")),
+)
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 _softmimicgen_task = args_cli.task.startswith("Isaac-Thread-PSM-")
@@ -171,6 +186,15 @@ _native_room = resolve_native_room(args_cli.procedure) if args_cli.procedure els
 if args_cli.procedure:
     if _requested_procedure is None:
         parser.error(f"Unknown Dr.Anmar procedure room: {args_cli.procedure}")
+if args_cli.rescue_bc_checkpoint and not (
+    _requested_procedure
+    and _requested_procedure.get("autonomous_rescue_or")
+):
+    parser.error(
+        "--rescue_bc_checkpoint requires the Autonomous Rescue OR procedure"
+    )
+if args_cli.rescue_policy_max_steps < 1:
+    parser.error("--rescue_policy_max_steps must be positive")
 
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
@@ -295,8 +319,15 @@ from dr_anmar_rescue_dataset import (
     SCHEMA as RESCUE_IMITATION_SCHEMA,
     VESSEL_FEATURES as RESCUE_VESSEL_FEATURES,
     VITAL_SIGN_FEATURES as RESCUE_VITAL_SIGN_FEATURES,
+    build_rescue_policy_observation,
     rescue_vector,
     write_rescue_training_hdf5,
+)
+from dr_anmar_rescue_policy import (
+    POLICY_RUNTIME_VERSION as RESCUE_POLICY_RUNTIME_VERSION,
+    RescueOutcomeMonitor,
+    RescuePolicyRuntime,
+    infer_rescue_phase_code,
 )
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
 from dr_anmar_psm_native_adapter import (
@@ -766,7 +797,7 @@ async function refresh(){if(refreshInFlight||pageDisposed||document.hidden)retur
   currentViewMode=s.camera_view_mode||currentViewMode;renderFreeCamera(selectedCameraAdjustment(s));document.querySelectorAll('[data-view-mode]').forEach(x=>x.classList.toggle('active',!cameraAdjustMode&&x.dataset.viewMode===currentViewMode));
   document.getElementById('recflag').classList.toggle('on',s.recording);document.getElementById('record')?.classList.toggle('state-active',s.recording);document.getElementById('gripOpenButton').classList.toggle('state-active',s.grippers_open?.[0]===false);document.getElementById('gripCloseButton').classList.toggle('state-active',s.grippers_open?.[(s.arms||1)>1?1:0]===false);
 	  const proximity=document.getElementById('proximity'),distance=s.tool_to_object_distance_m?.[activeArm],offset=s.tool_to_object_offset_m?.[activeArm],clearance=s.closest_anatomy_clearance_m;proximity.className='proximity';let guidance='Move toward the target';if(s.native_grasp_contact_active?.[activeArm]){guidance='Native jaw contact detected · lift smoothly';proximity.classList.add('held')}else if(distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)){guidance=`Aligned ${Math.round(distance*1000)} mm · close jaws`;proximity.classList.add('near')}else if(distance!==null&&distance!==undefined){guidance=`Target ${Math.round(distance*1000)} mm · ${targetDirections(offset)||'hold course'}`}else if(clearance!==null&&clearance!==undefined){guidance=`Anatomy clearance ${Math.round(clearance*1000)} mm`};proximity.innerHTML=`<b>Next</b><span>${guidance}</span>`;const smartLabel=document.getElementById('smartActionLabel'),open=s.grippers_open?.[activeArm],contact=s.native_grasp_contact_active?.[activeArm];smartLabel.textContent=open===undefined?'Precision nudge toward target':open&&distance!==null&&distance!==undefined&&distance<=(s.grasp_capture_radius_m||.018)?'Close jaws on aligned target':open?'Precision nudge toward target':contact?'Lift the physically held object':'Open jaws and retry';
-  const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderClosureRobot(s.closure_robot_system);renderStaplerCell(s.stapler_test_cell);renderSkinAdhesive(s.skin_adhesive_system);renderExpert(s.expert_demonstration);
+  const labels={manual:'L0 · Manual',guided:'L1 · Guided',supervised_replay:'L2 · Supervised replay',expert_demonstration:'L2 · Live expert',learned_rescue_policy:'L3 · Learned rescue policy'};document.getElementById('autonomyState').textContent=labels[s.autonomy_mode]||s.autonomy_mode;document.getElementById('manualMode').classList.toggle('active',s.autonomy_mode==='manual');document.getElementById('guidedMode').classList.toggle('active',s.autonomy_mode==='guided');document.getElementById('coachingCue').textContent=s.coaching_cue;document.getElementById('forceMetric').textContent=s.safety?.max_contact_force_n===null?'—':Number(s.safety.max_contact_force_n).toFixed(2);document.getElementById('deformMetric').textContent=s.safety?.max_tissue_displacement_m===null?'—':(Number(s.safety.max_tissue_displacement_m)*1000).toFixed(1);document.getElementById('stressMetric').textContent=s.safety?.max_tissue_stress_pa===null?'—':Number(s.safety.max_tissue_stress_pa).toExponential(1);renderClosureRobot(s.closure_robot_system);renderStaplerCell(s.stapler_test_cell);renderSkinAdhesive(s.skin_adhesive_system);renderExpert(s.expert_demonstration);
 	  if(s.last_demo)document.getElementById('lastDemo').innerHTML=`Last saved: <a href="/demos/${s.last_demo}" style="color:#2cd2e8">${s.last_demo}</a>`;
 }catch(e){document.getElementById('dot').classList.remove('ok');document.getElementById('connection').textContent='Reconnecting…'}finally{refreshInFlight=false}}
 async function heartbeat(){if(heartbeatInFlight||pageDisposed||document.hidden)return;heartbeatInFlight=true;try{await post('/api/operator/heartbeat',{},3000)}catch(_error){}finally{heartbeatInFlight=false}}
@@ -1002,6 +1033,9 @@ class SharedState:
     expert_reference_pending: bool = False
     expert_reference_demo: str | None = None
     expert_clean_run: bool = False
+    rescue_policy_request: str | None = None
+    rescue_policy: dict[str, Any] = field(default_factory=dict)
+    recording_kind: str = "operator_demonstration"
     scenario_id: str = "baseline"
     scenario_seed: int = DEFAULT_SCENARIO_SEED
     autonomy_mode: str = "manual"
@@ -1323,6 +1357,8 @@ class SharedState:
                 "last_demo": self.last_demo,
                 "replaying": self.replaying,
                 "expert_demonstration": self.expert_demonstration,
+                "rescue_policy": self.rescue_policy,
+                "recording_kind": self.recording_kind,
                 "scenario_id": self.scenario_id,
                 "scenario_seed": self.scenario_seed,
                 "scenario_title": SCENARIOS_BY_ID[self.scenario_id]["title"],
@@ -1372,7 +1408,9 @@ class SharedState:
                 },
                 "drive_active": (
                     self.drive_until > time.monotonic() and bool(np.any(self.drive))
-                ) or self.expert_demonstration.get("status") == "running",
+                )
+                or self.expert_demonstration.get("status") == "running"
+                or self.rescue_policy.get("status") == "running",
                 "control_contract": {
                     "sequence": self.control_sequence,
                     "kind": self.control_last_kind,
@@ -1427,6 +1465,7 @@ class SharedState:
                 "recording": self.recording,
                 "last_demo": self.last_demo,
                 "expert_demonstration": expert,
+                "rescue_policy": dict(self.rescue_policy),
                 "autonomy_mode": self.autonomy_mode,
                 "coaching_cue": self.coaching_cue,
                 "safety": {
@@ -2532,6 +2571,11 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.reset_requested = True
             state.replay_request = "stop"
             state.replaying = False
+            if state.rescue_policy.get("status") in {
+                "starting",
+                "running",
+            }:
+                state.rescue_policy_request = "stop"
             state.autonomy_mode = "guided"
             state.coaching_cue = scenario["doctor_focus"]
         state.wake_event.set()
@@ -2557,6 +2601,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.scenario_seed = request.seed
             state.reset_requested = True
             state.record_request = "start"
+            state.recording_kind = "challenge_evaluation"
             state.replay_request = request.demo
             state.replaying = False
             state.autonomy_mode = "supervised_replay"
@@ -2595,7 +2640,20 @@ def build_web_app(state: SharedState) -> FastAPI:
         with state.lock:
             state.disable_hand_motion()
             expert_active = state.expert_demonstration.get("status") in {"running", "paused"}
-            was_automatic = state.replaying or state.autonomy_mode in {"supervised_replay", "expert_demonstration"}
+            policy_active = state.rescue_policy.get("status") in {
+                "starting",
+                "running",
+            }
+            was_automatic = (
+                state.replaying
+                or policy_active
+                or state.autonomy_mode
+                in {
+                    "supervised_replay",
+                    "expert_demonstration",
+                    "learned_rescue_policy",
+                }
+            )
             if was_automatic:
                 state.intervention_count += 1
             state.replay_request = "stop"
@@ -2603,6 +2661,8 @@ def build_web_app(state: SharedState) -> FastAPI:
             if expert_active:
                 state.expert_request = "take_over"
                 state.expert_clean_run = False
+            if policy_active:
+                state.rescue_policy_request = "stop"
             state.autonomy_mode = "manual"
             state.operator_input_source = "keyboard_pointer"
             state.drive.fill(0.0)
@@ -2630,6 +2690,7 @@ def build_web_app(state: SharedState) -> FastAPI:
             state.disable_hand_motion()
             state.reset_requested = True
             state.record_request = "start"
+            state.recording_kind = "simulation_expert"
             state.expert_request = "start"
             state.expert_reference_pending = False
             state.expert_clean_run = True
@@ -2662,11 +2723,84 @@ def build_web_app(state: SharedState) -> FastAPI:
     def expert_take_control() -> dict[str, Any]:
         return handoff()
 
+    @app.post("/api/rescue-policy/start")
+    def rescue_policy_start() -> dict[str, Any]:
+        with state.lock:
+            if not state.procedure.get("autonomous_rescue_or"):
+                raise HTTPException(
+                    409,
+                    "The learned rescue policy only runs in Autonomous Rescue OR",
+                )
+            if not state.rescue_policy.get("available"):
+                raise HTTPException(
+                    409,
+                    "Start the room with a trained rescue checkpoint",
+                )
+            if state.recording or state.record_request == "start":
+                raise HTTPException(
+                    409,
+                    "Stop the current recording before starting a policy rollout",
+                )
+            if (
+                state.replaying
+                or state.evaluation_status in {"running", "saving"}
+                or state.expert_demonstration.get("status")
+                in {"running", "paused"}
+            ):
+                raise HTTPException(
+                    409,
+                    "Stop replay, evaluation, or the expert before starting the policy",
+                )
+            if state.rescue_policy.get("status") in {
+                "starting",
+                "running",
+            }:
+                raise HTTPException(409, "The rescue policy is already active")
+            state.disable_hand_motion()
+            state.reset_requested = True
+            state.record_request = "start"
+            state.recording_kind = "learned_policy_rollout"
+            state.rescue_policy_request = "start"
+            state.expert_clean_run = False
+            state.intervention_count = 0
+            state.autonomy_mode = "learned_rescue_policy"
+            state.operator_input_source = "automation_policy"
+            state.rescue_policy["status"] = "starting"
+            state.rescue_policy["outcome"] = None
+            state.coaching_cue = (
+                "Learned rescue rollout starting. Robot actions come from the "
+                "checkpoint; patient effects remain contact-and-physics derived."
+            )
+        state.wake_event.set()
+        return {
+            "ok": True,
+            "message": "Learned rescue policy rollout starting",
+            "checkpoint_sha256": state.rescue_policy.get(
+                "checkpoint_sha256"
+            ),
+        }
+
+    @app.post("/api/rescue-policy/stop")
+    def rescue_policy_stop() -> dict[str, Any]:
+        with state.lock:
+            if state.rescue_policy.get("status") not in {
+                "starting",
+                "running",
+            }:
+                raise HTTPException(409, "The rescue policy is not active")
+            state.rescue_policy_request = "stop"
+            state.coaching_cue = (
+                "Stopping learned rescue rollout and saving its evidence."
+            )
+        state.wake_event.set()
+        return {"ok": True, "message": "Learned rescue policy stopping"}
+
     @app.post("/api/record/start")
     def record_start() -> dict[str, bool]:
         with state.lock:
             if state.recording:
                 raise HTTPException(409, "A demonstration is already recording")
+            state.recording_kind = "operator_demonstration"
             state.record_request = "start"
         state.wake_event.set()
         return {"ok": True}
@@ -3950,7 +4084,13 @@ def save_demo(
                         == "completed"
                     ),
                     expert_status=str(
-                        state.expert_demonstration.get(
+                        state.rescue_policy.get(
+                            "status",
+                            "learned_policy_rollout",
+                        )
+                        if state.recording_kind
+                        == "learned_policy_rollout"
+                        else state.expert_demonstration.get(
                             "status",
                             "operator_demonstration",
                         )
@@ -3968,13 +4108,21 @@ def save_demo(
     if len(times) > 1 and times[-1] > times[0]:
         observed_control_hz = float((len(times) - 1) / (times[-1] - times[0]))
     with state.lock:
+        recording_kind = state.recording_kind
+        learned_policy_rollout = (
+            recording_kind == "learned_policy_rollout"
+        )
         context = {
             "scenario_id": state.scenario_id,
             "scenario_title": SCENARIOS_BY_ID[state.scenario_id]["title"],
             "scenario_seed": state.scenario_seed,
             "autonomy_mode": "supervised_replay" if state.evaluation_source else state.autonomy_mode,
             "intervention_count": state.intervention_count,
-            "run_kind": "challenge_evaluation" if state.evaluation_source else "demonstration",
+            "run_kind": (
+                "challenge_evaluation"
+                if state.evaluation_source
+                else recording_kind
+            ),
             "evaluation_source": state.evaluation_source,
             "procedure_id": state.procedure.get("id"),
             "procedure_title": state.procedure.get("title"),
@@ -3983,9 +4131,29 @@ def save_demo(
             "final_native_telemetry": json.loads(json.dumps(state.native_telemetry)),
             "expert_demonstration": json.loads(json.dumps(state.expert_demonstration)),
             "expert_controller": EXPERT_CONTROLLER_VERSION if state.expert_demonstration else None,
-            "behavior_cloning_reference_candidate": bool(state.expert_clean_run),
-            "reference_origin": "simulation_expert" if state.expert_clean_run else "operator_demonstration",
-            "reference_review_status": "pending_clinician_review" if state.expert_clean_run else "not_applicable",
+            "learned_rescue_policy": (
+                json.loads(json.dumps(state.rescue_policy))
+                if learned_policy_rollout
+                else None
+            ),
+            "behavior_cloning_reference_candidate": bool(
+                state.expert_clean_run
+                and not learned_policy_rollout
+            ),
+            "reference_origin": (
+                "learned_policy"
+                if learned_policy_rollout
+                else "simulation_expert"
+                if state.expert_clean_run
+                else "operator_demonstration"
+            ),
+            "reference_review_status": (
+                "not_applicable"
+                if learned_policy_rollout
+                else "pending_clinician_review"
+                if state.expert_clean_run
+                else "not_applicable"
+            ),
         }
         procedure_annotations = list(state.procedure_events)
         camera_intrinsics = state.camera_intrinsics
@@ -8586,7 +8754,39 @@ def main() -> None:
         if upstream_expert_actions.ndim != 2 or upstream_expert_actions.shape[1] != action_dim:
             raise RuntimeError("Pinned SoftMimicGen expert action shape does not match the live task")
     state.expert_demonstration = expert_controller.snapshot()
+    rescue_policy_runtime: RescuePolicyRuntime | None = None
+    rescue_outcome_monitor = RescueOutcomeMonitor(
+        maximum_steps=args_cli.rescue_policy_max_steps
+    )
+    rescue_policy_active = False
+    rescue_policy_phase_code = 0
+    if args_cli.rescue_bc_checkpoint is not None:
+        if not has_grippers or action_dim != arms * 7:
+            raise RuntimeError(
+                "Autonomous Rescue BC requires seven action values per PSM"
+            )
+        rescue_policy_runtime = RescuePolicyRuntime.from_checkpoint(
+            args_cli.rescue_bc_checkpoint,
+            action_dim=action_dim,
+        )
+        state.rescue_policy = {
+            **rescue_policy_runtime.snapshot(),
+            "available": True,
+            "status": "idle",
+            "outcome": None,
+        }
+    else:
+        state.rescue_policy = {
+            "runtime_version": RESCUE_POLICY_RUNTIME_VERSION,
+            "available": False,
+            "status": "not_configured",
+            "outcome": None,
+        }
     state.runtime_provenance = runtime_provenance(state)
+    if rescue_policy_runtime is not None:
+        state.runtime_provenance["policy_checkpoint_sha256"] = (
+            rescue_policy_runtime.checkpoint_sha256
+        )
     state.camera_frame_ids = {name: 0 for name in camera_sources}
     state.camera_subscribers = {name: 0 for name in camera_sources}
     state.camera_poll_last_seen_by_name = {name: 0.0 for name in camera_sources}
@@ -9442,6 +9642,7 @@ def main() -> None:
         loop_started = time.monotonic()
         refresh_hand_camera_control_frame()
         action_uses_upstream_softmimicgen_units = False
+        action_owns_grippers = False
         selected_active_camera = active_logical_camera_name(loop_started)
         with state.lock:
             reset_requested = state.reset_requested
@@ -9452,6 +9653,8 @@ def main() -> None:
             state.replay_request = None
             expert_request = state.expert_request
             state.expert_request = None
+            rescue_policy_request = state.rescue_policy_request
+            state.rescue_policy_request = None
             stapler_command_request = state.stapler_command_request
             state.stapler_command_request = None
             stapler_station_request = state.stapler_station_request
@@ -10159,6 +10362,53 @@ def main() -> None:
                 if state.recording:
                     state.record_request = "stop"
 
+        if rescue_policy_request == "start":
+            if rescue_policy_runtime is None:
+                with state.lock:
+                    state.rescue_policy.update(
+                        {
+                            "available": False,
+                            "status": "error",
+                            "last_error": "No checkpoint is loaded",
+                        }
+                    )
+                    state.record_request = "stop"
+                    state.autonomy_mode = "manual"
+            else:
+                rescue_policy_runtime.reset()
+                rescue_outcome_monitor.reset()
+                rescue_policy_active = True
+                rescue_policy_phase_code = 0
+                with state.lock:
+                    state.rescue_policy = {
+                        **rescue_policy_runtime.snapshot(),
+                        "available": True,
+                        "status": "running",
+                        "outcome": rescue_outcome_monitor.snapshot(),
+                        "last_error": None,
+                    }
+                    state.procedure_phase = "setup"
+                    state.operator_input_source = "automation_policy"
+                    state.autonomy_mode = "learned_rescue_policy"
+                    state.coaching_cue = (
+                        "Learned rescue policy is commanding the PSMs. "
+                        "Completion requires bilateral physical contact, an "
+                        "effective compression hold, preserved perfusion, and "
+                        "observed release."
+                    )
+        elif rescue_policy_request == "stop":
+            rescue_policy_active = False
+            with state.lock:
+                if state.rescue_policy.get("status") in {
+                    "starting",
+                    "running",
+                }:
+                    state.rescue_policy["status"] = "interrupted"
+                if state.recording or record_request == "start":
+                    state.record_request = "stop"
+                state.autonomy_mode = "manual"
+                state.operator_input_source = "keyboard_pointer"
+
         if (
             not reset_requested
             and (
@@ -10294,6 +10544,7 @@ def main() -> None:
         if upstream_expert_active and expert_controller.active:
             action_np = np.zeros(state.action_dim, dtype=np.float32)
             action_uses_upstream_softmimicgen_units = True
+            action_owns_grippers = True
             if expert_controller.status == "running" and upstream_expert_actions is not None:
                 if upstream_expert_index < len(upstream_expert_actions):
                     action_np = upstream_expert_actions[upstream_expert_index].copy()
@@ -10394,6 +10645,7 @@ def main() -> None:
                 ),
             )
             action_np = expert_command.action
+            action_owns_grippers = True
             grippers_open = expert_command.grippers_open
             if state.has_grippers:
                 for arm, is_open in enumerate(grippers_open):
@@ -10453,10 +10705,239 @@ def main() -> None:
                         if state.expert_clean_run
                         else "Expert trajectory completed with qualification warnings; saving without automatic reference approval."
                     )
+        elif rescue_policy_active and rescue_policy_runtime is not None:
+            action_owns_grippers = True
+            policy_tool_positions = np.zeros(
+                (state.arms, 3),
+                dtype=np.float32,
+            )
+            policy_tool_valid = np.zeros(
+                state.arms,
+                dtype=np.float32,
+            )
+            for arm in range(state.arms):
+                position = tool_position_for_arm(arm)
+                if position is not None:
+                    policy_tool_positions[arm] = position
+                    policy_tool_valid[arm] = 1.0
+            target_distances = (
+                np.linalg.norm(
+                    policy_tool_positions[
+                        policy_tool_valid.astype(np.bool_)
+                    ]
+                    - rescue_target_position_w,
+                    axis=1,
+                )
+                if (
+                    rescue_target_position_w is not None
+                    and bool(np.any(policy_tool_valid))
+                )
+                else np.asarray([], dtype=np.float32)
+            )
+            nearest_target_distance = (
+                float(np.min(target_distances))
+                if len(target_distances)
+                else None
+            )
+            try:
+                outcome = rescue_outcome_monitor.update(
+                    latest_autonomous_rescue_telemetry
+                )
+                inferred_phase = infer_rescue_phase_code(
+                    latest_autonomous_rescue_telemetry,
+                    nearest_target_distance_m=nearest_target_distance,
+                    effective_hold_observed=bool(
+                        outcome["effective_hold_observed"]
+                    ),
+                    success=bool(outcome["success"]),
+                )
+                rescue_policy_phase_code = max(
+                    rescue_policy_phase_code,
+                    inferred_phase,
+                )
+                if outcome["terminal"]:
+                    rescue_policy_active = False
+                    action_np = np.zeros(
+                        state.action_dim,
+                        dtype=np.float32,
+                    )
+                    if state.has_grippers:
+                        for arm in range(state.arms):
+                            action_np[
+                                state.gripper_action_index(arm)
+                            ] = 1.0
+                    with state.lock:
+                        state.grippers_open = [True] * state.arms
+                        state.gripper_apertures = [1.0] * state.arms
+                        state.rescue_policy = {
+                            **rescue_policy_runtime.snapshot(),
+                            "available": True,
+                            "status": outcome["status"],
+                            "outcome": outcome,
+                            "last_error": None,
+                        }
+                        state.procedure_phase = (
+                            "recover"
+                            if outcome["success"]
+                            else "verify"
+                        )
+                        state.record_request = "stop"
+                        state.autonomy_mode = "manual"
+                        state.coaching_cue = (
+                            "Learned rescue rollout completed through "
+                            "contact-derived compression, preserved perfusion, "
+                            "and observed release. Saving evidence."
+                            if outcome["success"]
+                            else "Learned rescue rollout reached its horizon "
+                            "without the required patient effect. Saving the "
+                            "failure evidence."
+                        )
+                else:
+                    observation = build_rescue_policy_observation(
+                        joint_positions=[
+                            robots[name]
+                            .data.joint_pos[0]
+                            .detach()
+                            .cpu()
+                            .numpy()
+                            for name in robot_names[: state.arms]
+                        ],
+                        joint_velocities=[
+                            robots[name]
+                            .data.joint_vel[0]
+                            .detach()
+                            .cpu()
+                            .numpy()
+                            for name in robot_names[: state.arms]
+                        ],
+                        tool_positions_w=policy_tool_positions,
+                        target_position_w=np.asarray(
+                            rescue_target_position_w,
+                            dtype=np.float32,
+                        ),
+                        rescue_contact=(
+                            latest_autonomous_rescue_telemetry.get(
+                                "measured_contact",
+                                {},
+                            )
+                        ),
+                        rescue_vessel=(
+                            latest_autonomous_rescue_telemetry.get(
+                                "vessel",
+                                {},
+                            )
+                        ),
+                        rescue_vital_signs=(
+                            latest_autonomous_rescue_telemetry.get(
+                                "vital_signs",
+                                {},
+                            )
+                        ),
+                        rescue_fluid_balance=(
+                            latest_autonomous_rescue_telemetry.get(
+                                "fluid_balance",
+                                {},
+                            )
+                        ),
+                        procedure_phase=rescue_policy_phase_code,
+                        sensor_authority=bool(
+                            latest_autonomous_rescue_telemetry.get(
+                                "sensor_authority_available",
+                                False,
+                            )
+                        ),
+                        tool_position_valid=policy_tool_valid,
+                        selected_arm=int(
+                            latest_autonomous_rescue_telemetry.get(
+                                "selected_arm",
+                                0,
+                            )
+                        ),
+                    )
+                    with torch.inference_mode():
+                        action_np = rescue_policy_runtime.act(
+                            observation
+                        )
+                    model_grippers_open = [
+                        bool(
+                            action_np[
+                                state.gripper_action_index(arm)
+                            ]
+                            > 0.0
+                        )
+                        for arm in range(state.arms)
+                    ]
+                    model_gripper_apertures = [
+                        float(
+                            np.clip(
+                                (
+                                    action_np[
+                                        state.gripper_action_index(
+                                            arm
+                                        )
+                                    ]
+                                    + 1.0
+                                )
+                                * 0.5,
+                                0.0,
+                                1.0,
+                            )
+                        )
+                        for arm in range(state.arms)
+                    ]
+                    phase_name = {
+                        0: "setup",
+                        1: "approach",
+                        4: "grasp",
+                        5: "manipulate",
+                        6: "verify",
+                        7: "recover",
+                    }.get(rescue_policy_phase_code, "approach")
+                    with state.lock:
+                        state.grippers_open = model_grippers_open
+                        state.gripper_apertures = (
+                            model_gripper_apertures
+                        )
+                        state.operator_input_source = "automation_policy"
+                        state.procedure_phase = phase_name
+                        state.rescue_policy = {
+                            **rescue_policy_runtime.snapshot(),
+                            "available": True,
+                            "status": "running",
+                            "outcome": outcome,
+                            "last_error": None,
+                        }
+            except Exception as exc:
+                traceback.print_exc()
+                rescue_policy_active = False
+                action_np = np.zeros(
+                    state.action_dim,
+                    dtype=np.float32,
+                )
+                if state.has_grippers:
+                    for arm in range(state.arms):
+                        action_np[
+                            state.gripper_action_index(arm)
+                        ] = 1.0
+                with state.lock:
+                    state.rescue_policy = {
+                        **rescue_policy_runtime.snapshot(),
+                        "available": True,
+                        "status": "error",
+                        "outcome": rescue_outcome_monitor.snapshot(),
+                        "last_error": str(exc),
+                    }
+                    state.record_request = "stop"
+                    state.autonomy_mode = "manual"
+                    state.coaching_cue = (
+                        "Learned rescue rollout stopped because its action "
+                        f"contract failed: {exc}"
+                    )
         elif replay_actions is not None and replay_index < len(replay_actions):
             action_np = replay_actions[replay_index].copy()
             replay_index += 1
             action_uses_upstream_softmimicgen_units = _softmimicgen_task
+            action_owns_grippers = True
             with state.lock:
                 state.operator_input_source = "supervised_replay"
         else:
@@ -10472,7 +10953,7 @@ def main() -> None:
                     else:
                         state.coaching_cue = "Supervised replay finished. Manual control is active."
             action_np = manual_action.copy()
-        if state.has_grippers:
+        if state.has_grippers and not action_owns_grippers:
             for arm, aperture in enumerate(gripper_apertures):
                 action_np[state.gripper_action_index(arm)] = proportional_gripper_action(aperture)
 
