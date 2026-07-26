@@ -272,6 +272,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "seed": args.seed,
             "requested_num_envs": args.requested_num_envs,
             "num_envs": env.unwrapped.num_envs,
+            "trusted_requested_num_envs": args.trusted_requested_num_envs,
             "free_gpu_memory_before_launch_mib": args.free_gpu_memory_before_launch_mib,
             "system_memory_total_mib": args.system_memory_total_mib,
             "system_memory_available_before_launch_mib": (
@@ -368,6 +369,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "seed": args.seed,
             "requested_num_envs": args.requested_num_envs,
             "num_envs": env.unwrapped.num_envs,
+            "trusted_requested_num_envs": args.trusted_requested_num_envs,
             "free_gpu_memory_before_launch_mib": args.free_gpu_memory_before_launch_mib,
             "system_memory_total_mib": args.system_memory_total_mib,
             "system_memory_available_before_launch_mib": (
@@ -469,11 +471,20 @@ def main(argv: list[str]) -> int:
     args.free_gpu_memory_before_launch_mib = free_mib
     args.system_memory_total_mib = system_total_mib
     args.system_memory_available_before_launch_mib = system_available_mib
-    args.num_envs = _fit_num_envs_to_memory(
-        args.num_envs,
-        free_mib,
-        system_available_mib,
+    args.trusted_requested_num_envs = (
+        os.environ.get("DR_ANMAR_TRUST_REQUESTED_NUM_ENVS", "0") == "1"
     )
+    if args.trusted_requested_num_envs:
+        print(
+            "[DrAnmar] Qualified environment-count override: "
+            f"using all {args.num_envs} requested environments"
+        )
+    else:
+        args.num_envs = _fit_num_envs_to_memory(
+            args.num_envs,
+            free_mib,
+            system_available_mib,
+        )
 
     # Reuse one process-owned CUDA context across Torch, Warp, and PhysX. This
     # avoids a second large primary context when other GPU services are active.

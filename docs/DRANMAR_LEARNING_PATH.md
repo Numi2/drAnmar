@@ -48,19 +48,20 @@ adaptive-KL PPO, and task-specific rollout lengths. PhysX scenes use Fabric
 cloning, visual markers are disabled during headless training, and target
 commands do not resample partway through an episode.
 
-The environment count is measured instead of assumed. Run a short sweep and
-select the count with the best useful throughput before beginning a long run:
+The qualified Gilgamesh RTX 4090 training count is 1,200 environments. Use it
+directly for the current learning path:
 
 ```bash
-./dr_anmar_learning.sh sweep \
+DR_ANMAR_TRUST_REQUESTED_NUM_ENVS=1 \
+./dr_anmar_learning.sh train \
   DrAnmar-Reach-PSM-IK-Rel-v0 \
-  10 \
-  128,256,512,1024
+  1200
 ```
 
-The selected count should maximize total training progress per wall-clock
-minute, not merely simulated frames per second. A larger batch can be faster
-while learning less effectively per sample.
+The override is explicit because the general launcher retains conservative
+live-memory fitting for unknown machines and concurrent workloads. Evidence
+records both the requested/actual count and whether the qualified-count
+override was used.
 
 The launcher requires at least 1,024 MiB of free GPU memory and 4,096 MiB of
 available system RAM by default. It measures both resources immediately before
@@ -77,7 +78,8 @@ available without silently falling back to CPU.
 
 Override `DR_ANMAR_MIN_FREE_GPU_MIB` or
 `DR_ANMAR_MIN_AVAILABLE_SYSTEM_MIB` only for a deliberately qualified lower
-memory configuration.
+memory configuration. Set `DR_ANMAR_TRUST_REQUESTED_NUM_ENVS=1` only for an
+environment count already qualified on the exact machine and task family.
 
 ## Commands
 

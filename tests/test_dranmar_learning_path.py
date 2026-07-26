@@ -17,7 +17,7 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     assert stages[0]["task"] == "DrAnmar-Reach-PSM-IK-Rel-v0"
     assert all(stage["task"].startswith("DrAnmar-") for stage in stages)
     assert manifest["defaults"]["held_out_seeds"]
-    assert manifest["defaults"]["num_envs"] == 512
+    assert manifest["defaults"]["num_envs"] == 1200
 
 
 def test_frontier_imports_and_runner_contract() -> None:

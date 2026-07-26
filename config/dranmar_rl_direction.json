@@ -1,0 +1,482 @@
+{
+  "schema_version": "1.0.0",
+  "name": "Dr.Anmar Robotic Surgery RL Direction",
+  "status": "adopted_research_direction",
+  "scope": [
+    "simulation",
+    "robot_learning",
+    "policy_evaluation",
+    "research_deployment"
+  ],
+  "technical_thesis": {
+    "target": "bounded_procedural_autonomy",
+    "end_to_end_autonomous_surgeon": false,
+    "reward_is_not_evidence": true,
+    "patient_effects_are_physics_owned": true,
+    "primary_evidence": [
+      "task_success",
+      "patient_benefit",
+      "patient_harm",
+      "constraint_violations",
+      "failure_distribution",
+      "recovery",
+      "abstention",
+      "runtime_efficiency"
+    ]
+  },
+  "program_goal": {
+    "objective": "minimize_time_to_qualified_task_achievement",
+    "abbreviation": "TQTA",
+    "start_event": "versioned_task_contract_is_frozen",
+    "stop_event": "first_frozen_checkpoint_passes_held_out_competence_safety_and_recovery",
+    "primary_unit": "wall_clock_seconds",
+    "decomposition": [
+      "gpu_hours_to_gate",
+      "simulated_steps_to_gate",
+      "successful_expert_demonstration_minutes_to_gate",
+      "experiment_count_to_gate",
+      "human_intervention_minutes_to_gate"
+    ],
+    "not_task_achievement": [
+      "training_reward_threshold_alone",
+      "single_seed_success",
+      "successful_video_alone",
+      "simulator_fps_alone"
+    ]
+  },
+  "nvidia_stack": {
+    "scene_authority": "OpenUSD",
+    "stable_simulation": [
+      "NVIDIA Isaac Sim",
+      "NVIDIA PhysX"
+    ],
+    "learning_environment": "NVIDIA Isaac Lab manager-based environments",
+    "state_policy_trainer": "RSL-RL PPO",
+    "imitation_data": [
+      "Isaac Lab Mimic",
+      "Robomimic"
+    ],
+    "deformable_frontier": [
+      "Newton",
+      "NVIDIA Warp",
+      "Dr.Anmar measured solver integrations"
+    ],
+    "deployment_after_hil": [
+      "ONNX",
+      "TensorRT",
+      "NVIDIA Holoscan",
+      "NVIDIA IGX"
+    ],
+    "generative_world_models": {
+      "allowed": [
+        "synthetic_visual_variation",
+        "non_authoritative_policy_evaluation",
+        "counterfactual_generation"
+      ],
+      "forbidden_authority": [
+        "geometry",
+        "contact",
+        "force",
+        "tissue_state",
+        "patient_effects",
+        "task_success",
+        "safety"
+      ]
+    }
+  },
+  "policy_architecture": [
+    {
+      "order": 1,
+      "id": "synchronized_sensing",
+      "authority": "measured_or_simulator_owned",
+      "outputs": [
+        "stereo_rgbd",
+        "semantics",
+        "kinematics",
+        "force_contact",
+        "physiology"
+      ]
+    },
+    {
+      "order": 2,
+      "id": "state_estimation",
+      "authority": "learned_with_uncertainty",
+      "requirements": [
+        "timestamp_alignment",
+        "frame_registration",
+        "uncertainty",
+        "observability_status"
+      ]
+    },
+    {
+      "order": 3,
+      "id": "procedure_intent",
+      "authority": "bounded_advisory",
+      "allowed_policy_families": [
+        "skill_graph",
+        "goal_conditioned_transformer",
+        "VLM",
+        "VLA"
+      ],
+      "output": "qualified_skill_id_and_goal"
+    },
+    {
+      "order": 4,
+      "id": "local_skill_policy",
+      "authority": "learned_bounded_action",
+      "allowed_policy_families": [
+        "recurrent_behavior_cloning",
+        "ACT",
+        "diffusion_policy",
+        "residual_RL",
+        "constrained_RL"
+      ],
+      "forbidden_policy_families": [
+        "unshielded_VLM",
+        "unshielded_VLA"
+      ],
+      "output": "relative_task_space_target_or_short_action_chunk"
+    },
+    {
+      "order": 5,
+      "id": "safety_shield",
+      "authority": "hard_constraint",
+      "requirements": [
+        "workspace_limits",
+        "no_go_zones",
+        "force_limits",
+        "speed_limits",
+        "action_rejection",
+        "neutral_stop"
+      ]
+    },
+    {
+      "order": 6,
+      "id": "deterministic_controller",
+      "authority": "final_actuator_target",
+      "allowed": [
+        "inverse_kinematics",
+        "impedance_control",
+        "visual_servoing",
+        "rate_limiting"
+      ]
+    },
+    {
+      "order": 7,
+      "id": "outcome_and_runtime_monitor",
+      "authority": "continue_abstain_recover_or_takeover",
+      "requirements": [
+        "patient_benefit",
+        "patient_harm",
+        "failure_prediction",
+        "out_of_distribution_detection",
+        "abstention",
+        "operator_takeover"
+      ]
+    }
+  ],
+  "algorithm_portfolio": [
+    {
+      "id": "rsl_rl_ppo",
+      "role": "motor_foundation_and_privileged_teacher",
+      "status": "primary"
+    },
+    {
+      "id": "recurrent_behavior_cloning",
+      "role": "demonstration_baseline",
+      "status": "required_baseline"
+    },
+    {
+      "id": "act",
+      "role": "precise_multistep_visuomotor_policy",
+      "status": "primary_candidate"
+    },
+    {
+      "id": "diffusion_policy",
+      "role": "multimodal_and_bimanual_visuomotor_policy",
+      "status": "primary_candidate"
+    },
+    {
+      "id": "diffusion_stabilizer_policy",
+      "role": "perturbed_and_imperfect_demonstrations",
+      "status": "reproduce_before_adoption"
+    },
+    {
+      "id": "residual_rl",
+      "role": "robustness_recovery_and_contact_refinement",
+      "status": "preferred_contact_rich_rl"
+    },
+    {
+      "id": "offline_rl",
+      "role": "learn_from_retained_demonstration_and_intervention_data",
+      "status": "research_after_dataset_gate"
+    },
+    {
+      "id": "goal_conditioned_decision_transformer",
+      "role": "high_level_skill_sequencing",
+      "status": "planner_candidate"
+    },
+    {
+      "id": "vla",
+      "role": "assistive_tool_handling_and_skill_proposal",
+      "status": "not_low_level_control"
+    },
+    {
+      "id": "control_barrier_function",
+      "role": "action_shield",
+      "status": "required_research_direction"
+    },
+    {
+      "id": "classical_servoing_and_planning",
+      "role": "comparator_and_fallback",
+      "status": "required"
+    }
+  ],
+  "learning_tracks": [
+    {
+      "order": 1,
+      "id": "motor_foundations",
+      "existing_contract": "config/dranmar_learning_path.json",
+      "methods": [
+        "state_based_PPO",
+        "privileged_observations"
+      ]
+    },
+    {
+      "order": 2,
+      "id": "demonstration_data",
+      "methods": [
+        "clinician_teleoperation",
+        "verified_scripted_expert",
+        "Isaac_Lab_Mimic",
+        "SoftMimicGen_style_deformable_generation"
+      ]
+    },
+    {
+      "order": 3,
+      "id": "visuomotor_bakeoff",
+      "required_candidates": [
+        "recurrent_behavior_cloning",
+        "ACT",
+        "diffusion_policy"
+      ]
+    },
+    {
+      "order": 4,
+      "id": "residual_and_constrained_rl",
+      "requirements": [
+        "competent_initial_policy",
+        "separate_reward_and_cost",
+        "hard_failure_events"
+      ]
+    },
+    {
+      "order": 5,
+      "id": "hierarchical_procedure_learning",
+      "requirements": [
+        "qualified_skill_graph",
+        "observable_entry_exit_failure",
+        "local_shield_cannot_be_bypassed"
+      ]
+    },
+    {
+      "order": 6,
+      "id": "sim_to_real_and_hil",
+      "stages": [
+        "frozen_digital_twin",
+        "software_in_the_loop",
+        "hardware_in_the_loop",
+        "dry_lab_phantom",
+        "instrumented_ex_vivo",
+        "separately_approved_preclinical"
+      ]
+    }
+  ],
+  "fidelity_curriculum": [
+    {
+      "order": 1,
+      "id": "kinematic_and_rigid_proxy",
+      "purpose": "debug_observation_action_reward_and_reset"
+    },
+    {
+      "order": 2,
+      "id": "native_rigid_contact",
+      "purpose": "qualify_grasp_slip_handover_and_release"
+    },
+    {
+      "order": 3,
+      "id": "deformable_contact",
+      "purpose": "qualify_tissue_strand_and_attachment_interaction"
+    },
+    {
+      "order": 4,
+      "id": "sensor_rich_patient_effect",
+      "purpose": "evaluate_benefit_harm_recovery_and_partial_observability"
+    },
+    {
+      "order": 5,
+      "id": "hil_and_physical_bench",
+      "purpose": "qualify_timing_calibration_transport_and_physical_transfer"
+    }
+  ],
+  "efficiency_policy": {
+    "objective": "minimum_time_to_qualified_task_achievement",
+    "diagnostic": "qualified_learning_progress_per_gpu_hour",
+    "not_primary_objective": "raw_simulator_fps",
+    "required": [
+      "short_environment_count_sweep",
+      "state_before_vision",
+      "rigid_before_deformable",
+      "privileged_teacher_distillation",
+      "tiled_rendering_for_vision",
+      "multi_seed_pruning",
+      "counterexample_mining",
+      "early_stop_on_invalid_evidence",
+      "warm_start_from_compatible_skill",
+      "fixed_budget_candidate_race",
+      "successive_halving",
+      "failure_cluster_targeted_curriculum"
+    ],
+    "fastest_path_loop": [
+      {
+        "order": 1,
+        "id": "contract_smoke"
+      },
+      {
+        "order": 2,
+        "id": "expert_bootstrap"
+      },
+      {
+        "order": 3,
+        "id": "fixed_budget_short_race"
+      },
+      {
+        "order": 4,
+        "id": "successive_halving"
+      },
+      {
+        "order": 5,
+        "id": "failure_targeted_curriculum"
+      },
+      {
+        "order": 6,
+        "id": "residual_refinement"
+      },
+      {
+        "order": 7,
+        "id": "frozen_qualification"
+      },
+      {
+        "order": 8,
+        "id": "transfer_forward"
+      }
+    ],
+    "required_tqta_metrics": [
+      "wall_clock_seconds_to_gate",
+      "gpu_hours_to_gate",
+      "simulated_steps_to_gate",
+      "successful_expert_demonstration_minutes_to_gate",
+      "experiment_count_to_gate",
+      "human_intervention_minutes_to_gate"
+    ]
+  },
+  "evaluation": {
+    "required_splits": [
+      "train",
+      "validation",
+      "held_out",
+      "stress",
+      "counterfactual",
+      "intervention_and_failure"
+    ],
+    "required_comparators": [
+      "scripted_or_classical",
+      "recurrent_behavior_cloning",
+      "task_specific_learned_candidate"
+    ],
+    "required_metrics": [
+      "success_with_confidence_interval",
+      "patient_benefit",
+      "patient_harm",
+      "hard_constraint_violations",
+      "failure_distribution_by_stratum",
+      "recovery_rate",
+      "abstention_precision_recall",
+      "inference_latency",
+      "action_clipping",
+      "gpu_hours",
+      "time_to_qualified_task_achievement"
+    ],
+    "promotion_gates": [
+      {
+        "order": 1,
+        "id": "contract",
+        "must_pass": true
+      },
+      {
+        "order": 2,
+        "id": "competence",
+        "must_pass": true
+      },
+      {
+        "order": 3,
+        "id": "physical_behavior",
+        "must_pass": true
+      },
+      {
+        "order": 4,
+        "id": "robustness",
+        "must_pass": true
+      },
+      {
+        "order": 5,
+        "id": "safety",
+        "must_pass": true,
+        "hard_constraint_violations": 0,
+        "report_statistical_limit": true
+      },
+      {
+        "order": 6,
+        "id": "recovery",
+        "must_pass": true
+      },
+      {
+        "order": 7,
+        "id": "efficiency",
+        "must_pass": true
+      },
+      {
+        "order": 8,
+        "id": "hil_or_bench",
+        "must_pass_when_physical_transfer_claimed": true
+      },
+      {
+        "order": 9,
+        "id": "claim_boundary",
+        "must_pass": true
+      }
+    ]
+  },
+  "research_basis": [
+    "https://arxiv.org/abs/2404.16027",
+    "https://arxiv.org/abs/2511.04831",
+    "https://arxiv.org/abs/2108.13035",
+    "https://arxiv.org/abs/2302.09606",
+    "https://pubmed.ncbi.nlm.nih.gov/40668896/",
+    "https://arxiv.org/abs/2406.06092",
+    "https://arxiv.org/abs/2407.12998",
+    "https://arxiv.org/abs/2504.14857",
+    "https://arxiv.org/abs/2503.01252",
+    "https://arxiv.org/abs/2603.25725",
+    "https://arxiv.org/abs/2603.07032",
+    "https://pubmed.ncbi.nlm.nih.gov/35080901/",
+    "https://pubmed.ncbi.nlm.nih.gov/38671232/"
+  ],
+  "evidence_boundary": {
+    "simulation_success_is_clinical_validation": false,
+    "physical_calibration_claimed": false,
+    "medical_device_status": false,
+    "patient_care_allowed": false,
+    "requires_separate_institutional_regulatory_safety_and_clinical_authorization": true
+  }
+}

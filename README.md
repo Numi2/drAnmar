@@ -170,11 +170,18 @@ stopping, live RAM/VRAM fitting, and typed benchmark evidence.
 ./dr_anmar_learning.sh validate
 ./dr_anmar_learning.sh smoke
 ./dr_anmar_learning.sh sweep
+./dr_anmar_learning.sh tqta-start
 ./dr_anmar_learning.sh train
+./dr_anmar_learning.sh tqta-report
 ```
 
 See the complete [DrAnmar Learning Path](docs/DRANMAR_LEARNING_PATH.md) for task
 stages, efficiency controls, promotion gates, and evidence boundaries.
+The adopted
+[robotic-surgery RL technical direction](docs/ROBOTIC_SURGERY_RL_TECHNICAL_DIRECTION.md)
+minimizes **time to qualified task achievement**: wall-clock time from a frozen
+task contract to the first checkpoint that passes held-out competence, safety,
+and recovery gates.
 
 ## Doctor Studio
 

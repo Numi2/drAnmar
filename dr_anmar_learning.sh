@@ -7,7 +7,7 @@ DR_ANMAR_ISAACLAB_ROOT="${DR_ANMAR_ISAACLAB_ROOT:-${DR_ANMAR_RUNTIME_ROOT}/physi
 DR_ANMAR_ISAAC_PYTHON="${DR_ANMAR_ISAAC_PYTHON:-${DR_ANMAR_RUNTIME_ROOT}/physics-next/env_isaaclab/bin/python}"
 DR_ANMAR_LEARNING_OUTPUT="${DR_ANMAR_LEARNING_OUTPUT:-${REPO_ROOT}/output/dranmar-learning}"
 DR_ANMAR_TASK="${DR_ANMAR_TASK:-DrAnmar-Reach-PSM-IK-Rel-v0}"
-DR_ANMAR_NUM_ENVS="${DR_ANMAR_NUM_ENVS:-512}"
+DR_ANMAR_NUM_ENVS="${DR_ANMAR_NUM_ENVS:-1200}"
 DR_ANMAR_SEED="${DR_ANMAR_SEED:-17}"
 
 export DR_ANMAR_ISAACLAB_ROOT
@@ -15,11 +15,14 @@ export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 export PYTHONPATH="${REPO_ROOT}/source/extensions/orbit.surgical.tasks:${REPO_ROOT}/source/extensions/orbit.surgical.assets:${PYTHONPATH:-}"
 
 usage() {
-    echo "Usage: $0 {validate|list|smoke|benchmark|sweep|train|play} [arguments]"
+    echo "Usage: $0 {validate|list|smoke|benchmark|sweep|train|play|tqta-start|tqta-ingest|tqta-report} [arguments]"
     echo "  benchmark [task] [num_envs] [iterations] [output]"
     echo "  sweep     [task] [iterations] [comma-separated env counts] [output]"
     echo "  train     [task] [num_envs] [iterations] [output]"
     echo "  play      CHECKPOINT [task] [num_envs] [frames] [output]"
+    echo "  tqta-start  [task] [tracker]"
+    echo "  tqta-ingest TRACKER EVIDENCE_JSON..."
+    echo "  tqta-report [tracker]"
 }
 
 require_runtime() {
@@ -113,6 +116,29 @@ case "${command}" in
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
             --output_path "${output}"
+        ;;
+    tqta-start)
+        task="${2:-${DR_ANMAR_TASK}}"
+        tracker="${3:-${DR_ANMAR_LEARNING_OUTPUT}/tqta/${task}.json}"
+        python3 "${REPO_ROOT}/scripts/dr_anmar_tqta.py" start \
+            --task "${task}" \
+            --tracker "${tracker}"
+        ;;
+    tqta-ingest)
+        tracker="${2:-}"
+        if [[ -z "${tracker}" || "$#" -lt 3 ]]; then
+            usage
+            exit 2
+        fi
+        shift 2
+        python3 "${REPO_ROOT}/scripts/dr_anmar_tqta.py" ingest \
+            --tracker "${tracker}" \
+            "$@"
+        ;;
+    tqta-report)
+        tracker="${2:-${DR_ANMAR_LEARNING_OUTPUT}/tqta/${DR_ANMAR_TASK}.json}"
+        python3 "${REPO_ROOT}/scripts/dr_anmar_tqta.py" report \
+            --tracker "${tracker}"
         ;;
     *)
         usage

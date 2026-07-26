@@ -10,13 +10,13 @@
     "memory_fit": {
       "minimum_free_gpu_mib": 1024,
       "minimum_available_system_mib": 4096,
-      "parallel_world_limit": "minimum of requested, live RAM cap, and live VRAM cap"
+      "parallel_world_limit": "minimum of requested, live RAM cap, and live VRAM cap unless an exact count has already been qualified and DR_ANMAR_TRUST_REQUESTED_NUM_ENVS=1"
     }
   },
   "defaults": {
     "task": "DrAnmar-Reach-PSM-IK-Rel-v0",
-    "num_envs": 512,
-    "environment_sweep": [128, 256, 512, 1024],
+    "num_envs": 1200,
+    "environment_sweep": [1200],
     "training_seeds": [17, 43, 89],
     "held_out_seeds": [2361, 4099, 7919],
     "success_threshold": 0.95,
