@@ -333,6 +333,14 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "controller-sweep)" in launcher_source
     assert "def _controller_sweep(" in benchmark_source
     assert "first_terminal_outcome_per_environment" in benchmark_source
+    assert '"all_episode_totals"' in benchmark_source
+    assert '"first_episode_lift_diagnostics"' in benchmark_source
+    assert '"no_bilateral_contact"' in benchmark_source
+    assert '"contact_without_minimum_height"' in benchmark_source
+    assert '"minimum_height_without_goal_position"' in benchmark_source
+    assert '"goal_position_without_qualified_state"' in benchmark_source
+    assert '"qualified_state_without_sustained_dwell"' in benchmark_source
+    assert '"success_by_initial_target_xy_distance"' in benchmark_source
     for source in (
         cfg_source,
         reward_source,

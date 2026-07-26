@@ -1228,7 +1228,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if "time_out" in termination_names:
         failure_names.append("time_out")
     failure_distribution = {name: 0 for name in failure_names}
+    first_unresolved = torch.ones(
+        env.unwrapped.num_envs,
+        dtype=torch.bool,
+        device=env.unwrapped.device,
+    )
+    first_outcome_success = torch.zeros_like(first_unresolved)
+    first_termination_counts = {name: 0 for name in termination_names}
+    first_failure_distribution = {name: 0 for name in failure_names}
     lift_diagnostics = None
+    first_lift_history = None
     lift_mdp_common = None
     procedure_diagnostic_trace = None
     diagnostic_trace_frames = {
@@ -1279,10 +1288,127 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
         }
     obs = env.get_observations()
+    if lift_diagnostics is not None:
+        policy_observation = obs["policy"]
+        initial_object_xy = policy_observation[:, 23:25].clone()
+        initial_target_xy = policy_observation[:, 36:38].clone()
+        first_lift_history = {
+            "ever_bilateral_contact": torch.zeros_like(first_unresolved),
+            "ever_above_minimum_height": torch.zeros_like(first_unresolved),
+            "ever_goal_position_inside": torch.zeros_like(first_unresolved),
+            "ever_goal_orientation_inside": torch.zeros_like(first_unresolved),
+            "ever_linear_speed_inside": torch.zeros_like(first_unresolved),
+            "ever_angular_speed_inside": torch.zeros_like(first_unresolved),
+            "ever_instantaneous_success": torch.zeros_like(first_unresolved),
+            "maximum_object_height_m": torch.full(
+                (env.unwrapped.num_envs,),
+                -torch.inf,
+                device=env.unwrapped.device,
+            ),
+            "minimum_goal_position_error_m": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.inf,
+                device=env.unwrapped.device,
+            ),
+            "initial_object_xy": initial_object_xy,
+            "initial_target_xy": initial_target_xy,
+        }
     started = time.perf_counter()
     try:
         for frame_index in range(args.num_frames):
             with torch.inference_mode():
+                was_first_unresolved = first_unresolved.clone()
+                if first_lift_history is not None:
+                    assert lift_mdp_common is not None
+                    first_forces = lift_mdp_common.paired_contact_forces(
+                        env.unwrapped,
+                        "jaw_1_object_contact",
+                        "jaw_2_object_contact",
+                    )
+                    first_object_height = lift_mdp_common.as_torch(
+                        env.unwrapped.scene["object"].data.root_pos_w
+                    )[:, 2]
+                    (
+                        first_goal_position_error,
+                        first_goal_orientation_error,
+                    ) = lift_mdp_common.object_goal_errors(
+                        env.unwrapped,
+                        "object_pose",
+                        SceneEntityCfg("robot"),
+                        SceneEntityCfg("object"),
+                    )
+                    first_motion = lift_mdp_common.object_motion(env.unwrapped)
+                    first_bilateral_contact = torch.all(
+                        first_forces > 0.01,
+                        dim=-1,
+                    )
+                    first_above_minimum_height = first_object_height > 0.06
+                    first_goal_position_inside = (
+                        first_goal_position_error < 0.015
+                    )
+                    first_goal_orientation_inside = (
+                        first_goal_orientation_error < 0.35
+                    )
+                    first_linear_speed_inside = first_motion[:, 0] < 0.08
+                    first_angular_speed_inside = first_motion[:, 1] < 1.5
+                    first_instantaneous_success = (
+                        first_bilateral_contact
+                        & first_above_minimum_height
+                        & first_goal_position_inside
+                        & first_goal_orientation_inside
+                        & first_linear_speed_inside
+                        & first_angular_speed_inside
+                    )
+                    for key, value in (
+                        ("ever_bilateral_contact", first_bilateral_contact),
+                        (
+                            "ever_above_minimum_height",
+                            first_above_minimum_height,
+                        ),
+                        (
+                            "ever_goal_position_inside",
+                            first_goal_position_inside,
+                        ),
+                        (
+                            "ever_goal_orientation_inside",
+                            first_goal_orientation_inside,
+                        ),
+                        (
+                            "ever_linear_speed_inside",
+                            first_linear_speed_inside,
+                        ),
+                        (
+                            "ever_angular_speed_inside",
+                            first_angular_speed_inside,
+                        ),
+                        (
+                            "ever_instantaneous_success",
+                            first_instantaneous_success,
+                        ),
+                    ):
+                        first_lift_history[key] |= was_first_unresolved & value
+                    first_lift_history["maximum_object_height_m"] = torch.where(
+                        was_first_unresolved,
+                        torch.maximum(
+                            first_lift_history["maximum_object_height_m"],
+                            first_object_height,
+                        ),
+                        first_lift_history["maximum_object_height_m"],
+                    )
+                    first_lift_history["minimum_goal_position_error_m"] = (
+                        torch.where(
+                            was_first_unresolved,
+                            torch.minimum(
+                                first_lift_history[
+                                    "minimum_goal_position_error_m"
+                                ],
+                                first_goal_position_error,
+                            ),
+                            first_lift_history[
+                                "minimum_goal_position_error_m"
+                            ],
+                        )
+                    )
                 actions = policy(obs)
                 obs, reward, dones, extras = env.step(actions)
                 term_values = {
@@ -1306,6 +1432,37 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                 for name, value in term_values.items():
                     termination_counts[name] += int(value.sum().item())
+                first_dones = was_first_unresolved & dones
+                first_successes = first_dones & successes
+                first_outcome_success |= first_successes
+                first_unassigned_failures = first_dones & ~first_successes
+                for name in failure_names:
+                    assigned = first_unassigned_failures & term_values[name]
+                    first_failure_distribution[name] += int(
+                        assigned.sum().item()
+                    )
+                    first_unassigned_failures &= ~assigned
+                if first_unassigned_failures.any().item():
+                    first_failure_distribution.setdefault("unclassified", 0)
+                    first_failure_distribution["unclassified"] += int(
+                        first_unassigned_failures.sum().item()
+                    )
+                for name, value in term_values.items():
+                    first_termination_counts[name] += int(
+                        (first_dones & value).sum().item()
+                    )
+                if first_lift_history is not None:
+                    for key in (
+                        "ever_bilateral_contact",
+                        "ever_above_minimum_height",
+                        "ever_goal_position_inside",
+                        "ever_goal_orientation_inside",
+                        "ever_linear_speed_inside",
+                        "ever_angular_speed_inside",
+                        "ever_instantaneous_success",
+                    ):
+                        first_lift_history[key] |= first_successes
+                first_unresolved &= ~first_dones
                 if lift_diagnostics is not None:
                     assert lift_mdp_common is not None
                     assert procedure_diagnostic_trace is not None
@@ -1446,6 +1603,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         jit_path = export_dir / "policy.pt"
         onnx_path = export_dir / "policy.onnx"
         procedure_diagnostics = None
+        first_episode_lift_diagnostics = None
         if lift_diagnostics is not None:
             samples = float(lift_diagnostics["samples"].item())
             procedure_diagnostics = {
@@ -1517,6 +1675,134 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     lift_diagnostics["maximum_object_height_m"].item()
                 ),
             }
+        if first_lift_history is not None:
+            first_completed = ~first_unresolved
+            first_failed = first_completed & ~first_outcome_success
+            no_contact = (
+                first_failed
+                & ~first_lift_history["ever_bilateral_contact"]
+            )
+            contact_without_height = (
+                first_failed
+                & first_lift_history["ever_bilateral_contact"]
+                & ~first_lift_history["ever_above_minimum_height"]
+            )
+            height_without_goal = (
+                first_failed
+                & first_lift_history["ever_above_minimum_height"]
+                & ~first_lift_history["ever_goal_position_inside"]
+            )
+            goal_without_qualified_state = (
+                first_failed
+                & first_lift_history["ever_goal_position_inside"]
+                & ~first_lift_history["ever_instantaneous_success"]
+            )
+            qualified_without_dwell = (
+                first_failed
+                & first_lift_history["ever_instantaneous_success"]
+            )
+
+            def cohort_stats(mask) -> dict[str, float | int | None]:
+                count = int(mask.sum().item())
+                if not count:
+                    return {
+                        "count": 0,
+                        "mean_initial_target_xy_distance_m": None,
+                        "mean_maximum_object_height_m": None,
+                        "mean_minimum_goal_position_error_m": None,
+                    }
+                initial_target_xy_distance = torch.linalg.vector_norm(
+                    first_lift_history["initial_target_xy"]
+                    - first_lift_history["initial_object_xy"],
+                    dim=-1,
+                )
+                return {
+                    "count": count,
+                    "mean_initial_target_xy_distance_m": float(
+                        initial_target_xy_distance[mask].mean().item()
+                    ),
+                    "mean_maximum_object_height_m": float(
+                        first_lift_history["maximum_object_height_m"][mask]
+                        .mean()
+                        .item()
+                    ),
+                    "mean_minimum_goal_position_error_m": float(
+                        first_lift_history["minimum_goal_position_error_m"][
+                            mask
+                        ]
+                        .mean()
+                        .item()
+                    ),
+                }
+
+            initial_target_xy_distance = torch.linalg.vector_norm(
+                first_lift_history["initial_target_xy"]
+                - first_lift_history["initial_object_xy"],
+                dim=-1,
+            )
+            target_distance_bins = []
+            for lower, upper in (
+                (0.0, 0.02),
+                (0.02, 0.04),
+                (0.04, 0.06),
+                (0.06, 0.08),
+                (0.08, float("inf")),
+            ):
+                in_bin = (
+                    first_completed
+                    & (initial_target_xy_distance >= lower)
+                    & (initial_target_xy_distance < upper)
+                )
+                bin_count = int(in_bin.sum().item())
+                bin_successes = int(
+                    (in_bin & first_outcome_success).sum().item()
+                )
+                target_distance_bins.append(
+                    {
+                        "lower_inclusive_m": lower,
+                        "upper_exclusive_m": (
+                            upper if upper != float("inf") else None
+                        ),
+                        "completed_episodes": bin_count,
+                        "successful_episodes": bin_successes,
+                        "success_rate": (
+                            bin_successes / bin_count if bin_count else None
+                        ),
+                    }
+                )
+            first_episode_lift_diagnostics = {
+                "stage_distribution": {
+                    "success": int(first_outcome_success.sum().item()),
+                    "no_bilateral_contact": int(no_contact.sum().item()),
+                    "contact_without_minimum_height": int(
+                        contact_without_height.sum().item()
+                    ),
+                    "minimum_height_without_goal_position": int(
+                        height_without_goal.sum().item()
+                    ),
+                    "goal_position_without_qualified_state": int(
+                        goal_without_qualified_state.sum().item()
+                    ),
+                    "qualified_state_without_sustained_dwell": int(
+                        qualified_without_dwell.sum().item()
+                    ),
+                    "unresolved": int(first_unresolved.sum().item()),
+                },
+                "reached_fraction": {
+                    key.removeprefix("ever_"): float(
+                        value.float().mean().item()
+                    )
+                    for key, value in first_lift_history.items()
+                    if key.startswith("ever_")
+                },
+                "outcome_cohorts": {
+                    "successful": cohort_stats(first_outcome_success),
+                    "failed": cohort_stats(first_failed),
+                },
+                "success_by_initial_target_xy_distance": target_distance_bins,
+            }
+        first_completed_count = int((~first_unresolved).sum().item())
+        first_success_count = int(first_outcome_success.sum().item())
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -1538,15 +1824,31 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 else None
             ),
             "mean_reward": sum(rewards) / len(rewards) if rewards else None,
-            "completed_episodes": done_count,
-            "successful_episodes": success_count,
-            "failed_episodes": done_count - success_count,
-            "failure_distribution": failure_distribution,
-            "termination_term_counts": termination_counts,
+            "first_terminal_outcome_per_environment": True,
+            "completed_episodes": first_completed_count,
+            "successful_episodes": first_success_count,
+            "failed_episodes": first_completed_count - first_success_count,
+            "unresolved_episodes": int(first_unresolved.sum().item()),
+            "failure_distribution": first_failure_distribution,
+            "termination_term_counts": first_termination_counts,
+            "all_episode_totals": {
+                "completed_episodes": done_count,
+                "successful_episodes": success_count,
+                "failed_episodes": done_count - success_count,
+                "failure_distribution": failure_distribution,
+                "termination_term_counts": termination_counts,
+            },
             "procedure_diagnostics": procedure_diagnostics,
             "procedure_diagnostic_trace": procedure_diagnostic_trace,
+            "first_episode_lift_diagnostics": (
+                first_episode_lift_diagnostics
+            ),
             "process_peak_memory_mib": _peak_process_memory_mib(),
-            "success_rate": success_count / done_count if done_count else None,
+            "success_rate": (
+                first_success_count / first_completed_count
+                if first_completed_count
+                else None
+            ),
             "checkpoint": {
                 "path": str(checkpoint),
                 "sha256": _sha256(checkpoint),

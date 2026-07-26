@@ -216,6 +216,14 @@ The benchmark and play commands emit typed runtime, learning, hardware, version,
 resource, and success bundles under `output/dranmar-learning/`. They are the
 primary experiment records; console output alone is not evidence.
 
+Play qualification counts exactly the first terminal outcome from every
+parallel environment. Environments that succeed early may reset and contribute
+to diagnostic all-episode totals, but those later episodes cannot increase the
+promotion success rate. Lift evidence also classifies every first episode by
+the last achieved physical stage: bilateral contact, minimum height, goal
+position, instantaneous qualified state, or sustained dwell. Target-distance
+strata distinguish controller limitations from an unfavorable reset mix.
+
 ## Promotion gates
 
 Each stage has an explicit success threshold and must pass all held-out seeds in
@@ -224,8 +232,9 @@ the manifest. Promotion requires:
 1. a frozen checkpoint and cryptographic hash;
 2. the task ID, source revision, runtime versions, GPU, seed, and environment
    count;
-3. seeded play bundles for every held-out seed;
-4. success rate and failure distribution, not reward alone;
+3. seeded play bundles for every held-out seed, using one first terminal
+   outcome per environment;
+4. success rate and stage-stratified failure distribution, not reward alone;
 5. contact and force qualification for lift and handover; and
 6. a fresh benchmark if the robot, asset, physics, reward, observation, or
    runtime contract changes.

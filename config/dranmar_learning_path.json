@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.25.0",
+  "schema_version": "1.26.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -128,7 +128,15 @@
       },
       "promotion": {
         "minimum_success_rate": 0.85,
-        "held_out_seed_passes": 3
+        "held_out_seed_passes": 3,
+        "episode_accounting": "first_terminal_outcome_per_environment",
+        "required_failure_strata": [
+          "no_bilateral_contact",
+          "contact_without_minimum_height",
+          "minimum_height_without_goal_position",
+          "goal_position_without_qualified_state",
+          "qualified_state_without_sustained_dwell"
+        ]
       }
     },
     {
@@ -174,6 +182,8 @@
     "requires_checkpoint_hash": true,
     "requires_seeded_evaluation": true,
     "requires_failure_distribution": true,
+    "requires_first_terminal_outcome_per_environment": true,
+    "all_episode_totals_are_diagnostic_only": true,
     "clinical_claims": false
   }
 }
