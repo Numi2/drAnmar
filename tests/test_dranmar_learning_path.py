@@ -92,7 +92,13 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         manifest["defaults"]["stage_3_initialization"][
             "gripper_effort_limit_nm"
         ]
-        == 0.1
+        == 0.15
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
+            "gripper_effort_qualification"
+        ]["total_successful_episodes"]
+        == 4379
     )
     assert (
         manifest["defaults"]["stage_3_initialization"][

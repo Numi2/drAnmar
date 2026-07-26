@@ -121,13 +121,18 @@ would otherwise appear only as timeouts. Stage 4 requires its own
 contact-calibrated needle grasp frame before promotion.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
-symmetric close target and 0.1 N·m actuator effort limit. Physical-parameter
+symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter
 challengers cannot be sharded within one replicated PhysX scene, so the sweep
 runner requires one repeated value across all 1,200 environments and records
 the applied environment override. Close-target or effort promotion must improve
 the unchanged first-terminal success gate without increasing hard force
-terminations. These simulator parameters are not clinically calibrated jaw
-forces.
+terminations. The 0.15 N·m effort setting achieved 4,379 strict successes in
+4,800 first episodes across seed 17 and held-out seeds 2361, 4099, and 7919.
+All four source-locked populations exceeded 90%, with zero hard termination and
+a maximum measured object-contact force of 3.67 N below the unchanged 5 N
+limit. This qualifies block lifting in simulation; other PSM task families
+still require their own regression evidence. These simulator parameters are
+not clinically calibrated jaw forces.
 
 Stage 3 residual PPO cannot modify the proven approach, gripper, or orientation
 commands. It receives only a bounded `(x, y, z)` correction after physics-owned
