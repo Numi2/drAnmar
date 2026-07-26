@@ -467,6 +467,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "receiver_roll_offsets = [math.pi] * len(values)" in benchmark_source
     assert "giver_bilateral_contact = torch.all(" in benchmark_source
     assert "giver_carry_mode.unsqueeze(-1)" in benchmark_source
+    assert "presentation_fraction_from_giver: float = 0.25" in benchmark_source
     assert "((phase == 2) & ~giver_lifted)" in benchmark_source
     assert 'play.add_argument("--video", action="store_true")' in benchmark_source
     assert 'play.add_argument("--video_chunk_length", type=int)' in benchmark_source

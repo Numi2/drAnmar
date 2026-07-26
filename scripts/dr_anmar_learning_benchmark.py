@@ -518,6 +518,7 @@ def _handover_teacher_action(
     slow_approach_radius: float = 0.02,
     slow_approach_action_limit: float = 0.1,
     normalized_contact_threshold: float = 0.002,
+    presentation_fraction_from_giver: float = 0.25,
     presentation_height_in_robot_frame: float = -0.07,
     minimum_lift_height_in_robot_frame: float = -0.09,
     carry_lateral_action_limit: float = 0.1,
@@ -588,9 +589,13 @@ def _handover_teacher_action(
     )
 
     root_2_in_giver = object_in_giver - object_in_receiver
-    midpoint_in_giver = 0.5 * root_2_in_giver
-    midpoint_in_receiver = -0.5 * root_2_in_giver
-    giver_target = midpoint_in_giver.clone()
+    presentation_in_giver = (
+        presentation_fraction_from_giver * root_2_in_giver
+    )
+    presentation_in_receiver = (
+        (presentation_fraction_from_giver - 1.0) * root_2_in_giver
+    )
+    giver_target = presentation_in_giver.clone()
     giver_target[:, 2] = presentation_height_in_robot_frame
     vertical_only = (
         object_in_giver[:, 2] < minimum_lift_height_in_robot_frame
@@ -626,14 +631,14 @@ def _handover_teacher_action(
         | ((phase == 2) & (giver_bilateral_contact | giver_lifted))
     )
 
-    receiver_stage_target = midpoint_in_receiver.clone()
+    receiver_stage_target = presentation_in_receiver.clone()
     receiver_stage_target[:, 2] = (
         presentation_height_in_robot_frame + approach_height
     )
     receiver_stage = (
         (receiver_stage_target - receiver_ee) / position_scale
     ).clamp(-carry_lateral_action_limit, carry_lateral_action_limit)
-    receiver_hold_target = midpoint_in_receiver.clone()
+    receiver_hold_target = presentation_in_receiver.clone()
     receiver_hold_target[:, 2] = presentation_height_in_robot_frame
     receiver_hold_error = (
         receiver_hold_target - object_in_receiver
