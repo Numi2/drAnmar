@@ -405,8 +405,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"gripper_effort_limit_nm"' in benchmark_source
     assert '"environment_level_parameter"' in benchmark_source
     assert '"needle_grasp_arc_fraction"' in benchmark_source
+    assert '"needle_grasp_z_offset"' in benchmark_source
     assert '"grasp_offset_m"' in benchmark_source
     assert '"grasp_frame_source"' in benchmark_source
+    assert '"hard_failure_term_counts"' in benchmark_source
+    assert '"goal_orientation_inside_frame_rate"' in benchmark_source
+    assert '"maximum_non_object_force_n"' in benchmark_source
     assert '"goal_position_without_qualified_state"' in benchmark_source
     assert '"qualified_state_without_sustained_dwell"' in benchmark_source
     assert '"success_by_initial_target_xy_distance"' in benchmark_source

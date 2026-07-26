@@ -1042,6 +1042,7 @@ _LIFT_SWEEP_PARAMETERS = {
     "lateral_alignment_threshold",
     "lateral_clearance_below_target",
     "needle_grasp_arc_fraction",
+    "needle_grasp_z_offset",
     "slow_approach_action_limit",
 }
 _ENVIRONMENT_LEVEL_LIFT_SWEEP_PARAMETERS = {
@@ -1055,6 +1056,7 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
     import gymnasium as gym
     import torch
 
+    from isaaclab.managers import SceneEntityCfg
     from orbit.surgical.tasks.surgical import mdp_common
 
     block_task = "Lift-Block-PSM-IK-Rel" in args.task
@@ -1063,10 +1065,13 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail("controller-sweep requires a block or needle IK-relative lift task")
     if args.parameter not in _LIFT_SWEEP_PARAMETERS:
         return _fail(f"unsupported controller-sweep parameter: {args.parameter}")
-    needle_grasp_sweep = args.parameter == "needle_grasp_arc_fraction"
+    needle_grasp_sweep = args.parameter in {
+        "needle_grasp_arc_fraction",
+        "needle_grasp_z_offset",
+    }
     if needle_task and not needle_grasp_sweep:
         return _fail(
-            "needle controller-sweep requires needle_grasp_arc_fraction until "
+            "needle controller-sweep requires a needle grasp-frame parameter until "
             "a contact-qualified needle frame exists"
         )
     if block_task and needle_grasp_sweep:
@@ -1092,16 +1097,30 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
     if needle_grasp_sweep:
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
             NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE,
+            NEEDLE_PROVISIONAL_ARC_FRACTION,
             needle_geometry_grasp_offset_m,
         )
 
-        try:
+        if args.parameter == "needle_grasp_arc_fraction":
+            try:
+                needle_grasp_offsets = [
+                    needle_geometry_grasp_offset_m(value) for value in values
+                ]
+            except ValueError as error:
+                return _fail(str(error))
+            grasp_frame_source = NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE
+        else:
+            provisional_offset = needle_geometry_grasp_offset_m(
+                NEEDLE_PROVISIONAL_ARC_FRACTION
+            )
             needle_grasp_offsets = [
-                needle_geometry_grasp_offset_m(value) for value in values
+                (provisional_offset[0], provisional_offset[1], value)
+                for value in values
             ]
-        except ValueError as error:
-            return _fail(str(error))
-        grasp_frame_source = NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE
+            grasp_frame_source = (
+                f"{NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE};"
+                f"fixed_arc_fraction={NEEDLE_PROVISIONAL_ARC_FRACTION}"
+            )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
     environment_override = None
@@ -1138,11 +1157,22 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
     successes = torch.zeros_like(completed)
     timeouts = torch.zeros_like(completed)
     hard_failures = torch.zeros_like(completed)
+    failure_term_counts = {
+        name: torch.zeros_like(completed)
+        for name in (
+            "object_dropping",
+            "excessive_object_force",
+            "protected_surface_force",
+        )
+    }
     contact_frames = torch.zeros(len(values), dtype=torch.float64, device=env.unwrapped.device)
     angular_valid_frames = torch.zeros_like(contact_frames)
     above_height_frames = torch.zeros_like(contact_frames)
+    goal_position_frames = torch.zeros_like(contact_frames)
+    goal_orientation_frames = torch.zeros_like(contact_frames)
     active_samples = torch.zeros_like(contact_frames)
     maximum_force = torch.zeros_like(contact_frames)
+    maximum_non_object_force = torch.zeros_like(contact_frames)
     manager = env.unwrapped.termination_manager
     started = time.perf_counter()
     try:
@@ -1179,10 +1209,14 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
             obs, _, terminated, time_out_flags, _ = env.step(actions)
             dones = terminated | time_out_flags
             success_term = manager.get_term("success")
+            failure_terms = {
+                name: manager.get_term(name)
+                for name in failure_term_counts
+            }
             hard_failure = (
-                manager.get_term("object_dropping")
-                | manager.get_term("excessive_object_force")
-                | manager.get_term("protected_surface_force")
+                failure_terms["object_dropping"]
+                | failure_terms["excessive_object_force"]
+                | failure_terms["protected_surface_force"]
             )
             time_out_term = manager.get_term("time_out")
             first_done = was_unresolved & dones
@@ -1191,6 +1225,17 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                 env.unwrapped,
                 "jaw_1_object_contact",
                 "jaw_2_object_contact",
+            )
+            non_object_forces = mdp_common.maximum_non_object_contact_force(
+                env.unwrapped,
+                ("jaw_1_object_contact", "jaw_2_object_contact"),
+            )
+            goal_position_error, goal_orientation_error = (
+                mdp_common.object_goal_errors(
+                    env.unwrapped,
+                    "object_pose",
+                    SceneEntityCfg("robot"),
+                )
             )
             motion = mdp_common.object_motion(env.unwrapped)
             object_height = mdp_common.as_torch(
@@ -1208,6 +1253,10 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                 hard_failures[group_index] += (
                     first & hard_failure[start:stop]
                 ).sum()
+                for name, term in failure_terms.items():
+                    failure_term_counts[name][group_index] += (
+                        first & term[start:stop]
+                    ).sum()
                 timeouts[group_index] += (
                     first
                     & time_out_term[start:stop]
@@ -1226,9 +1275,19 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                     above_height_frames[group_index] += (
                         (object_height[start:stop] > 0.06) & active
                     ).sum()
+                    goal_position_frames[group_index] += (
+                        (goal_position_error[start:stop] < 0.015) & active
+                    ).sum()
+                    goal_orientation_frames[group_index] += (
+                        (goal_orientation_error[start:stop] < 0.35) & active
+                    ).sum()
                     maximum_force[group_index] = torch.maximum(
                         maximum_force[group_index],
                         group_forces[active].max().double(),
+                    )
+                    maximum_non_object_force[group_index] = torch.maximum(
+                        maximum_non_object_force[group_index],
+                        non_object_forces[start:stop][active].max().double(),
                     )
             unresolved &= ~first_done
             if not unresolved.any():
@@ -1256,6 +1315,10 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "time_outs": int(timeouts[index].item()),
                     "hard_failures": int(hard_failures[index].item()),
+                    "hard_failure_term_counts": {
+                        name: int(counts[index].item())
+                        for name, counts in failure_term_counts.items()
+                    },
                     "bilateral_contact_frame_rate": (
                         float(contact_frames[index].item()) / sample_count
                         if sample_count
@@ -1271,7 +1334,20 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
                         if sample_count
                         else None
                     ),
+                    "goal_position_inside_frame_rate": (
+                        float(goal_position_frames[index].item()) / sample_count
+                        if sample_count
+                        else None
+                    ),
+                    "goal_orientation_inside_frame_rate": (
+                        float(goal_orientation_frames[index].item()) / sample_count
+                        if sample_count
+                        else None
+                    ),
                     "maximum_object_force_n": float(maximum_force[index].item()),
+                    "maximum_non_object_force_n": float(
+                        maximum_non_object_force[index].item()
+                    ),
                 }
             )
         evidence = {
