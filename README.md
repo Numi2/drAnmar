@@ -90,15 +90,19 @@ clinical evidence are separate claims. See
 ## Dr.Anmar robot systems
 
 Seven procedure-specific systems are available as simulation-training
-workcells. Native-simulator runs were recorded on 25 July 2026 for the exact
-revisions and stacks named in their evidence artifacts. Each system provides:
+workcells. A generic native bench recorded on 25 July 2026 established
+workcell selection, simulator stepping, non-empty camera output, no reported
+fatal error, and clean shutdown. It did not record the parent or asset
+submodule revision and did not execute every complete procedure controller or
+deformable-cooking route. Asset-specific evidence therefore remains the
+authority for stronger claims. Each system provides:
 
 - a standalone articulated mechanism for isolated development;
 - a composable payload mounted to an Isaac Lab Franka articulation;
 - deterministic source generation and asset manifests;
 - OpenUSD, GLB, texture, interaction-frame, controller, and task contracts;
 - CPU-side structural and controller tests; and
-- a headless CUDA native-simulator evidence program.
+- a headless CUDA diagnostic or asset-specific validation program.
 
 The animations below were rendered directly from the complete Franka-mounted OpenUSD assemblies in Isaac Lab on
 an NVIDIA RTX 4090. Each clip opens on the full robot, then moves to the authored tool center point and procedure
@@ -125,9 +129,10 @@ These three clips come from the same fresh Isaac Lab run. The first preserves th
 context; the two shorter clips retain the simulated frames while focusing the contact/debridement and
 irrigation/aspiration portions of the sequence.
 
-The recorded CUDA run covered both standalone and Franka-mounted representations for 120 steps, all five
-tool joints, a cooked surface-deformable wound, seven debris attachments, 80 PBD particles, zero fluid-ledger
-balance error, finite joint state, and zero error-level engine messages. See
+The asset-specific runtime program is designed to inspect both standalone and
+Franka-mounted representations, the five tool joints, deformable-wound cooking,
+debris attachments, particle accounting, finite state, and engine diagnostics.
+The retained generic bench does not establish that complete matrix. See
 [`docs/VALIDATION.md`](docs/VALIDATION.md).
 
 ### Atraumatic exposure robot
@@ -140,9 +145,11 @@ The exposure system uses symmetric carriages, independent lift and pitch axes, c
 distributed capture cells. Fenestrated and microcup pad variants share one articulation and force/visibility
 control contract, enabling controlled comparison of contact geometry without changing the experimental interface.
 
-Both pad geometries passed the standalone and Franka-mounted 120-step CUDA matrix with finite articulation state,
-two cooked tissue flaps, two outer anchors, twelve capture constraints, finite controller output, and zero
-error-level engine messages. See
+The asset-specific runtime program is designed to inspect both pad geometries
+in standalone and Franka-mounted representations, including articulation
+state, tissue-flap cooking, anchors, capture constraints, controller output,
+and engine diagnostics. The retained generic bench establishes composition and
+visibility only. See
 [`docs/atraumatic_exposure_robot/VALIDATION.md`](docs/atraumatic_exposure_robot/VALIDATION.md).
 
 ### Adaptive hemostasis robot
@@ -156,9 +163,11 @@ a reduced-order pressure/flow verification model. Its runtime contract separates
 retained-clip, and patch-bond attachments so that control phases and failure conditions remain independently
 inspectable.
 
-Qualification checks current surface-deformable vessel schemas, all eleven tool joints, attachment lifecycles,
-conserved particle-volume bookkeeping, suction capture, provisional retention/cure thresholds, pressure-challenge
-integration, finite state, and error-free engine execution in standalone and Franka-mounted configurations. See
+The asset-specific validation contract checks vessel schemas, all eleven tool
+joints, attachment lifecycles, particle-volume bookkeeping, suction capture,
+provisional retention and cure thresholds, pressure-challenge integration,
+finite state, and engine diagnostics. A current complete native matrix is not
+established by the generic bench. See
 [`docs/adaptive_hemostasis_robot/VALIDATION.md`](docs/adaptive_hemostasis_robot/VALIDATION.md).
 
 ### Adaptive anastomosis robot
@@ -171,10 +180,11 @@ The anastomosis system provides bilateral circumferential capture, coaxial tissu
 lumen mandrel, independent eversion, a sixteen-position staple crown, reinforcement-collar application, temporary
 occlusion, and a pressure-decay test model.
 
-The native runtime matrix covers the 14-DoF standalone mechanism and 21-DoF Franka assembly, two cooked tissue
-surfaces, twelve temporary capture attachments, sixteen retained staples through 32 leg attachments, 32 cured
-collar-sector attachments, conserved PBD leak particles, patency evaluation, an eight-second pressure-decay
-challenge, at least 120 CUDA steps, and finite state. See
+The asset-specific runtime program is designed to inspect the 14-DoF standalone
+mechanism and 21-DoF Franka assembly, tissue cooking, temporary capture
+attachments, retained staples, cured collar attachments, particle accounting,
+patency evaluation, pressure decay, finite state, and engine diagnostics. A
+current complete native matrix is not established by the generic bench. See
 [`docs/adaptive_anastomosis_robot/VALIDATION.md`](docs/adaptive_anastomosis_robot/VALIDATION.md).
 
 ### Adaptive seal-and-divide robot
@@ -187,10 +197,12 @@ The seal-and-divide system integrates tissue centering, symmetric jaw compressio
 irrigation, suction, energy-state estimation, thermal and impedance observables, seal verification, and explicit
 blade-before-seal interlocks.
 
-The native CUDA evidence gate requires two cooked vessel surfaces, two distal fixtures, sixteen bridge attachments, four
-temporary compression attachments, four retained seal-band attachments, interlocked division, release of temporary
-constraints, exact joint counts, finite state for 120 steps, and zero engine errors in both standalone and
-Franka-mounted representations. See
+The asset-specific runtime program is designed to check two cooked vessel
+surfaces, distal fixtures, bridge and compression attachments, retained seal
+bands, the division interlock, temporary-constraint release, joint counts,
+finite state, and engine diagnostics in standalone and Franka-mounted
+representations. A current complete native matrix is not established by the
+generic bench. See
 [`docs/adaptive_seal_divide_robot/VALIDATION.md`](docs/adaptive_seal_divide_robot/VALIDATION.md).
 
 ### SafePlane dissection robot
@@ -202,11 +214,11 @@ retain explicit continuity and modality-specific clearance interlocks; an
 override produces inspectable simulated injury state rather than bypassing the
 physical model.
 
-Its CUDA matrix covers the 17-DoF standalone mechanism and 24-DoF Franka
-assembly, two cooked tissue surfaces, target-bed fixtures, traction and bridge
-attachments, all 28 releasable adhesion bridges, protected-structure
-continuity, conserved PBD fluid, finite state for 120 steps, and zero engine
-errors. See
+Its asset-specific runtime program is designed to inspect the 17-DoF standalone
+mechanism and 24-DoF Franka assembly, tissue cooking, fixtures, traction and
+bridge attachments, protected-structure continuity, particle accounting,
+finite state, and engine diagnostics. A current complete native matrix is not
+established by the generic bench. See
 [`docs/safeplane_dissection_robot/VALIDATION.md`](docs/safeplane_dissection_robot/VALIDATION.md).
 
 ### Perfusion and tissue-viability robot
@@ -318,11 +330,13 @@ Dr.Anmar uses five distinct evidence levels:
 | Real-world evidence | Instrumented hardware, materials, sensors, or wet/dry-bench measurements support a specific correlation claim | Clinical effectiveness |
 | Clinical evidence | A defined clinical study and review support a specific clinical claim | Claims outside that study |
 
-Dr.Anmar’s current robot evidence is repository and native-simulator evidence.
-Mechanical constants, tissue parameters, pressure/flow thresholds, energy
-models, contact limits, damage proxies, and success thresholds remain
-engineering parameters unless a robot-specific artifact records instrumented
-real-world evidence.
+Dr.Anmar’s current robot evidence ranges from repository verification and
+generic native composition smoke tests to bounded asset-specific native
+evidence. Evidence status is not transferable between workcells, revisions,
+representations, simulator stacks, or physics configurations. Mechanical
+constants, tissue parameters, pressure/flow thresholds, energy models, contact
+limits, damage proxies, and success thresholds remain engineering parameters
+unless a robot-specific artifact records instrumented real-world evidence.
 
 ## Requirements
 

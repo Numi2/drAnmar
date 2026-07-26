@@ -298,7 +298,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalDissection/SafePlaneDissectionRobot",
-      "sha256": "e631028e1a36183e006a18adef0db2e12e5c822790d455ae85a90f4c77f4bcb1"
+      "sha256": "8cc405d14ddc3a5a25c63c7b036e86ed46847349b0b2ede993f5c217da7d5b3c"
     },
     {
       "bytes": 9744362,
@@ -327,7 +327,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalDivision/AdaptiveSealDivideRobot",
-      "sha256": "6b3cf05c603906c5d6848ad2a44206419119aa6b8afcc842b7f6a52e2920371c"
+      "sha256": "a35d033cdebcd0bc9a42ebb5be471a79d9e06ce17da13cdf406e7abfb51db254"
     },
     {
       "bytes": 37326399,
@@ -682,7 +682,7 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "1a0c1da2501926f9c9387d92a385b8711b699190f32717231d7a5e72c69e2122",
+  "catalog_sha256": "7d033824a33dbb2305d8155aad79da522e8c5a82949807dffd2ca21b06512344",
   "catalog_version": "1.2.0",
   "clinical_validation": false,
   "i4h": {

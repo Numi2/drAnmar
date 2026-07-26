@@ -1,538 +1,182 @@
 # Dr.Anmar validation backlog
 
-This ledger records completed engineering checks and the work still required for the Surgical Skills
-Twin, Failure Lab, and Multimodal Lab. Completed runtime checks are evidence of software behavior in
-simulation, not clinical validation.
+This file contains unresolved gates only. Completed checks and dated execution
+history belong in revision-bound evidence artifacts and Git history. The latest
+repository-wide assessment is
+[`COMPLETE_REPOSITORY_AND_ASSET_AUDIT_2026-07-26.md`](COMPLETE_REPOSITORY_AND_ASSET_AUDIT_2026-07-26.md).
 
-## Release status
+Passing a software or simulator gate does not establish biomechanical accuracy,
+clinical validity, medical-device status, or suitability for patient care.
 
-- Implementation status: Skills Twin, Failure Lab, RGB-D and semantic recording, native scene variation,
-  clinician reference comparison and path guide, tissue/contact telemetry, and automated challenge-matrix
-  slices complete in source.
-- Runtime validation status: live Gilgamesh passes completed on 2026-07-19 and 2026-07-20. The current task,
-  OpenUSD, control, recording, and representative-room evidence is in `GILGAMESH_VALIDATION_2026-07-20.md`;
-  the remaining items below are still open.
-- Clinical validation status: not started.
-- Intended use remains simulation, education, synthetic data, and preclinical research only.
+## P0 — restore release integrity
 
-## Native PSM learning backbone — 2026-07-23
+A public or physics-qualified release remains blocked until every item in this
+section passes from a clean clone.
 
-- The workstation now records doctor Cartesian intent separately from the seven-value NVIDIA-native policy
-  action produced after Differential IK.
-- One isolated workstation recording on port 2496 produced synchronized 7D policy, 7D Cartesian, 8D physical
-  joint-state, resolved-target and RGB streams. The live port 2396 room was left untouched.
-- The `psm_singlecam` GR00T data configuration and real train/inference modules are available as overlays over
-  the immutable v0.7 provider. The loader accepted NVIDIA's converted seven-action/eight-state reach dataset.
-- A successful native dual-PSM reach produced a 150-step 14D HDF5 contract with per-arm target round-trip error
-  below `2e-9`.
+### OpenUSD and catalog
 
-Still required: make native thin-needle lift repeatable, accept real successful clinician demonstrations, and
-complete the handover MDP's five physical phases before presenting either task as RL-ready. See
-`PSM_FOUNDATION_VALIDATION_2026-07-23.md`.
+- Repair and deterministically regenerate the Dynamic Abdominal Patient rigid
+  proxy that currently fails native OpenUSD parsing.
+- Require `Sdf.Layer.FindOrOpen` and `Usd.Stage.Open` for every catalog
+  entrypoint; fail on parser errors, missing default prims, or failed
+  composition.
+- Run the Isaac Sim Asset Validator on the supported release stack.
+- Resolve the 14 missing material dependencies or declare, pin, install, and
+  verify each external resolver dependency.
 
-## NVIDIA healthcare asset catalog — 2026-07-23
+Exit gate: every cataloged USD layer opens and composes on the release
+OpenUSD/Isaac stack, and the repository-local dependency walk is complete.
 
-- The pinned v0.7.0 catalog source, helper and 85,337,862-byte surgical-core bundle are installed on Gilgamesh.
-- The nine cached surgical-core objects match the object size and S3 ETag of the v0.5 objects referenced by
-  NVIDIA's current Arena environments. Arena's source-owned asset URLs remain unchanged.
-- Dr.Anmar reports catalog source/content provenance and local asset readiness without copying physics
-  definitions or exposing new UI controls.
+### Continuous integration
 
-Still required: download only the bundle needed by a proposed room; review its shipped asset licences; run a
-native scene/contact qualification before promotion. The v0.7 anatomy, ultrasound, KUKA/Kinova and Lightwheel
-assets are catalogued but not runtime-qualified by Dr.Anmar. Lightwheel remains non-commercial research-only.
+- Check out the asset submodule recursively and assert its expected revision.
+- Run the complete non-Isaac Python suite, browser tests, source compilation,
+  shell syntax, catalog verification, public-release check, and native OpenUSD
+  parse on clean runners.
+- Separate fast source checks from Linux/NVIDIA native qualification jobs.
+- Pin third-party GitHub Actions to immutable commit SHAs.
 
-## Bounded camera and recording pipeline — 2026-07-22
+Exit gate: hosted CI reproduces the complete local catalog and all applicable
+non-Isaac checks are green.
 
-- The live Isaac loop no longer performs JPEG compression. It copies only requested rendered camera frames into
-  a one-job, newest-frame-wins encoder queue; stale browser frames are discarded instead of accumulating latency
-  or memory.
-- Demonstration state and multimodal observations are written in bounded batches to a temporary chunked HDF5
-  spool. Final `.npz` compatibility export is streamed in 16 MiB chunks rather than materializing each complete
-  dataset in RAM. Existing archive and manifest readers remain compatible.
-- `/api/health/runtime` now reports process RSS, CUDA allocation/reservation, threads, descriptors, active streams,
-  simulation/render FPS, and recording/JPEG queue pressure.
-- A live Gilgamesh pass sustained a 960 x 640 camera stream for 22 seconds with flat 7,324.5 MB RSS, an encoder
-  queue depth of at most one, eight stable worker threads, 43.81 median simulation FPS and 22.26 median browser
-  render FPS. A subsequent five-second multimodal capture saved 221 control frames and 23 vision frames across
-  33 arrays, passed manifest-shape and SHA-256 checks, and left no HDF5 spool behind.
+### Public-source portability
 
-Still required: run an isolated five-minute `research`-profile capture with every camera and modality subscribed;
-force a writer failure to validate cleanup and user-facing recovery; benchmark multiple concurrent viewers; and
-evaluate a hardware H.264/H.265/WebRTC transport backed by NVIDIA's video path. The current MJPEG transport is
-bounded and responsive, but it is not the final low-bandwidth telesurgery transport.
+- Replace machine-specific paths and private host defaults with documented
+  environment variables or portable identifiers.
+- Encode `assets/dr_anmar` as canonical source content while continuing to
+  reject downloaded models, datasets, logs, checkpoints, caches, and runtime
+  state.
+- Run the public-release check in CI and test it against both a clean checkout
+  and a populated external runtime-data directory.
 
-## Physics-next implementation — 2026-07-21
+Exit gate: `python3 scripts/check_public_release.py` passes without local
+exceptions or private-machine assumptions.
 
-- Added a fail-closed multi-solver authority manifest covering reduced-order v3, PhysX FEM, Newton VBD and
-  CRESSim-MPM, including explicit scope, maturity, topology and two-way-coupling boundaries.
-- Added the canonical surgical-asset schema, an unvalidated liver material seed and matched liver-retraction
-  and curved-needle benchmark contracts.
-- Added an isolated Isaac Sim 6.0.1 / Isaac Lab 3.0 beta2 installer and a cross-backend CUDA tissue-coupon
-  runner that uses identical material, attachment, pull trajectory, step and telemetry definitions.
-- Installed that runtime on Gilgamesh without disturbing the stable service, authored the watertight CT liver
-  as a backend-neutral 33,274-node / 165,031-tetrahedron OpenUSD TetMesh, and preserved source, mesh and USD hashes.
-- Executed a deterministic Newton VBD rigid-contact replay pair. Finite state, 17.074 ms p95, 4.787%
-  global-volume error, 0.0136 mm peak tool penetration, 1.019 N peak normal reaction and 0.0 m replay RMSE pass
-  all five coupon gates. The patient liver also completed a finite 33,274-node / 165,031-tetrahedron Newton
-  integration smoke with zero inversion; its geometric fixtures remain explicitly non-anatomical.
-- The stable workstation now records the effective backend and manifest hash in live status, runtime provenance
-  and demonstration sidecars. It does not activate an experimental backend.
+### Evidence consistency
 
-Still required: explicitly accept NVIDIA's Omniverse Kit EULA before executing the isolated PhysX FEM pass;
-run its matched rigid-tool contact/force trajectory; author anatomically reviewed attachment and vascular
-regions; run the patient-specific TetMesh through the canonical trajectories in both solvers; integrate and
-benchmark CRESSim-MPM topology change; collect physical indentation, puncture, cutting and pullout references;
-and complete clinician review before any biomechanical or clinical-fidelity claim.
+- Regenerate Dynamic Abdominal Patient evidence and correct the profile's
+  explicit TetMesh count to match the anatomy manifest.
+- Add parent revision, asset-submodule revision, generator hashes, and input
+  hashes to retained evidence.
+- Compare regenerated deterministic reports byte-for-byte in CI.
+- Derive duplicated anatomy and topology totals from their authoritative
+  manifests.
 
-## Source audit hardening — 2026-07-20
+Exit gate: source, profile, manifest, portfolio, lock, documentation, and
+retained reports agree at the exact recorded revisions.
 
-The follow-up remediation pass closed the remaining source-level gaps identified by this ledger:
+### Public claims
 
-- browser mutations now use a 30-second single-operator lease shared by Doctor Studio and the embedded worker;
-- optional token login uses a host-wide HTTP-only cookie, bounded login attempts, and a deployment-controlled
-  HTTPS-only cookie flag;
-- demonstrations are atomically saved, structurally inspected before replay/reference/dataset use, and report
-  unreadable or too-short recordings without crashing the UI;
-- demonstration, dataset-card, experiment, and policy-card enumeration is paginated; immutable hashes are cached
-  by path, size, and modification time rather than trusted from stale manifests;
-- recording has frame, duration, and uncompressed-byte ceilings; `efficient`, `stereo`, and `research` sensor
-  profiles now control which Isaac camera sensors are instantiated and captured;
-- procedure annotations carry monotonic event sequence numbers in both manifest and trajectory, so multiple
-  between-frame events remain recoverable from the annotation ledger;
-- new manifests record source, Python, Torch, CUDA, GPU, task-configuration and workflow-metadata provenance;
-- the spawned anatomy prim world transform, task-native tip registration, explicit assisted-grasp state,
-  tool/object distance, depth-validity, semantic-foreground and luminance signals are recorded;
-- NVIDIA mode discovery validates the pinned metadata schema and fails closed on malformed or drifted modes;
-- stereo drift, seeded camera dropout, and compliant-surface response variations are real challenge scenarios;
-- immutable policy evaluation cards bind dataset, training run, checkpoint and completed challenge matrix hashes;
-- external gaze/XR input fails closed without explicit study, consent-protocol and sensor-enable configuration;
-- `physics_next/manifest.json` is the only executable readiness authority. This backlog records host,
-  hardware, biomechanical and clinician evidence without changing runtime physics or room availability.
+- Limit the generic seven-system matrix claim to what it measures: workcell
+  selection, simulator stepping, visible camera output, absence of reported
+  fatal errors, and clean shutdown.
+- Do not use the generic matrix as evidence of complete controllers, contact
+  behavior, deformable cooking, physical cutting, or calibrated tissue
+  response.
+- Map every stronger capability statement to an asset-specific,
+  content-addressed artifact with explicit exclusions.
 
-These controls do not satisfy the biomechanical, hardware, or clinical evidence requests below. Gilgamesh was
-unreachable during the initial source-only follow-up, but the later 2026-07-20 pass restored live host evidence;
-only the gates explicitly demonstrated in the new runtime report should be treated as partially closed.
+Exit gate: every product-facing claim resolves to a revision-bound assertion in
+a machine-readable evidence artifact.
 
-## Gilgamesh release-candidate evidence — 2026-07-20
+## P1 — secure and reproduce deployment
 
-### Coupled-physics and i4h v0.6 update
+- Default the hub and workstation to loopback.
+- Require explicit non-loopback opt-in, a non-empty access token, authenticated
+  mutation control independent of the `Origin` header, TLS termination, and a
+  host firewall for remote use.
+- Verify every downloaded SuFIA archive with SHA-256 before extraction.
+- Pin Isaac Lab, CRESSim-MPM, and other Git dependencies to full commits.
+- Lock Python dependencies and retain an installation receipt containing
+  resolved packages, source revisions, simulator build, driver, and GPU stack.
+- Add one documented, locked bootstrap command for the complete non-Isaac
+  development and test environment.
+- Scope lint and type checks to Dr.Anmar-authored modules, then ratchet the
+  accepted baseline instead of claiming the inherited repository is globally
+  clean.
 
-- Isaac for Healthcare source is now pinned to v0.6.0 at
-  `8b03d55ecb647a43af54470b27bd09a239870aaf`; its compatible HoloHub CLI is pinned to
-  `f7e791dac061e01c560d3a2c5b7da82350915b69`.
-- The live adapter verified both revisions and retained guarded discovery for 8 surgical, 18 ultrasound and
-  15 SO-ARM modes. Rheo and Agentic remain explicitly expert-source-only because they lack the same metadata
-  launch contract.
-- Coupled v2 tissue, needle, thread, cutting, vascular and force schemas passed deterministic execution in
-  the Isaac Python environment and loaded live in the dual-PSM interrupted-stitch room.
-- Complete trajectories and biomechanical calibration remain open. Exact evidence and boundaries are in
-  `GILGAMESH_PHYSICS_I4H_V060_2026-07-20.md`.
+Exit gate: a fresh supported host reproduces the recorded environment from
+immutable inputs and exposes no unauthenticated mutation surface.
 
-- All nine native interactive task families completed 40 CUDA steps with finite reported joint state.
-- Seven runtime anatomy layers and seven full room compositions passed hard scale and dependency gates.
-- The suite, one-operator boundary, gripper/drive/camera controls, recording and analysis were exercised live.
-- Ultrasound, suturing and cutting remain unavailable until their native NVIDIA backends are integrated; liver retraction is the first native PhysX deformable promotion target.
-- Full trajectories in every room, isolated performance, licensed NVIDIA provider workflows, hardware,
-  biomechanics and clinician evidence remain open. See `GILGAMESH_VALIDATION_2026-07-20.md`.
+## P1 — obtain asset-specific native evidence
 
-- The reusable eight-phase executable expert controller is source-complete for all 19 procedure rooms. A live
-  needle-pickup pass proved phase dwell, pause/resume, exact-state takeover, synchronized recording, clean
-  candidate qualification, and browser rendering. On July 21, interrupted suturing, needle handover and
-  ultrasound-guided access also completed 8/8 phase traversal and saved 606, 687 and 574 state frames. Their
-  bounded convergence warnings correctly produced `clean_reference_eligible=false` and no BC candidate.
-  Fifteen rooms still lack complete live capture; all 19 require clinician review before reference promotion.
+- Execute each workcell's complete procedure controller and intended
+  deformable/contact route on the exact supported simulator stack.
+- Record parent and submodule revisions, asset hashes, controller phases,
+  physics configuration, repeated-run criteria, engine diagnostics, and raw
+  measurements.
+- Qualify Dynamic Abdominal Patient volume and surface deformables separately
+  from structural TetMesh validity.
+- Record Autonomous Rescue OR multi-arm/deformable execution and verify that
+  post-physics contact state remains authoritative for patient effects.
+- Exercise complete suturing, incision, retraction, handover, hemostasis,
+  anastomosis, seal/divide, dissection, perfusion, and oncology workflows before
+  promoting procedure-complete claims.
+- Keep generated previews and provider visual predictions non-authoritative for
+  contact, safety, scoring, or patient effects.
 
-- Training now actually pauses the interactive Isaac worker and restores the exact prior procedure/anatomy
-  composition; NVIDIA workflow resume uses the same full-context path.
-- GPU-owning jobs, Failure Lab matrices, room switches and interactive state mutations are lifecycle-gated.
-- Clean shutdown terminates managed GPU jobs; startup reconciles stale training, healthcare and matrix
-  manifests and stops a matching orphan process group.
-- OpenUSD startup uses a seven-scene file preflight instead of rebuilding geometry on every launch.
-- Secondary cameras are JPEG-encoded only while subscribed; raw multimodal recording remains enabled.
-- Demonstrations use atomic promotion, a data SHA-256, observed sampling rate and a bounded auto-save limit.
-- CI now checks all keyboard controls plus curriculum/task/procedure consistency and Doctor Studio JavaScript.
-- Full findings and remaining external gates are recorded in `COMPLETE_AUDIT_2026-07-20.md`.
+Exit gate: each promoted workcell has its own reproducible native artifact;
+generic loading or composition smoke tests are not substituted.
 
-## Isaac for Healthcare v0.7 upstream-first migration — 2026-07-23
+## P1 — validate recording, telemetry, and reproducibility
 
-- [x] Pin v0.7.0 to immutable commit `9b526c6d107254727d3b113c612fb860fc65a5b2`.
-- [x] Keep v0.6.0 as a versioned rollback checkout while activating v0.7.0 through
-  `vendor/i4h-workflows-current`.
-- [x] Discover the six NVIDIA surgical Arena environments from their upstream YAML contracts.
-- [x] Route guarded surgical expert runs through NVIDIA's `arena/run.sh --state-machine`, not a Dr.Anmar
-  surrogate controller.
-- [x] Install the Agentic Arena runtime and pass upstream list/dry-run checks for all six surgical contracts.
-- [x] Complete a native `surgical_reach_psm` scene smoke and 1/1 successful upstream state-machine episode.
-- [ ] Qualify `surgical_lift_needle`; the upstream 250-step expert run failed with `rise_m=-0.014`.
-- [x] Complete the non-Cosmos Agentic policy/Mimic/dataset/annotator dependency setup and upstream E2E
-  planning dry-run.
-- [ ] Qualify the v0.7 scene-edit bridge before binding it to the clinician operating-room viewport.
-- [x] Validate the NVIDIA PSM control/data boundary: preserve Cartesian intent separately, record the canonical
-  seven-value policy action, reproduce native IK joint targets within `1.49e-08`, replay 150 frames in the
-  unmodified joint-position environment, and convert one synchronized 150-frame camera episode to LeRobot.
-- [x] Register and qualify a real `psm_singlecam` GR00T data configuration, training module, and inference
-  module as a Dr.Anmar overlay; NVIDIA's provider remains unchanged.
-- [x] Qualify the shared 14D dual-PSM recorder on a successful 150-step native coordinated-reach episode.
-- [ ] Keep Docker/RTI-dependent robotic ultrasound unavailable until its official prerequisites exist.
+- Verify RGB, depth, semantic IDs, camera intrinsics/extrinsics, timestamps,
+  joint ordering, torque units, tool-tip registration, and anatomy transforms
+  against independent references.
+- Validate contact force, deformation, stress, slip, visibility, procedure
+  events, and task-success channels against simulator ground truth.
+- Replace maximum-moving-body and object-displacement fallbacks with
+  task-specific tool-tip and success registrations.
+- Prove seeded resets reproduce anatomy, targets, cameras, physics
+  randomization, and future perturbations on the supported runtime.
+- Independently recompute challenge-matrix statistics and dataset-card hashes;
+  verify interruption, takeover, restart reconciliation, and content-addressed
+  identity.
+- Measure recording latency, storage growth, GPU/CPU cost, and manifest
+  enumeration at research-dataset scale before choosing the long-term RGB-D
+  container format.
+- Validate concurrent-session isolation so one browser cannot change another
+  operator's scenario or autonomy state.
+- Define consent, privacy, retention, pseudonymization, and access controls
+  before recording identifiable video, voice, gaze, or clinician-performance
+  data.
 
-Current evidence and commands are recorded in `GILGAMESH_I4H_V070_MIGRATION_2026-07-23.md`.
+Exit gate: retained datasets are synchronized, reproducible, bounded in cost,
+and traceable to the exact simulator and operator state.
 
-## Gilgamesh runtime evidence — 2026-07-19
+## P2 — qualify physical-correlation claims
 
-Validated on the RTX 4090 host:
+- Collect instrumented reference data for the exact tissue or phantom,
+  grasper, needle, thread, cutter, clip, stapler, seal device, and fluid setup
+  named by each claim.
+- Fit constitutive, contact, friction, puncture, cutting, attachment, pullout,
+  tearing, seal, leakage, and failure parameters to those measurements.
+- Record nodal displacement, strain, energy, force, slip, attachment, topology,
+  and failure telemetry across repeated trials.
+- Establish mesh-convergence and time-step sensitivity.
+- Predeclare tolerances and uncertainty before comparing simulation with bench
+  measurements.
+- Do not describe pre-segmented continuity release as physical incision
+  propagation, particle carriers as validated CFD/FSI, or distributed
+  attachments as calibrated wound-edge grasping.
 
-- Doctor Studio and the default needle-lift relative-IK room started on ports 2360/2361 with the official
-  CT-liver showcase, stereo-left, stereo-right, and wrist-1 live camera streams.
-- A real browser pass loaded the operating room and Multimodal Lab without application console errors;
-  the only initial error was a missing favicon, which is now answered with HTTP 204.
-- The pinned `i4h-workflows` v0.5.0 source at revision
-  `fb7727ef12e980022997fccb6cbca5621e4616e4` exposed robotic-surgery, robotic-ultrasound, SO-ARM,
-  and telesurgery connectors. NVIDIA mode metadata was parsed directly rather than copied into Dr.Anmar.
-- HoloHub CLI was pinned to the release-compatible revision
-  `5c49897bd229d4ce46cbcd4a68c640f6258233f7`. This fixes upstream main-branch drift that removed
-  `utilities/cli/holohub.py` after the i4h v0.5.0 release.
-- The web runner rejected privileged Clarius hardware access and rejected container launch before pausing
-  the operating room when Docker was absent. A pre-fix failure-path exercise also proved that job logs and
-  manifests persist and the prior Dr.Anmar lesson automatically resumes after an official workflow exits.
-- A study manifest was created and exported through the live hub.
-- A 5-second multimodal recording saved 169 control/state frames and 22 vision frames. It contained left
-  and right RGB, wrist RGB, finite metric depth, semantic IDs, fixed-grid camera-frame point clouds, joint
-  state, applied/computed joint torque, world-frame robot/object/anatomy pose, simulator outcome, gaze/input
-  provenance, and procedure phase/event codes.
-- Stereo-left and stereo-right frames were numerically distinct; the wrist view was substantially distinct;
-  all sampled depth and point-cloud values were valid in this capture; all recorded torque values were finite.
-- Procedure events were preserved both as per-frame numeric codes and as two human-readable manifest entries.
-- Isaac Lab 2.3 camera metadata changed from a dictionary to a per-environment list after rendering. The live
-  capture exposed this compatibility fault; metadata normalization was added and the complete recording then
-  saved successfully.
-- All seven installed anatomy packages were rebuilt as separate metre-scale, Z-up OpenUSD compositions. Their
-  room, ceiling, table, anatomy, and camera layers were opened in one Isaac audit pass: 14 stages, zero unresolved
-  asset paths, and 14 authored cameras. The live needle-pickup worker then started with the sanitized CT anatomy
-  and its matching repaired operating-room layer.
-- The default liver context was moved out of the needle spawn volume, given an enabled convex collision mesh,
-  and the wrist camera was changed to a live tool-following oblique view. A controlled browser-API attempt moved
-  the PSM to 11.7 mm from the needle, closed the jaws, activated the limited grasp joint, and lifted the needle
-  44.7 mm; opening and resetting removed the joint and restored the scene.
-- The operating room gained zero-extra-sensor Operative, Close, and Overview stereo presets, a view-centred
-  reticle, live target-direction guidance, gamepad camera/gripper bindings, and a strictly visual OpenUSD surgical
-  drape. A browser pass switched presets, kept the stream live, exposed the active grasp state, and produced no
-  application console warnings or errors.
-- The jaw-capture zone was tightened to 18 mm and manual translation now feathers near the target. A closed-loop
-  live attempt followed the new offset guidance, captured the needle at 13.4 mm, and lifted it 37.5 mm. The
-  OpenUSD environment still opened as a metre-scale Z-up stage with 50 meshes and zero unresolved dependencies.
-- Visible collidable anatomy now supplies a mesh-sampled control-space safety surface with a bounds fallback. The guard
-  removes only the inward command component so withdrawal and tangential motion remain available; its activation
-  state and anatomy clearance are exposed in the live API and clinician overlay.
-- The anatomy guard now samples the actual visible OpenUSD mesh instead of relying only on its bounding volume.
-  A live needle-pickup pass derived the official needle endpoints from mesh vertices, entered the rigid tissue
-  proxy to 2.0 mm while the instrument tip remained about 2.3 mm outside, disabled the organ collider only for
-  the latched needle-entry interval, and restored the protected shaft boundary. Operative and wrist streams both
-  showed the needle occluded by the organ surface. Entry depth, tip clearance, and puncture state are recorded
-  with each demonstration frame. The 12 mm cap remains an engineering rehearsal limit, not a clinical threshold.
+Exit gate: narrow quantitative correlation claims are supported for specific
+materials, instruments, states, and procedures. This does not establish
+clinical validity.
 
-Known host/runtime blockers from the same pass:
+## P2 — educational and clinical research
 
-- Docker Engine and the NVIDIA container runtime are not installed for the `numi` account, and that account
-  has no passwordless administrative access. Official i4h containers therefore remain blocked before launch.
-- No RTI Connext DDS license is configured. Ultrasound, DDS policy pipelines, telesurgery, and related
-  distributed modes must remain disabled until a valid license file is supplied.
-- Co-resident Jetbot vision workloads used about 13.8 GB of GPU memory. Dr.Anmar rendered at roughly 2 FPS
-  while those processes remained untouched. Sensor-throughput and long-recording performance results from
-  this pass are not representative of an isolated 4090.
-- Physical hardware, haptic, XR, external eye-tracker, Clarius, RealSense, and real-robot modes were not run.
+- Have specialty clinicians define observable phases, acceptable recovery,
+  error taxonomies, and task-specific scoring thresholds.
+- Test construct validity with novice, intermediate, and expert cohorts.
+- Compare automated scores with blinded reference ratings and report agreement
+  without renaming engineering proxies as validated clinical metrics.
+- Measure learning transfer, usability, workload, accessibility, simulator
+  sickness, and retention.
+- Validate every specialty and procedure independently; do not transfer
+  thresholds between tasks without evidence.
+- Complete the applicable regulatory, ethics, privacy, and clinical-review
+  process before any patient-care or medical-device claim.
 
-## P0 — validate before calling this release runtime-ready
-
-- Start the complete suite with Isaac Sim 5.1 and Isaac Lab 2.3.2 on the validated Linux/NVIDIA host.
-- Confirm `dr_anmar_workstation.py` imports and starts for the default needle-lift relative-IK task.
-- Exercise every new API through the hub and worker:
-  - list and apply failure scenarios;
-  - change manual and guided modes;
-  - start selected demonstration replay;
-  - take control during replay;
-  - list demonstration analysis;
-  - list persisted experiment manifests.
-- Confirm the Doctor Studio loads Skills Twin and Failure Lab without browser-console errors.
-- Confirm applying a challenge resets the environment once and preserves the selected task.
-- Confirm the shifted-camera pose is valid for the default room and does not place the camera inside geometry.
-- Confirm low-light, glare, partial-occlusion, and combined visual transforms update the streamed frame.
-- Confirm manual movement interrupts supervised replay immediately and increments intervention count once.
-- Confirm the explicit **Take control immediately** action stops replay and zeroes active drive commands.
-- Record and stop a new demonstration; confirm both `.npz` and v2 `.json` manifest are written.
-- Confirm the hub can read the worker's enriched demonstration list and selected analysis.
-- Confirm newly recorded v2 demonstrations contain synchronized 360 × 240 endoscopic RGB at the declared
-  5 Hz sampling rate and that timestamps align with the 50 Hz robot-state trajectory.
-- Confirm depth is stored in metres as finite 360 × 240 float arrays, semantic IDs remain uint32 after nearest-
-  neighbour resizing, the semantic label map is serializable, and camera intrinsics match the rendered sensor.
-- Confirm the two endoscope cameras share intrinsics, use the intended 6 mm baseline, remain time-synchronized,
-  and have correct left/right extrinsics after baseline and shifted-camera resets.
-- Confirm each dynamically tool-following wrist camera resolves the actual `psm_tool_tip_link`, `endo360_needle`,
-  or `ecm_end_link`, has the expected optical convention, clears surrounding geometry, and renders for single
-  and dual robots.
-- Independently unproject sampled depth and confirm every fixed-grid point-cloud XYZ is in metres in the declared
-  left-camera optical frame, including invalid-depth encoding.
-- Confirm applied/computed joint-torque arrays exist, use documented simulator units, align with joint ordering,
-  and are never described as a wrist force-torque sensor.
-- Confirm anatomy pose is the actual spawned prim transform for every anatomy preset; the initial implementation
-  records the configured showcase transform and must not be treated as patient registration.
-- Confirm simulator reward, termination, truncation, success, and contact-force tensors are converted without
-  blocking GPU execution or introducing device synchronization stalls.
-- Confirm deformable-object nodal displacement, deformation-gradient, and stress tensors exist for each tissue
-  task, use the expected frames/units, and do not stall the GPU at 50 Hz recording cadence.
-- Select a clinician reference, compare another attempt, and verify normalized action interpolation for
-  demonstrations with different durations and action dimensions.
-- Promote a clinician reference to the world-space path guide; verify the moving-body heuristic selects the
-  actual tool tip, the points register after reset, remain visible from the endoscope, and hide immediately.
-- Confirm the lateral and depth target scenarios call `write_root_pose_to_sim` and zero root velocity after the
-  seeded environment reset without moving unrelated rigid objects.
-- Confirm calibration bias rotates/scales both manual commands and automated replay exactly once.
-- Confirm the multi-organ anatomy context reveals intended organ prims without exposing material/helper prims
-  or changing collision behavior unexpectedly.
-- Review every repaired room composition in a colour-managed Isaac renderer. Geometry and dependency integrity
-  are validated, but the replacement PreviewSurface room finishes and illumination are not clinically reviewed.
-- Confirm the Y-up centimetre source-room conversion and -0.95 m floor registration align the walls, ceiling,
-  upstream ORBIT-Surgical table, each robot base, and all endoscope views across all seven anatomy variants.
-- Confirm the upstream ORBIT-Surgical table/object collision and the single enabled Dr.Anmar anatomy collider do
-  not introduce duplicate bodies, solver instability, or task-dependent contact artifacts.
-- Drive every supported tool into every enabled organ from the top and sides; confirm the OpenUSD-derived virtual
-  fixture activates before visible instrument penetration, preserves tangent/withdrawal motion, and does not block intended
-  needle, cutting-path, retraction, or handover work. The current sampled surface is a usability boundary, not tissue
-  deformation or a clinically validated forbidden-region model.
-- Calibrate the liver, gallbladder, and bladder compliant-surface parameters against tissue-specific measurements,
-  replace the rigid gross-motion core where a validated FEM/MPM body is available, and independently validate
-  contact/strain telemetry before quantitative tissue-handling studies.
-- Exercise complete suturing and incision trajectories with clinicians; validate thread material, puncture force,
-  knot security, tissue tearing, cut width/depth, topology quality, and performance before making biomechanical claims.
-- Run a small two-scenario, two-seed challenge matrix and confirm every rollout resets, replays, records,
-  analyzes, and updates the durable matrix manifest before the next rollout begins.
-- Confirm challenge summary means, 95% normal intervals, native-success rate, intervention rate, safety-event
-  rate, and per-scenario groups exactly match an independent calculation. Treat intervals as descriptive only.
-- Interrupt an automated matrix rollout with **Take control immediately** and confirm the matrix records the
-  intervention and continues according to the intended study protocol.
-- Start one bounded training recipe and confirm its experiment manifest advances from `starting` to `running`
-  and then `complete` or `failed`.
-- Freeze a dataset card from multiple demonstrations; independently recompute every SHA-256, verify duplicate
-  content produces the same content-addressed ID, and confirm the exported JSON survives a hub restart.
-
-## P1 — validate telemetry and coaching correctness
-
-- Confirm `psm_tool_tip_link` and `endo360_needle` indices match the rendered end effector for every supported
-  dVRK and STAR task; legacy demonstrations still use the maximum-moving-body fallback.
-- Check tool-path units and magnitude against an independently calculated trajectory.
-- Calibrate normalized action-similarity against clinician judgment; it is not yet a measure of surgical skill
-  or procedural equivalence.
-- Verify object-position keys for needle, block, and handover tasks.
-- Calibrate the current 8 mm lift-evidence threshold separately for each task and object.
-- Verify gripper-close event detection for single- and dual-arm action layouts.
-- Validate phase-event ordering for demonstrations containing re-grasps, aborted attempts, or multiple lifts.
-- Validate the relative tool-object drift proxy against explicit simulated grasp/contact state before calling it
-  grasp slip; rotation about a stable grasp can currently contribute to the distance signal.
-- Calibrate direction-correction, idle-time, recovery-hold, and smoothness proxies on a controlled set of
-  novice and expert demonstrations.
-- Confirm legacy v1 demonstrations remain downloadable and degrade gracefully when no analysis exists.
-- Confirm very short, empty, corrupted, and partially written demonstrations do not break the UI.
-- Add explicit task-success signals from the Isaac environment rather than treating object displacement as
-  the final success measure.
-- Replace maximum-moving-body path selection with task-specific tool-tip body registration.
-- Validate contact force, deformation-gradient, stress, camera visibility, and grasp-slip metrics against
-  independent ground truth for every supported task.
-- Replace the current engineering advisories (2 N contact, 15 mm displacement, 0.50 deformation proxy) with
-  task-specific, clinician- and biomechanical-engineer-reviewed research limits; they are not clinical limits.
-
-## P1 — validate reproducibility and performance
-
-- Confirm the recorded scenario seed deterministically reproduces the environment reset, native target jitter,
-  camera pose, anatomy visibility, and every future randomizer on the supported Isaac Lab release.
-- Measure storage growth and save latency from synchronized endoscopic RGB arrays across long demonstrations
-  and large automated matrices.
-- Decide whether RGB observations belong in the main `.npz`, a chunked Zarr/HDF5 dataset, or an external
-  image/video stream before collecting large research datasets.
-- Confirm dataset-card hashing and UI enumeration remain responsive for 100 large demonstrations; hashing is
-  currently synchronous and should move to a background job if it delays the doctor-facing request.
-- Measure render, GPU-memory, storage, and save-latency impact of stereo plus one or two wrist cameras. Add a
-  doctor-selectable sensor budget if simultaneous cameras reduce the required control rate.
-- Confirm procedure phase/event pulses are aligned to the correct trajectory frame and are not lost when events
-  occur between sampling intervals.
-- Validate external eye-tracker and XR gaze timestamps, coordinate conventions, calibration drift, and dropout.
-  The browser pointer channel is an attention proxy and must never be reported as measured eye gaze.
-- Verify input-source codes distinguish keyboard/pointer, gamepad, dVRK MTM, XR, and haptic devices throughout
-  recording, replay, handover, and export.
-- Recheck mode discovery when changing the pinned i4h or HoloHub revisions; metadata drift must fail closed
-  rather than silently enabling an unknown hardware or custom-argument mode.
-- After Docker/NVIDIA Container Toolkit and RTI licensing are configured, launch the official robotic-ultrasound
-  workflow through the guarded runner; validate B-mode frames, probe pose, acoustic parameters, timestamps,
-  and the Holoscan path before enabling live ultrasound controls.
-- Validate optional XR and haptic adapters with end-to-end latency, packet loss, force scaling, saturation,
-  emergency stop, human handover, RTI DDS licensing, and hardware-in-the-loop isolation.
-- Define consent, privacy, retention, pseudonymization, and access controls before collecting identifiable gaze,
-  operator video, voice, or real clinician performance data.
-- Confirm live that a hub restart accurately marks an in-progress process-local matrix as interrupted and
-  prevents its stale manifest from being mistaken for a completed result; source reconciliation is implemented.
-- Record package versions, simulator build, GPU, task configuration, and policy checkpoint hashes in manifests.
-- Measure CPU and GPU impact of Pillow-based stream perturbations at interactive and idle frame rates.
-- Confirm experiment and demonstration enumeration remains responsive with 1,000+ manifests.
-- Validate the implemented startup lifecycle reconciliation for a training process killed before its monitor
-  thread updates the manifest, including PID-reuse protection through command-identity checks.
-- Confirm concurrent browser sessions cannot unintentionally change each other's scenario or autonomy mode.
-
-## P2 — clinical and educational validation
-
-- Convene a clinician panel to define the observable phases and acceptable recovery for needle lift.
-- Replace generic coaching thresholds with clinician-authored, task-specific criteria.
-- Run a novice/intermediate/expert study and test construct validity of each automated metric.
-- Compare automated scores with blinded GEARS ratings; report agreement rather than calling the proxy GEARS.
-- Measure whether Skills Twin feedback improves subsequent performance, not merely whether users like it.
-- Test whether the Failure Lab improves detection of uncertainty and appropriate hand-back behavior.
-- Evaluate usability, workload, accessibility, simulator sickness, and learning retention.
-- Validate specialty-specific tasks independently; do not transfer needle-lift thresholds to other procedures.
-
-## Planned next engineering slice
-
-- Have the Gilgamesh administrator install Docker Engine plus NVIDIA Container Toolkit, then configure a valid
-  RTI Connext DDS license and rerun the guarded ultrasound launch.
-- Launch `teleop_with_ultrasound`, confirm the B-mode and visualization processes become ready, and embed their
-  clinician-facing video/status surface in Dr.Anmar rather than exposing container logs as the primary view.
-- Add simulator-native tissue-stiffness, latency, object-scale, grasp-friction, stereo-calibration, and sensor-
-  dropout randomizers to the automated challenge matrix.
-- Add visibility/occlusion metrics and independently validated task-specific grasp/contact state.
-- Add policy evaluation cards linked to immutable datasets, checkpoints, runtime revisions, and challenge matrices.
-
-## 2026-07-20 keyboard-control live evidence
-
-Captured on Gilgamesh in the running Isaac workstation rather than from mocked UI state:
-
-- The workstation self-audit reported `51/51` visible controls mapped to keyboard shortcuts.
-- Quick-tap semantic actions were recorded as `keyboard_smart_action`, and command lifetime followed the live
-  simulator rate instead of expiring before a 2 Hz physics step.
-- In the single-PSM needle room, a held needle reached a measured 2.64 mm bounded entry, then withdrew until
-  puncture was false and the tip had a 49.17 mm positive clearance; assisted grasp remained active throughout.
-- In the dual-PSM room, the holder retained the extracted needle while the receiving open gripper approached
-  to 21.51 mm. Capture stopped before the receiving grasp or release, as intended for the pre-handoff view.
-- The resulting GIF holds control highlights for readable frames and includes close, overview, instrument-select,
-  entry, reverse, and pre-handoff states.
-- This dated capture predates the expert-start, expert-pause and final combined-action additions. The current
-  workstation and CI audit report `54/54`; the added expert keys are documented in `KEYBOARD_CONTROLS.md`.
-- A second live dual-PSM capture completed the transfer rather than stopping at pre-handoff: instrument 2 first
-  acquired and lifted the needle, instrument 1 closed at 1.91 mm while both assisted grasps were active, then
-  instrument 2 opened. Final simulator state reported assisted grasp `[true, false]`, grippers `[closed, open]`,
-  and the receiving instrument retained the needle while separating 51.16 mm from the released holder.
-- The completed-transfer showcase is a 10.2-second, 1152×648 GIF assembled from live Isaac frames. After release,
-  the receiver remains grasped and carries the needle toward the organ until the simulator reports the bounded
-  entry state. It keeps active instrument, smart action, movement, grasp, release, and camera feedback visible
-  instead of overlaying staged labels.
-
-## 2026-07-20 suturing, cutting, and organ-mechanics evidence
-
-- The suturing room launched with the official CT liver OpenUSD scene, a visible 48-node constrained strand, and
-  compliant surface authoring active. Untouched strand tension remained at 0.0 N after changing integration from
-  wall-clock rendering time to the simulator's 20 ms step. Entry/exit pins, tension resistance, tissue deformation,
-  loop closure and the persistent cinch constraint are implemented; a complete clinician-driven knot remains open.
-- The incision room reported `topology_ready: true`. Its startup round-trip changed a live liver point, removed and
-  read back at least one OpenUSD face, then restored the original vertex and face arrays before frame 1. A complete
-  tool-driven incision from corridor start to recovery remains open for visual and topology-quality review.
-- Liver retraction, gallbladder repositioning, and dual-arm bladder handover each resolved the correct visible organ,
-  retained the matching OpenUSD operating room, and independently passed live surface-authoring round trips.
-- A real dual-PSM API run approached the bladder from 67.7 mm to 5.3 mm, activated assisted capture, created a
-  3.5 mm local jaw indentation, moved the organ 117.8 mm, switched to elastic recovery on release, and restored
-  displacement and surface revision to zero on Reset.
-- A 65-frame demonstration saved suture tension/pins/knot state, incision activity/length/removed faces/topology
-  revision, and compliant-surface displacement/recovery/revision in the NPZ. The v2 JSON sidecar preserved the
-  mechanics modality, final mechanics state, and task-analysis metrics.
-
-Still open: full clinician-driven entry-through-exit knot completion; continuous tool-driven cut and incision-edge
-review; tissue-specific FEM/MPM material calibration; validated needle, thread, cutting and organ contact forces;
-tearing, bleeding, cautery and healing models; and clinical construct/usability studies.
-
-Still required before research claims expand: calibrate the interactive surface, thread and incision models against
-independent measurements, calibrate camera projection and depth cues, verify collision/contact telemetry under every
-anatomy scene, and run clinician usability studies. This remains simulation training, not validated biomechanics or
-clinical use.
-
-## 2026-07-20 procedure-room expansion implementation
-
-- Added runnable room definitions and clinician curricula for vascular shunt insertion, single interrupted stitch,
-  running suturing, intracorporeal knot tying, needle passing/regrasping, anastomosis with pressure/leak testing,
-  clip-ligate-divide, bleeding control, tissue-plane dissection, ultrasound-guided access, biopsy/lesion excision,
-  and complication recovery. Existing anatomy navigation and organ-manipulation rooms remain available.
-- Added reusable procedure mechanics for flexible-tube alignment/depth/buckling/wall load/patency; stitch count,
-  spacing, closure gap, lumen narrowing and leak rate; clips, division and residual flow; suction/compression,
-  blood-loss and rebleed; ultrasound target confidence, needle visibility and protected clearance; topology-changing
-  dissection/excision; and randomized recovery progress.
-- Added OpenUSD training geometry for the shunt/vessel, target vessels, visible clips, bleed source, anastomosis
-  lumen ends, ultrasound target/protected vessel, and lesion target. Procedure state is displayed beside the live
-  view and recorded as synchronized NPZ channels plus final-mechanics manifest state.
-- Added task-specific research scores for shunt placement, closure/anastomosis, vascular control, hemostasis,
-  ultrasound access, dissection/excision and complication recovery. These are explicitly engineering proxies.
-
-Deferred validation gates for the expanded rooms:
-
-- Drive every new room from entry through recovery on Gilgamesh and visually confirm procedure geometry, camera
-  framing, ordered targets, dual-arm selection, reset behavior, overlays and recorded telemetry.
-- Calibrate the flexible shunt against measured tube bending, friction, insertion force, buckling and flow/patency;
-  validate different lumen diameters, curves, branching and pulsatile-flow cases.
-- Calibrate needle penetration, multi-bite thread friction, tissue holding strength, closure gap, knot slippage,
-  lumen constriction, pressure and leakage against independently measured phantoms.
-- Validate clip deployment position, spacing, retention and burst pressure; replace residual-flow and bleeding
-  proxies with a verified fluid/device model before any physiological claim.
-- Validate dissection-plane separation, protected-structure collision, excision margins and specimen release against
-  anatomy-specific task definitions; add thermal spread before enabling energy-device training claims.
-- Launch and validate NVIDIA's official robotic-ultrasound containers after Docker, NVIDIA Container Toolkit and
-  RTI licensing are present; only official NVIDIA sensor output may enter new datasets.
-- Have specialty clinicians author acceptable phases, recovery actions, error taxonomies and task-specific scoring;
-  then perform construct validity, inter-rater agreement, usability, workload and learning-transfer studies.
-
-## 2026-07-21 surface-bound suturing upgrade
-
-- Replaced world-space visual pins with material-coordinate anchors bound to weighted OpenUSD tissue-vertex
-  neighborhoods. Entry and exit now create persistent puncture sites, the suture follows the deforming surface, and
-  each complete bite creates a paired constraint that draws the two tissue neighborhoods together under measured
-  strand tension.
-- Added retained approximation under knot security, tissue/thread frictional-slip telemetry, bite-depth telemetry,
-  overload damage, anchor pullout, tissue-tear and thread-break failure paths. The live operating room now renders
-  distinct entry/exit markers and records closure gap, closure ratio, retained closure, bite depth and anchor slip.
-- A deterministic Gilgamesh solver check reduced a representative 40.0 mm unscaled mesh gap to 25.1 mm while
-  retaining a 0.795 secured-closure drive; the live suture room loaded both v3 models and rendered near 23 FPS.
-
-Still required before stronger biomechanics claims: calibrate puncture dimpling, surface-neighborhood size, suture
-friction, tissue holding force, closure response, plastic retention, knot security, pullout, tearing and thread failure
-against physical liver/phantom experiments. Independently inspect full entry-through-exit and multi-bite trajectories,
-verify the rendered strand never tunnels through unrelated tissue, and compare recorded forces and closure gaps with
-bench instrumentation. The generic expert controller still times out before acquiring the needle in this dual-PSM
-suture room; it must not be promoted as a clean Behavior Cloning reference until the room-specific acquisition and
-needle-arc trajectory complete without degraded warnings.
-
-## 2026-07-21 needle-through-hoop dry lab
-
-- Added a dedicated beginner room with a physical OpenUSD torus, stand and base; the organ layer is hidden so the
-  curved needle, instruments and target remain visually legible.
-- Added needle-endpoint plane-crossing detection, center error, radial clearance, rim contacts, clean-pass and
-  recovery state to the live HUD, demonstration recordings and Skills Twin scoring.
-- Added a six-step clinician-facing lesson and an executable eight-phase expert-controller path. The room reuses
-  native dual-PSM and needle rigid-body physics while keeping its dry-lab targets separate from tissue suturing.
-
-Still required: clinician-set proficiency thresholds for ring diameter, allowable contacts, completion time,
-needle presentation and regrasp quality; verify the expert acquires and carries the needle cleanly before promoting
-its generated trajectory as a Behavior Cloning reference; and compare transfer to a physical box-trainer exercise.
-
-## 2026-07-20 procedure-mechanics polish
-
-- Removed marker-only success shortcuts from shunt verification, knot tying, anastomosis pressure testing, clip
-  placement, vessel division, hemostasis and ultrasound access. Progress now depends on the intended instrument
-  interaction, stable dwell or topology change.
-- Added PSM jaw control to the native dual-reach base used by vascular, dissection, biopsy and ultrasound rooms, so
-  their close, compression and counter-traction actions are recorded in the same 14-channel action stream.
-- Added stable shunt verification, off-target clip and protected-interval events, early-release rebleed, actual
-  alternating two-arm knot throws, counter-traction-gated dissection progress, and protected-structure penalties.
-- Converted ultrasound access to a bimanual room: Instrument 1 positions and stabilizes the probe while Instrument 2
-  advances and withdraws the needle. Confidence now depends on probe pose and dwell; needle visibility, target
-  contact, withdrawal and protected-vessel contacts are tracked separately.
-- Added the new procedure events to demonstration files and task-specific scoring. They remain engineering proxies.
-
-Focused gates still required after this polish:
-
-- Clinician-check the spatial tolerance for clip deployment and division, the probe/needle role convention, knot
-  crossing detection, dissection counter-traction radius, and each stability dwell on the live Gilgamesh controls.
-- Confirm all added gripper action terms retain the intended PSM joint ordering after future Isaac Lab upgrades.
-- Replace proximity and close-event procedure proxies with device-specific clip, suction, probe, scissors and
-  dissector assets plus calibrated contact and material models before any claim of clinical fidelity.
+Exit gate: educational or clinical claims are limited to the populations,
+procedures, endpoints, and study designs that actually support them.

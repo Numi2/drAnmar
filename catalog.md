@@ -9,7 +9,7 @@ It records software and asset provenance; it is not clinical-validation evidence
 
 - Catalog schema: `dr.anmar.asset-catalog-lock.v3`
 - Catalog version: `1.2.0`
-- Catalog SHA-256: `1a0c1da2501926f9c9387d92a385b8711b699190f32717231d7a5e72c69e2122`
+- Catalog SHA-256: `7d033824a33dbb2305d8155aad79da522e8c5a82949807dffd2ca21b06512344`
 - Local asset units: `28`
 - Product portfolio assets: `20`
 - Clinical validation: `false`
@@ -37,8 +37,8 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 | `dr_anmar:Props/SurgicalClosure/SkinStapler` | 3 | 72 | 59730460 | `3e1bba9536a83a97fe3acce31428f64c0452895d2ed79d9761ad74579f3880cb` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/StaplerTestCell` | 2 | 5 | 17479 | `65e5f6ec510adb66583068b3d8aaac244d29ddf295ce0993c9eaa339c2a444fc` | `LICENSE` |
 | `dr_anmar:Props/SurgicalCount/LaparotomySponge` | 2 | 13 | 1308151 | `a87f97bc68aa68d08404508cb50c4155d868444e9d9f44f6e4b6e300f7bed64e` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalCount/LaparotomySponge/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalDissection/SafePlaneDissectionRobot` | 13 | 58 | 25738964 | `e631028e1a36183e006a18adef0db2e12e5c822790d455ae85a90f4c77f4bcb1` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalDivision/AdaptiveSealDivideRobot` | 7 | 40 | 9744362 | `6b3cf05c603906c5d6848ad2a44206419119aa6b8afcc842b7f6a52e2920371c` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalDissection/SafePlaneDissectionRobot` | 13 | 58 | 25738964 | `8cc405d14ddc3a5a25c63c7b036e86ed46847349b0b2ede993f5c217da7d5b3c` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDissection/SafePlaneDissectionRobot/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalDivision/AdaptiveSealDivideRobot` | 7 | 40 | 9744362 | `a35d033cdebcd0bc9a42ebb5be471a79d9e06ce17da13cdf406e7abfb51db254` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalDivision/AdaptiveSealDivideRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalExposure/AtraumaticExposureRobot` | 6 | 35 | 37326399 | `28c0e7f65deebcb6c5f9ae7b4d18793cf3f9217a4558e9ff497909835d4aed7a` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalExposure/AtraumaticExposureRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalHemostasis/AdaptiveHemostasisRobot` | 8 | 38 | 18737089 | `25525ebd1a3c4398b89056e57097b6e04d53bcd8567f16593e17875989fe2820` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalOncology/OncoSurgeryCell` | 13 | 59 | 12671992 | `2970dc0bfd6695c35762e648f1dc681a5654b8ffe9c72665052c1b14c2ab44dd` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/LICENSE.txt` |
