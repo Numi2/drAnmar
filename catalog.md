@@ -9,7 +9,7 @@ It records software and asset provenance; it is not clinical-validation evidence
 
 - Catalog schema: `dr.anmar.asset-catalog-lock.v3`
 - Catalog version: `1.2.0`
-- Catalog SHA-256: `aa21f6778bbd5a56957328deca5996de9497d0371211cdca4da43863761a9a2f`
+- Catalog SHA-256: `1a0c1da2501926f9c9387d92a385b8711b699190f32717231d7a5e72c69e2122`
 - Local asset units: `28`
 - Product portfolio assets: `20`
 - Clinical validation: `false`
@@ -27,7 +27,7 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 
 | Asset unit | Entrypoints | Files | Bytes | SHA-256 | License evidence |
 | --- | ---: | ---: | ---: | --- | --- |
-| `dr_anmar:Environments/SurgicalAutonomy/AutonomousRescueOR` | 11 | 78 | 16741550 | `40792c21a8102f7419a985003c8528c6d8ac20316369d74742a63366b0a2d05d` | `source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/LICENSE.txt` |
+| `dr_anmar:Environments/SurgicalAutonomy/AutonomousRescueOR` | 11 | 78 | 16742130 | `dedcca9f13b6840e8c2197468daa40cc18198a0c8dcbc9cdd2cb7d7c8d8569f1` | `source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/LICENSE.txt` |
 | `dr_anmar:Props/Patients/DynamicAbdominalPatient` | 3 | 84 | 21857721 | `bea74f6560d5888ff831a735ff2c0967f1924af172cc4ab51cf11c05ac4fb265` | `source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalAssessment/PerfusionViabilityRobot` | 7 | 49 | 35118832 | `f4bd998140b6e1c59f3f67af3cf3f9d698f6cf7a7002b8a0cd1f040d0e609b34` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/ClosureRobot` | 6 | 134 | 14929244 | `fa67ba1568caf9fe7d6fa8a6cb61bc897280abacd565321b1e4fae5ac5bce56b` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/ClosureRobot/LICENSE.txt` |

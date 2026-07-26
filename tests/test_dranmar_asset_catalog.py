@@ -5,11 +5,11 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
-from pathlib import Path
+import re
 import sys
+from pathlib import Path
 
 import pytest
-
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / (
@@ -17,6 +17,10 @@ MODULE_PATH = ROOT / (
     "dranmar_asset_catalog.py"
 )
 INDEX_GENERATOR_PATH = ROOT / "scripts/generate_dranmar_asset_catalog_index.py"
+AUTONOMOUS_RESCUE_ASSET_ROOT = ROOT / (
+    "source/extensions/orbit.surgical.assets/data/Environments/"
+    "SurgicalAutonomy/AutonomousRescueOR"
+)
 
 
 def load_catalog():
@@ -133,4 +137,31 @@ def test_usd_mesh_normals_use_the_schema_attribute_not_a_primvar_alias():
             encoding="utf-8"
         )
     ]
+    assert offenders == []
+
+
+def test_autonomous_rescue_usda_metadata_and_variants_are_parseable():
+    typed_field = re.compile(
+        r"\b(?:asset|bool|double|float|int|string|token)\s+\w+\s*="
+    )
+    inline_dictionary = re.compile(
+        r"\b(?:assetInfo|customData)\s*=\s*\{[^}\n]+\}"
+    )
+    inline_variant_body = re.compile(
+        r'^\s*"[^"]+"\s*\{\s*(?:custom\s+)?'
+        r"(?:asset|bool|double|float|int|string|token)\b[^}\n]*\}\s*$",
+        re.MULTILINE,
+    )
+    offenders = []
+
+    for path in sorted(AUTONOMOUS_RESCUE_ASSET_ROOT.glob("*.usda")):
+        source = path.read_text(encoding="utf-8")
+        for match in inline_dictionary.finditer(source):
+            if len(typed_field.findall(match.group())) > 1:
+                line = source.count("\n", 0, match.start()) + 1
+                offenders.append(f"{path.name}:{line}: inline metadata dictionary")
+        for match in inline_variant_body.finditer(source):
+            line = source.count("\n", 0, match.start()) + 1
+            offenders.append(f"{path.name}:{line}: inline variant body")
+
     assert offenders == []
