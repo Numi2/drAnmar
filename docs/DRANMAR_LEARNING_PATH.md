@@ -142,6 +142,12 @@ limit is `0.03`; its Gaussian exploration standard deviation is fixed at
 analytic approach, wrist orientation, and binary gripper during both training
 and serving while allowing PPO to reduce transport timeouts.
 
+Long visual diagnostics are written in bounded video chunks so recording does
+not retain an entire multi-episode rollout in RAM. Single-environment evidence
+records each episode's inclusive start and terminal frames plus its physics
+termination outcome. This allows strict timeout and hard-failure clips to be
+cut from the original recording without relabeling episodes by visual judgment.
+
 Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift
 objects therefore use the explicit identity `(0, 0, 0, 1)`. This prevents the
 legacy `(w, x, y, z)` identity from becoming a 180-degree X rotation, which

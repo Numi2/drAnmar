@@ -390,7 +390,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "record)" in launcher_source
     assert "def _controller_sweep(" in benchmark_source
     assert 'play.add_argument("--video", action="store_true")' in benchmark_source
+    assert 'play.add_argument("--video_chunk_length", type=int)' in benchmark_source
     assert 'enable_cameras=bool(getattr(args, "video", False))' in benchmark_source
+    assert '"single_environment_episode_trace"' in benchmark_source
+    assert '"terminal_frame_inclusive"' in benchmark_source
+    assert "--video_chunk_length" in launcher_source
     assert "first_terminal_outcome_per_environment" in benchmark_source
     assert '"all_episode_totals"' in benchmark_source
     assert '"first_episode_lift_diagnostics"' in benchmark_source

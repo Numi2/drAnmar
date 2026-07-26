@@ -23,7 +23,7 @@ usage() {
     echo "  pretrain  [task] [num_envs] [updates] [validation_frames] [output]"
     echo "  train     [task] [num_envs] [iterations] [output]"
     echo "  play      CHECKPOINT [task] [num_envs] [frames] [output]"
-    echo "  record    CHECKPOINT [task] [frames] [output]"
+    echo "  record    CHECKPOINT [task] [frames] [output] [chunk_frames]"
     echo "  tqta-start  [task] [tracker]"
     echo "  tqta-ingest TRACKER EVIDENCE_JSON..."
     echo "  tqta-report [tracker]"
@@ -185,6 +185,7 @@ case "${command}" in
         task="${3:-${DR_ANMAR_TASK}}"
         frames="${4:-500}"
         output="${5:-${DR_ANMAR_LEARNING_OUTPUT}/record}"
+        chunk_frames="${6:-${frames}}"
         mkdir -p "${output}/videos"
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
@@ -193,7 +194,10 @@ case "${command}" in
             --num_frames "${frames}" \
             --seed "${DR_ANMAR_SEED}" \
             --video \
-            --video_length "${frames}" \
+            --video_length "${chunk_frames}" \
+            --video_chunk_length "${chunk_frames}" \
+            --video_width "${DR_ANMAR_VIDEO_WIDTH:-640}" \
+            --video_height "${DR_ANMAR_VIDEO_HEIGHT:-360}" \
             --video_folder "${output}/videos" \
             --benchmark_formatter schema,json \
             --output_path "${output}"

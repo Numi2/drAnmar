@@ -1498,6 +1498,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
+        env_cfg.viewer.resolution = (args.video_width, args.video_height)
         env_kwargs["render_mode"] = "rgb_array"
     env = gym.make(args.task, **env_kwargs)
     if args.video:
@@ -1505,11 +1506,20 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             args.video_folder or Path(args.output_path).resolve() / "videos"
         ).resolve()
         video_folder.mkdir(parents=True, exist_ok=True)
+        video_chunk_length = args.video_chunk_length or 0
         env = gym.wrappers.RecordVideo(
             env,
             video_folder=str(video_folder),
-            step_trigger=lambda step: step == 0,
-            video_length=args.video_length or args.num_frames,
+            step_trigger=(
+                (lambda step: step % video_chunk_length == 0)
+                if video_chunk_length
+                else (lambda step: step == 0)
+            ),
+            video_length=(
+                video_chunk_length
+                if video_chunk_length
+                else (args.video_length or args.num_frames)
+            ),
             name_prefix=f"{args.task}-seed{args.seed}",
             disable_logger=True,
         )
@@ -1562,6 +1572,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         300,
         args.num_frames - 1,
     }
+    single_environment_episode_trace = (
+        [] if args.video and args.num_envs == 1 else None
+    )
+    single_environment_episode_start_frame = 0
     if "Lift-" in args.task:
         from orbit.surgical.tasks.surgical import mdp_common as lift_mdp_common
 
@@ -1791,6 +1805,39 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                 for name, value in term_values.items():
                     termination_counts[name] += int(value.sum().item())
+                if (
+                    single_environment_episode_trace is not None
+                    and bool(dones.bool()[0].item())
+                ):
+                    if bool(successes.bool()[0].item()):
+                        episode_outcome = "success"
+                    else:
+                        episode_outcome = next(
+                            (
+                                name
+                                for name in failure_names
+                                if bool(term_values[name].bool()[0].item())
+                            ),
+                            "unclassified",
+                        )
+                    single_environment_episode_trace.append(
+                        {
+                            "episode": len(
+                                single_environment_episode_trace
+                            ),
+                            "start_frame_inclusive": (
+                                single_environment_episode_start_frame
+                            ),
+                            "terminal_frame_inclusive": frame_index,
+                            "frame_count": (
+                                frame_index
+                                - single_environment_episode_start_frame
+                                + 1
+                            ),
+                            "outcome": episode_outcome,
+                        }
+                    )
+                    single_environment_episode_start_frame = frame_index + 1
                 first_dones = was_first_unresolved & dones.bool()
                 first_successes = first_dones & successes.bool()
                 first_outcome_success |= first_successes
@@ -2262,6 +2309,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "failure_distribution": failure_distribution,
                 "termination_term_counts": termination_counts,
             },
+            "single_environment_episode_trace": (
+                single_environment_episode_trace
+            ),
+            "video_capture": (
+                {
+                    "resolution": [args.video_width, args.video_height],
+                    "chunk_length_frames": args.video_chunk_length,
+                    "folder": str(
+                        Path(
+                            args.video_folder
+                            or Path(args.output_path).resolve() / "videos"
+                        ).resolve()
+                    ),
+                }
+                if args.video
+                else None
+            ),
             "procedure_diagnostics": procedure_diagnostics,
             "procedure_diagnostic_trace": procedure_diagnostic_trace,
             "first_episode_lift_diagnostics": (
@@ -2345,6 +2409,9 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--output_path", required=True)
     play.add_argument("--video", action="store_true")
     play.add_argument("--video_length", type=int)
+    play.add_argument("--video_chunk_length", type=int)
+    play.add_argument("--video_width", type=int, default=1280)
+    play.add_argument("--video_height", type=int, default=720)
     play.add_argument("--video_folder")
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
