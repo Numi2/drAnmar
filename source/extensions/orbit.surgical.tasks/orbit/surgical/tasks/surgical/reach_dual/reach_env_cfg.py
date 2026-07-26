@@ -117,6 +117,15 @@ class ObservationsCfg:
             },
             clip=(-0.25, 0.25),
         )
+        target_1_relative_orientation = ObsTerm(
+            func=mdp.pose_command_orientation_error_vector,
+            params={
+                "command_name": "ee_1_pose",
+                "robot_cfg": SceneEntityCfg("robot_1"),
+                "frame_cfg": SceneEntityCfg("ee_1_frame"),
+            },
+            clip=(-3.1416, 3.1416),
+        )
         target_2_relative_position = ObsTerm(
             func=mdp.pose_command_error_vector,
             params={
@@ -125,6 +134,15 @@ class ObservationsCfg:
                 "frame_cfg": SceneEntityCfg("ee_2_frame"),
             },
             clip=(-0.25, 0.25),
+        )
+        target_2_relative_orientation = ObsTerm(
+            func=mdp.pose_command_orientation_error_vector,
+            params={
+                "command_name": "ee_2_pose",
+                "robot_cfg": SceneEntityCfg("robot_2"),
+                "frame_cfg": SceneEntityCfg("ee_2_frame"),
+            },
+            clip=(-3.1416, 3.1416),
         )
         actions = ObsTerm(func=mdp.last_action)
 

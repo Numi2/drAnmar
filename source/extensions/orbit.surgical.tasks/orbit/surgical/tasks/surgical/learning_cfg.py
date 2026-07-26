@@ -29,6 +29,20 @@ class DrAnmarReachResidualModelCfg(RslRlMLPModelCfg):
     residual_scale: float = 0.25
 
 
+@configclass
+class DrAnmarDualReachResidualModelCfg(DrAnmarReachResidualModelCfg):
+    """Two-controller residual actor for coordinated PSM pose control."""
+
+    class_name = (
+        "orbit.surgical.tasks.surgical.reach_dual.residual_model:"
+        "DualReachResidualMLPModel"
+    )
+    arm_1_position_error_start: int = 46
+    arm_1_orientation_error_start: int = 49
+    arm_2_position_error_start: int = 52
+    arm_2_orientation_error_start: int = 55
+
+
 def _actor(hidden_dims: list[int], *, initial_std: float = 1.0) -> RslRlMLPModelCfg:
     return RslRlMLPModelCfg(
         hidden_dims=hidden_dims,
@@ -44,6 +58,21 @@ def reach_residual_actor(
     initial_std: float = 0.25,
 ) -> DrAnmarReachResidualModelCfg:
     return DrAnmarReachResidualModelCfg(
+        hidden_dims=hidden_dims,
+        activation="elu",
+        obs_normalization=True,
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(
+            init_std=initial_std
+        ),
+    )
+
+
+def dual_reach_residual_actor(
+    hidden_dims: list[int],
+    *,
+    initial_std: float = 0.25,
+) -> DrAnmarDualReachResidualModelCfg:
+    return DrAnmarDualReachResidualModelCfg(
         hidden_dims=hidden_dims,
         activation="elu",
         obs_normalization=True,

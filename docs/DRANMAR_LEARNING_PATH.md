@@ -43,12 +43,20 @@ It is a control qualification task, not a surgical-skill claim.
 
 ## Efficient training contract
 
-Stage 1 does not spend PPO samples rediscovering the relative Cartesian
-controller already encoded by the action space. Its actor is an analytic
-relative-IK base policy plus a bounded learned residual. The residual network
-starts at zero, so the first frozen policy already reproduces the qualified
-controller exactly. PPO is reserved for learning small residual corrections
-only when deterministic held-out evaluation misses the gate.
+Stages 1 and 2 do not spend PPO samples rediscovering relative Cartesian
+controllers already encoded by the action space. Stage 1 uses one analytic
+relative-IK base and Stage 2 uses one base controller per PSM. Their residual
+networks start at zero, so the first frozen policies reproduce the controllers
+exactly. PPO is reserved for bounded single-arm corrections or dual-arm
+coordination residuals only when deterministic held-out evaluation misses the
+stage gate.
+
+The Stage 2 dual policy observes position and axis-angle orientation error for
+both tool tips. Its 12-dimensional action is assembled from two independent
+six-dimensional controller outputs before the learned coordination residual is
+applied. The observation offsets, controller scales, initialization method,
+held-out seeds, and promotion threshold are versioned in the learning-path
+contract.
 
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,
@@ -119,6 +127,13 @@ Then:
 
 # Initialize and validate the analytic-base residual Stage 1 policy
 ./dr_anmar_learning.sh pretrain
+
+# Initialize and validate Stage 2 at the qualified count
+DR_ANMAR_TRUST_REQUESTED_NUM_ENVS=1 \
+./dr_anmar_learning.sh pretrain \
+  DrAnmar-Reach-Dual-PSM-IK-Rel-v0 \
+  1200 32 500 \
+  output/dranmar-learning/pretrain/reach-dual-psm-1200-v1
 
 # PPO refinement when deterministic held-out evaluation still misses its gate
 ./dr_anmar_learning.sh train

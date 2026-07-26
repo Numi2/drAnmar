@@ -216,13 +216,18 @@ def _load_configs(task: str, num_envs: int, seed: int):
     return env_cfg, agent_cfg
 
 
-def _reach_teacher_action(obs, *, position_scale: float, orientation_scale: float):
-    """Map the explicit pose-error observation to the relative-IK action."""
+def _pose_error_action(
+    policy_obs,
+    *,
+    position_start: int,
+    orientation_start: int,
+    position_scale: float,
+    orientation_scale: float,
+):
     import torch
 
-    policy_obs = obs["policy"]
-    position_error = policy_obs[:, 23:26]
-    orientation_error = policy_obs[:, 26:29]
+    position_error = policy_obs[:, position_start : position_start + 3]
+    orientation_error = policy_obs[:, orientation_start : orientation_start + 3]
     return torch.cat(
         (
             position_error / position_scale,
@@ -230,6 +235,48 @@ def _reach_teacher_action(obs, *, position_scale: float, orientation_scale: floa
         ),
         dim=-1,
     ).clamp(-1.0, 1.0)
+
+
+def _reach_teacher_action(
+    obs,
+    task: str,
+    *,
+    position_scale: float,
+    orientation_scale: float,
+):
+    """Map a declared reach pose-error observation to relative-IK actions."""
+    import torch
+
+    policy_obs = obs["policy"]
+    if "Reach-Dual-PSM-IK-Rel" in task:
+        return torch.cat(
+            (
+                _pose_error_action(
+                    policy_obs,
+                    position_start=46,
+                    orientation_start=49,
+                    position_scale=position_scale,
+                    orientation_scale=orientation_scale,
+                ),
+                _pose_error_action(
+                    policy_obs,
+                    position_start=52,
+                    orientation_start=55,
+                    position_scale=position_scale,
+                    orientation_scale=orientation_scale,
+                ),
+            ),
+            dim=-1,
+        )
+    if "Reach-PSM-IK-Rel" in task:
+        return _pose_error_action(
+            policy_obs,
+            position_start=23,
+            orientation_start=26,
+            position_scale=position_scale,
+            orientation_scale=orientation_scale,
+        )
+    raise ValueError(f"no analytic reach teacher is declared for task: {task}")
 
 
 def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
@@ -273,6 +320,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
         for _ in range(args.updates):
             teacher_actions = _reach_teacher_action(
                 obs,
+                args.task,
                 position_scale=args.position_scale,
                 orientation_scale=args.orientation_scale,
             )
@@ -634,6 +682,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "completed_episodes": done_count,
             "successful_episodes": success_count,
             "failed_episodes": done_count - success_count,
+            "failure_distribution": {
+                "time_out": done_count - success_count,
+            },
             "process_peak_memory_mib": _peak_process_memory_mib(),
             "success_rate": success_count / done_count if done_count else None,
             "checkpoint": {

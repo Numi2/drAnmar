@@ -12,6 +12,7 @@ from ...reach.mdp.rewards import (  # noqa: F401
     orientation_command_error,
     orientation_command_tanh,
     pose_command_error_vector,
+    pose_command_orientation_error_vector,
     pose_command_errors,
     position_command_error,
     position_command_tanh,

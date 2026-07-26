@@ -5,9 +5,13 @@
 
 from isaaclab.utils.configclass import configclass
 
-from orbit.surgical.tasks.surgical.learning_cfg import DrAnmarReachPPORunnerCfg
+from orbit.surgical.tasks.surgical.learning_cfg import (
+    DrAnmarReachPPORunnerCfg,
+    dual_reach_residual_actor,
+)
 
 
 @configclass
 class PSMReachPPORunnerCfg(DrAnmarReachPPORunnerCfg):
     experiment_name = "dranmar_dual_psm_reach"
+    actor = dual_reach_residual_actor([256, 128, 64])

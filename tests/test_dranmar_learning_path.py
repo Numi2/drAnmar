@@ -27,6 +27,14 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         manifest["defaults"]["stage_1_initialization"]["method"]
         == "analytic_relative_ik_base_plus_learned_residual"
     )
+    assert (
+        manifest["defaults"]["stage_2_initialization"]["method"]
+        == "dual_analytic_relative_ik_base_plus_learned_coordination_residual"
+    )
+    assert (
+        "arm_2_target_relative_axis_angle_orientation"
+        in manifest["defaults"]["dual_reach_observation_contract"]
+    )
 
 
 def test_frontier_imports_and_runner_contract() -> None:
@@ -91,6 +99,30 @@ def test_reach_policy_observes_direct_pose_error() -> None:
     ast.parse(cfg_source)
     ast.parse(reward_source)
     ast.parse(residual_source)
+
+
+def test_dual_reach_policy_observes_two_pose_errors_and_uses_residual_base() -> None:
+    cfg_source = (
+        TASK_ROOT / "surgical/reach_dual/reach_env_cfg.py"
+    ).read_text()
+    model_source = (
+        TASK_ROOT / "surgical/reach_dual/residual_model.py"
+    ).read_text()
+    agent_source = (
+        TASK_ROOT / "surgical/reach_dual/config/psm/agents/rsl_rl_cfg.py"
+    ).read_text()
+    benchmark_source = (
+        ROOT / "scripts/dr_anmar_learning_benchmark.py"
+    ).read_text()
+    assert "target_1_relative_orientation = ObsTerm(" in cfg_source
+    assert "target_2_relative_orientation = ObsTerm(" in cfg_source
+    assert "class DualReachResidualMLPModel(ReachResidualMLPModel):" in model_source
+    assert "dual_reach_residual_actor([256, 128, 64])" in agent_source
+    for offset in (46, 49, 52, 55):
+        assert f"start={offset}" in benchmark_source
+    ast.parse(cfg_source)
+    ast.parse(model_source)
+    ast.parse(agent_source)
 
 
 def test_launcher_fits_parallel_worlds_to_live_ram_and_vram() -> None:

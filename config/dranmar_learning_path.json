@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.3.0",
+  "schema_version": "1.4.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -34,6 +34,24 @@
       "method": "analytic_relative_ik_base_plus_learned_residual",
       "default_updates": 32,
       "ppo_role": "learn_bounded_residual_only_if_held_out_gate_fails"
+    },
+    "dual_reach_observation_contract": [
+      "arm_1_joint_position",
+      "arm_1_joint_velocity",
+      "arm_2_joint_position",
+      "arm_2_joint_velocity",
+      "arm_1_commanded_pose",
+      "arm_2_commanded_pose",
+      "arm_1_target_relative_position",
+      "arm_1_target_relative_axis_angle_orientation",
+      "arm_2_target_relative_position",
+      "arm_2_target_relative_axis_angle_orientation",
+      "previous_dual_action"
+    ],
+    "stage_2_initialization": {
+      "method": "dual_analytic_relative_ik_base_plus_learned_coordination_residual",
+      "default_updates": 32,
+      "ppo_role": "learn_bounded_coordination_residual_only_if_held_out_gate_fails"
     }
   },
   "stages": [
