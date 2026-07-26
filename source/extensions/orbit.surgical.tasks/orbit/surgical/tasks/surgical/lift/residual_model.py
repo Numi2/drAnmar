@@ -32,6 +32,8 @@ class LiftResidualMLPModel(MLPModel):
         slow_approach_action_limit: float = 0.1,
         normalized_contact_threshold: float = 0.002,
         carry_angular_velocity_scale: float = 2.5,
+        carry_stable_angular_speed: float = 1.5,
+        lateral_clearance_below_target: float = 0.02,
         carry_action_limit: float = 0.1,
         residual_scale: float = 0.2,
         **kwargs,
@@ -51,6 +53,8 @@ class LiftResidualMLPModel(MLPModel):
         self.slow_approach_action_limit = slow_approach_action_limit
         self.normalized_contact_threshold = normalized_contact_threshold
         self.carry_angular_velocity_scale = carry_angular_velocity_scale
+        self.carry_stable_angular_speed = carry_stable_angular_speed
+        self.lateral_clearance_below_target = lateral_clearance_below_target
         self.carry_action_limit = carry_action_limit
         self.residual_scale = residual_scale
 
@@ -103,6 +107,10 @@ class LiftResidualMLPModel(MLPModel):
             contact_forces > self.normalized_contact_threshold,
             dim=-1,
         )
+        stable_bilateral_contact = bilateral_contact & (
+            torch.linalg.vector_norm(object_angular_velocity, dim=-1)
+            < self.carry_stable_angular_speed
+        )
         approach_action = (
             (approach_position - ee_position) / self.position_scale
         ).clamp(-1.0, 1.0)
@@ -115,12 +123,26 @@ class LiftResidualMLPModel(MLPModel):
             slow_approach_action,
             approach_action,
         )
+        vertical_only = object_position[:, 2] < (
+            target_position[:, 2] - self.lateral_clearance_below_target
+        )
+        carry_target = target_position.clone()
+        carry_target[:, :2] = torch.where(
+            vertical_only.unsqueeze(-1),
+            object_position[:, :2],
+            target_position[:, :2],
+        )
         carry_action = (
-            (target_position - object_position) / self.position_scale
+            (carry_target - object_position) / self.position_scale
         ).clamp(-self.carry_action_limit, self.carry_action_limit)
+        settled_carry_action = torch.where(
+            stable_bilateral_contact.unsqueeze(-1),
+            carry_action,
+            torch.zeros_like(carry_action),
+        )
         translation_action = torch.where(
             bilateral_contact.unsqueeze(-1),
-            carry_action,
+            settled_carry_action,
             approach_action,
         )
         carry_orientation_action = (
@@ -205,6 +227,10 @@ class _LiftResidualExport(nn.Module):
         self.slow_approach_action_limit = model.slow_approach_action_limit
         self.normalized_contact_threshold = model.normalized_contact_threshold
         self.carry_angular_velocity_scale = model.carry_angular_velocity_scale
+        self.carry_stable_angular_speed = model.carry_stable_angular_speed
+        self.lateral_clearance_below_target = (
+            model.lateral_clearance_below_target
+        )
         self.carry_action_limit = model.carry_action_limit
         self.residual_scale = model.residual_scale
 
@@ -249,6 +275,10 @@ class _LiftResidualExport(nn.Module):
             contact_forces > self.normalized_contact_threshold,
             dim=-1,
         )
+        stable_bilateral_contact = bilateral_contact & (
+            torch.linalg.vector_norm(object_angular_velocity, dim=-1)
+            < self.carry_stable_angular_speed
+        )
         approach_action = (
             (approach_position - ee_position) / self.position_scale
         ).clamp(-1.0, 1.0)
@@ -261,12 +291,26 @@ class _LiftResidualExport(nn.Module):
             slow_approach_action,
             approach_action,
         )
+        vertical_only = object_position[:, 2] < (
+            target_position[:, 2] - self.lateral_clearance_below_target
+        )
+        carry_target = target_position.clone()
+        carry_target[:, :2] = torch.where(
+            vertical_only.unsqueeze(-1),
+            object_position[:, :2],
+            target_position[:, :2],
+        )
         carry_action = (
-            (target_position - object_position) / self.position_scale
+            (carry_target - object_position) / self.position_scale
         ).clamp(-self.carry_action_limit, self.carry_action_limit)
+        settled_carry_action = torch.where(
+            stable_bilateral_contact.unsqueeze(-1),
+            carry_action,
+            torch.zeros_like(carry_action),
+        )
         translation_action = torch.where(
             bilateral_contact.unsqueeze(-1),
-            carry_action,
+            settled_carry_action,
             approach_action,
         )
         carry_orientation_action = (

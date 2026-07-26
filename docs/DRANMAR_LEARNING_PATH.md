@@ -82,8 +82,11 @@ frame, and closes only within 3 mm of that grasp waypoint. Cartesian
 commands are capped at 0.1 during the final 20 mm approach and throughout
 bilateral-contact carry, limiting each 50 Hz command to 1 mm. Once bilateral
 contact is measured, object angular velocity drives an opposing relative-IK
-orientation command to suppress post-grasp spin. This avoids striking the
-object root before the jaws establish contact. Stage 4 reuses the same
+orientation command to suppress post-grasp spin. Translation remains held
+until angular speed is below 1.5 rad/s, then lifts vertically until the object
+is within 20 mm of target height before allowing lateral goal tracking. This
+avoids striking the object root before the jaws establish contact and prevents
+lateral carry from stripping an unsettled grasp. Stage 4 reuses the same
 orientation-qualified contract for needle lifting.
 
 Isaac Lab frontier asset rotations use `(x, y, z, w)` quaternion order. Lift

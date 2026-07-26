@@ -302,6 +302,8 @@ def _lift_teacher_action(
     slow_approach_action_limit: float = 0.1,
     normalized_contact_threshold: float = 0.002,
     carry_angular_velocity_scale: float = 2.5,
+    carry_stable_angular_speed: float = 1.5,
+    lateral_clearance_below_target: float = 0.02,
     carry_action_limit: float = 0.1,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
@@ -333,6 +335,10 @@ def _lift_teacher_action(
         contact_forces > normalized_contact_threshold,
         dim=-1,
     )
+    stable_bilateral_contact = bilateral_contact & (
+        torch.linalg.vector_norm(object_angular_velocity, dim=-1)
+        < carry_stable_angular_speed
+    )
     approach_action = (
         (approach_position - ee_position) / position_scale
     ).clamp(-1.0, 1.0)
@@ -345,12 +351,26 @@ def _lift_teacher_action(
         slow_approach_action,
         approach_action,
     )
+    vertical_only = object_position[:, 2] < (
+        target_position[:, 2] - lateral_clearance_below_target
+    )
+    carry_target = target_position.clone()
+    carry_target[:, :2] = torch.where(
+        vertical_only.unsqueeze(-1),
+        object_position[:, :2],
+        target_position[:, :2],
+    )
     carry_action = (
-        (target_position - object_position) / position_scale
+        (carry_target - object_position) / position_scale
     ).clamp(-carry_action_limit, carry_action_limit)
+    settled_carry_action = torch.where(
+        stable_bilateral_contact.unsqueeze(-1),
+        carry_action,
+        torch.zeros_like(carry_action),
+    )
     translation_action = torch.where(
         bilateral_contact.unsqueeze(-1),
-        carry_action,
+        settled_carry_action,
         approach_action,
     )
     carry_orientation_action = (
@@ -606,6 +626,8 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     "slow_approach_action_limit": 0.1,
                     "normalized_contact_threshold": 0.002,
                     "carry_angular_velocity_scale_rad_s": 2.5,
+                    "carry_stable_angular_speed_rad_s": 1.5,
+                    "lateral_clearance_below_target_m": 0.02,
                     "carry_action_limit": 0.1,
                 }
                 if "Lift-Block-PSM-IK-Rel" in args.task

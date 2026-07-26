@@ -57,6 +57,18 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
         ]
         == 2.5
     )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
+            "carry_stable_angular_speed_rad_s"
+        ]
+        == 1.5
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
+            "lateral_clearance_below_target_m"
+        ]
+        == 0.02
+    )
     stage_3 = stages[2]
     contract = stage_3["qualification_contract"]
     assert contract["initial_object_height_m"] == 0.015
@@ -254,6 +266,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "self.slow_approach_action_limit = slow_approach_action_limit" in model_source
     assert "self.carry_action_limit = carry_action_limit" in model_source
     assert "object_angular_velocity / self.carry_angular_velocity_scale" in model_source
+    assert "stable_bilateral_contact.unsqueeze(-1)" in model_source
+    assert "target_position[:, 2] - self.lateral_clearance_below_target" in model_source
     assert "lift_residual_actor([256, 128, 64])" in agent_source
     assert "probe)" in launcher_source
     for source in (
