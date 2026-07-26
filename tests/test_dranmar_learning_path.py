@@ -506,7 +506,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "carry_lateral_action_limit: float = 0.06" in benchmark_source
     assert "carry_vertical_action_limit: float = 0.10" in benchmark_source
     assert "((phase == 2) & ~presentation_ready)" in benchmark_source
-    assert '"arm_1_move_into_arm_2_range"' in benchmark_source
+    assert '"giver_move_into_receiver_range"' in benchmark_source
+    assert "receiver_wait = torch.zeros_like(receiver_approach)" in benchmark_source
+    assert '"receiver_waits_for_presentation": True' in benchmark_source
     assert (
         '"camera_mode": "focused_environment_neighborhood_oblique"'
         in benchmark_source

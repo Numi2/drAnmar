@@ -156,11 +156,12 @@ pose is likewise diagnostic only.
 
 The analytic seed controller executes the task in three explicit physical
 segments: the closer arm picks up the needle, transports it into the shared
-workspace, and holds it still while the other arm acquires it. The two PSM
-roots are 10 cm apart; the current seed moves the needle 3.5 cm from the giver
-toward the receiver, keeping both instruments inside comfortable reach.
-Reaching that authored exchange point organizes the demonstration but is not
-part of the success predicate.
+workspace, and holds it still while the other arm acquires it. The receiver
+waits during pickup and transport; it approaches only after the giver reaches
+the shared presentation point. The two PSM roots are 10 cm apart; the current
+seed moves the needle 3.5 cm from the giver toward the receiver, keeping both
+instruments inside comfortable reach. Reaching that authored exchange point
+organizes the demonstration but is not part of the success predicate.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter

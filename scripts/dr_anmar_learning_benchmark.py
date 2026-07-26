@@ -674,13 +674,6 @@ def _handover_teacher_action(
     )
     giver_carry_mode = (phase >= 1) & (phase <= 2)
 
-    receiver_stage_target = presentation_in_receiver.clone()
-    receiver_stage_target[:, 2] = (
-        presentation_height_in_robot_frame + approach_height
-    )
-    receiver_stage = (
-        (receiver_stage_target - receiver_ee) / position_scale
-    ).clamp(-carry_lateral_action_limit, carry_lateral_action_limit)
     receiver_hold_target = presentation_in_receiver.clone()
     receiver_hold_target[:, 2] = presentation_height_in_robot_frame
     receiver_hold_error = (
@@ -728,12 +721,13 @@ def _handover_teacher_action(
         giver_retreat,
         giver_translation,
     )
+    receiver_wait = torch.zeros_like(receiver_approach)
     receiver_translation = torch.where(
         (
             (phase <= 1)
             | ((phase == 2) & ~presentation_ready)
         ).unsqueeze(-1),
-        receiver_stage,
+        receiver_wait,
         receiver_approach,
     )
     receiver_translation = torch.where(
@@ -2240,8 +2234,8 @@ def _handover_controller_sweep(
             "giver_grasp_arc_fraction": 0.4,
             "handover_motion_contract": {
                 "sequence": [
-                    "arm_1_pickup",
-                    "arm_1_move_into_arm_2_range",
+                    "closest_arm_pickup",
+                    "giver_move_into_receiver_range",
                     "physical_ownership_transfer",
                 ],
                 "presentation_fraction_from_giver": 0.35,
@@ -2251,6 +2245,7 @@ def _handover_controller_sweep(
                 "carry_vertical_action_limit": 0.10,
                 "receiver_close_distance_m": 0.001,
                 "receiver_contact_centering_action_limit": 0.005,
+                "receiver_waits_for_presentation": True,
             },
             "parameter": parameter,
             "initial_giver_state": initial_giver_state,
