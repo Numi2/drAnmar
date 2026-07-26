@@ -1339,6 +1339,7 @@ def _handover_controller_sweep(
     from orbit.surgical.tasks.surgical import mdp_common
     from orbit.surgical.tasks.surgical.lift.grasp_frames import (
         NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE,
+        NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
         NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
         needle_geometry_grasp_offset_m,
     )
@@ -1391,6 +1392,19 @@ def _handover_controller_sweep(
         device=env.unwrapped.device,
     )
     maximum_non_object_force = torch.zeros_like(maximum_object_force)
+    minimum_giver_grasp_distance = torch.full(
+        (len(values),),
+        float("inf"),
+        dtype=torch.float64,
+        device=env.unwrapped.device,
+    )
+    maximum_giver_translation_action = torch.zeros_like(
+        minimum_giver_grasp_distance
+    )
+    initial_giver_state = {
+        "ee_position_robot_frame_m": obs["policy"][0, 32:35].tolist(),
+        "object_position_robot_frame_m": obs["policy"][0, 46:49].tolist(),
+    }
     manager = env.unwrapped.termination_manager
     sensor_names = (
         "robot_1_jaw_1_object_contact",
@@ -1419,6 +1433,22 @@ def _handover_controller_sweep(
                 actions[start:stop] = _handover_teacher_action(
                     group_obs,
                     receiver_grasp_offset=receiver_offset,
+                )
+                giver_ee = group_obs["policy"][:, 32:35]
+                giver_grasp = group_obs["policy"][:, 46:49].clone()
+                giver_grasp[:, 0] += NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
+                giver_grasp[:, 1] += NEEDLE_PROVISIONAL_GRASP_OFFSET_M[1]
+                giver_grasp[:, 2] += NEEDLE_PROVISIONAL_GRASP_OFFSET_M[2]
+                minimum_giver_grasp_distance[group_index] = torch.minimum(
+                    minimum_giver_grasp_distance[group_index],
+                    torch.linalg.vector_norm(
+                        giver_grasp - giver_ee,
+                        dim=-1,
+                    ).min().double(),
+                )
+                maximum_giver_translation_action[group_index] = torch.maximum(
+                    maximum_giver_translation_action[group_index],
+                    actions[start:stop, :3].abs().max().double(),
                 )
 
             obs, _, terminated, time_out_flags, _ = env.step(actions)
@@ -1536,6 +1566,12 @@ def _handover_controller_sweep(
                     "maximum_non_object_force_n": float(
                         maximum_non_object_force[group_index].item()
                     ),
+                    "minimum_giver_grasp_distance_m": float(
+                        minimum_giver_grasp_distance[group_index].item()
+                    ),
+                    "maximum_giver_translation_action": float(
+                        maximum_giver_translation_action[group_index].item()
+                    ),
                 }
             )
         evidence = {
@@ -1549,6 +1585,15 @@ def _handover_controller_sweep(
             "giver": "robot_1",
             "receiver": "robot_2",
             "giver_grasp_arc_fraction": 0.4,
+            "initial_giver_state": initial_giver_state,
+            "final_giver_state": {
+                "ee_position_robot_frame_m": (
+                    obs["policy"][0, 32:35].tolist()
+                ),
+                "object_position_robot_frame_m": (
+                    obs["policy"][0, 46:49].tolist()
+                ),
+            },
             "receiver_grasp_frame_source": (
                 NEEDLE_GEOMETRY_GRASP_OFFSET_SOURCE
             ),
