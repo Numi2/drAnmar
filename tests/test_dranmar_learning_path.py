@@ -176,6 +176,12 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     assert contract["requires_physics_owned_object_motion"] is True
     needle_contract = stages[3]["qualification_contract"]
     assert needle_contract["initial_object_height_m"] == 0.001
+    assert needle_contract["grasp_arc_fraction"] == 0.4
+    assert (
+        needle_contract["grasp_qualification"]["total_successful_episodes"]
+        == 2228
+    )
+    assert needle_contract["grasp_qualification"]["hard_failures"] == 0
     assert needle_contract["initial_object_quaternion_xyzw"] == [
         0.0,
         0.0,

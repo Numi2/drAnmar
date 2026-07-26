@@ -127,6 +127,11 @@ not require the needle to settle at an arbitrary commanded pose. The unchanged
 success. Goal position, orientation, and motion stability remain recorded as
 transport-quality diagnostics for physical handover, but they do not gate
 needle-pickup completion or contribute goal-tracking reward in Stage 4.
+The composed-needle arc fraction `0.40` is the current pickup-qualified grasp
+frame. It produced 1,101 of 1,200 sustained pickups on seed 17 and 1,127 of
+1,200 on held-out seed 2361, with zero hard failures in both populations. The
+combined 2,228/2,400 rate is 92.83%; the maximum measured needle force was
+0.99 N and no protected-surface force was observed.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter

@@ -181,6 +181,18 @@
         "target_object_height_m": 0.08,
         "minimum_success_height_m": 0.06,
         "sustained_success_steps": 10,
+        "grasp_arc_fraction": 0.4,
+        "grasp_z_offset_m": 0.0006,
+        "grasp_qualification": {
+          "source_revision": "569ba6f0ae0f04c6dc883e5655cf1918612a80d6",
+          "seeds": [17, 2361],
+          "successful_episodes": [1101, 1127],
+          "total_successful_episodes": 2228,
+          "total_completed_episodes": 2400,
+          "hard_failures": 0,
+          "maximum_object_force_n": 0.9851281046867371,
+          "maximum_protected_surface_force_n": 0.0
+        },
         "bilateral_contact_threshold_n": 0.01,
         "object_force_hard_limit_n": 5.0,
         "protected_surface_force_hard_limit_n": 2.0,
