@@ -38,6 +38,8 @@ class LiftResidualMLPModel(MLPModel):
         lateral_clearance_below_target: float = 0.02,
         carry_latch_below_target: float = 0.062,
         carry_action_limit: float = 0.1,
+        carry_lateral_action_limit: float | None = None,
+        carry_vertical_action_limit: float | None = None,
         residual_scale: float = 0.03,
         **kwargs,
     ) -> None:
@@ -60,6 +62,16 @@ class LiftResidualMLPModel(MLPModel):
         self.lateral_clearance_below_target = lateral_clearance_below_target
         self.carry_latch_below_target = carry_latch_below_target
         self.carry_action_limit = carry_action_limit
+        self.carry_lateral_action_limit = (
+            carry_action_limit
+            if carry_lateral_action_limit is None
+            else carry_lateral_action_limit
+        )
+        self.carry_vertical_action_limit = (
+            carry_action_limit
+            if carry_vertical_action_limit is None
+            else carry_vertical_action_limit
+        )
         self.residual_scale = residual_scale
 
         final_linear = next(
@@ -160,9 +172,22 @@ class LiftResidualMLPModel(MLPModel):
             object_position[:, :2],
             target_position[:, :2],
         )
-        carry_action = (
-            (carry_target - object_position) / self.position_scale
-        ).clamp(-self.carry_action_limit, self.carry_action_limit)
+        carry_error_action = (
+            carry_target - object_position
+        ) / self.position_scale
+        carry_action = torch.cat(
+            (
+                carry_error_action[:, :2].clamp(
+                    -self.carry_lateral_action_limit,
+                    self.carry_lateral_action_limit,
+                ),
+                carry_error_action[:, 2:].clamp(
+                    -self.carry_vertical_action_limit,
+                    self.carry_vertical_action_limit,
+                ),
+            ),
+            dim=-1,
+        )
         translation_action = torch.where(
             carry_mode.unsqueeze(-1),
             carry_action,
@@ -270,6 +295,12 @@ class _LiftResidualExport(nn.Module):
         )
         self.carry_latch_below_target = model.carry_latch_below_target
         self.carry_action_limit = model.carry_action_limit
+        self.carry_lateral_action_limit = (
+            model.carry_lateral_action_limit
+        )
+        self.carry_vertical_action_limit = (
+            model.carry_vertical_action_limit
+        )
         self.residual_scale = model.residual_scale
 
     def _base_action(self, obs: torch.Tensor) -> torch.Tensor:
@@ -336,9 +367,22 @@ class _LiftResidualExport(nn.Module):
             object_position[:, :2],
             target_position[:, :2],
         )
-        carry_action = (
-            (carry_target - object_position) / self.position_scale
-        ).clamp(-self.carry_action_limit, self.carry_action_limit)
+        carry_error_action = (
+            carry_target - object_position
+        ) / self.position_scale
+        carry_action = torch.cat(
+            (
+                carry_error_action[:, :2].clamp(
+                    -self.carry_lateral_action_limit,
+                    self.carry_lateral_action_limit,
+                ),
+                carry_error_action[:, 2:].clamp(
+                    -self.carry_vertical_action_limit,
+                    self.carry_vertical_action_limit,
+                ),
+            ),
+            dim=-1,
+        )
         translation_action = torch.where(
             carry_mode.unsqueeze(-1),
             carry_action,

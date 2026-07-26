@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.26.0",
+  "schema_version": "1.27.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -76,6 +76,9 @@
       "lateral_clearance_below_target_m": 0.02,
       "carry_latch_below_target_m": 0.062,
       "carry_action_limit": 0.1,
+      "carry_lateral_action_limit": 0.1,
+      "carry_vertical_action_limit": 0.1,
+      "carry_axis_contract": "independently_bounded_lateral_and_vertical_translation",
       "residual_phase": "latched_carry_only",
       "residual_axes": [
         "x",

@@ -62,6 +62,18 @@ def test_learning_path_manifest_is_ordered_and_branded() -> None:
     assert manifest["defaults"]["stage_3_initialization"]["carry_action_limit"] == 0.1
     assert (
         manifest["defaults"]["stage_3_initialization"][
+            "carry_lateral_action_limit"
+        ]
+        == 0.1
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
+            "carry_vertical_action_limit"
+        ]
+        == 0.1
+    )
+    assert (
+        manifest["defaults"]["stage_3_initialization"][
             "close_distance_to_grasp_m"
         ]
         == 0.005
@@ -325,6 +337,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "mean[:, 3:]" in model_source
     assert "self.slow_approach_action_limit = slow_approach_action_limit" in model_source
     assert "self.carry_action_limit = carry_action_limit" in model_source
+    assert "self.carry_lateral_action_limit = (" in model_source
+    assert "self.carry_vertical_action_limit = (" in model_source
+    assert "carry_error_action[:, :2].clamp(" in model_source
+    assert "carry_error_action[:, 2:].clamp(" in model_source
     assert "object_angular_velocity / self.carry_angular_velocity_scale" not in model_source
     assert "target_position[:, 2] - self.lateral_clearance_below_target" in model_source
     assert "carry_mode = bilateral_contact | lifted_carry" in model_source

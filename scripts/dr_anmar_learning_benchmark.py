@@ -304,6 +304,8 @@ def _lift_teacher_action(
     lateral_clearance_below_target: float = 0.02,
     carry_latch_below_target: float = 0.062,
     carry_action_limit: float = 0.1,
+    carry_lateral_action_limit: float | None = None,
+    carry_vertical_action_limit: float | None = None,
     grasp_offset: tuple[float, float, float] | None = None,
 ):
     """Contact-conditioned analytic approach, grasp, and lift action."""
@@ -368,9 +370,32 @@ def _lift_teacher_action(
         object_position[:, :2],
         target_position[:, :2],
     )
-    carry_action = (
-        (carry_target - object_position) / position_scale
-    ).clamp(-carry_action_limit, carry_action_limit)
+    lateral_limit = (
+        carry_action_limit
+        if carry_lateral_action_limit is None
+        else carry_lateral_action_limit
+    )
+    vertical_limit = (
+        carry_action_limit
+        if carry_vertical_action_limit is None
+        else carry_vertical_action_limit
+    )
+    carry_error_action = (
+        carry_target - object_position
+    ) / position_scale
+    carry_action = torch.cat(
+        (
+            carry_error_action[:, :2].clamp(
+                -lateral_limit,
+                lateral_limit,
+            ),
+            carry_error_action[:, 2:].clamp(
+                -vertical_limit,
+                vertical_limit,
+            ),
+        ),
+        dim=-1,
+    )
     translation_action = torch.where(
         carry_mode.unsqueeze(-1),
         carry_action,
@@ -630,6 +655,8 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     "lateral_clearance_below_target_m": 0.02,
                     "carry_latch_below_target_m": 0.062,
                     "carry_action_limit": 0.1,
+                    "carry_lateral_action_limit": 0.1,
+                    "carry_vertical_action_limit": 0.1,
                 }
                 if "Lift-Block-PSM-IK-Rel" in args.task
                 else None
@@ -1003,6 +1030,8 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
 
 _LIFT_SWEEP_PARAMETERS = {
     "carry_action_limit",
+    "carry_lateral_action_limit",
+    "carry_vertical_action_limit",
     "close_distance",
     "lateral_alignment_threshold",
     "lateral_clearance_below_target",

@@ -71,6 +71,8 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     lateral_clearance_below_target: float = 0.02
     carry_latch_below_target: float = 0.062
     carry_action_limit: float = 0.1
+    carry_lateral_action_limit: float = 0.1
+    carry_vertical_action_limit: float = 0.1
     residual_scale: float = 0.03
 
 
