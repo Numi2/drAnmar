@@ -78,8 +78,10 @@ envelopes, not clinically calibrated tissue limits.
 Block rotation is intentionally invariant in Stage 3 because the irregular
 block has multiple rotation-equivalent resting poses. Angular-speed stability
 is still mandatory. Stage 4 introduces orientation-qualified needle lifting.
-After bilateral contact, the Stage 3 base limits Cartesian carry action to 0.1,
-targeting at most 1 mm per 50 Hz command before learned residuals.
+After bilateral contact, the Stage 3 base uses object-space position and
+velocity feedback. It limits Cartesian carry action to 0.15, targeting at most
+1.5 mm per 50 Hz command, tapers position correction inside 7.5 mm, and opposes
+measured angular motion through the relative-IK orientation command.
 
 The shared RSL-RL configuration uses separate actor and critic models, action
 clipping, numerical checks, observation normalization, compact ELU networks,

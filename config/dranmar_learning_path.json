@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.8.0",
+  "schema_version": "1.9.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -62,7 +62,10 @@
       "lateral_alignment_threshold_m": 0.004,
       "close_distance_m": 0.006,
       "normalized_contact_threshold": 0.002,
-      "carry_action_limit": 0.1,
+      "carry_position_scale_m": 0.05,
+      "carry_linear_velocity_scale_m_s": 0.5,
+      "carry_angular_velocity_scale_rad_s": 2.5,
+      "carry_action_limit": 0.15,
       "ppo_role": "learn_bounded_contact_residual_only_if_held_out_gate_fails"
     }
   },
