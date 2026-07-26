@@ -1576,6 +1576,10 @@ def _handover_controller_sweep(
         minimum_giver_grasp_distance,
         float("-inf"),
     )
+    maximum_state_clearance = torch.full_like(
+        minimum_giver_grasp_distance,
+        float("-inf"),
+    )
     minimum_receiver_distance = torch.full_like(
         minimum_giver_grasp_distance,
         float("inf"),
@@ -1614,6 +1618,9 @@ def _handover_controller_sweep(
         ever_receiver_jaw_1_contact
     )
     successful_environment = torch.zeros_like(
+        ever_receiver_jaw_1_contact
+    )
+    ever_state_lifted = torch.zeros_like(
         ever_receiver_jaw_1_contact
     )
     initial_giver_state = {
@@ -1755,6 +1762,12 @@ def _handover_controller_sweep(
             object_height = mdp_common.as_torch(
                 env.unwrapped.scene["object"].data.root_pos_w
             )[:, 2]
+            handover_state_data = getattr(
+                env.unwrapped,
+                "_dr_anmar_handover_state",
+            )
+            state_clearance = handover_state_data["clearance"]
+            ever_state_lifted |= was_unresolved & handover_state_data["lifted"]
             receiver_position = mdp_common.as_torch(
                 env.unwrapped.scene["ee_2_frame"].data.target_pos_w
             )[:, 0, :]
@@ -1804,6 +1817,10 @@ def _handover_controller_sweep(
                     maximum_object_height[group_index] = torch.maximum(
                         maximum_object_height[group_index],
                         object_height[start:stop][active].max().double(),
+                    )
+                    maximum_state_clearance[group_index] = torch.maximum(
+                        maximum_state_clearance[group_index],
+                        state_clearance[start:stop][active].max().double(),
                     )
                     minimum_receiver_distance[group_index] = torch.minimum(
                         minimum_receiver_distance[group_index],
@@ -1921,6 +1938,12 @@ def _handover_controller_sweep(
                     ),
                     "maximum_object_height_m": float(
                         maximum_object_height[group_index].item()
+                    ),
+                    "maximum_state_clearance_m": float(
+                        maximum_state_clearance[group_index].item()
+                    ),
+                    "environments_with_state_lifted": int(
+                        ever_state_lifted[start:stop].sum().item()
                     ),
                     "minimum_receiver_distance_m": float(
                         minimum_receiver_distance[group_index].item()
