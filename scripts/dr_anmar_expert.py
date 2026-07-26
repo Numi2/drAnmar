@@ -18,7 +18,9 @@ from typing import Any
 import numpy as np
 
 
-EXPERT_CONTROLLER_VERSION = "dr-anmar-expert-v4-normalized-relative-ik"
+EXPERT_CONTROLLER_VERSION = (
+    "dr-anmar-expert-v5-contact-owned-autonomous-rescue"
+)
 EXPERT_PHASES: tuple[dict[str, str], ...] = (
     {"id": "rest", "title": "Rest", "instruction": "Confirm the neutral pose, anatomy and operative camera."},
     {"id": "approach", "title": "Approach", "instruction": "Move above the first target with the jaws open."},
@@ -66,6 +68,9 @@ class ExpertDemonstrationController:
     ring_handoff_step: int = 0
     ring_handoff_anchor: np.ndarray | None = None
     ring_handoff_complete: bool = False
+    rescue_effective_ticks: int = 0
+    rescue_peak_compression_fraction: float = 0.0
+    rescue_release_observed: bool = False
 
     def __post_init__(self) -> None:
         self.waypoints = np.asarray(self.waypoints, dtype=np.float32).reshape(-1, 3)
@@ -105,6 +110,9 @@ class ExpertDemonstrationController:
         self.ring_handoff_step = 0
         self.ring_handoff_anchor = None
         self.ring_handoff_complete = False
+        self.rescue_effective_ticks = 0
+        self.rescue_peak_compression_fraction = 0.0
+        self.rescue_release_observed = False
 
     def pause(self, reason: str = "Doctor paused the expert demonstration for inspection.") -> None:
         if self.status == "running":
@@ -153,6 +161,12 @@ class ExpertDemonstrationController:
             "manipulation_step": self.manipulation_step,
             "primary_arm": self.primary_arm,
             "ring_handoff_complete": self.ring_handoff_complete,
+            "rescue_effective_ticks": self.rescue_effective_ticks,
+            "rescue_peak_compression_fraction": round(
+                self.rescue_peak_compression_fraction,
+                6,
+            ),
+            "rescue_release_observed": self.rescue_release_observed,
             "procedure_instruction": self._procedure_instruction(),
             "phase_elapsed_s": round(self.phase_elapsed_s, 2) if self.phase is not None else 0.0,
             "phases": phases,
@@ -167,7 +181,45 @@ class ExpertDemonstrationController:
         }
 
     def _procedure_instruction(self) -> str | None:
-        if self.guide_kind != "softmimicgen_threading" or self.phase != "manipulate":
+        if (
+            self.guide_kind == "autonomous_rescue_or"
+            and self.phase is not None
+        ):
+            instructions = {
+                "rest": (
+                    "Establish the baseline bleed and keep both jaws open."
+                ),
+                "approach": (
+                    "Approach the authored compression frame without contact."
+                ),
+                "align": (
+                    "Center the physical jaw pair over the vessel."
+                ),
+                "contact": (
+                    "Descend slowly; patient effects still require measured "
+                    "bilateral contact."
+                ),
+                "grasp": (
+                    "Close the jaws and wait for bilateral force evidence."
+                ),
+                "manipulate": (
+                    "Hold effective compression while preserving distal "
+                    "perfusion and avoiding overload."
+                ),
+                "verify": (
+                    "Keep the physical compression stable; the controller "
+                    "cannot author the flow response."
+                ),
+                "recover": (
+                    "Open and withdraw, then require measured decompression "
+                    "and rebleeding."
+                ),
+            }
+            return instructions.get(self.phase)
+        if (
+            self.guide_kind != "softmimicgen_threading"
+            or self.phase != "manipulate"
+        ):
             return None
         if self.manipulation_step == 0:
             return "Lead with the needle tip: approach, center it in the hoop, rotate the curved needle through, then clear the far side."
@@ -198,7 +250,13 @@ class ExpertDemonstrationController:
 
     def _phase_target(self, object_position: np.ndarray | None) -> np.ndarray | None:
         if object_position is not None and self.guide_kind in {
-            "pickup", "handover", "retraction", "needle_pass", "softmimicgen_threading", "recovery"
+            "pickup",
+            "handover",
+            "retraction",
+            "needle_pass",
+            "softmimicgen_threading",
+            "recovery",
+            "autonomous_rescue_or",
         }:
             return np.asarray(object_position, dtype=np.float32)
         if len(self.waypoints):
@@ -227,6 +285,7 @@ class ExpertDemonstrationController:
         self.target_ticks = 0
         self.target_index = 0
         self.manipulation_step = 0
+        self.rescue_effective_ticks = 0
         self.phase_anchor_tools = {arm: value.copy() for arm, value in tool_positions.items()}
         self.phase_started_at = time.monotonic()
         if self.phase_index >= len(EXPERT_PHASES):
@@ -445,8 +504,67 @@ class ExpertDemonstrationController:
         grippers: list[bool],
         hoop_passed: bool = False,
         native_grasp_contact_active: list[bool] | None = None,
+        task_evidence: dict[str, Any] | None = None,
     ) -> bool:
         kind = self.guide_kind
+        if kind == "autonomous_rescue_or":
+            if object_position is not None:
+                self._set_motion(
+                    action,
+                    0,
+                    tools.get(0),
+                    np.asarray(object_position, dtype=np.float32),
+                )
+            if self.has_grippers:
+                grippers[0] = False
+            measured = (task_evidence or {}).get("measured_contact", {})
+            vessel = (task_evidence or {}).get("vessel", {})
+            bilateral_force_n = min(
+                float(measured.get("left_normal_force_n", 0.0)),
+                float(measured.get("right_normal_force_n", 0.0)),
+            )
+            compression = float(
+                vessel.get("transient_compression_fraction", 0.0)
+            )
+            perfusion = float(
+                vessel.get("distal_perfusion_fraction", 1.0)
+            )
+            overload = float(
+                vessel.get("overload_damage_fraction", 0.0)
+            )
+            residual_flow = float(
+                vessel.get("residual_flow_ml_s", float("inf"))
+            )
+            self.rescue_peak_compression_fraction = max(
+                self.rescue_peak_compression_fraction,
+                compression,
+            )
+            effective = (
+                bilateral_force_n >= 0.12
+                and compression >= 0.10
+                and perfusion >= 0.52
+                and overload <= 0.02
+                and residual_flow < 2.0
+            )
+            self.rescue_effective_ticks = (
+                self.rescue_effective_ticks + 1
+                if effective
+                else 0
+            )
+            if overload > 0.02:
+                self.pause(
+                    "Measured vessel overload rose above the clean expert "
+                    "envelope. Reset rather than recording this as an expert "
+                    "effect."
+                )
+                return False
+            if self.phase_ticks >= 240 and self.rescue_effective_ticks < 20:
+                self.pause(
+                    "The jaws did not produce sustained contact-derived flow "
+                    "control. Reset and correct physical alignment."
+                )
+                return False
+            return self.rescue_effective_ticks >= 20
         if kind == "pickup":
             anchor = self.phase_anchor_tools.get(0, tools.get(0))
             target = anchor + np.asarray((0.0, 0.0, 0.040), dtype=np.float32) if anchor is not None else None
@@ -524,6 +642,7 @@ class ExpertDemonstrationController:
         safety_envelope_active: bool = False,
         hoop_passed: bool = False,
         native_grasp_contact_active: list[bool] | None = None,
+        task_evidence: dict[str, Any] | None = None,
     ) -> ExpertCommand:
         action = self._action()
         grippers = list(grippers_open)
@@ -556,20 +675,53 @@ class ExpertDemonstrationController:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "approach":
-            target = base + np.asarray((0.0, 0.0, 0.045), dtype=np.float32) if base is not None else None
+            approach_height = (
+                0.028
+                if self.guide_kind == "autonomous_rescue_or"
+                else 0.045
+            )
+            if (
+                self.guide_kind == "autonomous_rescue_or"
+                and self.has_grippers
+            ):
+                grippers[primary_arm] = True
+            target = base + np.asarray(
+                (0.0, 0.0, approach_height),
+                dtype=np.float32,
+            ) if base is not None else None
             distance = self._set_motion(action, primary_arm, primary, target)
             if self._reached_or_timeout(distance, 0.014, 120, "approach") and self.phase_elapsed_s >= 0.9:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "align":
-            target = base + np.asarray((0.0, 0.0, 0.014), dtype=np.float32) if base is not None else None
+            align_height = (
+                0.008
+                if self.guide_kind == "autonomous_rescue_or"
+                else 0.014
+            )
+            target = base + np.asarray(
+                (0.0, 0.0, align_height),
+                dtype=np.float32,
+            ) if base is not None else None
             distance = self._set_motion(action, primary_arm, primary, target, (0.0, 0.012, 0.0))
             if self._reached_or_timeout(distance, 0.010, 100, "align") and self.phase_elapsed_s >= 0.9:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "contact":
             distance = self._set_motion(action, primary_arm, primary, base)
-            if self._reached_or_timeout(distance, 0.009, 100, "contact") and self.phase_elapsed_s >= 0.8:
+            if self.guide_kind == "autonomous_rescue_or":
+                action[
+                    primary_arm
+                    * self.group_width : primary_arm
+                    * self.group_width
+                    + 3
+                ] *= 0.35
+            if self._reached_or_timeout(
+                distance,
+                0.009,
+                100,
+                "contact",
+            ) and self.phase_elapsed_s >= 0.8:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "grasp":
@@ -580,8 +732,28 @@ class ExpertDemonstrationController:
                 primary_arm < len(physical_grasps)
                 and physical_grasps[primary_arm]
             )
+            measured = (task_evidence or {}).get(
+                "measured_contact",
+                {},
+            )
+            rescue_contact_confirmed = min(
+                float(measured.get("left_normal_force_n", 0.0)),
+                float(measured.get("right_normal_force_n", 0.0)),
+            ) >= 0.12
             if (
-                (self.guide_kind != "softmimicgen_threading" or grasp_confirmed)
+                (
+                    self.guide_kind
+                    not in {
+                        "softmimicgen_threading",
+                        "autonomous_rescue_or",
+                    }
+                    or (
+                        grasp_confirmed
+                        if self.guide_kind
+                        == "softmimicgen_threading"
+                        else rescue_contact_confirmed
+                    )
+                )
                 and self.phase_ticks >= 12
                 and self.phase_elapsed_s >= 0.9
             ):
@@ -589,6 +761,14 @@ class ExpertDemonstrationController:
                 phase_changed = True
             elif self.guide_kind == "softmimicgen_threading" and self.phase_ticks >= 120:
                 self.pause("The primary instrument closed but did not acquire physical needle custody. Reset and retry the grasp.")
+            elif (
+                self.guide_kind == "autonomous_rescue_or"
+                and self.phase_ticks >= 180
+            ):
+                self.pause(
+                    "The closed jaws did not establish measured bilateral "
+                    "vessel contact. Reset and correct alignment."
+                )
         elif phase == "manipulate":
             if self._manipulate(
                 action,
@@ -597,14 +777,134 @@ class ExpertDemonstrationController:
                 grippers,
                 hoop_passed,
                 native_grasp_contact_active,
+                task_evidence,
             ) and self.phase_elapsed_s >= 1.4:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "verify":
-            if self.phase_ticks >= 30 and self.phase_elapsed_s >= 1.4:
+            if self.guide_kind == "autonomous_rescue_or":
+                if self.has_grippers:
+                    grippers[primary_arm] = False
+                if base is not None:
+                    self._set_motion(
+                        action,
+                        primary_arm,
+                        primary,
+                        base,
+                    )
+                measured = (task_evidence or {}).get(
+                    "measured_contact",
+                    {},
+                )
+                vessel = (task_evidence or {}).get("vessel", {})
+                stable = (
+                    min(
+                        float(
+                            measured.get(
+                                "left_normal_force_n",
+                                0.0,
+                            )
+                        ),
+                        float(
+                            measured.get(
+                                "right_normal_force_n",
+                                0.0,
+                            )
+                        ),
+                    )
+                    >= 0.12
+                    and float(
+                        vessel.get(
+                            "transient_compression_fraction",
+                            0.0,
+                        )
+                    )
+                    >= 0.10
+                    and float(
+                        vessel.get(
+                            "distal_perfusion_fraction",
+                            0.0,
+                        )
+                    )
+                    >= 0.52
+                    and float(
+                        vessel.get(
+                            "overload_damage_fraction",
+                            1.0,
+                        )
+                    )
+                    <= 0.02
+                )
+                self.rescue_effective_ticks = (
+                    self.rescue_effective_ticks + 1
+                    if stable
+                    else 0
+                )
+                if (
+                    self.rescue_effective_ticks >= 40
+                    and self.phase_elapsed_s >= 1.4
+                ):
+                    completed = self._advance(tool_positions)
+                    phase_changed = True
+                elif self.phase_ticks >= 240:
+                    self.pause(
+                        "Contact-derived compression was not stable through "
+                        "verification. Reset rather than promoting the run."
+                    )
+            elif self.phase_ticks >= 30 and self.phase_elapsed_s >= 1.4:
                 completed = self._advance(tool_positions)
                 phase_changed = True
         elif phase == "recover":
+            if self.guide_kind == "autonomous_rescue_or":
+                if self.has_grippers:
+                    grippers[primary_arm] = True
+                target = (
+                    base
+                    + np.asarray((0.0, 0.0, 0.035), dtype=np.float32)
+                    if base is not None
+                    else None
+                )
+                distance = self._set_motion(
+                    action,
+                    primary_arm,
+                    primary,
+                    target,
+                )
+                vessel = (task_evidence or {}).get("vessel", {})
+                compression = float(
+                    vessel.get(
+                        "transient_compression_fraction",
+                        1.0,
+                    )
+                )
+                self.rescue_release_observed = bool(
+                    self.rescue_release_observed
+                    or (task_evidence or {}).get(
+                        "release_observed",
+                        False,
+                    )
+                )
+                if (
+                    self.rescue_release_observed
+                    and compression < 0.02
+                    and distance is not None
+                    and distance <= 0.014
+                    and self.phase_elapsed_s >= 1.0
+                ):
+                    completed = self._advance(tool_positions)
+                    phase_changed = True
+                elif self.phase_ticks >= 240:
+                    self.pause(
+                        "Physical release did not produce measured "
+                        "decompression and rebleeding. Reset before saving an "
+                        "expert reference."
+                    )
+                return ExpertCommand(
+                    action,
+                    grippers,
+                    phase_changed=phase_changed,
+                    completed=completed,
+                )
             arm = primary_arm if self.guide_kind == "softmimicgen_threading" else 1 if self.guide_kind in {"handover", "needle_pass"} and self.arms > 1 else 0
             anchor = self.phase_anchor_tools.get(arm, tool_positions.get(arm))
             target = anchor + np.asarray((0.015, 0.0, 0.030), dtype=np.float32) if anchor is not None else None

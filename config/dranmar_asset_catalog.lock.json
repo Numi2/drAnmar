@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "bytes": 16735389,
+      "bytes": 16741124,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_autonomous_rescue_or.usda",
@@ -16,7 +16,7 @@
         "dranmar_universal_tool_changer.usda",
         "dranmar_universal_tool_changer_payload.usda"
       ],
-      "file_count": 77,
+      "file_count": 78,
       "id": "dr_anmar:Environments/SurgicalAutonomy/AutonomousRescueOR",
       "license_path": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/LICENSE.txt",
       "metadata": [
@@ -34,6 +34,7 @@
         "dependency_manifest.json",
         "episode_schema.json",
         "i4h_catalog_contract.json",
+        "imitation_dataset_contract.json",
         "interaction_frames.json",
         "mechanics_contract.json",
         "physics_profile.json",
@@ -48,7 +49,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Environments/SurgicalAutonomy/AutonomousRescueOR",
-      "sha256": "0026d9c0f911d47f07aabb7f3722c868e5413f4674884826a6b493baa7a7bdff"
+      "sha256": "12688d4224a5b92e8b6482ffbf1d3b1d492e00a5376b091f583003b213303b77"
     },
     {
       "bytes": 21857721,
@@ -154,7 +155,7 @@
       "sha256": "5fc31f57028c9eda6004b0f4b4258bfeb66f737bc88a61928209c9fbb6bfe81a"
     },
     {
-      "bytes": 17476601,
+      "bytes": 17476594,
       "clinical_validation": false,
       "entrypoints": [
         "dranmar_needle_thread.usda",
@@ -173,7 +174,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalClosure/NeedleThread",
-      "sha256": "725f2ee17b91c3b86e7a9291017674919431bce7a6f9fe66f906ac8019dc60c6"
+      "sha256": "997d88ad1443985f9c4bdb3e339e180824f0ebc5d78f9552819c82b408e728cd"
     },
     {
       "bytes": 8669690,
@@ -681,7 +682,7 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "5268bc096d2c84c49e38d0821f46db76fefc153950e30cad08051bec3e500326",
+  "catalog_sha256": "bbea5d8589013c90b969855189ec720be24fb8517be0183d00ad32f61e2200d6",
   "catalog_version": "1.2.0",
   "clinical_validation": false,
   "i4h": {
@@ -933,7 +934,8 @@
           "profile": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/physics_profile.json",
           "report": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/asset_manifest.json",
           "runtime": "source/extensions/orbit.surgical.assets/orbit/surgical/assets/autonomous_rescue_or.py",
-          "task_contract": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/benchmark_scenarios.json"
+          "task_contract": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/benchmark_scenarios.json",
+          "training_contract": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/imitation_dataset_contract.json"
         },
         "asset": "source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/dranmar_autonomous_rescue_or.usda",
         "clinical_validation": false,

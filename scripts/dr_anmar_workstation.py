@@ -288,6 +288,16 @@ BENCH_ROBOT_SYSTEM_FACTORIES = {
 }
 
 from dr_anmar_expert import EXPERT_CONTROLLER_VERSION, EXPERT_PHASES, ExpertDemonstrationController
+from dr_anmar_rescue_dataset import (
+    CONTACT_FEATURES as RESCUE_CONTACT_FEATURES,
+    FLUID_BALANCE_FEATURES as RESCUE_FLUID_BALANCE_FEATURES,
+    OUTCOME_AUTHORITY as RESCUE_OUTCOME_AUTHORITY,
+    SCHEMA as RESCUE_IMITATION_SCHEMA,
+    VESSEL_FEATURES as RESCUE_VESSEL_FEATURES,
+    VITAL_SIGN_FEATURES as RESCUE_VITAL_SIGN_FEATURES,
+    rescue_vector,
+    write_rescue_training_hdf5,
+)
 from dr_anmar_operator import ACCESS_COOKIE, OPERATOR_HEADER, OperatorLease, access_is_authorized
 from dr_anmar_psm_native_adapter import (
     CONTRACT_NAME as PSM_POLICY_CONTRACT_NAME,
@@ -3920,7 +3930,38 @@ def save_demo(
             array_shapes = {key: list(value.shape) for key, value in arrays.items()}
             array_keys = set(arrays)
         if training_hdf5_path is not None:
-            write_native_psm_training_hdf5(spool_path, training_hdf5_path, state)
+            if state.procedure.get("autonomous_rescue_or"):
+                write_rescue_training_hdf5(
+                    spool_path,
+                    training_hdf5_path,
+                    task=state.task,
+                    procedure_id=str(state.procedure.get("id", "")),
+                    scenario_id=state.scenario_id,
+                    scenario_seed=state.scenario_seed,
+                    robot_names=state.native_psm_robot_names,
+                    action_contract=NON_PSM_ACTION_CONTRACT,
+                    source_revision=(
+                        state.runtime_provenance
+                        or runtime_provenance(state)
+                    ).get("source_revision"),
+                    reference_eligible=bool(
+                        state.expert_clean_run
+                        and state.expert_demonstration.get("status")
+                        == "completed"
+                    ),
+                    expert_status=str(
+                        state.expert_demonstration.get(
+                            "status",
+                            "operator_demonstration",
+                        )
+                    ),
+                )
+            else:
+                write_native_psm_training_hdf5(
+                    spool_path,
+                    training_hdf5_path,
+                    state,
+                )
     finally:
         spool_path.unlink(missing_ok=True)
     observed_control_hz = 0.0
@@ -3970,6 +4011,19 @@ def save_demo(
         "data_bytes": path.stat().st_size,
         "training_hdf5": training_hdf5_path.name if training_hdf5_path is not None else None,
         "training_hdf5_sha256": sha256_file(training_hdf5_path) if training_hdf5_path is not None else None,
+        "training_hdf5_schema": (
+            RESCUE_IMITATION_SCHEMA
+            if training_hdf5_path is not None
+            and state.procedure.get("autonomous_rescue_or")
+            else "isaaclab.native-episode"
+            if training_hdf5_path is not None
+            else None
+        ),
+        "transition_alignment": (
+            "state[i] -> cartesian_action[i+1] -> state[i+1]"
+            if state.procedure.get("autonomous_rescue_or")
+            else None
+        ),
         "modalities": {
             "robot_state_hz": round(observed_control_hz, 2),
             "robot_state_hz_nominal": 50,
@@ -3993,6 +4047,12 @@ def save_demo(
             "robot_and_anatomy_pose": "world-frame tool bodies, task objects, and showcase anatomy transform at 50 Hz",
             "joint_torque": "applied and computed joint torque when exposed by the articulation",
             "operator_study": "input source, normalized gaze/attention coordinates, procedure phase, and event codes at 50 Hz",
+            "autonomous_rescue_patient_effects": (
+                "fixed-width contact, vessel, vital-sign, and fluid-balance "
+                "vectors at control rate"
+                if state.procedure.get("autonomous_rescue_or")
+                else None
+            ),
         },
         "research_safety_advisories": {
             "limits": RESEARCH_ADVISORY_LIMITS,
@@ -4008,6 +4068,12 @@ def save_demo(
             "patient_data_expected": False,
             "retention_requires_study_protocol": True,
         },
+        "outcome_authority": (
+            RESCUE_OUTCOME_AUTHORITY
+            if state.procedure.get("autonomous_rescue_or")
+            else None
+        ),
+        "policy_can_write_patient_outcome": False,
         "procedure_annotations": procedure_annotations,
         "annotation_vocabulary": {
             "procedure_phases": PROCEDURE_PHASES,
@@ -10290,6 +10356,11 @@ def main() -> None:
                     .detach().cpu().numpy().astype(np.float32)
                 )
             elif (
+                autonomous_rescue_or_enabled
+                and rescue_target_position_w is not None
+            ):
+                expert_object = rescue_target_position_w.copy()
+            elif (
                 bench_dr_anmar_suture_enabled
                 and "dr_anmar_threaded_needle" in objects
             ):
@@ -10316,6 +10387,11 @@ def main() -> None:
                 safety_envelope_active=False,
                 hoop_passed=state.upstream_task_success is True,
                 native_grasp_contact_active=[arm in native_grasp_arms for arm in range(state.arms)],
+                task_evidence=(
+                    latest_autonomous_rescue_telemetry
+                    if autonomous_rescue_or_enabled
+                    else None
+                ),
             )
             action_np = expert_command.action
             grippers_open = expert_command.grippers_open
@@ -11851,6 +11927,99 @@ def main() -> None:
                 latest_suture_telemetry.get("compacted_knot_joint_count", 0),
                 dtype=np.int32,
             )
+            if autonomous_rescue_or_enabled:
+                rescue_contact = (
+                    latest_autonomous_rescue_telemetry.get(
+                        "measured_contact",
+                        {},
+                    )
+                )
+                rescue_vessel = (
+                    latest_autonomous_rescue_telemetry.get(
+                        "vessel",
+                        {},
+                    )
+                )
+                rescue_vitals = (
+                    latest_autonomous_rescue_telemetry.get(
+                        "vital_signs",
+                        {},
+                    )
+                )
+                rescue_fluid_balance = (
+                    latest_autonomous_rescue_telemetry.get(
+                        "fluid_balance",
+                        {},
+                    )
+                )
+                selected_rescue_arm = int(
+                    latest_autonomous_rescue_telemetry.get(
+                        "selected_arm",
+                        0,
+                    )
+                )
+                rescue_tool_positions = np.zeros(
+                    (state.arms, 3),
+                    dtype=np.float32,
+                )
+                rescue_tool_valid = np.zeros(
+                    state.arms,
+                    dtype=np.float32,
+                )
+                for arm, position in current_tool_positions.items():
+                    if 0 <= arm < state.arms:
+                        rescue_tool_positions[arm] = position
+                        rescue_tool_valid[arm] = 1.0
+                selected_arm_one_hot = np.zeros(
+                    state.arms,
+                    dtype=np.float32,
+                )
+                if 1 <= selected_rescue_arm <= state.arms:
+                    selected_arm_one_hot[selected_rescue_arm - 1] = 1.0
+                frame.update(
+                    {
+                        "rescue_measured_contact": rescue_vector(
+                            rescue_contact,
+                            RESCUE_CONTACT_FEATURES,
+                        ),
+                        "rescue_vessel_state": rescue_vector(
+                            rescue_vessel,
+                            RESCUE_VESSEL_FEATURES,
+                        ),
+                        "rescue_vital_signs": rescue_vector(
+                            rescue_vitals,
+                            RESCUE_VITAL_SIGN_FEATURES,
+                        ),
+                        "rescue_fluid_balance": rescue_vector(
+                            rescue_fluid_balance,
+                            RESCUE_FLUID_BALANCE_FEATURES,
+                        ),
+                        "rescue_sensor_authority_available": np.array(
+                            bool(
+                                latest_autonomous_rescue_telemetry.get(
+                                    "sensor_authority_available",
+                                    False,
+                                )
+                            ),
+                            dtype=np.float32,
+                        ),
+                        "rescue_tool_positions_w": (
+                            rescue_tool_positions
+                        ),
+                        "rescue_tool_position_valid": rescue_tool_valid,
+                        "rescue_selected_arm_one_hot": (
+                            selected_arm_one_hot
+                        ),
+                        "rescue_target_position_w": np.asarray(
+                            rescue_target_position_w,
+                            dtype=np.float32,
+                        ).copy(),
+                        "rescue_outcome_authority_code": np.array(
+                            1,
+                            dtype=np.int16,
+                        ),
+                    }
+                )
             if capture_spool is None:
                 with state.lock:
                     state.record_request = "stop"

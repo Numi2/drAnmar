@@ -9,7 +9,7 @@ It records software and asset provenance; it is not clinical-validation evidence
 
 - Catalog schema: `dr.anmar.asset-catalog-lock.v3`
 - Catalog version: `1.2.0`
-- Catalog SHA-256: `5268bc096d2c84c49e38d0821f46db76fefc153950e30cad08051bec3e500326`
+- Catalog SHA-256: `bbea5d8589013c90b969855189ec720be24fb8517be0183d00ad32f61e2200d6`
 - Local asset units: `28`
 - Product portfolio assets: `20`
 - Clinical validation: `false`
@@ -27,12 +27,12 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 
 | Asset unit | Entrypoints | Files | Bytes | SHA-256 | License evidence |
 | --- | ---: | ---: | ---: | --- | --- |
-| `dr_anmar:Environments/SurgicalAutonomy/AutonomousRescueOR` | 11 | 77 | 16735389 | `0026d9c0f911d47f07aabb7f3722c868e5413f4674884826a6b493baa7a7bdff` | `source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/LICENSE.txt` |
+| `dr_anmar:Environments/SurgicalAutonomy/AutonomousRescueOR` | 11 | 78 | 16741124 | `12688d4224a5b92e8b6482ffbf1d3b1d492e00a5376b091f583003b213303b77` | `source/extensions/orbit.surgical.assets/data/Environments/SurgicalAutonomy/AutonomousRescueOR/LICENSE.txt` |
 | `dr_anmar:Props/Patients/DynamicAbdominalPatient` | 3 | 84 | 21857721 | `bea74f6560d5888ff831a735ff2c0967f1924af172cc4ab51cf11c05ac4fb265` | `source/extensions/orbit.surgical.assets/data/Props/Patients/DynamicAbdominalPatient/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalAssessment/PerfusionViabilityRobot` | 7 | 49 | 35118832 | `f4bd998140b6e1c59f3f67af3cf3f9d698f6cf7a7002b8a0cd1f040d0e609b34` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/ClosureRobot` | 6 | 134 | 14929244 | `fa67ba1568caf9fe7d6fa8a6cb61bc897280abacd565321b1e4fae5ac5bce56b` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/ClosureRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/Needle` | 1 | 9 | 2523083 | `5fc31f57028c9eda6004b0f4b4258bfeb66f737bc88a61928209c9fbb6bfe81a` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalClosure/NeedleThread` | 3 | 14 | 17476601 | `725f2ee17b91c3b86e7a9291017674919431bce7a6f9fe66f906ac8019dc60c6` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalClosure/NeedleThread` | 3 | 14 | 17476594 | `997d88ad1443985f9c4bdb3e339e180824f0ebc5d78f9552819c82b408e728cd` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/SkinAdhesive` | 4 | 33 | 8669690 | `0aad8ed335a0b2062e60211f9c80709db8b301ce68e43a0e67c8201b001557a0` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/SkinStapler` | 3 | 72 | 59730460 | `3e1bba9536a83a97fe3acce31428f64c0452895d2ed79d9761ad74579f3880cb` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/StaplerTestCell` | 2 | 5 | 17479 | `65e5f6ec510adb66583068b3d8aaac244d29ddf295ce0993c9eaa339c2a444fc` | `LICENSE` |

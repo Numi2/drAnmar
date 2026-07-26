@@ -345,7 +345,13 @@ def train(config, device):
 def main(args):
     """Train a model on a task using a specified algorithm."""
     # load config
-    if args.task is not None:
+    if args.config is not None:
+        with open(args.config) as config_file:
+            ext_cfg = json.load(config_file)
+        config = config_factory(ext_cfg["algo_name"])
+        with config.values_unlocked():
+            config.update(ext_cfg)
+    elif args.task is not None:
         # obtain the configuration entry point
         cfg_entry_point_key = f"robomimic_{args.algo}_cfg_entry_point"
 
@@ -366,7 +372,9 @@ def main(args):
         with config.values_unlocked():
             config.update(ext_cfg)
     else:
-        raise ValueError("Please provide a task name through CLI arguments.")
+        raise ValueError(
+            "Please provide either a task name or an external config."
+        )
 
     if args.dataset is not None:
         config.train.data = args.dataset
@@ -375,7 +383,10 @@ def main(args):
         config.experiment.name = args.name
 
     # change location of experiment directory
-    config.train.output_dir = os.path.abspath(os.path.join("./logs/robomimic", args.task))
+    run_name = args.task or os.path.splitext(os.path.basename(args.config))[0]
+    config.train.output_dir = os.path.abspath(
+        os.path.join("./logs/robomimic", run_name)
+    )
     # get torch device
     device = TorchUtils.get_torch_device(try_to_use_cuda=config.train.cuda)
 
@@ -411,6 +422,12 @@ if __name__ == "__main__":
 
     parser.add_argument("--task", type=str, default=None, help="Name of the task.")
     parser.add_argument("--algo", type=str, default=None, help="Name of the algorithm.")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="External Robomimic JSON config; permits dataset-only training without a registered task config.",
+    )
 
     args = parser.parse_args()
 
