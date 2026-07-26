@@ -195,9 +195,10 @@ def main() -> int:
         if git_output(ASSET_SUBMODULE, "rev-parse", "HEAD") != submodule_revision:
             raise SystemExit("asset submodule revision differs from retained evidence")
     else:
-        parent_revision = (
-            arguments.source_parent_revision
-            or git_output(REPOSITORY_ROOT, "rev-parse", "HEAD")
+        parent_revision = git_output(
+            REPOSITORY_ROOT,
+            "rev-parse",
+            arguments.source_parent_revision or "HEAD",
         )
         submodule_revision = git_output(ASSET_SUBMODULE, "rev-parse", "HEAD")
 

@@ -24,6 +24,7 @@ uv run ruff check \
     scripts/verify_dranmar_physics_next_receipt.py \
     tests/test_dranmar_operator_security.py \
     tests/test_dranmar_telemetry.py \
+    tests/test_evidence_index.py \
     tests/test_install_sufia_assets.py \
     tests/test_multimodal_assets.py \
     tests/test_openusd_dependency_validation.py \
