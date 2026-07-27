@@ -418,12 +418,6 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         == 0.0025
     )
     assert (
-        manifest["stages"][5]["learning"][
-            "analytic_receiver_grasp_z_offset_m"
-        ]
-        == -0.0025
-    )
-    assert (
         manifest["stages"][5]["learning"]["residual_initial_std"]
         == 0.01
     )
@@ -658,7 +652,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "giver_transport_normalized_contact_thresholds = values"
         in benchmark_source
     )
-    assert "selected_receiver_z_offset = -0.0025" in benchmark_source
+    assert "selected_receiver_z_offset = -0.0018" in benchmark_source
     assert '"rule": "minimum_reset_tool_tip_to_needle_distance"' in benchmark_source
     assert '"robot_1_selected_as_giver"' in benchmark_source
     assert '"robot_2_selected_as_giver"' in benchmark_source

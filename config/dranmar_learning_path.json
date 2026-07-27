@@ -234,8 +234,6 @@
         "analytic_giver_vertical_action_limit_source": "isaac_lab_seed17_1200_environment_refined_six_way_physical_sweep",
         "analytic_receiver_contact_centering_action_limit": 0.0025,
         "analytic_receiver_contact_centering_action_limit_source": "isaac_lab_seed17_1200_environment_six_way_physical_sweep",
-        "analytic_receiver_grasp_z_offset_m": -0.0025,
-        "analytic_receiver_grasp_z_offset_source": "isaac_lab_seed17_1200_environment_phase2_six_way_physical_sweep",
         "reward_contract": {
           "positive_credit": "one_time_physical_phase_transitions_and_retained_transfer_only",
           "continuous_reach_grasp_and_dual_hold_weights": 0.0,

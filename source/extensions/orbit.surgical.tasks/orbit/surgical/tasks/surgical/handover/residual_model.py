@@ -58,7 +58,7 @@ class HandoverAnalyticController(nn.Module):
         )
         self.receiver_grasp_x = float(_RECEIVER_OFFSET[0])
         self.receiver_grasp_y = float(_RECEIVER_OFFSET[1])
-        self.receiver_grasp_z = -0.0025
+        self.receiver_grasp_z = -0.0018
 
     def _select_role(
         self,
