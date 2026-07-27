@@ -49,6 +49,7 @@ class HandoverAnalyticController(nn.Module):
         self.pickup_vertical_action_limit = 0.015
         self.carry_vertical_action_limit = 0.015
         self.giver_lift_on_live_contact = False
+        self.giver_lift_on_qualified_contact = True
         self.giver_pregrasp_orientation_action_limit = 0.6
         self.giver_pregrasp_orientation_tolerance = 0.035
         self.receiver_orientation_action_limit = 0.6
@@ -314,7 +315,14 @@ class HandoverAnalyticController(nn.Module):
             | ((phase == 0) & self.giver_lift_on_live_contact)
         )
         giver_transport_active = (
-            giver_carry_mode & giver_bilateral_contact
+            (
+                (phase == 1)
+                & self.giver_lift_on_qualified_contact
+            )
+            | (
+                giver_carry_mode
+                & giver_bilateral_contact
+            )
         )
         presentation_ready = (
             torch.linalg.vector_norm(
