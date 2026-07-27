@@ -3,6 +3,7 @@
 
 """Isolated end-to-end needle-handover environment configuration."""
 
+from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.utils.configclass import configclass
@@ -85,3 +86,19 @@ class NeedleHandoverEndToEndEnvCfg_PLAY(NeedleHandoverEndToEndEnvCfg):
         self.scene.num_envs = 50
         self.scene.env_spacing = 2.5
         self.observations.policy.enable_corruption = False
+
+
+@configclass
+class NeedleHandoverReceiverCurriculumEnvCfg(
+    NeedleHandoverEndToEndEnvCfg
+):
+    """Train receiver acquisition from cached physical presentations."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.dr_anmar_receiver_curriculum = True
+        self.dr_anmar_receiver_curriculum_restore_probability = 0.5
+        self.events.receiver_curriculum_reset = EventTerm(
+            func=mdp.reset_receiver_curriculum_from_cache,
+            mode="reset",
+        )

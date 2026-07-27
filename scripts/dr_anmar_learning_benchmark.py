@@ -1853,6 +1853,20 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         if args.learning_rate <= 0.0:
             return _fail("training learning rate must be positive")
         agent_cfg.algorithm.learning_rate = args.learning_rate
+    receiver_curriculum = bool(
+        getattr(env_cfg, "dr_anmar_receiver_curriculum", False)
+    )
+    if receiver_curriculum and not args.checkpoint:
+        return _fail(
+            "receiver curriculum requires a qualified initial checkpoint"
+        )
+    if receiver_curriculum:
+        # Receiver-only adaptation has a narrow optimum: the physical replay
+        # cache needs several iterations to fill, while later PPO updates can
+        # overfit that cache. Preserve every update so promotion can be based
+        # on full-task qualification instead of assuming the final update is
+        # the best policy.
+        agent_cfg.save_interval = 1
     agent_cfg.max_iterations = args.max_iterations
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = Path(args.output_path).resolve() / "runs" / timestamp
@@ -1878,11 +1892,14 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 f"initial checkpoint not found: {initial_checkpoint}"
             )
         load_cfg = None
-        if args.handover_giver_adaptation:
-            if "Handover-Needle-Dual-PSM-IK-Rel" not in args.task:
+        if args.handover_giver_adaptation or receiver_curriculum:
+            if (
+                args.handover_giver_adaptation
+                and "Handover-Needle-Dual-PSM-IK-Rel" not in args.task
+            ):
                 env.close()
                 return _fail(
-                    "giver adaptation requires the dual-PSM needle handover task"
+                    "handover adaptation requires the dual-PSM needle handover task"
                 )
             load_cfg = {
                 "actor": True,
@@ -1902,6 +1919,16 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "handover policy does not support giver adaptation"
                 )
             policy_model.configure_giver_adaptation()
+        elif receiver_curriculum:
+            policy_model = runner.alg.get_policy()
+            if not hasattr(
+                policy_model, "configure_receiver_adaptation"
+            ):
+                env.close()
+                return _fail(
+                    "handover policy does not support receiver adaptation"
+                )
+            policy_model.configure_receiver_adaptation()
         if args.learning_rate is not None:
             for parameter_group in runner.alg.optimizer.param_groups:
                 parameter_group["lr"] = args.learning_rate
@@ -1919,7 +1946,6 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             )
         policy_model.configure_giver_adaptation()
     runner.logger.git_status_repos = []
-
     started = time.perf_counter()
     early = _TerminationSuccessEarlyStop(
         env,
@@ -1933,7 +1959,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         with early:
             runner.learn(
                 num_learning_iterations=agent_cfg.max_iterations,
-                init_at_random_ep_len=True,
+                init_at_random_ep_len=not receiver_curriculum,
             )
         duration = time.perf_counter() - started
         checkpoint = run_dir / "model_final.pt"
@@ -1943,6 +1969,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             env.unwrapped.num_envs * agent_cfg.num_steps_per_env * iterations
         )
         success_history = [float(value) for value in early.tracker.history]
+        receiver_curriculum_cache = getattr(
+            env.unwrapped,
+            "_dr_anmar_receiver_curriculum_cache",
+            None,
+        )
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "training",
@@ -1966,6 +1997,59 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "handover_giver_adaptation": bool(
                 args.handover_giver_adaptation
+            ),
+            "receiver_curriculum": receiver_curriculum,
+            "receiver_curriculum_cached_envs": (
+                int(receiver_curriculum_cache["valid"].sum().item())
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_reset_restores": (
+                int(receiver_curriculum_cache["reset_restores"])
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_reset_refreshes": (
+                int(receiver_curriculum_cache["reset_refreshes"])
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_restore_probability": (
+                float(
+                    getattr(
+                        env_cfg,
+                        "dr_anmar_receiver_curriculum_restore_probability",
+                        0.0,
+                    )
+                )
+                if receiver_curriculum
+                else 0.0
+            ),
+            "receiver_curriculum_checkpoint_interval": (
+                int(agent_cfg.save_interval)
+                if receiver_curriculum
+                else None
+            ),
+            "receiver_curriculum_adaptation_contract": (
+                {
+                    "optimizer_state_reset": True,
+                    "shared_actor_features_trainable": False,
+                    "observation_normalizer_frozen": True,
+                    "trainable_phase_head": 2,
+                    "trainable_role_output_rows": [7, 8, 9],
+                    "learned_receiver_axes": ["x", "y", "z"],
+                    "analytic_receiver_axes": [
+                        "roll",
+                        "pitch",
+                        "yaw",
+                        "gripper",
+                    ],
+                    "pickup_lift_presentation_policy_frozen": True,
+                    "exploration_scale_frozen": True,
+                    "initial_policy_influence": "loaded_checkpoint",
+                }
+                if receiver_curriculum
+                else None
             ),
             "handover_giver_adaptation_contract": (
                 (
@@ -3874,11 +3958,18 @@ def _controller_sweep(args: argparse.Namespace, repo_root: Path) -> int:
 
 
 def _play(args: argparse.Namespace, repo_root: Path) -> int:
+    import math
+
     import gymnasium as gym
     import torch
     from rsl_rl.runners import OnPolicyRunner
 
     from isaaclab.managers import SceneEntityCfg
+    from isaaclab.utils.math import (
+        axis_angle_from_quat,
+        quat_conjugate,
+        quat_mul,
+    )
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 
     checkpoint = None
@@ -4054,6 +4145,30 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
         controller.presentation_fraction_from_giver = (
             args.presentation_fraction_from_giver
+        )
+    if args.receiver_crossing_angle_rad is not None:
+        if not 0.0 <= args.receiver_crossing_angle_rad <= math.pi:
+            env.close()
+            return _fail(
+                "play receiver crossing angle must be in [0.0, pi]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if (
+            controller is None
+            or not hasattr(controller, "receiver_tangent_delta_rad")
+            or not hasattr(controller, "receiver_crossing_angle_rad")
+            or not hasattr(controller, "receiver_roll_offset_rad")
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose receiver crossing-angle control"
+            )
+        controller.receiver_crossing_angle_rad = (
+            args.receiver_crossing_angle_rad
+        )
+        controller.receiver_roll_offset_rad = (
+            controller.receiver_tangent_delta_rad
+            + controller.receiver_crossing_angle_rad
         )
     if args.presentation_height_in_robot_frame is not None:
         if not -0.139 < args.presentation_height_in_robot_frame <= -0.12:
@@ -4240,6 +4355,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         )
 
         receiver_grasp_offset = needle_geometry_grasp_offset_m(0.65)
+        receiver_roll_offset_rad = float(
+            getattr(
+                getattr(policy_model, "controller", None),
+                "receiver_roll_offset_rad",
+                math.pi,
+            )
+        )
         handover_observation = obs["policy"]
         initial_handover_state = getattr(
             env.unwrapped,
@@ -4401,6 +4523,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "receiver_grasp_error_at_first_stable_m": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "receiver_orientation_error_at_first_stable_rad": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "object_yaw_in_receiver_at_first_stable_rad": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "receiver_grasp_error_at_first_contact_m": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "receiver_orientation_error_at_first_contact_rad": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "object_yaw_in_receiver_at_first_contact_rad": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
             "maximum_presentation_stable_steps": torch.zeros(
                 env.unwrapped.num_envs,
                 dtype=torch.int64,
@@ -4520,6 +4672,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             with torch.inference_mode():
                 was_first_unresolved = first_unresolved.clone()
                 if first_handover_max_phase is not None:
+                    first_stable_presentation = torch.zeros_like(
+                        was_first_unresolved
+                    )
+                    first_receiver_contact_after_stable = torch.zeros_like(
+                        was_first_unresolved
+                    )
                     current_handover_state = getattr(
                         env.unwrapped,
                         "_dr_anmar_handover_state",
@@ -4757,6 +4915,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         handover_observation[:, 49:53],
                         handover_observation[:, 56:60],
                     )
+                    object_orientation_in_receiver = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 56:60],
+                        handover_observation[:, 49:53],
+                    )
+                    object_yaw_in_receiver = torch.atan2(
+                        2.0
+                        * (
+                            object_orientation_in_receiver[:, 3]
+                            * object_orientation_in_receiver[:, 2]
+                            + object_orientation_in_receiver[:, 0]
+                            * object_orientation_in_receiver[:, 1]
+                        ),
+                        1.0
+                        - 2.0
+                        * (
+                            object_orientation_in_receiver[:, 1].square()
+                            + object_orientation_in_receiver[:, 2].square()
+                        ),
+                    )
                     giver_ee = torch.where(
                         giver_is_robot_1.unsqueeze(-1),
                         handover_observation[:, 32:35],
@@ -4767,6 +4945,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         handover_observation[:, 39:42],
                         handover_observation[:, 32:35],
                     )
+                    giver_orientation = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 35:39],
+                        handover_observation[:, 42:46],
+                    )
+                    receiver_orientation = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 42:46],
+                        handover_observation[:, 35:39],
+                    )
+                    receiver_roll = torch.zeros_like(giver_orientation)
+                    receiver_roll[:, 2] = math.sin(
+                        0.5 * receiver_roll_offset_rad
+                    )
+                    receiver_roll[:, 3] = math.cos(
+                        0.5 * receiver_roll_offset_rad
+                    )
+                    receiver_target_orientation = quat_mul(
+                        receiver_roll,
+                        giver_orientation,
+                    )
+                    receiver_orientation_error = torch.linalg.vector_norm(
+                        axis_angle_from_quat(
+                            quat_mul(
+                                receiver_target_orientation,
+                                quat_conjugate(receiver_orientation),
+                            )
+                        ),
+                        dim=-1,
+                    )
                     receiver_grasp_position = object_in_receiver.clone()
                     receiver_grasp_position[:, 0] += receiver_grasp_offset[0]
                     receiver_grasp_position[:, 1] += receiver_grasp_offset[1]
@@ -4775,6 +4983,42 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         receiver_grasp_position - receiver_ee,
                         dim=-1,
                     )
+                    first_handover_history[
+                        "receiver_grasp_error_at_first_stable_m"
+                    ][first_stable_presentation] = receiver_grasp_error[
+                        first_stable_presentation
+                    ]
+                    first_handover_history[
+                        "receiver_orientation_error_at_first_stable_rad"
+                    ][first_stable_presentation] = receiver_orientation_error[
+                        first_stable_presentation
+                    ]
+                    first_handover_history[
+                        "object_yaw_in_receiver_at_first_stable_rad"
+                    ][first_stable_presentation] = object_yaw_in_receiver[
+                        first_stable_presentation
+                    ]
+                    first_handover_history[
+                        "receiver_grasp_error_at_first_contact_m"
+                    ][
+                        first_receiver_contact_after_stable
+                    ] = receiver_grasp_error[
+                        first_receiver_contact_after_stable
+                    ]
+                    first_handover_history[
+                        "receiver_orientation_error_at_first_contact_rad"
+                    ][
+                        first_receiver_contact_after_stable
+                    ] = receiver_orientation_error[
+                        first_receiver_contact_after_stable
+                    ]
+                    first_handover_history[
+                        "object_yaw_in_receiver_at_first_contact_rad"
+                    ][
+                        first_receiver_contact_after_stable
+                    ] = object_yaw_in_receiver[
+                        first_receiver_contact_after_stable
+                    ]
                     first_handover_history[
                         "minimum_receiver_grasp_error_m"
                     ] = torch.where(
@@ -6038,6 +6282,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "first_stable_presentation_frame"
                     ][contacted]
                 )
+                stable_grasp_errors = first_handover_history[
+                    "receiver_grasp_error_at_first_stable_m"
+                ][stable]
+                stable_orientation_errors = first_handover_history[
+                    "receiver_orientation_error_at_first_stable_rad"
+                ][stable]
+                contact_grasp_errors = first_handover_history[
+                    "receiver_grasp_error_at_first_contact_m"
+                ][contacted]
+                contact_orientation_errors = first_handover_history[
+                    "receiver_orientation_error_at_first_contact_rad"
+                ][contacted]
+                stable_object_yaw = first_handover_history[
+                    "object_yaw_in_receiver_at_first_stable_rad"
+                ][stable]
+                contact_object_yaw = first_handover_history[
+                    "object_yaw_in_receiver_at_first_contact_rad"
+                ][contacted]
                 return {
                     "count": int(mask.sum().item()),
                     "stable_presentations": int(stable.sum().item()),
@@ -6052,6 +6314,28 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "stable_to_receiver_contact_steps": (
                         handover_scalar_quantiles(latencies)
+                    ),
+                    "receiver_grasp_error_at_first_stable_m": (
+                        handover_scalar_quantiles(stable_grasp_errors)
+                    ),
+                    "receiver_orientation_error_at_first_stable_rad": (
+                        handover_scalar_quantiles(
+                            stable_orientation_errors
+                        )
+                    ),
+                    "receiver_grasp_error_at_first_contact_m": (
+                        handover_scalar_quantiles(contact_grasp_errors)
+                    ),
+                    "receiver_orientation_error_at_first_contact_rad": (
+                        handover_scalar_quantiles(
+                            contact_orientation_errors
+                        )
+                    ),
+                    "object_yaw_in_receiver_at_first_stable_rad": (
+                        handover_scalar_quantiles(stable_object_yaw)
+                    ),
+                    "object_yaw_in_receiver_at_first_contact_rad": (
+                        handover_scalar_quantiles(contact_object_yaw)
                     ),
                 }
 
@@ -6490,6 +6774,30 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_receiver_tangent_delta_rad": (
+                float(policy_model.controller.receiver_tangent_delta_rad)
+                if hasattr(
+                    getattr(policy_model, "controller", None),
+                    "receiver_tangent_delta_rad",
+                )
+                else None
+            ),
+            "policy_receiver_crossing_angle_rad": (
+                float(policy_model.controller.receiver_crossing_angle_rad)
+                if hasattr(
+                    getattr(policy_model, "controller", None),
+                    "receiver_crossing_angle_rad",
+                )
+                else None
+            ),
+            "policy_receiver_roll_offset_rad": (
+                float(policy_model.controller.receiver_roll_offset_rad)
+                if hasattr(
+                    getattr(policy_model, "controller", None),
+                    "receiver_roll_offset_rad",
+                )
+                else None
+            ),
             "policy_presentation_height_in_robot_frame": (
                 float(
                     policy_model.controller.presentation_height_in_robot_frame
@@ -6688,6 +6996,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--carry_lateral_action_limit", type=float)
     play.add_argument("--carry_lateral_ramp_height", type=float)
     play.add_argument("--presentation_fraction_from_giver", type=float)
+    play.add_argument("--receiver_crossing_angle_rad", type=float)
     play.add_argument("--presentation_height_in_robot_frame", type=float)
     play.add_argument("--giver_close_distance", type=float)
     play.add_argument("--giver_lift_contact_force_threshold", type=float)

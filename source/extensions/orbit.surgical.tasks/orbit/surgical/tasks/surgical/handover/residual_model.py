@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import copy
+import math
 
 import torch
 from rsl_rl.models import MLPModel
@@ -18,11 +19,20 @@ from isaaclab.utils.math import (
 )
 
 from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+    NEEDLE_ARC_EXTENT_RAD,
+    NEEDLE_PROVISIONAL_ARC_FRACTION,
     NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
     needle_geometry_grasp_offset_m,
 )
 
-_RECEIVER_OFFSET = needle_geometry_grasp_offset_m(0.65)
+_RECEIVER_ARC_FRACTION = 0.65
+_RECEIVER_OFFSET = needle_geometry_grasp_offset_m(_RECEIVER_ARC_FRACTION)
+_RECEIVER_TANGENT_DELTA_RAD = (
+    _RECEIVER_ARC_FRACTION - NEEDLE_PROVISIONAL_ARC_FRACTION
+) * NEEDLE_ARC_EXTENT_RAD
+_RECEIVER_BASELINE_CROSSING_ANGLE_RAD = (
+    math.pi - _RECEIVER_TANGENT_DELTA_RAD
+)
 
 
 class HandoverAnalyticController(nn.Module):
@@ -38,7 +48,7 @@ class HandoverAnalyticController(nn.Module):
         self.receiver_close_distance = 0.001
         self.slow_approach_radius = 0.02
         self.slow_approach_action_limit = 0.1
-        self.receiver_contact_centering_action_limit = 0.0025
+        self.receiver_contact_centering_action_limit = 0.005
         self.normalized_contact_threshold = 0.002
         self.contact_force_observation_scale = 0.2
         self.giver_lift_contact_force_threshold_n = 0.01
@@ -64,6 +74,14 @@ class HandoverAnalyticController(nn.Module):
         self.giver_pregrasp_orientation_tolerance = 0.035
         self.giver_transport_orientation_action_limit = 0.035
         self.receiver_orientation_action_limit = 0.6
+        self.receiver_tangent_delta_rad = _RECEIVER_TANGENT_DELTA_RAD
+        self.receiver_crossing_angle_rad = (
+            _RECEIVER_BASELINE_CROSSING_ANGLE_RAD
+        )
+        self.receiver_roll_offset_rad = (
+            self.receiver_tangent_delta_rad
+            + self.receiver_crossing_angle_rad
+        )
         # Keep training and serving identical for giver adaptation.  This is
         # deliberately disabled by default because this flag is controller
         # configuration, not checkpoint state.  A checkpoint must never gain
@@ -464,7 +482,6 @@ class HandoverAnalyticController(nn.Module):
             & ~receiver_any_contact
             & ~receiver_retry_active
         )
-
         giver_translation = torch.where(
             giver_transport_active.unsqueeze(-1),
             giver_carry,
@@ -640,8 +657,16 @@ class HandoverAnalyticController(nn.Module):
             giver_orientation_action,
         )
 
+        # The giver and receiver grasp different points on a curved needle.
+        # Express receiver roll as local tangent change plus a physics-
+        # calibrated crossing angle. Zero crossing is parallel to the needle
+        # and was rejected because the needle slipped after release; the
+        # baseline crossing keeps the prior pi roll until a matched sweep
+        # identifies a better contact-retaining jaw angle.
         receiver_roll = torch.zeros_like(giver_orientation)
-        receiver_roll[:, 2] = 1.0
+        receiver_half_roll_offset = 0.5 * self.receiver_roll_offset_rad
+        receiver_roll[:, 2] = math.sin(receiver_half_roll_offset)
+        receiver_roll[:, 3] = math.cos(receiver_half_roll_offset)
         receiver_target_orientation = quat_mul(
             receiver_roll,
             giver_orientation,

@@ -315,6 +315,7 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.controller.receiver_residual_enabled_for_learning = True
         self.residual_scale = residual_scale
         self.giver_adaptation_enabled = False
+        self.receiver_adaptation_enabled = False
 
     def _get_latent_dim(self) -> int:
         return self.obs_dim + _TASK_FEATURE_DIM
@@ -341,9 +342,48 @@ class EndToEndHandoverMLPModel(MLPModel):
         )
 
     def update_normalization(self, obs) -> None:
-        if self.obs_normalization and not self.giver_adaptation_enabled:
+        if (
+            self.obs_normalization
+            and not self.giver_adaptation_enabled
+            and not self.receiver_adaptation_enabled
+        ):
             role_observation, _ = self._role_latent(obs)
             self.obs_normalizer.update(role_observation)
+
+    def configure_receiver_adaptation(self) -> None:
+        """Adapt only receiver XYZ in the acquisition phase.
+
+        The promoted pickup, lift, presentation representation, observation
+        normalization, and every non-acquisition motor row remain immutable.
+        """
+        self.receiver_adaptation_enabled = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        receiver_head = self.phase_network.heads[2]
+        receiver_head.weight.requires_grad_(True)
+        receiver_head.bias.requires_grad_(True)
+        receiver_xyz_row_mask = torch.zeros(
+            14,
+            dtype=receiver_head.weight.dtype,
+            device=receiver_head.weight.device,
+        )
+        receiver_xyz_row_mask[7:10] = 1.0
+        receiver_head.weight.register_hook(
+            lambda gradient: gradient
+            * receiver_xyz_row_mask.unsqueeze(-1)
+        )
+        receiver_head.bias.register_hook(
+            lambda gradient: gradient * receiver_xyz_row_mask
+        )
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
 
     def configure_giver_adaptation(self) -> None:
         """Learn giver XY while preserving the promoted receiver policy."""

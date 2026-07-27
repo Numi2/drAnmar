@@ -22,7 +22,7 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         ).read_text()
     )
     assert contract["status"] == "isolated_research_example_not_stage_qualified"
-    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.4"
+    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.5"
     assert contract["architecture"]["actor"].startswith("frozen_pickup_lift")
     assert contract["architecture"]["learned_authority"].startswith(
         "receiver_xyz"
@@ -154,6 +154,18 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         (receiver_scale, receiver_ppo["scale_2000_evidence_sha256"]),
     ):
         assert hashlib.sha256(path.read_bytes()).hexdigest() == expected_hash
+    contact_centering = contract["receiver_contact_centering_v55"]
+    contact_centering_path = ROOT / contact_centering["evidence_path"]
+    assert contact_centering["screen_512_successes"] == 325
+    assert contact_centering["screen_600_successes"] == 381
+    assert contact_centering["screen_600_receiver_contacts"] == 414
+    assert contact_centering["screen_600_windowed_bilateral_capture"] == 402
+    assert contact_centering["screen_600_retention_losses"] == 18
+    assert contact_centering["screen_600_pickup_attempts_exhausted"] == 21
+    assert contact_centering["screen_600_hard_safety_events"] == 2
+    assert hashlib.sha256(contact_centering_path.read_bytes()).hexdigest() == (
+        contact_centering["evidence_sha256"]
+    )
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -202,6 +214,10 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "exploration_mask = giver_residual_mask" in source
     assert "def configure_giver_adaptation(self)" in source
     assert "giver_role_row_mask[0:2] = 1.0" in source
+    assert "def configure_receiver_adaptation(self)" in source
+    assert "receiver_xyz_row_mask[7:10] = 1.0" in source
+    assert "self.phase_network.heads[2]" in source
+    assert "and not self.receiver_adaptation_enabled" in source
     assert "self.controller.receiver_residual_enabled_for_learning = True" in source
     assert "presentation_stable = raw[:, 103]" in controller_source
     assert "receiver_retry_active = raw[:, 105]" in controller_source
@@ -209,6 +225,12 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "receiver_retry_translation" in controller_source
     assert "self.presentation_hold_action_limit = 0.01" in controller_source
     assert "self.receiver_grasp_z = -0.003" in controller_source
+    assert "_RECEIVER_ARC_FRACTION = 0.65" in controller_source
+    assert "_RECEIVER_TANGENT_DELTA_RAD" in controller_source
+    assert "self.receiver_tangent_delta_rad" in controller_source
+    assert "self.receiver_crossing_angle_rad" in controller_source
+    assert "self.receiver_roll_offset_rad" in controller_source
+    assert "receiver_half_roll_offset" in controller_source
     assert "giver_presentation_hold = giver_carry.clamp(" in controller_source
     assert "giver_pre_lift_transport_ready = (" in controller_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
@@ -227,6 +249,14 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert '"first_stable_presentation_frame"' in benchmark_source
     assert '"first_receiver_contact_after_stable_frame"' in benchmark_source
     assert '"receiver_approach_by_maximum_phase"' in benchmark_source
+    assert '"receiver_grasp_error_at_first_stable_m"' in benchmark_source
+    assert (
+        '"receiver_orientation_error_at_first_contact_rad"'
+        in benchmark_source
+    )
+    assert '"object_yaw_in_receiver_at_first_stable_rad"' in benchmark_source
+    assert '"object_yaw_in_receiver_at_first_contact_rad"' in benchmark_source
+    assert "--receiver_crossing_angle_rad" in benchmark_source
 
 
 def test_e2e_task_adds_native_contact_history_without_changing_success() -> None:
@@ -262,9 +292,19 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert "self.rewards.success.weight = 80.0" in environment_source
     assert "terminal_transfer_failure" in environment_source
     assert "NeedleHandoverEnvCfg" in environment_source
+    assert "NeedleHandoverReceiverCurriculumEnvCfg" in environment_source
+    assert "dr_anmar_receiver_curriculum = True" in environment_source
+    assert (
+        "dr_anmar_receiver_curriculum_restore_probability = 0.5"
+        in environment_source
+    )
+    assert "reset_receiver_curriculum_from_cache" in environment_source
     assert "TerminationsCfg" not in environment_source
     assert "RewardsCfg" not in environment_source
     assert "Isaac-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0" in registration_source
+    assert "Isaac-Handover-Needle-Receiver-Curriculum-v0" in (
+        registration_source
+    )
     assert "HandoverNeedleEndToEndPPORunnerCfg" in agent_source
     assert "init_std=0.005" in agent_source
     assert "clip_param=0.05" in agent_source
@@ -277,6 +317,26 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         agent_source,
     ):
         ast.parse(source)
+    state_source = (
+        TASK_ROOT / "handover/mdp/state.py"
+    ).read_text()
+    benchmark_source = (
+        ROOT / "scripts/dr_anmar_learning_benchmark.py"
+    ).read_text()
+    assert "def reset_receiver_curriculum_from_cache(" in state_source
+    assert '"_dr_anmar_receiver_curriculum_cache"' in state_source
+    assert "presentation_stable & ~cache" in state_source
+    assert 'cache["reset_restores"] +=' in state_source
+    assert '"receiver_curriculum_cached_envs"' in benchmark_source
+    assert '"receiver_curriculum_reset_restores"' in benchmark_source
+    assert '"receiver_curriculum_reset_refreshes"' in benchmark_source
+    assert '"receiver_curriculum_restore_probability"' in benchmark_source
+    assert "agent_cfg.save_interval = 1" in benchmark_source
+    assert '"receiver_curriculum_checkpoint_interval"' in benchmark_source
+    assert '"receiver_curriculum_adaptation_contract"' in benchmark_source
+    assert '"pickup_lift_presentation_policy_frozen": True' in benchmark_source
+    assert '"optimizer_state_reset": True' in benchmark_source
+    assert "policy_model.configure_receiver_adaptation()" in benchmark_source
 
 
 def test_structured_transfer_state_delays_release_and_retries_receiver() -> None:

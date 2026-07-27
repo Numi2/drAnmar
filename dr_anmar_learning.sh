@@ -301,6 +301,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_PRESENTATION_FRACTION_FROM_GIVER}"
             )
         fi
+        receiver_crossing_angle_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_CROSSING_ANGLE_RAD:-}" ]]; then
+            receiver_crossing_angle_args=(
+                --receiver_crossing_angle_rad
+                "${DR_ANMAR_POLICY_RECEIVER_CROSSING_ANGLE_RAD}"
+            )
+        fi
         presentation_height_in_robot_frame_args=()
         if [[ -n "${DR_ANMAR_POLICY_PRESENTATION_HEIGHT_IN_ROBOT_FRAME:-}" ]]; then
             presentation_height_in_robot_frame_args=(
@@ -363,6 +370,7 @@ case "${command}" in
             "${carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${presentation_fraction_from_giver_args[@]}" \
+            "${receiver_crossing_angle_args[@]}" \
             "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \

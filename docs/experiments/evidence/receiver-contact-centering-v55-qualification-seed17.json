@@ -1,0 +1,72 @@
+{
+  "schema_version": "dranmar-handover-controller-qualification-1.0",
+  "kind": "matched_population_controller_qualification_summary",
+  "status": "promoted_development_candidate_pending_2000_environment_scale_gate",
+  "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
+  "seed": 17,
+  "frames_per_env": 1000,
+  "checkpoint": {
+    "path": "output/dranmar-learning/e2e-v27-receiver-ppo-v33-2000/runs/2026-07-27_17-38-16/model_final.pt",
+    "sha256": "a56f61703855931d9d755beeba530bb8c1ac5232f6d6499e6254399cca8535cf"
+  },
+  "change": {
+    "parameter": "receiver_contact_centering_action_limit",
+    "baseline": 0.0025,
+    "candidate": 0.005,
+    "scope": "receiver_translation_after_first_physical_receiver_contact_only",
+    "success_definition_changed": false,
+    "reward_changed": false,
+    "object_state_manipulated": false
+  },
+  "matched_512": {
+    "baseline_runtime_evidence_path": "output/dranmar-learning/e2e-v33-baseline-confirmation-512/dranmar_play_20260727T195812Z.json",
+    "baseline_runtime_evidence_sha256": "b6edbc3890bfcb1f0e998eee71d098cc327de239b7d9f946b99c15604b3b35be",
+    "candidate_runtime_evidence_path": "output/dranmar-learning/e2e-v53-contact-centering005-screen-512/dranmar_play_20260727T200016Z.json",
+    "candidate_runtime_evidence_sha256": "6b25493d546dbbec8be9651a0739f87e4e8ab92c2c245f2510faa8969260970c",
+    "baseline_retained_success": 322,
+    "candidate_retained_success": 325,
+    "baseline_receiver_retention_lost": 29,
+    "candidate_receiver_retention_lost": 26,
+    "baseline_pickup_attempts_exhausted": 17,
+    "candidate_pickup_attempts_exhausted": 17,
+    "baseline_stable_presentations": 418,
+    "candidate_stable_presentations": 418,
+    "baseline_receiver_contacts": 356,
+    "candidate_receiver_contacts": 356,
+    "baseline_excessive_object_force": 0,
+    "candidate_excessive_object_force": 0
+  },
+  "matched_600": {
+    "baseline_evidence_path": "docs/experiments/evidence/receiver-ppo-v33-screen-600-seed17.json",
+    "baseline_evidence_sha256": "135ac8d9f4b0eb400c40d3bf5a5630e1cc58b7171433815c6e55bdff7b45f2f0",
+    "candidate_runtime_evidence_path": "output/dranmar-learning/e2e-v55-contact-centering005-qualification-600/dranmar_play_20260727T200449Z.json",
+    "candidate_runtime_evidence_sha256": "f26b3cacc7fe5e58e44f3ecd4a656eb991c7e1555a983245047c68cc5b379790",
+    "baseline_retained_success": 377,
+    "candidate_retained_success": 381,
+    "baseline_raw_success_term": 380,
+    "candidate_raw_success_term": 384,
+    "baseline_receiver_retention_lost": 21,
+    "candidate_receiver_retention_lost": 18,
+    "baseline_pickup_attempts_exhausted": 21,
+    "candidate_pickup_attempts_exhausted": 21,
+    "baseline_stable_presentations": 489,
+    "candidate_stable_presentations": 489,
+    "baseline_receiver_contacts": 413,
+    "candidate_receiver_contacts": 414,
+    "baseline_windowed_bilateral_capture": 399,
+    "candidate_windowed_bilateral_capture": 402,
+    "baseline_hard_safety_events": 2,
+    "candidate_hard_safety_events": 2,
+    "baseline_excessive_object_force": 0,
+    "candidate_excessive_object_force": 0
+  },
+  "rejected_upper_bound": {
+    "receiver_contact_centering_action_limit": 0.0075,
+    "num_envs": 512,
+    "retained_success": 315,
+    "pickup_attempts_exhausted": 19,
+    "receiver_retention_lost": 31,
+    "reason": "regressed_pickup_acquisition_and_retention_on_the_matched_population"
+  },
+  "qualification_boundary": "The candidate improved two matched deterministic screens. A 2000-environment scale result is still required before replacing the v33 scale-qualified baseline."
+}

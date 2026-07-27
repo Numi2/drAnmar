@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
-from isaaclab.assets import RigidObject
+from isaaclab.assets import Articulation, RigidObject
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import FrameTransformer
 
@@ -17,6 +17,70 @@ from orbit.surgical.tasks.surgical import mdp_common
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
+
+
+def reset_receiver_curriculum_from_cache(
+    env: ManagerBasedRLEnv,
+    env_ids: torch.Tensor | None,
+) -> None:
+    """Restore reset-time states captured at physical stable presentation.
+
+    The cache is training-only and contains states each environment reached
+    through the normal pickup, lift, and presentation sequence. It never
+    modifies an active episode and is not enabled by the end-to-end
+    qualification task.
+    """
+    cache = getattr(env, "_dr_anmar_receiver_curriculum_cache", None)
+    if cache is None:
+        return
+    if env_ids is None:
+        env_ids = torch.arange(
+            env.num_envs,
+            dtype=torch.long,
+            device=env.device,
+        )
+    valid = cache["valid"][env_ids]
+    restore_probability = float(
+        getattr(
+            env.cfg,
+            "dr_anmar_receiver_curriculum_restore_probability",
+            0.5,
+        )
+    )
+    restore_draw = torch.rand(
+        env_ids.shape,
+        device=env.device,
+    )
+    restore = valid & (restore_draw < restore_probability)
+    refresh_env_ids = env_ids[valid & ~restore]
+    if bool(refresh_env_ids.numel()):
+        cache["valid"][refresh_env_ids] = False
+        cache["reset_refreshes"] += int(refresh_env_ids.numel())
+    valid_env_ids = env_ids[restore]
+    if not bool(valid_env_ids.numel()):
+        return
+    cache["reset_restores"] += int(valid_env_ids.numel())
+    robot_1: Articulation = env.scene["robot_1"]
+    robot_2: Articulation = env.scene["robot_2"]
+    obj: RigidObject = env.scene["object"]
+    robot_1.write_joint_state_to_sim(
+        cache["robot_1_joint_pos"][valid_env_ids],
+        cache["robot_1_joint_vel"][valid_env_ids],
+        env_ids=valid_env_ids,
+    )
+    robot_2.write_joint_state_to_sim(
+        cache["robot_2_joint_pos"][valid_env_ids],
+        cache["robot_2_joint_vel"][valid_env_ids],
+        env_ids=valid_env_ids,
+    )
+    obj.write_root_pose_to_sim(
+        cache["object_root_pose_w"][valid_env_ids],
+        env_ids=valid_env_ids,
+    )
+    obj.write_root_velocity_to_sim(
+        cache["object_root_velocity_w"][valid_env_ids],
+        env_ids=valid_env_ids,
+    )
 
 
 def _step_number(env: ManagerBasedRLEnv) -> int:
@@ -567,6 +631,80 @@ def handover_state(
         >= presentation_stability_steps
     )
     presentation_stable = state["presentation_qualified"]
+    if bool(
+        getattr(env.cfg, "dr_anmar_receiver_curriculum", False)
+    ):
+        cache = getattr(
+            env,
+            "_dr_anmar_receiver_curriculum_cache",
+            None,
+        )
+        robot_1: Articulation = env.scene["robot_1"]
+        robot_2: Articulation = env.scene["robot_2"]
+        if cache is None:
+            cache = {
+                "valid": torch.zeros(
+                    env.num_envs,
+                    dtype=torch.bool,
+                    device=env.device,
+                ),
+                "reset_restores": 0,
+                "reset_refreshes": 0,
+                "robot_1_joint_pos": torch.zeros_like(
+                    mdp_common.as_torch(robot_1.data.joint_pos)
+                ),
+                "robot_1_joint_vel": torch.zeros_like(
+                    mdp_common.as_torch(robot_1.data.joint_vel)
+                ),
+                "robot_2_joint_pos": torch.zeros_like(
+                    mdp_common.as_torch(robot_2.data.joint_pos)
+                ),
+                "robot_2_joint_vel": torch.zeros_like(
+                    mdp_common.as_torch(robot_2.data.joint_vel)
+                ),
+                "object_root_pose_w": torch.zeros(
+                    (env.num_envs, 7),
+                    dtype=torch.float32,
+                    device=env.device,
+                ),
+                "object_root_velocity_w": torch.zeros(
+                    (env.num_envs, 6),
+                    dtype=torch.float32,
+                    device=env.device,
+                ),
+            }
+            setattr(
+                env,
+                "_dr_anmar_receiver_curriculum_cache",
+                cache,
+            )
+        capture = presentation_stable & ~cache["valid"]
+        if bool(capture.any()):
+            cache["robot_1_joint_pos"][capture] = mdp_common.as_torch(
+                robot_1.data.joint_pos
+            )[capture]
+            cache["robot_1_joint_vel"][capture] = mdp_common.as_torch(
+                robot_1.data.joint_vel
+            )[capture]
+            cache["robot_2_joint_pos"][capture] = mdp_common.as_torch(
+                robot_2.data.joint_pos
+            )[capture]
+            cache["robot_2_joint_vel"][capture] = mdp_common.as_torch(
+                robot_2.data.joint_vel
+            )[capture]
+            cache["object_root_pose_w"][capture, :3] = object_pos_w[
+                capture
+            ]
+            cache["object_root_pose_w"][capture, 3:7] = mdp_common.as_torch(
+                obj.data.root_quat_w
+            )[capture]
+            cache["object_root_velocity_w"][capture, :3] = (
+                mdp_common.as_torch(obj.data.root_lin_vel_w)[capture]
+            )
+            cache["object_root_velocity_w"][capture, 3:6] = (
+                mdp_common.as_torch(obj.data.root_ang_vel_w)[capture]
+            )
+            cache["valid"][capture] = True
 
     retry_was_active = state["receiver_retry_step_count"] > 0
     state["receiver_retry_step_count"][:] = torch.where(
@@ -580,7 +718,6 @@ def handover_state(
     )
     state["receiver_retry_step_count"][retry_complete] = 0
     receiver_retry_active = state["receiver_retry_step_count"] > 0
-
     receiver_capture_began = (
         structured_transfer_contract
         & (phase == 2)
