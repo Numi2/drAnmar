@@ -935,7 +935,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "rotated_grasp_offset" in handover_model_source
     assert "object_pose_in_giver[:, 3:7]" in handover_model_source
     assert "giver_pregrasp_offset" in handover_model_source
-    assert "torch.linalg.cross(" in handover_model_source
+    assert "yaw_sine = 2.0 * (" in handover_model_source
+    assert "yaw_cosine = 1.0 - 2.0 * (" in handover_model_source
+    assert "object_relative_grasp_offset[:, 1]" in handover_model_source
     assert "pickup_recovery_context = raw[:, 98] > 0.5" in handover_model_source
     assert "pickup_recovery_context.unsqueeze(-1)" in handover_model_source
     assert (

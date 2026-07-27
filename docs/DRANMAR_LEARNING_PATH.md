@@ -193,8 +193,10 @@ total pickup attempts. A recovered transfer remains a valid physical success,
 but evidence reports first-attempt and recovered successes separately; entering
 recovery earns no reward or phase credit. The qualified `0.40` arc offset is
 an object-relative grasp frame: after a slip, both the grasp point and
-recovery offset follow the needle's live rigid pose rather than its reset
-orientation, while the proven identity tool posture remains unchanged.
+recovery offset follow the settled needle's table-plane yaw rather than its
+reset orientation. Roll and pitch never rotate the offset below the support
+surface; the vertical grasp offset and proven identity tool posture remain
+unchanged.
 Recovery does not return to approach until the needle is within 5 mm of
 support with linear speed below 0.05 m/s and angular speed below 5 rad/s.
 One physics-owned post-slip context bit is appended after the existing action

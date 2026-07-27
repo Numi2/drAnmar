@@ -624,24 +624,26 @@ def _handover_teacher_action(
         local_grasp_offset[:, 0] = grasp_offset[0]
         local_grasp_offset[:, 1] = grasp_offset[1]
         local_grasp_offset[:, 2] = grasp_offset[2]
-        quaternion_vector = object_orientation[:, :3]
-        quaternion_scalar = object_orientation[:, 3:]
-        first_cross = torch.linalg.cross(
-            quaternion_vector,
-            local_grasp_offset,
-            dim=-1,
+        quaternion_x = object_orientation[:, 0]
+        quaternion_y = object_orientation[:, 1]
+        quaternion_z = object_orientation[:, 2]
+        quaternion_w = object_orientation[:, 3]
+        yaw_sine = 2.0 * (
+            quaternion_w * quaternion_z
+            + quaternion_x * quaternion_y
         )
-        object_relative_grasp_offset = (
-            local_grasp_offset
-            + 2.0
-            * (
-                quaternion_scalar * first_cross
-                + torch.linalg.cross(
-                    quaternion_vector,
-                    first_cross,
-                    dim=-1,
-                )
-            )
+        yaw_cosine = 1.0 - 2.0 * (
+            quaternion_y * quaternion_y
+            + quaternion_z * quaternion_z
+        )
+        object_relative_grasp_offset = local_grasp_offset.clone()
+        object_relative_grasp_offset[:, 0] = (
+            yaw_cosine * local_grasp_offset[:, 0]
+            - yaw_sine * local_grasp_offset[:, 1]
+        )
+        object_relative_grasp_offset[:, 1] = (
+            yaw_sine * local_grasp_offset[:, 0]
+            + yaw_cosine * local_grasp_offset[:, 1]
         )
         rotated_grasp_offset = torch.where(
             use_object_relative_grasp.unsqueeze(-1),
@@ -686,24 +688,28 @@ def _handover_teacher_action(
     giver_recovery_offset[:, 0] = giver_grasp_offset[0]
     giver_recovery_offset[:, 1] = giver_grasp_offset[1]
     giver_recovery_offset[:, 2] = giver_grasp_offset[2]
-    giver_orientation_vector = object_pose_in_giver[:, 3:6]
-    giver_orientation_scalar = object_pose_in_giver[:, 6:7]
-    giver_first_cross = torch.linalg.cross(
-        giver_orientation_vector,
-        giver_recovery_offset,
-        dim=-1,
+    giver_quaternion_x = object_pose_in_giver[:, 3]
+    giver_quaternion_y = object_pose_in_giver[:, 4]
+    giver_quaternion_z = object_pose_in_giver[:, 5]
+    giver_quaternion_w = object_pose_in_giver[:, 6]
+    giver_yaw_sine = 2.0 * (
+        giver_quaternion_w * giver_quaternion_z
+        + giver_quaternion_x * giver_quaternion_y
+    )
+    giver_yaw_cosine = 1.0 - 2.0 * (
+        giver_quaternion_y * giver_quaternion_y
+        + giver_quaternion_z * giver_quaternion_z
     )
     giver_object_relative_recovery_offset = (
-        giver_recovery_offset
-        + 2.0
-        * (
-            giver_orientation_scalar * giver_first_cross
-            + torch.linalg.cross(
-                giver_orientation_vector,
-                giver_first_cross,
-                dim=-1,
-            )
-        )
+        giver_recovery_offset.clone()
+    )
+    giver_object_relative_recovery_offset[:, 0] = (
+        giver_yaw_cosine * giver_recovery_offset[:, 0]
+        - giver_yaw_sine * giver_recovery_offset[:, 1]
+    )
+    giver_object_relative_recovery_offset[:, 1] = (
+        giver_yaw_sine * giver_recovery_offset[:, 0]
+        + giver_yaw_cosine * giver_recovery_offset[:, 1]
     )
     giver_recovery_position += torch.where(
         pickup_recovery_context.unsqueeze(-1),
