@@ -3445,10 +3445,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             args.presentation_height_in_robot_frame
         )
     if args.giver_close_distance is not None:
-        if not 0.0005 <= args.giver_close_distance <= 0.005:
+        if not 0.0005 <= args.giver_close_distance <= 0.02:
             env.close()
             return _fail(
-                "play giver close distance must be in [0.0005, 0.005]"
+                "play giver close distance must be in [0.0005, 0.02]"
             )
         controller = getattr(policy_model, "controller", None)
         if controller is None or not hasattr(controller, "close_distance"):
