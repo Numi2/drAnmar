@@ -927,6 +927,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert "giver_pregrasp_orientation_ready = (" in handover_model_source
     assert "& giver_pregrasp_orientation_ready" in handover_model_source
+    assert "rotated_grasp_offset" in handover_model_source
+    assert "object_pose_in_giver[:, 3:7]" in handover_model_source
+    assert "giver_pregrasp_offset" in handover_model_source
+    assert "torch.linalg.cross(" in handover_model_source
     assert (
         "carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction"
         in handover_model_source
