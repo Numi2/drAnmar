@@ -204,7 +204,11 @@ observation. It leaves first-attempt geometry unchanged and activates the
 rotated arc frame only for retries. This recovery path intentionally starts
 from the analytic base with zero residual and does not claim compatibility
 with prior learned-policy observation shapes.
-Pickup uses a `0.010` vertical action limit while
+The first handover pickup uses a `0.010` vertical action limit. A recovered
+re-lift reuses the checkpoint-free Stage 4 analytic pickup authority of
+`0.18` until the 10 mm clearance gate, then returns to the `0.015` loaded
+transport limit. This shortens retries without changing success, force, or
+contact authority. The normal handover pickup uses `0.010` while
 presentation retains `0.015`. The slower pickup reduced needle acceleration
 and mid-air loss without reducing final presentation authority. Controlled
 full-population challenges also tested `0.0105`, `0.0125`, `0.015`, `0.03`,

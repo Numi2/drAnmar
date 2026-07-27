@@ -51,6 +51,7 @@ class HandoverAnalyticController(nn.Module):
         self.carry_lateral_ramp_height = 0.01
         self.pickup_vertical_action_limit = 0.01
         self.pickup_initial_vertical_action_limit = 0.01
+        self.recovery_pickup_vertical_action_limit = 0.18
         self.pickup_deceleration_height = 0.01
         self.carry_vertical_action_limit = 0.015
         self.giver_lift_on_live_contact = True
@@ -341,6 +342,14 @@ class HandoverAnalyticController(nn.Module):
                 - self.pickup_initial_vertical_action_limit
             )
             * pickup_deceleration_fraction
+        )
+        pickup_vertical_limit = torch.where(
+            pickup_recovery_context,
+            torch.full_like(
+                pickup_vertical_limit,
+                self.recovery_pickup_vertical_action_limit,
+            ),
+            pickup_vertical_limit,
         )
         giver_vertical_limit = torch.where(
             vertical_only,

@@ -548,6 +548,7 @@ def _handover_teacher_action(
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_lateral_action_limit: float = 0.06,
     pickup_vertical_action_limit: float = 0.015,
+    recovery_pickup_vertical_action_limit: float = 0.18,
     carry_vertical_action_limit: float = 0.015,
     giver_transport_min_contact_jaws: int = 2,
     giver_transport_normalized_contact_threshold: float = 0.002,
@@ -757,6 +758,17 @@ def _handover_teacher_action(
             carry_vertical_action_limit,
         ),
     ).unsqueeze(-1)
+    giver_vertical_limit = torch.where(
+        (
+            vertical_only
+            & pickup_recovery_context
+        ).unsqueeze(-1),
+        torch.full_like(
+            giver_vertical_limit,
+            recovery_pickup_vertical_action_limit,
+        ),
+        giver_vertical_limit,
+    )
     giver_vertical_action = torch.maximum(
         torch.minimum(
             giver_error[:, 2:],

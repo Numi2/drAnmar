@@ -956,6 +956,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "self.pickup_initial_vertical_action_limit = 0.01"
         in handover_model_source
     )
+    assert (
+        "self.recovery_pickup_vertical_action_limit = 0.18"
+        in handover_model_source
+    )
+    assert "pickup_recovery_context," in handover_model_source
     assert "pickup_deceleration_fraction = (" in handover_model_source
     assert (
         "self.receiver_contact_centering_action_limit = 0.0025"
