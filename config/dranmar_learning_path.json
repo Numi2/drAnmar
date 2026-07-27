@@ -234,6 +234,8 @@
         "analytic_giver_vertical_action_limit_source": "isaac_lab_seed17_1200_environment_six_way_physical_sweep",
         "analytic_receiver_contact_centering_action_limit": 0.0025,
         "analytic_receiver_contact_centering_action_limit_source": "isaac_lab_seed17_1200_environment_six_way_physical_sweep",
+        "analytic_giver_post_qualification_min_live_contact_jaws": 1,
+        "analytic_giver_post_qualification_contact_source": "isaac_lab_seed17_1200_environment_600_vs_600_physical_ablation",
         "reward_contract": {
           "positive_credit": "one_time_physical_phase_transitions_and_retained_transfer_only",
           "continuous_reach_grasp_and_dual_hold_weights": 0.0,
