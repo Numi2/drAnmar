@@ -638,6 +638,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "carry_vertical_action_limits = values" in benchmark_source
     assert '"receiver_close_distance"' in benchmark_source
     assert "receiver_close_distances = values" in benchmark_source
+    assert '"giver_contact_recovery_action_limit"' in benchmark_source
+    assert "giver_contact_recovery_action_limits = values" in benchmark_source
     assert (
         '"receiver_contact_centering_action_limit"'
         in benchmark_source
@@ -692,6 +694,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"presentation_ready_tolerance_m": 0.005' in benchmark_source
     assert "carry_lateral_action_limit: float = 0.06" in benchmark_source
     assert "carry_vertical_action_limit: float = 0.015" in benchmark_source
+    assert (
+        "giver_contact_recovery_action_limit: float = 1.0"
+        in benchmark_source
+    )
+    assert "giver_contact_recovery = giver_approach.clamp(" in benchmark_source
     assert (
         "self.carry_vertical_action_limit = 0.015"
         in handover_model_source
