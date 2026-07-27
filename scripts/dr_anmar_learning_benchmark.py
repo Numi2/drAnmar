@@ -1637,6 +1637,7 @@ def _handover_controller_sweep(
     receiver_offsets = []
     receiver_roll_offsets = [0.0] * len(values)
     presentation_fractions = [0.35] * len(values)
+    carry_vertical_action_limits = [0.10] * len(values)
     fixed_receiver_arc_fraction = 0.65
     selected_receiver_z_offset = -0.0018
     if parameter == "receiver_arc_fraction":
@@ -1695,11 +1696,30 @@ def _handover_controller_sweep(
         ]
         receiver_roll_offsets = [math.pi] * len(values)
         presentation_fractions = values
+    elif parameter == "carry_vertical_action_limit":
+        if any(not 0.01 <= value <= 0.20 for value in values):
+            return _fail(
+                "carry vertical action limits must be between 0.01 and 0.20"
+            )
+        geometry_offset = needle_geometry_grasp_offset_m(
+            fixed_receiver_arc_fraction
+        )
+        receiver_offsets = [
+            (
+                geometry_offset[0],
+                geometry_offset[1],
+                selected_receiver_z_offset,
+            )
+            for _ in values
+        ]
+        receiver_roll_offsets = [math.pi] * len(values)
+        carry_vertical_action_limits = values
     else:
         return _fail(
             "handover-sweep parameter must be receiver_arc_fraction "
             "receiver_grasp_z_offset, receiver_roll_offset_rad, or "
-            "presentation_fraction_from_giver"
+            "presentation_fraction_from_giver, or "
+            "carry_vertical_action_limit"
         )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
@@ -1964,6 +1984,9 @@ def _handover_controller_sweep(
                     presentation_fraction_from_giver=(
                         presentation_fractions[group_index]
                     ),
+                    carry_vertical_action_limit=(
+                        carry_vertical_action_limits[group_index]
+                    ),
                 )
                 giver_ee = group_obs["policy"][:, 32:35]
                 giver_grasp = group_obs["policy"][:, 46:49].clone()
@@ -2218,6 +2241,9 @@ def _handover_controller_sweep(
                     "presentation_fraction_from_giver": (
                         presentation_fractions[group_index]
                     ),
+                    "carry_vertical_action_limit": (
+                        carry_vertical_action_limits[group_index]
+                    ),
                     "receiver_grasp_offset_m": list(
                         receiver_offsets[group_index]
                     ),
@@ -2396,7 +2422,9 @@ def _handover_controller_sweep(
                 "presentation_ready_tolerance_m": 0.005,
                 "minimum_lift_height_in_robot_frame_m": -0.139,
                 "carry_lateral_action_limit": 0.06,
-                "carry_vertical_action_limit": 0.10,
+                "carry_vertical_action_limits": (
+                    carry_vertical_action_limits
+                ),
                 "giver_carry_starts_after_contact_window": True,
                 "receiver_close_distance_m": 0.001,
                 "receiver_contact_centering_action_limit": 0.005,
