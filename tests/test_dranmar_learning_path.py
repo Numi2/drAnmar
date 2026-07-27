@@ -525,7 +525,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in handover_model_source
     )
     assert (
-        "giver_transport_active = giver_carry_mode & giver_any_contact"
+        "giver_transport_active = (\n"
+        "            giver_carry_mode & giver_bilateral_contact"
         in handover_model_source
     )
     assert handover_model_source.count(
@@ -596,7 +597,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "giver_transport_active.unsqueeze(-1)" in benchmark_source
     assert "giver_carry_mode = (phase >= 1) & (phase <= 2)" in benchmark_source
     assert (
-        "giver_transport_active = giver_carry_mode & giver_any_contact"
+        "giver_transport_active = (\n"
+        "        giver_carry_mode & giver_bilateral_contact"
         in benchmark_source
     )
     assert "presentation_fraction_from_giver: float = 0.35" in benchmark_source

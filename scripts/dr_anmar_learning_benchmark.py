@@ -698,7 +698,9 @@ def _handover_teacher_action(
         dim=-1,
     )
     giver_carry_mode = (phase >= 1) & (phase <= 2)
-    giver_transport_active = giver_carry_mode & giver_any_contact
+    giver_transport_active = (
+        giver_carry_mode & giver_bilateral_contact
+    )
 
     presentation_ready = (
         torch.linalg.vector_norm(
