@@ -675,6 +675,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in launcher_source
     )
     assert (
+        "DR_ANMAR_POLICY_RECOVERY_PICKUP_VERTICAL_ACTION_LIMIT"
+        in launcher_source
+    )
+    assert (
         "DR_ANMAR_POLICY_CARRY_LATERAL_ACTION_LIMIT"
         in launcher_source
     )
@@ -703,6 +707,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"receiver_retention_failure_causes"' in benchmark_source
     assert '"first_episode_handover_diagnostics"' in benchmark_source
     assert '"pickup_causal_diagnostics"' in benchmark_source
+    assert '"transport_retention_diagnostics"' in benchmark_source
+    assert '"timeouts_after_any_midair_contact_loss"' in benchmark_source
+    assert '"maximum_midair_giver_contact_loss_steps"' in benchmark_source
     assert '"maximum_giver_bilateral_contact_steps"' in benchmark_source
     assert '"mean_maximum_clearance_m"' in benchmark_source
     assert '"giver_orientation_at_first_window"' in benchmark_source
@@ -761,6 +768,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in benchmark_source
     )
     assert (
+        'play.add_argument("--recovery_pickup_vertical_action_limit", type=float)'
+        in benchmark_source
+    )
+    assert (
         'play.add_argument("--carry_lateral_action_limit", type=float)'
         in benchmark_source
     )
@@ -801,6 +812,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"policy_pickup_vertical_action_limit"' in benchmark_source
     assert (
         '"policy_pickup_initial_vertical_action_limit"'
+        in benchmark_source
+    )
+    assert (
+        '"policy_recovery_pickup_vertical_action_limit"'
         in benchmark_source
     )
     assert '"policy_carry_lateral_action_limit"' in benchmark_source
@@ -957,7 +972,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in handover_model_source
     )
     assert (
-        "self.recovery_pickup_vertical_action_limit = 0.18"
+        "self.recovery_pickup_vertical_action_limit = 0.01"
         in handover_model_source
     )
     assert "pickup_recovery_context," in handover_model_source

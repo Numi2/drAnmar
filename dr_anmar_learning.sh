@@ -241,6 +241,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_PICKUP_INITIAL_VERTICAL_ACTION_LIMIT}"
             )
         fi
+        recovery_pickup_vertical_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECOVERY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
+            recovery_pickup_vertical_action_limit_args=(
+                --recovery_pickup_vertical_action_limit
+                "${DR_ANMAR_POLICY_RECOVERY_PICKUP_VERTICAL_ACTION_LIMIT}"
+            )
+        fi
         carry_lateral_action_limit_args=()
         if [[ -n "${DR_ANMAR_POLICY_CARRY_LATERAL_ACTION_LIMIT:-}" ]]; then
             carry_lateral_action_limit_args=(
@@ -319,6 +326,7 @@ case "${command}" in
             "${residual_scale_args[@]}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${pickup_initial_vertical_action_limit_args[@]}" \
+            "${recovery_pickup_vertical_action_limit_args[@]}" \
             "${carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${presentation_fraction_from_giver_args[@]}" \
@@ -353,6 +361,13 @@ case "${command}" in
             pickup_initial_vertical_action_limit_args=(
                 --pickup_initial_vertical_action_limit
                 "${DR_ANMAR_POLICY_PICKUP_INITIAL_VERTICAL_ACTION_LIMIT}"
+            )
+        fi
+        recovery_pickup_vertical_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECOVERY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
+            recovery_pickup_vertical_action_limit_args=(
+                --recovery_pickup_vertical_action_limit
+                "${DR_ANMAR_POLICY_RECOVERY_PICKUP_VERTICAL_ACTION_LIMIT}"
             )
         fi
         carry_lateral_action_limit_args=()
@@ -438,6 +453,7 @@ case "${command}" in
             --output_path "${output}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${pickup_initial_vertical_action_limit_args[@]}" \
+            "${recovery_pickup_vertical_action_limit_args[@]}" \
             "${carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${presentation_fraction_from_giver_args[@]}" \

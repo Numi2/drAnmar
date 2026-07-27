@@ -548,7 +548,7 @@ def _handover_teacher_action(
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_lateral_action_limit: float = 0.06,
     pickup_vertical_action_limit: float = 0.015,
-    recovery_pickup_vertical_action_limit: float = 0.18,
+    recovery_pickup_vertical_action_limit: float = 0.01,
     carry_vertical_action_limit: float = 0.015,
     giver_transport_min_contact_jaws: int = 2,
     giver_transport_normalized_contact_threshold: float = 0.002,
@@ -3595,6 +3595,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         controller.pickup_initial_vertical_action_limit = (
             args.pickup_initial_vertical_action_limit
         )
+    if args.recovery_pickup_vertical_action_limit is not None:
+        if not 0.0 < args.recovery_pickup_vertical_action_limit <= 0.3:
+            env.close()
+            return _fail(
+                "play recovery pickup vertical action limit must be in (0.0, 0.3]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "recovery_pickup_vertical_action_limit"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a recovery pickup vertical action limit"
+            )
+        controller.recovery_pickup_vertical_action_limit = (
+            args.recovery_pickup_vertical_action_limit
+        )
     if args.carry_lateral_action_limit is not None:
         if not 0.0 < args.carry_lateral_action_limit <= 0.1:
             env.close()
@@ -3866,6 +3883,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "ever_midair_giver_contact_loss": torch.zeros_like(
+                first_unresolved
+            ),
+            "current_midair_giver_contact_loss_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_midair_giver_contact_loss_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
             "first_giver_bilateral_contact_frame": torch.full(
                 (env.unwrapped.num_envs,),
                 -1,
@@ -3964,6 +3994,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "terminal_time_out": torch.zeros_like(first_unresolved),
         }
     if lift_diagnostics is not None:
         policy_observation = obs["policy"]
@@ -4240,6 +4271,38 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         ],
                         current_contact_steps,
                     )
+                    midair_before_receiver = (
+                        was_first_unresolved
+                        & (current_handover_phase >= 2)
+                        & (current_handover_phase < 3)
+                        & (clearance >= 0.01)
+                    )
+                    midair_giver_contact_loss = (
+                        midair_before_receiver
+                        & ~giver_bilateral_contact
+                    )
+                    current_midair_loss_steps = torch.where(
+                        midair_giver_contact_loss,
+                        first_handover_history[
+                            "current_midair_giver_contact_loss_steps"
+                        ]
+                        + 1,
+                        0,
+                    )
+                    first_handover_history[
+                        "current_midair_giver_contact_loss_steps"
+                    ] = current_midair_loss_steps
+                    first_handover_history[
+                        "maximum_midair_giver_contact_loss_steps"
+                    ] = torch.maximum(
+                        first_handover_history[
+                            "maximum_midair_giver_contact_loss_steps"
+                        ],
+                        current_midair_loss_steps,
+                    )
+                    first_handover_history[
+                        "ever_midair_giver_contact_loss"
+                    ] |= midair_giver_contact_loss
                     first_handover_history["maximum_clearance_m"] = (
                         torch.where(
                             was_first_unresolved,
@@ -4463,6 +4526,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_handover_history[
                         "terminal_pickup_attempts"
                     ][first_dones] = terminal_pickup_attempts[first_dones]
+                    first_handover_history[
+                        "terminal_time_out"
+                    ][first_dones] = term_values["time_out"][
+                        first_dones
+                    ].bool()
                     first_handover_history[
                         "maximum_pickup_attempts"
                     ] = torch.maximum(
@@ -5149,6 +5217,45 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 & (first_handover_max_phase == phase)
                 for phase, label in enumerate(phase_labels)
             }
+
+            def handover_retention_stats(mask: torch.Tensor) -> dict:
+                count = int(mask.sum().item())
+                if not count:
+                    return {"count": 0}
+                maximum_loss_steps = first_handover_history[
+                    "maximum_midair_giver_contact_loss_steps"
+                ][mask]
+                return {
+                    "count": count,
+                    "episodes_with_any_midair_bilateral_contact_loss": int(
+                        (
+                            first_handover_history[
+                                "ever_midair_giver_contact_loss"
+                            ][mask]
+                        )
+                        .sum()
+                        .item()
+                    ),
+                    "episodes_with_sustained_midair_loss_3_steps": int(
+                        (maximum_loss_steps >= 3).sum().item()
+                    ),
+                    "maximum_loss_steps_p50": float(
+                        torch.quantile(
+                            maximum_loss_steps.float(),
+                            0.5,
+                        ).item()
+                    ),
+                    "maximum_loss_steps_p90": float(
+                        torch.quantile(
+                            maximum_loss_steps.float(),
+                            0.9,
+                        ).item()
+                    ),
+                    "maximum_loss_steps_max": int(
+                        maximum_loss_steps.max().item()
+                    ),
+                }
+
             first_episode_handover_diagnostics = {
                 "pickup_attempt_outcomes": {
                     "maximum_attempts": 3,
@@ -5217,6 +5324,41 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         label: handover_cohort_stats(mask)
                         for label, mask in phase_masks.items()
                     },
+                },
+                "transport_retention_diagnostics": {
+                    "minimum_clearance_m": 0.01,
+                    "sustained_loss_steps": 3,
+                    "physical_signal": (
+                        "native_giver_bilateral_contact_loss_"
+                        "after_10mm_lift_before_receiver_acquisition"
+                    ),
+                    "overall": handover_retention_stats(first_completed),
+                    "by_maximum_phase": {
+                        label: handover_retention_stats(mask)
+                        for label, mask in phase_masks.items()
+                    },
+                    "timeouts_after_any_midair_contact_loss": int(
+                        (
+                            first_handover_history[
+                                "terminal_time_out"
+                            ]
+                            & first_handover_history[
+                                "ever_midair_giver_contact_loss"
+                            ]
+                        )
+                        .sum()
+                        .item()
+                    ),
+                    "successes_after_any_midair_contact_loss": int(
+                        (
+                            first_outcome_success
+                            & first_handover_history[
+                                "ever_midair_giver_contact_loss"
+                            ]
+                        )
+                        .sum()
+                        .item()
+                    ),
                 },
                 "unresolved": int(first_unresolved.sum().item()),
             }
@@ -5317,6 +5459,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 and hasattr(
                     policy_model.controller,
                     "pickup_initial_vertical_action_limit",
+                )
+                else None
+            ),
+            "policy_recovery_pickup_vertical_action_limit": (
+                float(
+                    policy_model.controller.recovery_pickup_vertical_action_limit
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "recovery_pickup_vertical_action_limit",
                 )
                 else None
             ),
@@ -5512,6 +5665,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--residual_scale", type=float)
     play.add_argument("--pickup_vertical_action_limit", type=float)
     play.add_argument("--pickup_initial_vertical_action_limit", type=float)
+    play.add_argument("--recovery_pickup_vertical_action_limit", type=float)
     play.add_argument("--carry_lateral_action_limit", type=float)
     play.add_argument("--carry_lateral_ramp_height", type=float)
     play.add_argument("--presentation_fraction_from_giver", type=float)

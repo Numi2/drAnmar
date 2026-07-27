@@ -204,12 +204,15 @@ observation. It leaves first-attempt geometry unchanged and activates the
 rotated arc frame only for retries. This recovery path intentionally starts
 from the analytic base with zero residual and does not claim compatibility
 with prior learned-policy observation shapes.
-The first handover pickup uses a `0.010` vertical action limit. A recovered
-re-lift reuses the checkpoint-free Stage 4 analytic pickup authority of
-`0.18` until the 10 mm clearance gate, then returns to the `0.015` loaded
-transport limit. This shortens retries without changing success, force, or
-contact authority. The normal handover pickup uses `0.010` while
-presentation retains `0.015`. The slower pickup reduced needle acceleration
+The first handover pickup and recovered re-lift both use a `0.010` vertical
+action limit before the 10 mm clearance gate, then return to the `0.015`
+loaded transport limit. The checkpoint-free Stage 4 standalone authority of
+`0.18` was explicitly rejected for fallen-needle recovery: a 1,200-environment
+seed-17 challenge produced 547 successes, exhausted all three attempts in 110
+environments, and recovered only one success. A fallen and reoriented needle
+does not inherit the reset-aligned Stage 4 dynamics contract. The normal
+handover pickup uses `0.010` while presentation retains `0.015`. The slower
+pickup reduced needle acceleration
 and mid-air loss without reducing final presentation authority. Controlled
 full-population challenges also tested `0.0105`, `0.0125`, `0.015`, `0.03`,
 `0.06`, `0.12`, `0.18`, and `0.24`; the response was not monotonic, so only

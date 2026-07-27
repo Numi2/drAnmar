@@ -51,7 +51,11 @@ class HandoverAnalyticController(nn.Module):
         self.carry_lateral_ramp_height = 0.01
         self.pickup_vertical_action_limit = 0.01
         self.pickup_initial_vertical_action_limit = 0.01
-        self.recovery_pickup_vertical_action_limit = 0.18
+        # A fallen needle is not the reset-aligned Stage 4 pickup geometry.
+        # Keep recovery at the qualified handover pickup authority; the
+        # 0.18 standalone-lift setting exhausted 110/1,200 handover retries
+        # and recovered only one episode.
+        self.recovery_pickup_vertical_action_limit = 0.01
         self.pickup_deceleration_height = 0.01
         self.carry_vertical_action_limit = 0.015
         self.giver_lift_on_live_contact = True
