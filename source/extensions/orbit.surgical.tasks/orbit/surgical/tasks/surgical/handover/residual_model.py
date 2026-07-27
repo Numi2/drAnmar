@@ -40,6 +40,7 @@ class HandoverAnalyticController(nn.Module):
         self.slow_approach_action_limit = 0.1
         self.receiver_contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
+        self.giver_contact_recovery_action_limit = 0.025
         self.presentation_fraction_from_giver = 0.35
         self.presentation_height_in_robot_frame = -0.13
         self.presentation_ready_tolerance = 0.005
@@ -253,6 +254,18 @@ class HandoverAnalyticController(nn.Module):
             giver_transport_active.unsqueeze(-1),
             giver_carry,
             giver_approach,
+        )
+        giver_contact_recovery = giver_approach.clamp(
+            -self.giver_contact_recovery_action_limit,
+            self.giver_contact_recovery_action_limit,
+        )
+        giver_translation = torch.where(
+            (
+                giver_carry_mode
+                & ~giver_transport_active
+            ).unsqueeze(-1),
+            giver_contact_recovery,
+            giver_translation,
         )
         giver_translation = torch.where(
             (
