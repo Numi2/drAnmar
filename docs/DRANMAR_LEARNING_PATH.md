@@ -173,7 +173,9 @@ while closing, avoiding a push through the giver's grasp. The two PSM roots
 are 10 cm apart; the current
 seed moves the needle 3.5 cm from the giver toward the receiver, keeping both
 instruments inside comfortable reach. Reaching that authored exchange point
-organizes the demonstration but is not part of the success predicate.
+organizes the demonstration but is not part of the success predicate. The
+receiver may begin its approach within 15 mm of that point, avoiding an
+unnecessary precision-placement prerequisite before physical handover.
 The giver begins lifting after the three-of-five native contact window
 completes. Its handover carry limits remain below the faster Stage 4 limits
 because both early carry and the faster profile reduced transfer reliability

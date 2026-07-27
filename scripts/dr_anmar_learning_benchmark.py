@@ -522,6 +522,7 @@ def _handover_teacher_action(
     normalized_contact_threshold: float = 0.002,
     presentation_fraction_from_giver: float = 0.35,
     presentation_height_in_robot_frame: float = -0.13,
+    presentation_ready_tolerance: float = 0.015,
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_lateral_action_limit: float = 0.06,
     carry_vertical_action_limit: float = 0.10,
@@ -684,7 +685,7 @@ def _handover_teacher_action(
             giver_target - object_in_giver,
             dim=-1,
         )
-        < 0.005
+        < presentation_ready_tolerance
     )
 
     giver_translation = torch.where(
@@ -2277,6 +2278,7 @@ def _handover_controller_sweep(
                 ],
                 "presentation_fraction_from_giver": 0.35,
                 "presentation_height_in_robot_frame_m": -0.13,
+                "presentation_ready_tolerance_m": 0.015,
                 "minimum_lift_height_in_robot_frame_m": -0.139,
                 "carry_lateral_action_limit": 0.06,
                 "carry_vertical_action_limit": 0.10,
