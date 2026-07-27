@@ -56,13 +56,15 @@
       "clinical_validation": false
     },
     {
-      "id": "dr-anmar-suturable-tissue-v1",
-      "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
-      "explicit_tetmesh": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
-      "profile": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
-      "report": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.report.json",
-      "live_integration": "dr-anmar-suturable-tissue",
-      "live_behavior": "intact_physx_deformation_contact_attachment_and_setup_domain_with_homogenized_layer_proxy",
+      "id": "dranmar-needle-ready-tissue-v2",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/needle_ready_tissue_unit.usda",
+      "explicit_tetmesh": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/needle_ready_tissue_contact.usda",
+      "profile": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/geometry_contract.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/geometry_report.json",
+      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/qualification_contract.json",
+      "native_evidence": "physics_next/benchmarks/needle-ready-tissue/contact-newton.json",
+      "live_integration": "post_handover_needle_to_deformable_tissue_frontier",
+      "live_behavior": "nested_layer_conforming_openusd_tetmesh_lods_with_stable_semantic_coordinates_intact_newton_vbd_contact_and_isaac_lab_adapter",
       "blocked_behavior": [
         "arbitrary_puncture",
         "persistent_tract",
@@ -72,7 +74,7 @@
       "product_capability": "simulation_training_component",
       "training_readiness": "available_for_training_workcell_composition",
       "software_evidence": "repository_verified_asset_closure",
-      "native_simulator_evidence": "native_execution_not_yet_recorded",
+      "native_simulator_evidence": "newton_vbd_contact_deterministic_replay_isaac_lab_spawn_and_2400_training_lod_capacity_recorded_on_rtx_4090",
       "real_world_evidence": "deformation_puncture_pullout_and_closure_bench_evidence_not_yet_established",
       "clinical_validation": false
     },

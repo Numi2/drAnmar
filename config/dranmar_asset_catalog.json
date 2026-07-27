@@ -1,6 +1,6 @@
 {
   "schema": "dr.anmar.asset-catalog-policy.v1",
-  "catalog_version": "1.3.0",
+  "catalog_version": "1.4.0",
   "description": "One catalog contract for Dr.Anmar-owned OpenUSD and multimodal simulation assets plus the pinned NVIDIA Isaac for Healthcare provider.",
   "release": {
     "lock_path": "config/dranmar_asset_catalog.lock.json",
@@ -86,7 +86,8 @@
         "Props/SurgicalHemostasis",
         "Props/SurgicalOncology",
         "Props/SurgicalPreparation",
-        "Props/SurgicalReconstruction"
+        "Props/SurgicalReconstruction",
+        "Props/SurgicalTissue"
       ],
       "dr_anmar_repository": [
         "assets/dr_anmar"

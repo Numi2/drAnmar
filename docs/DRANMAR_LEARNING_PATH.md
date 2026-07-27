@@ -14,6 +14,13 @@ flowchart LR
     E --> F["Needle handover"]
 ```
 
+Stage 6 ends the rigid-object foundation. The next frontier is deformable
+tissue, beginning with the canonical
+[Needle-Ready Tissue Unit](DRANMAR_NEEDLE_READY_TISSUE.md). Its first task is
+retained-needle approach to a sampled tissue entry frame; puncture, tract,
+thread passage, and tissue damage remain blocked until topology and physical
+force gates pass.
+
 The versioned contract is
 [`config/dranmar_learning_path.json`](../config/dranmar_learning_path.json).
 Every task also has a stable `DrAnmar-*` Gym ID, so datasets, checkpoints, and

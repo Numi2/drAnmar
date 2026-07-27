@@ -1,0 +1,39 @@
+{
+  "schema": "dr.anmar.needle-ready-tissue-isaaclab-smoke.v1",
+  "created_at": "2026-07-27T21:58:17.877461+00:00",
+  "asset": {
+    "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/needle_ready_tissue_contact.usda",
+    "sha256": "c92285616d7015d86ed229f16dadc66b3420ca8503e196ae6e380575e5b991f2",
+    "lod": "contact",
+    "nodal_count": 2470
+  },
+  "runtime": {
+    "isaac_sim": "6.0.1.0",
+    "isaac_lab_revision": "51104d55d46192f9c981f2b63007d5156e141cec",
+    "backend": "nvidia_newton_vbd_via_isaac_lab",
+    "device": "cuda:0"
+  },
+  "solver": {
+    "dt_s": 0.001,
+    "substeps": 2,
+    "iterations": 4,
+    "cuda_graph": true
+  },
+  "metrics": {
+    "steps_completed": 12,
+    "finite_state_fraction": 1.0,
+    "physics_step_ms_p50": 0.3242454840801656,
+    "physics_step_ms_p95": 0.5234103708062319,
+    "physics_step_ms_max": 0.7096750196069479
+  },
+  "default_state_sha256": "6258caf129a86076b004bf4c41b8d62f8e422d18267aa9dcc833536d746e06c9",
+  "final_state_sha256": "fe017a3ef13dd7628536815e5d72fe0dc1554cad75b31b5a5ee746eefa16fd4d",
+  "spawn_gate_passed": true,
+  "scope": "spawn_reset_and_finite_step_only",
+  "clinical_validation": false,
+  "limitations": [
+    "This proves Isaac Lab discovery, spawn, reset and stepping of the canonical TetMesh.",
+    "The direct Newton qualification separately exercises fixture, retraction, release and rigid-soft contact.",
+    "No puncture, topology, material calibration or clinical claim is established."
+  ]
+}
