@@ -242,6 +242,8 @@
         "analytic_giver_pregrasp_orientation_target_xyzw": [0.0, 0.0, 0.0, 1.0],
         "analytic_giver_pregrasp_orientation_tolerance_rad": 0.035,
         "analytic_giver_pregrasp_orientation_action_limit": 0.6,
+        "analytic_giver_post_contact_orientation_action_limit": 0.0,
+        "analytic_grasp_offset_frame": "needle_local_rotated_by_observed_needle_quaternion",
         "analytic_receiver_contact_centering_action_limit": 0.0025,
         "analytic_receiver_contact_centering_action_limit_source": "isaac_lab_seed17_1200_environment_six_way_physical_sweep",
         "reward_contract": {

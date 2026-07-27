@@ -625,7 +625,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert handover_model_source.count(
         "giver_transport_active.unsqueeze(-1)"
-    ) >= 2
+    ) >= 1
     assert handover_model_source.count("~receiver_any_contact") >= 1
     assert ") > 0.5" in handover_model_source
     assert "parameter.requires_grad_(False)" in handover_model_source
@@ -815,6 +815,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert "giver_pregrasp_orientation_ready = (" in handover_model_source
     assert "& giver_pregrasp_orientation_ready" in handover_model_source
+    assert "quat_apply(" in handover_model_source
+    assert "giver_orientation_action = torch.zeros_like(" in (
+        handover_model_source
+    )
     assert (
         "carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction"
         in handover_model_source
