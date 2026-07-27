@@ -382,9 +382,16 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert contract["receiver_contact_flicker_steps"] == 1
     assert (
         manifest["stages"][5]["learning"]["initialization"]
-        == "scheduled_dagger_from_closest_arm_analytic_teacher"
+        == "exact_closest_arm_analytic_base_plus_bounded_translation_residual"
     )
-    assert manifest["stages"][5]["learning"]["actor_initial_std"] == 0.05
+    assert (
+        manifest["stages"][5]["learning"]["residual_action_limit"]
+        == 0.03
+    )
+    assert (
+        manifest["stages"][5]["learning"]["residual_initial_std"]
+        == 0.01
+    )
     assert (
         manifest["stages"][5]["learning"][
             "teacher_success_does_not_override_physical_qualification"
@@ -500,13 +507,21 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "needle_lift_residual_actor([256, 128, 64], initial_std=0.01)"
         in needle_agent_source
     )
-    assert "def handover_behavior_cloned_actor(" in learning_cfg_source
-    assert "initial_std: float = 0.05" in learning_cfg_source
+    handover_model_source = (
+        TASK_ROOT / "surgical/handover/residual_model.py"
+    ).read_text()
+    assert "class HandoverResidualMLPModel(MLPModel):" in handover_model_source
+    assert "class HandoverAnalyticController(nn.Module):" in handover_model_source
+    assert "torch.where(residual_mask, sampled, mean)" in handover_model_source
+    assert "parameter.requires_grad_(False)" in handover_model_source
+    assert "self.residual_scale = residual_scale" in handover_model_source
+    assert "def handover_residual_actor(" in learning_cfg_source
+    assert "initial_std: float = 0.01" in learning_cfg_source
     assert (
-        "actor = handover_behavior_cloned_actor("
+        "actor = handover_residual_actor("
         in handover_agent_source
     )
-    assert "initial_std=0.05" in handover_agent_source
+    assert "initial_std=0.01" in handover_agent_source
     assert "probe)" in launcher_source
     assert "controller-sweep)" in launcher_source
     assert "handover-sweep)" in launcher_source

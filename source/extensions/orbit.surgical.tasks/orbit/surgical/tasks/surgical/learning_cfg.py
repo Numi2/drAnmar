@@ -84,6 +84,17 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
     residual_scale: float = 0.03
 
 
+@configclass
+class DrAnmarHandoverResidualModelCfg(RslRlMLPModelCfg):
+    """Exact physical handover base with bounded learned translations."""
+
+    class_name = (
+        "orbit.surgical.tasks.surgical.handover.residual_model:"
+        "HandoverResidualMLPModel"
+    )
+    residual_scale: float = 0.03
+
+
 def _actor(hidden_dims: list[int], *, initial_std: float = 1.0) -> RslRlMLPModelCfg:
     return RslRlMLPModelCfg(
         hidden_dims=hidden_dims,
@@ -152,14 +163,23 @@ def needle_lift_residual_actor(
     return actor
 
 
-def handover_behavior_cloned_actor(
+def handover_residual_actor(
     hidden_dims: list[int],
     *,
-    initial_std: float = 0.05,
-) -> RslRlMLPModelCfg:
-    """Full-action actor initialized by the closest-arm handover teacher."""
+    initial_std: float = 0.01,
+) -> DrAnmarHandoverResidualModelCfg:
+    """Exact closest-arm sequence plus bounded Cartesian residuals."""
 
-    return _actor(hidden_dims, initial_std=initial_std)
+    return DrAnmarHandoverResidualModelCfg(
+        hidden_dims=hidden_dims,
+        activation="elu",
+        obs_normalization=True,
+        distribution_cfg=(
+            RslRlMLPModelCfg.GaussianDistributionCfg(
+                init_std=initial_std
+            )
+        ),
+    )
 
 
 def _critic(hidden_dims: list[int]) -> RslRlMLPModelCfg:

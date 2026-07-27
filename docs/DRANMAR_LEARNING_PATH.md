@@ -181,15 +181,14 @@ completes. Its handover carry limits remain below the faster Stage 4 limits
 because both early carry and the faster profile reduced transfer reliability
 in controlled dual-arm comparisons.
 
-Stage 6 no longer starts PPO from a random 14-action policy. Scheduled DAgger
-first initializes the full dual-arm actor from the closest-arm analytic
-teacher, using a 0.05 initial action standard deviation. After a teacher
-warm-up, the student increasingly controls the simulator while the teacher
-labels the student's visited states, preventing open-loop imitation drift.
-PPO may resume only a closed-loop-validated hashed DAgger checkpoint and then
-improves against simulator-owned rewards and terminations. Teacher imitation
-is initialization only; it cannot grant physical success or bypass the
-held-out promotion gate.
+Stage 6 no longer starts PPO from a random 14-action policy. The exact
+closest-arm/contact-aware sequence is the deterministic policy base. PPO may
+learn only bounded translation residuals during giver transport and receiver
+acquisition, with a 0.03 action limit and 0.01 fixed initial exploration
+standard deviation. Role selection, sequencing, wrist control, both grippers,
+release, and retreat remain analytic and cannot be bypassed by exploration.
+The analytic base cannot grant physical success or bypass the held-out
+promotion gate.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter
