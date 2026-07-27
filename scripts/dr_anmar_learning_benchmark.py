@@ -539,7 +539,7 @@ def _handover_teacher_action(
     slow_approach_action_limit: float = 0.1,
     receiver_contact_centering_action_limit: float = 0.0025,
     normalized_contact_threshold: float = 0.002,
-    presentation_fraction_from_giver: float = 0.35,
+    presentation_fraction_from_giver: float = 0.30,
     presentation_height_in_robot_frame: float = -0.13,
     presentation_ready_tolerance: float = 0.005,
     minimum_lift_height_in_robot_frame: float = -0.139,
@@ -1656,7 +1656,7 @@ def _handover_controller_sweep(
     parameter = args.parameter
     receiver_offsets = []
     receiver_roll_offsets = [0.0] * len(values)
-    presentation_fractions = [0.35] * len(values)
+    presentation_fractions = [0.30] * len(values)
     carry_vertical_action_limits = [0.015] * len(values)
     receiver_close_distances = [0.001] * len(values)
     receiver_contact_centering_action_limits = [0.0025] * len(values)
@@ -2552,7 +2552,7 @@ def _handover_controller_sweep(
                     "giver_move_into_receiver_range",
                     "physical_ownership_transfer",
                 ],
-                "presentation_fraction_from_giver": 0.35,
+                "presentation_fraction_from_giver": 0.30,
                 "presentation_height_in_robot_frame_m": -0.13,
                 "presentation_ready_tolerance_m": 0.005,
                 "minimum_lift_height_in_robot_frame_m": -0.139,

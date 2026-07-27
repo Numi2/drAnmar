@@ -413,6 +413,12 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     )
     assert (
         manifest["stages"][5]["learning"][
+            "analytic_presentation_fraction_from_giver"
+        ]
+        == 0.3
+    )
+    assert (
+        manifest["stages"][5]["learning"][
             "analytic_receiver_contact_centering_action_limit"
         ]
         == 0.0025
@@ -686,7 +692,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "        & (giver_contact_count >= giver_transport_min_contact_jaws)"
         in benchmark_source
     )
-    assert "presentation_fraction_from_giver: float = 0.35" in benchmark_source
+    assert "presentation_fraction_from_giver: float = 0.30" in benchmark_source
     assert "presentation_height_in_robot_frame: float = -0.13" in benchmark_source
     assert "presentation_ready_tolerance: float = 0.005" in benchmark_source
     assert '"presentation_ready_tolerance_m": 0.005' in benchmark_source
