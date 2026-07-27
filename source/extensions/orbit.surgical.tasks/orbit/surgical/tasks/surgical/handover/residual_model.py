@@ -58,6 +58,7 @@ class HandoverAnalyticController(nn.Module):
         self.giver_pregrasp_orientation_tolerance = 0.035
         self.giver_transport_orientation_action_limit = 0.035
         self.receiver_orientation_action_limit = 0.6
+        self.receiver_residual_enabled_for_learning = True
         self.giver_grasp_x = float(
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
         )
@@ -400,6 +401,18 @@ class HandoverAnalyticController(nn.Module):
             giver_release_translation,
             giver_translation,
         )
+        giver_recovery_translation = (
+            (giver_pregrasp_position - giver_ee)
+            / self.position_scale
+        ).clamp(
+            -self.slow_approach_action_limit,
+            self.slow_approach_action_limit,
+        )
+        giver_translation = torch.where(
+            (phase == 4).unsqueeze(-1),
+            giver_recovery_translation,
+            giver_translation,
+        )
 
         receiver_translation = torch.where(
             receiver_approach_active.unsqueeze(-1),
@@ -448,7 +461,7 @@ class HandoverAnalyticController(nn.Module):
             (phase == 3) & ~receiver_bilateral_contact
         )
         receiver_closing = (
-            (phase >= 2)
+            ((phase == 2) | (phase == 3))
             & (
                 (
                     receiver_distance
@@ -501,6 +514,11 @@ class HandoverAnalyticController(nn.Module):
                 (phase == 0)
                 & ~giver_any_contact
             ).unsqueeze(-1),
+            giver_pregrasp_orientation_action,
+            giver_orientation_action,
+        )
+        giver_orientation_action = torch.where(
+            (phase == 4).unsqueeze(-1),
             giver_pregrasp_orientation_action,
             giver_orientation_action,
         )
@@ -571,7 +589,10 @@ class HandoverAnalyticController(nn.Module):
             giver_pickup_transport_residual.unsqueeze(-1)
         )
         receiver_residual = torch.zeros_like(receiver_action)
-        receiver_residual_enabled = receiver_approach_active
+        receiver_residual_enabled = (
+            receiver_approach_active
+            & self.receiver_residual_enabled_for_learning
+        )
         receiver_residual[:, :3] = receiver_residual_enabled.unsqueeze(-1)
         no_giver_residual = torch.zeros_like(giver_residual)
         no_receiver_residual = torch.zeros_like(receiver_residual)
@@ -643,7 +664,8 @@ class HandoverResidualMLPModel(MLPModel):
                     parameter.requires_grad_(False)
 
     def configure_giver_adaptation(self) -> None:
-        """Freeze the qualified receiver policy and train giver-only rows."""
+        """Train only zero-influence giver rows around the analytic base."""
+        self.controller.receiver_residual_enabled_for_learning = False
         final_linear = next(
             module
             for module in reversed(self.mlp)

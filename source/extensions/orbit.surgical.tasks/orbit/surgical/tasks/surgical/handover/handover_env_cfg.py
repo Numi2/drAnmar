@@ -323,6 +323,10 @@ class TerminationsCfg:
         func=mdp.needle_dropped_after_pickup
     )
 
+    pickup_attempts_exhausted = DoneTerm(
+        func=mdp.pickup_attempts_exhausted
+    )
+
     premature_giver_release = DoneTerm(
         func=mdp.premature_giver_release
     )

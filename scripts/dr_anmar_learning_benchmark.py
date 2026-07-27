@@ -650,6 +650,18 @@ def _handover_teacher_action(
         object_in_giver,
         giver_grasp_offset,
     )
+    giver_recovery_position = object_in_giver.clone()
+    giver_recovery_position[:, 0] += giver_grasp_offset[0]
+    giver_recovery_position[:, 1] += giver_grasp_offset[1]
+    giver_recovery_position[:, 2] += (
+        giver_grasp_offset[2] + approach_height
+    )
+    giver_recovery_action = (
+        (giver_recovery_position - giver_ee) / position_scale
+    ).clamp(
+        -slow_approach_action_limit,
+        slow_approach_action_limit,
+    )
     receiver_approach, receiver_distance = approach_action(
         receiver_ee,
         object_in_receiver,
@@ -778,6 +790,11 @@ def _handover_teacher_action(
         giver_release_translation,
         giver_translation,
     )
+    giver_translation = torch.where(
+        (phase == 4).unsqueeze(-1),
+        giver_recovery_action,
+        giver_translation,
+    )
     receiver_wait = torch.zeros_like(receiver_approach)
     receiver_translation = torch.where(
         receiver_approach_active.unsqueeze(-1),
@@ -823,7 +840,7 @@ def _handover_teacher_action(
         & ~receiver_bilateral_contact
     )
     receiver_closing = (
-        (phase >= 2)
+        ((phase == 2) | (phase == 3))
         & (
             (receiver_distance < receiver_close_distance)
             | torch.any(
@@ -1470,8 +1487,18 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             for parameter_group in runner.alg.optimizer.param_groups:
                 parameter_group["lr"] = args.learning_rate
     elif args.handover_giver_adaptation:
-        env.close()
-        return _fail("giver adaptation requires an initial checkpoint")
+        if "Handover-Needle-Dual-PSM-IK-Rel" not in args.task:
+            env.close()
+            return _fail(
+                "giver adaptation requires the dual-PSM needle handover task"
+            )
+        policy_model = runner.alg.get_policy()
+        if not hasattr(policy_model, "configure_giver_adaptation"):
+            env.close()
+            return _fail(
+                "handover policy does not support giver adaptation"
+            )
+        policy_model.configure_giver_adaptation()
     runner.logger.git_status_repos = []
 
     started = time.perf_counter()
@@ -1526,6 +1553,12 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "optimizer_state_reset": True,
                     "shared_actor_and_receiver_rows_frozen": True,
                     "trainable_output_rows": [3, 4, 5, 10, 11, 12],
+                    "initial_policy_influence": (
+                        "loaded_checkpoint"
+                        if initial_checkpoint is not None
+                        else "zero_residual_analytic_base"
+                    ),
+                    "receiver_residual_disabled": True,
                 }
                 if args.handover_giver_adaptation
                 else None
@@ -2084,7 +2117,11 @@ def _handover_controller_sweep(
         dtype=torch.bool,
         device=env.unwrapped.device,
     )
-    max_phase = torch.argmax(obs["policy"][:, 77:82], dim=-1)
+    initial_handover_state = getattr(
+        env.unwrapped,
+        "_dr_anmar_handover_state",
+    )
+    max_phase = initial_handover_state["progress_phase"].clone()
     completed = torch.zeros(len(values), dtype=torch.int64, device=env.unwrapped.device)
     successes = torch.zeros_like(completed)
     timeouts = torch.zeros_like(completed)
@@ -2102,6 +2139,7 @@ def _handover_controller_sweep(
     )
     procedural_failure_names = (
         "needle_dropped_after_pickup",
+        "pickup_attempts_exhausted",
         "premature_giver_release",
         "receiver_retention_lost",
     )
@@ -2172,6 +2210,23 @@ def _handover_controller_sweep(
     successful_environment = torch.zeros_like(
         ever_receiver_jaw_1_contact
     )
+    first_attempt_successful_environment = torch.zeros_like(
+        ever_receiver_jaw_1_contact
+    )
+    recovered_successful_environment = torch.zeros_like(
+        ever_receiver_jaw_1_contact
+    )
+    first_terminal_pickup_attempts = torch.zeros(
+        env.unwrapped.num_envs,
+        dtype=torch.long,
+        device=env.unwrapped.device,
+    )
+    maximum_pickup_attempts_observed = torch.zeros_like(
+        first_terminal_pickup_attempts
+    )
+    maximum_pickup_recoveries_observed = torch.zeros_like(
+        first_terminal_pickup_attempts
+    )
     ever_state_lifted = torch.zeros_like(
         ever_receiver_jaw_1_contact
     )
@@ -2221,8 +2276,22 @@ def _handover_controller_sweep(
                     ),
                 )
             was_unresolved = unresolved.clone()
-            current_phase = torch.argmax(obs["policy"][:, 77:82], dim=-1)
-            max_phase = torch.maximum(max_phase, current_phase)
+            current_handover_state = getattr(
+                env.unwrapped,
+                "_dr_anmar_handover_state",
+            )
+            max_phase = torch.maximum(
+                max_phase,
+                current_handover_state["progress_phase"],
+            )
+            maximum_pickup_attempts_observed = torch.maximum(
+                maximum_pickup_attempts_observed,
+                current_handover_state["pickup_attempt_count"],
+            )
+            maximum_pickup_recoveries_observed = torch.maximum(
+                maximum_pickup_recoveries_observed,
+                current_handover_state["pickup_recovery_count"],
+            )
             actions = torch.zeros(
                 env.unwrapped.num_envs,
                 14,
@@ -2326,11 +2395,41 @@ def _handover_controller_sweep(
             any_failure = hard_failure | procedural_failure
             time_out_term = manager.get_term("time_out")
             first_done = was_unresolved & dones
-            successful_environment |= (
+            first_success = (
                 first_done & success_term & ~any_failure
             )
+            successful_environment |= first_success
+            handover_state_data = getattr(
+                env.unwrapped,
+                "_dr_anmar_handover_state",
+            )
+            terminal_pickup_attempts = torch.maximum(
+                handover_state_data["pickup_attempt_count"],
+                handover_state_data["last_pickup_attempt_count"],
+            )
+            terminal_pickup_recoveries = torch.maximum(
+                handover_state_data["pickup_recovery_count"],
+                handover_state_data["last_pickup_recovery_count"],
+            )
+            first_terminal_pickup_attempts[first_done] = (
+                terminal_pickup_attempts[first_done]
+            )
+            maximum_pickup_attempts_observed = torch.maximum(
+                maximum_pickup_attempts_observed,
+                terminal_pickup_attempts,
+            )
+            maximum_pickup_recoveries_observed = torch.maximum(
+                maximum_pickup_recoveries_observed,
+                terminal_pickup_recoveries,
+            )
+            first_attempt_successful_environment |= (
+                first_success & (terminal_pickup_attempts == 1)
+            )
+            recovered_successful_environment |= (
+                first_success & (terminal_pickup_attempts > 1)
+            )
             max_phase = torch.where(
-                first_done & success_term & ~any_failure,
+                first_success,
                 torch.full_like(max_phase, 4),
                 max_phase,
             )
@@ -2378,10 +2477,6 @@ def _handover_controller_sweep(
             object_height = mdp_common.as_torch(
                 env.unwrapped.scene["object"].data.root_pos_w
             )[:, 2]
-            handover_state_data = getattr(
-                env.unwrapped,
-                "_dr_anmar_handover_state",
-            )
             state_clearance = handover_state_data["clearance"]
             ever_state_lifted |= was_unresolved & handover_state_data["lifted"]
             receiver_position = mdp_common.as_torch(
@@ -2577,6 +2672,31 @@ def _handover_controller_sweep(
                     ),
                     "completed_episodes": completed_count,
                     "successful_episodes": success_count,
+                    "first_attempt_successful_episodes": int(
+                        first_attempt_successful_environment[
+                            start:stop
+                        ].sum().item()
+                    ),
+                    "recovered_successful_episodes": int(
+                        recovered_successful_environment[
+                            start:stop
+                        ].sum().item()
+                    ),
+                    "pickup_attempt_histogram": {
+                        str(attempt): int(
+                            (
+                                first_terminal_pickup_attempts[start:stop]
+                                == attempt
+                            ).sum().item()
+                        )
+                        for attempt in range(4)
+                    },
+                    "environments_with_pickup_recovery": int(
+                        (
+                            maximum_pickup_recoveries_observed[start:stop]
+                            > 0
+                        ).sum().item()
+                    ),
                     "success_rate": (
                         success_count / completed_count
                         if completed_count
@@ -2684,6 +2804,7 @@ def _handover_controller_sweep(
             "num_envs": env.unwrapped.num_envs,
             "frames_per_env": args.num_frames,
             "first_terminal_outcome_per_environment": True,
+            "checkpoint": None,
             "video_capture": (
                 {
                     "environment_index": args.video_env_index,
@@ -2738,9 +2859,13 @@ def _handover_controller_sweep(
             "handover_motion_contract": {
                 "sequence": [
                     "closest_arm_pickup",
+                    "up_to_two_safe_regrasp_relift_recoveries",
                     "giver_move_into_receiver_range",
                     "physical_ownership_transfer",
                 ],
+                "maximum_pickup_attempts": 3,
+                "pickup_recovery_requires_physics_owned_custody_loss": True,
+                "pickup_recovery_success_credit": False,
                 "presentation_fraction_from_giver": 0.35,
                 "presentation_height_in_robot_frame_m": -0.13,
                 "presentation_ready_tolerance_m": 0.005,
@@ -3611,9 +3736,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         )
 
         handover_observation = obs["policy"]
-        first_handover_max_phase = torch.argmax(
-            handover_observation[:, 77:82], dim=-1
+        initial_handover_state = getattr(
+            env.unwrapped,
+            "_dr_anmar_handover_state",
         )
+        first_handover_max_phase = initial_handover_state[
+            "progress_phase"
+        ].clone()
         giver_is_robot_1 = handover_observation[:, 82] > 0.5
         initial_object_in_giver = torch.where(
             giver_is_robot_1.unsqueeze(-1),
@@ -3726,6 +3855,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 -torch.inf,
                 device=env.unwrapped.device,
             ),
+            "maximum_pickup_attempts": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_pickup_recoveries": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "terminal_pickup_attempts": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
         }
     if lift_diagnostics is not None:
         policy_observation = obs["policy"]
@@ -3772,10 +3916,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             with torch.inference_mode():
                 was_first_unresolved = first_unresolved.clone()
                 if first_handover_max_phase is not None:
-                    current_handover_phase = torch.argmax(
-                        obs["policy"][:, 77:82],
-                        dim=-1,
+                    current_handover_state = getattr(
+                        env.unwrapped,
+                        "_dr_anmar_handover_state",
                     )
+                    current_handover_phase = current_handover_state[
+                        "progress_phase"
+                    ]
                     first_handover_max_phase = torch.where(
                         was_first_unresolved,
                         torch.maximum(
@@ -3785,6 +3932,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_handover_max_phase,
                     )
                     assert first_handover_history is not None
+                    first_handover_history[
+                        "maximum_pickup_attempts"
+                    ] = torch.maximum(
+                        first_handover_history[
+                            "maximum_pickup_attempts"
+                        ],
+                        current_handover_state["pickup_attempt_count"],
+                    )
+                    first_handover_history[
+                        "maximum_pickup_recoveries"
+                    ] = torch.maximum(
+                        first_handover_history[
+                            "maximum_pickup_recoveries"
+                        ],
+                        current_handover_state["pickup_recovery_count"],
+                    )
                     handover_observation = obs["policy"]
                     giver_is_robot_1 = handover_observation[:, 82] > 0.5
                     giver_contacts = torch.where(
@@ -4186,6 +4349,42 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 first_successes = first_dones & successes.bool()
                 first_outcome_success |= first_successes
                 if first_handover_max_phase is not None:
+                    assert first_handover_history is not None
+                    post_handover_state = getattr(
+                        env.unwrapped,
+                        "_dr_anmar_handover_state",
+                    )
+                    terminal_pickup_attempts = torch.maximum(
+                        post_handover_state["pickup_attempt_count"],
+                        post_handover_state[
+                            "last_pickup_attempt_count"
+                        ],
+                    )
+                    terminal_pickup_recoveries = torch.maximum(
+                        post_handover_state["pickup_recovery_count"],
+                        post_handover_state[
+                            "last_pickup_recovery_count"
+                        ],
+                    )
+                    first_handover_history[
+                        "terminal_pickup_attempts"
+                    ][first_dones] = terminal_pickup_attempts[first_dones]
+                    first_handover_history[
+                        "maximum_pickup_attempts"
+                    ] = torch.maximum(
+                        first_handover_history[
+                            "maximum_pickup_attempts"
+                        ],
+                        terminal_pickup_attempts,
+                    )
+                    first_handover_history[
+                        "maximum_pickup_recoveries"
+                    ] = torch.maximum(
+                        first_handover_history[
+                            "maximum_pickup_recoveries"
+                        ],
+                        terminal_pickup_recoveries,
+                    )
                     first_handover_max_phase = torch.where(
                         first_successes,
                         torch.full_like(first_handover_max_phase, 4),
@@ -4857,6 +5056,50 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 for phase, label in enumerate(phase_labels)
             }
             first_episode_handover_diagnostics = {
+                "pickup_attempt_outcomes": {
+                    "maximum_attempts": 3,
+                    "first_attempt_successful_episodes": int(
+                        (
+                            first_outcome_success
+                            & (
+                                first_handover_history[
+                                    "terminal_pickup_attempts"
+                                ]
+                                == 1
+                            )
+                        ).sum().item()
+                    ),
+                    "recovered_successful_episodes": int(
+                        (
+                            first_outcome_success
+                            & (
+                                first_handover_history[
+                                    "terminal_pickup_attempts"
+                                ]
+                                > 1
+                            )
+                        ).sum().item()
+                    ),
+                    "environments_with_recovery": int(
+                        (
+                            first_handover_history[
+                                "maximum_pickup_recoveries"
+                            ]
+                            > 0
+                        ).sum().item()
+                    ),
+                    "terminal_attempt_histogram": {
+                        str(attempt): int(
+                            (
+                                first_handover_history[
+                                    "terminal_pickup_attempts"
+                                ]
+                                == attempt
+                            ).sum().item()
+                        )
+                        for attempt in range(4)
+                    },
+                },
                 "maximum_phase_distribution": {
                     label: int(mask.sum().item())
                     for label, mask in phase_masks.items()

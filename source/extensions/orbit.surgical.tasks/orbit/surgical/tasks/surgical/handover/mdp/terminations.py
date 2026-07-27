@@ -17,7 +17,12 @@ if TYPE_CHECKING:
 
 def successful_handover(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Terminate after ten control steps of receiver-only needle ownership."""
-    return handover_state(env)["phase"] >= 4
+    return handover_state(env)["successful_handover"]
+
+
+def pickup_attempts_exhausted(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Fail only after the third physical pickup attempt loses custody."""
+    return handover_state(env)["pickup_attempts_exhausted"]
 
 
 def premature_giver_release(env: ManagerBasedRLEnv) -> torch.Tensor:

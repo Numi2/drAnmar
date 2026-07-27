@@ -30,6 +30,9 @@ def handover_state(
     pickup_clearance: float = 0.01,
     contact_window_steps: int = 5,
     contact_required_steps: int = 3,
+    maximum_pickup_attempts: int = 3,
+    pickup_contact_loss_steps: int = 3,
+    recovery_open_steps: int = 15,
     required_receiver_only_steps: int = 10,
     allowed_receiver_contact_flicker_steps: int = 1,
     receiver_follow_tolerance: float = 0.005,
@@ -39,11 +42,14 @@ def handover_state(
     """Update and return the monotonic physical handover phase.
 
     Phases are: 0 closest-arm approach, 1 giver grasp, 2 lifted presentation,
-    3 receiver acquisition, 4 receiver-only ownership. The giver identity is
+    3 receiver acquisition, 4 safe pickup recovery. The giver identity is
     latched at reset from the two physical tool-tip distances to the needle.
     Pickup and acquisition accept bilateral PhysX contact in three of five
     control steps. Retention permits one missing contact frame only while the
-    elevated needle preserves its receiver-relative offset.
+    elevated needle preserves its receiver-relative offset. Before receiver
+    acquisition, three consecutive frames without live giver custody trigger
+    an open-jaw recovery and analytic reacquisition. The first attempt plus
+    recoveries are capped at ``maximum_pickup_attempts``.
     """
     step = _step_number(env)
     state = getattr(env, "_dr_anmar_handover_state", None)
@@ -55,6 +61,9 @@ def handover_state(
         )
         state = {
             "phase": torch.zeros(env.num_envs, dtype=torch.long, device=env.device),
+            "progress_phase": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
             "giver_is_robot_1": torch.ones(
                 env.num_envs, dtype=torch.bool, device=env.device
             ),
@@ -80,6 +89,42 @@ def handover_state(
             ),
             "giver_release_observed": torch.zeros(
                 env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "successful_handover": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "pickup_attempt_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "pickup_recovery_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "pickup_contact_loss_consecutive": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "recovery_open_step_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "pickup_attempts_exhausted": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "last_pickup_attempt_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "last_pickup_recovery_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "last_pickup_attempts_exhausted": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "last_successful_attempt": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "last_success_was_recovered": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "last_progress_phase": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
             ),
             "premature_release": torch.zeros(
                 env.num_envs, dtype=torch.bool, device=env.device
@@ -131,13 +176,39 @@ def handover_state(
     state["giver_is_robot_1"][reset] = (
         robot_1_distance[reset] <= robot_2_distance[reset]
     )
+    state["last_pickup_attempt_count"][reset] = state[
+        "pickup_attempt_count"
+    ][reset]
+    state["last_pickup_recovery_count"][reset] = state[
+        "pickup_recovery_count"
+    ][reset]
+    state["last_pickup_attempts_exhausted"][reset] = state[
+        "pickup_attempts_exhausted"
+    ][reset]
+    state["last_successful_attempt"][reset] = torch.where(
+        state["successful_handover"][reset],
+        state["pickup_attempt_count"][reset],
+        torch.zeros_like(state["pickup_attempt_count"][reset]),
+    )
+    state["last_success_was_recovered"][reset] = (
+        state["successful_handover"][reset]
+        & (state["pickup_attempt_count"][reset] > 1)
+    )
+    state["last_progress_phase"][reset] = state["progress_phase"][reset]
     state["phase"][reset] = 0
+    state["progress_phase"][reset] = 0
     state["rewarded_phase"][reset] = 0
     state["receiver_only_consecutive"][reset] = 0
     state["giver_contact_history"][reset] = False
     state["receiver_contact_history"][reset] = False
     state["receiver_loss_consecutive"][reset] = 0
     state["giver_release_observed"][reset] = False
+    state["successful_handover"][reset] = False
+    state["pickup_attempt_count"][reset] = 0
+    state["pickup_recovery_count"][reset] = 0
+    state["pickup_contact_loss_consecutive"][reset] = 0
+    state["recovery_open_step_count"][reset] = 0
+    state["pickup_attempts_exhausted"][reset] = False
     state["premature_release"][reset] = False
     state["last_retention_failure_low_clearance"][reset] = state[
         "retention_failure_low_clearance"
@@ -206,7 +277,13 @@ def handover_state(
     motion = mdp_common.object_motion(env)
 
     phase = state["phase"]
-    phase[(phase == 0) & giver_contact] = 1
+    new_pickup_attempt = (phase == 0) & giver_contact
+    state["pickup_attempt_count"][new_pickup_attempt] += 1
+    phase[new_pickup_attempt] = 1
+    state["progress_phase"][new_pickup_attempt] = torch.maximum(
+        state["progress_phase"][new_pickup_attempt],
+        torch.ones_like(state["progress_phase"][new_pickup_attempt]),
+    )
     before_acquisition = (phase >= 1) & (phase < 3)
     physical_action = mdp_common.as_torch(
         env.action_manager.action
@@ -220,11 +297,16 @@ def handover_state(
         before_acquisition
         & (giver_open_action > 0.0)
     )
-    phase[
+    newly_lifted = (
         (phase == 1)
         & lifted
         & ~state["premature_release"]
-    ] = 2
+    )
+    phase[newly_lifted] = 2
+    state["progress_phase"][newly_lifted] = torch.maximum(
+        state["progress_phase"][newly_lifted],
+        torch.full_like(state["progress_phase"][newly_lifted], 2),
+    )
     receiver_acquired = (
         (phase == 2) & giver_contact & receiver_contact
     )
@@ -233,6 +315,10 @@ def handover_state(
         - receiver_position_w[receiver_acquired]
     )
     phase[receiver_acquired] = 3
+    state["progress_phase"][receiver_acquired] = torch.maximum(
+        state["progress_phase"][receiver_acquired],
+        torch.full_like(state["progress_phase"][receiver_acquired], 3),
+    )
     state["giver_release_observed"] |= (
         (phase == 3)
         & (giver_open_action > 0.0)
@@ -299,10 +385,63 @@ def handover_state(
         state["receiver_only_consecutive"] + 1,
         torch.zeros_like(state["receiver_only_consecutive"]),
     )
-    phase[
+    successful_now = (
         (phase == 3)
         & (state["receiver_only_consecutive"] >= required_receiver_only_steps)
-    ] = 4
+    )
+    state["successful_handover"] |= successful_now
+    state["progress_phase"][successful_now] = 4
+
+    pickup_active = (phase == 1) | (phase == 2)
+    state["pickup_contact_loss_consecutive"][:] = torch.where(
+        pickup_active & ~giver_contact_now,
+        state["pickup_contact_loss_consecutive"] + 1,
+        torch.zeros_like(state["pickup_contact_loss_consecutive"]),
+    )
+    pickup_attempt_failed = (
+        pickup_active
+        & (
+            state["pickup_contact_loss_consecutive"]
+            >= pickup_contact_loss_steps
+        )
+        & ~receiver_contact_now
+    )
+    pickup_attempt_failed |= (
+        (phase == 2)
+        & (clearance < 0.005)
+        & ~receiver_contact_now
+    )
+    recovery_allowed = (
+        pickup_attempt_failed
+        & (state["pickup_attempt_count"] < maximum_pickup_attempts)
+    )
+    attempts_exhausted = (
+        pickup_attempt_failed
+        & (state["pickup_attempt_count"] >= maximum_pickup_attempts)
+    )
+    state["pickup_attempts_exhausted"] |= attempts_exhausted
+    state["pickup_recovery_count"][recovery_allowed] += 1
+    state["recovery_open_step_count"][recovery_allowed] = 0
+    phase[recovery_allowed] = 4
+    state["giver_contact_history"][recovery_allowed] = False
+    state["receiver_contact_history"][recovery_allowed] = False
+    state["pickup_contact_loss_consecutive"][recovery_allowed] = 0
+
+    recovery_active = phase == 4
+    state["recovery_open_step_count"][:] = torch.where(
+        recovery_active,
+        state["recovery_open_step_count"] + 1,
+        torch.zeros_like(state["recovery_open_step_count"]),
+    )
+    recovery_complete = (
+        recovery_active
+        & (state["recovery_open_step_count"] >= recovery_open_steps)
+        & ~giver_contact_now
+    )
+    phase[recovery_complete] = 0
+    state["giver_contact_history"][recovery_complete] = False
+    state["receiver_contact_history"][recovery_complete] = False
+    state["recovery_open_step_count"][recovery_complete] = 0
 
     state.update(
         {
@@ -319,7 +458,7 @@ def handover_state(
             "lifted": lifted,
             "receiver_follows": receiver_follows,
             "receiver_follow_error": receiver_follow_error,
-            "needle_dropped": (phase >= 2) & (clearance < 0.005),
+            "needle_dropped": (phase == 3) & (clearance < 0.005),
             "position_error": pos_error,
             "orientation_error": rot_error,
             "motion": motion,

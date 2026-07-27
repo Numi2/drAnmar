@@ -91,8 +91,14 @@ def role_bilateral_grasp(
 def phase_progress(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Award each physically completed phase once per episode."""
     state = handover_state(env)
-    delta = torch.clamp(state["phase"] - state["rewarded_phase"], min=0)
-    state["rewarded_phase"] = torch.maximum(state["rewarded_phase"], state["phase"])
+    delta = torch.clamp(
+        state["progress_phase"] - state["rewarded_phase"],
+        min=0,
+    )
+    state["rewarded_phase"] = torch.maximum(
+        state["rewarded_phase"],
+        state["progress_phase"],
+    )
     return delta.float()
 
 
@@ -113,7 +119,7 @@ def stable_dual_grasp(env: ManagerBasedRLEnv, linear_std: float, angular_std: fl
 
 
 def successful_handover(env: ManagerBasedRLEnv) -> torch.Tensor:
-    return (handover_state(env)["phase"] >= 4).float()
+    return handover_state(env)["successful_handover"].float()
 
 
 def contact_force_excess(

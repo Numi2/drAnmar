@@ -364,6 +364,15 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert "giver_contact_history" in state_source
     assert "receiver_contact_history" in state_source
     assert "contact_required_steps: int = 3" in state_source
+    assert "maximum_pickup_attempts: int = 3" in state_source
+    assert "pickup_contact_loss_steps: int = 3" in state_source
+    assert "recovery_open_steps: int = 15" in state_source
+    assert '"pickup_attempt_count"' in state_source
+    assert '"pickup_recovery_count"' in state_source
+    assert '"pickup_attempts_exhausted"' in state_source
+    assert "phase[recovery_allowed] = 4" in state_source
+    assert "phase[recovery_complete] = 0" in state_source
+    assert '"progress_phase"' in state_source
     assert "required_receiver_only_steps: int = 10" in state_source
     assert "pickup_clearance: float = 0.01" in state_source
     assert "clearance >= pickup_clearance" in state_source
@@ -429,16 +438,19 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     )
     assert (
         manifest["stages"][5]["learning"][
-            "giver_residual_channel_isolated_from_receiver_checkpoint"
+            "analytic_pickup_primitive_checkpoint"
         ]
-        is True
+        is None
     )
     assert (
         manifest["stages"][5]["learning"][
-            "giver_adaptation_freezes_receiver_and_resets_optimizer"
+            "giver_residual_initialization"
         ]
-        is True
+        == "zero_influence_no_checkpoint_transfer"
     )
+    assert manifest["stages"][5]["learning"]["maximum_pickup_attempts"] == 3
+    assert contract["maximum_pickup_attempts"] == 3
+    assert contract["first_attempt_and_recovered_success_reported_separately"]
     assert manifest["stages"][5]["learning"]["residual_phases"] == [
         "giver_windowed_contact_pickup_and_transport_translation_before_receiver_contact",
         "receiver_presentation_ready_approach_before_contact",
@@ -584,8 +596,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert handover_model_source.count(
         "receiver_approach_active.unsqueeze(-1)"
     ) >= 2
+    assert "receiver_residual_enabled = (" in handover_model_source
     assert (
-        "receiver_residual_enabled = receiver_approach_active"
+        "& self.receiver_residual_enabled_for_learning"
         in handover_model_source
     )
     assert (
@@ -616,6 +629,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "network_output[:, 10:13]"
     ) == 2
     assert "def configure_giver_adaptation(self)" in handover_model_source
+    assert (
+        "self.controller.receiver_residual_enabled_for_learning = False"
+        in handover_model_source
+    )
     assert "giver_row_mask[3:6] = 1.0" in handover_model_source
     assert "giver_row_mask[10:13] = 1.0" in handover_model_source
     assert "giver_transport_active = giver_carry_mode & torch.where(" in handover_model_source
@@ -797,6 +814,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in benchmark_source
     )
     assert '"policy_giver_lift_on_live_contact"' in benchmark_source
+    assert '"first_attempt_successful_episodes"' in benchmark_source
+    assert '"recovered_successful_episodes"' in benchmark_source
+    assert '"pickup_attempt_histogram"' in benchmark_source
+    assert '"checkpoint": None' in benchmark_source
     assert 'parameter_group["lr"] = args.learning_rate' in benchmark_source
     assert (
         "return max(1, self._step_count // self.num_steps_per_env)"

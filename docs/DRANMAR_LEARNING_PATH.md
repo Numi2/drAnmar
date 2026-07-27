@@ -131,7 +131,9 @@ The composed-needle arc fraction `0.40` is the current pickup-qualified grasp
 frame. It produced 1,101 of 1,200 sustained pickups on seed 17 and 1,127 of
 1,200 on held-out seed 2361, with zero hard failures in both populations. The
 combined 2,228/2,400 rate is 92.83%; the maximum measured needle force was
-0.99 N and no protected-surface force was observed.
+0.99 N and no protected-surface force was observed. This was a checkpoint-free
+analytic controller sweep: its evidence records `checkpoint: null`. The
+available learned single-lift checkpoint is not transferred into handover.
 
 Stage 6 certifies physical ownership transfer rather than final
 precision-placement quality. At reset, the tool tip with the shorter physical
@@ -183,8 +185,13 @@ flickers away first, the receiver waits while the closest arm regraspes.
 The giver begins lifting as soon as current native bilateral contact is live,
 while the three-of-five contact window remains the only authority that advances
 the physical pickup phase. Loss of live bilateral contact immediately returns
-the tool to approach/reacquisition, so an empty or one-jaw lift cannot satisfy
-the 10 mm clearance gate. Pickup uses a `0.010` vertical action limit while
+the tool to safe recovery, so an empty or one-jaw lift cannot satisfy the
+10 mm clearance gate. Recovery stops presentation, commands both grippers
+open, returns the giver to the 20 mm pregrasp above the live needle pose, and
+then reuses the same analytic pickup primitive. Episodes permit at most three
+total pickup attempts. A recovered transfer remains a valid physical success,
+but evidence reports first-attempt and recovered successes separately; entering
+recovery earns no reward or phase credit. Pickup uses a `0.010` vertical action limit while
 presentation retains `0.015`. The slower pickup reduced needle acceleration
 and mid-air loss without reducing final presentation authority. Controlled
 full-population challenges also tested `0.0105`, `0.0125`, `0.015`, `0.03`,
@@ -230,20 +237,17 @@ residual may act during the receiver approach after the needle is within the
 action limit is 0.03 with 0.01 fixed initial exploration standard deviation.
 Role selection, sequencing, the pickup and transport base trajectory, wrist
 control, both grippers, post-contact hold, release, and retreat remain analytic
-and cannot be bypassed by exploration. The giver residual is mapped through network
-output rows that were inactive in the receiver-only checkpoint. This preserves
-the existing policy at initialization instead of exposing receiver behavior on
-the giver when physical arm roles swap. Giver adaptation also freezes the
-shared actor and qualified receiver-output rows, trains only the six dedicated
-giver rows, and resets inherited optimizer state. This prevents shared-feature
-drift or stale Adam momentum from silently modifying the retained receiver
-policy.
+and cannot be bypassed by exploration. Giver adaptation starts from a
+zero-influence residual around the analytic base; it does not load the weak
+single-lift checkpoint. It freezes all non-giver output rows, trains only the
+six dedicated giver XYZ rows, disables receiver residual exploration, and
+starts with fresh optimizer state.
 
 The giver may transport only while live native bilateral contact remains
-present. If a three-of-five pickup window advances the state but either jaw
-loses live contact before the 10 mm lift, the closest arm returns to the
-analytic needle approach instead of moving upward on one jaw or with an empty
-jaw.
+present. Three consecutive control frames without live giver custody before
+receiver acquisition trigger safe recovery. Failure on the third pickup
+attempt terminates as `pickup_attempts_exhausted`; post-acquisition drop and
+retention failures remain immediate failures.
 The analytic base cannot grant physical success or bypass the held-out
 promotion gate.
 
