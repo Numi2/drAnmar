@@ -48,6 +48,7 @@ class HandoverAnalyticController(nn.Module):
         self.carry_lateral_ramp_height = 0.005
         self.pickup_vertical_action_limit = 0.015
         self.carry_vertical_action_limit = 0.015
+        self.giver_lift_on_live_contact = False
         self.receiver_orientation_action_limit = 0.6
         self.giver_grasp_x = float(
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
@@ -265,7 +266,10 @@ class HandoverAnalyticController(nn.Module):
             receiver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
-        giver_carry_mode = (phase >= 1) & (phase <= 2)
+        giver_carry_mode = (
+            ((phase >= 1) & (phase <= 2))
+            | ((phase == 0) & self.giver_lift_on_live_contact)
+        )
         giver_transport_active = (
             giver_carry_mode & giver_bilateral_contact
         )

@@ -248,6 +248,12 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_CARRY_LATERAL_RAMP_HEIGHT}"
             )
         fi
+        giver_lift_on_live_contact_args=()
+        if [[ "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-0}" == "1" ]]; then
+            giver_lift_on_live_contact_args=(
+                --giver_lift_on_live_contact
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
@@ -259,7 +265,8 @@ case "${command}" in
             "${residual_scale_args[@]}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${carry_lateral_action_limit_args[@]}" \
-            "${carry_lateral_ramp_height_args[@]}"
+            "${carry_lateral_ramp_height_args[@]}" \
+            "${giver_lift_on_live_contact_args[@]}"
         ;;
     record)
         require_runtime
@@ -294,6 +301,12 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_CARRY_LATERAL_RAMP_HEIGHT}"
             )
         fi
+        giver_lift_on_live_contact_args=()
+        if [[ "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-0}" == "1" ]]; then
+            giver_lift_on_live_contact_args=(
+                --giver_lift_on_live_contact
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
@@ -310,7 +323,8 @@ case "${command}" in
             --output_path "${output}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${carry_lateral_action_limit_args[@]}" \
-            "${carry_lateral_ramp_height_args[@]}"
+            "${carry_lateral_ramp_height_args[@]}" \
+            "${giver_lift_on_live_contact_args[@]}"
         ;;
     tqta-start)
         task="${2:-${DR_ANMAR_TASK}}"

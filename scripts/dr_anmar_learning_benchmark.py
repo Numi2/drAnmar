@@ -3393,6 +3393,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         controller.carry_lateral_ramp_height = (
             args.carry_lateral_ramp_height
         )
+    if args.giver_lift_on_live_contact:
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "giver_lift_on_live_contact"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose live-contact giver lift"
+            )
+        controller.giver_lift_on_live_contact = True
     policy = runner.get_inference_policy(device=env.unwrapped.device)
 
     export_dir = Path(args.output_path).resolve() / "exported"
@@ -4526,6 +4536,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_giver_lift_on_live_contact": (
+                bool(policy_model.controller.giver_lift_on_live_contact)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "giver_lift_on_live_contact",
+                )
+                else None
+            ),
             "exports": {
                 "jit": {"path": str(jit_path), "sha256": _sha256(jit_path)},
                 "onnx": {"path": str(onnx_path), "sha256": _sha256(onnx_path)},
@@ -4632,6 +4651,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--pickup_vertical_action_limit", type=float)
     play.add_argument("--carry_lateral_action_limit", type=float)
     play.add_argument("--carry_lateral_ramp_height", type=float)
+    play.add_argument("--giver_lift_on_live_contact", action="store_true")
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 
