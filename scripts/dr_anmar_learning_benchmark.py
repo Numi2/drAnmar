@@ -544,7 +544,7 @@ def _handover_teacher_action(
     presentation_ready_tolerance: float = 0.005,
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_lateral_action_limit: float = 0.06,
-    carry_vertical_action_limit: float = 0.025,
+    carry_vertical_action_limit: float = 0.015,
     giver_transport_min_contact_jaws: int = 2,
 ):
     """Stage a closest-arm pickup and other-arm physical custody transfer."""
@@ -1643,7 +1643,7 @@ def _handover_controller_sweep(
     receiver_offsets = []
     receiver_roll_offsets = [0.0] * len(values)
     presentation_fractions = [0.35] * len(values)
-    carry_vertical_action_limits = [0.025] * len(values)
+    carry_vertical_action_limits = [0.015] * len(values)
     receiver_close_distances = [0.001] * len(values)
     receiver_contact_centering_action_limits = [0.0025] * len(values)
     giver_transport_min_contact_jaws = [2] * len(values)

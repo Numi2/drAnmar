@@ -45,7 +45,7 @@ class HandoverAnalyticController(nn.Module):
         self.presentation_ready_tolerance = 0.005
         self.minimum_lift_height_in_robot_frame = -0.139
         self.carry_lateral_action_limit = 0.06
-        self.carry_vertical_action_limit = 0.025
+        self.carry_vertical_action_limit = 0.015
         self.receiver_orientation_action_limit = 0.6
         self.giver_grasp_x = float(
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
