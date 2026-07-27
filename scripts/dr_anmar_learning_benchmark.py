@@ -3635,6 +3635,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 torch.nan,
                 device=env.unwrapped.device,
             ),
+            "maximum_giver_contact_force_at_first_lift_n": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "giver_contact_force_imbalance_at_first_lift_n": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
             "giver_jaw_aperture_at_first_lift_rad": torch.full(
                 (env.unwrapped.num_envs,),
                 torch.nan,
@@ -3842,6 +3852,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             giver_contacts[first_lift],
                             dim=-1,
                         ).values
+                        / 0.2
+                    )
+                    first_handover_history[
+                        "maximum_giver_contact_force_at_first_lift_n"
+                    ][first_lift] = (
+                        torch.max(
+                            giver_contacts[first_lift],
+                            dim=-1,
+                        ).values
+                        / 0.2
+                    )
+                    first_handover_history[
+                        "giver_contact_force_imbalance_at_first_lift_n"
+                    ][first_lift] = (
+                        torch.abs(
+                            giver_contacts[first_lift, 1]
+                            - giver_contacts[first_lift, 0]
+                        )
                         / 0.2
                     )
                     first_handover_history[
@@ -4588,6 +4616,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 minimum_lift_contact_force = first_handover_history[
                     "minimum_giver_contact_force_at_first_lift_n"
                 ][mask][lifted]
+                maximum_lift_contact_force = first_handover_history[
+                    "maximum_giver_contact_force_at_first_lift_n"
+                ][mask][lifted]
+                lift_contact_force_imbalance = first_handover_history[
+                    "giver_contact_force_imbalance_at_first_lift_n"
+                ][mask][lifted]
                 giver_lift_jaw_aperture = first_handover_history[
                     "giver_jaw_aperture_at_first_lift_rad"
                 ][mask][lifted]
@@ -4719,6 +4753,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "minimum_giver_contact_force_at_first_lift_n": (
                         scalar_quantiles(minimum_lift_contact_force)
+                    ),
+                    "maximum_giver_contact_force_at_first_lift_n": (
+                        scalar_quantiles(maximum_lift_contact_force)
+                    ),
+                    "giver_contact_force_imbalance_at_first_lift_n": (
+                        scalar_quantiles(lift_contact_force_imbalance)
                     ),
                     "giver_jaw_aperture_at_first_lift_rad": (
                         scalar_quantiles(giver_lift_jaw_aperture)

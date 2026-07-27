@@ -689,6 +689,14 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         '"minimum_giver_contact_force_at_first_lift_n"'
         in benchmark_source
     )
+    assert (
+        '"maximum_giver_contact_force_at_first_lift_n"'
+        in benchmark_source
+    )
+    assert (
+        '"giver_contact_force_imbalance_at_first_lift_n"'
+        in benchmark_source
+    )
     assert '"giver_jaw_aperture_at_first_lift_rad"' in benchmark_source
     assert (
         '"object_linear_speed_at_first_lift_m_s"'
