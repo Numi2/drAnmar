@@ -215,16 +215,15 @@ condition only; physical contact, clearance, force, transfer, and retention
 remain the outcome authorities.
 
 Stage 6 no longer starts PPO from a random 14-action policy. The exact
-closest-arm/contact-aware sequence is the deterministic policy base. PPO may
-learn a bounded giver translation correction during pre-contact approach and
-reacquisition. Once native bilateral giver contact is live, the residual is
-lateral only until the needle clears 10 mm; vertical pickup authority remains
-the analytic `0.015` limit proven above. After 10 mm, the same isolated giver
-channel may learn bounded XYZ transport corrections only while live bilateral
-giver custody remains and before first receiver contact. The receiver residual
-may act during the receiver approach after the needle is within the 5 mm
-presentation gate and is disabled on first native contact. The residual action
-limit is 0.03 with 0.01 fixed initial exploration standard deviation.
+closest-arm/contact-aware sequence is the deterministic policy base. Giver PPO
+is disabled throughout approach, grasp, reacquisition, and the complete 10 mm
+pickup, preserving the qualified analytic pickup bit for bit. After 10 mm, the
+isolated giver channel may learn bounded XYZ transport corrections only while
+live bilateral giver custody remains and before first receiver contact. The
+receiver residual may act during the receiver approach after the needle is
+within the 5 mm presentation gate and is disabled on first native contact. The
+residual action limit is 0.03 with 0.01 fixed initial exploration standard
+deviation.
 Role selection, sequencing, vertical pickup and transport, wrist control, both
 grippers, post-contact hold, release, and retreat remain analytic and cannot be
 bypassed by exploration. The new giver residual is mapped through network
