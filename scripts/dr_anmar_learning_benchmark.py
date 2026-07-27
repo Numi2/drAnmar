@@ -3611,6 +3611,42 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 torch.nan,
                 device=env.unwrapped.device,
             ),
+            "first_lift_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "minimum_giver_contact_force_at_first_lift_n": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "giver_jaw_aperture_at_first_lift_rad": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "giver_grasp_error_at_first_lift_m": torch.full(
+                (env.unwrapped.num_envs, 3),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "object_orientation_at_first_lift": torch.full(
+                (env.unwrapped.num_envs, 4),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "object_linear_speed_at_first_lift_m_s": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "object_angular_speed_at_first_lift_rad_s": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
             "maximum_clearance_m": torch.full(
                 (env.unwrapped.num_envs,),
                 -torch.inf,
@@ -3772,6 +3808,58 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         1.0
                         + giver_joint_position[first_window, 7]
                         - giver_joint_position[first_window, 6]
+                    )
+                    first_lift = (
+                        was_first_unresolved
+                        & (current_handover_phase >= 2)
+                        & (
+                            first_handover_history[
+                                "first_lift_frame"
+                            ]
+                            < 0
+                        )
+                    )
+                    first_handover_history["first_lift_frame"][
+                        first_lift
+                    ] = frame_index
+                    first_handover_history[
+                        "minimum_giver_contact_force_at_first_lift_n"
+                    ][first_lift] = (
+                        torch.min(
+                            giver_contacts[first_lift],
+                            dim=-1,
+                        ).values
+                        / 0.2
+                    )
+                    first_handover_history[
+                        "giver_jaw_aperture_at_first_lift_rad"
+                    ][first_lift] = (
+                        1.0
+                        + giver_joint_position[first_lift, 7]
+                        - giver_joint_position[first_lift, 6]
+                    )
+                    first_handover_history[
+                        "giver_grasp_error_at_first_lift_m"
+                    ][first_lift] = (
+                        giver_grasp_position[first_lift]
+                        - giver_ee[first_lift]
+                    )
+                    first_handover_history[
+                        "object_orientation_at_first_lift"
+                    ][first_lift] = object_orientation_in_giver[first_lift]
+                    object_linear_velocity = handover_observation[:, 60:63]
+                    object_angular_velocity = handover_observation[:, 63:66]
+                    first_handover_history[
+                        "object_linear_speed_at_first_lift_m_s"
+                    ][first_lift] = torch.linalg.vector_norm(
+                        object_linear_velocity[first_lift],
+                        dim=-1,
+                    )
+                    first_handover_history[
+                        "object_angular_speed_at_first_lift_rad_s"
+                    ][first_lift] = torch.linalg.vector_norm(
+                        object_angular_velocity[first_lift],
+                        dim=-1,
                     )
                     first_handover_history[
                         "ever_giver_bilateral_contact"
@@ -4480,6 +4568,45 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 giver_jaw_aperture = first_handover_history[
                     "giver_jaw_aperture_at_first_window_rad"
                 ][mask][windowed]
+                first_lift_frame = first_handover_history[
+                    "first_lift_frame"
+                ][mask]
+                lifted = first_lift_frame >= 0
+                minimum_lift_contact_force = first_handover_history[
+                    "minimum_giver_contact_force_at_first_lift_n"
+                ][mask][lifted]
+                giver_lift_jaw_aperture = first_handover_history[
+                    "giver_jaw_aperture_at_first_lift_rad"
+                ][mask][lifted]
+                giver_lift_grasp_error = first_handover_history[
+                    "giver_grasp_error_at_first_lift_m"
+                ][mask][lifted]
+                object_lift_orientation = first_handover_history[
+                    "object_orientation_at_first_lift"
+                ][mask][lifted]
+                object_lift_linear_speed = first_handover_history[
+                    "object_linear_speed_at_first_lift_m_s"
+                ][mask][lifted]
+                object_lift_angular_speed = first_handover_history[
+                    "object_angular_speed_at_first_lift_rad_s"
+                ][mask][lifted]
+
+                def scalar_quantiles(values: torch.Tensor) -> dict | None:
+                    if not bool(values.numel()):
+                        return None
+                    quantiles = torch.quantile(
+                        values.float(),
+                        torch.tensor(
+                            [0.1, 0.5, 0.9],
+                            device=values.device,
+                        ),
+                    )
+                    return {
+                        "p10": float(quantiles[0].item()),
+                        "p50": float(quantiles[1].item()),
+                        "p90": float(quantiles[2].item()),
+                    }
+
                 return {
                     "count": count,
                     "ever_giver_bilateral_contact": int(
@@ -4571,6 +4698,47 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         float(giver_jaw_aperture.mean().item())
                         if bool(windowed.any().item())
                         else None
+                    ),
+                    "mean_first_lift_frame": (
+                        float(first_lift_frame[lifted].float().mean().item())
+                        if bool(lifted.any().item())
+                        else None
+                    ),
+                    "minimum_giver_contact_force_at_first_lift_n": (
+                        scalar_quantiles(minimum_lift_contact_force)
+                    ),
+                    "giver_jaw_aperture_at_first_lift_rad": (
+                        scalar_quantiles(giver_lift_jaw_aperture)
+                    ),
+                    "mean_giver_grasp_error_at_first_lift_m": (
+                        [
+                            float(
+                                giver_lift_grasp_error[:, axis]
+                                .mean()
+                                .item()
+                            )
+                            for axis in range(3)
+                        ]
+                        if bool(lifted.any().item())
+                        else None
+                    ),
+                    "mean_object_orientation_at_first_lift_xyzw": (
+                        [
+                            float(
+                                object_lift_orientation[:, axis]
+                                .mean()
+                                .item()
+                            )
+                            for axis in range(4)
+                        ]
+                        if bool(lifted.any().item())
+                        else None
+                    ),
+                    "object_linear_speed_at_first_lift_m_s": (
+                        scalar_quantiles(object_lift_linear_speed)
+                    ),
+                    "object_angular_speed_at_first_lift_rad_s": (
+                        scalar_quantiles(object_lift_angular_speed)
                     ),
                     "mean_maximum_clearance_m": float(
                         first_handover_history["maximum_clearance_m"][mask]
