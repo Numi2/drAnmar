@@ -1,0 +1,67 @@
+{
+  "baseline": {
+    "checkpoint": {
+      "path": "output/dranmar-learning/e2e-structured-seed-checkpoint/runs/2026-07-27_14-24-06/model_final.pt",
+      "sha256": "4c551cece933988ce280739efa815ce77e694ba61c5baca7d73fe8f0e3deb02a"
+    },
+    "evidence_path": "docs/experiments/evidence/controller-600-seed17.json",
+    "evidence_sha256": "6ba017108702e93270639b9af23e9e5bc529d7ce17bae1c2eda39c212fab1b60",
+    "failure_rates": {
+      "excessive_object_force": 0.0,
+      "needle_dropped_after_pickup": 0.0,
+      "object_dropping": 0.0,
+      "pickup_attempts_exhausted": 0.0016666666666666668,
+      "premature_giver_release": 0.0,
+      "protected_surface_force": 0.005,
+      "receiver_retention_lost": 0.14
+    },
+    "success_rate": 0.48833333333333334
+  },
+  "candidates": [
+    {
+      "checkpoint": {
+        "path": "output/dranmar-learning/e2e-present-retry-smoke-64/runs/2026-07-27_15-10-54/model_final.pt",
+        "sha256": "2a402a29b8cf496417f365062b6907358e21fe3894d7c868c362a342bf8f49f9"
+      },
+      "evidence_path": "docs/experiments/evidence/receiver-depth-minus3-v22-600-seed17.json",
+      "evidence_sha256": "c09169e2ab2c14ff4b3af314962e8c4b8e58eabfd2cc70a12c704af336f89c6f",
+      "promotable": true,
+      "safety_gate_passed": true,
+      "safety_regressions": {},
+      "success_gate_passed": true,
+      "success_improvement": 0.048333333333333284,
+      "success_rate": 0.5366666666666666
+    }
+  ],
+  "decision": "candidate_promoted",
+  "qualification_contract": {
+    "deterministic_play_only": true,
+    "matched_task_seed_num_envs_and_frames": true,
+    "maximum_safety_failure_rate_increase": 0.01,
+    "minimum_success_improvement": 0.02,
+    "safety_failure_terms": [
+      "excessive_object_force",
+      "needle_dropped_after_pickup",
+      "object_dropping",
+      "pickup_attempts_exhausted",
+      "premature_giver_release",
+      "protected_surface_force",
+      "receiver_retention_lost"
+    ]
+  },
+  "schema_version": "dranmar-handover-promotion-1.0",
+  "selected": {
+    "checkpoint": {
+      "path": "output/dranmar-learning/e2e-present-retry-smoke-64/runs/2026-07-27_15-10-54/model_final.pt",
+      "sha256": "2a402a29b8cf496417f365062b6907358e21fe3894d7c868c362a342bf8f49f9"
+    },
+    "evidence_path": "docs/experiments/evidence/receiver-depth-minus3-v22-600-seed17.json",
+    "evidence_sha256": "c09169e2ab2c14ff4b3af314962e8c4b8e58eabfd2cc70a12c704af336f89c6f",
+    "promotable": true,
+    "safety_gate_passed": true,
+    "safety_regressions": {},
+    "success_gate_passed": true,
+    "success_improvement": 0.048333333333333284,
+    "success_rate": 0.5366666666666666
+  }
+}

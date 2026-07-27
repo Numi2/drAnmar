@@ -1,0 +1,404 @@
+from __future__ import annotations
+
+import ast
+import hashlib
+import json
+import runpy
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+TASK_ROOT = (
+    ROOT
+    / "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks/surgical"
+)
+
+
+def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
+    contract = json.loads(
+        (
+            ROOT
+            / "config/experiments/dranmar_e2e_handover_example.json"
+        ).read_text()
+    )
+    assert contract["status"] == "isolated_research_example_not_stage_qualified"
+    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.5"
+    assert contract["architecture"]["actor"].startswith("frozen_pickup_lift")
+    assert contract["architecture"]["learned_authority"].startswith(
+        "receiver_xyz"
+    )
+    assert contract["architecture"]["active_residual_exploration_std"] == 0.005
+    assert contract["architecture"]["residual_action_limit"] == 0.01
+    baseline = contract["known_good_baseline"]
+    baseline_path = ROOT / baseline["evidence_path"]
+    assert baseline["retained_handover_success"] == 14
+    assert baseline["receiver_acquisition"] == 47
+    assert baseline["unsafe_force_or_drop_failures"] == 0
+    assert hashlib.sha256(baseline_path.read_bytes()).hexdigest() == (
+        baseline["evidence_sha256"]
+    )
+    baseline_evidence = json.loads(baseline_path.read_text())
+    assert baseline_evidence["successful_episodes"] == 14
+    assert baseline_evidence["success_rate"] == 0.21875
+    rejected = contract["rejected_candidates"][0]
+    rejected_path = ROOT / rejected["evidence_path"]
+    assert rejected["retained_handover_success"] == 4
+    assert hashlib.sha256(rejected_path.read_bytes()).hexdigest() == (
+        rejected["evidence_sha256"]
+    )
+    rejected_by_label = {
+        candidate["label"]: candidate
+        for candidate in contract["rejected_candidates"]
+    }
+    giver_xy = rejected_by_label["e2e-giver-xy-v25-model50"]
+    assert giver_xy["screen_600_success_rate"] == 0.595
+    assert giver_xy["scale_2000_success_rate"] == 0.445
+    pickup_15 = rejected_by_label["e2e-pickup15-v26"]
+    assert pickup_15["giver_contact_without_10mm_lift"] == 94
+    receiver_model_125 = rejected_by_label["e2e-receiver-ppo-v33-model125"]
+    assert receiver_model_125["retained_handover_success"] == 378
+    assert receiver_model_125["hard_safety_events"] == 3
+    for candidate in (giver_xy, pickup_15, receiver_model_125):
+        for path_key, hash_key in (
+            ("evidence_path", "evidence_sha256"),
+            ("screen_600_evidence_path", "screen_600_evidence_sha256"),
+            ("scale_2000_evidence_path", "scale_2000_evidence_sha256"),
+        ):
+            if path_key not in candidate:
+                continue
+            path = ROOT / candidate[path_key]
+            assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+                candidate[hash_key]
+            )
+    calibration = contract["receiver_depth_calibration"]
+    calibration_path = ROOT / calibration["evidence_path"]
+    assert calibration["selected_receiver_grasp_z_offset_m"] == -0.003
+    assert calibration["selected_screen_success_rate"] == 0.385
+    assert hashlib.sha256(calibration_path.read_bytes()).hexdigest() == (
+        calibration["evidence_sha256"]
+    )
+    matched_path = ROOT / calibration["matched_checkpoint_evidence_path"]
+    assert calibration["matched_checkpoint_retained_success"] == 18
+    assert hashlib.sha256(matched_path.read_bytes()).hexdigest() == (
+        calibration["matched_checkpoint_evidence_sha256"]
+    )
+    promotion_path = ROOT / calibration["promotion_evidence_path"]
+    scale_path = ROOT / calibration["scale_2000_evidence_path"]
+    assert calibration["status"] == "promoted_development_training_baseline"
+    assert calibration["scale_2000_successes"] == 946
+    assert hashlib.sha256(promotion_path.read_bytes()).hexdigest() == (
+        calibration["promotion_evidence_sha256"]
+    )
+    assert hashlib.sha256(scale_path.read_bytes()).hexdigest() == (
+        calibration["scale_2000_evidence_sha256"]
+    )
+    ppo = contract["ppo_fine_tuning"]
+    ppo_training_path = ROOT / ppo["training_evidence_path"]
+    ppo_promotion_path = ROOT / ppo["promotion_evidence_path"]
+    ppo_screen_path = ROOT / ppo["screen_600_evidence_path"]
+    ppo_scale_path = ROOT / ppo["scale_2000_evidence_path"]
+    assert ppo["status"] == "promoted_development_training_baseline"
+    assert ppo["checkpoint_sha256"] == (
+        "5d79cd7e767bdadf2cd83fc9fac472717424dff5ac6dda8b422f2ce26453c5ae"
+    )
+    assert ppo["screen_600_successes"] == 349
+    assert ppo["scale_2000_successes"] == 939
+    assert ppo["scale_2000_receiver_retention_losses"] == 47
+    for path, expected_hash in (
+        (ppo_training_path, ppo["training_evidence_sha256"]),
+        (ppo_promotion_path, ppo["promotion_evidence_sha256"]),
+        (ppo_screen_path, ppo["screen_600_evidence_sha256"]),
+        (ppo_scale_path, ppo["scale_2000_evidence_sha256"]),
+    ):
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected_hash
+    hysteresis = contract["pickup_contact_hysteresis"]
+    hysteresis_screen = ROOT / hysteresis["screen_600_evidence_path"]
+    hysteresis_scale = ROOT / hysteresis["scale_2000_evidence_path"]
+    assert hysteresis["status"] == (
+        "promoted_development_controller_baseline_not_stage_qualified"
+    )
+    assert hysteresis["screen_600_successes"] == 367
+    assert hysteresis["scale_2000_successes"] == 1017
+    assert hysteresis["scale_2000_giver_contact_without_10mm_lift"] == 175
+    assert hysteresis["scale_2000_recovered_successes"] == 67
+    assert hysteresis["scale_2000_hard_safety_events"] == 18
+    assert hashlib.sha256(hysteresis_screen.read_bytes()).hexdigest() == (
+        hysteresis["screen_600_evidence_sha256"]
+    )
+    assert hashlib.sha256(hysteresis_scale.read_bytes()).hexdigest() == (
+        hysteresis["scale_2000_evidence_sha256"]
+    )
+    latency = contract["receiver_latency_diagnostics"]
+    latency_path = ROOT / latency["evidence_path"]
+    assert latency["retained_handover_success"] == 367
+    assert latency["stable_presentations_without_receiver_contact"] == 76
+    assert latency["successful_stable_to_receiver_contact_steps_p50"] == 98.0
+    assert hashlib.sha256(latency_path.read_bytes()).hexdigest() == (
+        latency["evidence_sha256"]
+    )
+    receiver_ppo = contract["receiver_ppo_fine_tuning_v33"]
+    receiver_training = ROOT / receiver_ppo["training_evidence_path"]
+    receiver_screen = ROOT / receiver_ppo["screen_600_evidence_path"]
+    receiver_scale = ROOT / receiver_ppo["scale_2000_evidence_path"]
+    assert receiver_ppo["checkpoint_sha256"] == (
+        "a56f61703855931d9d755beeba530bb8c1ac5232f6d6499e6254399cca8535cf"
+    )
+    assert receiver_ppo["screen_600_successes"] == 377
+    assert receiver_ppo["screen_600_receiver_retention_losses"] == 21
+    assert receiver_ppo["scale_2000_successes"] == 1021
+    assert receiver_ppo["scale_2000_hard_safety_events"] == 8
+    assert receiver_ppo["scale_2000_receiver_retention_losses"] == 45
+    for path, expected_hash in (
+        (receiver_training, receiver_ppo["training_evidence_sha256"]),
+        (receiver_screen, receiver_ppo["screen_600_evidence_sha256"]),
+        (receiver_scale, receiver_ppo["scale_2000_evidence_sha256"]),
+    ):
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected_hash
+    contact_centering = contract["receiver_contact_centering_v55"]
+    contact_centering_path = ROOT / contact_centering["evidence_path"]
+    assert contact_centering["screen_512_successes"] == 325
+    assert contact_centering["screen_600_successes"] == 381
+    assert contact_centering["screen_600_receiver_contacts"] == 414
+    assert contact_centering["screen_600_windowed_bilateral_capture"] == 402
+    assert contact_centering["screen_600_retention_losses"] == 18
+    assert contact_centering["screen_600_pickup_attempts_exhausted"] == 21
+    assert contact_centering["screen_600_hard_safety_events"] == 2
+    assert hashlib.sha256(contact_centering_path.read_bytes()).hexdigest() == (
+        contact_centering["evidence_sha256"]
+    )
+    assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
+    assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
+    assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
+    assert (
+        contract["anti_reward_hacking"]["terminal_transfer_failure_weight"]
+        == -80.0
+    )
+    assert contract["anti_reward_hacking"]["object_attachment_or_teleportation"] is False
+    assert contract["anti_reward_hacking"]["success_source"].startswith(
+        "unchanged_isaac_lab_physics"
+    )
+    assert contract["launch"]["num_envs"] == 2400
+    assert contract["launch"]["dagger_teacher_only_warmup_updates"] == 1000
+    assert contract["launch"]["dagger_student_segment_steps"] == 64
+    assert contract["launch"]["phase_replay_capacity_per_phase"] == 65536
+    assert contract["launch"]["phase_balanced_consolidation_updates"] == 2000
+    assert contract["launch"]["minimum_deterministic_success_before_ppo"] == 0.25
+    assert contract["anti_reward_hacking"]["receiver_retry_steps"] == 15
+    assert contract["anti_reward_hacking"]["pickup_contact_loss_steps"] == 3
+    assert "fixed_pose_presentation_stable_for_8_steps" in (
+        contract["anti_reward_hacking"]["required_sequence"]
+    )
+
+
+def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
+    model_path = TASK_ROOT / "handover/end_to_end_model.py"
+    source = model_path.read_text()
+    controller_source = (
+        TASK_ROOT / "handover/residual_model.py"
+    ).read_text()
+    assert "class EndToEndHandoverMLPModel(MLPModel):" in source
+    assert "role_normalize_handover_observation(raw)" in source
+    assert "role_action_to_physical(" in source
+    assert "learned_role_residual" in source
+    assert "def select_handover_role(" in source
+    assert "\n    def select(" not in source
+    assert "self.phase_network(latent, phase)" in source
+    assert "class _PhaseHeadedNetwork(nn.Module):" in source
+    assert "handover_task_features(role_observation)" in source
+    assert "HandoverAnalyticController" in source
+    assert "self.residual_scale" in source
+    assert "* physical_residual" in source
+    assert "physical_action_mask = receiver_residual_mask" in source
+    assert "if self.giver_adaptation_enabled:" in source
+    assert "giver_residual_mask | receiver_residual_mask" in source
+    assert "exploration_mask = giver_residual_mask" in source
+    assert "def configure_giver_adaptation(self)" in source
+    assert "giver_role_row_mask[0:2] = 1.0" in source
+    assert "def configure_receiver_adaptation(self)" in source
+    assert "receiver_xyz_row_mask[7:10] = 1.0" in source
+    assert "self.phase_network.heads[2]" in source
+    assert "and not self.receiver_adaptation_enabled" in source
+    assert "self.controller.receiver_residual_enabled_for_learning = True" in source
+    assert "presentation_stable = raw[:, 103]" in controller_source
+    assert "receiver_retry_active = raw[:, 105]" in controller_source
+    assert "(phase == 3) & ~receiver_bilateral_contact" in controller_source
+    assert "receiver_retry_translation" in controller_source
+    assert "self.presentation_hold_action_limit = 0.01" in controller_source
+    assert "self.receiver_grasp_z = -0.003" in controller_source
+    assert "_RECEIVER_ARC_FRACTION = 0.65" in controller_source
+    assert "_RECEIVER_TANGENT_DELTA_RAD" in controller_source
+    assert "self.receiver_tangent_delta_rad" in controller_source
+    assert "self.receiver_crossing_angle_rad" in controller_source
+    assert "self.receiver_roll_offset_rad" in controller_source
+    assert "receiver_half_roll_offset" in controller_source
+    assert "giver_presentation_hold = giver_carry.clamp(" in controller_source
+    assert "giver_pre_lift_transport_ready = (" in controller_source
+    assert "(phase == 1) | giver_pre_lift_contact" in controller_source
+    assert "pickup_contact_loss_steps debounce" in controller_source
+    assert "class PhaseMaskedGaussianDistribution" in source
+    assert "object_state_manipulation" not in source
+    assert "raw[:, 99:101]" in source
+    assert "raw[:, 101:103]" in source
+    assert "raw[:, 103:107]" in source
+    assert "receiver_offset[:, 2] = -0.003" in source
+    ast.parse(source)
+
+    benchmark_source = (
+        ROOT / "scripts/dr_anmar_learning_benchmark.py"
+    ).read_text()
+    assert '"first_stable_presentation_frame"' in benchmark_source
+    assert '"first_receiver_contact_after_stable_frame"' in benchmark_source
+    assert '"receiver_approach_by_maximum_phase"' in benchmark_source
+    assert '"receiver_grasp_error_at_first_stable_m"' in benchmark_source
+    assert (
+        '"receiver_orientation_error_at_first_contact_rad"'
+        in benchmark_source
+    )
+    assert '"object_yaw_in_receiver_at_first_stable_rad"' in benchmark_source
+    assert '"object_yaw_in_receiver_at_first_contact_rad"' in benchmark_source
+    assert "--receiver_crossing_angle_rad" in benchmark_source
+
+
+def test_e2e_task_adds_native_contact_history_without_changing_success() -> None:
+    observation_source = (
+        TASK_ROOT
+        / "handover/config/needle/e2e_observations.py"
+    ).read_text()
+    environment_source = (
+        TASK_ROOT
+        / "handover/config/needle/e2e_ik_rel_env_cfg.py"
+    ).read_text()
+    registration_source = (
+        TASK_ROOT / "handover/config/needle/__init__.py"
+    ).read_text()
+    agent_source = (
+        TASK_ROOT
+        / "handover/config/needle/agents/rsl_rl_e2e_cfg.py"
+    ).read_text()
+    assert "force_matrix_w_history" in observation_source
+    assert "history_index: int = 1" in observation_source
+    assert "def transfer_contract_state(" in observation_source
+    assert "receiver_retry_active" in observation_source
+    assert 'state["giver_release_authorized"].float()' in observation_source
+    assert "previous_jaw_contacts = ObsTerm(" in environment_source
+    assert "transfer_contract = ObsTerm(" in environment_source
+    assert '"presentation_stability_steps": 8' in environment_source
+    assert '"receiver_capture_required_steps": 1' in environment_source
+    assert '"giver_release_confirmation_steps": 1' in environment_source
+    assert '"receiver_attempt_timeout_steps": 30' in environment_source
+    assert '"receiver_retry_contact_loss_steps": 8' in environment_source
+    assert '"receiver_retry_steps": 15' in environment_source
+    assert "self.rewards.phase_progress.weight = 1.0" in environment_source
+    assert "self.rewards.success.weight = 80.0" in environment_source
+    assert "terminal_transfer_failure" in environment_source
+    assert "NeedleHandoverEnvCfg" in environment_source
+    assert "NeedleHandoverReceiverCurriculumEnvCfg" in environment_source
+    assert "dr_anmar_receiver_curriculum = True" in environment_source
+    assert (
+        "dr_anmar_receiver_curriculum_restore_probability = 0.5"
+        in environment_source
+    )
+    assert "reset_receiver_curriculum_from_cache" in environment_source
+    assert "TerminationsCfg" not in environment_source
+    assert "RewardsCfg" not in environment_source
+    assert "Isaac-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0" in registration_source
+    assert "Isaac-Handover-Needle-Receiver-Curriculum-v0" in (
+        registration_source
+    )
+    assert "HandoverNeedleEndToEndPPORunnerCfg" in agent_source
+    assert "init_std=0.005" in agent_source
+    assert "clip_param=0.05" in agent_source
+    assert "desired_kl=0.002" in agent_source
+    assert "entropy_coef=0.0" in agent_source
+    for source in (
+        observation_source,
+        environment_source,
+        registration_source,
+        agent_source,
+    ):
+        ast.parse(source)
+    state_source = (
+        TASK_ROOT / "handover/mdp/state.py"
+    ).read_text()
+    benchmark_source = (
+        ROOT / "scripts/dr_anmar_learning_benchmark.py"
+    ).read_text()
+    assert "def reset_receiver_curriculum_from_cache(" in state_source
+    assert '"_dr_anmar_receiver_curriculum_cache"' in state_source
+    assert "presentation_stable & ~cache" in state_source
+    assert 'cache["reset_restores"] +=' in state_source
+    assert '"receiver_curriculum_cached_envs"' in benchmark_source
+    assert '"receiver_curriculum_reset_restores"' in benchmark_source
+    assert '"receiver_curriculum_reset_refreshes"' in benchmark_source
+    assert '"receiver_curriculum_restore_probability"' in benchmark_source
+    assert "agent_cfg.save_interval = 1" in benchmark_source
+    assert '"receiver_curriculum_checkpoint_interval"' in benchmark_source
+    assert '"receiver_curriculum_adaptation_contract"' in benchmark_source
+    assert '"pickup_lift_presentation_policy_frozen": True' in benchmark_source
+    assert '"optimizer_state_reset": True' in benchmark_source
+    assert "policy_model.configure_receiver_adaptation()" in benchmark_source
+
+
+def test_structured_transfer_state_delays_release_and_retries_receiver() -> None:
+    state_source = (
+        TASK_ROOT / "handover/mdp/state.py"
+    ).read_text()
+    assert 'getattr(env.cfg, "dr_anmar_handover_contract", None)' in (
+        state_source
+    )
+    assert "presentation_stable_consecutive" in state_source
+    assert 'state["presentation_qualified"] |=' in state_source
+    assert "receiver_capture_consecutive" in state_source
+    assert "receiver_capture_required_steps" in state_source
+    assert "giver_release_confirmation_consecutive" in state_source
+    assert "giver_release_authorized" in state_source
+    assert "release_confirmation_active" in state_source
+    assert "& receiver_contact_now" in state_source
+    assert "receiver_attempt_timeout_steps" in state_source
+    assert "receiver_attempt_stalled" in state_source
+    assert "receiver_capture_follows" in state_source
+    assert "receiver_retry_step_count" in state_source
+    assert "receiver_release_aborted" in state_source
+    assert "phase[receiver_release_aborted] = 2" in state_source
+    assert "receiver_retention_failed" in state_source
+    ast.parse(state_source)
+
+
+def test_experiment_launcher_keeps_teacher_until_full_trajectories_exist() -> None:
+    launcher_source = (ROOT / "dr_anmar_learning.sh").read_text()
+    example_source = (
+        ROOT / "examples/dranmar_e2e_handover_experiment.sh"
+    ).read_text()
+    assert "DR_ANMAR_DAGGER_WARMUP_UPDATES" in launcher_source
+    assert "DR_ANMAR_DAGGER_MIN_TEACHER_FRACTION" in launcher_source
+    assert "DR_ANMAR_E2E_WARMUP_UPDATES:-1000" in example_source
+    assert "DR_ANMAR_E2E_MINIMUM_BC_SUCCESS:-0.25" in example_source
+    assert "PPO was not started." in example_source
+    assert "DR_ANMAR_E2E_STUDENT_SEGMENT_STEPS" in launcher_source
+    assert "DR_ANMAR_E2E_REPLAY_CAPACITY_PER_PHASE" in launcher_source
+    assert "DR_ANMAR_E2E_CONSOLIDATION_UPDATES" in launcher_source
+    assert "dr_anmar_handover_promotion.py" in example_source
+    assert "PPO checkpoint rejected" in example_source
+    assert launcher_source.count("DR_ANMAR_HANDOVER_GIVER_ADAPTATION") == 2
+    assert "--handover_giver_adaptation" in launcher_source
+
+
+def test_promotion_gate_rejects_deterministic_success_and_safety_regression() -> None:
+    promotion = runpy.run_path(
+        str(ROOT / "scripts/dr_anmar_handover_promotion.py")
+    )
+    result = promotion["select_checkpoint"](
+        ROOT / "docs/experiments/evidence/controller-600-seed17.json",
+        [
+            ROOT
+            / "docs/experiments/evidence/v3-ppo25-600-seed17.json"
+        ],
+        minimum_success_improvement=0.02,
+        maximum_safety_rate_increase=0.0,
+    )
+    assert result["decision"] == "baseline_retained"
+    comparison = result["candidates"][0]
+    assert comparison["success_improvement"] < 0.0
+    assert comparison["success_gate_passed"] is False
+    assert comparison["safety_gate_passed"] is False
+    assert "receiver_retention_lost" in comparison["safety_regressions"]

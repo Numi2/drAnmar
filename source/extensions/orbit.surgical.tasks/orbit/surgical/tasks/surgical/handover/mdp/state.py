@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
-from isaaclab.assets import RigidObject
+from isaaclab.assets import Articulation, RigidObject
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import FrameTransformer
 
@@ -17,6 +17,70 @@ from orbit.surgical.tasks.surgical import mdp_common
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
+
+
+def reset_receiver_curriculum_from_cache(
+    env: ManagerBasedRLEnv,
+    env_ids: torch.Tensor | None,
+) -> None:
+    """Restore reset-time states captured at physical stable presentation.
+
+    The cache is training-only and contains states each environment reached
+    through the normal pickup, lift, and presentation sequence. It never
+    modifies an active episode and is not enabled by the end-to-end
+    qualification task.
+    """
+    cache = getattr(env, "_dr_anmar_receiver_curriculum_cache", None)
+    if cache is None:
+        return
+    if env_ids is None:
+        env_ids = torch.arange(
+            env.num_envs,
+            dtype=torch.long,
+            device=env.device,
+        )
+    valid = cache["valid"][env_ids]
+    restore_probability = float(
+        getattr(
+            env.cfg,
+            "dr_anmar_receiver_curriculum_restore_probability",
+            0.5,
+        )
+    )
+    restore_draw = torch.rand(
+        env_ids.shape,
+        device=env.device,
+    )
+    restore = valid & (restore_draw < restore_probability)
+    refresh_env_ids = env_ids[valid & ~restore]
+    if bool(refresh_env_ids.numel()):
+        cache["valid"][refresh_env_ids] = False
+        cache["reset_refreshes"] += int(refresh_env_ids.numel())
+    valid_env_ids = env_ids[restore]
+    if not bool(valid_env_ids.numel()):
+        return
+    cache["reset_restores"] += int(valid_env_ids.numel())
+    robot_1: Articulation = env.scene["robot_1"]
+    robot_2: Articulation = env.scene["robot_2"]
+    obj: RigidObject = env.scene["object"]
+    robot_1.write_joint_state_to_sim(
+        cache["robot_1_joint_pos"][valid_env_ids],
+        cache["robot_1_joint_vel"][valid_env_ids],
+        env_ids=valid_env_ids,
+    )
+    robot_2.write_joint_state_to_sim(
+        cache["robot_2_joint_pos"][valid_env_ids],
+        cache["robot_2_joint_vel"][valid_env_ids],
+        env_ids=valid_env_ids,
+    )
+    obj.write_root_pose_to_sim(
+        cache["object_root_pose_w"][valid_env_ids],
+        env_ids=valid_env_ids,
+    )
+    obj.write_root_velocity_to_sim(
+        cache["object_root_velocity_w"][valid_env_ids],
+        env_ids=valid_env_ids,
+    )
 
 
 def _step_number(env: ManagerBasedRLEnv) -> int:
@@ -40,6 +104,20 @@ def handover_state(
     required_receiver_only_steps: int = 10,
     allowed_receiver_contact_flicker_steps: int = 1,
     receiver_follow_tolerance: float = 0.005,
+    presentation_fraction_from_giver: float = 0.35,
+    presentation_height_in_robot_frame: float = -0.13,
+    presentation_ready_tolerance: float = 0.005,
+    presentation_stability_steps: int = 1,
+    presentation_linear_speed_limit: float = 0.05,
+    presentation_angular_speed_limit: float = 5.0,
+    receiver_capture_required_steps: int = 1,
+    receiver_capture_follow_tolerance: float = 0.005,
+    receiver_capture_linear_speed_limit: float = 0.05,
+    receiver_capture_angular_speed_limit: float = 5.0,
+    giver_release_confirmation_steps: int = 5,
+    receiver_attempt_timeout_steps: int = 30,
+    receiver_retry_contact_loss_steps: int = 2,
+    receiver_retry_steps: int = 0,
     reset_height_offset: float = -0.05,
     command_name: str = "receiver_pose",
 ) -> dict[str, Any]:
@@ -48,13 +126,102 @@ def handover_state(
     Phases are: 0 closest-arm approach, 1 giver grasp, 2 lifted presentation,
     3 receiver acquisition, 4 safe pickup recovery. The giver identity is
     latched at reset from the two physical tool-tip distances to the needle.
-    Pickup and acquisition accept bilateral PhysX contact in three of five
-    control steps. Retention permits one missing contact frame only while the
-    elevated needle preserves its receiver-relative offset. Before receiver
-    acquisition, three consecutive frames without live giver custody trigger
-    an open-jaw recovery and analytic reacquisition. The first attempt plus
-    recoveries are capped at ``maximum_pickup_attempts``.
+    Pickup accepts bilateral PhysX contact in three of five control steps.
+    The base task accepts receiver acquisition on the same filtered contact;
+    an environment may opt into a stricter presentation/capture contract via
+    ``cfg.dr_anmar_handover_contract``. Under that contract the giver first
+    settles at a fixed presentation pose, the receiver must retain a stable
+    bilateral capture, both tools hold still and closed for a separate release
+    confirmation period, and a pre-release miss returns to a receiver-only
+    retry while the giver keeps custody. Retention permits one missing contact
+    frame only while the elevated needle preserves its receiver-relative offset.
+    Before receiver acquisition, three consecutive frames without live giver
+    custody trigger an open-jaw recovery and analytic reacquisition. The first
+    attempt plus recoveries are capped at ``maximum_pickup_attempts``.
     """
+    contract = getattr(env.cfg, "dr_anmar_handover_contract", None)
+    if contract:
+        presentation_fraction_from_giver = float(
+            contract.get(
+                "presentation_fraction_from_giver",
+                presentation_fraction_from_giver,
+            )
+        )
+        presentation_height_in_robot_frame = float(
+            contract.get(
+                "presentation_height_in_robot_frame",
+                presentation_height_in_robot_frame,
+            )
+        )
+        presentation_ready_tolerance = float(
+            contract.get(
+                "presentation_ready_tolerance",
+                presentation_ready_tolerance,
+            )
+        )
+        presentation_stability_steps = int(
+            contract.get(
+                "presentation_stability_steps",
+                presentation_stability_steps,
+            )
+        )
+        presentation_linear_speed_limit = float(
+            contract.get(
+                "presentation_linear_speed_limit",
+                presentation_linear_speed_limit,
+            )
+        )
+        presentation_angular_speed_limit = float(
+            contract.get(
+                "presentation_angular_speed_limit",
+                presentation_angular_speed_limit,
+            )
+        )
+        receiver_capture_required_steps = int(
+            contract.get(
+                "receiver_capture_required_steps",
+                receiver_capture_required_steps,
+            )
+        )
+        receiver_capture_follow_tolerance = float(
+            contract.get(
+                "receiver_capture_follow_tolerance",
+                receiver_capture_follow_tolerance,
+            )
+        )
+        receiver_capture_linear_speed_limit = float(
+            contract.get(
+                "receiver_capture_linear_speed_limit",
+                receiver_capture_linear_speed_limit,
+            )
+        )
+        receiver_capture_angular_speed_limit = float(
+            contract.get(
+                "receiver_capture_angular_speed_limit",
+                receiver_capture_angular_speed_limit,
+            )
+        )
+        giver_release_confirmation_steps = int(
+            contract.get(
+                "giver_release_confirmation_steps",
+                giver_release_confirmation_steps,
+            )
+        )
+        receiver_attempt_timeout_steps = int(
+            contract.get(
+                "receiver_attempt_timeout_steps",
+                receiver_attempt_timeout_steps,
+            )
+        )
+        receiver_retry_contact_loss_steps = int(
+            contract.get(
+                "receiver_retry_contact_loss_steps",
+                receiver_retry_contact_loss_steps,
+            )
+        )
+        receiver_retry_steps = int(
+            contract.get("receiver_retry_steps", receiver_retry_steps)
+        )
     step = _step_number(env)
     state = getattr(env, "_dr_anmar_handover_state", None)
     if state is None:
@@ -87,6 +254,42 @@ def handover_state(
                 (env.num_envs, contact_window_steps),
                 dtype=torch.bool,
                 device=env.device,
+            ),
+            "presentation_stable_consecutive": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "presentation_qualified": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "receiver_capture_consecutive": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "giver_release_confirmation_consecutive": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "giver_release_authorized": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "receiver_capture_offset_w": torch.zeros(
+                (env.num_envs, 3), dtype=torch.float32, device=env.device
+            ),
+            "receiver_attempt_active": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "receiver_attempt_step_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "receiver_pre_release_loss_consecutive": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "receiver_retry_step_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "receiver_retry_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "receiver_release_abort_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
             ),
             "receiver_loss_consecutive": torch.zeros(
                 env.num_envs, dtype=torch.long, device=env.device
@@ -208,6 +411,18 @@ def handover_state(
     state["receiver_only_consecutive"][reset] = 0
     state["giver_contact_history"][reset] = False
     state["receiver_contact_history"][reset] = False
+    state["presentation_stable_consecutive"][reset] = 0
+    state["presentation_qualified"][reset] = False
+    state["receiver_capture_consecutive"][reset] = 0
+    state["giver_release_confirmation_consecutive"][reset] = 0
+    state["giver_release_authorized"][reset] = False
+    state["receiver_capture_offset_w"][reset] = 0.0
+    state["receiver_attempt_active"][reset] = False
+    state["receiver_attempt_step_count"][reset] = 0
+    state["receiver_pre_release_loss_consecutive"][reset] = 0
+    state["receiver_retry_step_count"][reset] = 0
+    state["receiver_retry_count"][reset] = 0
+    state["receiver_release_abort_count"][reset] = 0
     state["receiver_loss_consecutive"][reset] = 0
     state["giver_release_observed"][reset] = False
     state["successful_handover"][reset] = False
@@ -238,11 +453,31 @@ def handover_state(
     if state["last_step"] == step and not bool(torch.any(reset)):
         return state
 
-    robot_1_contact_now = mdp_common.bilateral_contact(
-        env, "robot_1_jaw_1_object_contact", "robot_1_jaw_2_object_contact", contact_threshold
+    robot_1_contact_forces = mdp_common.paired_contact_forces(
+        env,
+        "robot_1_jaw_1_object_contact",
+        "robot_1_jaw_2_object_contact",
     )
-    robot_2_contact_now = mdp_common.bilateral_contact(
-        env, "robot_2_jaw_1_object_contact", "robot_2_jaw_2_object_contact", contact_threshold
+    robot_2_contact_forces = mdp_common.paired_contact_forces(
+        env,
+        "robot_2_jaw_1_object_contact",
+        "robot_2_jaw_2_object_contact",
+    )
+    robot_1_contact_now = torch.all(
+        robot_1_contact_forces > contact_threshold,
+        dim=-1,
+    )
+    robot_2_contact_now = torch.all(
+        robot_2_contact_forces > contact_threshold,
+        dim=-1,
+    )
+    robot_1_any_contact_now = torch.any(
+        robot_1_contact_forces > contact_threshold,
+        dim=-1,
+    )
+    robot_2_any_contact_now = torch.any(
+        robot_2_contact_forces > contact_threshold,
+        dim=-1,
     )
     giver_is_robot_1 = state["giver_is_robot_1"]
     giver_contact_now = torch.where(
@@ -250,10 +485,20 @@ def handover_state(
         robot_1_contact_now,
         robot_2_contact_now,
     )
+    giver_any_contact_now = torch.where(
+        giver_is_robot_1,
+        robot_1_any_contact_now,
+        robot_2_any_contact_now,
+    )
     receiver_contact_now = torch.where(
         giver_is_robot_1,
         robot_2_contact_now,
         robot_1_contact_now,
+    )
+    receiver_any_contact_now = torch.where(
+        giver_is_robot_1,
+        robot_2_any_contact_now,
+        robot_1_any_contact_now,
     )
     state["giver_contact_history"] = torch.roll(
         state["giver_contact_history"], shifts=-1, dims=-1
@@ -288,6 +533,41 @@ def handover_state(
         env, command_name, SceneEntityCfg("robot_2"), SceneEntityCfg("object")
     )
     motion = mdp_common.object_motion(env)
+    object_pose_robot_1 = mdp_common.object_pose_in_robot_root_frame(
+        env,
+        SceneEntityCfg("robot_1"),
+        SceneEntityCfg("object"),
+    )
+    object_pose_robot_2 = mdp_common.object_pose_in_robot_root_frame(
+        env,
+        SceneEntityCfg("robot_2"),
+        SceneEntityCfg("object"),
+    )
+    object_pose_in_giver = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        object_pose_robot_1,
+        object_pose_robot_2,
+    )
+    object_pose_in_receiver = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        object_pose_robot_2,
+        object_pose_robot_1,
+    )
+    root_2_in_giver = (
+        object_pose_in_giver[:, :3]
+        - object_pose_in_receiver[:, :3]
+    )
+    presentation_target_in_giver = (
+        presentation_fraction_from_giver * root_2_in_giver
+    )
+    presentation_target_in_giver[:, 2] = (
+        presentation_height_in_robot_frame
+    )
+    presentation_error = torch.linalg.vector_norm(
+        presentation_target_in_giver - object_pose_in_giver[:, :3],
+        dim=-1,
+    )
+    structured_transfer_contract = bool(contract)
 
     phase = state["phase"]
     new_pickup_attempt = (phase == 0) & giver_contact
@@ -324,17 +604,279 @@ def handover_state(
         state["progress_phase"][newly_lifted],
         torch.full_like(state["progress_phase"][newly_lifted], 2),
     )
-    receiver_acquired = (
-        (phase == 2) & giver_contact & receiver_contact
+    giver_relative_offset = object_pos_w - giver_position_w
+    giver_follow_error = torch.linalg.vector_norm(
+        giver_relative_offset - state["giver_acquisition_offset_w"],
+        dim=-1,
     )
+    giver_follows = giver_follow_error <= giver_follow_tolerance
+    giver_custody = giver_contact | (
+        lifted & giver_follows
+    )
+    presentation_ready_now = (
+        (phase == 2)
+        & giver_contact_now
+        & lifted
+        & (presentation_error <= presentation_ready_tolerance)
+        & (motion[:, 0] <= presentation_linear_speed_limit)
+        & (motion[:, 1] <= presentation_angular_speed_limit)
+    )
+    state["presentation_stable_consecutive"][:] = torch.where(
+        presentation_ready_now,
+        state["presentation_stable_consecutive"] + 1,
+        torch.zeros_like(state["presentation_stable_consecutive"]),
+    )
+    state["presentation_qualified"] |= (
+        state["presentation_stable_consecutive"]
+        >= presentation_stability_steps
+    )
+    presentation_stable = state["presentation_qualified"]
+    if bool(
+        getattr(env.cfg, "dr_anmar_receiver_curriculum", False)
+    ):
+        cache = getattr(
+            env,
+            "_dr_anmar_receiver_curriculum_cache",
+            None,
+        )
+        robot_1: Articulation = env.scene["robot_1"]
+        robot_2: Articulation = env.scene["robot_2"]
+        if cache is None:
+            cache = {
+                "valid": torch.zeros(
+                    env.num_envs,
+                    dtype=torch.bool,
+                    device=env.device,
+                ),
+                "reset_restores": 0,
+                "reset_refreshes": 0,
+                "robot_1_joint_pos": torch.zeros_like(
+                    mdp_common.as_torch(robot_1.data.joint_pos)
+                ),
+                "robot_1_joint_vel": torch.zeros_like(
+                    mdp_common.as_torch(robot_1.data.joint_vel)
+                ),
+                "robot_2_joint_pos": torch.zeros_like(
+                    mdp_common.as_torch(robot_2.data.joint_pos)
+                ),
+                "robot_2_joint_vel": torch.zeros_like(
+                    mdp_common.as_torch(robot_2.data.joint_vel)
+                ),
+                "object_root_pose_w": torch.zeros(
+                    (env.num_envs, 7),
+                    dtype=torch.float32,
+                    device=env.device,
+                ),
+                "object_root_velocity_w": torch.zeros(
+                    (env.num_envs, 6),
+                    dtype=torch.float32,
+                    device=env.device,
+                ),
+            }
+            setattr(
+                env,
+                "_dr_anmar_receiver_curriculum_cache",
+                cache,
+            )
+        capture = presentation_stable & ~cache["valid"]
+        if bool(capture.any()):
+            cache["robot_1_joint_pos"][capture] = mdp_common.as_torch(
+                robot_1.data.joint_pos
+            )[capture]
+            cache["robot_1_joint_vel"][capture] = mdp_common.as_torch(
+                robot_1.data.joint_vel
+            )[capture]
+            cache["robot_2_joint_pos"][capture] = mdp_common.as_torch(
+                robot_2.data.joint_pos
+            )[capture]
+            cache["robot_2_joint_vel"][capture] = mdp_common.as_torch(
+                robot_2.data.joint_vel
+            )[capture]
+            cache["object_root_pose_w"][capture, :3] = object_pos_w[
+                capture
+            ]
+            cache["object_root_pose_w"][capture, 3:7] = mdp_common.as_torch(
+                obj.data.root_quat_w
+            )[capture]
+            cache["object_root_velocity_w"][capture, :3] = (
+                mdp_common.as_torch(obj.data.root_lin_vel_w)[capture]
+            )
+            cache["object_root_velocity_w"][capture, 3:6] = (
+                mdp_common.as_torch(obj.data.root_ang_vel_w)[capture]
+            )
+            cache["valid"][capture] = True
+
+    retry_was_active = state["receiver_retry_step_count"] > 0
+    state["receiver_retry_step_count"][:] = torch.where(
+        retry_was_active,
+        state["receiver_retry_step_count"] + 1,
+        state["receiver_retry_step_count"],
+    )
+    retry_complete = (
+        retry_was_active
+        & (state["receiver_retry_step_count"] > receiver_retry_steps)
+    )
+    state["receiver_retry_step_count"][retry_complete] = 0
+    receiver_retry_active = state["receiver_retry_step_count"] > 0
+    receiver_capture_began = (
+        structured_transfer_contract
+        & (phase == 2)
+        & presentation_stable
+        & receiver_any_contact_now
+        & ~receiver_retry_active
+        & ~state["receiver_attempt_active"]
+    )
+    state["receiver_attempt_active"] |= receiver_capture_began
+    state["receiver_attempt_step_count"][:] = torch.where(
+        (
+            (phase == 2)
+            & state["receiver_attempt_active"]
+            & ~receiver_retry_active
+        ),
+        state["receiver_attempt_step_count"] + 1,
+        torch.zeros_like(state["receiver_attempt_step_count"]),
+    )
+    state["receiver_capture_offset_w"][receiver_capture_began] = (
+        object_pos_w[receiver_capture_began]
+        - receiver_position_w[receiver_capture_began]
+    )
+    receiver_capture_relative_offset = object_pos_w - receiver_position_w
+    receiver_capture_follow_error = torch.linalg.vector_norm(
+        receiver_capture_relative_offset
+        - state["receiver_capture_offset_w"],
+        dim=-1,
+    )
+    receiver_capture_follows = (
+        receiver_capture_follow_error
+        <= receiver_capture_follow_tolerance
+    )
+    receiver_capture_qualified = (
+        structured_transfer_contract
+        & (phase == 2)
+        & presentation_stable
+        & receiver_contact
+        & ~receiver_retry_active
+    )
+    state["receiver_capture_consecutive"][:] = torch.where(
+        receiver_capture_qualified,
+        state["receiver_capture_consecutive"] + 1,
+        torch.zeros_like(state["receiver_capture_consecutive"]),
+    )
+    state["receiver_pre_release_loss_consecutive"][:] = torch.where(
+        (
+            ((phase == 2) & state["receiver_attempt_active"])
+            | (
+                (phase == 3)
+                & ~state["giver_release_observed"]
+            )
+        )
+        & ~receiver_any_contact_now
+        & ~receiver_retry_active,
+        state["receiver_pre_release_loss_consecutive"] + 1,
+        torch.zeros_like(
+            state["receiver_pre_release_loss_consecutive"]
+        ),
+    )
+    receiver_missed_before_capture = (
+        structured_transfer_contract
+        & (phase == 2)
+        & state["receiver_attempt_active"]
+        & (
+            state["receiver_pre_release_loss_consecutive"]
+            >= receiver_retry_contact_loss_steps
+        )
+    )
+    receiver_attempt_stalled = (
+        structured_transfer_contract
+        & (phase == 2)
+        & state["receiver_attempt_active"]
+        & (
+            state["receiver_attempt_step_count"]
+            >= receiver_attempt_timeout_steps
+        )
+        & (
+            state["receiver_capture_consecutive"]
+            < receiver_capture_required_steps
+        )
+    )
+    receiver_release_aborted = (
+        structured_transfer_contract
+        & (phase == 3)
+        & ~state["giver_release_observed"]
+        & giver_contact_now
+        & (
+            state["receiver_pre_release_loss_consecutive"]
+            >= receiver_retry_contact_loss_steps
+        )
+    )
+    start_receiver_retry = (
+        receiver_retry_steps > 0
+    ) & (
+        receiver_missed_before_capture
+        | receiver_attempt_stalled
+        | receiver_release_aborted
+    )
+    state["receiver_retry_count"][start_receiver_retry] += 1
+    state["receiver_release_abort_count"][receiver_release_aborted] += 1
+    state["receiver_retry_step_count"][start_receiver_retry] = 1
+    state["receiver_attempt_active"][start_receiver_retry] = False
+    state["receiver_attempt_step_count"][start_receiver_retry] = 0
+    state["receiver_capture_consecutive"][start_receiver_retry] = 0
+    state["giver_release_confirmation_consecutive"][
+        start_receiver_retry
+    ] = 0
+    state["giver_release_authorized"][start_receiver_retry] = False
+    state["receiver_pre_release_loss_consecutive"][
+        start_receiver_retry
+    ] = 0
+    state["receiver_contact_history"][start_receiver_retry] = False
+    phase[receiver_release_aborted] = 2
+    receiver_retry_active = state["receiver_retry_step_count"] > 0
+
+    if structured_transfer_contract:
+        receiver_acquired = (
+            (phase == 2)
+            & (
+                state["receiver_capture_consecutive"]
+                >= receiver_capture_required_steps
+            )
+            & ~receiver_retry_active
+        )
+    else:
+        receiver_acquired = (
+            (phase == 2) & giver_contact & receiver_contact
+        )
     state["receiver_acquisition_offset_w"][receiver_acquired] = (
         object_pos_w[receiver_acquired]
         - receiver_position_w[receiver_acquired]
     )
+    state["receiver_attempt_active"][receiver_acquired] = False
+    state["receiver_attempt_step_count"][receiver_acquired] = 0
     phase[receiver_acquired] = 3
     state["progress_phase"][receiver_acquired] = torch.maximum(
         state["progress_phase"][receiver_acquired],
         torch.full_like(state["progress_phase"][receiver_acquired], 3),
+    )
+    release_confirmation_active = (
+        structured_transfer_contract
+        & (phase == 3)
+        & ~state["giver_release_observed"]
+        & receiver_contact
+        & receiver_contact_now
+    )
+    state["giver_release_confirmation_consecutive"][:] = torch.where(
+        release_confirmation_active,
+        state["giver_release_confirmation_consecutive"] + 1,
+        torch.zeros_like(
+            state["giver_release_confirmation_consecutive"]
+        ),
+    )
+    state["giver_release_authorized"][:] = (
+        release_confirmation_active
+        & (
+            state["giver_release_confirmation_consecutive"]
+            >= giver_release_confirmation_steps
+        )
     )
     state["giver_release_observed"] |= (
         (phase == 3)
@@ -410,12 +952,6 @@ def handover_state(
     state["progress_phase"][successful_now] = 4
 
     pickup_active = (phase == 1) | (phase == 2)
-    giver_relative_offset = object_pos_w - giver_position_w
-    giver_follow_error = torch.linalg.vector_norm(
-        giver_relative_offset - state["giver_acquisition_offset_w"],
-        dim=-1,
-    )
-    giver_follows = giver_follow_error <= giver_follow_tolerance
     state["pickup_contact_loss_consecutive"][:] = torch.where(
         pickup_active & ~giver_contact_now,
         state["pickup_contact_loss_consecutive"] + 1,
@@ -449,6 +985,18 @@ def handover_state(
     phase[recovery_allowed] = 4
     state["giver_contact_history"][recovery_allowed] = False
     state["receiver_contact_history"][recovery_allowed] = False
+    state["presentation_stable_consecutive"][recovery_allowed] = 0
+    state["presentation_qualified"][recovery_allowed] = False
+    state["receiver_capture_consecutive"][recovery_allowed] = 0
+    state["giver_release_confirmation_consecutive"][recovery_allowed] = 0
+    state["giver_release_authorized"][recovery_allowed] = False
+    state["receiver_capture_offset_w"][recovery_allowed] = 0.0
+    state["receiver_attempt_active"][recovery_allowed] = False
+    state["receiver_attempt_step_count"][recovery_allowed] = 0
+    state["receiver_pre_release_loss_consecutive"][
+        recovery_allowed
+    ] = 0
+    state["receiver_retry_step_count"][recovery_allowed] = 0
     state["pickup_contact_loss_consecutive"][recovery_allowed] = 0
 
     recovery_active = phase == 4
@@ -468,6 +1016,18 @@ def handover_state(
     phase[recovery_complete] = 0
     state["giver_contact_history"][recovery_complete] = False
     state["receiver_contact_history"][recovery_complete] = False
+    state["presentation_stable_consecutive"][recovery_complete] = 0
+    state["presentation_qualified"][recovery_complete] = False
+    state["receiver_capture_consecutive"][recovery_complete] = 0
+    state["giver_release_confirmation_consecutive"][recovery_complete] = 0
+    state["giver_release_authorized"][recovery_complete] = False
+    state["receiver_capture_offset_w"][recovery_complete] = 0.0
+    state["receiver_attempt_active"][recovery_complete] = False
+    state["receiver_attempt_step_count"][recovery_complete] = 0
+    state["receiver_pre_release_loss_consecutive"][
+        recovery_complete
+    ] = 0
+    state["receiver_retry_step_count"][recovery_complete] = 0
     state["recovery_open_step_count"][recovery_complete] = 0
 
     state.update(
@@ -479,10 +1039,22 @@ def handover_state(
             "robot_1_contact_now": robot_1_contact_now,
             "robot_2_contact_now": robot_2_contact_now,
             "giver_contact_now": giver_contact_now,
+            "giver_any_contact_now": giver_any_contact_now,
+            "giver_custody": giver_custody,
             "receiver_contact_now": receiver_contact_now,
+            "receiver_any_contact_now": receiver_any_contact_now,
             "receiver_distance": receiver_distance,
             "clearance": clearance,
             "lifted": lifted,
+            "presentation_error": presentation_error,
+            "presentation_ready_now": presentation_ready_now,
+            "presentation_stable": presentation_stable,
+            "receiver_capture_follow_error": (
+                receiver_capture_follow_error
+            ),
+            "receiver_capture_follows": receiver_capture_follows,
+            "receiver_capture_qualified": receiver_capture_qualified,
+            "receiver_retry_active": receiver_retry_active,
             "receiver_follows": receiver_follows,
             "receiver_follow_error": receiver_follow_error,
             "giver_follows": giver_follows,

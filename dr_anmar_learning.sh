@@ -165,6 +165,33 @@ case "${command}" in
         updates="${4:-32}"
         validation_frames="${5:-500}"
         output="${6:-${DR_ANMAR_LEARNING_OUTPUT}/pretrain}"
+        dagger_args=()
+        if [[ -n "${DR_ANMAR_DAGGER_WARMUP_UPDATES:-}" ]]; then
+            dagger_args+=(
+                --dagger_warmup_updates
+                "${DR_ANMAR_DAGGER_WARMUP_UPDATES}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_DAGGER_MIN_TEACHER_FRACTION:-}" ]]; then
+            dagger_args+=(
+                --dagger_min_teacher_fraction
+                "${DR_ANMAR_DAGGER_MIN_TEACHER_FRACTION}"
+            )
+        fi
+        dagger_args+=(
+            --e2e_replay_capacity_per_phase
+            "${DR_ANMAR_E2E_REPLAY_CAPACITY_PER_PHASE:-65536}"
+            --e2e_replay_batch_size
+            "${DR_ANMAR_E2E_REPLAY_BATCH_SIZE:-4096}"
+            --e2e_samples_per_phase_step
+            "${DR_ANMAR_E2E_SAMPLES_PER_PHASE_STEP:-64}"
+            --e2e_student_segment_steps
+            "${DR_ANMAR_E2E_STUDENT_SEGMENT_STEPS:-64}"
+            --e2e_teacher_recovery_steps
+            "${DR_ANMAR_E2E_TEACHER_RECOVERY_STEPS:-32}"
+            --e2e_consolidation_updates
+            "${DR_ANMAR_E2E_CONSOLIDATION_UPDATES:-2000}"
+        )
         mkdir -p "${output}"
         "${DR_ANMAR_ISAAC_PYTHON}" \
             "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" pretrain \
@@ -174,7 +201,8 @@ case "${command}" in
             --validation_frames "${validation_frames}" \
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
-            --output_path "${output}"
+            --output_path "${output}" \
+            "${dagger_args[@]}"
         ;;
     train)
         require_runtime
@@ -227,6 +255,10 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_RESIDUAL_SCALE}"
             )
         fi
+        giver_adaptation_args=()
+        if [[ "${DR_ANMAR_HANDOVER_GIVER_ADAPTATION:-0}" == "1" ]]; then
+            giver_adaptation_args=(--handover_giver_adaptation)
+        fi
         pickup_vertical_action_limit_args=()
         if [[ -n "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
             pickup_vertical_action_limit_args=(
@@ -267,6 +299,13 @@ case "${command}" in
             presentation_fraction_from_giver_args=(
                 --presentation_fraction_from_giver
                 "${DR_ANMAR_POLICY_PRESENTATION_FRACTION_FROM_GIVER}"
+            )
+        fi
+        receiver_crossing_angle_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_CROSSING_ANGLE_RAD:-}" ]]; then
+            receiver_crossing_angle_args=(
+                --receiver_crossing_angle_rad
+                "${DR_ANMAR_POLICY_RECEIVER_CROSSING_ANGLE_RAD}"
             )
         fi
         presentation_height_in_robot_frame_args=()
@@ -324,12 +363,14 @@ case "${command}" in
             --benchmark_formatter schema,json \
             --output_path "${output}" \
             "${residual_scale_args[@]}" \
+            "${giver_adaptation_args[@]}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${pickup_initial_vertical_action_limit_args[@]}" \
             "${recovery_pickup_vertical_action_limit_args[@]}" \
             "${carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${presentation_fraction_from_giver_args[@]}" \
+            "${receiver_crossing_angle_args[@]}" \
             "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \

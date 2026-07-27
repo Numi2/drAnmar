@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import copy
+import math
 
 import torch
 from rsl_rl.models import MLPModel
@@ -18,11 +19,20 @@ from isaaclab.utils.math import (
 )
 
 from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+    NEEDLE_ARC_EXTENT_RAD,
+    NEEDLE_PROVISIONAL_ARC_FRACTION,
     NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
     needle_geometry_grasp_offset_m,
 )
 
-_RECEIVER_OFFSET = needle_geometry_grasp_offset_m(0.65)
+_RECEIVER_ARC_FRACTION = 0.65
+_RECEIVER_OFFSET = needle_geometry_grasp_offset_m(_RECEIVER_ARC_FRACTION)
+_RECEIVER_TANGENT_DELTA_RAD = (
+    _RECEIVER_ARC_FRACTION - NEEDLE_PROVISIONAL_ARC_FRACTION
+) * NEEDLE_ARC_EXTENT_RAD
+_RECEIVER_BASELINE_CROSSING_ANGLE_RAD = (
+    math.pi - _RECEIVER_TANGENT_DELTA_RAD
+)
 
 
 class HandoverAnalyticController(nn.Module):
@@ -38,7 +48,7 @@ class HandoverAnalyticController(nn.Module):
         self.receiver_close_distance = 0.001
         self.slow_approach_radius = 0.02
         self.slow_approach_action_limit = 0.1
-        self.receiver_contact_centering_action_limit = 0.0025
+        self.receiver_contact_centering_action_limit = 0.005
         self.normalized_contact_threshold = 0.002
         self.contact_force_observation_scale = 0.2
         self.giver_lift_contact_force_threshold_n = 0.01
@@ -46,6 +56,7 @@ class HandoverAnalyticController(nn.Module):
         self.presentation_fraction_from_giver = 0.35
         self.presentation_height_in_robot_frame = -0.13
         self.presentation_ready_tolerance = 0.005
+        self.presentation_hold_action_limit = 0.01
         self.minimum_lift_height_in_robot_frame = -0.139
         self.carry_lateral_action_limit = 0.06
         self.carry_lateral_ramp_height = 0.01
@@ -63,6 +74,14 @@ class HandoverAnalyticController(nn.Module):
         self.giver_pregrasp_orientation_tolerance = 0.035
         self.giver_transport_orientation_action_limit = 0.035
         self.receiver_orientation_action_limit = 0.6
+        self.receiver_tangent_delta_rad = _RECEIVER_TANGENT_DELTA_RAD
+        self.receiver_crossing_angle_rad = (
+            _RECEIVER_BASELINE_CROSSING_ANGLE_RAD
+        )
+        self.receiver_roll_offset_rad = (
+            self.receiver_tangent_delta_rad
+            + self.receiver_crossing_angle_rad
+        )
         # Keep training and serving identical for giver adaptation.  This is
         # deliberately disabled by default because this flag is controller
         # configuration, not checkpoint state.  A checkpoint must never gain
@@ -79,7 +98,7 @@ class HandoverAnalyticController(nn.Module):
         )
         self.receiver_grasp_x = float(_RECEIVER_OFFSET[0])
         self.receiver_grasp_y = float(_RECEIVER_OFFSET[1])
-        self.receiver_grasp_z = -0.0018
+        self.receiver_grasp_z = -0.003
 
     def _select_role(
         self,
@@ -216,6 +235,8 @@ class HandoverAnalyticController(nn.Module):
         )
         phase = torch.argmax(raw[:, 77:82], dim=-1)
         pickup_recovery_context = raw[:, 98] > 0.5
+        presentation_stable = raw[:, 103] >= 1.0
+        receiver_retry_active = raw[:, 105] > 0.5
         identity_tool_orientation = torch.zeros_like(
             giver_orientation
         )
@@ -433,33 +454,52 @@ class HandoverAnalyticController(nn.Module):
             receiver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
+        phase_zero_lift_enabled = torch.full_like(
+            phase,
+            self.giver_lift_on_live_contact,
+            dtype=torch.bool,
+        )
         giver_carry_mode = (
             ((phase >= 1) & (phase <= 2))
-            | ((phase == 0) & self.giver_lift_on_live_contact)
+            | ((phase == 0) & phase_zero_lift_enabled)
+        )
+        # Phase 1 is entered only after filtered bilateral giver contact. Keep
+        # lifting through a brief contact-sensor flicker so the action policy
+        # agrees with the state's pickup_contact_loss_steps debounce. A real
+        # loss still moves the episode to phase 4, where recovery takes over.
+        giver_pre_lift_transport_ready = (
+            (phase == 1) | giver_pre_lift_contact
         )
         giver_transport_active = giver_carry_mode & torch.where(
             phase <= 1,
-            giver_pre_lift_contact,
+            giver_pre_lift_transport_ready,
             giver_bilateral_contact,
-        )
-        presentation_ready = (
-            torch.linalg.vector_norm(
-                giver_target - object_in_giver,
-                dim=-1,
-            )
-            < self.presentation_ready_tolerance
         )
         receiver_approach_active = (
             (phase == 2)
-            & presentation_ready
+            & presentation_stable
             & giver_bilateral_contact
             & ~receiver_any_contact
+            & ~receiver_retry_active
         )
-
         giver_translation = torch.where(
             giver_transport_active.unsqueeze(-1),
             giver_carry,
             giver_approach,
+        )
+        giver_presentation_hold = giver_carry.clamp(
+            -self.presentation_hold_action_limit,
+            self.presentation_hold_action_limit,
+        )
+        giver_translation = torch.where(
+            (
+                (phase == 2)
+                & giver_bilateral_contact
+                & presentation_stable
+                & ~receiver_any_contact
+            ).unsqueeze(-1),
+            giver_presentation_hold,
+            giver_translation,
         )
         giver_translation = torch.where(
             (
@@ -510,6 +550,19 @@ class HandoverAnalyticController(nn.Module):
             torch.zeros_like(receiver_translation),
             receiver_translation,
         )
+        receiver_retry_translation = torch.zeros_like(
+            receiver_translation
+        )
+        receiver_retry_translation[:, 2] = (
+            self.slow_approach_action_limit
+        )
+        receiver_translation = torch.where(
+            (
+                (phase == 2) & receiver_retry_active
+            ).unsqueeze(-1),
+            receiver_retry_translation,
+            receiver_translation,
+        )
         receiver_contact_imbalance = (
             receiver_contacts[:, 1] - receiver_contacts[:, 0]
         )
@@ -522,6 +575,7 @@ class HandoverAnalyticController(nn.Module):
                 (phase == 2)
                 & giver_bilateral_contact
                 & receiver_any_contact
+                & ~receiver_retry_active
             ),
             receiver_contact_centering,
             torch.zeros_like(receiver_contact_centering),
@@ -538,11 +592,10 @@ class HandoverAnalyticController(nn.Module):
             )
             & (phase < 3)
         )
-        giver_closing |= (
-            (phase == 3) & ~receiver_bilateral_contact
-        )
+        giver_closing |= (phase == 3) & ~receiver_bilateral_contact
         receiver_closing = (
             ((phase == 2) | (phase == 3))
+            & ~receiver_retry_active
             & (
                 (
                     receiver_distance
@@ -604,8 +657,16 @@ class HandoverAnalyticController(nn.Module):
             giver_orientation_action,
         )
 
+        # The giver and receiver grasp different points on a curved needle.
+        # Express receiver roll as local tangent change plus a physics-
+        # calibrated crossing angle. Zero crossing is parallel to the needle
+        # and was rejected because the needle slipped after release; the
+        # baseline crossing keeps the prior pi roll until a matched sweep
+        # identifies a better contact-retaining jaw angle.
         receiver_roll = torch.zeros_like(giver_orientation)
-        receiver_roll[:, 2] = 1.0
+        receiver_half_roll_offset = 0.5 * self.receiver_roll_offset_rad
+        receiver_roll[:, 2] = math.sin(receiver_half_roll_offset)
+        receiver_roll[:, 3] = math.cos(receiver_half_roll_offset)
         receiver_target_orientation = quat_mul(
             receiver_roll,
             giver_orientation,

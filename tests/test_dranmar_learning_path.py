@@ -629,7 +629,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "class HandoverAnalyticController(nn.Module):" in handover_model_source
     assert "torch.where(residual_mask, sampled, mean)" in handover_model_source
     assert (
-        "(phase == 2)\n            & presentation_ready\n"
+        "(phase == 2)\n            & presentation_stable\n"
         in handover_model_source
     )
     assert "receiver_approach_active = (" in handover_model_source
@@ -922,7 +922,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "giver_transport_normalized_contact_thresholds = values"
         in benchmark_source
     )
-    assert "selected_receiver_z_offset = -0.0018" in benchmark_source
+    assert "selected_receiver_z_offset = -0.003" in benchmark_source
     assert '"rule": "minimum_reset_tool_tip_to_needle_distance"' in benchmark_source
     assert '"robot_1_selected_as_giver"' in benchmark_source
     assert '"robot_2_selected_as_giver"' in benchmark_source
@@ -1017,7 +1017,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "pickup_recovery_context," in handover_model_source
     assert "pickup_deceleration_fraction = (" in handover_model_source
     assert (
-        "self.receiver_contact_centering_action_limit = 0.0025"
+        "self.receiver_contact_centering_action_limit = 0.005"
         in handover_model_source
     )
     assert (
@@ -1044,6 +1044,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "& ~receiver_bilateral_contact" in benchmark_source
     assert (
         '"giver_release_waits_for_current_receiver_bilateral": True'
+        in benchmark_source
+    )
+    assert (
+        '"giver_release_uses_time_only_settle": False'
         in benchmark_source
     )
     assert "((phase == 3) & giver_any_contact)" in benchmark_source
