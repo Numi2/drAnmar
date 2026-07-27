@@ -243,11 +243,13 @@
           "safety_penalties_remain_continuous": true
         },
         "residual_phases": [
+          "giver_pre_contact_approach_and_reacquisition_translation",
+          "giver_pre_10mm_lift_lateral_centering_only",
           "receiver_presentation_ready_approach_before_contact"
         ],
         "analytic_only_controls": [
           "closest_arm_role_selection",
-          "pickup_transport_and_presentation_sequence",
+          "pickup_vertical_motion_transport_and_presentation_sequence",
           "wrist_orientation",
           "both_grippers",
           "post_contact_hold_release_and_retreat"

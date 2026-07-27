@@ -438,6 +438,18 @@ class HandoverAnalyticController(nn.Module):
         ).clamp(-1.0, 1.0)
 
         giver_residual = torch.zeros_like(giver_action)
+        giver_pre_contact_recovery = (
+            (phase == 0)
+            | ((phase == 1) & ~giver_bilateral_contact)
+        )
+        giver_pre_lift_centering = (
+            (phase == 1) & giver_bilateral_contact
+        )
+        giver_residual[:, :2] = (
+            giver_pre_contact_recovery
+            | giver_pre_lift_centering
+        ).unsqueeze(-1)
+        giver_residual[:, 2] = giver_pre_contact_recovery
         receiver_residual = torch.zeros_like(receiver_action)
         receiver_residual_enabled = receiver_approach_active
         receiver_residual[:, :3] = receiver_residual_enabled.unsqueeze(-1)
