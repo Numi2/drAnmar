@@ -276,6 +276,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_GIVER_CLOSE_DISTANCE}"
             )
         fi
+        giver_lift_contact_force_threshold_args=()
+        if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_CONTACT_FORCE_THRESHOLD_N:-}" ]]; then
+            giver_lift_contact_force_threshold_args=(
+                --giver_lift_contact_force_threshold
+                "${DR_ANMAR_POLICY_GIVER_LIFT_CONTACT_FORCE_THRESHOLD_N}"
+            )
+        fi
         giver_lift_on_live_contact_args=()
         if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
             case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
@@ -303,6 +310,7 @@ case "${command}" in
             "${presentation_fraction_from_giver_args[@]}" \
             "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_close_distance_args[@]}" \
+            "${giver_lift_contact_force_threshold_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
         ;;
     record)
@@ -366,6 +374,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_GIVER_CLOSE_DISTANCE}"
             )
         fi
+        giver_lift_contact_force_threshold_args=()
+        if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_CONTACT_FORCE_THRESHOLD_N:-}" ]]; then
+            giver_lift_contact_force_threshold_args=(
+                --giver_lift_contact_force_threshold
+                "${DR_ANMAR_POLICY_GIVER_LIFT_CONTACT_FORCE_THRESHOLD_N}"
+            )
+        fi
         giver_lift_on_live_contact_args=()
         if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
             case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
@@ -398,6 +413,7 @@ case "${command}" in
             "${presentation_fraction_from_giver_args[@]}" \
             "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_close_distance_args[@]}" \
+            "${giver_lift_contact_force_threshold_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
         ;;
     tqta-start)

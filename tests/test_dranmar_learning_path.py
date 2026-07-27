@@ -616,11 +616,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "def configure_giver_adaptation(self)" in handover_model_source
     assert "giver_row_mask[3:6] = 1.0" in handover_model_source
     assert "giver_row_mask[10:13] = 1.0" in handover_model_source
-    assert (
-        "giver_transport_active = (\n"
-        "            giver_carry_mode & giver_bilateral_contact"
-        in handover_model_source
-    )
+    assert "giver_transport_active = giver_carry_mode & torch.where(" in handover_model_source
+    assert "giver_lift_contact_qualified" in handover_model_source
     assert handover_model_source.count(
         "giver_transport_active.unsqueeze(-1)"
     ) >= 2
@@ -758,6 +755,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in benchmark_source
     )
     assert (
+        'play.add_argument("--giver_lift_contact_force_threshold", type=float)'
+        in benchmark_source
+    )
+    assert (
         'action=argparse.BooleanOptionalAction'
         in benchmark_source
     )
@@ -779,6 +780,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in benchmark_source
     )
     assert '"policy_giver_close_distance_m"' in benchmark_source
+    assert '"policy_giver_lift_contact_force_threshold_n"' in benchmark_source
     assert '"policy_giver_lift_on_live_contact"' in benchmark_source
     assert 'parameter_group["lr"] = args.learning_rate' in benchmark_source
     assert (
@@ -866,6 +868,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert "self.carry_lateral_ramp_height = 0.01" in handover_model_source
     assert "self.giver_lift_on_live_contact = True" in handover_model_source
+    assert (
+        "self.giver_lift_contact_force_threshold_n = 0.01"
+        in handover_model_source
+    )
     assert (
         "self.giver_pregrasp_orientation_action_limit = 0.6"
         in handover_model_source

@@ -3457,6 +3457,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "loaded policy does not expose a giver close distance"
             )
         controller.close_distance = args.giver_close_distance
+    if args.giver_lift_contact_force_threshold is not None:
+        if not 0.01 <= args.giver_lift_contact_force_threshold <= 0.1:
+            env.close()
+            return _fail(
+                "play giver lift contact force threshold must be in [0.01, 0.1] N"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "giver_lift_contact_force_threshold_n"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a giver lift contact force threshold"
+            )
+        controller.giver_lift_contact_force_threshold_n = (
+            args.giver_lift_contact_force_threshold
+        )
     if args.giver_lift_on_live_contact is not None:
         controller = getattr(policy_model, "controller", None)
         if controller is None or not hasattr(
@@ -4975,6 +4992,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 and hasattr(policy_model.controller, "close_distance")
                 else None
             ),
+            "policy_giver_lift_contact_force_threshold_n": (
+                float(
+                    policy_model.controller.giver_lift_contact_force_threshold_n
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "giver_lift_contact_force_threshold_n",
+                )
+                else None
+            ),
             "policy_giver_lift_on_live_contact": (
                 bool(policy_model.controller.giver_lift_on_live_contact)
                 if hasattr(policy_model, "controller")
@@ -5094,6 +5122,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--presentation_fraction_from_giver", type=float)
     play.add_argument("--presentation_height_in_robot_frame", type=float)
     play.add_argument("--giver_close_distance", type=float)
+    play.add_argument("--giver_lift_contact_force_threshold", type=float)
     play.add_argument(
         "--giver_lift_on_live_contact",
         action=argparse.BooleanOptionalAction,
