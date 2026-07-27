@@ -2,8 +2,9 @@
 """Track Dr.Anmar time to qualified task achievement (TQTA).
 
 The tracker starts from a cryptographically bound task contract and stops only
-when one frozen checkpoint satisfies the declared held-out seed and success
-gate. It consumes the JSON evidence emitted by dr_anmar_learning_benchmark.py.
+when one frozen checkpoint satisfies the declared held-out competence,
+physical-retention, and safety gates. It consumes the JSON evidence emitted by
+dr_anmar_learning_benchmark.py.
 """
 
 from __future__ import annotations
@@ -91,10 +92,58 @@ def task_gate(contract: dict[str, Any], task: str) -> dict[str, Any]:
         raise ValueError(f"task has no held-out seed gate: {task}")
     if required_passes > len(held_out_seeds):
         raise ValueError("held-out seed pass count exceeds declared seeds")
+    hard_termination_terms = [
+        str(name)
+        for name in promotion.get(
+            "hard_termination_terms_must_be_zero",
+            [],
+        )
+    ]
+    retention_comparison = promotion.get(
+        "analytic_baseline_retention_comparison",
+        "not_required",
+    )
+    if retention_comparison not in {
+        "not_required",
+        "not_higher_rate",
+        "strictly_lower_rate_unless_baseline_zero",
+    }:
+        raise ValueError(
+            f"invalid analytic baseline retention comparison for task: {task}"
+        )
+    required_policy_contract = promotion.get(
+        "required_policy_contract",
+        {},
+    )
+    if not isinstance(required_policy_contract, dict):
+        raise ValueError(
+            f"required policy contract must be an object for task: {task}"
+        )
     return {
         "minimum_success_rate": float(threshold),
         "held_out_seeds": held_out_seeds,
         "held_out_seed_passes": required_passes,
+        "require_complete_first_terminal_population": bool(
+            promotion.get(
+                "require_complete_first_terminal_population",
+                False,
+            )
+        ),
+        "hard_termination_terms_must_be_zero": hard_termination_terms,
+        "require_matching_analytic_baseline": bool(
+            promotion.get("require_matching_analytic_baseline", False)
+        ),
+        "candidate_success_must_not_trail_analytic_baseline": bool(
+            promotion.get(
+                "candidate_success_must_not_trail_analytic_baseline",
+                False,
+            )
+        ),
+        "analytic_baseline_retention_comparison": retention_comparison,
+        "required_policy_contract": required_policy_contract,
+        "require_training_play_source_parity": bool(
+            promotion.get("require_training_play_source_parity", False)
+        ),
     }
 
 
@@ -158,7 +207,20 @@ def _validate_tracker_contract(tracker: dict[str, Any]) -> None:
 
 
 def _evidence_record(path: Path, evidence: dict[str, Any]) -> dict[str, Any]:
-    checkpoint = evidence.get("checkpoint", {})
+    checkpoint = evidence.get("checkpoint") or {}
+    runtime = evidence.get("runtime") or {}
+    source = runtime.get("source") or {}
+    handover = evidence.get("first_episode_handover_diagnostics") or {}
+    retention = (
+        handover.get("transport_retention_diagnostics") or {}
+    ).get("overall") or {}
+    completed = evidence.get("completed_episodes")
+    sustained_losses = retention.get(
+        "episodes_with_sustained_midair_loss_3_steps"
+    )
+    sustained_loss_rate = None
+    if completed and sustained_losses is not None:
+        sustained_loss_rate = float(sustained_losses) / int(completed)
     return {
         "path": str(path),
         "sha256": _sha256(path),
@@ -169,6 +231,34 @@ def _evidence_record(path: Path, evidence: dict[str, Any]) -> dict[str, Any]:
         "success_rate": evidence.get("success_rate"),
         "wall_time_s": evidence.get("wall_time_s"),
         "simulated_frames": evidence.get("simulated_frames"),
+        "analytic_only": bool(evidence.get("analytic_only", False)),
+        "num_envs": evidence.get("num_envs"),
+        "completed_episodes": completed,
+        "unresolved_episodes": evidence.get("unresolved_episodes"),
+        "first_terminal_outcome_per_environment": evidence.get(
+            "first_terminal_outcome_per_environment"
+        ),
+        "termination_term_counts": evidence.get(
+            "termination_term_counts"
+        )
+        or {},
+        "sustained_midair_loss_3_steps": sustained_losses,
+        "sustained_midair_loss_3_steps_rate": sustained_loss_rate,
+        "source_revision": source.get("dranmar_revision"),
+        "policy_contract": {
+            "policy_residual_scale": evidence.get(
+                "policy_residual_scale"
+            ),
+            "policy_giver_residual_axes": evidence.get(
+                "policy_giver_residual_axes"
+            ),
+            "policy_analytic_vertical_authority": evidence.get(
+                "policy_analytic_vertical_authority"
+            ),
+            "policy_receiver_residual_enabled": evidence.get(
+                "policy_receiver_residual_enabled"
+            ),
+        },
     }
 
 
@@ -194,11 +284,102 @@ def _recompute_qualification(
     required_seeds = set(int(seed) for seed in gate["held_out_seeds"])
     threshold = float(gate["minimum_success_rate"])
     required_passes = int(gate["held_out_seed_passes"])
-    training_checkpoints = {
-        item.get("checkpoint_sha256")
+    training_checkpoints: dict[str, set[str | None]] = {}
+    for item in tracker["evidence"]:
+        checkpoint = item.get("checkpoint_sha256")
+        if item.get("kind") == "training" and checkpoint:
+            training_checkpoints.setdefault(str(checkpoint), set()).add(
+                item.get("source_revision")
+            )
+    analytic_baselines = [
+        item
         for item in tracker["evidence"]
-        if item.get("kind") == "training" and item.get("checkpoint_sha256")
-    }
+        if item.get("kind") == "held_out_play"
+        and item.get("analytic_only")
+    ]
+
+    def matching_baseline(item: dict[str, Any]) -> dict[str, Any] | None:
+        for baseline in analytic_baselines:
+            if (
+                baseline.get("seed") == item.get("seed")
+                and baseline.get("num_envs") == item.get("num_envs")
+                and baseline.get("completed_episodes")
+                == item.get("completed_episodes")
+                and baseline.get("source_revision")
+                == item.get("source_revision")
+            ):
+                return baseline
+        return None
+
+    def passes_physical_gate(item: dict[str, Any]) -> bool:
+        if item.get("analytic_only"):
+            return False
+        if (
+            gate["require_matching_analytic_baseline"]
+            and not item.get("source_revision")
+        ):
+            return False
+        if gate["require_complete_first_terminal_population"]:
+            if not item.get("first_terminal_outcome_per_environment"):
+                return False
+            if (
+                item.get("num_envs") is None
+                or item.get("completed_episodes") != item.get("num_envs")
+                or item.get("unresolved_episodes") != 0
+            ):
+                return False
+        termination_counts = item.get("termination_term_counts") or {}
+        if any(
+            int(termination_counts.get(name, 0)) != 0
+            for name in gate["hard_termination_terms_must_be_zero"]
+        ):
+            return False
+        policy_contract = item.get("policy_contract") or {}
+        if any(
+            policy_contract.get(name) != expected
+            for name, expected in gate["required_policy_contract"].items()
+        ):
+            return False
+
+        baseline = matching_baseline(item)
+        if gate["require_matching_analytic_baseline"] and baseline is None:
+            return False
+        if baseline is None:
+            return True
+        if gate["candidate_success_must_not_trail_analytic_baseline"]:
+            baseline_success = baseline.get("success_rate")
+            candidate_success = item.get("success_rate")
+            if (
+                baseline_success is None
+                or candidate_success is None
+                or float(candidate_success) < float(baseline_success)
+            ):
+                return False
+        comparison = gate["analytic_baseline_retention_comparison"]
+        if comparison != "not_required":
+            baseline_rate = baseline.get(
+                "sustained_midair_loss_3_steps_rate"
+            )
+            candidate_rate = item.get(
+                "sustained_midair_loss_3_steps_rate"
+            )
+            if baseline_rate is None or candidate_rate is None:
+                return False
+            if comparison == "not_higher_rate":
+                if float(candidate_rate) > float(baseline_rate):
+                    return False
+            elif (
+                float(baseline_rate) > 0.0
+                and float(candidate_rate) >= float(baseline_rate)
+            ):
+                return False
+            elif (
+                float(baseline_rate) == 0.0
+                and float(candidate_rate) != 0.0
+            ):
+                return False
+        return True
+
     candidates: dict[str, set[int]] = {}
     winner: tuple[str, list[int]] | None = None
     for item in tracker["evidence"]:
@@ -207,15 +388,25 @@ def _recompute_qualification(
         checkpoint = item.get("checkpoint_sha256")
         seed = item.get("seed")
         success_rate = item.get("success_rate")
+        checkpoint_key = str(checkpoint)
+        training_revisions = training_checkpoints.get(checkpoint_key)
         if (
-            checkpoint not in training_checkpoints
+            training_revisions is None
             or seed is None
             or int(seed) not in required_seeds
             or success_rate is None
             or float(success_rate) < threshold
+            or not passes_physical_gate(item)
+            or (
+                gate["require_training_play_source_parity"]
+                and (
+                    not item.get("source_revision")
+                    or item.get("source_revision")
+                    not in training_revisions
+                )
+            )
         ):
             continue
-        checkpoint_key = str(checkpoint)
         seeds = candidates.setdefault(checkpoint_key, set())
         seeds.add(int(seed))
         if winner is None and len(seeds) >= required_passes:
@@ -287,7 +478,11 @@ def ingest(
         if evidence.get("task") != tracker.get("task"):
             raise ValueError(f"evidence task does not match tracker: {path}")
         record = _evidence_record(path, evidence)
-        if not record["checkpoint_sha256"]:
+        is_analytic_baseline = (
+            record["kind"] == "held_out_play"
+            and record["analytic_only"]
+        )
+        if not record["checkpoint_sha256"] and not is_analytic_baseline:
             raise ValueError(f"evidence has no frozen checkpoint hash: {path}")
         tracker["evidence"].append(record)
         existing_hashes.add(digest)

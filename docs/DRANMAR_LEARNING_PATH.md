@@ -250,18 +250,24 @@ Stage 6 no longer starts PPO from a random 14-action policy. The exact
 closest-arm/contact-aware sequence is the deterministic policy base. Giver PPO
 is disabled throughout approach, unqualified grasp, and reacquisition. Once
 the three-of-five bilateral-contact window proves custody, the isolated giver
-channel may learn bounded XYZ pickup and transport corrections while live
-bilateral custody remains and before first receiver contact. The receiver
-residual may act during the receiver approach after the needle is within the
-5 mm presentation gate and is disabled on first native contact. The residual
-action limit is 0.03 with 0.01 fixed initial exploration standard deviation.
-Role selection, sequencing, the pickup and transport base trajectory, wrist
-control, both grippers, post-contact hold, release, and retreat remain analytic
-and cannot be bypassed by exploration. Giver adaptation starts from a
-zero-influence residual around the analytic base; it does not load the weak
-single-lift checkpoint. It freezes all non-giver output rows, trains only the
-six dedicated giver XYZ rows, disables receiver residual exploration, and
-starts with fresh optimizer state.
+channel may learn bounded XY pickup and transport corrections while live
+bilateral custody remains and before first receiver contact. Vertical lift,
+wrist motion, and both grippers remain analytic. The receiver residual is
+disabled in both training and checkpoint playback. This closes the previous
+train/serve gap in which a non-checkpoint controller flag could re-enable an
+untrained receiver residual after reload. The residual action limit is 0.01
+with 0.01 fixed initial exploration standard deviation. At the 0.01 m/action
+relative-IK scale, the largest learned position correction is 0.1 mm per
+control step. It cannot reverse the analytic upward command.
+
+Giver adaptation starts from a zero-influence residual around the analytic
+base; it does not load the weak single-lift checkpoint. The shared actor
+features may adapt instead of remaining random, while gradient masks restrict
+the final layer to the four dedicated giver XY rows. All other output rows
+remain inert and optimizer state starts fresh. Intermediate phase transitions
+are diagnostics with zero positive weight. Only a retained terminal handover
+earns positive task credit, so partial pickup progress cannot offset a later
+hard physical failure.
 
 The giver may transport only while live native bilateral contact remains
 present. Before receiver acquisition, safe recovery requires both three
@@ -429,6 +435,24 @@ the manifest. Promotion requires:
 5. contact and force qualification for lift and handover; and
 6. a fresh benchmark if the robot, asset, physics, reward, observation, or
    runtime contract changes.
+
+Stage 6 additionally requires a same-seed, same-population analytic baseline
+from the same source revision. A checkpoint must reach the absolute success
+gate, must not trail that baseline, and must strictly reduce the rate of
+three-step mid-air giver contact loss unless the baseline rate is already zero.
+The complete first-terminal population is required, object-drop, excessive
+object-force, and protected-surface-force terminations must all be zero, and
+the evidence must prove the XY-only residual, analytic vertical authority,
+disabled receiver residual, and 0.01 residual scale. A final or periodic PPO
+checkpoint is never promoted merely because it was saved.
+
+This structure follows residual learning's intended division between a
+competent nominal controller and a small learned correction, keeps hard
+constraints separate from task reward, and leaves recovery under its own
+bounded controller. The primary method references are [Residual Reinforcement
+Learning for Robot Control](https://arxiv.org/abs/1812.03201), [Constrained
+Policy Optimization](https://proceedings.mlr.press/v70/achiam17a), and
+[Recovery RL](https://arxiv.org/abs/2010.15920).
 
 For handover play bundles, the stage-stratified distribution records the
 maximum physical phase reached before each environment's first terminal

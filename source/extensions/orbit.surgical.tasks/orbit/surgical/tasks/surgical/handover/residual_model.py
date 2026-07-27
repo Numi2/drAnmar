@@ -63,7 +63,11 @@ class HandoverAnalyticController(nn.Module):
         self.giver_pregrasp_orientation_tolerance = 0.035
         self.giver_transport_orientation_action_limit = 0.035
         self.receiver_orientation_action_limit = 0.6
-        self.receiver_residual_enabled_for_learning = True
+        # Keep training and serving identical for giver adaptation.  This is
+        # deliberately disabled by default because this flag is controller
+        # configuration, not checkpoint state.  A checkpoint must never gain
+        # an untrained receiver residual merely by being reloaded for play.
+        self.receiver_residual_enabled_for_learning = False
         self.giver_grasp_x = float(
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
         )
@@ -662,7 +666,10 @@ class HandoverAnalyticController(nn.Module):
             & giver_bilateral_contact
             & ~receiver_any_contact
         )
-        giver_residual[:, :3] = (
+        # The analytic controller remains the sole authority for vertical
+        # lift.  A learned correction may center the grasp in the table plane,
+        # but cannot reverse or accelerate the qualified pickup trajectory.
+        giver_residual[:, :2] = (
             giver_pickup_transport_residual.unsqueeze(-1)
         )
         receiver_residual = torch.zeros_like(receiver_action)
@@ -712,12 +719,12 @@ class HandoverAnalyticController(nn.Module):
 
 
 class HandoverResidualMLPModel(MLPModel):
-    """Learn only bounded translations around the exact physical sequence."""
+    """Learn only bounded giver XY corrections around the physical sequence."""
 
     def __init__(
         self,
         *args,
-        residual_scale: float = 0.03,
+        residual_scale: float = 0.01,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -741,24 +748,26 @@ class HandoverResidualMLPModel(MLPModel):
                     parameter.requires_grad_(False)
 
     def configure_giver_adaptation(self) -> None:
-        """Train only zero-influence giver rows around the analytic base."""
+        """Adapt shared features and only the zero-influence giver XY rows."""
         self.controller.receiver_residual_enabled_for_learning = False
         final_linear = next(
             module
             for module in reversed(self.mlp)
             if isinstance(module, nn.Linear)
         )
+        # The previous contract froze the randomly initialized feature
+        # extractor and reduced PPO to a linear probe over random features.
+        # Shared features may now adapt, while gradient masking below keeps
+        # every non-giver output row inert.
         for parameter in self.mlp.parameters():
-            parameter.requires_grad_(False)
-        final_linear.weight.requires_grad_(True)
-        final_linear.bias.requires_grad_(True)
+            parameter.requires_grad_(True)
         giver_row_mask = torch.zeros(
             final_linear.out_features,
             dtype=final_linear.weight.dtype,
             device=final_linear.weight.device,
         )
-        giver_row_mask[3:6] = 1.0
-        giver_row_mask[10:13] = 1.0
+        giver_row_mask[3:5] = 1.0
+        giver_row_mask[10:12] = 1.0
         final_linear.weight.register_hook(
             lambda gradient: gradient
             * giver_row_mask.unsqueeze(-1)
@@ -787,10 +796,10 @@ class HandoverResidualMLPModel(MLPModel):
         network_output = torch.tanh(self.mlp(latent))
         giver_channel_output = torch.cat(
             (
-                network_output[:, 3:6],
-                torch.zeros_like(network_output[:, 3:7]),
-                network_output[:, 10:13],
-                torch.zeros_like(network_output[:, 10:14]),
+                network_output[:, 3:5],
+                torch.zeros_like(network_output[:, 2:7]),
+                network_output[:, 10:12],
+                torch.zeros_like(network_output[:, 9:14]),
             ),
             dim=-1,
         )
@@ -843,10 +852,10 @@ class _HandoverResidualExport(nn.Module):
         )
         giver_channel_output = torch.cat(
             (
-                network_output[:, 3:6],
-                torch.zeros_like(network_output[:, 3:7]),
-                network_output[:, 10:13],
-                torch.zeros_like(network_output[:, 10:14]),
+                network_output[:, 3:5],
+                torch.zeros_like(network_output[:, 2:7]),
+                network_output[:, 10:12],
+                torch.zeros_like(network_output[:, 9:14]),
             ),
             dim=-1,
         )

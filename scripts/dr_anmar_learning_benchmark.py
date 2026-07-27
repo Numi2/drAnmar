@@ -1626,8 +1626,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "handover_giver_adaptation_contract": (
                 {
                     "optimizer_state_reset": True,
-                    "shared_actor_and_receiver_rows_frozen": True,
-                    "trainable_output_rows": [3, 4, 5, 10, 11, 12],
+                    "shared_actor_features_trainable": True,
+                    "non_giver_output_rows_gradient_masked": True,
+                    "trainable_output_rows": [3, 4, 10, 11],
+                    "learned_giver_axes": ["x", "y"],
+                    "analytic_giver_axes": ["z", "roll", "pitch", "yaw", "gripper"],
                     "initial_policy_influence": (
                         "loaded_checkpoint"
                         if initial_checkpoint is not None
@@ -5440,6 +5443,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "policy_residual_scale": (
                 float(policy_model.residual_scale)
                 if hasattr(policy_model, "residual_scale")
+                else None
+            ),
+            "policy_giver_residual_axes": (
+                ["x", "y"]
+                if hasattr(policy_model, "controller")
+                and hasattr(policy_model, "residual_scale")
+                else None
+            ),
+            "policy_analytic_vertical_authority": (
+                True
+                if hasattr(policy_model, "controller")
+                and hasattr(policy_model, "residual_scale")
+                else None
+            ),
+            "policy_receiver_residual_enabled": (
+                bool(
+                    policy_model.controller.receiver_residual_enabled_for_learning
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_residual_enabled_for_learning",
+                )
                 else None
             ),
             "policy_pickup_vertical_action_limit": (

@@ -54,12 +54,23 @@ def _training(path: Path, checkpoint: str) -> Path:
             "wall_time_s": 180.0,
             "simulated_frames": 123456,
             "checkpoint": {"sha256": checkpoint},
+            "runtime": {
+                "source": {"dranmar_revision": "revision-a"}
+            },
         },
     )
 
 
 def _play(
-    path: Path, checkpoint: str, *, seed: int, success_rate: float
+    path: Path,
+    checkpoint: str | None,
+    *,
+    seed: int,
+    success_rate: float,
+    analytic_only: bool = False,
+    sustained_losses: int = 0,
+    protected_surface_force: int = 0,
+    num_envs: int = 100,
 ) -> Path:
     return _write_json(
         path,
@@ -68,9 +79,68 @@ def _play(
             "task": "DrAnmar-Test-v0",
             "seed": seed,
             "success_rate": success_rate,
-            "checkpoint": {"sha256": checkpoint},
+            "checkpoint": (
+                {"sha256": checkpoint}
+                if checkpoint is not None
+                else None
+            ),
+            "analytic_only": analytic_only,
+            "num_envs": num_envs,
+            "completed_episodes": num_envs,
+            "unresolved_episodes": 0,
+            "first_terminal_outcome_per_environment": True,
+            "termination_term_counts": {
+                "object_dropping": 0,
+                "excessive_object_force": 0,
+                "protected_surface_force": protected_surface_force,
+            },
+            "first_episode_handover_diagnostics": {
+                "transport_retention_diagnostics": {
+                    "overall": {
+                        "episodes_with_sustained_midair_loss_3_steps": (
+                            sustained_losses
+                        )
+                    }
+                }
+            },
+            "policy_residual_scale": 0.01,
+            "policy_giver_residual_axes": ["x", "y"],
+            "policy_analytic_vertical_authority": True,
+            "policy_receiver_residual_enabled": False,
+            "runtime": {
+                "source": {"dranmar_revision": "revision-a"}
+            },
         },
     )
+
+
+def _enable_physical_gate(contract: Path) -> None:
+    value = json.loads(contract.read_text())
+    promotion = value["stages"][0]["promotion"]
+    promotion.update(
+        {
+            "held_out_seed_passes": 1,
+            "require_complete_first_terminal_population": True,
+            "hard_termination_terms_must_be_zero": [
+                "object_dropping",
+                "excessive_object_force",
+                "protected_surface_force",
+            ],
+            "require_matching_analytic_baseline": True,
+            "candidate_success_must_not_trail_analytic_baseline": True,
+            "analytic_baseline_retention_comparison": (
+                "strictly_lower_rate_unless_baseline_zero"
+            ),
+            "require_training_play_source_parity": True,
+            "required_policy_contract": {
+                "policy_residual_scale": 0.01,
+                "policy_giver_residual_axes": ["x", "y"],
+                "policy_analytic_vertical_authority": True,
+                "policy_receiver_residual_enabled": False,
+            },
+        }
+    )
+    _write_json(contract, value)
 
 
 def test_tqta_stops_only_after_one_checkpoint_passes_all_seed_gates(
@@ -169,6 +239,74 @@ def test_tqta_does_not_mix_checkpoints_across_held_out_seeds(
             checkpoint_b,
             seed=202,
             success_rate=1.0,
+        ),
+    ]
+    module.ingest(tracker, evidence)
+    assert tracker["qualification"]["achieved"] is False
+
+
+def test_tqta_requires_matching_baseline_and_lower_sustained_slip(
+    tmp_path: Path,
+) -> None:
+    module = _load_module()
+    contract = _contract(tmp_path / "contract.json")
+    _enable_physical_gate(contract)
+    tracker = module.new_tracker(
+        task="DrAnmar-Test-v0",
+        contract_path=contract,
+    )
+    checkpoint = "c" * 64
+    training = _training(tmp_path / "training.json", checkpoint)
+    candidate = _play(
+        tmp_path / "candidate.json",
+        checkpoint,
+        seed=101,
+        success_rate=0.95,
+        sustained_losses=5,
+    )
+    module.ingest(tracker, [training, candidate])
+    assert tracker["qualification"]["achieved"] is False
+
+    baseline = _play(
+        tmp_path / "baseline.json",
+        None,
+        seed=101,
+        success_rate=0.91,
+        analytic_only=True,
+        sustained_losses=10,
+    )
+    module.ingest(tracker, [baseline])
+    assert tracker["qualification"]["achieved"] is True
+
+
+def test_tqta_rejects_successful_candidate_with_hard_failure(
+    tmp_path: Path,
+) -> None:
+    module = _load_module()
+    contract = _contract(tmp_path / "contract.json")
+    _enable_physical_gate(contract)
+    tracker = module.new_tracker(
+        task="DrAnmar-Test-v0",
+        contract_path=contract,
+    )
+    checkpoint = "d" * 64
+    evidence = [
+        _training(tmp_path / "training.json", checkpoint),
+        _play(
+            tmp_path / "baseline.json",
+            None,
+            seed=101,
+            success_rate=0.91,
+            analytic_only=True,
+            sustained_losses=10,
+        ),
+        _play(
+            tmp_path / "unsafe-candidate.json",
+            checkpoint,
+            seed=101,
+            success_rate=0.99,
+            sustained_losses=1,
+            protected_surface_force=1,
         ),
     ]
     module.ingest(tracker, evidence)

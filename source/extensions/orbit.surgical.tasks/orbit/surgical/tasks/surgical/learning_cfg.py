@@ -86,13 +86,13 @@ class DrAnmarLiftResidualModelCfg(RslRlMLPModelCfg):
 
 @configclass
 class DrAnmarHandoverResidualModelCfg(RslRlMLPModelCfg):
-    """Exact physical handover base with bounded learned translations."""
+    """Exact physical handover base with bounded learned XY corrections."""
 
     class_name = (
         "orbit.surgical.tasks.surgical.handover.residual_model:"
         "HandoverResidualMLPModel"
     )
-    residual_scale: float = 0.03
+    residual_scale: float = 0.01
 
 
 def _actor(hidden_dims: list[int], *, initial_std: float = 1.0) -> RslRlMLPModelCfg:

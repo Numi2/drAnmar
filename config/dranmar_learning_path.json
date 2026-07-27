@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.33.0",
+  "schema_version": "1.34.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -227,14 +227,17 @@
       "name": "physical_needle_handover",
       "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
       "learning": {
-        "initialization": "exact_closest_arm_analytic_base_plus_bounded_translation_residual",
-        "residual_action_limit": 0.03,
+        "initialization": "exact_closest_arm_analytic_base_plus_bounded_giver_xy_residual",
+        "residual_action_limit": 0.01,
+        "giver_residual_axes": ["x", "y"],
+        "analytic_vertical_authority": true,
+        "receiver_residual_enabled": false,
         "residual_initial_std": 0.01,
         "analytic_pickup_primitive_checkpoint": null,
         "analytic_pickup_primitive_source": "checkpoint_free_seed17_and_2361_1200_environment_controller_sweeps_2228_of_2400",
         "analytic_pickup_grasp_frame": "object_relative_composed_needle_arc_fraction_0_40",
         "giver_residual_initialization": "zero_influence_no_checkpoint_transfer",
-        "giver_adaptation_freezes_non_giver_rows_and_resets_optimizer": true,
+        "giver_adaptation_trains_shared_features_masks_non_giver_output_rows_and_resets_optimizer": true,
         "analytic_pickup_vertical_action_limit": 0.01,
         "analytic_pickup_vertical_action_limit_source": "isaac_lab_seed17_and_2361_1200_environment_full_population_lift_transition_sweep",
         "analytic_giver_vertical_action_limit": 0.015,
@@ -260,22 +263,41 @@
         "analytic_receiver_contact_centering_action_limit": 0.0025,
         "analytic_receiver_contact_centering_action_limit_source": "isaac_lab_seed17_1200_environment_six_way_physical_sweep",
         "reward_contract": {
-          "positive_credit": "one_time_physical_phase_transitions_and_retained_transfer_only",
+          "positive_credit": "retained_terminal_transfer_only",
+          "intermediate_phase_progress_weight": 0.0,
           "continuous_reach_grasp_and_dual_hold_weights": 0.0,
           "stalling_credit": false,
           "safety_penalties_remain_continuous": true
         },
         "residual_phases": [
-          "giver_windowed_contact_pickup_and_transport_translation_before_receiver_contact",
-          "receiver_presentation_ready_approach_before_contact"
+          "giver_windowed_contact_pickup_and_transport_xy_before_receiver_contact"
         ],
         "analytic_only_controls": [
           "closest_arm_role_selection",
           "pickup_transport_and_presentation_base_sequence",
+          "pickup_and_transport_vertical_control",
           "wrist_orientation",
           "both_grippers",
           "post_contact_hold_release_and_retreat"
         ],
+        "structural_basis": {
+          "residual_policy": "analytic_nominal_controller_plus_small_uncertainty_correction",
+          "constraint_handling": "hard_physical_constraints_separate_from_positive_task_reward",
+          "recovery": "analytic_recovery_controller_separate_from_task_residual",
+          "references": [
+            "https://arxiv.org/abs/1812.03201",
+            "https://proceedings.mlr.press/v70/achiam17a",
+            "https://arxiv.org/abs/2010.15920"
+          ]
+        },
+        "planned_2400_environment_experiment": {
+          "execution_requires_explicit_user_approval": true,
+          "num_envs": 2400,
+          "preflight_smoke_max_envs": 256,
+          "requires_clean_remote_checkout": true,
+          "requires_analytic_baseline_before_training": true,
+          "checkpoint_selection": "deterministic_held_out_physics_gate_not_final_iteration"
+        },
         "teacher_success_does_not_override_physical_qualification": true
       },
       "qualification_contract": {
@@ -314,7 +336,23 @@
       },
       "promotion": {
         "minimum_success_rate": 0.7,
-        "held_out_seed_passes": 3
+        "held_out_seed_passes": 3,
+        "require_complete_first_terminal_population": true,
+        "hard_termination_terms_must_be_zero": [
+          "object_dropping",
+          "excessive_object_force",
+          "protected_surface_force"
+        ],
+        "require_matching_analytic_baseline": true,
+        "candidate_success_must_not_trail_analytic_baseline": true,
+        "analytic_baseline_retention_comparison": "strictly_lower_rate_unless_baseline_zero",
+        "require_training_play_source_parity": true,
+        "required_policy_contract": {
+          "policy_residual_scale": 0.01,
+          "policy_giver_residual_axes": ["x", "y"],
+          "policy_analytic_vertical_authority": true,
+          "policy_receiver_residual_enabled": false
+        }
       }
     }
   ],

@@ -218,8 +218,9 @@ class RewardsCfg:
 
     # These continuous positive terms remain available as diagnostics, but
     # must not pay the policy for hovering, holding the giver grasp, or
-    # stalling in dual contact. Physical progress is rewarded exactly once by
-    # phase_progress, and the retained transfer is rewarded by success.
+    # stalling in dual contact. Intermediate physical phases are diagnostics,
+    # not positive credit. Only the retained terminal transfer is rewarded;
+    # hard safety outcomes remain independent termination constraints.
     giver_reach = RewTerm(
         func=mdp.role_end_effector_object_distance,
         params={"std": 0.06, "role": "giver", "minimum_phase": 0},
@@ -261,7 +262,7 @@ class RewardsCfg:
         weight=0.0,
     )
 
-    phase_progress = RewTerm(func=mdp.phase_progress, weight=10.0)
+    phase_progress = RewTerm(func=mdp.phase_progress, weight=0.0)
     success = RewTerm(func=mdp.successful_handover, weight=40.0)
     success_rate = RewTerm(
         func=mdp.sticky_success_rate,

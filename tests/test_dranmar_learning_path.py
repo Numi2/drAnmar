@@ -348,10 +348,14 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert "func=mdp.role_bilateral_grasp" in cfg_source
     assert (
         cfg_source.count(
-            "Physical progress is rewarded exactly once by"
+            "Intermediate physical phases are diagnostics"
         )
         == 1
     )
+    phase_progress_block = cfg_source.split(
+        "    phase_progress = RewTerm(", 1
+    )[1].split("\n", 1)[0]
+    assert "weight=0.0" in phase_progress_block
     for reward_name in (
         "giver_reach",
         "giver_grasp",
@@ -415,11 +419,11 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert contract["receiver_contact_flicker_steps"] == 1
     assert (
         manifest["stages"][5]["learning"]["initialization"]
-        == "exact_closest_arm_analytic_base_plus_bounded_translation_residual"
+        == "exact_closest_arm_analytic_base_plus_bounded_giver_xy_residual"
     )
     assert (
         manifest["stages"][5]["learning"]["residual_action_limit"]
-        == 0.03
+        == 0.01
     )
     assert (
         manifest["stages"][5]["learning"][
@@ -455,20 +459,36 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         ]
         == "zero_influence_no_checkpoint_transfer"
     )
+    assert (
+        manifest["stages"][5]["learning"]["residual_action_limit"]
+        == 0.01
+    )
+    assert manifest["stages"][5]["learning"]["giver_residual_axes"] == [
+        "x",
+        "y",
+    ]
+    assert (
+        manifest["stages"][5]["learning"]["analytic_vertical_authority"]
+        is True
+    )
+    assert (
+        manifest["stages"][5]["learning"]["receiver_residual_enabled"]
+        is False
+    )
     assert manifest["stages"][5]["learning"]["maximum_pickup_attempts"] == 3
     assert contract["maximum_pickup_attempts"] == 3
     assert contract["first_attempt_and_recovered_success_reported_separately"]
     assert manifest["stages"][5]["learning"]["residual_phases"] == [
-        "giver_windowed_contact_pickup_and_transport_translation_before_receiver_contact",
-        "receiver_presentation_ready_approach_before_contact",
+        "giver_windowed_contact_pickup_and_transport_xy_before_receiver_contact",
     ]
     reward_contract = manifest["stages"][5]["learning"][
         "reward_contract"
     ]
     assert (
         reward_contract["positive_credit"]
-        == "one_time_physical_phase_transitions_and_retained_transfer_only"
+        == "retained_terminal_transfer_only"
     )
+    assert reward_contract["intermediate_phase_progress_weight"] == 0.0
     assert reward_contract[
         "continuous_reach_grasp_and_dual_hold_weights"
     ] == 0.0
@@ -480,6 +500,19 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         ]
         is True
     )
+    promotion = manifest["stages"][5]["promotion"]
+    assert promotion["require_complete_first_terminal_population"] is True
+    assert promotion["require_matching_analytic_baseline"] is True
+    assert (
+        promotion["analytic_baseline_retention_comparison"]
+        == "strictly_lower_rate_unless_baseline_zero"
+    )
+    assert promotion["required_policy_contract"] == {
+        "policy_residual_scale": 0.01,
+        "policy_giver_residual_axes": ["x", "y"],
+        "policy_analytic_vertical_authority": True,
+        "policy_receiver_residual_enabled": False,
+    }
     for prop in ("block", "needle"):
         for control in ("joint_pos", "ik_abs", "ik_rel"):
             robot_cfg_source = (
@@ -625,23 +658,25 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "giver_pickup_transport_residual.unsqueeze(-1)"
         in handover_model_source
     )
+    assert "giver_residual[:, :2]" in handover_model_source
+    assert "giver_residual[:, :3]" not in handover_model_source
     assert (
         "giver_channel_output = torch.cat("
         in handover_model_source
     )
     assert handover_model_source.count(
-        "network_output[:, 3:6]"
+        "network_output[:, 3:5]"
     ) == 2
     assert handover_model_source.count(
-        "network_output[:, 10:13]"
+        "network_output[:, 10:12]"
     ) == 2
     assert "def configure_giver_adaptation(self)" in handover_model_source
     assert (
         "self.controller.receiver_residual_enabled_for_learning = False"
         in handover_model_source
     )
-    assert "giver_row_mask[3:6] = 1.0" in handover_model_source
-    assert "giver_row_mask[10:13] = 1.0" in handover_model_source
+    assert "giver_row_mask[3:5] = 1.0" in handover_model_source
+    assert "giver_row_mask[10:12] = 1.0" in handover_model_source
     assert "giver_transport_active = giver_carry_mode & torch.where(" in handover_model_source
     assert "giver_lift_contact_qualified" in handover_model_source
     assert handover_model_source.count(
@@ -649,7 +684,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     ) >= 2
     assert handover_model_source.count("~receiver_any_contact") >= 1
     assert ") > 0.5" in handover_model_source
-    assert "parameter.requires_grad_(False)" in handover_model_source
+    assert "parameter.requires_grad_(True)" in handover_model_source
+    assert (
+        "self.receiver_residual_enabled_for_learning = False"
+        in handover_model_source
+    )
     assert "self.residual_scale = residual_scale" in handover_model_source
     assert "def handover_residual_actor(" in learning_cfg_source
     assert "initial_std: float = 0.01" in learning_cfg_source
