@@ -342,6 +342,8 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert "robot_1_distance[reset] <= robot_2_distance[reset]" in state_source
     assert "receiver_position_w = torch.where(" in state_source
     assert "giver_identity = ObsTerm(func=mdp.giver_identity)" in cfg_source
+    assert "pickup_recovery_context = ObsTerm(" in cfg_source
+    assert "func=mdp.pickup_recovery_context" in cfg_source
     assert "func=mdp.role_end_effector_object_distance" in cfg_source
     assert "func=mdp.role_bilateral_grasp" in cfg_source
     assert (
@@ -934,6 +936,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "object_pose_in_giver[:, 3:7]" in handover_model_source
     assert "giver_pregrasp_offset" in handover_model_source
     assert "torch.linalg.cross(" in handover_model_source
+    assert "pickup_recovery_context = raw[:, 98] > 0.5" in handover_model_source
+    assert "pickup_recovery_context.unsqueeze(-1)" in handover_model_source
     assert (
         "carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction"
         in handover_model_source

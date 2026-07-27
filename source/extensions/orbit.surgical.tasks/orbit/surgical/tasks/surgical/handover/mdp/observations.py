@@ -51,3 +51,9 @@ def giver_identity(env: ManagerBasedRLEnv) -> torch.Tensor:
     """One-hot physical giver identity selected by reset-time proximity."""
     giver_index = (~handover_state(env)["giver_is_robot_1"]).long()
     return functional.one_hot(giver_index, num_classes=2).float()
+
+
+def pickup_recovery_context(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Expose whether this episode is executing a post-slip pickup attempt."""
+    recovered = handover_state(env)["pickup_recovery_count"] > 0
+    return recovered.float().unsqueeze(-1)

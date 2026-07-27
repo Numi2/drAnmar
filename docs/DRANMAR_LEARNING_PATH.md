@@ -197,6 +197,11 @@ recovery offset follow the needle's live rigid pose rather than its reset
 orientation, while the proven identity tool posture remains unchanged.
 Recovery does not return to approach until the needle is within 5 mm of
 support with linear speed below 0.05 m/s and angular speed below 5 rad/s.
+One physics-owned post-slip context bit is appended after the existing action
+observation. It leaves first-attempt geometry unchanged and activates the
+rotated arc frame only for retries. This recovery path intentionally starts
+from the analytic base with zero residual and does not claim compatibility
+with prior learned-policy observation shapes.
 Pickup uses a `0.010` vertical action limit while
 presentation retains `0.015`. The slower pickup reduced needle acceleration
 and mid-air loss without reducing final presentation authority. Controlled

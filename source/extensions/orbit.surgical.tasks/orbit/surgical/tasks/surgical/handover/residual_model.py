@@ -89,6 +89,7 @@ class HandoverAnalyticController(nn.Module):
         ee_position: torch.Tensor,
         object_position: torch.Tensor,
         object_orientation: torch.Tensor,
+        use_object_relative_grasp: torch.Tensor,
         grasp_x: float,
         grasp_y: float,
         grasp_z: float,
@@ -104,7 +105,7 @@ class HandoverAnalyticController(nn.Module):
             grasp_offset,
             dim=-1,
         )
-        rotated_grasp_offset = (
+        object_relative_grasp_offset = (
             grasp_offset
             + 2.0
             * (
@@ -115,6 +116,11 @@ class HandoverAnalyticController(nn.Module):
                     dim=-1,
                 )
             )
+        )
+        rotated_grasp_offset = torch.where(
+            use_object_relative_grasp.unsqueeze(-1),
+            object_relative_grasp_offset,
+            grasp_offset,
         )
         grasp_position = object_position.clone()
         grasp_position += rotated_grasp_offset
@@ -198,10 +204,16 @@ class HandoverAnalyticController(nn.Module):
             ~giver_is_robot_1,
         )
         phase = torch.argmax(raw[:, 77:82], dim=-1)
-        giver_tool_target_orientation = torch.zeros_like(
+        pickup_recovery_context = raw[:, 98] > 0.5
+        identity_tool_orientation = torch.zeros_like(
             giver_orientation
         )
-        giver_tool_target_orientation[:, 3] = 1.0
+        identity_tool_orientation[:, 3] = 1.0
+        giver_tool_target_orientation = torch.where(
+            pickup_recovery_context.unsqueeze(-1),
+            object_pose_in_giver[:, 3:7],
+            identity_tool_orientation,
+        )
         giver_tool_orientation_error = axis_angle_from_quat(
             quat_mul(
                 giver_tool_target_orientation,
@@ -226,6 +238,7 @@ class HandoverAnalyticController(nn.Module):
             giver_ee,
             object_in_giver,
             object_pose_in_giver[:, 3:7],
+            pickup_recovery_context,
             self.giver_grasp_x,
             self.giver_grasp_y,
             self.giver_grasp_z,
@@ -242,7 +255,7 @@ class HandoverAnalyticController(nn.Module):
             giver_pregrasp_offset,
             dim=-1,
         )
-        giver_pregrasp_position += (
+        giver_object_relative_pregrasp_offset = (
             giver_pregrasp_offset
             + 2.0
             * (
@@ -253,6 +266,11 @@ class HandoverAnalyticController(nn.Module):
                     dim=-1,
                 )
             )
+        )
+        giver_pregrasp_position += torch.where(
+            pickup_recovery_context.unsqueeze(-1),
+            giver_object_relative_pregrasp_offset,
+            giver_pregrasp_offset,
         )
         giver_pregrasp_position[:, 2] += self.approach_height
         giver_orientation_wait_action = (
@@ -272,6 +290,7 @@ class HandoverAnalyticController(nn.Module):
                 receiver_ee,
                 object_in_receiver,
                 object_pose_in_receiver[:, 3:7],
+                torch.zeros_like(pickup_recovery_context),
                 self.receiver_grasp_x,
                 self.receiver_grasp_y,
                 self.receiver_grasp_z,

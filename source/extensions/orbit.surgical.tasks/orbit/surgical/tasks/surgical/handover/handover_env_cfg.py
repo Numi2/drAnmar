@@ -179,6 +179,9 @@ class ObservationsCfg:
         handover_phase = ObsTerm(func=mdp.handover_phase)
         giver_identity = ObsTerm(func=mdp.giver_identity)
         actions = ObsTerm(func=mdp.last_action)
+        pickup_recovery_context = ObsTerm(
+            func=mdp.pickup_recovery_context
+        )
 
         def __post_init__(self):
             self.enable_corruption = True

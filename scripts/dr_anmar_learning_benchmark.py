@@ -611,11 +611,13 @@ def _handover_teacher_action(
         ~giver_is_robot_1,
     )
     phase = torch.argmax(policy_obs[:, 77:82], dim=-1)
+    pickup_recovery_context = policy_obs[:, 98] > 0.5
 
     def approach_action(
         ee_position,
         object_position,
         object_orientation,
+        use_object_relative_grasp,
         grasp_offset,
     ):
         local_grasp_offset = torch.zeros_like(object_position)
@@ -629,7 +631,7 @@ def _handover_teacher_action(
             local_grasp_offset,
             dim=-1,
         )
-        rotated_grasp_offset = (
+        object_relative_grasp_offset = (
             local_grasp_offset
             + 2.0
             * (
@@ -640,6 +642,11 @@ def _handover_teacher_action(
                     dim=-1,
                 )
             )
+        )
+        rotated_grasp_offset = torch.where(
+            use_object_relative_grasp.unsqueeze(-1),
+            object_relative_grasp_offset,
+            local_grasp_offset,
         )
         grasp_position = object_position.clone()
         grasp_position += rotated_grasp_offset
@@ -671,6 +678,7 @@ def _handover_teacher_action(
         giver_ee,
         object_in_giver,
         object_pose_in_giver[:, 3:7],
+        pickup_recovery_context,
         giver_grasp_offset,
     )
     giver_recovery_position = object_in_giver.clone()
@@ -685,7 +693,7 @@ def _handover_teacher_action(
         giver_recovery_offset,
         dim=-1,
     )
-    giver_recovery_position += (
+    giver_object_relative_recovery_offset = (
         giver_recovery_offset
         + 2.0
         * (
@@ -696,6 +704,11 @@ def _handover_teacher_action(
                 dim=-1,
             )
         )
+    )
+    giver_recovery_position += torch.where(
+        pickup_recovery_context.unsqueeze(-1),
+        giver_object_relative_recovery_offset,
+        giver_recovery_offset,
     )
     giver_recovery_position[:, 2] += approach_height
     giver_recovery_action = (
@@ -708,6 +721,7 @@ def _handover_teacher_action(
         receiver_ee,
         object_in_receiver,
         object_pose_in_receiver[:, 3:7],
+        torch.zeros_like(pickup_recovery_context),
         receiver_grasp_offset,
     )
 
