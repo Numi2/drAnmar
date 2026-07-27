@@ -546,7 +546,7 @@ def _handover_teacher_action(
     carry_lateral_action_limit: float = 0.06,
     carry_vertical_action_limit: float = 0.015,
     giver_transport_min_contact_jaws: int = 2,
-    giver_transport_normalized_contact_threshold: float = 0.001,
+    giver_transport_normalized_contact_threshold: float = 0.002,
 ):
     """Stage a closest-arm pickup and other-arm physical custody transfer."""
     import math
@@ -1649,7 +1649,7 @@ def _handover_controller_sweep(
     receiver_close_distances = [0.001] * len(values)
     receiver_contact_centering_action_limits = [0.0025] * len(values)
     giver_transport_min_contact_jaws = [2] * len(values)
-    giver_transport_normalized_contact_thresholds = [0.001] * len(values)
+    giver_transport_normalized_contact_thresholds = [0.002] * len(values)
     fixed_receiver_arc_fraction = 0.65
     selected_receiver_z_offset = -0.0018
     if parameter == "receiver_arc_fraction":

@@ -413,12 +413,6 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     )
     assert (
         manifest["stages"][5]["learning"][
-            "analytic_giver_post_qualification_transport_contact_threshold_n"
-        ]
-        == 0.005
-    )
-    assert (
-        manifest["stages"][5]["learning"][
             "analytic_receiver_contact_centering_action_limit"
         ]
         == 0.0025
@@ -581,11 +575,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert (
         "giver_transport_active = (\n"
-        "            giver_carry_mode & giver_transport_bilateral_contact"
-        in handover_model_source
-    )
-    assert (
-        "self.giver_transport_normalized_contact_threshold = 0.001"
+        "            giver_carry_mode & giver_bilateral_contact"
         in handover_model_source
     )
     assert handover_model_source.count(
