@@ -49,8 +49,8 @@ class HandoverAnalyticController(nn.Module):
         self.minimum_lift_height_in_robot_frame = -0.139
         self.carry_lateral_action_limit = 0.06
         self.carry_lateral_ramp_height = 0.01
-        self.pickup_vertical_action_limit = 0.015
-        self.pickup_initial_vertical_action_limit = 0.015
+        self.pickup_vertical_action_limit = 0.01
+        self.pickup_initial_vertical_action_limit = 0.01
         self.pickup_deceleration_height = 0.01
         self.carry_vertical_action_limit = 0.015
         self.giver_lift_on_live_contact = True

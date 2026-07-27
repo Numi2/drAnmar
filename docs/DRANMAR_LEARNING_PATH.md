@@ -184,15 +184,17 @@ The giver begins lifting as soon as current native bilateral contact is live,
 while the three-of-five contact window remains the only authority that advances
 the physical pickup phase. Loss of live bilateral contact immediately returns
 the tool to approach/reacquisition, so an empty or one-jaw lift cannot satisfy
-the 10 mm clearance gate. Pickup and presentation both retain the
-handover-qualified `0.015` vertical action limit. A controlled
-1,200-environment sweep separated pickup authority from presentation authority
-and tested `0.015`, `0.03`, `0.06`, `0.12`, `0.18`, and `0.24`. The faster
-Stage 4 standalone-pickup authority did not transfer safely to the coupled
-handover: it increased drops and reduced physical transfer success. The
-parameters remain separately controllable for causal checkpoint evaluation,
-but standalone pickup throughput is not treated as evidence for bimanual
-transport stability.
+the 10 mm clearance gate. Pickup uses a `0.010` vertical action limit while
+presentation retains `0.015`. The slower pickup reduced needle acceleration
+and mid-air loss without reducing final presentation authority. Controlled
+full-population challenges also tested `0.0105`, `0.0125`, `0.015`, `0.03`,
+`0.06`, `0.12`, `0.18`, and `0.24`; the response was not monotonic, so only
+complete terminal outcomes qualify a setting. The faster Stage 4
+standalone-pickup authority did not transfer safely to the coupled handover:
+it increased drops and reduced physical transfer success. The parameters
+remain separately controllable for causal checkpoint evaluation, but
+standalone pickup throughput is not treated as evidence for bimanual transport
+stability.
 
 After the 10 mm pickup gate, lateral presentation authority follows a
 minimum-jerk ramp over the next 10 mm of vertical clearance. This removes the
@@ -201,11 +203,14 @@ without reducing final presentation authority. The ramp is stateless, uses
 measured object height, does not alter rewards or success criteria, and is
 recorded in runtime evidence.
 
-The live-contact lift plus 10 mm ramp achieved 613 of 1,200 strict terminal
-successes (51.08%) on seed 17 and 577 of 1,200 (48.08%) on held-out seed 2361.
-Both runs used the same source-locked checkpoint and unchanged drop, retention,
-5 N object-force, and 2 N protected-contact gates. This is the current
-simulator champion, not a claim of clinical validation or task convergence.
+The `0.010` live-contact pickup plus 10 mm lateral ramp achieved 696 of 1,200
+strict terminal successes (58.00%) on seed 17 and 661 of 1,200 (55.08%) on
+held-out seed 2361. Both runs used the same source-locked checkpoint and
+unchanged drop, retention, 5 N object-force, and 2 N protected-contact gates.
+Seed 17 recorded two protected-contact terminations; held-out seed 2361
+recorded none. This is the current throughput champion and training baseline,
+not a passed promotion gate, a claim of clinical validation, or task
+convergence.
 
 The giver aligns its wrist to the identity tool frame before descending from
 the 20 mm pregrasp and may close only within `0.035` rad of that frame.

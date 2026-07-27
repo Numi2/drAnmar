@@ -415,7 +415,7 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         manifest["stages"][5]["learning"][
             "analytic_pickup_vertical_action_limit"
         ]
-        == 0.015
+        == 0.01
     )
     assert (
         manifest["stages"][5]["learning"][
@@ -893,11 +893,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in handover_model_source
     )
     assert (
-        "self.pickup_vertical_action_limit = 0.015"
+        "self.pickup_vertical_action_limit = 0.01"
         in handover_model_source
     )
     assert (
-        "self.pickup_initial_vertical_action_limit = 0.015"
+        "self.pickup_initial_vertical_action_limit = 0.01"
         in handover_model_source
     )
     assert "pickup_deceleration_fraction = (" in handover_model_source
