@@ -190,6 +190,11 @@ fully analytic. The receiver residual has a 0.03 action limit and 0.01 fixed
 initial exploration standard deviation. Role selection, sequencing, wrist
 control, both grippers, post-contact hold, release, and retreat remain analytic
 and cannot be bypassed by exploration.
+
+The giver may transport only while live native contact remains present. If a
+three-of-five pickup window advances the state but live contact flickers away
+before the 10 mm lift, the closest arm returns to the analytic needle approach
+instead of moving upward with an empty jaw.
 The analytic base cannot grant physical success or bypass the held-out
 promotion gate.
 

@@ -524,6 +524,13 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "giver_residual = torch.zeros_like(giver_action)"
         in handover_model_source
     )
+    assert (
+        "giver_transport_active = giver_carry_mode & giver_any_contact"
+        in handover_model_source
+    )
+    assert handover_model_source.count(
+        "giver_transport_active.unsqueeze(-1)"
+    ) >= 2
     assert handover_model_source.count("~receiver_any_contact") >= 1
     assert ") > 0.5" in handover_model_source
     assert "parameter.requires_grad_(False)" in handover_model_source
@@ -586,8 +593,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "receiver_any_contact = torch.any(" in benchmark_source
     assert "receiver_bilateral_contact = torch.all(" in benchmark_source
     assert "& receiver_any_contact" in benchmark_source
-    assert "giver_carry_mode.unsqueeze(-1)" in benchmark_source
+    assert "giver_transport_active.unsqueeze(-1)" in benchmark_source
     assert "giver_carry_mode = (phase >= 1) & (phase <= 2)" in benchmark_source
+    assert (
+        "giver_transport_active = giver_carry_mode & giver_any_contact"
+        in benchmark_source
+    )
     assert "presentation_fraction_from_giver: float = 0.35" in benchmark_source
     assert "presentation_height_in_robot_frame: float = -0.13" in benchmark_source
     assert "presentation_ready_tolerance: float = 0.005" in benchmark_source

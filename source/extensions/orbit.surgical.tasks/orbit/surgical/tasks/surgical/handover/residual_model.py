@@ -232,6 +232,7 @@ class HandoverAnalyticController(nn.Module):
             dim=-1,
         )
         giver_carry_mode = (phase >= 1) & (phase <= 2)
+        giver_transport_active = giver_carry_mode & giver_any_contact
         presentation_ready = (
             torch.linalg.vector_norm(
                 giver_target - object_in_giver,
@@ -241,7 +242,7 @@ class HandoverAnalyticController(nn.Module):
         )
 
         giver_translation = torch.where(
-            giver_carry_mode.unsqueeze(-1),
+            giver_transport_active.unsqueeze(-1),
             giver_carry,
             giver_approach,
         )
@@ -351,7 +352,7 @@ class HandoverAnalyticController(nn.Module):
             / self.orientation_scale
         ).clamp(-0.035, 0.035)
         giver_orientation_action = torch.where(
-            giver_carry_mode.unsqueeze(-1),
+            giver_transport_active.unsqueeze(-1),
             giver_orientation_action,
             torch.zeros_like(giver_orientation_action),
         )
