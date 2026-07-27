@@ -496,6 +496,25 @@ def _teacher_action(
             carry_orientation_scale=orientation_scale,
             carry_orientation_velocity_damping_s=0.001,
         )
+    if "Handover-Needle-Dual-PSM-IK-Rel" in task:
+        import math
+
+        from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+            needle_geometry_grasp_offset_m,
+        )
+
+        receiver_offset = needle_geometry_grasp_offset_m(0.65)
+        return _handover_teacher_action(
+            obs,
+            receiver_grasp_offset=(
+                receiver_offset[0],
+                receiver_offset[1],
+                -0.0018,
+            ),
+            receiver_roll_offset_rad=math.pi,
+            position_scale=position_scale,
+            orientation_scale=orientation_scale,
+        )
     return _reach_teacher_action(
         obs,
         task,
@@ -866,6 +885,8 @@ def _handover_teacher_action(
 
 
 def _pretraining_algorithm(task: str) -> str:
+    if "Handover-Needle-Dual-PSM-IK-Rel" in task:
+        return "closest_arm_handover_teacher_behavior_cloning"
     if "Lift-" in task:
         return "analytic_grasp_lift_base_plus_learned_residual"
     return "analytic_relative_ik_base_plus_learned_residual"
@@ -1295,6 +1316,15 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
     env = gym.make(args.task, cfg=env_cfg)
     env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=str(run_dir), device=agent_cfg.device)
+    initial_checkpoint = None
+    if args.checkpoint:
+        initial_checkpoint = Path(args.checkpoint).expanduser().resolve()
+        if not initial_checkpoint.is_file():
+            env.close()
+            return _fail(
+                f"initial checkpoint not found: {initial_checkpoint}"
+            )
+        runner.load(str(initial_checkpoint))
     runner.logger.git_status_repos = []
 
     started = time.perf_counter()
@@ -1352,6 +1382,14 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "path": str(checkpoint),
                 "sha256": _sha256(checkpoint),
             },
+            "initial_checkpoint": (
+                {
+                    "path": str(initial_checkpoint),
+                    "sha256": _sha256(initial_checkpoint),
+                }
+                if initial_checkpoint is not None
+                else None
+            ),
             "gpu_peak_memory_bytes": (
                 torch.cuda.max_memory_allocated() if torch.cuda.is_available() else None
             ),
@@ -3726,6 +3764,7 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--check_success", action="store_true")
     train.add_argument("--success_threshold", type=float, default=0.95)
     train.add_argument("--success_window", type=int, default=10)
+    train.add_argument("--checkpoint")
 
     pretrain = subparsers.add_parser("pretrain")
     pretrain.add_argument("--task", required=True)

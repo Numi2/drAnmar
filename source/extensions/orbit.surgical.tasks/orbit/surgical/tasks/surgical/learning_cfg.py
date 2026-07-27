@@ -152,6 +152,16 @@ def needle_lift_residual_actor(
     return actor
 
 
+def handover_behavior_cloned_actor(
+    hidden_dims: list[int],
+    *,
+    initial_std: float = 0.05,
+) -> RslRlMLPModelCfg:
+    """Full-action actor initialized by the closest-arm handover teacher."""
+
+    return _actor(hidden_dims, initial_std=initial_std)
+
+
 def _critic(hidden_dims: list[int]) -> RslRlMLPModelCfg:
     return RslRlMLPModelCfg(
         hidden_dims=hidden_dims,

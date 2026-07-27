@@ -5,10 +5,17 @@
 
 from isaaclab.utils.configclass import configclass
 
-from orbit.surgical.tasks.surgical.learning_cfg import DrAnmarManipulationPPORunnerCfg
+from orbit.surgical.tasks.surgical.learning_cfg import (
+    DrAnmarManipulationPPORunnerCfg,
+    handover_behavior_cloned_actor,
+)
 
 
 @configclass
 class HandoverNeedlePPORunnerCfg(DrAnmarManipulationPPORunnerCfg):
     max_iterations = 3000
     experiment_name = "dranmar_needle_handover"
+    actor = handover_behavior_cloned_actor(
+        [256, 128, 64],
+        initial_std=0.05,
+    )

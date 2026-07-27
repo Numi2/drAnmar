@@ -178,6 +178,13 @@ case "${command}" in
         ;;
     train)
         require_runtime
+        checkpoint_args=()
+        if [[ -n "${DR_ANMAR_INIT_CHECKPOINT:-}" ]]; then
+            checkpoint_args=(
+                --checkpoint
+                "${DR_ANMAR_INIT_CHECKPOINT}"
+            )
+        fi
         run_train_benchmark \
             "${2:-${DR_ANMAR_TASK}}" \
             "${3:-${DR_ANMAR_NUM_ENVS}}" \
@@ -185,7 +192,8 @@ case "${command}" in
             "${5:-${DR_ANMAR_LEARNING_OUTPUT}/train}" \
             --check_success \
             --success_threshold 0.95 \
-            --success_window 10
+            --success_window 10 \
+            "${checkpoint_args[@]}"
         ;;
     play)
         require_runtime

@@ -380,6 +380,17 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert contract["contact_window_steps"] == 5
     assert contract["contact_required_steps"] == 3
     assert contract["receiver_contact_flicker_steps"] == 1
+    assert (
+        manifest["stages"][5]["learning"]["initialization"]
+        == "online_behavior_cloning_from_closest_arm_analytic_teacher"
+    )
+    assert manifest["stages"][5]["learning"]["actor_initial_std"] == 0.05
+    assert (
+        manifest["stages"][5]["learning"][
+            "teacher_success_does_not_override_physical_qualification"
+        ]
+        is True
+    )
     for prop in ("block", "needle"):
         for control in ("joint_pos", "ik_abs", "ik_rel"):
             robot_cfg_source = (
@@ -418,6 +429,13 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     ).read_text()
     needle_agent_source = (
         TASK_ROOT / "surgical/lift/config/needle/agents/rsl_rl_cfg.py"
+    ).read_text()
+    handover_agent_source = (
+        TASK_ROOT
+        / "surgical/handover/config/needle/agents/rsl_rl_cfg.py"
+    ).read_text()
+    learning_cfg_source = (
+        TASK_ROOT / "surgical/learning_cfg.py"
     ).read_text()
     launcher_source = (ROOT / "dr_anmar_learning.sh").read_text()
     benchmark_source = (ROOT / "scripts/dr_anmar_learning_benchmark.py").read_text()
@@ -482,16 +500,34 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "needle_lift_residual_actor([256, 128, 64], initial_std=0.01)"
         in needle_agent_source
     )
+    assert "def handover_behavior_cloned_actor(" in learning_cfg_source
+    assert "initial_std: float = 0.05" in learning_cfg_source
+    assert (
+        "actor = handover_behavior_cloned_actor("
+        in handover_agent_source
+    )
+    assert "initial_std=0.05" in handover_agent_source
     assert "probe)" in launcher_source
     assert "controller-sweep)" in launcher_source
     assert "handover-sweep)" in launcher_source
     assert "DR_ANMAR_HANDOVER_SWEEP_PARAMETER" in launcher_source
+    assert "DR_ANMAR_INIT_CHECKPOINT" in launcher_source
     assert launcher_source.count('--values="${values}"') == 2
     assert "record)" in launcher_source
     assert "def _controller_sweep(" in benchmark_source
     assert "def _handover_controller_sweep(" in benchmark_source
     assert '"receiver_retention_failure_causes"' in benchmark_source
     assert "def _handover_teacher_action(" in benchmark_source
+    assert (
+        '"closest_arm_handover_teacher_behavior_cloning"'
+        in benchmark_source
+    )
+    assert (
+        'if "Handover-Needle-Dual-PSM-IK-Rel" in task:'
+        in benchmark_source
+    )
+    assert "runner.load(str(initial_checkpoint))" in benchmark_source
+    assert 'train.add_argument("--checkpoint")' in benchmark_source
     assert '"receiver_grasp_z_offset"' in benchmark_source
     assert '"receiver_roll_offset_rad"' in benchmark_source
     assert '"presentation_fraction_from_giver"' in benchmark_source
