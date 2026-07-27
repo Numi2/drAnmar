@@ -366,12 +366,14 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert "contact_required_steps: int = 3" in state_source
     assert "maximum_pickup_attempts: int = 3" in state_source
     assert "pickup_contact_loss_steps: int = 3" in state_source
+    assert "giver_follow_tolerance: float = 0.005" in state_source
     assert "recovery_open_steps: int = 15" in state_source
     assert '"pickup_attempt_count"' in state_source
     assert '"pickup_recovery_count"' in state_source
     assert '"pickup_attempts_exhausted"' in state_source
     assert "phase[recovery_allowed] = 4" in state_source
     assert "phase[recovery_complete] = 0" in state_source
+    assert "& ~giver_follows" in state_source
     assert '"progress_phase"' in state_source
     assert "required_receiver_only_steps: int = 10" in state_source
     assert "pickup_clearance: float = 0.01" in state_source
@@ -818,6 +820,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"recovered_successful_episodes"' in benchmark_source
     assert '"pickup_attempt_histogram"' in benchmark_source
     assert '"checkpoint": None' in benchmark_source
+    assert 'play.add_argument("--analytic-only", action="store_true")' in benchmark_source
+    assert '"analytic_only": bool(args.analytic_only)' in benchmark_source
     assert 'parameter_group["lr"] = args.learning_rate' in benchmark_source
     assert (
         "return max(1, self._step_count // self.num_steps_per_env)"

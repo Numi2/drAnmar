@@ -3421,9 +3421,20 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     from isaaclab.managers import SceneEntityCfg
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 
-    checkpoint = Path(args.checkpoint).expanduser().resolve()
-    if not checkpoint.is_file():
-        return _fail(f"checkpoint not found: {checkpoint}")
+    checkpoint = None
+    if args.analytic_only:
+        if args.checkpoint:
+            return _fail(
+                "analytic-only play must not load a checkpoint"
+            )
+    else:
+        if not args.checkpoint:
+            return _fail(
+                "play requires --checkpoint unless --analytic-only is set"
+            )
+        checkpoint = Path(args.checkpoint).expanduser().resolve()
+        if not checkpoint.is_file():
+            return _fail(f"checkpoint not found: {checkpoint}")
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
@@ -3455,8 +3466,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         )
     env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
-    runner.load(str(checkpoint))
+    if checkpoint is not None:
+        runner.load(str(checkpoint))
     policy_model = runner.alg.get_policy()
+    if args.analytic_only:
+        if not hasattr(policy_model, "residual_scale"):
+            env.close()
+            return _fail(
+                "analytic-only play requires an analytic residual policy"
+            )
+        policy_model.residual_scale = 0.0
     if args.residual_scale is not None:
         if args.residual_scale < 0.0:
             env.close()
@@ -5197,7 +5216,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "checkpoint": {
                 "path": str(checkpoint),
                 "sha256": _sha256(checkpoint),
-            },
+            }
+            if checkpoint is not None
+            else None,
+            "analytic_only": bool(args.analytic_only),
             "policy_residual_scale": (
                 float(policy_model.residual_scale)
                 if hasattr(policy_model, "residual_scale")
@@ -5400,7 +5422,8 @@ def _parser() -> argparse.ArgumentParser:
 
     play = subparsers.add_parser("play")
     play.add_argument("--task", required=True)
-    play.add_argument("--checkpoint", required=True)
+    play.add_argument("--checkpoint")
+    play.add_argument("--analytic-only", action="store_true")
     play.add_argument("--num_envs", type=int, required=True)
     play.add_argument("--num_frames", type=int, required=True)
     play.add_argument("--seed", type=int, default=2361)

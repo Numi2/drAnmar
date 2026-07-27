@@ -244,10 +244,13 @@ six dedicated giver XYZ rows, disables receiver residual exploration, and
 starts with fresh optimizer state.
 
 The giver may transport only while live native bilateral contact remains
-present. Three consecutive control frames without live giver custody before
-receiver acquisition trigger safe recovery. Failure on the third pickup
-attempt terminates as `pickup_attempts_exhausted`; post-acquisition drop and
-retention failures remain immediate failures.
+present. Before receiver acquisition, safe recovery requires both three
+consecutive control frames without live giver custody and more than 5 mm
+separation from the giver-relative acquisition offset, or an actual return to
+the support surface after lift. This prevents contact-manifold flicker from
+consuming an attempt. Failure on the third pickup attempt terminates as
+`pickup_attempts_exhausted`; post-acquisition drop and retention failures
+remain immediate failures.
 The analytic base cannot grant physical success or bypass the held-out
 promotion gate.
 

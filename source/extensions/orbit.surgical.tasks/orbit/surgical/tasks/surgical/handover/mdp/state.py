@@ -32,6 +32,7 @@ def handover_state(
     contact_required_steps: int = 3,
     maximum_pickup_attempts: int = 3,
     pickup_contact_loss_steps: int = 3,
+    giver_follow_tolerance: float = 0.005,
     recovery_open_steps: int = 15,
     required_receiver_only_steps: int = 10,
     allowed_receiver_contact_flicker_steps: int = 1,
@@ -107,6 +108,9 @@ def handover_state(
             ),
             "pickup_attempts_exhausted": torch.zeros(
                 env.num_envs, dtype=torch.bool, device=env.device
+            ),
+            "giver_acquisition_offset_w": torch.zeros(
+                (env.num_envs, 3), dtype=torch.float32, device=env.device
             ),
             "last_pickup_attempt_count": torch.zeros(
                 env.num_envs, dtype=torch.long, device=env.device
@@ -209,6 +213,7 @@ def handover_state(
     state["pickup_contact_loss_consecutive"][reset] = 0
     state["recovery_open_step_count"][reset] = 0
     state["pickup_attempts_exhausted"][reset] = False
+    state["giver_acquisition_offset_w"][reset] = 0.0
     state["premature_release"][reset] = False
     state["last_retention_failure_low_clearance"][reset] = state[
         "retention_failure_low_clearance"
@@ -266,6 +271,11 @@ def handover_state(
         robot_2_position_w,
         robot_1_position_w,
     )
+    giver_position_w = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        robot_1_position_w,
+        robot_2_position_w,
+    )
     receiver_distance = torch.linalg.vector_norm(
         receiver_position_w - object_pos_w, dim=-1
     )
@@ -279,6 +289,10 @@ def handover_state(
     phase = state["phase"]
     new_pickup_attempt = (phase == 0) & giver_contact
     state["pickup_attempt_count"][new_pickup_attempt] += 1
+    state["giver_acquisition_offset_w"][new_pickup_attempt] = (
+        object_pos_w[new_pickup_attempt]
+        - giver_position_w[new_pickup_attempt]
+    )
     phase[new_pickup_attempt] = 1
     state["progress_phase"][new_pickup_attempt] = torch.maximum(
         state["progress_phase"][new_pickup_attempt],
@@ -393,6 +407,12 @@ def handover_state(
     state["progress_phase"][successful_now] = 4
 
     pickup_active = (phase == 1) | (phase == 2)
+    giver_relative_offset = object_pos_w - giver_position_w
+    giver_follow_error = torch.linalg.vector_norm(
+        giver_relative_offset - state["giver_acquisition_offset_w"],
+        dim=-1,
+    )
+    giver_follows = giver_follow_error <= giver_follow_tolerance
     state["pickup_contact_loss_consecutive"][:] = torch.where(
         pickup_active & ~giver_contact_now,
         state["pickup_contact_loss_consecutive"] + 1,
@@ -404,6 +424,7 @@ def handover_state(
             state["pickup_contact_loss_consecutive"]
             >= pickup_contact_loss_steps
         )
+        & ~giver_follows
         & ~receiver_contact_now
     )
     pickup_attempt_failed |= (
@@ -458,6 +479,8 @@ def handover_state(
             "lifted": lifted,
             "receiver_follows": receiver_follows,
             "receiver_follow_error": receiver_follow_error,
+            "giver_follows": giver_follows,
+            "giver_follow_error": giver_follow_error,
             "needle_dropped": (phase == 3) & (clearance < 0.005),
             "position_error": pos_error,
             "orientation_error": rot_error,
