@@ -165,9 +165,11 @@ position and orientation to avoid pulling or twisting the grasp during
 release. Release is recognized
 only when the giver is commanded open and its native contact is physically
 gone, so a thin-needle contact flicker cannot start the retention clock early.
-The receiver waits
-during pickup and transport; it approaches only after the giver reaches
-the shared presentation point. The two PSM roots are 10 cm apart; the current
+The receiver waits during pickup and transport; it approaches only after the
+giver reaches the shared presentation point. On first native needle contact,
+it stops the gross approach and uses only the bounded jaw-centering correction
+while closing, avoiding a push through the giver's grasp. The two PSM roots
+are 10 cm apart; the current
 seed moves the needle 3.5 cm from the giver toward the receiver, keeping both
 instruments inside comfortable reach. Reaching that authored exchange point
 organizes the demonstration but is not part of the success predicate.

@@ -524,6 +524,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"giver_move_into_receiver_range"' in benchmark_source
     assert "receiver_wait = torch.zeros_like(receiver_approach)" in benchmark_source
     assert '"receiver_waits_for_presentation": True' in benchmark_source
+    assert "((phase == 2) & receiver_any_contact)" in benchmark_source
+    assert (
+        '"receiver_stops_approach_on_first_contact": True'
+        in benchmark_source
+    )
     assert "((phase == 3) & giver_any_contact)" in benchmark_source
     assert '"giver_holds_position_until_release": True' in benchmark_source
     assert (

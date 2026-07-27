@@ -723,6 +723,11 @@ def _handover_teacher_action(
         torch.zeros_like(receiver_translation),
         receiver_translation,
     )
+    receiver_translation = torch.where(
+        ((phase == 2) & receiver_any_contact).unsqueeze(-1),
+        torch.zeros_like(receiver_translation),
+        receiver_translation,
+    )
     receiver_contact_imbalance = (
         receiver_contacts[:, 1] - receiver_contacts[:, 0]
     )
@@ -2271,6 +2276,7 @@ def _handover_controller_sweep(
                 "receiver_close_distance_m": 0.001,
                 "receiver_contact_centering_action_limit": 0.005,
                 "receiver_waits_for_presentation": True,
+                "receiver_stops_approach_on_first_contact": True,
                 "giver_holds_position_until_release": True,
                 "receiver_holds_position_after_acquisition": True,
                 "receiver_orientation_frozen_after_acquisition": True,
