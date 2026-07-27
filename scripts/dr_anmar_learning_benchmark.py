@@ -4488,18 +4488,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
-            "policy_giver_prelift_centering_action_limit": (
-                float(
-                    policy_model.controller
-                    .giver_prelift_centering_action_limit
-                )
-                if hasattr(policy_model, "controller")
-                and hasattr(
-                    policy_model.controller,
-                    "giver_prelift_centering_action_limit",
-                )
-                else None
-            ),
             "exports": {
                 "jit": {"path": str(jit_path), "sha256": _sha256(jit_path)},
                 "onnx": {"path": str(onnx_path), "sha256": _sha256(onnx_path)},

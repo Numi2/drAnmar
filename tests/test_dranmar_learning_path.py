@@ -707,10 +707,6 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"policy_pickup_vertical_action_limit"' in benchmark_source
     assert '"policy_carry_lateral_action_limit"' in benchmark_source
     assert '"policy_carry_lateral_ramp_height"' in benchmark_source
-    assert (
-        '"policy_giver_prelift_centering_action_limit"'
-        in benchmark_source
-    )
     assert 'parameter_group["lr"] = args.learning_rate' in benchmark_source
     assert (
         "return max(1, self._step_count // self.num_steps_per_env)"
@@ -794,11 +790,6 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in handover_model_source
     )
     assert "self.carry_lateral_ramp_height = 0.005" in handover_model_source
-    assert (
-        "self.giver_prelift_centering_action_limit = 0.015"
-        in handover_model_source
-    )
-    assert "giver_centering_error = (" in handover_model_source
     assert (
         "carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction"
         in handover_model_source

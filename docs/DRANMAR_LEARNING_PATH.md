@@ -197,12 +197,6 @@ without reducing final presentation authority. The ramp is stateless, uses
 measured object height, does not alter rewards or success criteria, and is
 recorded in runtime evidence.
 
-Before the 10 mm gate, live bilateral contact enables a `0.015`-bounded
-lateral correction toward the pickup-qualified needle grasp frame. This
-compensates for needle displacement during jaw closure while vertical pickup
-continues. It does not change the contact window or grant progress: the
-simulator-owned needle must still clear the full 10 mm.
-
 Stage 6 no longer starts PPO from a random 14-action policy. The exact
 closest-arm/contact-aware sequence is the deterministic policy base. PPO may
 learn a bounded giver translation correction during pre-contact approach and
