@@ -537,7 +537,7 @@ def _handover_teacher_action(
     receiver_close_distance: float = 0.001,
     slow_approach_radius: float = 0.02,
     slow_approach_action_limit: float = 0.1,
-    receiver_contact_centering_action_limit: float = 0.005,
+    receiver_contact_centering_action_limit: float = 0.0025,
     normalized_contact_threshold: float = 0.002,
     presentation_fraction_from_giver: float = 0.35,
     presentation_height_in_robot_frame: float = -0.13,
@@ -1639,7 +1639,7 @@ def _handover_controller_sweep(
     presentation_fractions = [0.35] * len(values)
     carry_vertical_action_limits = [0.025] * len(values)
     receiver_close_distances = [0.001] * len(values)
-    receiver_contact_centering_action_limits = [0.005] * len(values)
+    receiver_contact_centering_action_limits = [0.0025] * len(values)
     fixed_receiver_arc_fraction = 0.65
     selected_receiver_z_offset = -0.0018
     if parameter == "receiver_arc_fraction":

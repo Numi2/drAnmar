@@ -38,7 +38,7 @@ class HandoverAnalyticController(nn.Module):
         self.receiver_close_distance = 0.001
         self.slow_approach_radius = 0.02
         self.slow_approach_action_limit = 0.1
-        self.receiver_contact_centering_action_limit = 0.005
+        self.receiver_contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
         self.presentation_fraction_from_giver = 0.35
         self.presentation_height_in_robot_frame = -0.13

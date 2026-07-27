@@ -412,6 +412,12 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         == 0.025
     )
     assert (
+        manifest["stages"][5]["learning"][
+            "analytic_receiver_contact_centering_action_limit"
+        ]
+        == 0.0025
+    )
+    assert (
         manifest["stages"][5]["learning"]["residual_initial_std"]
         == 0.01
     )
@@ -640,7 +646,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "receiver_target_orientation = quat_mul(" in benchmark_source
     assert "receiver_orientation_action_limit: float = 0.6" in benchmark_source
     assert "receiver_close_distance: float = 0.001" in benchmark_source
-    assert "receiver_contact_centering_action_limit: float = 0.005" in benchmark_source
+    assert (
+        "receiver_contact_centering_action_limit: float = 0.0025"
+        in benchmark_source
+    )
     assert "receiver_roll_offsets = [math.pi] * len(values)" in benchmark_source
     assert "giver_bilateral_contact = torch.all(" in benchmark_source
     assert "giver_any_contact = torch.any(" in benchmark_source
@@ -664,6 +673,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "carry_vertical_action_limit: float = 0.025" in benchmark_source
     assert (
         "self.carry_vertical_action_limit = 0.025"
+        in handover_model_source
+    )
+    assert (
+        "self.receiver_contact_centering_action_limit = 0.0025"
         in handover_model_source
     )
     assert (
