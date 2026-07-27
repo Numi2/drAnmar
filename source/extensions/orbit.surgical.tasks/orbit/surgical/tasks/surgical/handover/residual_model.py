@@ -40,6 +40,7 @@ class HandoverAnalyticController(nn.Module):
         self.slow_approach_action_limit = 0.1
         self.receiver_contact_centering_action_limit = 0.0025
         self.normalized_contact_threshold = 0.002
+        self.giver_transport_normalized_contact_threshold = 0.001
         self.presentation_fraction_from_giver = 0.35
         self.presentation_height_in_robot_frame = -0.13
         self.presentation_ready_tolerance = 0.005
@@ -219,6 +220,11 @@ class HandoverAnalyticController(nn.Module):
             giver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
+        giver_transport_bilateral_contact = torch.all(
+            giver_contacts
+            > self.giver_transport_normalized_contact_threshold,
+            dim=-1,
+        )
         giver_any_contact = torch.any(
             giver_contacts > self.normalized_contact_threshold,
             dim=-1,
@@ -233,7 +239,7 @@ class HandoverAnalyticController(nn.Module):
         )
         giver_carry_mode = (phase >= 1) & (phase <= 2)
         giver_transport_active = (
-            giver_carry_mode & giver_bilateral_contact
+            giver_carry_mode & giver_transport_bilateral_contact
         )
         presentation_ready = (
             torch.linalg.vector_norm(
