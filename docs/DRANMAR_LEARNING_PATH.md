@@ -221,17 +221,16 @@ remain the outcome authorities.
 
 Stage 6 no longer starts PPO from a random 14-action policy. The exact
 closest-arm/contact-aware sequence is the deterministic policy base. Giver PPO
-is disabled throughout approach, grasp, reacquisition, and the complete 10 mm
-pickup, preserving the qualified analytic pickup bit for bit. After 10 mm, the
-isolated giver channel may learn bounded XYZ transport corrections only while
-live bilateral giver custody remains and before first receiver contact. The
-receiver residual may act during the receiver approach after the needle is
-within the 5 mm presentation gate and is disabled on first native contact. The
-residual action limit is 0.03 with 0.01 fixed initial exploration standard
-deviation.
-Role selection, sequencing, vertical pickup and transport, wrist control, both
-grippers, post-contact hold, release, and retreat remain analytic and cannot be
-bypassed by exploration. The new giver residual is mapped through network
+is disabled throughout approach, unqualified grasp, and reacquisition. Once
+the three-of-five bilateral-contact window proves custody, the isolated giver
+channel may learn bounded XYZ pickup and transport corrections while live
+bilateral custody remains and before first receiver contact. The receiver
+residual may act during the receiver approach after the needle is within the
+5 mm presentation gate and is disabled on first native contact. The residual
+action limit is 0.03 with 0.01 fixed initial exploration standard deviation.
+Role selection, sequencing, the pickup and transport base trajectory, wrist
+control, both grippers, post-contact hold, release, and retreat remain analytic
+and cannot be bypassed by exploration. The giver residual is mapped through network
 output rows that were inactive in the receiver-only checkpoint. This preserves
 the existing policy at initialization instead of exposing receiver behavior on
 the giver when physical arm roles swap. Giver adaptation also freezes the

@@ -440,7 +440,7 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         is True
     )
     assert manifest["stages"][5]["learning"]["residual_phases"] == [
-        "giver_post_10mm_transport_translation_before_receiver_contact",
+        "giver_windowed_contact_pickup_and_transport_translation_before_receiver_contact",
         "receiver_presentation_ready_approach_before_contact",
     ]
     reward_contract = manifest["stages"][5]["learning"][
@@ -594,13 +594,15 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert "giver_pre_contact_recovery = (" not in handover_model_source
     assert "giver_pre_lift_centering = (" not in handover_model_source
-    assert "giver_transport_residual = (" in handover_model_source
+    assert "giver_pickup_transport_residual = (" in handover_model_source
+    assert "(phase >= 1)" in handover_model_source
+    assert "& (phase <= 2)" in handover_model_source
     assert (
         "& ~receiver_any_contact"
         in handover_model_source
     )
     assert (
-        "giver_residual[:, :3] = giver_transport_residual.unsqueeze(-1)"
+        "giver_pickup_transport_residual.unsqueeze(-1)"
         in handover_model_source
     )
     assert (
