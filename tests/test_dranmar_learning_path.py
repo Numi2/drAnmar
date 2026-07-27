@@ -644,6 +644,14 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "giver_transport_min_contact_jaws = ["
         in benchmark_source
     )
+    assert (
+        '"giver_transport_normalized_contact_threshold"'
+        in benchmark_source
+    )
+    assert (
+        "giver_transport_normalized_contact_thresholds = values"
+        in benchmark_source
+    )
     assert "selected_receiver_z_offset = -0.0018" in benchmark_source
     assert '"rule": "minimum_reset_tool_tip_to_needle_distance"' in benchmark_source
     assert '"robot_1_selected_as_giver"' in benchmark_source
