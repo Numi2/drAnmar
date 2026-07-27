@@ -193,8 +193,11 @@ total pickup attempts. A recovered transfer remains a valid physical success,
 but evidence reports first-attempt and recovered successes separately; entering
 recovery earns no reward or phase credit. The qualified `0.40` arc offset is
 an object-relative grasp frame: after a slip, both the grasp point and
-pregrasp tool orientation follow the needle's live rigid pose rather than its
-reset orientation. Pickup uses a `0.010` vertical action limit while
+recovery offset follow the needle's live rigid pose rather than its reset
+orientation, while the proven identity tool posture remains unchanged.
+Recovery does not return to approach until the needle is within 5 mm of
+support with linear speed below 0.05 m/s and angular speed below 5 rad/s.
+Pickup uses a `0.010` vertical action limit while
 presentation retains `0.015`. The slower pickup reduced needle acceleration
 and mid-air loss without reducing final presentation authority. Controlled
 full-population challenges also tested `0.0105`, `0.0125`, `0.015`, `0.03`,

@@ -198,7 +198,10 @@ class HandoverAnalyticController(nn.Module):
             ~giver_is_robot_1,
         )
         phase = torch.argmax(raw[:, 77:82], dim=-1)
-        giver_tool_target_orientation = object_pose_in_giver[:, 3:7]
+        giver_tool_target_orientation = torch.zeros_like(
+            giver_orientation
+        )
+        giver_tool_target_orientation[:, 3] = 1.0
         giver_tool_orientation_error = axis_angle_from_quat(
             quat_mul(
                 giver_tool_target_orientation,

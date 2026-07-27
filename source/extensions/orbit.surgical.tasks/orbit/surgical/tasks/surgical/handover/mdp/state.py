@@ -34,6 +34,9 @@ def handover_state(
     pickup_contact_loss_steps: int = 3,
     giver_follow_tolerance: float = 0.005,
     recovery_open_steps: int = 15,
+    recovery_support_clearance: float = 0.005,
+    recovery_linear_speed_limit: float = 0.05,
+    recovery_angular_speed_limit: float = 5.0,
     required_receiver_only_steps: int = 10,
     allowed_receiver_contact_flicker_steps: int = 1,
     receiver_follow_tolerance: float = 0.005,
@@ -457,6 +460,9 @@ def handover_state(
     recovery_complete = (
         recovery_active
         & (state["recovery_open_step_count"] >= recovery_open_steps)
+        & (clearance <= recovery_support_clearance)
+        & (motion[:, 0] <= recovery_linear_speed_limit)
+        & (motion[:, 1] <= recovery_angular_speed_limit)
         & ~giver_contact_now
     )
     phase[recovery_complete] = 0

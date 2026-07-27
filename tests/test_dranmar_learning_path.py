@@ -368,6 +368,9 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert "pickup_contact_loss_steps: int = 3" in state_source
     assert "giver_follow_tolerance: float = 0.005" in state_source
     assert "recovery_open_steps: int = 15" in state_source
+    assert "recovery_support_clearance: float = 0.005" in state_source
+    assert "recovery_linear_speed_limit: float = 0.05" in state_source
+    assert "recovery_angular_speed_limit: float = 5.0" in state_source
     assert '"pickup_attempt_count"' in state_source
     assert '"pickup_recovery_count"' in state_source
     assert '"pickup_attempts_exhausted"' in state_source
