@@ -230,6 +230,12 @@
         "initialization": "exact_closest_arm_analytic_base_plus_bounded_translation_residual",
         "residual_action_limit": 0.03,
         "residual_initial_std": 0.01,
+        "reward_contract": {
+          "positive_credit": "one_time_physical_phase_transitions_and_retained_transfer_only",
+          "continuous_reach_grasp_and_dual_hold_weights": 0.0,
+          "stalling_credit": false,
+          "safety_penalties_remain_continuous": true
+        },
         "residual_phases": [
           "receiver_presentation_ready_approach_before_contact"
         ],

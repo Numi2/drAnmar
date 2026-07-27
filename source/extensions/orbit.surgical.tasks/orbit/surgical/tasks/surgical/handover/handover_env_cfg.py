@@ -213,10 +213,14 @@ class EventCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
 
+    # These continuous positive terms remain available as diagnostics, but
+    # must not pay the policy for hovering, holding the giver grasp, or
+    # stalling in dual contact. Physical progress is rewarded exactly once by
+    # phase_progress, and the retained transfer is rewarded by success.
     giver_reach = RewTerm(
         func=mdp.role_end_effector_object_distance,
         params={"std": 0.06, "role": "giver", "minimum_phase": 0},
-        weight=2.0,
+        weight=0.0,
     )
 
     giver_grasp = RewTerm(
@@ -224,13 +228,13 @@ class RewardsCfg:
         params={
             "role": "giver",
         },
-        weight=4.0,
+        weight=0.0,
     )
 
     receiver_reach = RewTerm(
         func=mdp.role_end_effector_object_distance,
         params={"std": 0.06, "role": "receiver", "minimum_phase": 1},
-        weight=3.0,
+        weight=0.0,
     )
 
     receiver_grasp = RewTerm(
@@ -239,13 +243,13 @@ class RewardsCfg:
             "role": "receiver",
             "minimum_phase": 2,
         },
-        weight=5.0,
+        weight=0.0,
     )
 
     stable_dual_grasp = RewTerm(
         func=mdp.stable_dual_grasp,
         params={"linear_std": 0.1, "angular_std": 2.0},
-        weight=3.0,
+        weight=0.0,
     )
 
     receiver_goal = RewTerm(

@@ -344,6 +344,23 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert "giver_identity = ObsTerm(func=mdp.giver_identity)" in cfg_source
     assert "func=mdp.role_end_effector_object_distance" in cfg_source
     assert "func=mdp.role_bilateral_grasp" in cfg_source
+    assert (
+        cfg_source.count(
+            "Physical progress is rewarded exactly once by"
+        )
+        == 1
+    )
+    for reward_name in (
+        "giver_reach",
+        "giver_grasp",
+        "receiver_reach",
+        "receiver_grasp",
+        "stable_dual_grasp",
+    ):
+        reward_block = cfg_source.split(
+            f"    {reward_name} = RewTerm(", 1
+        )[1].split("\n    )", 1)[0]
+        assert "weight=0.0" in reward_block
     assert "giver_contact_history" in state_source
     assert "receiver_contact_history" in state_source
     assert "contact_required_steps: int = 3" in state_source
@@ -395,6 +412,18 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert manifest["stages"][5]["learning"]["residual_phases"] == [
         "receiver_presentation_ready_approach_before_contact",
     ]
+    reward_contract = manifest["stages"][5]["learning"][
+        "reward_contract"
+    ]
+    assert (
+        reward_contract["positive_credit"]
+        == "one_time_physical_phase_transitions_and_retained_transfer_only"
+    )
+    assert reward_contract[
+        "continuous_reach_grasp_and_dual_hold_weights"
+    ] == 0.0
+    assert reward_contract["stalling_credit"] is False
+    assert reward_contract["safety_penalties_remain_continuous"] is True
     assert (
         manifest["stages"][5]["learning"][
             "teacher_success_does_not_override_physical_qualification"
