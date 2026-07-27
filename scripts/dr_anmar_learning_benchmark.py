@@ -3489,6 +3489,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     first_handover_max_phase = None
     first_handover_history = None
     if "Handover-" in args.task:
+        from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+            NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+        )
+
         handover_observation = obs["policy"]
         first_handover_max_phase = torch.argmax(
             handover_observation[:, 77:82], dim=-1
@@ -3532,6 +3536,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 (env.unwrapped.num_envs,),
                 -1,
                 dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "giver_orientation_at_first_window": torch.full(
+                (env.unwrapped.num_envs, 4),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "object_orientation_at_first_window": torch.full(
+                (env.unwrapped.num_envs, 4),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "giver_grasp_error_at_first_window_m": torch.full(
+                (env.unwrapped.num_envs, 3),
+                torch.nan,
+                device=env.unwrapped.device,
+            ),
+            "giver_jaw_aperture_at_first_window_rad": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.nan,
                 device=env.unwrapped.device,
             ),
             "maximum_clearance_m": torch.full(
@@ -3614,6 +3638,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         handover_observation[:, 46:49],
                         handover_observation[:, 53:56],
                     )
+                    object_orientation_in_giver = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 49:53],
+                        handover_observation[:, 56:60],
+                    )
+                    giver_ee = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 32:35],
+                        handover_observation[:, 39:42],
+                    )
+                    giver_orientation = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 35:39],
+                        handover_observation[:, 42:46],
+                    )
+                    giver_joint_position = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 0:8],
+                        handover_observation[:, 16:24],
+                    )
                     clearance = (
                         object_in_giver[:, 2]
                         - first_handover_history[
@@ -3647,6 +3691,35 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_handover_history[
                         "first_windowed_giver_contact_frame"
                     ][first_window] = frame_index
+                    giver_grasp_position = object_in_giver.clone()
+                    giver_grasp_position[:, 0] += (
+                        NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
+                    )
+                    giver_grasp_position[:, 1] += (
+                        NEEDLE_PROVISIONAL_GRASP_OFFSET_M[1]
+                    )
+                    giver_grasp_position[:, 2] += (
+                        NEEDLE_PROVISIONAL_GRASP_OFFSET_M[2]
+                    )
+                    first_handover_history[
+                        "giver_orientation_at_first_window"
+                    ][first_window] = giver_orientation[first_window]
+                    first_handover_history[
+                        "object_orientation_at_first_window"
+                    ][first_window] = object_orientation_in_giver[first_window]
+                    first_handover_history[
+                        "giver_grasp_error_at_first_window_m"
+                    ][first_window] = (
+                        giver_grasp_position[first_window]
+                        - giver_ee[first_window]
+                    )
+                    first_handover_history[
+                        "giver_jaw_aperture_at_first_window_rad"
+                    ][first_window] = (
+                        1.0
+                        + giver_joint_position[first_window, 7]
+                        - giver_joint_position[first_window, 6]
+                    )
                     first_handover_history[
                         "ever_giver_bilateral_contact"
                     ] |= was_first_unresolved & giver_bilateral_contact
@@ -4342,6 +4415,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "first_windowed_giver_contact_frame"
                 ][mask]
                 windowed = first_window_frame >= 0
+                giver_orientation = first_handover_history[
+                    "giver_orientation_at_first_window"
+                ][mask][windowed]
+                object_orientation = first_handover_history[
+                    "object_orientation_at_first_window"
+                ][mask][windowed]
+                giver_grasp_error = first_handover_history[
+                    "giver_grasp_error_at_first_window_m"
+                ][mask][windowed]
+                giver_jaw_aperture = first_handover_history[
+                    "giver_jaw_aperture_at_first_window_rad"
+                ][mask][windowed]
                 return {
                     "count": count,
                     "ever_giver_bilateral_contact": int(
@@ -4390,6 +4475,47 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "mean_first_windowed_contact_frame": (
                         float(first_window_frame[windowed].float().mean().item())
+                        if bool(windowed.any().item())
+                        else None
+                    ),
+                    "mean_giver_orientation_at_first_window_xyzw": (
+                        [
+                            float(
+                                giver_orientation[:, axis]
+                                .mean()
+                                .item()
+                            )
+                            for axis in range(4)
+                        ]
+                        if bool(windowed.any().item())
+                        else None
+                    ),
+                    "mean_object_orientation_at_first_window_xyzw": (
+                        [
+                            float(
+                                object_orientation[:, axis]
+                                .mean()
+                                .item()
+                            )
+                            for axis in range(4)
+                        ]
+                        if bool(windowed.any().item())
+                        else None
+                    ),
+                    "mean_giver_grasp_error_at_first_window_m": (
+                        [
+                            float(
+                                giver_grasp_error[:, axis]
+                                .mean()
+                                .item()
+                            )
+                            for axis in range(3)
+                        ]
+                        if bool(windowed.any().item())
+                        else None
+                    ),
+                    "mean_giver_jaw_aperture_at_first_window_rad": (
+                        float(giver_jaw_aperture.mean().item())
                         if bool(windowed.any().item())
                         else None
                     ),

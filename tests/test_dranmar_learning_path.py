@@ -671,6 +671,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"pickup_causal_diagnostics"' in benchmark_source
     assert '"maximum_giver_bilateral_contact_steps"' in benchmark_source
     assert '"mean_maximum_clearance_m"' in benchmark_source
+    assert '"giver_orientation_at_first_window"' in benchmark_source
+    assert '"giver_grasp_error_at_first_window_m"' in benchmark_source
+    assert '"giver_jaw_aperture_at_first_window_rad"' in benchmark_source
     assert '"maximum_phase_distribution"' in benchmark_source
     assert '"lifted_without_receiver_acquisition"' in benchmark_source
     assert "def _handover_teacher_action(" in benchmark_source
