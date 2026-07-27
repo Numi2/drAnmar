@@ -628,7 +628,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert handover_model_source.count(
         "giver_transport_active.unsqueeze(-1)"
-    ) >= 2
+    ) >= 1
+    assert (
+        "giver_presentation_orientation_active.unsqueeze(-1)"
+        in handover_model_source
+    )
     assert handover_model_source.count("~receiver_any_contact") >= 1
     assert ") > 0.5" in handover_model_source
     assert "parameter.requires_grad_(False)" in handover_model_source
@@ -817,9 +821,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in handover_model_source
     )
     assert (
-        "self.giver_carry_orientation_action_limit = 0.0"
+        "self.giver_carry_orientation_action_limit = 0.035"
         in handover_model_source
     )
+    assert "giver_presentation_orientation_active = (" in handover_model_source
     assert "giver_pregrasp_orientation_ready = (" in handover_model_source
     assert "& giver_pregrasp_orientation_ready" in handover_model_source
     assert (
