@@ -544,7 +544,7 @@ def _handover_teacher_action(
     presentation_ready_tolerance: float = 0.005,
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_lateral_action_limit: float = 0.06,
-    pickup_vertical_action_limit: float = 0.18,
+    pickup_vertical_action_limit: float = 0.015,
     carry_vertical_action_limit: float = 0.015,
     giver_transport_min_contact_jaws: int = 2,
     giver_transport_normalized_contact_threshold: float = 0.002,
@@ -1686,7 +1686,7 @@ def _handover_controller_sweep(
     receiver_offsets = []
     receiver_roll_offsets = [0.0] * len(values)
     presentation_fractions = [0.35] * len(values)
-    pickup_vertical_action_limits = [0.18] * len(values)
+    pickup_vertical_action_limits = [0.015] * len(values)
     carry_vertical_action_limits = [0.015] * len(values)
     receiver_close_distances = [0.001] * len(values)
     receiver_contact_centering_action_limits = [0.0025] * len(values)
@@ -3237,6 +3237,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "loaded policy does not expose a residual scale"
             )
         policy_model.residual_scale = args.residual_scale
+    if args.pickup_vertical_action_limit is not None:
+        if not 0.0 < args.pickup_vertical_action_limit <= 0.3:
+            env.close()
+            return _fail(
+                "play pickup vertical action limit must be in (0.0, 0.3]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "pickup_vertical_action_limit"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a pickup vertical action limit"
+            )
+        controller.pickup_vertical_action_limit = (
+            args.pickup_vertical_action_limit
+        )
     policy = runner.get_inference_policy(device=env.unwrapped.device)
 
     export_dir = Path(args.output_path).resolve() / "exported"
@@ -4120,6 +4137,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 if hasattr(policy_model, "residual_scale")
                 else None
             ),
+            "policy_pickup_vertical_action_limit": (
+                float(policy_model.controller.pickup_vertical_action_limit)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "pickup_vertical_action_limit",
+                )
+                else None
+            ),
             "exports": {
                 "jit": {"path": str(jit_path), "sha256": _sha256(jit_path)},
                 "onnx": {"path": str(onnx_path), "sha256": _sha256(onnx_path)},
@@ -4219,6 +4245,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--video_height", type=int, default=720)
     play.add_argument("--video_folder")
     play.add_argument("--residual_scale", type=float)
+    play.add_argument("--pickup_vertical_action_limit", type=float)
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 

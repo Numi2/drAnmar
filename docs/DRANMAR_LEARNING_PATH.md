@@ -181,11 +181,14 @@ presentation gate is met while the giver has live bilateral needle contact.
 The receiver stops its approach on first native contact; if giver custody
 flickers away first, the receiver waits while the closest arm regraspes.
 The giver begins lifting after the three-of-five native contact window
-completes. Until the needle clears 10 mm, it reuses the Stage 4 qualified
-`0.18` vertical action limit that achieved 2,228 pickups in 2,400 first
-episodes. After that physical pickup boundary, presentation transport switches
-to the slower `0.015` vertical limit because applying the faster profile to the
-entire carry reduced transfer reliability in controlled dual-arm comparisons.
+completes. Pickup and presentation both retain the handover-qualified `0.015`
+vertical action limit. A controlled 1,200-environment sweep separated pickup
+authority from presentation authority and tested `0.015`, `0.03`, `0.06`,
+`0.12`, `0.18`, and `0.24`. The faster Stage 4 standalone-pickup authority did
+not transfer safely to the coupled handover: it increased drops and reduced
+physical transfer success. The parameters remain separately controllable for
+causal checkpoint evaluation, but standalone pickup throughput is not treated
+as evidence for bimanual transport stability.
 
 Stage 6 no longer starts PPO from a random 14-action policy. The exact
 closest-arm/contact-aware sequence is the deterministic policy base. PPO may

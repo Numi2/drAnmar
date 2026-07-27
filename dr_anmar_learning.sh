@@ -222,6 +222,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_RESIDUAL_SCALE}"
             )
         fi
+        pickup_vertical_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
+            pickup_vertical_action_limit_args=(
+                --pickup_vertical_action_limit
+                "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT}"
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
@@ -230,7 +237,8 @@ case "${command}" in
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
             --output_path "${output}" \
-            "${residual_scale_args[@]}"
+            "${residual_scale_args[@]}" \
+            "${pickup_vertical_action_limit_args[@]}"
         ;;
     record)
         require_runtime
@@ -244,6 +252,13 @@ case "${command}" in
         output="${5:-${DR_ANMAR_LEARNING_OUTPUT}/record}"
         chunk_frames="${6:-${frames}}"
         mkdir -p "${output}/videos"
+        pickup_vertical_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
+            pickup_vertical_action_limit_args=(
+                --pickup_vertical_action_limit
+                "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT}"
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
@@ -257,7 +272,8 @@ case "${command}" in
             --video_height "${DR_ANMAR_VIDEO_HEIGHT:-360}" \
             --video_folder "${output}/videos" \
             --benchmark_formatter schema,json \
-            --output_path "${output}"
+            --output_path "${output}" \
+            "${pickup_vertical_action_limit_args[@]}"
         ;;
     tqta-start)
         task="${2:-${DR_ANMAR_TASK}}"
