@@ -180,22 +180,32 @@ Both receiver translation and wrist orientation remain locked until this
 presentation gate is met while the giver has live bilateral needle contact.
 The receiver stops its approach on first native contact; if giver custody
 flickers away first, the receiver waits while the closest arm regraspes.
-The giver begins lifting after the three-of-five native contact window
-completes. Pickup and presentation both retain the handover-qualified `0.015`
-vertical action limit. A controlled 1,200-environment sweep separated pickup
-authority from presentation authority and tested `0.015`, `0.03`, `0.06`,
-`0.12`, `0.18`, and `0.24`. The faster Stage 4 standalone-pickup authority did
-not transfer safely to the coupled handover: it increased drops and reduced
-physical transfer success. The parameters remain separately controllable for
-causal checkpoint evaluation, but standalone pickup throughput is not treated
-as evidence for bimanual transport stability.
+The giver begins lifting as soon as current native bilateral contact is live,
+while the three-of-five contact window remains the only authority that advances
+the physical pickup phase. Loss of live bilateral contact immediately returns
+the tool to approach/reacquisition, so an empty or one-jaw lift cannot satisfy
+the 10 mm clearance gate. Pickup and presentation both retain the
+handover-qualified `0.015` vertical action limit. A controlled
+1,200-environment sweep separated pickup authority from presentation authority
+and tested `0.015`, `0.03`, `0.06`, `0.12`, `0.18`, and `0.24`. The faster
+Stage 4 standalone-pickup authority did not transfer safely to the coupled
+handover: it increased drops and reduced physical transfer success. The
+parameters remain separately controllable for causal checkpoint evaluation,
+but standalone pickup throughput is not treated as evidence for bimanual
+transport stability.
 
 After the 10 mm pickup gate, lateral presentation authority follows a
-minimum-jerk ramp over the next 5 mm of vertical clearance. This removes the
+minimum-jerk ramp over the next 10 mm of vertical clearance. This removes the
 one-frame transition from zero lateral motion to the full `0.06` action limit
 without reducing final presentation authority. The ramp is stateless, uses
 measured object height, does not alter rewards or success criteria, and is
 recorded in runtime evidence.
+
+The live-contact lift plus 10 mm ramp achieved 613 of 1,200 strict terminal
+successes (51.08%) on seed 17 and 577 of 1,200 (48.08%) on held-out seed 2361.
+Both runs used the same source-locked checkpoint and unchanged drop, retention,
+5 N object-force, and 2 N protected-contact gates. This is the current
+simulator champion, not a claim of clinical validation or task convergence.
 
 The giver aligns its wrist to the identity tool frame before descending from
 the 20 mm pregrasp and may close only within `0.035` rad of that frame.

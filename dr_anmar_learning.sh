@@ -249,10 +249,15 @@ case "${command}" in
             )
         fi
         giver_lift_on_live_contact_args=()
-        if [[ "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-0}" == "1" ]]; then
-            giver_lift_on_live_contact_args=(
-                --giver_lift_on_live_contact
-            )
+        if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
+            case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
+                1) giver_lift_on_live_contact_args=(--giver_lift_on_live_contact) ;;
+                0) giver_lift_on_live_contact_args=(--no-giver_lift_on_live_contact) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
         fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
@@ -302,10 +307,15 @@ case "${command}" in
             )
         fi
         giver_lift_on_live_contact_args=()
-        if [[ "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-0}" == "1" ]]; then
-            giver_lift_on_live_contact_args=(
-                --giver_lift_on_live_contact
-            )
+        if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
+            case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
+                1) giver_lift_on_live_contact_args=(--giver_lift_on_live_contact) ;;
+                0) giver_lift_on_live_contact_args=(--no-giver_lift_on_live_contact) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
         fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \

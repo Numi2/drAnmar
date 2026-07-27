@@ -713,7 +713,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in benchmark_source
     )
     assert (
-        'play.add_argument("--giver_lift_on_live_contact", action="store_true")'
+        'action=argparse.BooleanOptionalAction'
         in benchmark_source
     )
     assert '"policy_learning_rate"' in benchmark_source
@@ -806,8 +806,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "self.carry_vertical_action_limit = 0.015"
         in handover_model_source
     )
-    assert "self.carry_lateral_ramp_height = 0.005" in handover_model_source
-    assert "self.giver_lift_on_live_contact = False" in handover_model_source
+    assert "self.carry_lateral_ramp_height = 0.01" in handover_model_source
+    assert "self.giver_lift_on_live_contact = True" in handover_model_source
     assert (
         "self.giver_pregrasp_orientation_action_limit = 0.6"
         in handover_model_source
