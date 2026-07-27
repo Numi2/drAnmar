@@ -509,6 +509,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "giver_target_orientation[:, 3] = 1.0" in benchmark_source
     assert "giver_orientation_action" in benchmark_source
     assert "receiver_any_contact = torch.any(" in benchmark_source
+    assert "receiver_bilateral_contact = torch.all(" in benchmark_source
     assert "& receiver_any_contact" in benchmark_source
     assert "giver_carry_mode.unsqueeze(-1)" in benchmark_source
     assert "giver_carry_mode = (phase >= 1) & (phase <= 2)" in benchmark_source
@@ -527,6 +528,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "((phase == 2) & receiver_any_contact)" in benchmark_source
     assert (
         '"receiver_stops_approach_on_first_contact": True'
+        in benchmark_source
+    )
+    assert "(phase == 3)" in benchmark_source
+    assert "& ~receiver_bilateral_contact" in benchmark_source
+    assert (
+        '"giver_release_waits_for_current_receiver_bilateral": True'
         in benchmark_source
     )
     assert "((phase == 3) & giver_any_contact)" in benchmark_source

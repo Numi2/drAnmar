@@ -673,6 +673,10 @@ def _handover_teacher_action(
         receiver_contacts > normalized_contact_threshold,
         dim=-1,
     )
+    receiver_bilateral_contact = torch.all(
+        receiver_contacts > normalized_contact_threshold,
+        dim=-1,
+    )
     giver_carry_mode = (phase >= 1) & (phase <= 2)
 
     presentation_ready = (
@@ -748,6 +752,10 @@ def _handover_teacher_action(
         )
         | ((phase >= 1) & (phase <= 2))
     ) & (phase < 3)
+    giver_closing |= (
+        (phase == 3)
+        & ~receiver_bilateral_contact
+    )
     receiver_closing = (
         (phase >= 2)
         & (
@@ -2277,6 +2285,7 @@ def _handover_controller_sweep(
                 "receiver_contact_centering_action_limit": 0.005,
                 "receiver_waits_for_presentation": True,
                 "receiver_stops_approach_on_first_contact": True,
+                "giver_release_waits_for_current_receiver_bilateral": True,
                 "giver_holds_position_until_release": True,
                 "receiver_holds_position_after_acquisition": True,
                 "receiver_orientation_frozen_after_acquisition": True,

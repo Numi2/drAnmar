@@ -160,7 +160,8 @@ The analytic seed controller executes the task in three explicit physical
 segments: the closer arm picks up the needle, transports it into the shared
 workspace while the receiver remains still, and presents it for acquisition.
 Once the receiver acquires the needle, the giver opens without retreating
-until native giver contact is gone, while the receiver freezes its wrist
+only when current receiver bilateral contact is present, and it does not
+retreat until native giver contact is gone. The receiver freezes its wrist
 position and orientation to avoid pulling or twisting the grasp during
 release. Release is recognized
 only when the giver is commanded open and its native contact is physically
