@@ -544,6 +544,7 @@ def _handover_teacher_action(
     presentation_ready_tolerance: float = 0.005,
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_lateral_action_limit: float = 0.06,
+    pickup_vertical_action_limit: float = 0.18,
     carry_vertical_action_limit: float = 0.015,
     giver_transport_min_contact_jaws: int = 2,
     giver_transport_normalized_contact_threshold: float = 0.002,
@@ -671,16 +672,31 @@ def _handover_teacher_action(
         giver_target[:, :2],
     )
     giver_error = (giver_target - object_in_giver) / position_scale
+    giver_vertical_limit = torch.where(
+        vertical_only,
+        torch.full_like(
+            giver_error[:, 2],
+            pickup_vertical_action_limit,
+        ),
+        torch.full_like(
+            giver_error[:, 2],
+            carry_vertical_action_limit,
+        ),
+    ).unsqueeze(-1)
+    giver_vertical_action = torch.maximum(
+        torch.minimum(
+            giver_error[:, 2:],
+            giver_vertical_limit,
+        ),
+        -giver_vertical_limit,
+    )
     giver_carry = torch.cat(
         (
             giver_error[:, :2].clamp(
                 -carry_lateral_action_limit,
                 carry_lateral_action_limit,
             ),
-            giver_error[:, 2:].clamp(
-                -carry_vertical_action_limit,
-                carry_vertical_action_limit,
-            ),
+            giver_vertical_action,
         ),
         dim=-1,
     )
@@ -1670,6 +1686,7 @@ def _handover_controller_sweep(
     receiver_offsets = []
     receiver_roll_offsets = [0.0] * len(values)
     presentation_fractions = [0.35] * len(values)
+    pickup_vertical_action_limits = [0.18] * len(values)
     carry_vertical_action_limits = [0.015] * len(values)
     receiver_close_distances = [0.001] * len(values)
     receiver_contact_centering_action_limits = [0.0025] * len(values)
@@ -1752,6 +1769,24 @@ def _handover_controller_sweep(
         ]
         receiver_roll_offsets = [math.pi] * len(values)
         carry_vertical_action_limits = values
+    elif parameter == "pickup_vertical_action_limit":
+        if any(not 0.01 <= value <= 0.30 for value in values):
+            return _fail(
+                "pickup vertical action limits must be between 0.01 and 0.30"
+            )
+        geometry_offset = needle_geometry_grasp_offset_m(
+            fixed_receiver_arc_fraction
+        )
+        receiver_offsets = [
+            (
+                geometry_offset[0],
+                geometry_offset[1],
+                selected_receiver_z_offset,
+            )
+            for _ in values
+        ]
+        receiver_roll_offsets = [math.pi] * len(values)
+        pickup_vertical_action_limits = values
     elif parameter == "receiver_close_distance":
         if any(not 0.0002 <= value <= 0.01 for value in values):
             return _fail(
@@ -1852,7 +1887,8 @@ def _handover_controller_sweep(
             "handover-sweep parameter must be receiver_arc_fraction "
             "receiver_grasp_z_offset, receiver_roll_offset_rad, or "
             "presentation_fraction_from_giver, or "
-            "carry_vertical_action_limit, receiver_close_distance, or "
+            "pickup_vertical_action_limit, carry_vertical_action_limit, "
+            "receiver_close_distance, or "
             "receiver_contact_centering_action_limit, or "
             "giver_transport_min_contact_jaws, or "
             "giver_transport_normalized_contact_threshold, or "
@@ -2120,6 +2156,9 @@ def _handover_controller_sweep(
                     ),
                     presentation_fraction_from_giver=(
                         presentation_fractions[group_index]
+                    ),
+                    pickup_vertical_action_limit=(
+                        pickup_vertical_action_limits[group_index]
                     ),
                     carry_vertical_action_limit=(
                         carry_vertical_action_limits[group_index]
@@ -2399,6 +2438,9 @@ def _handover_controller_sweep(
                     "presentation_fraction_from_giver": (
                         presentation_fractions[group_index]
                     ),
+                    "pickup_vertical_action_limit": (
+                        pickup_vertical_action_limits[group_index]
+                    ),
                     "carry_vertical_action_limit": (
                         carry_vertical_action_limits[group_index]
                     ),
@@ -2601,6 +2643,9 @@ def _handover_controller_sweep(
                 "presentation_ready_tolerance_m": 0.005,
                 "minimum_lift_height_in_robot_frame_m": -0.139,
                 "carry_lateral_action_limit": 0.06,
+                "pickup_vertical_action_limits": (
+                    pickup_vertical_action_limits
+                ),
                 "carry_vertical_action_limits": (
                     carry_vertical_action_limits
                 ),

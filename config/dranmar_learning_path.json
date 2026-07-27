@@ -230,6 +230,8 @@
         "initialization": "exact_closest_arm_analytic_base_plus_bounded_translation_residual",
         "residual_action_limit": 0.03,
         "residual_initial_std": 0.01,
+        "analytic_pickup_vertical_action_limit": 0.18,
+        "analytic_pickup_vertical_action_limit_source": "qualified_stage4_needle_pickup_2228_of_2400_first_outcomes",
         "analytic_giver_vertical_action_limit": 0.015,
         "analytic_giver_vertical_action_limit_source": "isaac_lab_seed17_1200_environment_refined_six_way_physical_sweep",
         "analytic_receiver_contact_centering_action_limit": 0.0025,

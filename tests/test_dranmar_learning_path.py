@@ -413,6 +413,12 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     )
     assert (
         manifest["stages"][5]["learning"][
+            "analytic_pickup_vertical_action_limit"
+        ]
+        == 0.18
+    )
+    assert (
+        manifest["stages"][5]["learning"][
             "analytic_receiver_contact_centering_action_limit"
         ]
         == 0.0025
@@ -634,6 +640,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"receiver_grasp_z_offset"' in benchmark_source
     assert '"receiver_roll_offset_rad"' in benchmark_source
     assert '"presentation_fraction_from_giver"' in benchmark_source
+    assert '"pickup_vertical_action_limit"' in benchmark_source
+    assert "pickup_vertical_action_limits = values" in benchmark_source
     assert '"carry_vertical_action_limit"' in benchmark_source
     assert "carry_vertical_action_limits = values" in benchmark_source
     assert '"receiver_close_distance"' in benchmark_source
@@ -693,6 +701,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "presentation_ready_tolerance: float = 0.005" in benchmark_source
     assert '"presentation_ready_tolerance_m": 0.005' in benchmark_source
     assert "carry_lateral_action_limit: float = 0.06" in benchmark_source
+    assert "pickup_vertical_action_limit: float = 0.18" in benchmark_source
     assert "carry_vertical_action_limit: float = 0.015" in benchmark_source
     assert (
         "giver_contact_recovery_action_limit: float = 1.0"
@@ -701,6 +710,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "giver_contact_recovery = giver_approach.clamp(" in benchmark_source
     assert (
         "self.carry_vertical_action_limit = 0.015"
+        in handover_model_source
+    )
+    assert (
+        "self.pickup_vertical_action_limit = 0.18"
         in handover_model_source
     )
     assert (
