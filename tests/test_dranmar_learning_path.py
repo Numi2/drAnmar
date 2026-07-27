@@ -664,6 +664,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "def _handover_controller_sweep(" in benchmark_source
     assert '"receiver_retention_failure_causes"' in benchmark_source
     assert '"first_episode_handover_diagnostics"' in benchmark_source
+    assert '"pickup_causal_diagnostics"' in benchmark_source
+    assert '"maximum_giver_bilateral_contact_steps"' in benchmark_source
+    assert '"mean_maximum_clearance_m"' in benchmark_source
     assert '"maximum_phase_distribution"' in benchmark_source
     assert '"lifted_without_receiver_acquisition"' in benchmark_source
     assert "def _handover_teacher_action(" in benchmark_source

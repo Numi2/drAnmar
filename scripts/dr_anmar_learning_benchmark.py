@@ -3439,11 +3439,59 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         }
     obs = env.get_observations()
     first_handover_max_phase = None
+    first_handover_history = None
     if "Handover-" in args.task:
+        handover_observation = obs["policy"]
         first_handover_max_phase = torch.argmax(
-            obs["policy"][:, 77:82],
-            dim=-1,
+            handover_observation[:, 77:82], dim=-1
         )
+        giver_is_robot_1 = handover_observation[:, 82] > 0.5
+        initial_object_in_giver = torch.where(
+            giver_is_robot_1.unsqueeze(-1),
+            handover_observation[:, 46:49],
+            handover_observation[:, 53:56],
+        ).clone()
+        first_handover_history = {
+            "initial_object_in_giver": initial_object_in_giver,
+            "ever_giver_bilateral_contact": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_windowed_giver_contact": torch.zeros_like(
+                first_unresolved
+            ),
+            "giver_bilateral_contact_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "current_giver_bilateral_contact_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_giver_bilateral_contact_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "first_giver_bilateral_contact_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "first_windowed_giver_contact_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_clearance_m": torch.full(
+                (env.unwrapped.num_envs,),
+                -torch.inf,
+                device=env.unwrapped.device,
+            ),
+        }
     if lift_diagnostics is not None:
         policy_observation = obs["policy"]
         initial_object_xy = policy_observation[:, 23:25].clone()
@@ -3500,6 +3548,100 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             current_handover_phase,
                         ),
                         first_handover_max_phase,
+                    )
+                    assert first_handover_history is not None
+                    handover_observation = obs["policy"]
+                    giver_is_robot_1 = handover_observation[:, 82] > 0.5
+                    giver_contacts = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 66:68],
+                        handover_observation[:, 68:70],
+                    )
+                    giver_bilateral_contact = torch.all(
+                        giver_contacts > 0.002,
+                        dim=-1,
+                    )
+                    object_in_giver = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 46:49],
+                        handover_observation[:, 53:56],
+                    )
+                    clearance = (
+                        object_in_giver[:, 2]
+                        - first_handover_history[
+                            "initial_object_in_giver"
+                        ][:, 2]
+                    )
+                    windowed_contact = current_handover_phase >= 1
+                    first_contact = (
+                        was_first_unresolved
+                        & giver_bilateral_contact
+                        & (
+                            first_handover_history[
+                                "first_giver_bilateral_contact_frame"
+                            ]
+                            < 0
+                        )
+                    )
+                    first_window = (
+                        was_first_unresolved
+                        & windowed_contact
+                        & (
+                            first_handover_history[
+                                "first_windowed_giver_contact_frame"
+                            ]
+                            < 0
+                        )
+                    )
+                    first_handover_history[
+                        "first_giver_bilateral_contact_frame"
+                    ][first_contact] = frame_index
+                    first_handover_history[
+                        "first_windowed_giver_contact_frame"
+                    ][first_window] = frame_index
+                    first_handover_history[
+                        "ever_giver_bilateral_contact"
+                    ] |= was_first_unresolved & giver_bilateral_contact
+                    first_handover_history[
+                        "ever_windowed_giver_contact"
+                    ] |= was_first_unresolved & windowed_contact
+                    first_handover_history[
+                        "giver_bilateral_contact_steps"
+                    ] += (
+                        was_first_unresolved & giver_bilateral_contact
+                    ).to(torch.int64)
+                    current_contact_steps = torch.where(
+                        was_first_unresolved & giver_bilateral_contact,
+                        first_handover_history[
+                            "current_giver_bilateral_contact_steps"
+                        ]
+                        + 1,
+                        0,
+                    )
+                    first_handover_history[
+                        "current_giver_bilateral_contact_steps"
+                    ] = current_contact_steps
+                    first_handover_history[
+                        "maximum_giver_bilateral_contact_steps"
+                    ] = torch.maximum(
+                        first_handover_history[
+                            "maximum_giver_bilateral_contact_steps"
+                        ],
+                        current_contact_steps,
+                    )
+                    first_handover_history["maximum_clearance_m"] = (
+                        torch.where(
+                            was_first_unresolved,
+                            torch.maximum(
+                                first_handover_history[
+                                    "maximum_clearance_m"
+                                ],
+                                clearance,
+                            ),
+                            first_handover_history[
+                                "maximum_clearance_m"
+                            ],
+                        )
                     )
                 if first_lift_history is not None:
                     assert lift_mdp_common is not None
@@ -4128,6 +4270,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "success_by_initial_target_xy_distance": target_distance_bins,
             }
         if first_handover_max_phase is not None:
+            assert first_handover_history is not None
             first_completed = ~first_unresolved
             phase_labels = (
                 "no_giver_bilateral_contact",
@@ -4136,17 +4279,88 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "receiver_acquired_without_retained_success",
                 "success",
             )
-            first_episode_handover_diagnostics = {
-                "maximum_phase_distribution": {
-                    label: int(
-                        (
-                            first_completed
-                            & (first_handover_max_phase == phase)
-                        )
+            def handover_cohort_stats(mask: torch.Tensor) -> dict:
+                count = int(mask.sum().item())
+                if not count:
+                    return {"count": 0}
+                initial_xy = first_handover_history[
+                    "initial_object_in_giver"
+                ][mask, :2]
+                first_contact_frame = first_handover_history[
+                    "first_giver_bilateral_contact_frame"
+                ][mask]
+                contacted = first_contact_frame >= 0
+                first_window_frame = first_handover_history[
+                    "first_windowed_giver_contact_frame"
+                ][mask]
+                windowed = first_window_frame >= 0
+                return {
+                    "count": count,
+                    "ever_giver_bilateral_contact": int(
+                        first_handover_history[
+                            "ever_giver_bilateral_contact"
+                        ][mask]
                         .sum()
                         .item()
-                    )
-                    for phase, label in enumerate(phase_labels)
+                    ),
+                    "ever_windowed_giver_contact": int(
+                        first_handover_history[
+                            "ever_windowed_giver_contact"
+                        ][mask]
+                        .sum()
+                        .item()
+                    ),
+                    "mean_initial_object_xy_in_giver_m": [
+                        float(initial_xy[:, axis].mean().item())
+                        for axis in range(2)
+                    ],
+                    "mean_initial_object_radial_offset_m": float(
+                        torch.linalg.vector_norm(initial_xy, dim=-1)
+                        .mean()
+                        .item()
+                    ),
+                    "mean_giver_bilateral_contact_steps": float(
+                        first_handover_history[
+                            "giver_bilateral_contact_steps"
+                        ][mask]
+                        .float()
+                        .mean()
+                        .item()
+                    ),
+                    "mean_maximum_consecutive_bilateral_contact_steps": float(
+                        first_handover_history[
+                            "maximum_giver_bilateral_contact_steps"
+                        ][mask]
+                        .float()
+                        .mean()
+                        .item()
+                    ),
+                    "mean_first_bilateral_contact_frame": (
+                        float(first_contact_frame[contacted].float().mean().item())
+                        if bool(contacted.any().item())
+                        else None
+                    ),
+                    "mean_first_windowed_contact_frame": (
+                        float(first_window_frame[windowed].float().mean().item())
+                        if bool(windowed.any().item())
+                        else None
+                    ),
+                    "mean_maximum_clearance_m": float(
+                        first_handover_history["maximum_clearance_m"][mask]
+                        .mean()
+                        .item()
+                    ),
+                }
+
+            phase_masks = {
+                label: first_completed
+                & (first_handover_max_phase == phase)
+                for phase, label in enumerate(phase_labels)
+            }
+            first_episode_handover_diagnostics = {
+                "maximum_phase_distribution": {
+                    label: int(mask.sum().item())
+                    for label, mask in phase_masks.items()
                 },
                 "reached_phase_fraction": {
                     f"phase_{phase}_{label}": float(
@@ -4158,6 +4372,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .item()
                     )
                     for phase, label in enumerate(phase_labels)
+                },
+                "pickup_causal_diagnostics": {
+                    "contact_threshold_n": 0.01,
+                    "contact_window": "three_of_five_control_steps",
+                    "overall": handover_cohort_stats(first_completed),
+                    "by_maximum_phase": {
+                        label: handover_cohort_stats(mask)
+                        for label, mask in phase_masks.items()
+                    },
                 },
                 "unresolved": int(first_unresolved.sum().item()),
             }
