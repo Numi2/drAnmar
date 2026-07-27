@@ -653,6 +653,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in launcher_source
     )
     assert (
+        "DR_ANMAR_POLICY_PICKUP_INITIAL_VERTICAL_ACTION_LIMIT"
+        in launcher_source
+    )
+    assert (
         "DR_ANMAR_POLICY_CARRY_LATERAL_ACTION_LIMIT"
         in launcher_source
     )
@@ -705,6 +709,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in benchmark_source
     )
     assert (
+        'play.add_argument("--pickup_initial_vertical_action_limit", type=float)'
+        in benchmark_source
+    )
+    assert (
         'play.add_argument("--carry_lateral_action_limit", type=float)'
         in benchmark_source
     )
@@ -719,6 +727,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"policy_learning_rate"' in benchmark_source
     assert '"policy_residual_scale"' in benchmark_source
     assert '"policy_pickup_vertical_action_limit"' in benchmark_source
+    assert (
+        '"policy_pickup_initial_vertical_action_limit"'
+        in benchmark_source
+    )
     assert '"policy_carry_lateral_action_limit"' in benchmark_source
     assert '"policy_carry_lateral_ramp_height"' in benchmark_source
     assert '"policy_giver_lift_on_live_contact"' in benchmark_source
@@ -826,6 +838,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "self.pickup_vertical_action_limit = 0.015"
         in handover_model_source
     )
+    assert (
+        "self.pickup_initial_vertical_action_limit = 0.015"
+        in handover_model_source
+    )
+    assert "pickup_deceleration_fraction = (" in handover_model_source
     assert (
         "self.receiver_contact_centering_action_limit = 0.0025"
         in handover_model_source

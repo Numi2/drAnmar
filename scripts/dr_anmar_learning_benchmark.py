@@ -3359,6 +3359,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         controller.pickup_vertical_action_limit = (
             args.pickup_vertical_action_limit
         )
+    if args.pickup_initial_vertical_action_limit is not None:
+        if not 0.0 < args.pickup_initial_vertical_action_limit <= 0.3:
+            env.close()
+            return _fail(
+                "play initial pickup vertical action limit must be in (0.0, 0.3]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "pickup_initial_vertical_action_limit"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose an initial pickup vertical action limit"
+            )
+        controller.pickup_initial_vertical_action_limit = (
+            args.pickup_initial_vertical_action_limit
+        )
     if args.carry_lateral_action_limit is not None:
         if not 0.0 < args.carry_lateral_action_limit <= 0.1:
             env.close()
@@ -4646,6 +4663,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_pickup_initial_vertical_action_limit": (
+                float(
+                    policy_model.controller.pickup_initial_vertical_action_limit
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "pickup_initial_vertical_action_limit",
+                )
+                else None
+            ),
             "policy_carry_lateral_action_limit": (
                 float(policy_model.controller.carry_lateral_action_limit)
                 if hasattr(policy_model, "controller")
@@ -4777,6 +4805,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--video_folder")
     play.add_argument("--residual_scale", type=float)
     play.add_argument("--pickup_vertical_action_limit", type=float)
+    play.add_argument("--pickup_initial_vertical_action_limit", type=float)
     play.add_argument("--carry_lateral_action_limit", type=float)
     play.add_argument("--carry_lateral_ramp_height", type=float)
     play.add_argument(

@@ -47,6 +47,8 @@ class HandoverAnalyticController(nn.Module):
         self.carry_lateral_action_limit = 0.06
         self.carry_lateral_ramp_height = 0.01
         self.pickup_vertical_action_limit = 0.015
+        self.pickup_initial_vertical_action_limit = 0.015
+        self.pickup_deceleration_height = 0.01
         self.carry_vertical_action_limit = 0.015
         self.giver_lift_on_live_contact = True
         self.giver_pregrasp_orientation_action_limit = 0.6
@@ -248,12 +250,32 @@ class HandoverAnalyticController(nn.Module):
         giver_error = (
             giver_target - object_in_giver
         ) / self.position_scale
+        pickup_progress = (
+            (
+                object_in_giver[:, 2]
+                - (
+                    self.minimum_lift_height_in_robot_frame
+                    - self.pickup_deceleration_height
+                )
+            )
+            / self.pickup_deceleration_height
+        ).clamp(0.0, 1.0)
+        pickup_deceleration_fraction = (
+            pickup_progress
+            * pickup_progress
+            * (3.0 - 2.0 * pickup_progress)
+        )
+        pickup_vertical_limit = (
+            self.pickup_initial_vertical_action_limit
+            + (
+                self.pickup_vertical_action_limit
+                - self.pickup_initial_vertical_action_limit
+            )
+            * pickup_deceleration_fraction
+        )
         giver_vertical_limit = torch.where(
             vertical_only,
-            torch.full_like(
-                giver_error[:, 2],
-                self.pickup_vertical_action_limit,
-            ),
+            pickup_vertical_limit,
             torch.full_like(
                 giver_error[:, 2],
                 self.carry_vertical_action_limit,

@@ -234,6 +234,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT}"
             )
         fi
+        pickup_initial_vertical_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_PICKUP_INITIAL_VERTICAL_ACTION_LIMIT:-}" ]]; then
+            pickup_initial_vertical_action_limit_args=(
+                --pickup_initial_vertical_action_limit
+                "${DR_ANMAR_POLICY_PICKUP_INITIAL_VERTICAL_ACTION_LIMIT}"
+            )
+        fi
         carry_lateral_action_limit_args=()
         if [[ -n "${DR_ANMAR_POLICY_CARRY_LATERAL_ACTION_LIMIT:-}" ]]; then
             carry_lateral_action_limit_args=(
@@ -269,6 +276,7 @@ case "${command}" in
             --output_path "${output}" \
             "${residual_scale_args[@]}" \
             "${pickup_vertical_action_limit_args[@]}" \
+            "${pickup_initial_vertical_action_limit_args[@]}" \
             "${carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
@@ -290,6 +298,13 @@ case "${command}" in
             pickup_vertical_action_limit_args=(
                 --pickup_vertical_action_limit
                 "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT}"
+            )
+        fi
+        pickup_initial_vertical_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_PICKUP_INITIAL_VERTICAL_ACTION_LIMIT:-}" ]]; then
+            pickup_initial_vertical_action_limit_args=(
+                --pickup_initial_vertical_action_limit
+                "${DR_ANMAR_POLICY_PICKUP_INITIAL_VERTICAL_ACTION_LIMIT}"
             )
         fi
         carry_lateral_action_limit_args=()
@@ -332,6 +347,7 @@ case "${command}" in
             --benchmark_formatter schema,json \
             --output_path "${output}" \
             "${pickup_vertical_action_limit_args[@]}" \
+            "${pickup_initial_vertical_action_limit_args[@]}" \
             "${carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
