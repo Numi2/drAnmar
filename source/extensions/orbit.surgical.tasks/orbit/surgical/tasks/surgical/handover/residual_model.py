@@ -13,7 +13,6 @@ from torch import nn
 
 from isaaclab.utils.math import (
     axis_angle_from_quat,
-    quat_apply,
     quat_conjugate,
     quat_mul,
 )
@@ -78,39 +77,18 @@ class HandoverAnalyticController(nn.Module):
             robot_2_value,
         )
 
-    def _grasp_position(
-        self,
-        object_position: torch.Tensor,
-        object_orientation: torch.Tensor,
-        grasp_x: float,
-        grasp_y: float,
-        grasp_z: float,
-    ) -> torch.Tensor:
-        grasp_offset = torch.zeros_like(object_position)
-        grasp_offset[:, 0] = grasp_x
-        grasp_offset[:, 1] = grasp_y
-        grasp_offset[:, 2] = grasp_z
-        return object_position + quat_apply(
-            object_orientation,
-            grasp_offset,
-        )
-
     def _approach_action(
         self,
         ee_position: torch.Tensor,
         object_position: torch.Tensor,
-        object_orientation: torch.Tensor,
         grasp_x: float,
         grasp_y: float,
         grasp_z: float,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        grasp_position = self._grasp_position(
-            object_position,
-            object_orientation,
-            grasp_x,
-            grasp_y,
-            grasp_z,
-        )
+        grasp_position = object_position.clone()
+        grasp_position[:, 0] += grasp_x
+        grasp_position[:, 1] += grasp_y
+        grasp_position[:, 2] += grasp_z
         delta = grasp_position - ee_position
         lateral_distance = torch.linalg.vector_norm(
             delta[:, :2],
@@ -218,19 +196,16 @@ class HandoverAnalyticController(nn.Module):
         giver_approach, giver_distance = self._approach_action(
             giver_ee,
             object_in_giver,
-            object_pose_in_giver[:, 3:7],
             self.giver_grasp_x,
             self.giver_grasp_y,
             self.giver_grasp_z,
         )
-        giver_pregrasp_position = self._grasp_position(
-            object_in_giver,
-            object_pose_in_giver[:, 3:7],
-            self.giver_grasp_x,
-            self.giver_grasp_y,
-            self.giver_grasp_z,
+        giver_pregrasp_position = object_in_giver.clone()
+        giver_pregrasp_position[:, 0] += self.giver_grasp_x
+        giver_pregrasp_position[:, 1] += self.giver_grasp_y
+        giver_pregrasp_position[:, 2] += (
+            self.giver_grasp_z + self.approach_height
         )
-        giver_pregrasp_position[:, 2] += self.approach_height
         giver_orientation_wait_action = (
             (giver_pregrasp_position - giver_ee)
             / self.position_scale
@@ -247,7 +222,6 @@ class HandoverAnalyticController(nn.Module):
             self._approach_action(
                 receiver_ee,
                 object_in_receiver,
-                object_pose_in_receiver[:, 3:7],
                 self.receiver_grasp_x,
                 self.receiver_grasp_y,
                 self.receiver_grasp_z,
@@ -451,7 +425,30 @@ class HandoverAnalyticController(nn.Module):
             torch.ones_like(receiver_distance),
         ).unsqueeze(-1)
 
-        giver_orientation_action = torch.zeros_like(giver_translation)
+        giver_object_orientation = object_pose_in_giver[:, 3:7]
+        giver_object_angular_velocity = raw[:, 63:66]
+        giver_target_orientation = torch.zeros_like(
+            giver_object_orientation
+        )
+        giver_target_orientation[:, 3] = 1.0
+        giver_orientation_error = axis_angle_from_quat(
+            quat_mul(
+                giver_target_orientation,
+                quat_conjugate(giver_object_orientation),
+            )
+        )
+        giver_orientation_action = (
+            (
+                giver_orientation_error
+                - 0.001 * giver_object_angular_velocity
+            )
+            / self.orientation_scale
+        ).clamp(-0.035, 0.035)
+        giver_orientation_action = torch.where(
+            giver_transport_active.unsqueeze(-1),
+            giver_orientation_action,
+            torch.zeros_like(giver_orientation_action),
+        )
         giver_orientation_action = torch.where(
             (
                 (phase == 0)

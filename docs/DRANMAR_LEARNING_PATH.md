@@ -204,12 +204,6 @@ from twisting an established thin-needle grasp. This pregrasp gate is a motion
 condition only; physical contact, clearance, force, transfer, and retention
 remain the outcome authorities.
 
-Both giver and receiver grasp offsets are needle-local geometry frames and are
-rotated by the observed needle quaternion before being added to its position.
-After giver contact, wrist delta is held at zero instead of torquing the needle
-toward an arbitrary identity orientation. Needle orientation is diagnostic,
-not part of Stage 6 success.
-
 Stage 6 no longer starts PPO from a random 14-action policy. The exact
 closest-arm/contact-aware sequence is the deterministic policy base. PPO may
 learn a bounded giver translation correction during pre-contact approach and
