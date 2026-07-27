@@ -184,19 +184,21 @@ The receiver stops its approach on first native contact; if giver custody
 flickers away first, the receiver waits while the closest arm regraspes.
 The giver begins lifting as soon as current native bilateral contact is live,
 while the three-of-five contact window remains the only authority that advances
-the physical pickup phase. Loss of live bilateral contact immediately returns
-the tool to safe recovery, so an empty or one-jaw lift cannot satisfy the
-10 mm clearance gate. Recovery stops presentation, commands both grippers
-open, returns the giver to the 20 mm pregrasp above the live needle pose, and
-then reuses the same analytic pickup primitive. Episodes permit at most three
-total pickup attempts. A recovered transfer remains a valid physical success,
-but evidence reports first-attempt and recovered successes separately; entering
-recovery earns no reward or phase credit. The qualified `0.40` arc offset is
-an object-relative grasp frame: after a slip, both the grasp point and
-recovery offset follow the settled needle's table-plane yaw rather than its
-reset orientation. Roll and pitch never rotate the offset below the support
-surface; the vertical grasp offset and proven identity tool posture remain
-unchanged.
+the physical pickup phase. Once that filtered window latches phase 1, the
+bounded lift continues through shorter-than-debounce contact-sensor flicker.
+Three consecutive loss steps plus loss of object following declare a real
+pickup failure and transfer control to safe recovery, so transient thin-needle
+contact noise no longer sends the tool back toward approach. Recovery stops
+presentation, commands both grippers open, returns the giver to the 20 mm
+pregrasp above the live needle pose, and then reuses the same analytic pickup
+primitive. Episodes permit at most three total pickup attempts. A recovered
+transfer remains a valid physical success, but evidence reports first-attempt
+and recovered successes separately; entering recovery earns no reward or phase
+credit. The qualified `0.40` arc offset is an object-relative grasp frame:
+after a slip, both the grasp point and recovery offset follow the settled
+needle's table-plane yaw rather than its reset orientation. Roll and pitch
+never rotate the offset below the support surface; the vertical grasp offset
+and proven identity tool posture remain unchanged.
 Recovery does not return to approach until the needle is within 5 mm of
 support with linear speed below 0.05 m/s and angular speed below 5 rad/s.
 One physics-owned post-slip context bit is appended after the existing action
@@ -247,34 +249,29 @@ condition only; physical contact, clearance, force, transfer, and retention
 remain the outcome authorities.
 
 Stage 6 no longer starts PPO from a random 14-action policy. The exact
-closest-arm/contact-aware sequence is the deterministic policy base. Giver PPO
-is disabled throughout approach, unqualified grasp, and reacquisition. Once
-the three-of-five bilateral-contact window proves custody, the isolated giver
-channel may learn bounded XY pickup and transport corrections while live
-bilateral custody remains and before first receiver contact. Vertical lift,
-wrist motion, and both grippers remain analytic. The receiver residual is
-disabled in both training and checkpoint playback. This closes the previous
-train/serve gap in which a non-checkpoint controller flag could re-enable an
-untrained receiver residual after reload. The residual action limit is 0.01
-with 0.01 fixed initial exploration standard deviation. At the 0.01 m/action
-relative-IK scale, the largest learned position correction is 0.1 mm per
-control step. It cannot reverse the analytic upward command.
+closest-arm/contact-aware sequence is the deterministic policy base. The
+promoted v24 checkpoint learns only bounded receiver XYZ correction during
+qualified receiver approach; pickup, vertical lift, presentation, wrist motion,
+and both grippers remain analytic. The residual action limit is 0.01 with
+0.005 active exploration standard deviation.
 
-Giver adaptation starts from a zero-influence residual around the analytic
-base; it does not load the weak single-lift checkpoint. The shared actor
-features may adapt instead of remaining random, while gradient masks restrict
-the final layer to the four dedicated giver XY rows. All other output rows
-remain inert and optimizer state starts fresh. Intermediate phase transitions
-are diagnostics with zero positive weight. Only a retained terminal handover
-earns positive task credit, so partial pickup progress cannot offset a later
-hard physical failure.
+An isolated v25 challenger froze the promoted receiver mean, shared features,
+and observation normalization while allowing PPO gradients and exploration
+only on giver XY output rows. It improved the 600-environment screen but
+regressed retained success at 2,000 environments from 46.95% to 44.50%, so the
+checkpoint is rejected and recorded rather than promoted. Intermediate phase
+transitions remain diagnostics with zero positive weight. Only a retained
+terminal handover earns positive task credit, so partial pickup progress cannot
+offset a later hard physical failure.
 
-The giver may transport only while live native bilateral contact remains
-present. Before receiver acquisition, safe recovery requires both three
-consecutive control frames without live giver custody and more than 5 mm
-separation from the giver-relative acquisition offset, or an actual return to
-the support surface after lift. This prevents contact-manifold flicker from
-consuming an attempt. Failure on the third pickup attempt terminates as
+During filtered phase 1 the giver may continue bounded lift through fewer than
+three consecutive live-contact-loss frames. Phase 2 transport still requires
+live native bilateral custody. Before receiver acquisition, safe recovery
+requires both three consecutive control frames without live giver custody and
+more than 5 mm separation from the giver-relative acquisition offset, or an
+actual return to the support surface after lift. This prevents
+contact-manifold flicker from reversing the lift while preserving a physical
+loss trigger. Failure on the third pickup attempt terminates as
 `pickup_attempts_exhausted`; post-acquisition drop and retention failures
 remain immediate failures.
 The analytic base cannot grant physical success or bypass the held-out

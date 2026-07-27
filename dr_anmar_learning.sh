@@ -255,6 +255,10 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_RESIDUAL_SCALE}"
             )
         fi
+        giver_adaptation_args=()
+        if [[ "${DR_ANMAR_HANDOVER_GIVER_ADAPTATION:-0}" == "1" ]]; then
+            giver_adaptation_args=(--handover_giver_adaptation)
+        fi
         pickup_vertical_action_limit_args=()
         if [[ -n "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
             pickup_vertical_action_limit_args=(
@@ -352,6 +356,7 @@ case "${command}" in
             --benchmark_formatter schema,json \
             --output_path "${output}" \
             "${residual_scale_args[@]}" \
+            "${giver_adaptation_args[@]}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${pickup_initial_vertical_action_limit_args[@]}" \
             "${recovery_pickup_vertical_action_limit_args[@]}" \

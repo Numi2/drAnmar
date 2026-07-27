@@ -1968,20 +1968,50 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 args.handover_giver_adaptation
             ),
             "handover_giver_adaptation_contract": (
-                {
-                    "optimizer_state_reset": True,
-                    "shared_actor_features_trainable": True,
-                    "non_giver_output_rows_gradient_masked": True,
-                    "trainable_output_rows": [3, 4, 10, 11],
-                    "learned_giver_axes": ["x", "y"],
-                    "analytic_giver_axes": ["z", "roll", "pitch", "yaw", "gripper"],
-                    "initial_policy_influence": (
-                        "loaded_checkpoint"
-                        if initial_checkpoint is not None
-                        else "zero_residual_analytic_base"
-                    ),
-                    "receiver_residual_disabled": True,
-                }
+                (
+                    {
+                        "optimizer_state_reset": True,
+                        "shared_actor_features_trainable": True,
+                        "non_giver_output_rows_gradient_masked": True,
+                        "trainable_output_rows": [3, 4, 10, 11],
+                        "learned_giver_axes": ["x", "y"],
+                        "analytic_giver_axes": [
+                            "z",
+                            "roll",
+                            "pitch",
+                            "yaw",
+                            "gripper",
+                        ],
+                        "initial_policy_influence": (
+                            "loaded_checkpoint"
+                            if initial_checkpoint is not None
+                            else "zero_residual_analytic_base"
+                        ),
+                        "receiver_residual_disabled": True,
+                    }
+                    if not hasattr(
+                        runner.alg.get_policy(),
+                        "giver_adaptation_enabled",
+                    )
+                    else {
+                        "optimizer_state_reset": True,
+                        "shared_actor_features_trainable": False,
+                        "observation_normalizer_frozen": True,
+                        "non_giver_output_rows_gradient_masked": True,
+                        "trainable_role_output_rows": [0, 1],
+                        "learned_giver_axes": ["x", "y"],
+                        "analytic_giver_axes": [
+                            "z",
+                            "roll",
+                            "pitch",
+                            "yaw",
+                            "gripper",
+                        ],
+                        "receiver_policy_frozen_and_active": True,
+                        "receiver_exploration_disabled": True,
+                        "initial_policy_influence": "loaded_checkpoint",
+                    }
+                )
                 if args.handover_giver_adaptation
                 else None
             ),
@@ -3899,6 +3929,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if checkpoint is not None:
         runner.load(str(checkpoint))
     policy_model = runner.alg.get_policy()
+    if args.handover_giver_adaptation:
+        if not hasattr(policy_model, "configure_giver_adaptation"):
+            env.close()
+            return _fail(
+                "loaded policy does not support giver adaptation"
+            )
+        policy_model.configure_giver_adaptation()
     if args.analytic_only:
         if not hasattr(policy_model, "residual_scale"):
             env.close()
@@ -6259,6 +6296,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             if checkpoint is not None
             else None,
             "analytic_only": bool(args.analytic_only),
+            "policy_giver_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "giver_adaptation_enabled",
+                    args.handover_giver_adaptation,
+                )
+            ),
             "policy_residual_scale": (
                 float(policy_model.residual_scale)
                 if hasattr(policy_model, "residual_scale")
@@ -6527,6 +6571,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--task", required=True)
     play.add_argument("--checkpoint")
     play.add_argument("--analytic-only", action="store_true")
+    play.add_argument("--handover_giver_adaptation", action="store_true")
     play.add_argument("--num_envs", type=int, required=True)
     play.add_argument("--num_frames", type=int, required=True)
     play.add_argument("--seed", type=int, default=2361)

@@ -309,7 +309,12 @@ class EndToEndHandoverMLPModel(MLPModel):
             final_linear.out_features,
         )
         self.controller = HandoverAnalyticController()
+        # This actor's qualified default is receiver-only residual learning.
+        # The legacy handover actor disables receiver residuals by default so
+        # giver-adaptation checkpoints cannot silently change at serving time.
+        self.controller.receiver_residual_enabled_for_learning = True
         self.residual_scale = residual_scale
+        self.giver_adaptation_enabled = False
 
     def _get_latent_dim(self) -> int:
         return self.obs_dim + _TASK_FEATURE_DIM
@@ -336,9 +341,34 @@ class EndToEndHandoverMLPModel(MLPModel):
         )
 
     def update_normalization(self, obs) -> None:
-        if self.obs_normalization:
+        if self.obs_normalization and not self.giver_adaptation_enabled:
             role_observation, _ = self._role_latent(obs)
             self.obs_normalizer.update(role_observation)
+
+    def configure_giver_adaptation(self) -> None:
+        """Learn giver XY while preserving the promoted receiver policy."""
+        self.giver_adaptation_enabled = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        giver_role_row_mask = torch.zeros(
+            14,
+            dtype=self.phase_network.heads[0].weight.dtype,
+            device=self.phase_network.heads[0].weight.device,
+        )
+        giver_role_row_mask[0:2] = 1.0
+        for head in self.phase_network.heads:
+            head.weight.requires_grad_(True)
+            head.bias.requires_grad_(True)
+            head.weight.register_hook(
+                lambda gradient, row_mask=giver_role_row_mask: (
+                    gradient * row_mask.unsqueeze(-1)
+                )
+            )
+            head.bias.register_hook(
+                lambda gradient, row_mask=giver_role_row_mask: (
+                    gradient * row_mask
+                )
+            )
 
     def forward(
         self,
@@ -359,12 +389,19 @@ class EndToEndHandoverMLPModel(MLPModel):
         )
         (
             base_action,
-            _giver_residual_mask,
+            giver_residual_mask,
             receiver_residual_mask,
         ) = self.controller(raw)
-        # The giver is a frozen teacher in this experiment. Learning has
-        # authority only over receiver XYZ during a qualified approach.
+        # The promoted receiver mean remains active during giver adaptation,
+        # but exploration and gradients are restricted to giver XY. Z and all
+        # rotations/jaws stay under the analytic physics sequence.
         physical_action_mask = receiver_residual_mask
+        exploration_mask = receiver_residual_mask
+        if self.giver_adaptation_enabled:
+            physical_action_mask = (
+                giver_residual_mask | receiver_residual_mask
+            )
+            exploration_mask = giver_residual_mask
         physical_mean = (
             base_action
             + self.residual_scale
@@ -380,7 +417,7 @@ class EndToEndHandoverMLPModel(MLPModel):
                 None,
             )
             if set_action_mask is not None:
-                set_action_mask(physical_action_mask)
+                set_action_mask(exploration_mask)
             self.distribution.update(physical_mean)
             return self.distribution.sample()
         return self.distribution.deterministic_output(physical_mean)
@@ -401,6 +438,7 @@ class _EndToEndHandoverExport(nn.Module):
         self.phase_network = copy.deepcopy(model.phase_network)
         self.controller = copy.deepcopy(model.controller)
         self.residual_scale = model.residual_scale
+        self.giver_adaptation_enabled = model.giver_adaptation_enabled
         self.deterministic_output = (
             model.distribution.as_deterministic_output_module()
             if model.distribution is not None
@@ -427,10 +465,14 @@ class _EndToEndHandoverExport(nn.Module):
         )
         (
             base_action,
-            _giver_residual_mask,
+            giver_residual_mask,
             receiver_residual_mask,
         ) = self.controller(obs)
         physical_action_mask = receiver_residual_mask
+        if self.giver_adaptation_enabled:
+            physical_action_mask = (
+                giver_residual_mask | receiver_residual_mask
+            )
         physical_mean = (
             base_action
             + self.residual_scale

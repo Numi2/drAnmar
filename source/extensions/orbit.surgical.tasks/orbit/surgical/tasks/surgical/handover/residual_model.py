@@ -445,9 +445,16 @@ class HandoverAnalyticController(nn.Module):
             ((phase >= 1) & (phase <= 2))
             | ((phase == 0) & phase_zero_lift_enabled)
         )
+        # Phase 1 is entered only after filtered bilateral giver contact. Keep
+        # lifting through a brief contact-sensor flicker so the action policy
+        # agrees with the state's pickup_contact_loss_steps debounce. A real
+        # loss still moves the episode to phase 4, where recovery takes over.
+        giver_pre_lift_transport_ready = (
+            (phase == 1) | giver_pre_lift_contact
+        )
         giver_transport_active = giver_carry_mode & torch.where(
             phase <= 1,
-            giver_pre_lift_contact,
+            giver_pre_lift_transport_ready,
             giver_bilateral_contact,
         )
         receiver_approach_active = (

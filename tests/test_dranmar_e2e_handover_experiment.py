@@ -22,7 +22,7 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         ).read_text()
     )
     assert contract["status"] == "isolated_research_example_not_stage_qualified"
-    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.2"
+    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.3"
     assert contract["architecture"]["actor"].startswith("frozen_pickup_lift")
     assert contract["architecture"]["learned_authority"].startswith(
         "receiver_xyz"
@@ -46,6 +46,27 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert hashlib.sha256(rejected_path.read_bytes()).hexdigest() == (
         rejected["evidence_sha256"]
     )
+    rejected_by_label = {
+        candidate["label"]: candidate
+        for candidate in contract["rejected_candidates"]
+    }
+    giver_xy = rejected_by_label["e2e-giver-xy-v25-model50"]
+    assert giver_xy["screen_600_success_rate"] == 0.595
+    assert giver_xy["scale_2000_success_rate"] == 0.445
+    pickup_15 = rejected_by_label["e2e-pickup15-v26"]
+    assert pickup_15["giver_contact_without_10mm_lift"] == 94
+    for candidate in (giver_xy, pickup_15):
+        for path_key, hash_key in (
+            ("evidence_path", "evidence_sha256"),
+            ("screen_600_evidence_path", "screen_600_evidence_sha256"),
+            ("scale_2000_evidence_path", "scale_2000_evidence_sha256"),
+        ):
+            if path_key not in candidate:
+                continue
+            path = ROOT / candidate[path_key]
+            assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+                candidate[hash_key]
+            )
     calibration = contract["receiver_depth_calibration"]
     calibration_path = ROOT / calibration["evidence_path"]
     assert calibration["selected_receiver_grasp_z_offset_m"] == -0.003
@@ -87,6 +108,23 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         (ppo_scale_path, ppo["scale_2000_evidence_sha256"]),
     ):
         assert hashlib.sha256(path.read_bytes()).hexdigest() == expected_hash
+    hysteresis = contract["pickup_contact_hysteresis"]
+    hysteresis_screen = ROOT / hysteresis["screen_600_evidence_path"]
+    hysteresis_scale = ROOT / hysteresis["scale_2000_evidence_path"]
+    assert hysteresis["status"] == (
+        "promoted_development_controller_baseline_not_stage_qualified"
+    )
+    assert hysteresis["screen_600_successes"] == 367
+    assert hysteresis["scale_2000_successes"] == 1017
+    assert hysteresis["scale_2000_giver_contact_without_10mm_lift"] == 175
+    assert hysteresis["scale_2000_recovered_successes"] == 67
+    assert hysteresis["scale_2000_hard_safety_events"] == 18
+    assert hashlib.sha256(hysteresis_screen.read_bytes()).hexdigest() == (
+        hysteresis["screen_600_evidence_sha256"]
+    )
+    assert hashlib.sha256(hysteresis_scale.read_bytes()).hexdigest() == (
+        hysteresis["scale_2000_evidence_sha256"]
+    )
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -105,6 +143,7 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert contract["launch"]["phase_balanced_consolidation_updates"] == 2000
     assert contract["launch"]["minimum_deterministic_success_before_ppo"] == 0.25
     assert contract["anti_reward_hacking"]["receiver_retry_steps"] == 15
+    assert contract["anti_reward_hacking"]["pickup_contact_loss_steps"] == 3
     assert "fixed_pose_presentation_stable_for_8_steps" in (
         contract["anti_reward_hacking"]["required_sequence"]
     )
@@ -129,7 +168,12 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "self.residual_scale" in source
     assert "* physical_residual" in source
     assert "physical_action_mask = receiver_residual_mask" in source
-    assert "giver_residual_mask | receiver_residual_mask" not in source
+    assert "if self.giver_adaptation_enabled:" in source
+    assert "giver_residual_mask | receiver_residual_mask" in source
+    assert "exploration_mask = giver_residual_mask" in source
+    assert "def configure_giver_adaptation(self)" in source
+    assert "giver_role_row_mask[0:2] = 1.0" in source
+    assert "self.controller.receiver_residual_enabled_for_learning = True" in source
     assert "presentation_stable = raw[:, 103]" in controller_source
     assert "receiver_retry_active = raw[:, 105]" in controller_source
     assert "(phase == 3) & ~receiver_bilateral_contact" in controller_source
@@ -137,6 +181,9 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "self.presentation_hold_action_limit = 0.01" in controller_source
     assert "self.receiver_grasp_z = -0.003" in controller_source
     assert "giver_presentation_hold = giver_carry.clamp(" in controller_source
+    assert "giver_pre_lift_transport_ready = (" in controller_source
+    assert "(phase == 1) | giver_pre_lift_contact" in controller_source
+    assert "pickup_contact_loss_steps debounce" in controller_source
     assert "class PhaseMaskedGaussianDistribution" in source
     assert "object_state_manipulation" not in source
     assert "raw[:, 99:101]" in source
@@ -236,6 +283,8 @@ def test_experiment_launcher_keeps_teacher_until_full_trajectories_exist() -> No
     assert "DR_ANMAR_E2E_CONSOLIDATION_UPDATES" in launcher_source
     assert "dr_anmar_handover_promotion.py" in example_source
     assert "PPO checkpoint rejected" in example_source
+    assert launcher_source.count("DR_ANMAR_HANDOVER_GIVER_ADAPTATION") == 2
+    assert "--handover_giver_adaptation" in launcher_source
 
 
 def test_promotion_gate_rejects_deterministic_success_and_safety_regression() -> None:
