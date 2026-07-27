@@ -413,12 +413,6 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     )
     assert (
         manifest["stages"][5]["learning"][
-            "analytic_giver_contact_flicker_recovery"
-        ]
-        == "hold_pose_keep_gripper_closed"
-    )
-    assert (
-        manifest["stages"][5]["learning"][
             "analytic_receiver_contact_centering_action_limit"
         ]
         == 0.0025
@@ -708,14 +702,6 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert (
         '"giver_carry_starts_after_contact_window": True'
-        in benchmark_source
-    )
-    assert (
-        "giver_contact_recovery_hold = torch.zeros_like("
-        in benchmark_source
-    )
-    assert (
-        '"giver_holds_pose_during_current_contact_flicker": True'
         in benchmark_source
     )
     assert "receiver_approach_active = (" in benchmark_source

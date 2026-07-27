@@ -724,18 +724,10 @@ def _handover_teacher_action(
         & ~receiver_any_contact
     )
 
-    giver_contact_recovery_hold = torch.zeros_like(
-        giver_approach
-    )
-    giver_translation = torch.where(
-        giver_carry_mode.unsqueeze(-1),
-        giver_contact_recovery_hold,
-        giver_approach,
-    )
     giver_translation = torch.where(
         giver_transport_active.unsqueeze(-1),
         giver_carry,
-        giver_translation,
+        giver_approach,
     )
     giver_translation = torch.where(
         (
@@ -2569,7 +2561,6 @@ def _handover_controller_sweep(
                     carry_vertical_action_limits
                 ),
                 "giver_carry_starts_after_contact_window": True,
-                "giver_holds_pose_during_current_contact_flicker": True,
                 "giver_transport_min_contact_jaws": (
                     giver_transport_min_contact_jaws
                 ),
