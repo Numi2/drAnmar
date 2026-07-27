@@ -1385,6 +1385,10 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    if args.learning_rate is not None:
+        if args.learning_rate <= 0.0:
+            return _fail("training learning rate must be positive")
+        agent_cfg.algorithm.learning_rate = args.learning_rate
     agent_cfg.max_iterations = args.max_iterations
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = Path(args.output_path).resolve() / "runs" / timestamp
@@ -1410,6 +1414,9 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 f"initial checkpoint not found: {initial_checkpoint}"
             )
         runner.load(str(initial_checkpoint))
+        if args.learning_rate is not None:
+            for parameter_group in runner.alg.optimizer.param_groups:
+                parameter_group["lr"] = args.learning_rate
     runner.logger.git_status_repos = []
 
     started = time.perf_counter()
@@ -1451,6 +1458,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "rollout_steps_per_env": agent_cfg.num_steps_per_env,
             "iterations_requested": agent_cfg.max_iterations,
             "iterations_completed": iterations,
+            "policy_learning_rate": float(
+                args.learning_rate
+                if args.learning_rate is not None
+                else agent_cfg.algorithm.learning_rate
+            ),
             "wall_time_s": duration,
             "simulated_frames": simulated_frames,
             "total_fps": simulated_frames / duration if duration > 0 else None,
@@ -4064,6 +4076,7 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--success_threshold", type=float, default=0.95)
     train.add_argument("--success_window", type=int, default=10)
     train.add_argument("--checkpoint")
+    train.add_argument("--learning_rate", type=float)
 
     pretrain = subparsers.add_parser("pretrain")
     pretrain.add_argument("--task", required=True)

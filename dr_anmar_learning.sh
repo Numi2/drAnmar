@@ -179,10 +179,17 @@ case "${command}" in
     train)
         require_runtime
         checkpoint_args=()
+        learning_rate_args=()
         if [[ -n "${DR_ANMAR_INIT_CHECKPOINT:-}" ]]; then
             checkpoint_args=(
                 --checkpoint
                 "${DR_ANMAR_INIT_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_POLICY_LEARNING_RATE:-}" ]]; then
+            learning_rate_args=(
+                --learning_rate
+                "${DR_ANMAR_POLICY_LEARNING_RATE}"
             )
         fi
         run_train_benchmark \
@@ -193,7 +200,8 @@ case "${command}" in
             --check_success \
             --success_threshold "${DR_ANMAR_SUCCESS_THRESHOLD:-0.95}" \
             --success_window 10 \
-            "${checkpoint_args[@]}"
+            "${checkpoint_args[@]}" \
+            "${learning_rate_args[@]}"
         ;;
     play)
         require_runtime
