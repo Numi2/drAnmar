@@ -201,7 +201,10 @@ gate and is disabled on the receiver's first native contact. The residual
 action limit is 0.03 with 0.01 fixed initial exploration standard deviation.
 Role selection, sequencing, vertical pickup and transport, wrist control, both
 grippers, post-contact hold, release, and retreat remain analytic and cannot be
-bypassed by exploration.
+bypassed by exploration. The new giver residual is mapped through network
+output rows that were inactive in the receiver-only checkpoint. This preserves
+the existing policy at initialization instead of exposing receiver behavior on
+the giver when physical arm roles swap.
 
 The giver may transport only while live native bilateral contact remains
 present. If a three-of-five pickup window advances the state but either jaw

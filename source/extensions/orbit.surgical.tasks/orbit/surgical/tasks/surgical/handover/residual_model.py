@@ -453,21 +453,44 @@ class HandoverAnalyticController(nn.Module):
         receiver_residual = torch.zeros_like(receiver_action)
         receiver_residual_enabled = receiver_approach_active
         receiver_residual[:, :3] = receiver_residual_enabled.unsqueeze(-1)
-        robot_1_residual = torch.where(
+        no_giver_residual = torch.zeros_like(giver_residual)
+        no_receiver_residual = torch.zeros_like(receiver_residual)
+        robot_1_giver_residual = torch.where(
             giver_is_robot_1.unsqueeze(-1),
             giver_residual,
-            receiver_residual,
+            no_giver_residual,
         )
-        robot_2_residual = torch.where(
+        robot_2_giver_residual = torch.where(
             giver_is_robot_1.unsqueeze(-1),
-            receiver_residual,
+            no_giver_residual,
             giver_residual,
         )
-        residual_mask = torch.cat(
-            (robot_1_residual, robot_2_residual),
+        robot_1_receiver_residual = torch.where(
+            giver_is_robot_1.unsqueeze(-1),
+            no_receiver_residual,
+            receiver_residual,
+        )
+        robot_2_receiver_residual = torch.where(
+            giver_is_robot_1.unsqueeze(-1),
+            receiver_residual,
+            no_receiver_residual,
+        )
+        giver_residual_mask = torch.cat(
+            (robot_1_giver_residual, robot_2_giver_residual),
             dim=-1,
         ) > 0.5
-        return base_action, residual_mask
+        receiver_residual_mask = torch.cat(
+            (
+                robot_1_receiver_residual,
+                robot_2_receiver_residual,
+            ),
+            dim=-1,
+        ) > 0.5
+        return (
+            base_action,
+            giver_residual_mask,
+            receiver_residual_mask,
+        )
 
 
 class HandoverResidualMLPModel(MLPModel):
@@ -511,12 +534,28 @@ class HandoverResidualMLPModel(MLPModel):
             [obs[group] for group in self.obs_groups],
             dim=-1,
         )
-        base, residual_mask = self.controller(raw)
-        residual = (
-            self.residual_scale
-            * torch.tanh(self.mlp(latent))
-            * residual_mask.to(raw.dtype)
+        (
+            base,
+            giver_residual_mask,
+            receiver_residual_mask,
+        ) = self.controller(raw)
+        network_output = torch.tanh(self.mlp(latent))
+        giver_channel_output = torch.cat(
+            (
+                network_output[:, 3:6],
+                torch.zeros_like(network_output[:, 3:7]),
+                network_output[:, 10:13],
+                torch.zeros_like(network_output[:, 10:14]),
+            ),
+            dim=-1,
         )
+        residual = self.residual_scale * (
+            giver_channel_output
+            * giver_residual_mask.to(raw.dtype)
+            + network_output
+            * receiver_residual_mask.to(raw.dtype)
+        )
+        residual_mask = giver_residual_mask | receiver_residual_mask
         mean = (base + residual).clamp(-1.0, 1.0)
         if self.distribution is None:
             return mean
@@ -549,11 +588,28 @@ class _HandoverResidualExport(nn.Module):
         )
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
-        base, residual_mask = self.controller(obs)
-        residual = (
-            self.residual_scale
-            * torch.tanh(self.mlp(self.obs_normalizer(obs)))
-            * residual_mask.to(obs.dtype)
+        (
+            base,
+            giver_residual_mask,
+            receiver_residual_mask,
+        ) = self.controller(obs)
+        network_output = torch.tanh(
+            self.mlp(self.obs_normalizer(obs))
+        )
+        giver_channel_output = torch.cat(
+            (
+                network_output[:, 3:6],
+                torch.zeros_like(network_output[:, 3:7]),
+                network_output[:, 10:13],
+                torch.zeros_like(network_output[:, 10:14]),
+            ),
+            dim=-1,
+        )
+        residual = self.residual_scale * (
+            giver_channel_output
+            * giver_residual_mask.to(obs.dtype)
+            + network_output
+            * receiver_residual_mask.to(obs.dtype)
         )
         return self.deterministic_output(
             (base + residual).clamp(-1.0, 1.0)
