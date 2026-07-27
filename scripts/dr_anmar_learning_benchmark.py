@@ -3427,6 +3427,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         controller.presentation_fraction_from_giver = (
             args.presentation_fraction_from_giver
         )
+    if args.presentation_height_in_robot_frame is not None:
+        if not -0.139 < args.presentation_height_in_robot_frame <= -0.12:
+            env.close()
+            return _fail(
+                "play presentation height in robot frame must be in (-0.139, -0.12]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "presentation_height_in_robot_frame"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a giver presentation height"
+            )
+        controller.presentation_height_in_robot_frame = (
+            args.presentation_height_in_robot_frame
+        )
     if args.giver_lift_on_live_contact is not None:
         controller = getattr(policy_model, "controller", None)
         if controller is None or not hasattr(
@@ -4720,6 +4737,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_presentation_height_in_robot_frame": (
+                float(
+                    policy_model.controller.presentation_height_in_robot_frame
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "presentation_height_in_robot_frame",
+                )
+                else None
+            ),
             "policy_giver_lift_on_live_contact": (
                 bool(policy_model.controller.giver_lift_on_live_contact)
                 if hasattr(policy_model, "controller")
@@ -4837,6 +4865,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--carry_lateral_action_limit", type=float)
     play.add_argument("--carry_lateral_ramp_height", type=float)
     play.add_argument("--presentation_fraction_from_giver", type=float)
+    play.add_argument("--presentation_height_in_robot_frame", type=float)
     play.add_argument(
         "--giver_lift_on_live_contact",
         action=argparse.BooleanOptionalAction,

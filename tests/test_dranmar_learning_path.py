@@ -664,6 +664,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in launcher_source
     )
     assert (
+        "DR_ANMAR_POLICY_PRESENTATION_HEIGHT_IN_ROBOT_FRAME"
+        in launcher_source
+    )
+    assert (
         "DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT"
         in launcher_source
     )
@@ -724,6 +728,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in benchmark_source
     )
     assert (
+        'play.add_argument("--presentation_height_in_robot_frame", type=float)'
+        in benchmark_source
+    )
+    assert (
         'action=argparse.BooleanOptionalAction'
         in benchmark_source
     )
@@ -738,6 +746,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"policy_carry_lateral_ramp_height"' in benchmark_source
     assert (
         '"policy_presentation_fraction_from_giver"'
+        in benchmark_source
+    )
+    assert (
+        '"policy_presentation_height_in_robot_frame"'
         in benchmark_source
     )
     assert '"policy_giver_lift_on_live_contact"' in benchmark_source

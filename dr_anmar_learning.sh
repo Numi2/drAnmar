@@ -262,6 +262,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_PRESENTATION_FRACTION_FROM_GIVER}"
             )
         fi
+        presentation_height_in_robot_frame_args=()
+        if [[ -n "${DR_ANMAR_POLICY_PRESENTATION_HEIGHT_IN_ROBOT_FRAME:-}" ]]; then
+            presentation_height_in_robot_frame_args=(
+                --presentation_height_in_robot_frame
+                "${DR_ANMAR_POLICY_PRESENTATION_HEIGHT_IN_ROBOT_FRAME}"
+            )
+        fi
         giver_lift_on_live_contact_args=()
         if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
             case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
@@ -287,6 +294,7 @@ case "${command}" in
             "${carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${presentation_fraction_from_giver_args[@]}" \
+            "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
         ;;
     record)
@@ -336,6 +344,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_PRESENTATION_FRACTION_FROM_GIVER}"
             )
         fi
+        presentation_height_in_robot_frame_args=()
+        if [[ -n "${DR_ANMAR_POLICY_PRESENTATION_HEIGHT_IN_ROBOT_FRAME:-}" ]]; then
+            presentation_height_in_robot_frame_args=(
+                --presentation_height_in_robot_frame
+                "${DR_ANMAR_POLICY_PRESENTATION_HEIGHT_IN_ROBOT_FRAME}"
+            )
+        fi
         giver_lift_on_live_contact_args=()
         if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
             case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
@@ -366,6 +381,7 @@ case "${command}" in
             "${carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${presentation_fraction_from_giver_args[@]}" \
+            "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
         ;;
     tqta-start)
