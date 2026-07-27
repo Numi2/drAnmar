@@ -560,6 +560,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert "runner.load(str(initial_checkpoint))" in benchmark_source
     assert 'train.add_argument("--checkpoint")' in benchmark_source
+    assert (
+        "return max(1, self._step_count // self.num_steps_per_env)"
+        in benchmark_source
+    )
     assert '"receiver_grasp_z_offset"' in benchmark_source
     assert '"receiver_roll_offset_rad"' in benchmark_source
     assert '"presentation_fraction_from_giver"' in benchmark_source

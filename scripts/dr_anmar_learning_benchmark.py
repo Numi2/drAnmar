@@ -1344,10 +1344,7 @@ class _TerminationSuccessEarlyStop:
 
     @property
     def framework_iteration_count(self) -> int:
-        return max(
-            self._step_count // self.num_steps_per_env,
-            self.runner.current_learning_iteration + 1,
-        )
+        return max(1, self._step_count // self.num_steps_per_env)
 
     @property
     def converged(self) -> bool:
