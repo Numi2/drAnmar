@@ -622,8 +622,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "giver_row_mask[3:6] = 1.0" in handover_model_source
     assert "giver_row_mask[10:13] = 1.0" in handover_model_source
     assert (
-        "(phase == 1)\n"
-        "                & self.giver_lift_on_qualified_contact"
+        "giver_transport_active = (\n"
+        "            giver_carry_mode & giver_bilateral_contact"
         in handover_model_source
     )
     assert handover_model_source.count(
@@ -808,10 +808,6 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     )
     assert "self.carry_lateral_ramp_height = 0.005" in handover_model_source
     assert "self.giver_lift_on_live_contact = False" in handover_model_source
-    assert (
-        "self.giver_lift_on_qualified_contact = True"
-        in handover_model_source
-    )
     assert (
         "self.giver_pregrasp_orientation_action_limit = 0.6"
         in handover_model_source
