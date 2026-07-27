@@ -180,15 +180,18 @@ Both receiver translation and wrist orientation remain locked until this
 presentation gate is met while the giver has live bilateral needle contact.
 The receiver stops its approach on first native contact; if giver custody
 flickers away first, the receiver waits while the closest arm regraspes.
-The giver begins lifting after the three-of-five native contact window
-completes. Pickup and presentation both retain the handover-qualified `0.015`
-vertical action limit. A controlled 1,200-environment sweep separated pickup
-authority from presentation authority and tested `0.015`, `0.03`, `0.06`,
-`0.12`, `0.18`, and `0.24`. The faster Stage 4 standalone-pickup authority did
-not transfer safely to the coupled handover: it increased drops and reduced
-physical transfer success. The parameters remain separately controllable for
-causal checkpoint evaluation, but standalone pickup throughput is not treated
-as evidence for bimanual transport stability.
+The giver begins physical lifting on current native bilateral contact, matching
+the pickup-qualified Stage 4 controller. The three-of-five contact window
+remains the phase-credit gate, so transient contact cannot manufacture
+progress or success. Pickup and presentation both retain the
+handover-qualified `0.015` vertical action limit. A controlled
+1,200-environment sweep separated pickup authority from presentation authority
+and tested `0.015`, `0.03`, `0.06`, `0.12`, `0.18`, and `0.24`. The faster
+Stage 4 standalone-pickup authority did not transfer safely to the coupled
+handover: it increased drops and reduced physical transfer success. The
+parameters remain separately controllable for causal checkpoint evaluation,
+but standalone pickup throughput is not treated as evidence for bimanual
+transport stability.
 
 After the 10 mm pickup gate, lateral presentation authority follows a
 minimum-jerk ramp over the next 5 mm of vertical clearance. This removes the
