@@ -522,6 +522,32 @@ class HandoverResidualMLPModel(MLPModel):
                 if parameter is not None:
                     parameter.requires_grad_(False)
 
+    def configure_giver_adaptation(self) -> None:
+        """Freeze the qualified receiver policy and train giver-only rows."""
+        final_linear = next(
+            module
+            for module in reversed(self.mlp)
+            if isinstance(module, nn.Linear)
+        )
+        for parameter in self.mlp.parameters():
+            parameter.requires_grad_(False)
+        final_linear.weight.requires_grad_(True)
+        final_linear.bias.requires_grad_(True)
+        giver_row_mask = torch.zeros(
+            final_linear.out_features,
+            dtype=final_linear.weight.dtype,
+            device=final_linear.weight.device,
+        )
+        giver_row_mask[3:6] = 1.0
+        giver_row_mask[10:13] = 1.0
+        final_linear.weight.register_hook(
+            lambda gradient: gradient
+            * giver_row_mask.unsqueeze(-1)
+        )
+        final_linear.bias.register_hook(
+            lambda gradient: gradient * giver_row_mask
+        )
+
     def forward(
         self,
         obs,

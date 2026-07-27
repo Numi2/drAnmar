@@ -204,7 +204,11 @@ grippers, post-contact hold, release, and retreat remain analytic and cannot be
 bypassed by exploration. The new giver residual is mapped through network
 output rows that were inactive in the receiver-only checkpoint. This preserves
 the existing policy at initialization instead of exposing receiver behavior on
-the giver when physical arm roles swap.
+the giver when physical arm roles swap. Giver adaptation also freezes the
+shared actor and qualified receiver-output rows, trains only the six dedicated
+giver rows, and resets inherited optimizer state. This prevents shared-feature
+drift or stale Adam momentum from silently modifying the retained receiver
+policy.
 
 The giver may transport only while live native bilateral contact remains
 present. If a three-of-five pickup window advances the state but either jaw
