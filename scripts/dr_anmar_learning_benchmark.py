@@ -1639,6 +1639,7 @@ def _handover_controller_sweep(
     presentation_fractions = [0.35] * len(values)
     carry_vertical_action_limits = [0.025] * len(values)
     receiver_close_distances = [0.001] * len(values)
+    receiver_contact_centering_action_limits = [0.005] * len(values)
     fixed_receiver_arc_fraction = 0.65
     selected_receiver_z_offset = -0.0018
     if parameter == "receiver_arc_fraction":
@@ -1733,12 +1734,32 @@ def _handover_controller_sweep(
         ]
         receiver_roll_offsets = [math.pi] * len(values)
         receiver_close_distances = values
+    elif parameter == "receiver_contact_centering_action_limit":
+        if any(not 0.0 <= value <= 0.10 for value in values):
+            return _fail(
+                "receiver contact centering action limits must be between "
+                "0.0 and 0.10"
+            )
+        geometry_offset = needle_geometry_grasp_offset_m(
+            fixed_receiver_arc_fraction
+        )
+        receiver_offsets = [
+            (
+                geometry_offset[0],
+                geometry_offset[1],
+                selected_receiver_z_offset,
+            )
+            for _ in values
+        ]
+        receiver_roll_offsets = [math.pi] * len(values)
+        receiver_contact_centering_action_limits = values
     else:
         return _fail(
             "handover-sweep parameter must be receiver_arc_fraction "
             "receiver_grasp_z_offset, receiver_roll_offset_rad, or "
             "presentation_fraction_from_giver, or "
-            "carry_vertical_action_limit, or receiver_close_distance"
+            "carry_vertical_action_limit, receiver_close_distance, or "
+            "receiver_contact_centering_action_limit"
         )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
@@ -2009,6 +2030,11 @@ def _handover_controller_sweep(
                     receiver_close_distance=(
                         receiver_close_distances[group_index]
                     ),
+                    receiver_contact_centering_action_limit=(
+                        receiver_contact_centering_action_limits[
+                            group_index
+                        ]
+                    ),
                 )
                 giver_ee = group_obs["policy"][:, 32:35]
                 giver_grasp = group_obs["policy"][:, 46:49].clone()
@@ -2269,6 +2295,11 @@ def _handover_controller_sweep(
                     "receiver_close_distance_m": (
                         receiver_close_distances[group_index]
                     ),
+                    "receiver_contact_centering_action_limit": (
+                        receiver_contact_centering_action_limits[
+                            group_index
+                        ]
+                    ),
                     "receiver_grasp_offset_m": list(
                         receiver_offsets[group_index]
                     ),
@@ -2452,7 +2483,9 @@ def _handover_controller_sweep(
                 ),
                 "giver_carry_starts_after_contact_window": True,
                 "receiver_close_distances_m": receiver_close_distances,
-                "receiver_contact_centering_action_limit": 0.005,
+                "receiver_contact_centering_action_limits": (
+                    receiver_contact_centering_action_limits
+                ),
                 "receiver_waits_for_presentation": True,
                 "receiver_stops_approach_on_first_contact": True,
                 "giver_release_waits_for_current_receiver_bilateral": True,
