@@ -1726,6 +1726,7 @@ def _handover_controller_sweep(
     receiver_roll_offsets = [0.0] * len(values)
     presentation_fractions = [0.35] * len(values)
     pickup_vertical_action_limits = [0.015] * len(values)
+    carry_lateral_action_limits = [0.06] * len(values)
     carry_vertical_action_limits = [0.015] * len(values)
     receiver_close_distances = [0.001] * len(values)
     receiver_contact_centering_action_limits = [0.0025] * len(values)
@@ -1826,6 +1827,24 @@ def _handover_controller_sweep(
         ]
         receiver_roll_offsets = [math.pi] * len(values)
         pickup_vertical_action_limits = values
+    elif parameter == "carry_lateral_action_limit":
+        if any(not 0.001 <= value <= 0.10 for value in values):
+            return _fail(
+                "carry lateral action limits must be between 0.001 and 0.10"
+            )
+        geometry_offset = needle_geometry_grasp_offset_m(
+            fixed_receiver_arc_fraction
+        )
+        receiver_offsets = [
+            (
+                geometry_offset[0],
+                geometry_offset[1],
+                selected_receiver_z_offset,
+            )
+            for _ in values
+        ]
+        receiver_roll_offsets = [math.pi] * len(values)
+        carry_lateral_action_limits = values
     elif parameter == "receiver_close_distance":
         if any(not 0.0002 <= value <= 0.01 for value in values):
             return _fail(
@@ -1926,7 +1945,8 @@ def _handover_controller_sweep(
             "handover-sweep parameter must be receiver_arc_fraction "
             "receiver_grasp_z_offset, receiver_roll_offset_rad, or "
             "presentation_fraction_from_giver, or "
-            "pickup_vertical_action_limit, carry_vertical_action_limit, "
+            "pickup_vertical_action_limit, carry_lateral_action_limit, "
+            "carry_vertical_action_limit, "
             "receiver_close_distance, or "
             "receiver_contact_centering_action_limit, or "
             "giver_transport_min_contact_jaws, or "
@@ -2198,6 +2218,9 @@ def _handover_controller_sweep(
                     ),
                     pickup_vertical_action_limit=(
                         pickup_vertical_action_limits[group_index]
+                    ),
+                    carry_lateral_action_limit=(
+                        carry_lateral_action_limits[group_index]
                     ),
                     carry_vertical_action_limit=(
                         carry_vertical_action_limits[group_index]
@@ -2480,6 +2503,9 @@ def _handover_controller_sweep(
                     "pickup_vertical_action_limit": (
                         pickup_vertical_action_limits[group_index]
                     ),
+                    "carry_lateral_action_limit": (
+                        carry_lateral_action_limits[group_index]
+                    ),
                     "carry_vertical_action_limit": (
                         carry_vertical_action_limits[group_index]
                     ),
@@ -2681,7 +2707,9 @@ def _handover_controller_sweep(
                 "presentation_height_in_robot_frame_m": -0.13,
                 "presentation_ready_tolerance_m": 0.005,
                 "minimum_lift_height_in_robot_frame_m": -0.139,
-                "carry_lateral_action_limit": 0.06,
+                "carry_lateral_action_limits": (
+                    carry_lateral_action_limits
+                ),
                 "pickup_vertical_action_limits": (
                     pickup_vertical_action_limits
                 ),
@@ -3292,6 +3320,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
         controller.pickup_vertical_action_limit = (
             args.pickup_vertical_action_limit
+        )
+    if args.carry_lateral_action_limit is not None:
+        if not 0.0 < args.carry_lateral_action_limit <= 0.1:
+            env.close()
+            return _fail(
+                "play carry lateral action limit must be in (0.0, 0.1]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "carry_lateral_action_limit"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a carry lateral action limit"
+            )
+        controller.carry_lateral_action_limit = (
+            args.carry_lateral_action_limit
         )
     policy = runner.get_inference_policy(device=env.unwrapped.device)
 
@@ -4185,6 +4230,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_carry_lateral_action_limit": (
+                float(policy_model.controller.carry_lateral_action_limit)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "carry_lateral_action_limit",
+                )
+                else None
+            ),
             "exports": {
                 "jit": {"path": str(jit_path), "sha256": _sha256(jit_path)},
                 "onnx": {"path": str(onnx_path), "sha256": _sha256(onnx_path)},
@@ -4289,6 +4343,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--video_folder")
     play.add_argument("--residual_scale", type=float)
     play.add_argument("--pickup_vertical_action_limit", type=float)
+    play.add_argument("--carry_lateral_action_limit", type=float)
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 
