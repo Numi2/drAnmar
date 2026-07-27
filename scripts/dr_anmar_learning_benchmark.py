@@ -3410,6 +3410,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         controller.carry_lateral_ramp_height = (
             args.carry_lateral_ramp_height
         )
+    if args.presentation_fraction_from_giver is not None:
+        if not 0.1 <= args.presentation_fraction_from_giver <= 0.6:
+            env.close()
+            return _fail(
+                "play presentation fraction from giver must be in [0.1, 0.6]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "presentation_fraction_from_giver"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a giver presentation fraction"
+            )
+        controller.presentation_fraction_from_giver = (
+            args.presentation_fraction_from_giver
+        )
     if args.giver_lift_on_live_contact is not None:
         controller = getattr(policy_model, "controller", None)
         if controller is None or not hasattr(
@@ -4692,6 +4709,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_presentation_fraction_from_giver": (
+                float(
+                    policy_model.controller.presentation_fraction_from_giver
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "presentation_fraction_from_giver",
+                )
+                else None
+            ),
             "policy_giver_lift_on_live_contact": (
                 bool(policy_model.controller.giver_lift_on_live_contact)
                 if hasattr(policy_model, "controller")
@@ -4808,6 +4836,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--pickup_initial_vertical_action_limit", type=float)
     play.add_argument("--carry_lateral_action_limit", type=float)
     play.add_argument("--carry_lateral_ramp_height", type=float)
+    play.add_argument("--presentation_fraction_from_giver", type=float)
     play.add_argument(
         "--giver_lift_on_live_contact",
         action=argparse.BooleanOptionalAction,
