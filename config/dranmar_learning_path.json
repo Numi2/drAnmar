@@ -253,6 +253,7 @@
         "residual_phases": [
           "giver_pre_contact_approach_and_reacquisition_translation",
           "giver_pre_10mm_lift_lateral_centering_only",
+          "giver_post_10mm_transport_translation_before_receiver_contact",
           "receiver_presentation_ready_approach_before_contact"
         ],
         "analytic_only_controls": [

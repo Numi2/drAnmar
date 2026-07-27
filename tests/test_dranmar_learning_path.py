@@ -442,6 +442,7 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert manifest["stages"][5]["learning"]["residual_phases"] == [
         "giver_pre_contact_approach_and_reacquisition_translation",
         "giver_pre_10mm_lift_lateral_centering_only",
+        "giver_post_10mm_transport_translation_before_receiver_contact",
         "receiver_presentation_ready_approach_before_contact",
     ]
     reward_contract = manifest["stages"][5]["learning"][
@@ -601,10 +602,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "giver_pre_lift_centering = ("
         in handover_model_source
     )
+    assert "giver_transport_residual = (" in handover_model_source
     assert (
-        "giver_residual[:, 2] = giver_pre_contact_recovery"
+        "& ~receiver_any_contact"
         in handover_model_source
     )
+    assert "giver_residual[:, 2] = (" in handover_model_source
     assert (
         "giver_channel_output = torch.cat("
         in handover_model_source
