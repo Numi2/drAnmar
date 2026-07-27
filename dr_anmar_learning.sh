@@ -283,6 +283,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_GIVER_LIFT_CONTACT_FORCE_THRESHOLD_N}"
             )
         fi
+        giver_pre_lift_min_contact_jaws_args=()
+        if [[ -n "${DR_ANMAR_POLICY_GIVER_PRE_LIFT_MIN_CONTACT_JAWS:-}" ]]; then
+            giver_pre_lift_min_contact_jaws_args=(
+                --giver_pre_lift_min_contact_jaws
+                "${DR_ANMAR_POLICY_GIVER_PRE_LIFT_MIN_CONTACT_JAWS}"
+            )
+        fi
         giver_lift_on_live_contact_args=()
         if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
             case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
@@ -311,6 +318,7 @@ case "${command}" in
             "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \
+            "${giver_pre_lift_min_contact_jaws_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
         ;;
     record)
@@ -381,6 +389,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_GIVER_LIFT_CONTACT_FORCE_THRESHOLD_N}"
             )
         fi
+        giver_pre_lift_min_contact_jaws_args=()
+        if [[ -n "${DR_ANMAR_POLICY_GIVER_PRE_LIFT_MIN_CONTACT_JAWS:-}" ]]; then
+            giver_pre_lift_min_contact_jaws_args=(
+                --giver_pre_lift_min_contact_jaws
+                "${DR_ANMAR_POLICY_GIVER_PRE_LIFT_MIN_CONTACT_JAWS}"
+            )
+        fi
         giver_lift_on_live_contact_args=()
         if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
             case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
@@ -414,6 +429,7 @@ case "${command}" in
             "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \
+            "${giver_pre_lift_min_contact_jaws_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
         ;;
     tqta-start)

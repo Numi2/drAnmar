@@ -3474,6 +3474,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         controller.giver_lift_contact_force_threshold_n = (
             args.giver_lift_contact_force_threshold
         )
+    if args.giver_pre_lift_min_contact_jaws is not None:
+        if args.giver_pre_lift_min_contact_jaws not in {1, 2}:
+            env.close()
+            return _fail(
+                "play giver pre-lift minimum contact jaws must be 1 or 2"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "giver_pre_lift_min_contact_jaws"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose giver pre-lift contact continuity"
+            )
+        controller.giver_pre_lift_min_contact_jaws = (
+            args.giver_pre_lift_min_contact_jaws
+        )
     if args.giver_lift_on_live_contact is not None:
         controller = getattr(policy_model, "controller", None)
         if controller is None or not hasattr(
@@ -5003,6 +5020,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_giver_pre_lift_min_contact_jaws": (
+                int(policy_model.controller.giver_pre_lift_min_contact_jaws)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "giver_pre_lift_min_contact_jaws",
+                )
+                else None
+            ),
             "policy_giver_lift_on_live_contact": (
                 bool(policy_model.controller.giver_lift_on_live_contact)
                 if hasattr(policy_model, "controller")
@@ -5123,6 +5149,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--presentation_height_in_robot_frame", type=float)
     play.add_argument("--giver_close_distance", type=float)
     play.add_argument("--giver_lift_contact_force_threshold", type=float)
+    play.add_argument("--giver_pre_lift_min_contact_jaws", type=int)
     play.add_argument(
         "--giver_lift_on_live_contact",
         action=argparse.BooleanOptionalAction,
