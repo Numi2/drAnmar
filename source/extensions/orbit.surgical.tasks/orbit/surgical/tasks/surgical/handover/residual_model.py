@@ -120,7 +120,7 @@ class HandoverAnalyticController(nn.Module):
     def forward(
         self,
         raw: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         giver_is_robot_1 = raw[:, 82] > 0.5
         giver_ee = self._select_role(
             raw[:, 32:35],
