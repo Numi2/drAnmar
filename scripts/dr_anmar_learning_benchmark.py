@@ -1856,6 +1856,13 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
     receiver_curriculum = bool(
         getattr(env_cfg, "dr_anmar_receiver_curriculum", False)
     )
+    receiver_grasp_retain_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_receiver_grasp_retain_curriculum",
+            False,
+        )
+    )
     if receiver_curriculum and not args.checkpoint:
         return _fail(
             "receiver curriculum requires a qualified initial checkpoint"
@@ -1919,6 +1926,17 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "handover policy does not support giver adaptation"
                 )
             policy_model.configure_giver_adaptation()
+        elif receiver_grasp_retain_curriculum:
+            policy_model = runner.alg.get_policy()
+            if not hasattr(
+                policy_model,
+                "configure_receiver_grasp_retain_adaptation",
+            ):
+                env.close()
+                return _fail(
+                    "handover policy does not support receiver grasp-retain adaptation"
+                )
+            policy_model.configure_receiver_grasp_retain_adaptation()
         elif receiver_curriculum:
             policy_model = runner.alg.get_policy()
             if not hasattr(
@@ -1999,6 +2017,9 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 args.handover_giver_adaptation
             ),
             "receiver_curriculum": receiver_curriculum,
+            "receiver_grasp_retain_curriculum": (
+                receiver_grasp_retain_curriculum
+            ),
             "receiver_curriculum_cached_envs": (
                 int(receiver_curriculum_cache["valid"].sum().item())
                 if receiver_curriculum_cache is not None
@@ -2011,6 +2032,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "receiver_curriculum_reset_refreshes": (
                 int(receiver_curriculum_cache["reset_refreshes"])
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_cross_environment_restores": (
+                int(receiver_curriculum_cache["cross_environment_restores"])
                 if receiver_curriculum_cache is not None
                 else 0
             ),
@@ -2035,15 +2061,36 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "optimizer_state_reset": True,
                     "shared_actor_features_trainable": False,
                     "observation_normalizer_frozen": True,
-                    "trainable_phase_head": 2,
-                    "trainable_role_output_rows": [7, 8, 9],
-                    "learned_receiver_axes": ["x", "y", "z"],
-                    "analytic_receiver_axes": [
-                        "roll",
-                        "pitch",
-                        "yaw",
-                        "gripper",
-                    ],
+                    "trainable_phase_head": (
+                        [2, 3]
+                        if receiver_grasp_retain_curriculum
+                        else 2
+                    ),
+                    "trainable_role_output_rows": (
+                        [7, 8, 9, 10, 11, 12]
+                        if receiver_grasp_retain_curriculum
+                        else [7, 8, 9]
+                    ),
+                    "learned_receiver_axes": (
+                        ["x", "y", "z", "roll", "pitch", "yaw"]
+                        if receiver_grasp_retain_curriculum
+                        else ["x", "y", "z"]
+                    ),
+                    "analytic_receiver_axes": (
+                        ["gripper"]
+                        if receiver_grasp_retain_curriculum
+                        else ["roll", "pitch", "yaw", "gripper"]
+                    ),
+                    "post_contact_authority": (
+                        receiver_grasp_retain_curriculum
+                    ),
+                    "cross_environment_state_sampling": bool(
+                        getattr(
+                            env_cfg,
+                            "dr_anmar_receiver_curriculum_cross_environment_sampling",
+                            False,
+                        )
+                    ),
                     "pickup_lift_presentation_policy_frozen": True,
                     "exploration_scale_frozen": True,
                     "initial_policy_influence": "loaded_checkpoint",
@@ -3988,6 +4035,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             return _fail(f"checkpoint not found: {checkpoint}")
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    if args.presentation_use_filtered_custody is not None:
+        contract = getattr(
+            env_cfg,
+            "dr_anmar_handover_contract",
+            None,
+        )
+        if contract is None:
+            return _fail(
+                "filtered presentation custody requires a structured handover task"
+            )
+        contract["presentation_use_filtered_custody"] = (
+            args.presentation_use_filtered_custody
+        )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
         env_cfg.viewer.resolution = (args.video_width, args.video_height)
@@ -4027,6 +4087,47 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "loaded policy does not support giver adaptation"
             )
         policy_model.configure_giver_adaptation()
+    controller = getattr(policy_model, "controller", None)
+    controller_boolean_overrides = (
+        (
+            "transport_custody_latch_enabled",
+            args.transport_custody_latch,
+        ),
+        (
+            "receiver_preposition_enabled",
+            args.receiver_preposition,
+        ),
+        (
+            "receiver_adaptive_arc_enabled",
+            args.receiver_adaptive_arc,
+        ),
+    )
+    for attribute, value in controller_boolean_overrides:
+        if value is None:
+            continue
+        if controller is None or not hasattr(controller, attribute):
+            env.close()
+            return _fail(
+                f"loaded policy does not expose {attribute}"
+            )
+        setattr(controller, attribute, value)
+    if args.receiver_preposition_height is not None:
+        if not 0.01 <= args.receiver_preposition_height <= 0.05:
+            env.close()
+            return _fail(
+                "receiver preposition height must be in [0.01, 0.05] m"
+            )
+        if controller is None or not hasattr(
+            controller,
+            "receiver_preposition_height",
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose receiver preposition height"
+            )
+        controller.receiver_preposition_height = (
+            args.receiver_preposition_height
+        )
     if args.analytic_only:
         if not hasattr(policy_model, "residual_scale"):
             env.close()
@@ -6714,6 +6815,74 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_receiver_grasp_retain_residual_enabled": (
+                bool(
+                    policy_model.controller.receiver_grasp_retain_residual_enabled_for_learning
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_grasp_retain_residual_enabled_for_learning",
+                )
+                else None
+            ),
+            "policy_transport_custody_latch_enabled": (
+                bool(policy_model.controller.transport_custody_latch_enabled)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "transport_custody_latch_enabled",
+                )
+                else None
+            ),
+            "policy_receiver_preposition_enabled": (
+                bool(policy_model.controller.receiver_preposition_enabled)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_preposition_enabled",
+                )
+                else None
+            ),
+            "policy_receiver_preposition_height_m": (
+                float(policy_model.controller.receiver_preposition_height)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_preposition_height",
+                )
+                else None
+            ),
+            "policy_receiver_contact_orientation_error_target_rad": (
+                float(
+                    policy_model.controller.receiver_contact_orientation_error_target_rad
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_contact_orientation_error_target_rad",
+                )
+                else None
+            ),
+            "policy_receiver_adaptive_arc_enabled": (
+                bool(policy_model.controller.receiver_adaptive_arc_enabled)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_adaptive_arc_enabled",
+                )
+                else None
+            ),
+            "policy_presentation_use_filtered_custody": bool(
+                getattr(
+                    env_cfg,
+                    "dr_anmar_handover_contract",
+                    {},
+                ).get(
+                    "presentation_use_filtered_custody",
+                    False,
+                )
+            ),
             "policy_pickup_vertical_action_limit": (
                 float(policy_model.controller.pickup_vertical_action_limit)
                 if hasattr(policy_model, "controller")
@@ -6997,6 +7166,27 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--carry_lateral_ramp_height", type=float)
     play.add_argument("--presentation_fraction_from_giver", type=float)
     play.add_argument("--receiver_crossing_angle_rad", type=float)
+    play.add_argument(
+        "--transport_custody_latch",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+    play.add_argument(
+        "--receiver_preposition",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+    play.add_argument("--receiver_preposition_height", type=float)
+    play.add_argument(
+        "--receiver_adaptive_arc",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+    play.add_argument(
+        "--presentation_use_filtered_custody",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
     play.add_argument("--presentation_height_in_robot_frame", type=float)
     play.add_argument("--giver_close_distance", type=float)
     play.add_argument("--giver_lift_contact_force_threshold", type=float)

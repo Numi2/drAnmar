@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+"""Promote one handover candidate only across complete held-out populations."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import math
+from pathlib import Path
+from typing import Any
+
+
+HARD_FAILURES = (
+    "object_dropping",
+    "needle_dropped_after_pickup",
+    "excessive_object_force",
+    "protected_surface_force",
+    "premature_giver_release",
+)
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _wilson_interval(successes: int, total: int) -> tuple[float, float]:
+    if total <= 0:
+        raise ValueError("Wilson interval requires a positive population")
+    z = 1.959963984540054
+    rate = successes / total
+    denominator = 1.0 + z * z / total
+    center = (rate + z * z / (2.0 * total)) / denominator
+    margin = (
+        z
+        * math.sqrt(
+            rate * (1.0 - rate) / total
+            + z * z / (4.0 * total * total)
+        )
+        / denominator
+    )
+    return center - margin, center + margin
+
+
+def _load(path: Path) -> dict[str, Any]:
+    evidence = json.loads(path.read_text(encoding="utf-8"))
+    required = {
+        "task",
+        "kind",
+        "seed",
+        "num_envs",
+        "frames_per_env",
+        "completed_episodes",
+        "successful_episodes",
+        "failure_distribution",
+        "checkpoint",
+        "first_terminal_outcome_per_environment",
+    }
+    missing = sorted(required - evidence.keys())
+    if missing:
+        raise ValueError(f"{path}: missing {', '.join(missing)}")
+    if evidence["kind"] != "held_out_play":
+        raise ValueError(f"{path}: evidence is not held-out play")
+    if not evidence["first_terminal_outcome_per_environment"]:
+        raise ValueError(f"{path}: first-terminal accounting is required")
+    if evidence["completed_episodes"] != evidence["num_envs"]:
+        raise ValueError(f"{path}: incomplete environment population")
+    if not evidence["checkpoint"]:
+        raise ValueError(f"{path}: checkpoint identity is required")
+    evidence["_path"] = path
+    return evidence
+
+
+def _by_seed(paths: list[Path]) -> dict[int, dict[str, Any]]:
+    result: dict[int, dict[str, Any]] = {}
+    for path in paths:
+        evidence = _load(path)
+        seed = int(evidence["seed"])
+        if seed in result:
+            raise ValueError(f"duplicate evidence for seed {seed}")
+        result[seed] = evidence
+    return result
+
+
+def evaluate_multiseed(
+    baseline_paths: list[Path],
+    candidate_paths: list[Path],
+    *,
+    required_seeds: set[int],
+    minimum_success_rate: float,
+    maximum_seed_regression: float,
+) -> dict[str, Any]:
+    baseline = _by_seed(baseline_paths)
+    candidate = _by_seed(candidate_paths)
+    if set(baseline) != required_seeds:
+        raise ValueError("baseline does not cover the exact required seeds")
+    if set(candidate) != required_seeds:
+        raise ValueError("candidate does not cover the exact required seeds")
+
+    checkpoint_hashes = {
+        item["checkpoint"]["sha256"] for item in candidate.values()
+    }
+    if len(checkpoint_hashes) != 1:
+        raise ValueError("candidate evidence does not use one frozen checkpoint")
+
+    per_seed = []
+    total_successes = 0
+    total_episodes = 0
+    total_baseline_successes = 0
+    hard_failure_totals = {name: 0 for name in HARD_FAILURES}
+    for seed in sorted(required_seeds):
+        baseline_item = baseline[seed]
+        candidate_item = candidate[seed]
+        for field in ("task", "num_envs", "frames_per_env"):
+            if baseline_item[field] != candidate_item[field]:
+                raise ValueError(
+                    f"seed {seed}: baseline and candidate {field} differ"
+                )
+        baseline_rate = (
+            baseline_item["successful_episodes"]
+            / baseline_item["completed_episodes"]
+        )
+        candidate_rate = (
+            candidate_item["successful_episodes"]
+            / candidate_item["completed_episodes"]
+        )
+        seed_regression = baseline_rate - candidate_rate
+        seed_hard = {
+            name: int(
+                candidate_item["failure_distribution"].get(name, 0)
+            )
+            for name in HARD_FAILURES
+        }
+        for name, count in seed_hard.items():
+            hard_failure_totals[name] += count
+        total_successes += int(candidate_item["successful_episodes"])
+        total_episodes += int(candidate_item["completed_episodes"])
+        total_baseline_successes += int(
+            baseline_item["successful_episodes"]
+        )
+        per_seed.append(
+            {
+                "seed": seed,
+                "baseline_success_rate": baseline_rate,
+                "candidate_success_rate": candidate_rate,
+                "candidate_minus_baseline": (
+                    candidate_rate - baseline_rate
+                ),
+                "seed_regression_gate_passed": (
+                    seed_regression <= maximum_seed_regression
+                ),
+                "candidate_hard_failures": seed_hard,
+                "baseline_evidence_path": str(
+                    baseline_item["_path"].resolve()
+                ),
+                "baseline_evidence_sha256": _sha256(
+                    baseline_item["_path"]
+                ),
+                "candidate_evidence_path": str(
+                    candidate_item["_path"].resolve()
+                ),
+                "candidate_evidence_sha256": _sha256(
+                    candidate_item["_path"]
+                ),
+            }
+        )
+
+    aggregate_rate = total_successes / total_episodes
+    baseline_rate = total_baseline_successes / total_episodes
+    lower, upper = _wilson_interval(total_successes, total_episodes)
+    success_gate = (
+        aggregate_rate >= minimum_success_rate
+        and lower >= minimum_success_rate
+    )
+    per_seed_gate = all(
+        item["seed_regression_gate_passed"] for item in per_seed
+    )
+    safety_gate = not any(hard_failure_totals.values())
+    promotable = success_gate and per_seed_gate and safety_gate
+    return {
+        "schema_version": "dranmar-handover-multiseed-promotion-1.0",
+        "decision": (
+            "candidate_promoted"
+            if promotable
+            else "baseline_retained"
+        ),
+        "required_seeds": sorted(required_seeds),
+        "candidate_checkpoint_sha256": checkpoint_hashes.pop(),
+        "aggregate": {
+            "baseline_successes": total_baseline_successes,
+            "candidate_successes": total_successes,
+            "episodes": total_episodes,
+            "baseline_success_rate": baseline_rate,
+            "candidate_success_rate": aggregate_rate,
+            "candidate_minus_baseline": aggregate_rate - baseline_rate,
+            "candidate_success_wilson_95": [lower, upper],
+            "hard_failures": hard_failure_totals,
+        },
+        "gates": {
+            "minimum_success_rate": minimum_success_rate,
+            "maximum_seed_regression": maximum_seed_regression,
+            "success_gate_passed": success_gate,
+            "per_seed_regression_gate_passed": per_seed_gate,
+            "zero_hard_failure_gate_passed": safety_gate,
+        },
+        "per_seed": per_seed,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        action="append",
+        required=True,
+    )
+    parser.add_argument(
+        "--candidate",
+        type=Path,
+        action="append",
+        required=True,
+    )
+    parser.add_argument(
+        "--required-seeds",
+        default="2361,4099,7919",
+    )
+    parser.add_argument("--minimum-success-rate", type=float, default=0.70)
+    parser.add_argument(
+        "--maximum-seed-regression",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    required_seeds = {
+        int(value.strip())
+        for value in args.required_seeds.split(",")
+        if value.strip()
+    }
+    result = evaluate_multiseed(
+        args.baseline,
+        args.candidate,
+        required_seeds=required_seeds,
+        minimum_success_rate=args.minimum_success_rate,
+        maximum_seed_regression=args.maximum_seed_regression,
+    )
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(
+        json.dumps(result, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    print(f"[DrAnmar] Multiseed decision: {result['decision']}")
+    print(f"[DrAnmar] Evidence: {args.output}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

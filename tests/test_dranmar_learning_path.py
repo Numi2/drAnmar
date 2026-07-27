@@ -633,9 +633,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in handover_model_source
     )
     assert "receiver_approach_active = (" in handover_model_source
-    assert handover_model_source.count(
-        "receiver_approach_active.unsqueeze(-1)"
-    ) >= 2
+    assert "receiver_approach_active.unsqueeze(-1)" in handover_model_source
+    assert "receiver_orientation_active.unsqueeze(-1)" in handover_model_source
     assert "receiver_residual_enabled = (" in handover_model_source
     assert (
         "& self.receiver_residual_enabled_for_learning"

@@ -385,6 +385,44 @@ class EndToEndHandoverMLPModel(MLPModel):
                 if parameter is not None:
                     parameter.requires_grad_(False)
 
+    def configure_receiver_grasp_retain_adaptation(self) -> None:
+        """Adapt receiver SE(3) through approach, seating, and release."""
+        self.receiver_adaptation_enabled = True
+        self.controller.receiver_grasp_retain_residual_enabled_for_learning = (
+            True
+        )
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        receiver_se3_row_mask = torch.zeros(
+            14,
+            dtype=self.phase_network.heads[2].weight.dtype,
+            device=self.phase_network.heads[2].weight.device,
+        )
+        receiver_se3_row_mask[7:13] = 1.0
+        for phase_index in (2, 3):
+            receiver_head = self.phase_network.heads[phase_index]
+            receiver_head.weight.requires_grad_(True)
+            receiver_head.bias.requires_grad_(True)
+            receiver_head.weight.register_hook(
+                lambda gradient, row_mask=receiver_se3_row_mask: (
+                    gradient * row_mask.unsqueeze(-1)
+                )
+            )
+            receiver_head.bias.register_hook(
+                lambda gradient, row_mask=receiver_se3_row_mask: (
+                    gradient * row_mask
+                )
+            )
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
     def configure_giver_adaptation(self) -> None:
         """Learn giver XY while preserving the promoted receiver policy."""
         self.giver_adaptation_enabled = True

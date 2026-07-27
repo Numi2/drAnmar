@@ -153,3 +153,17 @@ gym.register(
     },
     disable_env_checker=True,
 )
+
+gym.register(
+    id="Isaac-Handover-Needle-Receiver-Grasp-Retain-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            e2e_ik_rel_env_cfg.NeedleHandoverReceiverGraspRetainEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleEndToEndPPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)

@@ -308,6 +308,57 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_RECEIVER_CROSSING_ANGLE_RAD}"
             )
         fi
+        transport_custody_latch_args=()
+        if [[ -n "${DR_ANMAR_POLICY_TRANSPORT_CUSTODY_LATCH:-}" ]]; then
+            case "${DR_ANMAR_POLICY_TRANSPORT_CUSTODY_LATCH}" in
+                1) transport_custody_latch_args=(--transport_custody_latch) ;;
+                0) transport_custody_latch_args=(--no-transport_custody_latch) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_TRANSPORT_CUSTODY_LATCH must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+        receiver_preposition_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_PREPOSITION:-}" ]]; then
+            case "${DR_ANMAR_POLICY_RECEIVER_PREPOSITION}" in
+                1) receiver_preposition_args=(--receiver_preposition) ;;
+                0) receiver_preposition_args=(--no-receiver_preposition) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_RECEIVER_PREPOSITION must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+        receiver_preposition_height_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_PREPOSITION_HEIGHT_M:-}" ]]; then
+            receiver_preposition_height_args=(
+                --receiver_preposition_height
+                "${DR_ANMAR_POLICY_RECEIVER_PREPOSITION_HEIGHT_M}"
+            )
+        fi
+        receiver_adaptive_arc_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_ADAPTIVE_ARC:-}" ]]; then
+            case "${DR_ANMAR_POLICY_RECEIVER_ADAPTIVE_ARC}" in
+                1) receiver_adaptive_arc_args=(--receiver_adaptive_arc) ;;
+                0) receiver_adaptive_arc_args=(--no-receiver_adaptive_arc) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_RECEIVER_ADAPTIVE_ARC must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+        presentation_filtered_custody_args=()
+        if [[ -n "${DR_ANMAR_PRESENTATION_USE_FILTERED_CUSTODY:-}" ]]; then
+            case "${DR_ANMAR_PRESENTATION_USE_FILTERED_CUSTODY}" in
+                1) presentation_filtered_custody_args=(--presentation_use_filtered_custody) ;;
+                0) presentation_filtered_custody_args=(--no-presentation_use_filtered_custody) ;;
+                *)
+                    echo "DR_ANMAR_PRESENTATION_USE_FILTERED_CUSTODY must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
         presentation_height_in_robot_frame_args=()
         if [[ -n "${DR_ANMAR_POLICY_PRESENTATION_HEIGHT_IN_ROBOT_FRAME:-}" ]]; then
             presentation_height_in_robot_frame_args=(
@@ -371,6 +422,11 @@ case "${command}" in
             "${carry_lateral_ramp_height_args[@]}" \
             "${presentation_fraction_from_giver_args[@]}" \
             "${receiver_crossing_angle_args[@]}" \
+            "${transport_custody_latch_args[@]}" \
+            "${receiver_preposition_args[@]}" \
+            "${receiver_preposition_height_args[@]}" \
+            "${receiver_adaptive_arc_args[@]}" \
+            "${presentation_filtered_custody_args[@]}" \
             "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \

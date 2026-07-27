@@ -219,6 +219,8 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "self.phase_network.heads[2]" in source
     assert "and not self.receiver_adaptation_enabled" in source
     assert "self.controller.receiver_residual_enabled_for_learning = True" in source
+    assert "configure_receiver_grasp_retain_adaptation" in source
+    assert "receiver_se3_row_mask[7:13] = 1.0" in source
     assert "presentation_stable = raw[:, 103]" in controller_source
     assert "receiver_retry_active = raw[:, 105]" in controller_source
     assert "(phase == 3) & ~receiver_bilateral_contact" in controller_source
@@ -231,6 +233,13 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "self.receiver_crossing_angle_rad" in controller_source
     assert "self.receiver_roll_offset_rad" in controller_source
     assert "receiver_half_roll_offset" in controller_source
+    assert "transport_custody_latch_enabled = True" in controller_source
+    assert "receiver_preposition_enabled = True" in controller_source
+    assert "receiver_contact_orientation_error_target_rad = 1.95" in controller_source
+    assert "receiver_adaptive_arc_enabled = False" in controller_source
+    assert "phase_two_custody" in controller_source
+    assert "receiver_preposition_active" in controller_source
+    assert "receiver_grasp_retain_residual_enabled" in controller_source
     assert "giver_presentation_hold = giver_carry.clamp(" in controller_source
     assert "giver_pre_lift_transport_ready = (" in controller_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
@@ -295,9 +304,15 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert "NeedleHandoverReceiverCurriculumEnvCfg" in environment_source
     assert "dr_anmar_receiver_curriculum = True" in environment_source
     assert (
-        "dr_anmar_receiver_curriculum_restore_probability = 0.5"
+        "dr_anmar_receiver_curriculum_restore_probability = 0.8"
         in environment_source
     )
+    assert (
+        "dr_anmar_receiver_curriculum_cross_environment_sampling = True"
+        in environment_source
+    )
+    assert "NeedleHandoverReceiverGraspRetainEnvCfg" in environment_source
+    assert '"presentation_use_filtered_custody": True' in environment_source
     assert "reset_receiver_curriculum_from_cache" in environment_source
     assert "TerminationsCfg" not in environment_source
     assert "RewardsCfg" not in environment_source
@@ -327,6 +342,8 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert '"_dr_anmar_receiver_curriculum_cache"' in state_source
     assert "presentation_stable & ~cache" in state_source
     assert 'cache["reset_restores"] +=' in state_source
+    assert '"cross_environment_restores"' in state_source
+    assert "presentation_custody" in state_source
     assert '"receiver_curriculum_cached_envs"' in benchmark_source
     assert '"receiver_curriculum_reset_restores"' in benchmark_source
     assert '"receiver_curriculum_reset_refreshes"' in benchmark_source

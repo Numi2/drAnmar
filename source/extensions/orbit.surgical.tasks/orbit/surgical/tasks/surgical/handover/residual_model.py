@@ -26,6 +26,11 @@ from orbit.surgical.tasks.surgical.lift.grasp_frames import (
 )
 
 _RECEIVER_ARC_FRACTION = 0.65
+_RECEIVER_ARC_CANDIDATES = (0.60, 0.65, 0.70)
+_RECEIVER_CANDIDATE_OFFSETS = tuple(
+    needle_geometry_grasp_offset_m(fraction)
+    for fraction in _RECEIVER_ARC_CANDIDATES
+)
 _RECEIVER_OFFSET = needle_geometry_grasp_offset_m(_RECEIVER_ARC_FRACTION)
 _RECEIVER_TANGENT_DELTA_RAD = (
     _RECEIVER_ARC_FRACTION - NEEDLE_PROVISIONAL_ARC_FRACTION
@@ -49,6 +54,27 @@ class HandoverAnalyticController(nn.Module):
         self.slow_approach_radius = 0.02
         self.slow_approach_action_limit = 0.1
         self.receiver_contact_centering_action_limit = 0.005
+        self.transport_custody_latch_enabled = True
+        self.receiver_preposition_enabled = True
+        self.receiver_preposition_height = 0.025
+        self.receiver_preposition_action_limit = 0.15
+        # Commanded stop includes the measured ~0.25 rad actuator lag so the
+        # physical jaw pose lands at the retained v33 contact boundary.
+        self.receiver_contact_orientation_error_target_rad = 1.95
+        self.receiver_adaptive_arc_enabled = False
+        self.receiver_default_arc_fraction = float(_RECEIVER_ARC_FRACTION)
+        self.needle_provisional_arc_fraction = float(NEEDLE_PROVISIONAL_ARC_FRACTION)
+        self.needle_arc_extent_rad = float(NEEDLE_ARC_EXTENT_RAD)
+        self.register_buffer(
+            "receiver_candidate_offsets",
+            torch.tensor(_RECEIVER_CANDIDATE_OFFSETS),
+            persistent=False,
+        )
+        self.register_buffer(
+            "receiver_candidate_fractions",
+            torch.tensor(_RECEIVER_ARC_CANDIDATES),
+            persistent=False,
+        )
         self.normalized_contact_threshold = 0.002
         self.contact_force_observation_scale = 0.2
         self.giver_lift_contact_force_threshold_n = 0.01
@@ -87,6 +113,7 @@ class HandoverAnalyticController(nn.Module):
         # configuration, not checkpoint state.  A checkpoint must never gain
         # an untrained receiver residual merely by being reloaded for play.
         self.receiver_residual_enabled_for_learning = False
+        self.receiver_grasp_retain_residual_enabled_for_learning = False
         self.giver_grasp_x = float(
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
         )
@@ -185,6 +212,89 @@ class HandoverAnalyticController(nn.Module):
             action,
         )
         return action, distance
+
+    def _receiver_approach_action(
+        self,
+        ee_position: torch.Tensor,
+        object_position: torch.Tensor,
+        object_orientation: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Select a reachable, object-relative grasp frame on the needle arc."""
+        candidate_offsets = self.receiver_candidate_offsets.to(
+            dtype=object_position.dtype,
+            device=object_position.device,
+        ).unsqueeze(0)
+        candidate_offsets = candidate_offsets.expand(
+            object_position.shape[0],
+            -1,
+            -1,
+        )
+        quaternion_x = object_orientation[:, 0].unsqueeze(-1)
+        quaternion_y = object_orientation[:, 1].unsqueeze(-1)
+        quaternion_z = object_orientation[:, 2].unsqueeze(-1)
+        quaternion_w = object_orientation[:, 3].unsqueeze(-1)
+        yaw_sine = 2.0 * (
+            quaternion_w * quaternion_z
+            + quaternion_x * quaternion_y
+        )
+        yaw_cosine = 1.0 - 2.0 * (
+            quaternion_y * quaternion_y
+            + quaternion_z * quaternion_z
+        )
+        rotated_offsets = candidate_offsets.clone()
+        rotated_offsets[:, :, 0] = (
+            yaw_cosine * candidate_offsets[:, :, 0]
+            - yaw_sine * candidate_offsets[:, :, 1]
+        )
+        rotated_offsets[:, :, 1] = (
+            yaw_sine * candidate_offsets[:, :, 0]
+            + yaw_cosine * candidate_offsets[:, :, 1]
+        )
+        candidate_positions = (
+            object_position.unsqueeze(1) + rotated_offsets
+        )
+        candidate_distances = torch.linalg.vector_norm(
+            candidate_positions - ee_position.unsqueeze(1),
+            dim=-1,
+        )
+        selected_index = torch.argmin(candidate_distances, dim=-1)
+        batch_index = torch.arange(
+            object_position.shape[0],
+            device=object_position.device,
+        )
+        grasp_position = candidate_positions[batch_index, selected_index]
+        selected_fraction = self.receiver_candidate_fractions.to(
+            dtype=object_position.dtype,
+            device=object_position.device,
+        )[selected_index]
+        delta = grasp_position - ee_position
+        lateral_distance = torch.linalg.vector_norm(
+            delta[:, :2],
+            dim=-1,
+        )
+        above = grasp_position.clone()
+        above[:, 2] += self.approach_height
+        target = torch.where(
+            (
+                lateral_distance
+                > self.lateral_alignment_threshold
+            ).unsqueeze(-1),
+            above,
+            grasp_position,
+        )
+        distance = torch.linalg.vector_norm(delta, dim=-1)
+        action = (
+            (target - ee_position) / self.position_scale
+        ).clamp(-1.0, 1.0)
+        action = torch.where(
+            (distance < self.slow_approach_radius).unsqueeze(-1),
+            action.clamp(
+                -self.slow_approach_action_limit,
+                self.slow_approach_action_limit,
+            ),
+            action,
+        )
+        return action, distance, selected_fraction, grasp_position
 
     def forward(
         self,
@@ -317,8 +427,19 @@ class HandoverAnalyticController(nn.Module):
             giver_orientation_wait_action,
             giver_approach,
         )
-        receiver_approach, receiver_distance = (
-            self._approach_action(
+        if self.receiver_adaptive_arc_enabled:
+            (
+                receiver_approach,
+                receiver_distance,
+                receiver_arc_fraction,
+                receiver_grasp_position,
+            ) = self._receiver_approach_action(
+                receiver_ee,
+                object_in_receiver,
+                object_pose_in_receiver[:, 3:7],
+            )
+        else:
+            receiver_approach, receiver_distance = self._approach_action(
                 receiver_ee,
                 object_in_receiver,
                 object_pose_in_receiver[:, 3:7],
@@ -327,16 +448,59 @@ class HandoverAnalyticController(nn.Module):
                 self.receiver_grasp_y,
                 self.receiver_grasp_z,
             )
-        )
+            receiver_arc_fraction = torch.full_like(
+                receiver_distance,
+                self.receiver_default_arc_fraction,
+            )
+            receiver_grasp_position = object_in_receiver.clone()
+            receiver_grasp_position[:, 0] += self.receiver_grasp_x
+            receiver_grasp_position[:, 1] += self.receiver_grasp_y
+            receiver_grasp_position[:, 2] += self.receiver_grasp_z
         root_2_in_giver = object_in_giver - object_in_receiver
         presentation_in_giver = (
             self.presentation_fraction_from_giver
             * root_2_in_giver
         )
-        giver_target = presentation_in_giver.clone()
-        giver_target[:, 2] = (
+        presentation_in_giver[:, 2] = (
             self.presentation_height_in_robot_frame
         )
+        presentation_in_receiver = (
+            presentation_in_giver - root_2_in_giver
+        )
+        if self.receiver_adaptive_arc_enabled:
+            identity_orientation = torch.zeros_like(
+                object_pose_in_receiver[:, 3:7]
+            )
+            identity_orientation[:, 3] = 1.0
+            (
+                _,
+                _,
+                _,
+                receiver_future_grasp_position,
+            ) = self._receiver_approach_action(
+                receiver_ee,
+                presentation_in_receiver,
+                identity_orientation,
+            )
+        else:
+            receiver_future_grasp_position = (
+                presentation_in_receiver.clone()
+            )
+            receiver_future_grasp_position[:, 0] += self.receiver_grasp_x
+            receiver_future_grasp_position[:, 1] += self.receiver_grasp_y
+            receiver_future_grasp_position[:, 2] += self.receiver_grasp_z
+        receiver_preposition_target = receiver_future_grasp_position.clone()
+        receiver_preposition_target[:, 2] += (
+            self.receiver_preposition_height
+        )
+        receiver_preposition = (
+            (receiver_preposition_target - receiver_ee)
+            / self.position_scale
+        ).clamp(
+            -self.receiver_preposition_action_limit,
+            self.receiver_preposition_action_limit,
+        )
+        giver_target = presentation_in_giver.clone()
         vertical_only = (
             object_in_giver[:, 2]
             < self.minimum_lift_height_in_robot_frame
@@ -470,17 +634,40 @@ class HandoverAnalyticController(nn.Module):
         giver_pre_lift_transport_ready = (
             (phase == 1) | giver_pre_lift_contact
         )
+        phase_two_custody = torch.where(
+            torch.full_like(
+                giver_bilateral_contact,
+                self.transport_custody_latch_enabled,
+            ),
+            phase == 2,
+            giver_bilateral_contact,
+        )
         giver_transport_active = giver_carry_mode & torch.where(
             phase <= 1,
             giver_pre_lift_transport_ready,
-            giver_bilateral_contact,
+            phase_two_custody,
         )
         receiver_approach_active = (
             (phase == 2)
             & presentation_stable
-            & giver_bilateral_contact
+            & phase_two_custody
             & ~receiver_any_contact
             & ~receiver_retry_active
+        )
+        receiver_preposition_active = (
+            torch.full_like(
+                phase,
+                self.receiver_preposition_enabled,
+                dtype=torch.bool,
+            )
+            & (
+                (phase <= 1)
+                | (
+                    (phase == 2)
+                    & ~presentation_stable
+                    & phase_two_custody
+                )
+            )
         )
         giver_translation = torch.where(
             giver_transport_active.unsqueeze(-1),
@@ -494,7 +681,7 @@ class HandoverAnalyticController(nn.Module):
         giver_translation = torch.where(
             (
                 (phase == 2)
-                & giver_bilateral_contact
+                & phase_two_custody
                 & presentation_stable
                 & ~receiver_any_contact
             ).unsqueeze(-1),
@@ -504,7 +691,7 @@ class HandoverAnalyticController(nn.Module):
         giver_translation = torch.where(
             (
                 (phase == 2)
-                & giver_bilateral_contact
+                & phase_two_custody
                 & receiver_any_contact
             ).unsqueeze(-1),
             torch.zeros_like(giver_translation),
@@ -538,7 +725,11 @@ class HandoverAnalyticController(nn.Module):
         receiver_translation = torch.where(
             receiver_approach_active.unsqueeze(-1),
             receiver_approach,
-            torch.zeros_like(receiver_approach),
+            torch.where(
+                receiver_preposition_active.unsqueeze(-1),
+                receiver_preposition,
+                torch.zeros_like(receiver_approach),
+            ),
         )
         receiver_translation = torch.where(
             (phase >= 3).unsqueeze(-1),
@@ -573,7 +764,7 @@ class HandoverAnalyticController(nn.Module):
         receiver_translation[:, 2] += torch.where(
             (
                 (phase == 2)
-                & giver_bilateral_contact
+                & phase_two_custody
                 & receiver_any_contact
                 & ~receiver_retry_active
             ),
@@ -664,9 +855,15 @@ class HandoverAnalyticController(nn.Module):
         # baseline crossing keeps the prior pi roll until a matched sweep
         # identifies a better contact-retaining jaw angle.
         receiver_roll = torch.zeros_like(giver_orientation)
-        receiver_half_roll_offset = 0.5 * self.receiver_roll_offset_rad
-        receiver_roll[:, 2] = math.sin(receiver_half_roll_offset)
-        receiver_roll[:, 3] = math.cos(receiver_half_roll_offset)
+        selected_tangent_delta = (
+            receiver_arc_fraction - self.needle_provisional_arc_fraction
+        ) * self.needle_arc_extent_rad
+        selected_roll_offset = (
+            selected_tangent_delta + self.receiver_crossing_angle_rad
+        )
+        receiver_half_roll_offset = 0.5 * selected_roll_offset
+        receiver_roll[:, 2] = torch.sin(receiver_half_roll_offset)
+        receiver_roll[:, 3] = torch.cos(receiver_half_roll_offset)
         receiver_target_orientation = quat_mul(
             receiver_roll,
             giver_orientation,
@@ -683,8 +880,26 @@ class HandoverAnalyticController(nn.Module):
             -self.receiver_orientation_action_limit,
             self.receiver_orientation_action_limit,
         )
+        receiver_orientation_error_norm = torch.linalg.vector_norm(
+            receiver_orientation_error,
+            dim=-1,
+        )
+        if self.receiver_preposition_enabled:
+            # Calibrate the pre-contact jaw angle from the retained v33
+            # population, then hold it through the final approach.  Fully
+            # aligning to the pi-roll target before contact produced bilateral
+            # acquisition but post-release slip.
+            receiver_orientation_active = (
+                (receiver_preposition_active | receiver_approach_active)
+                & (
+                    receiver_orientation_error_norm
+                    > self.receiver_contact_orientation_error_target_rad
+                )
+            )
+        else:
+            receiver_orientation_active = receiver_approach_active
         receiver_orientation_action = torch.where(
-            receiver_approach_active.unsqueeze(-1),
+            receiver_orientation_active.unsqueeze(-1),
             receiver_orientation_action,
             torch.zeros_like(receiver_orientation_action),
         )
@@ -724,7 +939,11 @@ class HandoverAnalyticController(nn.Module):
         giver_pickup_transport_residual = (
             (phase >= 1)
             & (phase <= 2)
-            & giver_bilateral_contact
+            & torch.where(
+                phase == 2,
+                phase_two_custody,
+                giver_bilateral_contact,
+            )
             & ~receiver_any_contact
         )
         # The analytic controller remains the sole authority for vertical
@@ -739,6 +958,24 @@ class HandoverAnalyticController(nn.Module):
             & self.receiver_residual_enabled_for_learning
         )
         receiver_residual[:, :3] = receiver_residual_enabled.unsqueeze(-1)
+        receiver_grasp_retain_residual_enabled = torch.zeros_like(
+            receiver_approach_active
+        )
+        if self.receiver_grasp_retain_residual_enabled_for_learning:
+            receiver_grasp_retain_residual_enabled = (
+                receiver_approach_active
+                | (
+                    (phase == 2)
+                    & presentation_stable
+                    & ~receiver_retry_active
+                )
+                | (phase == 3)
+            )
+        receiver_residual[:, :6] = torch.where(
+            receiver_grasp_retain_residual_enabled.unsqueeze(-1),
+            torch.ones_like(receiver_residual[:, :6]),
+            receiver_residual[:, :6],
+        )
         no_giver_residual = torch.zeros_like(giver_residual)
         no_receiver_residual = torch.zeros_like(receiver_residual)
         robot_1_giver_residual = torch.where(

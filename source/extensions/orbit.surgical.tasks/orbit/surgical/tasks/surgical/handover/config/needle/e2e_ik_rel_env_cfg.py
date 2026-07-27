@@ -43,6 +43,7 @@ class NeedleHandoverEndToEndEnvCfg(ik_rel_env_cfg.NeedleHandoverEnvCfg):
             "presentation_height_in_robot_frame": -0.13,
             "presentation_ready_tolerance": 0.005,
             "presentation_stability_steps": 8,
+            "presentation_use_filtered_custody": True,
             "presentation_linear_speed_limit": 0.05,
             "presentation_angular_speed_limit": 5.0,
             "receiver_capture_required_steps": 1,
@@ -97,8 +98,22 @@ class NeedleHandoverReceiverCurriculumEnvCfg(
     def __post_init__(self):
         super().__post_init__()
         self.dr_anmar_receiver_curriculum = True
-        self.dr_anmar_receiver_curriculum_restore_probability = 0.5
+        self.dr_anmar_receiver_curriculum_restore_probability = 0.8
+        self.dr_anmar_receiver_curriculum_cross_environment_sampling = True
         self.events.receiver_curriculum_reset = EventTerm(
             func=mdp.reset_receiver_curriculum_from_cache,
             mode="reset",
         )
+
+
+@configclass
+class NeedleHandoverReceiverGraspRetainEnvCfg(
+    NeedleHandoverReceiverCurriculumEnvCfg
+):
+    """Adapt receiver approach and seating without relearning giver custody."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.dr_anmar_receiver_grasp_retain_curriculum = True
+        self.dr_anmar_handover_contract["receiver_capture_required_steps"] = 3
+        self.dr_anmar_handover_contract["giver_release_confirmation_steps"] = 3

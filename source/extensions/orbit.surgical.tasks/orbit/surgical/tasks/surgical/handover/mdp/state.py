@@ -56,30 +56,59 @@ def reset_receiver_curriculum_from_cache(
     if bool(refresh_env_ids.numel()):
         cache["valid"][refresh_env_ids] = False
         cache["reset_refreshes"] += int(refresh_env_ids.numel())
-    valid_env_ids = env_ids[restore]
-    if not bool(valid_env_ids.numel()):
+    target_env_ids = env_ids[restore]
+    if not bool(target_env_ids.numel()):
         return
-    cache["reset_restores"] += int(valid_env_ids.numel())
+    cache["reset_restores"] += int(target_env_ids.numel())
+    source_env_ids = target_env_ids
+    cross_environment_sampling = bool(
+        getattr(
+            env.cfg,
+            "dr_anmar_receiver_curriculum_cross_environment_sampling",
+            False,
+        )
+    )
+    if cross_environment_sampling:
+        available_source_ids = torch.nonzero(
+            cache["valid"],
+            as_tuple=False,
+        ).squeeze(-1)
+        if bool(available_source_ids.numel()):
+            source_env_ids = available_source_ids[
+                torch.randint(
+                    available_source_ids.numel(),
+                    (target_env_ids.numel(),),
+                    device=env.device,
+                )
+            ]
+            cache["cross_environment_restores"] += int(
+                target_env_ids.numel()
+            )
     robot_1: Articulation = env.scene["robot_1"]
     robot_2: Articulation = env.scene["robot_2"]
     obj: RigidObject = env.scene["object"]
     robot_1.write_joint_state_to_sim(
-        cache["robot_1_joint_pos"][valid_env_ids],
-        cache["robot_1_joint_vel"][valid_env_ids],
-        env_ids=valid_env_ids,
+        cache["robot_1_joint_pos"][source_env_ids],
+        cache["robot_1_joint_vel"][source_env_ids],
+        env_ids=target_env_ids,
     )
     robot_2.write_joint_state_to_sim(
-        cache["robot_2_joint_pos"][valid_env_ids],
-        cache["robot_2_joint_vel"][valid_env_ids],
-        env_ids=valid_env_ids,
+        cache["robot_2_joint_pos"][source_env_ids],
+        cache["robot_2_joint_vel"][source_env_ids],
+        env_ids=target_env_ids,
     )
+    object_root_pose_w = cache["object_root_pose_w"][source_env_ids].clone()
+    if cross_environment_sampling:
+        source_origins = env.scene.env_origins[source_env_ids]
+        target_origins = env.scene.env_origins[target_env_ids]
+        object_root_pose_w[:, :3] += target_origins - source_origins
     obj.write_root_pose_to_sim(
-        cache["object_root_pose_w"][valid_env_ids],
-        env_ids=valid_env_ids,
+        object_root_pose_w,
+        env_ids=target_env_ids,
     )
     obj.write_root_velocity_to_sim(
-        cache["object_root_velocity_w"][valid_env_ids],
-        env_ids=valid_env_ids,
+        cache["object_root_velocity_w"][source_env_ids],
+        env_ids=target_env_ids,
     )
 
 
@@ -613,9 +642,21 @@ def handover_state(
     giver_custody = giver_contact | (
         lifted & giver_follows
     )
+    use_filtered_presentation_custody = bool(
+        contract
+        and contract.get(
+            "presentation_use_filtered_custody",
+            False,
+        )
+    )
+    presentation_custody = (
+        giver_custody
+        if use_filtered_presentation_custody
+        else giver_contact_now
+    )
     presentation_ready_now = (
         (phase == 2)
-        & giver_contact_now
+        & presentation_custody
         & lifted
         & (presentation_error <= presentation_ready_tolerance)
         & (motion[:, 0] <= presentation_linear_speed_limit)
@@ -650,6 +691,7 @@ def handover_state(
                 ),
                 "reset_restores": 0,
                 "reset_refreshes": 0,
+                "cross_environment_restores": 0,
                 "robot_1_joint_pos": torch.zeros_like(
                     mdp_common.as_torch(robot_1.data.joint_pos)
                 ),
