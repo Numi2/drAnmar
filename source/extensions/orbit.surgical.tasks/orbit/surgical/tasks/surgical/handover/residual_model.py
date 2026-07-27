@@ -46,6 +46,7 @@ class HandoverAnalyticController(nn.Module):
         self.presentation_fraction_from_giver = 0.35
         self.presentation_height_in_robot_frame = -0.13
         self.presentation_ready_tolerance = 0.005
+        self.presentation_hold_action_limit = 0.01
         self.minimum_lift_height_in_robot_frame = -0.139
         self.carry_lateral_action_limit = 0.06
         self.carry_lateral_ramp_height = 0.01
@@ -79,7 +80,7 @@ class HandoverAnalyticController(nn.Module):
         )
         self.receiver_grasp_x = float(_RECEIVER_OFFSET[0])
         self.receiver_grasp_y = float(_RECEIVER_OFFSET[1])
-        self.receiver_grasp_z = -0.0018
+        self.receiver_grasp_z = -0.003
 
     def _select_role(
         self,
@@ -216,6 +217,8 @@ class HandoverAnalyticController(nn.Module):
         )
         phase = torch.argmax(raw[:, 77:82], dim=-1)
         pickup_recovery_context = raw[:, 98] > 0.5
+        presentation_stable = raw[:, 103] >= 1.0
+        receiver_retry_active = raw[:, 105] > 0.5
         identity_tool_orientation = torch.zeros_like(
             giver_orientation
         )
@@ -433,33 +436,46 @@ class HandoverAnalyticController(nn.Module):
             receiver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
+        phase_zero_lift_enabled = torch.full_like(
+            phase,
+            self.giver_lift_on_live_contact,
+            dtype=torch.bool,
+        )
         giver_carry_mode = (
             ((phase >= 1) & (phase <= 2))
-            | ((phase == 0) & self.giver_lift_on_live_contact)
+            | ((phase == 0) & phase_zero_lift_enabled)
         )
         giver_transport_active = giver_carry_mode & torch.where(
             phase <= 1,
             giver_pre_lift_contact,
             giver_bilateral_contact,
         )
-        presentation_ready = (
-            torch.linalg.vector_norm(
-                giver_target - object_in_giver,
-                dim=-1,
-            )
-            < self.presentation_ready_tolerance
-        )
         receiver_approach_active = (
             (phase == 2)
-            & presentation_ready
+            & presentation_stable
             & giver_bilateral_contact
             & ~receiver_any_contact
+            & ~receiver_retry_active
         )
 
         giver_translation = torch.where(
             giver_transport_active.unsqueeze(-1),
             giver_carry,
             giver_approach,
+        )
+        giver_presentation_hold = giver_carry.clamp(
+            -self.presentation_hold_action_limit,
+            self.presentation_hold_action_limit,
+        )
+        giver_translation = torch.where(
+            (
+                (phase == 2)
+                & giver_bilateral_contact
+                & presentation_stable
+                & ~receiver_any_contact
+            ).unsqueeze(-1),
+            giver_presentation_hold,
+            giver_translation,
         )
         giver_translation = torch.where(
             (
@@ -510,6 +526,19 @@ class HandoverAnalyticController(nn.Module):
             torch.zeros_like(receiver_translation),
             receiver_translation,
         )
+        receiver_retry_translation = torch.zeros_like(
+            receiver_translation
+        )
+        receiver_retry_translation[:, 2] = (
+            self.slow_approach_action_limit
+        )
+        receiver_translation = torch.where(
+            (
+                (phase == 2) & receiver_retry_active
+            ).unsqueeze(-1),
+            receiver_retry_translation,
+            receiver_translation,
+        )
         receiver_contact_imbalance = (
             receiver_contacts[:, 1] - receiver_contacts[:, 0]
         )
@@ -522,6 +551,7 @@ class HandoverAnalyticController(nn.Module):
                 (phase == 2)
                 & giver_bilateral_contact
                 & receiver_any_contact
+                & ~receiver_retry_active
             ),
             receiver_contact_centering,
             torch.zeros_like(receiver_contact_centering),
@@ -538,11 +568,10 @@ class HandoverAnalyticController(nn.Module):
             )
             & (phase < 3)
         )
-        giver_closing |= (
-            (phase == 3) & ~receiver_bilateral_contact
-        )
+        giver_closing |= (phase == 3) & ~receiver_bilateral_contact
         receiver_closing = (
             ((phase == 2) | (phase == 3))
+            & ~receiver_retry_active
             & (
                 (
                     receiver_distance

@@ -1,0 +1,153 @@
+{
+  "baseline": {
+    "checkpoint": {
+      "path": "output/dranmar-learning/e2e-structured-seed-checkpoint/runs/2026-07-27_14-24-06/model_final.pt",
+      "sha256": "4c551cece933988ce280739efa815ce77e694ba61c5baca7d73fe8f0e3deb02a"
+    },
+    "evidence_path": "docs/experiments/evidence/controller-600-seed17.json",
+    "evidence_sha256": "6ba017108702e93270639b9af23e9e5bc529d7ce17bae1c2eda39c212fab1b60",
+    "failure_rates": {
+      "excessive_object_force": 0.0,
+      "needle_dropped_after_pickup": 0.0,
+      "object_dropping": 0.0,
+      "pickup_attempts_exhausted": 0.0016666666666666668,
+      "premature_giver_release": 0.0,
+      "protected_surface_force": 0.005,
+      "receiver_retention_lost": 0.14
+    },
+    "success_rate": 0.48833333333333334
+  },
+  "candidates": [
+    {
+      "checkpoint": {
+        "path": "output/dranmar-learning/e2e-structured-ppo-low-noise-2400/runs/2026-07-27_14-24-33/model_25.pt",
+        "sha256": "a50e8b00491e5fca93efc7b1bfc53671927f58c91507edaba4c309481a3930c5"
+      },
+      "evidence_path": "docs/experiments/evidence/v2-ppo25-600-seed17.json",
+      "evidence_sha256": "e1f0782810f9e0175e0482a20b724e45e89ecc37a85b488f52376541b5196fd5",
+      "promotable": false,
+      "safety_gate_passed": false,
+      "safety_regressions": {
+        "needle_dropped_after_pickup": {
+          "baseline_rate": 0.0,
+          "candidate_rate": 0.0033333333333333335,
+          "increase": 0.0033333333333333335
+        },
+        "pickup_attempts_exhausted": {
+          "baseline_rate": 0.0016666666666666668,
+          "candidate_rate": 0.0033333333333333335,
+          "increase": 0.0016666666666666668
+        },
+        "protected_surface_force": {
+          "baseline_rate": 0.005,
+          "candidate_rate": 0.01,
+          "increase": 0.005
+        },
+        "receiver_retention_lost": {
+          "baseline_rate": 0.14,
+          "candidate_rate": 0.22833333333333333,
+          "increase": 0.08833333333333332
+        }
+      },
+      "success_gate_passed": false,
+      "success_improvement": -0.19333333333333336,
+      "success_rate": 0.295
+    },
+    {
+      "checkpoint": {
+        "path": "output/dranmar-learning/e2e-structured-ppo-low-noise-2400/runs/2026-07-27_14-24-33/model_50.pt",
+        "sha256": "dc377e48fd6d46a0034b214d99324324f6e68ea47b9f4be6dd999ab0d5a5685a"
+      },
+      "evidence_path": "docs/experiments/evidence/v2-ppo50-600-seed17.json",
+      "evidence_sha256": "74325ef4970a3652d8a93641b030f116b937205900a1e211049e5348a058e195",
+      "promotable": false,
+      "safety_gate_passed": false,
+      "safety_regressions": {
+        "needle_dropped_after_pickup": {
+          "baseline_rate": 0.0,
+          "candidate_rate": 0.0033333333333333335,
+          "increase": 0.0033333333333333335
+        },
+        "object_dropping": {
+          "baseline_rate": 0.0,
+          "candidate_rate": 0.0016666666666666668,
+          "increase": 0.0016666666666666668
+        },
+        "pickup_attempts_exhausted": {
+          "baseline_rate": 0.0016666666666666668,
+          "candidate_rate": 0.013333333333333334,
+          "increase": 0.011666666666666667
+        },
+        "protected_surface_force": {
+          "baseline_rate": 0.005,
+          "candidate_rate": 0.05333333333333334,
+          "increase": 0.04833333333333334
+        },
+        "receiver_retention_lost": {
+          "baseline_rate": 0.14,
+          "candidate_rate": 0.22166666666666668,
+          "increase": 0.08166666666666667
+        }
+      },
+      "success_gate_passed": false,
+      "success_improvement": -0.18666666666666665,
+      "success_rate": 0.3016666666666667
+    },
+    {
+      "checkpoint": {
+        "path": "output/dranmar-learning/e2e-structured-v3-ppo-2400/runs/2026-07-27_14-41-12/model_25.pt",
+        "sha256": "5bfa1847b29da2a3901c40b720fe4ed0e3b3fc9a0b3462373105a657d0a0686b"
+      },
+      "evidence_path": "docs/experiments/evidence/v3-ppo25-600-seed17.json",
+      "evidence_sha256": "643668e81e176aca51f1bba344cfcda6acab92abf0931e8e243eb2745312d848",
+      "promotable": false,
+      "safety_gate_passed": false,
+      "safety_regressions": {
+        "object_dropping": {
+          "baseline_rate": 0.0,
+          "candidate_rate": 0.0033333333333333335,
+          "increase": 0.0033333333333333335
+        },
+        "protected_surface_force": {
+          "baseline_rate": 0.005,
+          "candidate_rate": 0.011666666666666667,
+          "increase": 0.006666666666666667
+        },
+        "receiver_retention_lost": {
+          "baseline_rate": 0.14,
+          "candidate_rate": 0.23166666666666666,
+          "increase": 0.09166666666666665
+        }
+      },
+      "success_gate_passed": false,
+      "success_improvement": -0.16166666666666668,
+      "success_rate": 0.32666666666666666
+    }
+  ],
+  "decision": "baseline_retained",
+  "qualification_contract": {
+    "deterministic_play_only": true,
+    "matched_task_seed_num_envs_and_frames": true,
+    "maximum_safety_failure_rate_increase": 0.0,
+    "minimum_success_improvement": 0.02,
+    "safety_failure_terms": [
+      "excessive_object_force",
+      "needle_dropped_after_pickup",
+      "object_dropping",
+      "pickup_attempts_exhausted",
+      "premature_giver_release",
+      "protected_surface_force",
+      "receiver_retention_lost"
+    ]
+  },
+  "schema_version": "dranmar-handover-promotion-1.0",
+  "selected": {
+    "checkpoint": {
+      "path": "output/dranmar-learning/e2e-structured-seed-checkpoint/runs/2026-07-27_14-24-06/model_final.pt",
+      "sha256": "4c551cece933988ce280739efa815ce77e694ba61c5baca7d73fe8f0e3deb02a"
+    },
+    "evidence_path": "docs/experiments/evidence/controller-600-seed17.json",
+    "evidence_sha256": "6ba017108702e93270639b9af23e9e5bc529d7ce17bae1c2eda39c212fab1b60",
+    "success_rate": 0.48833333333333334
+  }
+}

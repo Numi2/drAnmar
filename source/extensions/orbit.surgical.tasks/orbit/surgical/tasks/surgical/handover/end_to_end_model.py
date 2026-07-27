@@ -1,0 +1,470 @@
+# Copyright (c) 2026, Dr.Anmar Project Developers.
+# SPDX-License-Identifier: BSD-3-Clause
+
+"""Role-normalized end-to-end actor for the experimental needle handover."""
+
+from __future__ import annotations
+
+import copy
+
+import torch
+from rsl_rl.models import MLPModel
+from rsl_rl.modules import GaussianDistribution
+from torch import nn
+from torch.distributions import Normal
+
+from isaaclab.utils.math import (
+    axis_angle_from_quat,
+    quat_conjugate,
+    quat_mul,
+)
+
+from .residual_model import HandoverAnalyticController
+
+_TASK_FEATURE_DIM = 24
+
+
+def select_handover_role(
+    robot_1_value: torch.Tensor,
+    robot_2_value: torch.Tensor,
+    use_robot_1: torch.Tensor,
+) -> torch.Tensor:
+    """Select a physical-arm tensor using the episode's role assignment."""
+    return torch.where(
+        use_robot_1.unsqueeze(-1),
+        robot_1_value,
+        robot_2_value,
+    )
+
+
+def role_normalize_handover_observation(raw: torch.Tensor) -> torch.Tensor:
+    """Express both arms in giver/receiver order without hiding physical state."""
+    giver_is_robot_1 = raw[:, 82] > 0.5
+
+    giver_joint_position = select_handover_role(
+        raw[:, 0:8], raw[:, 16:24], giver_is_robot_1
+    )
+    giver_joint_velocity = select_handover_role(
+        raw[:, 8:16], raw[:, 24:32], giver_is_robot_1
+    )
+    receiver_joint_position = select_handover_role(
+        raw[:, 0:8], raw[:, 16:24], ~giver_is_robot_1
+    )
+    receiver_joint_velocity = select_handover_role(
+        raw[:, 8:16], raw[:, 24:32], ~giver_is_robot_1
+    )
+    giver_end_effector = select_handover_role(
+        raw[:, 32:39], raw[:, 39:46], giver_is_robot_1
+    )
+    receiver_end_effector = select_handover_role(
+        raw[:, 32:39], raw[:, 39:46], ~giver_is_robot_1
+    )
+    object_in_giver = select_handover_role(
+        raw[:, 46:53], raw[:, 53:60], giver_is_robot_1
+    )
+    object_in_receiver = select_handover_role(
+        raw[:, 46:53], raw[:, 53:60], ~giver_is_robot_1
+    )
+    giver_contacts = select_handover_role(
+        raw[:, 66:68], raw[:, 68:70], giver_is_robot_1
+    )
+    receiver_contacts = select_handover_role(
+        raw[:, 66:68], raw[:, 68:70], ~giver_is_robot_1
+    )
+    giver_last_action = select_handover_role(
+        raw[:, 84:91], raw[:, 91:98], giver_is_robot_1
+    )
+    receiver_last_action = select_handover_role(
+        raw[:, 84:91], raw[:, 91:98], ~giver_is_robot_1
+    )
+    giver_contact_history = select_handover_role(
+        raw[:, 99:101], raw[:, 101:103], giver_is_robot_1
+    )
+    receiver_contact_history = select_handover_role(
+        raw[:, 99:101], raw[:, 101:103], ~giver_is_robot_1
+    )
+
+    canonical_identity = torch.zeros_like(raw[:, 82:84])
+    canonical_identity[:, 0] = 1.0
+    return torch.cat(
+        (
+            giver_joint_position,
+            giver_joint_velocity,
+            receiver_joint_position,
+            receiver_joint_velocity,
+            giver_end_effector,
+            receiver_end_effector,
+            object_in_giver,
+            object_in_receiver,
+            raw[:, 60:66],
+            giver_contacts,
+            receiver_contacts,
+            raw[:, 70:77],
+            raw[:, 77:82],
+            canonical_identity,
+            giver_last_action,
+            receiver_last_action,
+            raw[:, 98:99],
+            giver_contact_history,
+            receiver_contact_history,
+            raw[:, 103:107],
+        ),
+        dim=-1,
+    )
+
+
+def role_action_to_physical(
+    role_action: torch.Tensor,
+    giver_is_robot_1: torch.Tensor,
+) -> torch.Tensor:
+    """Map canonical giver/receiver actions back to Robot 1/Robot 2 order."""
+    giver_action = role_action[:, 0:7]
+    receiver_action = role_action[:, 7:14]
+    robot_1_action = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        giver_action,
+        receiver_action,
+    )
+    robot_2_action = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        receiver_action,
+        giver_action,
+    )
+    return torch.cat((robot_1_action, robot_2_action), dim=-1)
+
+
+def handover_task_features(role_observation: torch.Tensor) -> torch.Tensor:
+    """Build local grasp, presentation, orientation, and contact-change features."""
+    giver_ee_position = role_observation[:, 32:35]
+    giver_ee_orientation = role_observation[:, 35:39]
+    receiver_ee_position = role_observation[:, 39:42]
+    receiver_ee_orientation = role_observation[:, 42:46]
+    object_in_giver = role_observation[:, 46:53]
+    object_in_receiver = role_observation[:, 53:60]
+
+    giver_offset = torch.zeros_like(giver_ee_position)
+    giver_offset[:, 0] = 0.0007375535249017802
+    giver_offset[:, 1] = 0.005600696415109648
+    giver_offset[:, 2] = 0.0006
+    object_quaternion = object_in_giver[:, 3:7]
+    yaw_sine = 2.0 * (
+        object_quaternion[:, 3] * object_quaternion[:, 2]
+        + object_quaternion[:, 0] * object_quaternion[:, 1]
+    )
+    yaw_cosine = 1.0 - 2.0 * (
+        object_quaternion[:, 1] * object_quaternion[:, 1]
+        + object_quaternion[:, 2] * object_quaternion[:, 2]
+    )
+    rotated_giver_offset = giver_offset.clone()
+    rotated_giver_offset[:, 0] = (
+        yaw_cosine * giver_offset[:, 0]
+        - yaw_sine * giver_offset[:, 1]
+    )
+    rotated_giver_offset[:, 1] = (
+        yaw_sine * giver_offset[:, 0]
+        + yaw_cosine * giver_offset[:, 1]
+    )
+    recovery_context = role_observation[:, 98] > 0.5
+    giver_offset = torch.where(
+        recovery_context.unsqueeze(-1),
+        rotated_giver_offset,
+        giver_offset,
+    )
+    giver_grasp_error = (
+        object_in_giver[:, :3] + giver_offset - giver_ee_position
+    ) / 0.02
+
+    receiver_offset = torch.zeros_like(receiver_ee_position)
+    receiver_offset[:, 0] = 0.0019002163218475414
+    receiver_offset[:, 1] = -0.009119058578501121
+    receiver_offset[:, 2] = -0.003
+    receiver_grasp_error = (
+        object_in_receiver[:, :3] + receiver_offset - receiver_ee_position
+    ) / 0.02
+
+    root_2_in_giver = object_in_giver[:, :3] - object_in_receiver[:, :3]
+    presentation_target = 0.35 * root_2_in_giver
+    presentation_target[:, 2] = -0.13
+    presentation_error = (
+        presentation_target - object_in_giver[:, :3]
+    ) / 0.05
+
+    identity_orientation = torch.zeros_like(giver_ee_orientation)
+    identity_orientation[:, 3] = 1.0
+    giver_orientation_error = axis_angle_from_quat(
+        quat_mul(
+            identity_orientation,
+            quat_conjugate(giver_ee_orientation),
+        )
+    ) / 3.141592653589793
+    receiver_roll = torch.zeros_like(receiver_ee_orientation)
+    receiver_roll[:, 2] = 1.0
+    receiver_target_orientation = quat_mul(
+        receiver_roll,
+        giver_ee_orientation,
+    )
+    receiver_orientation_error = axis_angle_from_quat(
+        quat_mul(
+            receiver_target_orientation,
+            quat_conjugate(receiver_ee_orientation),
+        )
+    ) / 3.141592653589793
+
+    pickup_clearance = (
+        (object_in_giver[:, 2:3] + 0.139) / 0.02
+    ).clamp(-5.0, 5.0)
+    contact_change = (
+        role_observation[:, 66:70] - role_observation[:, 99:103]
+    ).clamp(-5.0, 5.0)
+    transfer_contract = role_observation[:, 103:107]
+    return torch.cat(
+        (
+            giver_grasp_error,
+            receiver_grasp_error,
+            presentation_error,
+            giver_orientation_error,
+            receiver_orientation_error,
+            pickup_clearance,
+            contact_change,
+            transfer_contract,
+        ),
+        dim=-1,
+    ).clamp(-5.0, 5.0)
+
+
+class PhaseMaskedGaussianDistribution(GaussianDistribution):
+    """Gaussian exploration with near-zero variance on structurally inactive actions."""
+
+    def __init__(self, *args, inactive_std: float = 1.0e-6, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.inactive_std = inactive_std
+        self._action_mask: torch.Tensor | None = None
+
+    def set_action_mask(self, action_mask: torch.Tensor) -> None:
+        self._action_mask = action_mask
+
+    def update(self, mlp_output: torch.Tensor) -> None:
+        super().update(mlp_output)
+        if self._action_mask is None:
+            return
+        active_std = self._distribution.stddev
+        masked_std = torch.where(
+            self._action_mask,
+            active_std,
+            torch.full_like(mlp_output, self.inactive_std),
+        )
+        self._distribution = Normal(mlp_output, masked_std)
+
+
+class _PhaseHeadedNetwork(nn.Module):
+    """Shared geometric encoder with a separate motor head for each physical phase."""
+
+    def __init__(self, trunk: nn.Module, input_dim: int, output_dim: int) -> None:
+        super().__init__()
+        self.trunk = trunk
+        self.heads = nn.ModuleList(
+            nn.Linear(input_dim, output_dim) for _ in range(5)
+        )
+        for head in self.heads:
+            nn.init.zeros_(head.weight)
+            nn.init.zeros_(head.bias)
+
+    def forward(
+        self,
+        latent: torch.Tensor,
+        phase: torch.Tensor,
+    ) -> torch.Tensor:
+        encoded = self.trunk(latent)
+        candidates = torch.stack(
+            [head(encoded) for head in self.heads],
+            dim=1,
+        )
+        batch_indices = torch.arange(
+            encoded.shape[0],
+            device=encoded.device,
+        )
+        return candidates[batch_indices, phase]
+
+
+class EndToEndHandoverMLPModel(MLPModel):
+    """Physics-structured servo plus bounded phase-specialized learned residual."""
+
+    def __init__(
+        self,
+        *args,
+        residual_scale: float = 0.01,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        built_mlp = self.mlp
+        modules = list(built_mlp)
+        final_linear = modules[-1]
+        if not isinstance(final_linear, nn.Linear):
+            raise TypeError("end-to-end handover actor requires a linear output")
+        trunk = nn.Sequential(*modules[:-1])
+        del self.mlp
+        self.phase_network = _PhaseHeadedNetwork(
+            trunk,
+            final_linear.in_features,
+            final_linear.out_features,
+        )
+        self.controller = HandoverAnalyticController()
+        self.residual_scale = residual_scale
+
+    def _get_latent_dim(self) -> int:
+        return self.obs_dim + _TASK_FEATURE_DIM
+
+    def _role_latent(self, obs) -> tuple[torch.Tensor, torch.Tensor]:
+        raw = torch.cat([obs[group] for group in self.obs_groups], dim=-1)
+        return role_normalize_handover_observation(raw), raw[:, 82] > 0.5
+
+    def get_latent(
+        self,
+        obs,
+        masks: torch.Tensor | None = None,
+        hidden_state=None,
+    ) -> torch.Tensor:
+        del masks, hidden_state
+        role_observation, _ = self._role_latent(obs)
+        normalized = self.obs_normalizer(role_observation)
+        return torch.cat(
+            (
+                normalized,
+                handover_task_features(role_observation),
+            ),
+            dim=-1,
+        )
+
+    def update_normalization(self, obs) -> None:
+        if self.obs_normalization:
+            role_observation, _ = self._role_latent(obs)
+            self.obs_normalizer.update(role_observation)
+
+    def forward(
+        self,
+        obs,
+        masks: torch.Tensor | None = None,
+        hidden_state=None,
+        stochastic_output: bool = False,
+    ) -> torch.Tensor:
+        latent = self.get_latent(obs, masks, hidden_state)
+        raw = torch.cat([obs[group] for group in self.obs_groups], dim=-1)
+        phase = torch.argmax(raw[:, 77:82], dim=-1)
+        learned_role_residual = torch.tanh(
+            self.phase_network(latent, phase)
+        )
+        physical_residual = role_action_to_physical(
+            learned_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        (
+            base_action,
+            _giver_residual_mask,
+            receiver_residual_mask,
+        ) = self.controller(raw)
+        # The giver is a frozen teacher in this experiment. Learning has
+        # authority only over receiver XYZ during a qualified approach.
+        physical_action_mask = receiver_residual_mask
+        physical_mean = (
+            base_action
+            + self.residual_scale
+            * physical_residual
+            * physical_action_mask.to(base_action.dtype)
+        ).clamp(-1.0, 1.0)
+        if self.distribution is None:
+            return physical_mean
+        if stochastic_output:
+            set_action_mask = getattr(
+                self.distribution,
+                "set_action_mask",
+                None,
+            )
+            if set_action_mask is not None:
+                set_action_mask(physical_action_mask)
+            self.distribution.update(physical_mean)
+            return self.distribution.sample()
+        return self.distribution.deterministic_output(physical_mean)
+
+    def as_jit(self) -> nn.Module:
+        return _EndToEndHandoverExport(self)
+
+    def as_onnx(self, verbose: bool) -> nn.Module:
+        return _EndToEndHandoverOnnxExport(self, verbose)
+
+
+class _EndToEndHandoverExport(nn.Module):
+    """TorchScript-compatible deterministic end-to-end handover policy."""
+
+    def __init__(self, model: EndToEndHandoverMLPModel) -> None:
+        super().__init__()
+        self.obs_normalizer = copy.deepcopy(model.obs_normalizer)
+        self.phase_network = copy.deepcopy(model.phase_network)
+        self.controller = copy.deepcopy(model.controller)
+        self.residual_scale = model.residual_scale
+        self.deterministic_output = (
+            model.distribution.as_deterministic_output_module()
+            if model.distribution is not None
+            else nn.Identity()
+        )
+
+    def forward(self, obs: torch.Tensor) -> torch.Tensor:
+        giver_is_robot_1 = obs[:, 82] > 0.5
+        role_observation = role_normalize_handover_observation(obs)
+        latent = torch.cat(
+            (
+                self.obs_normalizer(role_observation),
+                handover_task_features(role_observation),
+            ),
+            dim=-1,
+        )
+        phase = torch.argmax(obs[:, 77:82], dim=-1)
+        learned_role_residual = torch.tanh(
+            self.phase_network(latent, phase)
+        )
+        physical_residual = role_action_to_physical(
+            learned_role_residual,
+            giver_is_robot_1,
+        )
+        (
+            base_action,
+            _giver_residual_mask,
+            receiver_residual_mask,
+        ) = self.controller(obs)
+        physical_action_mask = receiver_residual_mask
+        physical_mean = (
+            base_action
+            + self.residual_scale
+            * physical_residual
+            * physical_action_mask.to(base_action.dtype)
+        ).clamp(-1.0, 1.0)
+        return self.deterministic_output(physical_mean)
+
+    @torch.jit.export
+    def reset(self) -> None:
+        pass
+
+
+class _EndToEndHandoverOnnxExport(_EndToEndHandoverExport):
+    """ONNX metadata for the deterministic end-to-end policy."""
+
+    is_recurrent: bool = False
+
+    def __init__(
+        self,
+        model: EndToEndHandoverMLPModel,
+        verbose: bool,
+    ) -> None:
+        super().__init__(model)
+        self.verbose = verbose
+        self.input_size = model.obs_dim
+
+    def get_dummy_inputs(self) -> tuple[torch.Tensor]:
+        return (torch.zeros(1, self.input_size),)
+
+    @property
+    def input_names(self) -> list[str]:
+        return ["obs"]
+
+    @property
+    def output_names(self) -> list[str]:
+        return ["actions"]

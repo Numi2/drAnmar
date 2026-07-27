@@ -511,7 +511,7 @@ def _teacher_action(
             receiver_grasp_offset=(
                 receiver_offset[0],
                 receiver_offset[1],
-                -0.0018,
+                -0.003,
             ),
             receiver_roll_offset_rad=math.pi,
             position_scale=position_scale,
@@ -545,6 +545,7 @@ def _handover_teacher_action(
     presentation_fraction_from_giver: float = 0.35,
     presentation_height_in_robot_frame: float = -0.13,
     presentation_ready_tolerance: float = 0.005,
+    presentation_hold_action_limit: float = 0.01,
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_lateral_action_limit: float = 0.06,
     pickup_vertical_action_limit: float = 0.015,
@@ -820,11 +821,20 @@ def _handover_teacher_action(
         )
         < presentation_ready_tolerance
     )
+    if policy_obs.shape[1] >= 107:
+        presentation_stable = policy_obs[:, 103] >= 1.0
+        receiver_retry_active = policy_obs[:, 105] > 0.5
+    else:
+        presentation_stable = presentation_ready
+        receiver_retry_active = torch.zeros_like(
+            presentation_ready
+        )
     receiver_approach_active = (
         (phase == 2)
-        & presentation_ready
+        & presentation_stable
         & giver_bilateral_contact
         & ~receiver_any_contact
+        & ~receiver_retry_active
     )
 
     giver_translation = torch.where(
@@ -842,6 +852,20 @@ def _handover_teacher_action(
             & ~giver_transport_active
         ).unsqueeze(-1),
         giver_contact_recovery,
+        giver_translation,
+    )
+    giver_presentation_hold = giver_carry.clamp(
+        -presentation_hold_action_limit,
+        presentation_hold_action_limit,
+    )
+    giver_translation = torch.where(
+        (
+            (phase == 2)
+            & giver_bilateral_contact
+            & presentation_stable
+            & ~receiver_any_contact
+        ).unsqueeze(-1),
+        giver_presentation_hold,
         giver_translation,
     )
     giver_translation = torch.where(
@@ -886,6 +910,17 @@ def _handover_teacher_action(
         torch.zeros_like(receiver_translation),
         receiver_translation,
     )
+    receiver_retry_translation = torch.zeros_like(
+        receiver_translation
+    )
+    receiver_retry_translation[:, 2] = slow_approach_action_limit
+    receiver_translation = torch.where(
+        (
+            (phase == 2) & receiver_retry_active
+        ).unsqueeze(-1),
+        receiver_retry_translation,
+        receiver_translation,
+    )
     receiver_contact_imbalance = (
         receiver_contacts[:, 1] - receiver_contacts[:, 0]
     )
@@ -897,6 +932,7 @@ def _handover_teacher_action(
             (phase == 2)
             & giver_bilateral_contact
             & receiver_any_contact
+            & ~receiver_retry_active
         ),
         receiver_contact_centering,
         torch.zeros_like(receiver_contact_centering),
@@ -916,6 +952,7 @@ def _handover_teacher_action(
     )
     receiver_closing = (
         ((phase == 2) | (phase == 3))
+        & ~receiver_retry_active
         & (
             (receiver_distance < receiver_close_distance)
             | torch.any(
@@ -1023,6 +1060,8 @@ def _handover_teacher_action(
 
 
 def _pretraining_algorithm(task: str) -> str:
+    if task.endswith("-IK-Rel-Structured-v0"):
+        return "physics_structured_phase_residual_dagger_distillation"
     if "Handover-Needle-Dual-PSM-IK-Rel" in task:
         return "exact_closest_arm_handover_base_plus_bounded_residual"
     if "Lift-" in task:
@@ -1031,16 +1070,27 @@ def _pretraining_algorithm(task: str) -> str:
 
 
 def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
-    """Initialize and validate a task-declared analytic-base residual actor."""
+    """Distill a declared teacher, then validate the resulting policy."""
     if args.dagger_warmup_updates < 0:
         return _fail("DAgger warm-up updates must be non-negative")
     if not 0.0 <= args.dagger_min_teacher_fraction <= 1.0:
         return _fail(
             "DAgger minimum teacher fraction must be between 0 and 1"
         )
+    if args.e2e_replay_capacity_per_phase <= 0:
+        return _fail("end-to-end replay capacity must be positive")
+    if args.e2e_replay_batch_size <= 0:
+        return _fail("end-to-end replay batch size must be positive")
+    if args.e2e_samples_per_phase_step <= 0:
+        return _fail("end-to-end phase samples per step must be positive")
+    if args.e2e_student_segment_steps <= 0:
+        return _fail("end-to-end student segment must be positive")
+    if args.e2e_teacher_recovery_steps <= 0:
+        return _fail("end-to-end teacher recovery must be positive")
     import gymnasium as gym
     import torch
     import torch.nn.functional as functional
+    from tensordict import TensorDict
     from orbit.surgical.tasks.surgical.lift.grasp_frames import (
         BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_M,
         BLOCK_CONTACT_CALIBRATED_GRASP_OFFSET_SOURCE,
@@ -1077,12 +1127,187 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     )
 
     obs = env.get_observations().to(agent_cfg.device)
+    is_end_to_end_handover = args.task.endswith(
+        "-IK-Rel-Structured-v0"
+    )
+
+    class PhaseBalancedReplay:
+        """Bounded CPU replay with equal sampling across observed task phases."""
+
+        def __init__(
+            self,
+            observation_dim: int,
+            action_dim: int,
+            capacity_per_phase: int,
+            samples_per_phase_step: int,
+        ) -> None:
+            self.capacity = capacity_per_phase
+            self.samples_per_phase_step = samples_per_phase_step
+            self.observations = torch.empty(
+                (5, capacity_per_phase, observation_dim),
+                dtype=torch.float32,
+            )
+            self.actions = torch.empty(
+                (5, capacity_per_phase, action_dim),
+                dtype=torch.float32,
+            )
+            self.counts = [0] * 5
+            self.positions = [0] * 5
+
+        def add(
+            self,
+            policy_observation: torch.Tensor,
+            teacher_action: torch.Tensor,
+        ) -> None:
+            phase = torch.argmax(
+                policy_observation[:, 77:82],
+                dim=-1,
+            )
+            for phase_index in range(5):
+                indices = torch.nonzero(
+                    phase == phase_index,
+                    as_tuple=False,
+                ).flatten()
+                if indices.numel() == 0:
+                    continue
+                if indices.numel() > self.samples_per_phase_step:
+                    selected = torch.randperm(
+                        indices.numel(),
+                        device=indices.device,
+                    )[: self.samples_per_phase_step]
+                    indices = indices[selected]
+                phase_observations = (
+                    policy_observation[indices].detach().cpu()
+                )
+                phase_actions = teacher_action[indices].detach().cpu()
+                count = phase_observations.shape[0]
+                destination = (
+                    torch.arange(count) + self.positions[phase_index]
+                ) % self.capacity
+                self.observations[
+                    phase_index, destination
+                ] = phase_observations
+                self.actions[phase_index, destination] = phase_actions
+                self.positions[phase_index] = int(
+                    (self.positions[phase_index] + count) % self.capacity
+                )
+                self.counts[phase_index] = min(
+                    self.capacity,
+                    self.counts[phase_index] + count,
+                )
+
+        @property
+        def size(self) -> int:
+            return sum(self.counts)
+
+        def sample(
+            self,
+            batch_size: int,
+            device: str,
+        ) -> tuple[TensorDict, torch.Tensor]:
+            available_phases = [
+                index for index, count in enumerate(self.counts) if count
+            ]
+            if not available_phases:
+                raise RuntimeError("phase replay is empty")
+            samples_per_phase = max(
+                1,
+                batch_size // len(available_phases),
+            )
+            observation_batches = []
+            action_batches = []
+            for phase_index in available_phases:
+                sample_indices = torch.randint(
+                    self.counts[phase_index],
+                    (samples_per_phase,),
+                )
+                observation_batches.append(
+                    self.observations[
+                        phase_index, sample_indices
+                    ]
+                )
+                action_batches.append(
+                    self.actions[phase_index, sample_indices]
+                )
+            replay_observation = torch.cat(
+                observation_batches,
+                dim=0,
+            ).to(device)
+            replay_action = torch.cat(
+                action_batches,
+                dim=0,
+            ).to(device)
+            shuffle = torch.randperm(
+                replay_observation.shape[0],
+                device=device,
+            )
+            replay_observation = replay_observation[shuffle]
+            replay_action = replay_action[shuffle]
+            return (
+                TensorDict(
+                    {"policy": replay_observation},
+                    batch_size=[replay_observation.shape[0]],
+                ),
+                replay_action,
+            )
+
+    replay = (
+        PhaseBalancedReplay(
+            observation_dim=obs["policy"].shape[-1],
+            action_dim=env.unwrapped.action_manager.total_action_dim,
+            capacity_per_phase=args.e2e_replay_capacity_per_phase,
+            samples_per_phase_step=args.e2e_samples_per_phase_step,
+        )
+        if is_end_to_end_handover
+        else None
+    )
+
+    def imitation_loss(
+        predicted: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
+        if not is_end_to_end_handover:
+            return functional.smooth_l1_loss(predicted, target)
+        per_channel = functional.smooth_l1_loss(
+            predicted,
+            target,
+            reduction="none",
+            beta=0.01,
+        )
+        channel_weights = predicted.new_tensor(
+            [
+                4.0,
+                4.0,
+                4.0,
+                2.0,
+                2.0,
+                2.0,
+                6.0,
+                4.0,
+                4.0,
+                4.0,
+                2.0,
+                2.0,
+                2.0,
+                6.0,
+            ]
+        )
+        active_weights = 1.0 + 2.0 * (
+            target.abs() > 0.02
+        ).to(predicted.dtype)
+        weighted = per_channel * channel_weights * active_weights
+        return weighted.sum() / (
+            channel_weights.sum() * predicted.shape[0]
+        )
+
     losses: list[float] = []
     teacher_successes = 0
     teacher_completed = 0
     teacher_controlled_frames = 0
     student_controlled_frames = 0
     dagger_teacher_fractions: list[float] = []
+    contiguous_student_steps = 0
+    contiguous_teacher_recovery_steps = 0
     started = time.perf_counter()
     try:
         for update_index in range(args.updates):
@@ -1094,7 +1319,24 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             )
             policy.update_normalization(obs)
             predicted_actions = policy(obs)
-            loss = functional.smooth_l1_loss(predicted_actions, teacher_actions)
+            if replay is not None:
+                replay.add(obs["policy"], teacher_actions)
+            if replay is not None and replay.size >= args.e2e_replay_batch_size:
+                replay_obs, replay_actions = replay.sample(
+                    args.e2e_replay_batch_size,
+                    agent_cfg.device,
+                )
+                policy.update_normalization(replay_obs)
+                replay_predictions = policy(replay_obs)
+                loss = imitation_loss(
+                    replay_predictions,
+                    replay_actions,
+                )
+            else:
+                loss = imitation_loss(
+                    predicted_actions,
+                    teacher_actions,
+                )
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.0)
@@ -1104,7 +1346,34 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             with torch.no_grad():
                 rollout_actions = teacher_actions
                 teacher_fraction = 1.0
-                if "Handover-Needle-Dual-PSM-IK-Rel" in args.task:
+                if is_end_to_end_handover:
+                    warmup_updates = min(
+                        args.dagger_warmup_updates,
+                        args.updates,
+                    )
+                    if update_index >= warmup_updates:
+                        cycle_index = (
+                            update_index - warmup_updates
+                        ) % (
+                            args.e2e_student_segment_steps
+                            + args.e2e_teacher_recovery_steps
+                        )
+                        student_control = (
+                            cycle_index
+                            < args.e2e_student_segment_steps
+                        )
+                        if student_control:
+                            rollout_actions = predicted_actions.detach()
+                            teacher_fraction = 0.0
+                            contiguous_student_steps += 1
+                        else:
+                            contiguous_teacher_recovery_steps += 1
+                    if teacher_fraction == 1.0:
+                        teacher_controlled_frames += env.unwrapped.num_envs
+                    else:
+                        student_controlled_frames += env.unwrapped.num_envs
+                    dagger_teacher_fractions.append(teacher_fraction)
+                elif "Handover-Needle-Dual-PSM-IK-Rel" in args.task:
                     warmup_updates = min(
                         args.dagger_warmup_updates,
                         args.updates,
@@ -1151,6 +1420,30 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             obs = obs.to(agent_cfg.device)
             teacher_successes += int(successes.sum().item())
             teacher_completed += int(dones.sum().item())
+
+        consolidation_losses: list[float] = []
+        if replay is not None:
+            for _ in range(args.e2e_consolidation_updates):
+                replay_obs, replay_actions = replay.sample(
+                    args.e2e_replay_batch_size,
+                    agent_cfg.device,
+                )
+                policy.update_normalization(replay_obs)
+                replay_predictions = policy(replay_obs)
+                consolidation_loss = imitation_loss(
+                    replay_predictions,
+                    replay_actions,
+                )
+                optimizer.zero_grad(set_to_none=True)
+                consolidation_loss.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    policy.parameters(),
+                    max_norm=1.0,
+                )
+                optimizer.step()
+                value = float(consolidation_loss.detach().item())
+                consolidation_losses.append(value)
+                losses.append(value)
 
         policy.eval()
         obs, _ = env.reset()
@@ -1345,7 +1638,11 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             },
             "teacher_rollout": {
                 "control_schedule": (
-                    "teacher_warmup_then_linear_dagger_mixture"
+                    (
+                        "teacher_warmup_then_contiguous_student_dagger_segments"
+                        if is_end_to_end_handover
+                        else "teacher_warmup_then_linear_dagger_mixture"
+                    )
                     if dagger_teacher_fractions
                     else "teacher_only"
                 ),
@@ -1369,6 +1666,53 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                     else None
                 ),
             },
+            "end_to_end_replay": (
+                {
+                    "capacity_per_phase": replay.capacity,
+                    "stored_samples_per_phase": replay.counts,
+                    "balanced_batch_size": args.e2e_replay_batch_size,
+                    "samples_per_phase_per_step": (
+                        args.e2e_samples_per_phase_step
+                    ),
+                    "loss_beta": 0.01,
+                    "channel_weighting": (
+                        "translation_4_orientation_2_jaw_6_"
+                        "active_teacher_channels_x3"
+                    ),
+                    "student_segment_steps": (
+                        args.e2e_student_segment_steps
+                    ),
+                    "teacher_recovery_steps": (
+                        args.e2e_teacher_recovery_steps
+                    ),
+                    "contiguous_student_segments_total_steps": (
+                        contiguous_student_steps
+                    ),
+                    "contiguous_teacher_recovery_total_steps": (
+                        contiguous_teacher_recovery_steps
+                    ),
+                    "consolidation_updates": (
+                        args.e2e_consolidation_updates
+                    ),
+                    "consolidation_loss_initial": (
+                        consolidation_losses[0]
+                        if consolidation_losses
+                        else None
+                    ),
+                    "consolidation_loss_final": (
+                        consolidation_losses[-1]
+                        if consolidation_losses
+                        else None
+                    ),
+                    "consolidation_loss_minimum": (
+                        min(consolidation_losses)
+                        if consolidation_losses
+                        else None
+                    ),
+                }
+                if replay is not None
+                else None
+            ),
             "deterministic_validation": {
                 "frames_per_env": args.validation_frames,
                 "completed_episodes": validation_completed,
@@ -1846,7 +2190,7 @@ def _handover_controller_sweep(
     giver_transport_normalized_contact_thresholds = [0.002] * len(values)
     giver_contact_recovery_action_limits = [1.0] * len(values)
     fixed_receiver_arc_fraction = 0.65
-    selected_receiver_z_offset = -0.0018
+    selected_receiver_z_offset = -0.003
     if parameter == "giver_arc_fraction":
         if any(not 0.0 <= value <= 1.0 for value in values):
             return _fail("giver arc fractions must be between 0.0 and 1.0")
@@ -2974,6 +3318,14 @@ def _handover_controller_sweep(
                 "receiver_waits_for_presentation": True,
                 "receiver_stops_approach_on_first_contact": True,
                 "giver_release_waits_for_current_receiver_bilateral": True,
+                "giver_release_uses_time_only_settle": False,
+                "giver_release_confirmation_steps": int(
+                    getattr(
+                        env.unwrapped.cfg,
+                        "dr_anmar_handover_contract",
+                        {},
+                    ).get("giver_release_confirmation_steps", 0)
+                ),
                 "giver_holds_position_until_release": True,
                 "receiver_holds_position_after_acquisition": True,
                 "receiver_orientation_frozen_after_acquisition": True,
@@ -3847,8 +4199,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if "Handover-" in args.task:
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+            needle_geometry_grasp_offset_m,
         )
 
+        receiver_grasp_offset = needle_geometry_grasp_offset_m(0.65)
         handover_observation = obs["policy"]
         initial_handover_state = getattr(
             env.unwrapped,
@@ -3992,6 +4346,79 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "ever_presentation_ready": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_presentation_stable": torch.zeros_like(
+                first_unresolved
+            ),
+            "maximum_presentation_stable_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "minimum_presentation_error_m": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.inf,
+                device=env.unwrapped.device,
+            ),
+            "ever_receiver_any_contact": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_receiver_jaw_1_contact": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_receiver_jaw_2_contact": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_receiver_windowed_bilateral_contact": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_receiver_capture_follows": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_receiver_close_command": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_receiver_capture_motion_inside": torch.zeros_like(
+                first_unresolved
+            ),
+            "maximum_receiver_jaw_1_contact_n": torch.zeros(
+                env.unwrapped.num_envs,
+                device=env.unwrapped.device,
+            ),
+            "maximum_receiver_jaw_2_contact_n": torch.zeros(
+                env.unwrapped.num_envs,
+                device=env.unwrapped.device,
+            ),
+            "minimum_receiver_grasp_error_m": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.inf,
+                device=env.unwrapped.device,
+            ),
+            "maximum_receiver_capture_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_giver_release_confirmation_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "ever_giver_release_authorized": torch.zeros_like(
+                first_unresolved
+            ),
+            "maximum_receiver_retries": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_receiver_release_aborts": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
             "terminal_pickup_attempts": torch.zeros(
                 env.unwrapped.num_envs,
                 dtype=torch.int64,
@@ -4076,12 +4503,158 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         ],
                         current_handover_state["pickup_recovery_count"],
                     )
+                    if "presentation_ready_now" in current_handover_state:
+                        first_handover_history[
+                            "ever_presentation_ready"
+                        ] |= (
+                            was_first_unresolved
+                            & current_handover_state[
+                                "presentation_ready_now"
+                            ]
+                        )
+                        first_handover_history[
+                            "ever_presentation_stable"
+                        ] |= (
+                            was_first_unresolved
+                            & current_handover_state[
+                                "presentation_stable"
+                            ]
+                        )
+                        first_handover_history[
+                            "maximum_presentation_stable_steps"
+                        ] = torch.maximum(
+                            first_handover_history[
+                                "maximum_presentation_stable_steps"
+                            ],
+                            current_handover_state[
+                                "presentation_stable_consecutive"
+                            ],
+                        )
+                        first_handover_history[
+                            "minimum_presentation_error_m"
+                        ] = torch.where(
+                            was_first_unresolved,
+                            torch.minimum(
+                                first_handover_history[
+                                    "minimum_presentation_error_m"
+                                ],
+                                current_handover_state[
+                                    "presentation_error"
+                                ],
+                            ),
+                            first_handover_history[
+                                "minimum_presentation_error_m"
+                            ],
+                        )
+                        first_handover_history[
+                            "ever_receiver_any_contact"
+                        ] |= (
+                            was_first_unresolved
+                            & current_handover_state[
+                                "receiver_any_contact_now"
+                            ]
+                        )
+                        first_handover_history[
+                            "ever_receiver_windowed_bilateral_contact"
+                        ] |= (
+                            was_first_unresolved
+                            & current_handover_state[
+                                "receiver_contact"
+                            ]
+                        )
+                        first_handover_history[
+                            "ever_receiver_capture_follows"
+                        ] |= (
+                            was_first_unresolved
+                            & current_handover_state[
+                                "receiver_capture_follows"
+                            ]
+                        )
+                        receiver_close_action = torch.where(
+                            current_handover_state[
+                                "giver_is_robot_1"
+                            ],
+                            env.unwrapped.action_manager.action[:, 13],
+                            env.unwrapped.action_manager.action[:, 6],
+                        )
+                        first_handover_history[
+                            "ever_receiver_close_command"
+                        ] |= (
+                            was_first_unresolved
+                            & (receiver_close_action < 0.0)
+                        )
+                        first_handover_history[
+                            "ever_receiver_capture_motion_inside"
+                        ] |= (
+                            was_first_unresolved
+                            & (
+                                current_handover_state["motion"][:, 0]
+                                <= 0.05
+                            )
+                            & (
+                                current_handover_state["motion"][:, 1]
+                                <= 5.0
+                            )
+                        )
+                        first_handover_history[
+                            "maximum_receiver_capture_steps"
+                        ] = torch.maximum(
+                            first_handover_history[
+                                "maximum_receiver_capture_steps"
+                            ],
+                            current_handover_state[
+                                "receiver_capture_consecutive"
+                            ],
+                        )
+                        first_handover_history[
+                            "maximum_giver_release_confirmation_steps"
+                        ] = torch.maximum(
+                            first_handover_history[
+                                "maximum_giver_release_confirmation_steps"
+                            ],
+                            current_handover_state[
+                                "giver_release_confirmation_consecutive"
+                            ],
+                        )
+                        first_handover_history[
+                            "ever_giver_release_authorized"
+                        ] |= (
+                            was_first_unresolved
+                            & current_handover_state[
+                                "giver_release_authorized"
+                            ]
+                        )
+                        first_handover_history[
+                            "maximum_receiver_retries"
+                        ] = torch.maximum(
+                            first_handover_history[
+                                "maximum_receiver_retries"
+                            ],
+                            current_handover_state[
+                                "receiver_retry_count"
+                            ],
+                        )
+                        first_handover_history[
+                            "maximum_receiver_release_aborts"
+                        ] = torch.maximum(
+                            first_handover_history[
+                                "maximum_receiver_release_aborts"
+                            ],
+                            current_handover_state[
+                                "receiver_release_abort_count"
+                            ],
+                        )
                     handover_observation = obs["policy"]
                     giver_is_robot_1 = handover_observation[:, 82] > 0.5
                     giver_contacts = torch.where(
                         giver_is_robot_1.unsqueeze(-1),
                         handover_observation[:, 66:68],
                         handover_observation[:, 68:70],
+                    )
+                    receiver_contacts = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 68:70],
+                        handover_observation[:, 66:68],
                     )
                     giver_bilateral_contact = torch.all(
                         giver_contacts > 0.002,
@@ -4092,6 +4665,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         handover_observation[:, 46:49],
                         handover_observation[:, 53:56],
                     )
+                    object_in_receiver = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 53:56],
+                        handover_observation[:, 46:49],
+                    )
                     object_orientation_in_giver = torch.where(
                         giver_is_robot_1.unsqueeze(-1),
                         handover_observation[:, 49:53],
@@ -4101,6 +4679,74 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         giver_is_robot_1.unsqueeze(-1),
                         handover_observation[:, 32:35],
                         handover_observation[:, 39:42],
+                    )
+                    receiver_ee = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 39:42],
+                        handover_observation[:, 32:35],
+                    )
+                    receiver_grasp_position = object_in_receiver.clone()
+                    receiver_grasp_position[:, 0] += receiver_grasp_offset[0]
+                    receiver_grasp_position[:, 1] += receiver_grasp_offset[1]
+                    receiver_grasp_position[:, 2] += -0.003
+                    receiver_grasp_error = torch.linalg.vector_norm(
+                        receiver_grasp_position - receiver_ee,
+                        dim=-1,
+                    )
+                    first_handover_history[
+                        "minimum_receiver_grasp_error_m"
+                    ] = torch.where(
+                        was_first_unresolved,
+                        torch.minimum(
+                            first_handover_history[
+                                "minimum_receiver_grasp_error_m"
+                            ],
+                            receiver_grasp_error,
+                        ),
+                        first_handover_history[
+                            "minimum_receiver_grasp_error_m"
+                        ],
+                    )
+                    receiver_jaw_contact = receiver_contacts > 0.002
+                    first_handover_history[
+                        "ever_receiver_jaw_1_contact"
+                    ] |= (
+                        was_first_unresolved
+                        & receiver_jaw_contact[:, 0]
+                    )
+                    first_handover_history[
+                        "ever_receiver_jaw_2_contact"
+                    ] |= (
+                        was_first_unresolved
+                        & receiver_jaw_contact[:, 1]
+                    )
+                    first_handover_history[
+                        "maximum_receiver_jaw_1_contact_n"
+                    ] = torch.where(
+                        was_first_unresolved,
+                        torch.maximum(
+                            first_handover_history[
+                                "maximum_receiver_jaw_1_contact_n"
+                            ],
+                            receiver_contacts[:, 0] / 0.2,
+                        ),
+                        first_handover_history[
+                            "maximum_receiver_jaw_1_contact_n"
+                        ],
+                    )
+                    first_handover_history[
+                        "maximum_receiver_jaw_2_contact_n"
+                    ] = torch.where(
+                        was_first_unresolved,
+                        torch.maximum(
+                            first_handover_history[
+                                "maximum_receiver_jaw_2_contact_n"
+                            ],
+                            receiver_contacts[:, 1] / 0.2,
+                        ),
+                        first_handover_history[
+                            "maximum_receiver_jaw_2_contact_n"
+                        ],
                     )
                     giver_orientation = torch.where(
                         giver_is_robot_1.unsqueeze(-1),
@@ -5259,6 +5905,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                 }
 
+            def handover_scalar_quantiles(
+                values: torch.Tensor,
+            ) -> dict | None:
+                if not bool(values.numel()):
+                    return None
+                quantiles = torch.quantile(
+                    values.float(),
+                    torch.tensor(
+                        [0.1, 0.5, 0.9],
+                        device=values.device,
+                    ),
+                )
+                return {
+                    "p10": float(quantiles[0].item()),
+                    "p50": float(quantiles[1].item()),
+                    "p90": float(quantiles[2].item()),
+                }
+
             first_episode_handover_diagnostics = {
                 "pickup_attempt_outcomes": {
                     "maximum_attempts": 3,
@@ -5359,6 +6023,161 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 "ever_midair_giver_contact_loss"
                             ]
                         )
+                        .sum()
+                        .item()
+                    ),
+                },
+                "structured_transfer_diagnostics": {
+                    "environments_reaching_instant_presentation": int(
+                        first_handover_history[
+                            "ever_presentation_ready"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "environments_reaching_stable_presentation": int(
+                        first_handover_history[
+                            "ever_presentation_stable"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "maximum_presentation_stable_steps": int(
+                        first_handover_history[
+                            "maximum_presentation_stable_steps"
+                        ][first_completed]
+                        .max()
+                        .item()
+                    )
+                    if bool(first_completed.any().item())
+                    else 0,
+                    "minimum_presentation_error_m": float(
+                        first_handover_history[
+                            "minimum_presentation_error_m"
+                        ][first_completed]
+                        .min()
+                        .item()
+                    )
+                    if bool(first_completed.any().item())
+                    else None,
+                    "environments_with_receiver_contact": int(
+                        first_handover_history[
+                            "ever_receiver_any_contact"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "environments_with_receiver_jaw_1_contact": int(
+                        first_handover_history[
+                            "ever_receiver_jaw_1_contact"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "environments_with_receiver_jaw_2_contact": int(
+                        first_handover_history[
+                            "ever_receiver_jaw_2_contact"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "environments_with_windowed_bilateral_contact": int(
+                        first_handover_history[
+                            "ever_receiver_windowed_bilateral_contact"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "environments_with_capture_follow": int(
+                        first_handover_history[
+                            "ever_receiver_capture_follows"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "environments_with_receiver_close_command": int(
+                        first_handover_history[
+                            "ever_receiver_close_command"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "environments_with_capture_motion_inside": int(
+                        first_handover_history[
+                            "ever_receiver_capture_motion_inside"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "maximum_receiver_jaw_1_contact_n": (
+                        handover_scalar_quantiles(
+                            first_handover_history[
+                                "maximum_receiver_jaw_1_contact_n"
+                            ][first_completed]
+                        )
+                    ),
+                    "maximum_receiver_jaw_2_contact_n": (
+                        handover_scalar_quantiles(
+                            first_handover_history[
+                                "maximum_receiver_jaw_2_contact_n"
+                            ][first_completed]
+                        )
+                    ),
+                    "minimum_receiver_grasp_error_m": (
+                        handover_scalar_quantiles(
+                            first_handover_history[
+                                "minimum_receiver_grasp_error_m"
+                            ][first_completed]
+                        )
+                    ),
+                    "maximum_receiver_capture_steps": int(
+                        first_handover_history[
+                            "maximum_receiver_capture_steps"
+                        ][first_completed]
+                        .max()
+                        .item()
+                    )
+                    if bool(first_completed.any().item())
+                    else 0,
+                    "maximum_giver_release_confirmation_steps": int(
+                        first_handover_history[
+                            "maximum_giver_release_confirmation_steps"
+                        ][first_completed]
+                        .max()
+                        .item()
+                    )
+                    if bool(first_completed.any().item())
+                    else 0,
+                    "environments_with_giver_release_authorized": int(
+                        first_handover_history[
+                            "ever_giver_release_authorized"
+                        ][first_completed]
+                        .sum()
+                        .item()
+                    ),
+                    "environments_with_receiver_retry": int(
+                        (
+                            first_handover_history[
+                                "maximum_receiver_retries"
+                            ][first_completed]
+                            > 0
+                        )
+                        .sum()
+                        .item()
+                    ),
+                    "maximum_receiver_retries": int(
+                        first_handover_history[
+                            "maximum_receiver_retries"
+                        ][first_completed]
+                        .max()
+                        .item()
+                    )
+                    if bool(first_completed.any().item())
+                    else 0,
+                    "receiver_release_aborts": int(
+                        first_handover_history[
+                            "maximum_receiver_release_aborts"
+                        ][first_completed]
                         .sum()
                         .item()
                     ),
@@ -5669,6 +6488,36 @@ def _parser() -> argparse.ArgumentParser:
         "--dagger_min_teacher_fraction",
         type=float,
         default=0.1,
+    )
+    pretrain.add_argument(
+        "--e2e_replay_capacity_per_phase",
+        type=int,
+        default=65_536,
+    )
+    pretrain.add_argument(
+        "--e2e_replay_batch_size",
+        type=int,
+        default=4096,
+    )
+    pretrain.add_argument(
+        "--e2e_samples_per_phase_step",
+        type=int,
+        default=64,
+    )
+    pretrain.add_argument(
+        "--e2e_student_segment_steps",
+        type=int,
+        default=64,
+    )
+    pretrain.add_argument(
+        "--e2e_teacher_recovery_steps",
+        type=int,
+        default=32,
+    )
+    pretrain.add_argument(
+        "--e2e_consolidation_updates",
+        type=int,
+        default=2000,
     )
     pretrain.add_argument("--seed", type=int, default=17)
     pretrain.add_argument("--output_path", required=True)

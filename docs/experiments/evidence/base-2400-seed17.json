@@ -1,0 +1,146 @@
+{
+  "algorithm": "physics_structured_phase_residual_dagger_distillation",
+  "checkpoint": {
+    "path": "output/dranmar-learning/e2e-structured-base-2400/runs/2026-07-27_14-17-21/model_final.pt",
+    "sha256": "53c5ad215cceae69e38fa9c79cfe14080bc67ddf1c0831e6b5e579222ee6b2ed"
+  },
+  "deterministic_validation": {
+    "completed_episodes": 2400,
+    "frames_per_env": 1000,
+    "pose_diagnostic_trace": [
+      {
+        "arms": {},
+        "frame": 0
+      },
+      {
+        "arms": {},
+        "frame": 1
+      },
+      {
+        "arms": {},
+        "frame": 2
+      },
+      {
+        "arms": {},
+        "frame": 5
+      },
+      {
+        "arms": {},
+        "frame": 10
+      },
+      {
+        "arms": {},
+        "frame": 20
+      },
+      {
+        "arms": {},
+        "frame": 40
+      },
+      {
+        "arms": {},
+        "frame": 80
+      },
+      {
+        "arms": {},
+        "frame": 120
+      },
+      {
+        "arms": {},
+        "frame": 149
+      },
+      {
+        "arms": {},
+        "frame": 150
+      },
+      {
+        "arms": {},
+        "frame": 300
+      },
+      {
+        "arms": {},
+        "frame": 999
+      }
+    ],
+    "pose_diagnostics": {},
+    "success_rate": 0.43083333333333335,
+    "successful_episodes": 1034
+  },
+  "end_to_end_replay": {
+    "balanced_batch_size": 4096,
+    "capacity_per_phase": 65536,
+    "channel_weighting": "translation_4_orientation_2_jaw_6_active_teacher_channels_x3",
+    "consolidation_loss_final": null,
+    "consolidation_loss_initial": null,
+    "consolidation_loss_minimum": null,
+    "consolidation_updates": 0,
+    "contiguous_student_segments_total_steps": 0,
+    "contiguous_teacher_recovery_total_steps": 0,
+    "loss_beta": 0.01,
+    "samples_per_phase_per_step": 64,
+    "stored_samples_per_phase": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "student_segment_steps": 64,
+    "teacher_recovery_steps": 32
+  },
+  "free_gpu_memory_before_launch_mib": 22357,
+  "gpu_peak_memory_bytes": 104858112,
+  "kind": "training",
+  "learning_rate": 0.0003,
+  "loss": {
+    "final": null,
+    "initial": null,
+    "minimum": null
+  },
+  "num_envs": 2400,
+  "process_peak_memory_mib": 34295.6875,
+  "requested_num_envs": 2400,
+  "runtime": {
+    "cuda": {
+      "available": true,
+      "gpu": "NVIDIA GeForce RTX 4090, 580.159.03, 24564",
+      "torch_cuda": "12.8"
+    },
+    "packages": {
+      "isaaclab": "13.2.0",
+      "isaaclab-rl": "0.9.0",
+      "isaacsim": "6.0.1.0",
+      "rsl-rl-lib": "5.4.1",
+      "torch": "2.11.0+cu128"
+    },
+    "source": {
+      "asset_revision": "5a93af673282b2f4b6ea00727bf43963ca45a6d6",
+      "dranmar_revision": "c17d97c6a5e798998321b394ece2fc6642edb53b"
+    }
+  },
+  "schema_version": "dranmar-learning-evidence-1.0",
+  "seed": 17,
+  "simulated_frames": 2400000,
+  "system_memory_available_before_launch_mib": 56751,
+  "system_memory_total_mib": 63439,
+  "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
+  "teacher_action_scales": {
+    "orientation_rad": 0.05,
+    "position_m": 0.01
+  },
+  "teacher_controller": null,
+  "teacher_rollout": {
+    "completed_episodes": 0,
+    "control_schedule": "teacher_only",
+    "student_controlled_frames": 0,
+    "success_rate": null,
+    "successful_episodes": 0,
+    "teacher_controlled_frames": 0,
+    "teacher_fraction_final": 1.0,
+    "teacher_fraction_initial": 1.0
+  },
+  "total_fps": 55463.50531654951,
+  "trusted_requested_num_envs": false,
+  "updates": 0,
+  "wall_time_s": 43.27169706101995,
+  "weight_decay": 1e-06
+}
