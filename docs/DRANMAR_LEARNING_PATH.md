@@ -197,6 +197,13 @@ without reducing final presentation authority. The ramp is stateless, uses
 measured object height, does not alter rewards or success criteria, and is
 recorded in runtime evidence.
 
+The giver aligns its wrist to the identity tool frame before descending from
+the 20 mm pregrasp and may close only within `0.035` rad of that frame.
+Orientation alignment stops on first native contact, preventing the controller
+from twisting an established thin-needle grasp. This pregrasp gate is a motion
+condition only; physical contact, clearance, force, transfer, and retention
+remain the outcome authorities.
+
 Stage 6 no longer starts PPO from a random 14-action policy. The exact
 closest-arm/contact-aware sequence is the deterministic policy base. PPO may
 learn a bounded giver translation correction during pre-contact approach and

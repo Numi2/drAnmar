@@ -806,6 +806,16 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "self.carry_lateral_ramp_height = 0.005" in handover_model_source
     assert "self.giver_lift_on_live_contact = False" in handover_model_source
     assert (
+        "self.giver_pregrasp_orientation_action_limit = 0.6"
+        in handover_model_source
+    )
+    assert (
+        "self.giver_pregrasp_orientation_tolerance = 0.035"
+        in handover_model_source
+    )
+    assert "giver_pregrasp_orientation_ready = (" in handover_model_source
+    assert "& giver_pregrasp_orientation_ready" in handover_model_source
+    assert (
         "carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction"
         in handover_model_source
     )

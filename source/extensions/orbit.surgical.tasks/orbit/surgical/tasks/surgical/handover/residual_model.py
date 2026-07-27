@@ -49,6 +49,8 @@ class HandoverAnalyticController(nn.Module):
         self.pickup_vertical_action_limit = 0.015
         self.carry_vertical_action_limit = 0.015
         self.giver_lift_on_live_contact = False
+        self.giver_pregrasp_orientation_action_limit = 0.6
+        self.giver_pregrasp_orientation_tolerance = 0.035
         self.receiver_orientation_action_limit = 0.6
         self.giver_grasp_x = float(
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
@@ -167,6 +169,29 @@ class HandoverAnalyticController(nn.Module):
             ~giver_is_robot_1,
         )
         phase = torch.argmax(raw[:, 77:82], dim=-1)
+        giver_tool_target_orientation = torch.zeros_like(
+            giver_orientation
+        )
+        giver_tool_target_orientation[:, 3] = 1.0
+        giver_tool_orientation_error = axis_angle_from_quat(
+            quat_mul(
+                giver_tool_target_orientation,
+                quat_conjugate(giver_orientation),
+            )
+        )
+        giver_pregrasp_orientation_action = (
+            giver_tool_orientation_error / self.orientation_scale
+        ).clamp(
+            -self.giver_pregrasp_orientation_action_limit,
+            self.giver_pregrasp_orientation_action_limit,
+        )
+        giver_pregrasp_orientation_ready = (
+            torch.linalg.vector_norm(
+                giver_tool_orientation_error,
+                dim=-1,
+            )
+            < self.giver_pregrasp_orientation_tolerance
+        )
 
         giver_approach, giver_distance = self._approach_action(
             giver_ee,
@@ -174,6 +199,24 @@ class HandoverAnalyticController(nn.Module):
             self.giver_grasp_x,
             self.giver_grasp_y,
             self.giver_grasp_z,
+        )
+        giver_pregrasp_position = object_in_giver.clone()
+        giver_pregrasp_position[:, 0] += self.giver_grasp_x
+        giver_pregrasp_position[:, 1] += self.giver_grasp_y
+        giver_pregrasp_position[:, 2] += (
+            self.giver_grasp_z + self.approach_height
+        )
+        giver_orientation_wait_action = (
+            (giver_pregrasp_position - giver_ee)
+            / self.position_scale
+        ).clamp(-1.0, 1.0)
+        giver_approach = torch.where(
+            (
+                (phase == 0)
+                & ~giver_pregrasp_orientation_ready
+            ).unsqueeze(-1),
+            giver_orientation_wait_action,
+            giver_approach,
         )
         receiver_approach, receiver_distance = (
             self._approach_action(
@@ -348,7 +391,10 @@ class HandoverAnalyticController(nn.Module):
 
         giver_closing = (
             (
-                (giver_distance < self.close_distance)
+                (
+                    (giver_distance < self.close_distance)
+                    & giver_pregrasp_orientation_ready
+                )
                 | giver_any_contact
                 | ((phase >= 1) & (phase <= 2))
             )
@@ -402,6 +448,14 @@ class HandoverAnalyticController(nn.Module):
             giver_transport_active.unsqueeze(-1),
             giver_orientation_action,
             torch.zeros_like(giver_orientation_action),
+        )
+        giver_orientation_action = torch.where(
+            (
+                (phase == 0)
+                & ~giver_any_contact
+            ).unsqueeze(-1),
+            giver_pregrasp_orientation_action,
+            giver_orientation_action,
         )
 
         receiver_roll = torch.zeros_like(giver_orientation)
