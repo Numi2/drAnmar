@@ -545,6 +545,7 @@ def _handover_teacher_action(
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_lateral_action_limit: float = 0.06,
     carry_vertical_action_limit: float = 0.025,
+    giver_transport_min_contact_jaws: int = 2,
 ):
     """Stage a closest-arm pickup and other-arm physical custody transfer."""
     import math
@@ -685,6 +686,10 @@ def _handover_teacher_action(
         giver_contacts > normalized_contact_threshold,
         dim=-1,
     )
+    giver_contact_count = torch.sum(
+        giver_contacts > normalized_contact_threshold,
+        dim=-1,
+    )
     giver_any_contact = torch.any(
         giver_contacts > normalized_contact_threshold,
         dim=-1,
@@ -699,7 +704,8 @@ def _handover_teacher_action(
     )
     giver_carry_mode = (phase >= 1) & (phase <= 2)
     giver_transport_active = (
-        giver_carry_mode & giver_bilateral_contact
+        giver_carry_mode
+        & (giver_contact_count >= giver_transport_min_contact_jaws)
     )
 
     presentation_ready = (
@@ -1640,6 +1646,7 @@ def _handover_controller_sweep(
     carry_vertical_action_limits = [0.025] * len(values)
     receiver_close_distances = [0.001] * len(values)
     receiver_contact_centering_action_limits = [0.0025] * len(values)
+    giver_transport_min_contact_jaws = [2] * len(values)
     fixed_receiver_arc_fraction = 0.65
     selected_receiver_z_offset = -0.0018
     if parameter == "receiver_arc_fraction":
@@ -1753,13 +1760,34 @@ def _handover_controller_sweep(
         ]
         receiver_roll_offsets = [math.pi] * len(values)
         receiver_contact_centering_action_limits = values
+    elif parameter == "giver_transport_min_contact_jaws":
+        if any(value not in {1.0, 2.0} for value in values):
+            return _fail(
+                "giver transport minimum contact jaws must be 1 or 2"
+            )
+        geometry_offset = needle_geometry_grasp_offset_m(
+            fixed_receiver_arc_fraction
+        )
+        receiver_offsets = [
+            (
+                geometry_offset[0],
+                geometry_offset[1],
+                selected_receiver_z_offset,
+            )
+            for _ in values
+        ]
+        receiver_roll_offsets = [math.pi] * len(values)
+        giver_transport_min_contact_jaws = [
+            int(value) for value in values
+        ]
     else:
         return _fail(
             "handover-sweep parameter must be receiver_arc_fraction "
             "receiver_grasp_z_offset, receiver_roll_offset_rad, or "
             "presentation_fraction_from_giver, or "
             "carry_vertical_action_limit, receiver_close_distance, or "
-            "receiver_contact_centering_action_limit"
+            "receiver_contact_centering_action_limit, or "
+            "giver_transport_min_contact_jaws"
         )
 
     env_cfg, _ = _load_configs(args.task, args.num_envs, args.seed)
@@ -2035,6 +2063,9 @@ def _handover_controller_sweep(
                             group_index
                         ]
                     ),
+                    giver_transport_min_contact_jaws=(
+                        giver_transport_min_contact_jaws[group_index]
+                    ),
                 )
                 giver_ee = group_obs["policy"][:, 32:35]
                 giver_grasp = group_obs["policy"][:, 46:49].clone()
@@ -2300,6 +2331,9 @@ def _handover_controller_sweep(
                             group_index
                         ]
                     ),
+                    "giver_transport_min_contact_jaws": (
+                        giver_transport_min_contact_jaws[group_index]
+                    ),
                     "receiver_grasp_offset_m": list(
                         receiver_offsets[group_index]
                     ),
@@ -2482,6 +2516,9 @@ def _handover_controller_sweep(
                     carry_vertical_action_limits
                 ),
                 "giver_carry_starts_after_contact_window": True,
+                "giver_transport_min_contact_jaws": (
+                    giver_transport_min_contact_jaws
+                ),
                 "receiver_close_distances_m": receiver_close_distances,
                 "receiver_contact_centering_action_limits": (
                     receiver_contact_centering_action_limits
