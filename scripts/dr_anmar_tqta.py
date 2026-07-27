@@ -22,7 +22,7 @@ from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "config/dranmar_learning_path.json"
-SCHEMA_VERSION = "dranmar-tqta-1.0"
+SCHEMA_VERSION = "dranmar-tqta-1.1"
 
 
 def _now() -> datetime:
