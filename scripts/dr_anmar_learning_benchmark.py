@@ -673,10 +673,7 @@ def _handover_teacher_action(
         receiver_contacts > normalized_contact_threshold,
         dim=-1,
     )
-    giver_carry_mode = (
-        giver_bilateral_contact
-        | ((phase >= 1) & (phase <= 2))
-    ) & (phase < 3)
+    giver_carry_mode = (phase >= 1) & (phase <= 2)
 
     presentation_ready = (
         torch.linalg.vector_norm(
@@ -2270,7 +2267,7 @@ def _handover_controller_sweep(
                 "minimum_lift_height_in_robot_frame_m": -0.139,
                 "carry_lateral_action_limit": 0.06,
                 "carry_vertical_action_limit": 0.10,
-                "giver_carry_latches_on_current_bilateral_contact": True,
+                "giver_carry_starts_after_contact_window": True,
                 "receiver_close_distance_m": 0.001,
                 "receiver_contact_centering_action_limit": 0.005,
                 "receiver_waits_for_presentation": True,

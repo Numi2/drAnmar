@@ -171,10 +171,10 @@ the shared presentation point. The two PSM roots are 10 cm apart; the current
 seed moves the needle 3.5 cm from the giver toward the receiver, keeping both
 instruments inside comfortable reach. Reaching that authored exchange point
 organizes the demonstration but is not part of the success predicate.
-The giver begins lifting on current native bilateral contact rather than
-waiting for the three-of-five phase window to finish. Its handover carry
-limits remain below the faster Stage 4 limits because the faster profile
-caused release and incidental-contact regressions in the dual-arm scene.
+The giver begins lifting after the three-of-five native contact window
+completes. Its handover carry limits remain below the faster Stage 4 limits
+because both early carry and the faster profile reduced transfer reliability
+in controlled dual-arm comparisons.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter
