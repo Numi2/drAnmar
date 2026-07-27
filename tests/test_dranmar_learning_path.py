@@ -392,6 +392,10 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         manifest["stages"][5]["learning"]["residual_initial_std"]
         == 0.01
     )
+    assert manifest["stages"][5]["learning"]["residual_phases"] == [
+        "giver_transport_before_receiver_contact",
+        "receiver_presentation_ready_approach_before_contact",
+    ]
     assert (
         manifest["stages"][5]["learning"][
             "teacher_success_does_not_override_physical_qualification"
@@ -513,6 +517,15 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "class HandoverResidualMLPModel(MLPModel):" in handover_model_source
     assert "class HandoverAnalyticController(nn.Module):" in handover_model_source
     assert "torch.where(residual_mask, sampled, mean)" in handover_model_source
+    assert (
+        "giver_carry_mode & ~receiver_any_contact"
+        in handover_model_source
+    )
+    assert (
+        "(phase == 2)\n            & presentation_ready\n"
+        in handover_model_source
+    )
+    assert handover_model_source.count("~receiver_any_contact") >= 2
     assert "parameter.requires_grad_(False)" in handover_model_source
     assert "self.residual_scale = residual_scale" in handover_model_source
     assert "def handover_residual_actor(" in learning_cfg_source
@@ -527,6 +540,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "handover-sweep)" in launcher_source
     assert "DR_ANMAR_HANDOVER_SWEEP_PARAMETER" in launcher_source
     assert "DR_ANMAR_INIT_CHECKPOINT" in launcher_source
+    assert "DR_ANMAR_SUCCESS_THRESHOLD" in launcher_source
     assert launcher_source.count('--values="${values}"') == 2
     assert "record)" in launcher_source
     assert "def _controller_sweep(" in benchmark_source
@@ -534,7 +548,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"receiver_retention_failure_causes"' in benchmark_source
     assert "def _handover_teacher_action(" in benchmark_source
     assert (
-        '"closest_arm_handover_teacher_scheduled_dagger"'
+        '"exact_closest_arm_handover_base_plus_bounded_residual"'
         in benchmark_source
     )
     assert "teacher_warmup_then_linear_dagger_mixture" in benchmark_source

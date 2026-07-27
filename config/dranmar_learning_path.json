@@ -231,15 +231,15 @@
         "residual_action_limit": 0.03,
         "residual_initial_std": 0.01,
         "residual_phases": [
-          "giver_transport",
-          "receiver_acquisition"
+          "giver_transport_before_receiver_contact",
+          "receiver_presentation_ready_approach_before_contact"
         ],
         "analytic_only_controls": [
           "closest_arm_role_selection",
           "pickup_and_presentation_sequence",
           "wrist_orientation",
           "both_grippers",
-          "release_and_retreat"
+          "post_contact_hold_release_and_retreat"
         ],
         "teacher_success_does_not_override_physical_qualification": true
       },

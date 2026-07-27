@@ -191,7 +191,7 @@ case "${command}" in
             "${4:-1200}" \
             "${5:-${DR_ANMAR_LEARNING_OUTPUT}/train}" \
             --check_success \
-            --success_threshold 0.95 \
+            --success_threshold "${DR_ANMAR_SUCCESS_THRESHOLD:-0.95}" \
             --success_window 10 \
             "${checkpoint_args[@]}"
         ;;

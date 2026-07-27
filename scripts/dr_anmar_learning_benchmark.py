@@ -886,7 +886,7 @@ def _handover_teacher_action(
 
 def _pretraining_algorithm(task: str) -> str:
     if "Handover-Needle-Dual-PSM-IK-Rel" in task:
-        return "closest_arm_handover_teacher_scheduled_dagger"
+        return "exact_closest_arm_handover_base_plus_bounded_residual"
     if "Lift-" in task:
         return "analytic_grasp_lift_base_plus_learned_residual"
     return "analytic_relative_ik_base_plus_learned_residual"
