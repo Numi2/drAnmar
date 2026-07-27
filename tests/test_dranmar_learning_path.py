@@ -515,8 +515,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "giver_carry_mode = (phase >= 1) & (phase <= 2)" in benchmark_source
     assert "presentation_fraction_from_giver: float = 0.35" in benchmark_source
     assert "presentation_height_in_robot_frame: float = -0.13" in benchmark_source
-    assert "presentation_ready_tolerance: float = 0.015" in benchmark_source
-    assert '"presentation_ready_tolerance_m": 0.015' in benchmark_source
+    assert "presentation_ready_tolerance: float = 0.005" in benchmark_source
+    assert '"presentation_ready_tolerance_m": 0.005' in benchmark_source
     assert "carry_lateral_action_limit: float = 0.06" in benchmark_source
     assert "carry_vertical_action_limit: float = 0.10" in benchmark_source
     assert (
