@@ -765,6 +765,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in benchmark_source
     )
     assert (
+        'play.add_argument("--giver_transport_orientation_action_limit", type=float)'
+        in benchmark_source
+    )
+    assert (
         'action=argparse.BooleanOptionalAction'
         in benchmark_source
     )
@@ -788,6 +792,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"policy_giver_close_distance_m"' in benchmark_source
     assert '"policy_giver_lift_contact_force_threshold_n"' in benchmark_source
     assert '"policy_giver_pre_lift_min_contact_jaws"' in benchmark_source
+    assert (
+        '"policy_giver_transport_orientation_action_limit"'
+        in benchmark_source
+    )
     assert '"policy_giver_lift_on_live_contact"' in benchmark_source
     assert 'parameter_group["lr"] = args.learning_rate' in benchmark_source
     assert (
@@ -880,6 +888,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in handover_model_source
     )
     assert "self.giver_pre_lift_min_contact_jaws = 2" in handover_model_source
+    assert (
+        "self.giver_transport_orientation_action_limit = 0.035"
+        in handover_model_source
+    )
     assert (
         "self.giver_pregrasp_orientation_action_limit = 0.6"
         in handover_model_source

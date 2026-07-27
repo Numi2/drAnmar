@@ -56,6 +56,7 @@ class HandoverAnalyticController(nn.Module):
         self.giver_lift_on_live_contact = True
         self.giver_pregrasp_orientation_action_limit = 0.6
         self.giver_pregrasp_orientation_tolerance = 0.035
+        self.giver_transport_orientation_action_limit = 0.035
         self.receiver_orientation_action_limit = 0.6
         self.giver_grasp_x = float(
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
@@ -486,7 +487,10 @@ class HandoverAnalyticController(nn.Module):
                 - 0.001 * giver_object_angular_velocity
             )
             / self.orientation_scale
-        ).clamp(-0.035, 0.035)
+        ).clamp(
+            -self.giver_transport_orientation_action_limit,
+            self.giver_transport_orientation_action_limit,
+        )
         giver_orientation_action = torch.where(
             giver_transport_active.unsqueeze(-1),
             giver_orientation_action,

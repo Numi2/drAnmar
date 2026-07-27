@@ -290,6 +290,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_GIVER_PRE_LIFT_MIN_CONTACT_JAWS}"
             )
         fi
+        giver_transport_orientation_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_GIVER_TRANSPORT_ORIENTATION_ACTION_LIMIT:-}" ]]; then
+            giver_transport_orientation_action_limit_args=(
+                --giver_transport_orientation_action_limit
+                "${DR_ANMAR_POLICY_GIVER_TRANSPORT_ORIENTATION_ACTION_LIMIT}"
+            )
+        fi
         giver_lift_on_live_contact_args=()
         if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
             case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
@@ -319,6 +326,7 @@ case "${command}" in
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \
             "${giver_pre_lift_min_contact_jaws_args[@]}" \
+            "${giver_transport_orientation_action_limit_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
         ;;
     record)
@@ -396,6 +404,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_GIVER_PRE_LIFT_MIN_CONTACT_JAWS}"
             )
         fi
+        giver_transport_orientation_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_GIVER_TRANSPORT_ORIENTATION_ACTION_LIMIT:-}" ]]; then
+            giver_transport_orientation_action_limit_args=(
+                --giver_transport_orientation_action_limit
+                "${DR_ANMAR_POLICY_GIVER_TRANSPORT_ORIENTATION_ACTION_LIMIT}"
+            )
+        fi
         giver_lift_on_live_contact_args=()
         if [[ -n "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT:-}" ]]; then
             case "${DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT}" in
@@ -430,6 +445,7 @@ case "${command}" in
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \
             "${giver_pre_lift_min_contact_jaws_args[@]}" \
+            "${giver_transport_orientation_action_limit_args[@]}" \
             "${giver_lift_on_live_contact_args[@]}"
         ;;
     tqta-start)
