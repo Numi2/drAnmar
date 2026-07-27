@@ -393,7 +393,6 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         == 0.01
     )
     assert manifest["stages"][5]["learning"]["residual_phases"] == [
-        "giver_transport_before_receiver_contact",
         "receiver_presentation_ready_approach_before_contact",
     ]
     assert (
@@ -518,14 +517,14 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "class HandoverAnalyticController(nn.Module):" in handover_model_source
     assert "torch.where(residual_mask, sampled, mean)" in handover_model_source
     assert (
-        "giver_carry_mode & ~receiver_any_contact"
-        in handover_model_source
-    )
-    assert (
         "(phase == 2)\n            & presentation_ready\n"
         in handover_model_source
     )
-    assert handover_model_source.count("~receiver_any_contact") >= 2
+    assert (
+        "giver_residual = torch.zeros_like(giver_action)"
+        in handover_model_source
+    )
+    assert handover_model_source.count("~receiver_any_contact") >= 1
     assert ") > 0.5" in handover_model_source
     assert "parameter.requires_grad_(False)" in handover_model_source
     assert "self.residual_scale = residual_scale" in handover_model_source

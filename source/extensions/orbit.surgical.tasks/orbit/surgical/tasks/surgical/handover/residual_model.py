@@ -412,8 +412,6 @@ class HandoverAnalyticController(nn.Module):
         ).clamp(-1.0, 1.0)
 
         giver_residual = torch.zeros_like(giver_action)
-        giver_residual_enabled = giver_carry_mode & ~receiver_any_contact
-        giver_residual[:, :3] = giver_residual_enabled.unsqueeze(-1)
         receiver_residual = torch.zeros_like(receiver_action)
         receiver_residual_enabled = (
             (phase == 2)

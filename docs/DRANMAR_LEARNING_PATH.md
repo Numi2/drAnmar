@@ -183,10 +183,10 @@ in controlled dual-arm comparisons.
 
 Stage 6 no longer starts PPO from a random 14-action policy. The exact
 closest-arm/contact-aware sequence is the deterministic policy base. PPO may
-learn only bounded translation residuals during giver transport before
-receiver contact and during the receiver approach after the needle is within
-the 5 mm presentation gate. Both residuals are disabled on the receiver's
-first native contact. The residual has a 0.03 action limit and 0.01 fixed
+learn only a bounded translation residual during the receiver approach after
+the needle is within the 5 mm presentation gate. It is disabled on the
+receiver's first native contact. The giver's pickup, transport, and hold are
+fully analytic. The receiver residual has a 0.03 action limit and 0.01 fixed
 initial exploration standard deviation. Role selection, sequencing, wrist
 control, both grippers, post-contact hold, release, and retreat remain analytic
 and cannot be bypassed by exploration.
