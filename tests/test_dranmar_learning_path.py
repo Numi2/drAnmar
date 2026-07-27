@@ -713,6 +713,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in benchmark_source
     )
     assert '"receiver_grasp_z_offset"' in benchmark_source
+    assert '"giver_arc_fraction"' in benchmark_source
+    assert '"giver_grasp_offsets_m"' in benchmark_source
     assert '"receiver_roll_offset_rad"' in benchmark_source
     assert '"presentation_fraction_from_giver"' in benchmark_source
     assert '"pickup_vertical_action_limit"' in benchmark_source

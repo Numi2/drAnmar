@@ -500,12 +500,14 @@ def _teacher_action(
         import math
 
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+            NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
             needle_geometry_grasp_offset_m,
         )
 
         receiver_offset = needle_geometry_grasp_offset_m(0.65)
         return _handover_teacher_action(
             obs,
+            giver_grasp_offset=NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
             receiver_grasp_offset=(
                 receiver_offset[0],
                 receiver_offset[1],
@@ -526,6 +528,7 @@ def _teacher_action(
 def _handover_teacher_action(
     obs,
     *,
+    giver_grasp_offset: tuple[float, float, float],
     receiver_grasp_offset: tuple[float, float, float],
     receiver_roll_offset_rad: float = 0.0,
     position_scale: float = 0.01,
@@ -554,10 +557,6 @@ def _handover_teacher_action(
     import math
 
     import torch
-
-    from orbit.surgical.tasks.surgical.lift.grasp_frames import (
-        NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
-    )
 
     policy_obs = obs["policy"]
     giver_is_robot_1 = policy_obs[:, 82] > 0.5
@@ -649,7 +648,7 @@ def _handover_teacher_action(
     giver_approach, giver_distance = approach_action(
         giver_ee,
         object_in_giver,
-        NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+        giver_grasp_offset,
     )
     receiver_approach, receiver_distance = approach_action(
         receiver_ee,
@@ -1723,6 +1722,8 @@ def _handover_controller_sweep(
         return _fail("number of environments must divide evenly across sweep values")
     parameter = args.parameter
     receiver_offsets = []
+    giver_offsets = [NEEDLE_PROVISIONAL_GRASP_OFFSET_M] * len(values)
+    giver_arc_fractions = [0.4] * len(values)
     receiver_roll_offsets = [0.0] * len(values)
     presentation_fractions = [0.35] * len(values)
     pickup_vertical_action_limits = [0.015] * len(values)
@@ -1735,7 +1736,33 @@ def _handover_controller_sweep(
     giver_contact_recovery_action_limits = [1.0] * len(values)
     fixed_receiver_arc_fraction = 0.65
     selected_receiver_z_offset = -0.0018
-    if parameter == "receiver_arc_fraction":
+    if parameter == "giver_arc_fraction":
+        if any(not 0.0 <= value <= 1.0 for value in values):
+            return _fail("giver arc fractions must be between 0.0 and 1.0")
+        giver_offsets = []
+        for value in values:
+            geometry_offset = needle_geometry_grasp_offset_m(value)
+            giver_offsets.append(
+                (
+                    geometry_offset[0],
+                    geometry_offset[1],
+                    NEEDLE_PROVISIONAL_GRASP_Z_OFFSET_M,
+                )
+            )
+        giver_arc_fractions = values
+        geometry_offset = needle_geometry_grasp_offset_m(
+            fixed_receiver_arc_fraction
+        )
+        receiver_offsets = [
+            (
+                geometry_offset[0],
+                geometry_offset[1],
+                selected_receiver_z_offset,
+            )
+            for _ in values
+        ]
+        receiver_roll_offsets = [math.pi] * len(values)
+    elif parameter == "receiver_arc_fraction":
         if any(not 0.0 <= value <= 1.0 for value in values):
             return _fail("receiver arc fractions must be between 0.0 and 1.0")
         for value in values:
@@ -1942,7 +1969,8 @@ def _handover_controller_sweep(
         giver_contact_recovery_action_limits = values
     else:
         return _fail(
-            "handover-sweep parameter must be receiver_arc_fraction "
+            "handover-sweep parameter must be giver_arc_fraction, "
+            "receiver_arc_fraction, "
             "receiver_grasp_z_offset, receiver_roll_offset_rad, or "
             "presentation_fraction_from_giver, or "
             "pickup_vertical_action_limit, carry_lateral_action_limit, "
@@ -2209,6 +2237,7 @@ def _handover_controller_sweep(
                 }
                 actions[start:stop] = _handover_teacher_action(
                     group_obs,
+                    giver_grasp_offset=giver_offsets[group_index],
                     receiver_grasp_offset=receiver_offset,
                     receiver_roll_offset_rad=(
                         receiver_roll_offsets[group_index]
@@ -2249,9 +2278,9 @@ def _handover_controller_sweep(
                 )
                 giver_ee = group_obs["policy"][:, 32:35]
                 giver_grasp = group_obs["policy"][:, 46:49].clone()
-                giver_grasp[:, 0] += NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
-                giver_grasp[:, 1] += NEEDLE_PROVISIONAL_GRASP_OFFSET_M[1]
-                giver_grasp[:, 2] += NEEDLE_PROVISIONAL_GRASP_OFFSET_M[2]
+                giver_grasp[:, 0] += giver_offsets[group_index][0]
+                giver_grasp[:, 1] += giver_offsets[group_index][1]
+                giver_grasp[:, 2] += giver_offsets[group_index][2]
                 minimum_giver_grasp_distance[group_index] = torch.minimum(
                     minimum_giver_grasp_distance[group_index],
                     torch.linalg.vector_norm(
@@ -2486,6 +2515,12 @@ def _handover_controller_sweep(
                 {
                     "parameter": parameter,
                     "parameter_value": value,
+                    "giver_grasp_arc_fraction": (
+                        giver_arc_fractions[group_index]
+                    ),
+                    "giver_grasp_offset_m": list(
+                        giver_offsets[group_index]
+                    ),
                     "receiver_grasp_arc_fraction": (
                         value
                         if parameter == "receiver_arc_fraction"
@@ -2696,7 +2731,10 @@ def _handover_controller_sweep(
                     "maximum": float(initial_robot_2_distance.max().item()),
                 },
             },
-            "giver_grasp_arc_fraction": 0.4,
+            "giver_grasp_arc_fractions": giver_arc_fractions,
+            "giver_grasp_offsets_m": [
+                list(offset) for offset in giver_offsets
+            ],
             "handover_motion_contract": {
                 "sequence": [
                     "closest_arm_pickup",
