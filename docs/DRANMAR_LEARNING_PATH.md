@@ -190,6 +190,13 @@ physical transfer success. The parameters remain separately controllable for
 causal checkpoint evaluation, but standalone pickup throughput is not treated
 as evidence for bimanual transport stability.
 
+After the 10 mm pickup gate, lateral presentation authority follows a
+minimum-jerk ramp over the next 5 mm of vertical clearance. This removes the
+one-frame transition from zero lateral motion to the full `0.06` action limit
+without reducing final presentation authority. The ramp is stateless, uses
+measured object height, does not alter rewards or success criteria, and is
+recorded in runtime evidence.
+
 Stage 6 no longer starts PPO from a random 14-action policy. The exact
 closest-arm/contact-aware sequence is the deterministic policy base. PPO may
 learn a bounded giver translation correction during pre-contact approach and

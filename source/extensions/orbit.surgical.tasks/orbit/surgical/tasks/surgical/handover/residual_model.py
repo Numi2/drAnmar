@@ -45,6 +45,7 @@ class HandoverAnalyticController(nn.Module):
         self.presentation_ready_tolerance = 0.005
         self.minimum_lift_height_in_robot_frame = -0.139
         self.carry_lateral_action_limit = 0.06
+        self.carry_lateral_ramp_height = 0.005
         self.pickup_vertical_action_limit = 0.015
         self.carry_vertical_action_limit = 0.015
         self.receiver_orientation_action_limit = 0.6
@@ -221,12 +222,29 @@ class HandoverAnalyticController(nn.Module):
             ),
             -giver_vertical_limit,
         )
+        carry_ramp_fraction = (
+            (
+                object_in_giver[:, 2]
+                - self.minimum_lift_height_in_robot_frame
+            )
+            / self.carry_lateral_ramp_height
+        ).clamp(0.0, 1.0)
+        carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction * (
+            3.0 - 2.0 * carry_ramp_fraction
+        )
+        carry_lateral_limit = (
+            self.carry_lateral_action_limit * carry_ramp_fraction
+        ).unsqueeze(-1)
+        giver_lateral_action = torch.maximum(
+            torch.minimum(
+                giver_error[:, :2],
+                carry_lateral_limit,
+            ),
+            -carry_lateral_limit,
+        )
         giver_carry = torch.cat(
             (
-                giver_error[:, :2].clamp(
-                    -self.carry_lateral_action_limit,
-                    self.carry_lateral_action_limit,
-                ),
+                giver_lateral_action,
                 giver_vertical_action,
             ),
             dim=-1,

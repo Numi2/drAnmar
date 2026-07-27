@@ -3338,6 +3338,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         controller.carry_lateral_action_limit = (
             args.carry_lateral_action_limit
         )
+    if args.carry_lateral_ramp_height is not None:
+        if not 0.001 <= args.carry_lateral_ramp_height <= 0.02:
+            env.close()
+            return _fail(
+                "play carry lateral ramp height must be in [0.001, 0.02]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "carry_lateral_ramp_height"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a carry lateral ramp height"
+            )
+        controller.carry_lateral_ramp_height = (
+            args.carry_lateral_ramp_height
+        )
     policy = runner.get_inference_policy(device=env.unwrapped.device)
 
     export_dir = Path(args.output_path).resolve() / "exported"
@@ -4239,6 +4256,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_carry_lateral_ramp_height": (
+                float(policy_model.controller.carry_lateral_ramp_height)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "carry_lateral_ramp_height",
+                )
+                else None
+            ),
             "exports": {
                 "jit": {"path": str(jit_path), "sha256": _sha256(jit_path)},
                 "onnx": {"path": str(onnx_path), "sha256": _sha256(onnx_path)},
@@ -4344,6 +4370,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--residual_scale", type=float)
     play.add_argument("--pickup_vertical_action_limit", type=float)
     play.add_argument("--carry_lateral_action_limit", type=float)
+    play.add_argument("--carry_lateral_ramp_height", type=float)
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 
