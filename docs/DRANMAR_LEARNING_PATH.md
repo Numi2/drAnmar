@@ -349,6 +349,12 @@ the manifest. Promotion requires:
 6. a fresh benchmark if the robot, asset, physics, reward, observation, or
    runtime contract changes.
 
+For handover play bundles, the stage-stratified distribution records the
+maximum physical phase reached before each environment's first terminal
+outcome: giver contact, 10 mm lift, receiver acquisition, retained transfer,
+or success. This separates failed pickup from failed transfer without changing
+the success predicate.
+
 Early stopping counts completed and successful episodes directly from Isaac
 Lab's termination manager. It reduces wasted compute after the exact episode
 success rate has remained above its threshold for the declared window. It does

@@ -3036,6 +3036,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
         }
     obs = env.get_observations()
+    first_handover_max_phase = None
+    if "Handover-" in args.task:
+        first_handover_max_phase = torch.argmax(
+            obs["policy"][:, 77:82],
+            dim=-1,
+        )
     if lift_diagnostics is not None:
         policy_observation = obs["policy"]
         initial_object_xy = policy_observation[:, 23:25].clone()
@@ -3080,6 +3086,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         for frame_index in range(args.num_frames):
             with torch.inference_mode():
                 was_first_unresolved = first_unresolved.clone()
+                if first_handover_max_phase is not None:
+                    current_handover_phase = torch.argmax(
+                        obs["policy"][:, 77:82],
+                        dim=-1,
+                    )
+                    first_handover_max_phase = torch.where(
+                        was_first_unresolved,
+                        torch.maximum(
+                            first_handover_max_phase,
+                            current_handover_phase,
+                        ),
+                        first_handover_max_phase,
+                    )
                 if first_lift_history is not None:
                     assert lift_mdp_common is not None
                     first_forces = lift_mdp_common.paired_contact_forces(
@@ -3268,6 +3287,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 first_dones = was_first_unresolved & dones.bool()
                 first_successes = first_dones & successes.bool()
                 first_outcome_success |= first_successes
+                if first_handover_max_phase is not None:
+                    first_handover_max_phase = torch.where(
+                        first_successes,
+                        torch.full_like(first_handover_max_phase, 4),
+                        first_handover_max_phase,
+                    )
                 first_unassigned_failures = first_dones & ~first_successes
                 for name in failure_names:
                     assigned = (
@@ -3441,6 +3466,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         onnx_path = export_dir / "policy.onnx"
         procedure_diagnostics = None
         first_episode_lift_diagnostics = None
+        first_episode_handover_diagnostics = None
         if lift_diagnostics is not None:
             samples = float(lift_diagnostics["samples"].item())
             procedure_diagnostics = {
@@ -3699,6 +3725,40 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 },
                 "success_by_initial_target_xy_distance": target_distance_bins,
             }
+        if first_handover_max_phase is not None:
+            first_completed = ~first_unresolved
+            phase_labels = (
+                "no_giver_bilateral_contact",
+                "giver_contact_without_10mm_lift",
+                "lifted_without_receiver_acquisition",
+                "receiver_acquired_without_retained_success",
+                "success",
+            )
+            first_episode_handover_diagnostics = {
+                "maximum_phase_distribution": {
+                    label: int(
+                        (
+                            first_completed
+                            & (first_handover_max_phase == phase)
+                        )
+                        .sum()
+                        .item()
+                    )
+                    for phase, label in enumerate(phase_labels)
+                },
+                "reached_phase_fraction": {
+                    f"phase_{phase}_{label}": float(
+                        (
+                            first_handover_max_phase >= phase
+                        )
+                        .float()
+                        .mean()
+                        .item()
+                    )
+                    for phase, label in enumerate(phase_labels)
+                },
+                "unresolved": int(first_unresolved.sum().item()),
+            }
         first_completed_count = int((~first_unresolved).sum().item())
         first_success_count = int(first_outcome_success.sum().item())
         evidence = {
@@ -3757,6 +3817,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "procedure_diagnostic_trace": procedure_diagnostic_trace,
             "first_episode_lift_diagnostics": (
                 first_episode_lift_diagnostics
+            ),
+            "first_episode_handover_diagnostics": (
+                first_episode_handover_diagnostics
             ),
             "process_peak_memory_mib": _peak_process_memory_mib(),
             "success_rate": (
