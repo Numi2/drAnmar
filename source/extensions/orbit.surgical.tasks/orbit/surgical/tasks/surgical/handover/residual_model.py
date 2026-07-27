@@ -242,6 +242,12 @@ class HandoverAnalyticController(nn.Module):
             )
             < self.presentation_ready_tolerance
         )
+        receiver_approach_active = (
+            (phase == 2)
+            & presentation_ready
+            & giver_bilateral_contact
+            & ~receiver_any_contact
+        )
 
         giver_translation = torch.where(
             giver_transport_active.unsqueeze(-1),
@@ -271,12 +277,9 @@ class HandoverAnalyticController(nn.Module):
         )
 
         receiver_translation = torch.where(
-            (
-                (phase <= 1)
-                | ((phase == 2) & ~presentation_ready)
-            ).unsqueeze(-1),
-            torch.zeros_like(receiver_approach),
+            receiver_approach_active.unsqueeze(-1),
             receiver_approach,
+            torch.zeros_like(receiver_approach),
         )
         receiver_translation = torch.where(
             (phase >= 3).unsqueeze(-1),
@@ -296,7 +299,11 @@ class HandoverAnalyticController(nn.Module):
             * self.receiver_contact_centering_action_limit
         )
         receiver_translation[:, 2] += torch.where(
-            (phase == 2) & receiver_any_contact,
+            (
+                (phase == 2)
+                & giver_bilateral_contact
+                & receiver_any_contact
+            ),
             receiver_contact_centering,
             torch.zeros_like(receiver_contact_centering),
         )
@@ -378,7 +385,7 @@ class HandoverAnalyticController(nn.Module):
             self.receiver_orientation_action_limit,
         )
         receiver_orientation_action = torch.where(
-            (phase < 3).unsqueeze(-1),
+            receiver_approach_active.unsqueeze(-1),
             receiver_orientation_action,
             torch.zeros_like(receiver_orientation_action),
         )
@@ -416,11 +423,7 @@ class HandoverAnalyticController(nn.Module):
 
         giver_residual = torch.zeros_like(giver_action)
         receiver_residual = torch.zeros_like(receiver_action)
-        receiver_residual_enabled = (
-            (phase == 2)
-            & presentation_ready
-            & ~receiver_any_contact
-        )
+        receiver_residual_enabled = receiver_approach_active
         receiver_residual[:, :3] = receiver_residual_enabled.unsqueeze(-1)
         robot_1_residual = torch.where(
             giver_is_robot_1.unsqueeze(-1),

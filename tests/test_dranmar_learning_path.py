@@ -520,6 +520,14 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "(phase == 2)\n            & presentation_ready\n"
         in handover_model_source
     )
+    assert "receiver_approach_active = (" in handover_model_source
+    assert handover_model_source.count(
+        "receiver_approach_active.unsqueeze(-1)"
+    ) >= 2
+    assert (
+        "receiver_residual_enabled = receiver_approach_active"
+        in handover_model_source
+    )
     assert (
         "giver_residual = torch.zeros_like(giver_action)"
         in handover_model_source
@@ -611,11 +619,18 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         '"giver_carry_starts_after_contact_window": True'
         in benchmark_source
     )
-    assert "((phase == 2) & ~presentation_ready)" in benchmark_source
+    assert "receiver_approach_active = (" in benchmark_source
+    assert benchmark_source.count(
+        "receiver_approach_active.unsqueeze(-1)"
+    ) >= 2
     assert '"giver_move_into_receiver_range"' in benchmark_source
     assert "receiver_wait = torch.zeros_like(receiver_approach)" in benchmark_source
     assert '"receiver_waits_for_presentation": True' in benchmark_source
-    assert "((phase == 2) & receiver_any_contact)" in benchmark_source
+    assert (
+        "& giver_bilateral_contact\n"
+        "            & receiver_any_contact"
+        in benchmark_source
+    )
     assert (
         '"receiver_stops_approach_on_first_contact": True'
         in benchmark_source
@@ -641,7 +656,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         '"release_requires_open_command_and_contact_loss": True'
         in benchmark_source
     )
-    assert "(phase < 3).unsqueeze(-1)" in benchmark_source
+    assert (
+        "receiver_orientation_action = torch.where(\n"
+        "        receiver_approach_active.unsqueeze(-1)"
+        in benchmark_source
+    )
     assert (
         '"camera_mode": "focused_environment_neighborhood_oblique"'
         in benchmark_source

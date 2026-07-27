@@ -176,6 +176,10 @@ instruments inside comfortable reach. Reaching that authored exchange point
 organizes the demonstration but is not part of the success predicate. The
 receiver begins its approach within 5 mm of that point; wider entry allowed
 the receiver to disrupt an incompletely stabilized transport.
+Both receiver translation and wrist orientation remain locked until this
+presentation gate is met while the giver has live bilateral needle contact.
+The receiver stops its approach on first native contact; if giver custody
+flickers away first, the receiver waits while the closest arm regraspes.
 The giver begins lifting after the three-of-five native contact window
 completes. Its handover carry limits remain below the faster Stage 4 limits
 because both early carry and the faster profile reduced transfer reliability

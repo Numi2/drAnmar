@@ -709,6 +709,12 @@ def _handover_teacher_action(
         )
         < presentation_ready_tolerance
     )
+    receiver_approach_active = (
+        (phase == 2)
+        & presentation_ready
+        & giver_bilateral_contact
+        & ~receiver_any_contact
+    )
 
     giver_translation = torch.where(
         giver_transport_active.unsqueeze(-1),
@@ -738,12 +744,9 @@ def _handover_teacher_action(
     )
     receiver_wait = torch.zeros_like(receiver_approach)
     receiver_translation = torch.where(
-        (
-            (phase <= 1)
-            | ((phase == 2) & ~presentation_ready)
-        ).unsqueeze(-1),
-        receiver_wait,
+        receiver_approach_active.unsqueeze(-1),
         receiver_approach,
+        receiver_wait,
     )
     receiver_translation = torch.where(
         (phase >= 3).unsqueeze(-1),
@@ -762,7 +765,11 @@ def _handover_teacher_action(
         receiver_contact_imbalance
     ) * receiver_contact_centering_action_limit
     receiver_translation[:, 2] += torch.where(
-        (phase == 2) & receiver_any_contact,
+        (
+            (phase == 2)
+            & giver_bilateral_contact
+            & receiver_any_contact
+        ),
         receiver_contact_centering,
         torch.zeros_like(receiver_contact_centering),
     )
@@ -851,7 +858,7 @@ def _handover_teacher_action(
         receiver_orientation_action_limit,
     )
     receiver_orientation_action = torch.where(
-        (phase < 3).unsqueeze(-1),
+        receiver_approach_active.unsqueeze(-1),
         receiver_orientation_action,
         torch.zeros_like(receiver_orientation_action),
     )
