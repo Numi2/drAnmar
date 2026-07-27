@@ -939,6 +939,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "pickup_recovery_context = raw[:, 98] > 0.5" in handover_model_source
     assert "pickup_recovery_context.unsqueeze(-1)" in handover_model_source
     assert (
+        "giver_tool_target_orientation = identity_tool_orientation"
+        in handover_model_source
+    )
+    assert (
         "carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction"
         in handover_model_source
     )

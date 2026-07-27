@@ -209,11 +209,7 @@ class HandoverAnalyticController(nn.Module):
             giver_orientation
         )
         identity_tool_orientation[:, 3] = 1.0
-        giver_tool_target_orientation = torch.where(
-            pickup_recovery_context.unsqueeze(-1),
-            object_pose_in_giver[:, 3:7],
-            identity_tool_orientation,
-        )
+        giver_tool_target_orientation = identity_tool_orientation
         giver_tool_orientation_error = axis_angle_from_quat(
             quat_mul(
                 giver_tool_target_orientation,
