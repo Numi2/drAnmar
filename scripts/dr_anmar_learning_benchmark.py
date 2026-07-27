@@ -3134,6 +3134,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     runner.load(str(checkpoint))
+    policy_model = runner.alg.get_policy()
+    if args.residual_scale is not None:
+        if args.residual_scale < 0.0:
+            env.close()
+            return _fail("play residual scale must be non-negative")
+        if not hasattr(policy_model, "residual_scale"):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a residual scale"
+            )
+        policy_model.residual_scale = args.residual_scale
     policy = runner.get_inference_policy(device=env.unwrapped.device)
 
     export_dir = Path(args.output_path).resolve() / "exported"
@@ -4012,6 +4023,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "path": str(checkpoint),
                 "sha256": _sha256(checkpoint),
             },
+            "policy_residual_scale": (
+                float(policy_model.residual_scale)
+                if hasattr(policy_model, "residual_scale")
+                else None
+            ),
             "exports": {
                 "jit": {"path": str(jit_path), "sha256": _sha256(jit_path)},
                 "onnx": {"path": str(onnx_path), "sha256": _sha256(onnx_path)},
@@ -4110,6 +4126,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--video_width", type=int, default=1280)
     play.add_argument("--video_height", type=int, default=720)
     play.add_argument("--video_folder")
+    play.add_argument("--residual_scale", type=float)
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 

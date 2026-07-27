@@ -215,6 +215,13 @@ case "${command}" in
         frames="${5:-500}"
         output="${6:-${DR_ANMAR_LEARNING_OUTPUT}/play}"
         mkdir -p "${output}"
+        residual_scale_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RESIDUAL_SCALE:-}" ]]; then
+            residual_scale_args=(
+                --residual_scale
+                "${DR_ANMAR_POLICY_RESIDUAL_SCALE}"
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
@@ -222,7 +229,8 @@ case "${command}" in
             --num_frames "${frames}" \
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
-            --output_path "${output}"
+            --output_path "${output}" \
+            "${residual_scale_args[@]}"
         ;;
     record)
         require_runtime

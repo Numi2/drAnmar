@@ -598,6 +598,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "DR_ANMAR_HANDOVER_SWEEP_PARAMETER" in launcher_source
     assert "DR_ANMAR_INIT_CHECKPOINT" in launcher_source
     assert "DR_ANMAR_POLICY_LEARNING_RATE" in launcher_source
+    assert "DR_ANMAR_POLICY_RESIDUAL_SCALE" in launcher_source
     assert "DR_ANMAR_SUCCESS_THRESHOLD" in launcher_source
     assert launcher_source.count('--values="${values}"') == 2
     assert "record)" in launcher_source
@@ -622,7 +623,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "runner.load(str(initial_checkpoint))" in benchmark_source
     assert 'train.add_argument("--checkpoint")' in benchmark_source
     assert 'train.add_argument("--learning_rate", type=float)' in benchmark_source
+    assert 'play.add_argument("--residual_scale", type=float)' in benchmark_source
     assert '"policy_learning_rate"' in benchmark_source
+    assert '"policy_residual_scale"' in benchmark_source
     assert 'parameter_group["lr"] = args.learning_rate' in benchmark_source
     assert (
         "return max(1, self._step_count // self.num_steps_per_env)"
