@@ -7,7 +7,7 @@
       "artifacts": [
         {
           "bytes": 1169,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/needle/DrAnmarNeedle.usda",
           "revision_authority": "parent_repository",
           "role": "asset",
@@ -15,7 +15,7 @@
         },
         {
           "bytes": 3220,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/needle/DrAnmarNeedle_base.usda",
           "revision_authority": "parent_repository",
           "role": "base_layer",
@@ -23,7 +23,7 @@
         },
         {
           "bytes": 50761,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/needle/DrAnmarNeedle_geometry.usd",
           "revision_authority": "parent_repository",
           "role": "geometry_layer",
@@ -31,7 +31,7 @@
         },
         {
           "bytes": 990,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/needle/DrAnmarNeedle_materials.usda",
           "revision_authority": "parent_repository",
           "role": "materials_layer",
@@ -39,7 +39,7 @@
         },
         {
           "bytes": 39301,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/needle/DrAnmarNeedle_physics.usda",
           "revision_authority": "parent_repository",
           "role": "physics_layer",
@@ -47,7 +47,7 @@
         },
         {
           "bytes": 10575,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/needle/DrAnmarNeedle_physx.usda",
           "revision_authority": "parent_repository",
           "role": "physx_layer",
@@ -55,7 +55,7 @@
         },
         {
           "bytes": 19601,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/needles/dr-anmar-needle-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -63,7 +63,7 @@
         },
         {
           "bytes": 23534,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "machine_readable_summary": {
             "clinical_validation": false,
             "schema": "dr.anmar.suture-asset-report.v15"
@@ -90,7 +90,7 @@
       "artifacts": [
         {
           "bytes": 689,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/suture/DrAnmarSuture4_0.usda",
           "revision_authority": "parent_repository",
           "role": "asset",
@@ -98,7 +98,7 @@
         },
         {
           "bytes": 1516,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_base.usda",
           "revision_authority": "parent_repository",
           "role": "base_layer",
@@ -106,7 +106,7 @@
         },
         {
           "bytes": 5060786,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_geometry.usd",
           "revision_authority": "parent_repository",
           "role": "geometry_layer",
@@ -114,7 +114,7 @@
         },
         {
           "bytes": 51778,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/suture/textures/DrAnmarSuture4_0_braid_normal_roughness.png",
           "revision_authority": "parent_repository",
           "role": "material_texture",
@@ -122,7 +122,7 @@
         },
         {
           "bytes": 2931,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_materials.usda",
           "revision_authority": "parent_repository",
           "role": "materials_layer",
@@ -130,7 +130,7 @@
         },
         {
           "bytes": 2819,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "machine_readable_summary": {
             "clinical_validation": false,
             "passed": true,
@@ -143,7 +143,7 @@
         },
         {
           "bytes": 1172959,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_physics.usda",
           "revision_authority": "parent_repository",
           "role": "physics_layer",
@@ -151,7 +151,7 @@
         },
         {
           "bytes": 278290,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/suture/DrAnmarSuture4_0_physx.usda",
           "revision_authority": "parent_repository",
           "role": "physx_layer",
@@ -159,7 +159,7 @@
         },
         {
           "bytes": 25456,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/sutures/dr-anmar-suture-4-0.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -167,7 +167,7 @@
         },
         {
           "bytes": 23534,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "machine_readable_summary": {
             "clinical_validation": false,
             "schema": "dr.anmar.suture-asset-report.v15"
@@ -210,7 +210,7 @@
         },
         {
           "bytes": 2925,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "machine_readable_summary": {
             "clinical_validation": false,
             "schema": "dr.anmar.needle-ready-tissue-newton-qualification.v1"
@@ -269,7 +269,7 @@
       "artifacts": [
         {
           "bytes": 651356,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/hemostasis/DrAnmarVessel.usda",
           "revision_authority": "parent_repository",
           "role": "asset",
@@ -277,7 +277,7 @@
         },
         {
           "bytes": 158576,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/hemostasis/DrAnmarVascularClip.usda",
           "revision_authority": "parent_repository",
           "role": "auxiliary_asset",
@@ -285,7 +285,7 @@
         },
         {
           "bytes": 2623254,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/hemostasis/DrAnmarVessel.tet.usda",
           "revision_authority": "parent_repository",
           "role": "explicit_tetmesh",
@@ -293,7 +293,7 @@
         },
         {
           "bytes": 13643,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/vessels/dr-anmar-hemostasis-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -301,7 +301,7 @@
         },
         {
           "bytes": 2331,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "machine_readable_summary": {
             "clinical_validation": false,
             "schema": "dr.anmar.hemostasis-asset-report.v2"
@@ -344,7 +344,7 @@
         },
         {
           "bytes": 5786,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/benchmarks/dr-anmar-laparotomy-sponge-validation.json",
           "revision_authority": "parent_repository",
           "role": "gpu_report",
@@ -352,7 +352,7 @@
         },
         {
           "bytes": 6976,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-count/dr-anmar-laparotomy-sponge-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -360,7 +360,7 @@
         },
         {
           "bytes": 5786,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "machine_readable_summary": {
             "clinical_validation": false,
             "schema": "dr.anmar.laparotomy-sponge-validation.v1"
@@ -603,7 +603,7 @@
         },
         {
           "bytes": 6070,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-closure/dranmar-skin-adhesive-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -725,7 +725,7 @@
         },
         {
           "bytes": 4628,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-preparation/dranmar-wound-preparation-robot-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -799,7 +799,7 @@
         },
         {
           "bytes": 1957,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-exposure/dranmar-atraumatic-exposure-robot-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -873,7 +873,7 @@
         },
         {
           "bytes": 1564,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-hemostasis/dranmar-adaptive-hemostasis-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -947,7 +947,7 @@
         },
         {
           "bytes": 12494,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-reconstruction/dranmar-adaptive-anastomosis-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -1021,7 +1021,7 @@
         },
         {
           "bytes": 2043,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-division/dranmar-adaptive-seal-divide-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -1095,7 +1095,7 @@
         },
         {
           "bytes": 3119,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-dissection/dranmar-safeplane-dissection-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -1180,7 +1180,7 @@
         },
         {
           "bytes": 2070,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-assessment/dranmar-perfusion-viability-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -1231,7 +1231,7 @@
         },
         {
           "bytes": 3283,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "machine_readable_summary": {
             "evidence_not_established": [
               "native volume deformables",
@@ -1288,7 +1288,7 @@
         },
         {
           "bytes": 2622,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/dynamic-patient/dranmar-dynamic-abdominal-patient-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -1351,7 +1351,7 @@
         },
         {
           "bytes": 2757,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "machine_readable_summary": {
             "clinical_validation": false,
             "schema": "dr.anmar.oncology-native-simulator-evidence.v1"
@@ -1371,7 +1371,7 @@
         },
         {
           "bytes": 4853,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "physics_next/surgical-oncology/dranmar-oncosurgery-cell-v1.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -1537,7 +1537,7 @@
       "artifacts": [
         {
           "bytes": 8984,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/asset_bundle.json",
           "revision_authority": "parent_repository",
           "role": "asset",
@@ -1545,7 +1545,7 @@
         },
         {
           "bytes": 4126,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/action_contract.json",
           "revision_authority": "parent_repository",
           "role": "profile",
@@ -1553,7 +1553,7 @@
         },
         {
           "bytes": 5264,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "machine_readable_summary": {
             "clinical_validation": false,
             "schema": "dr.anmar.generative-asset-evidence.v1"
@@ -1565,7 +1565,7 @@
         },
         {
           "bytes": 53968,
-          "containing_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+          "containing_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
           "path": "assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1/dranmar_action_stream.json",
           "revision_authority": "parent_repository",
           "role": "training_contract",
@@ -1596,7 +1596,7 @@
     "asset_submodule_revision": "b1155e2577210e913de8fa2c36b2e37692ec43be",
     "generator_path": "scripts/generate_dranmar_evidence_index.py",
     "generator_sha256": "3aa4903397eca152dc79cecc4af8522f286a3407d0170198ff3ff197fe0a0681",
-    "parent_revision": "c572da6acc4b30f5f3d1726ad35c45870ada7a0f",
+    "parent_revision": "6187dc3ecf527261b99e40e3f047246792f325f3",
     "portfolio_path": "physics_next/dr-anmar-assets.json",
     "portfolio_sha256": "2199178f6d4205e3225ec5119d894c479a64ddc6b82c885817b6c769e5c5b82e"
   }
