@@ -12,7 +12,7 @@ robot learning, and patient-effect evaluation.**
 
 <p align="center">
   <a href="https://github.com/Numi2/dr-assets">
-    <img src="https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/hero-autonomous-rescue-or.png"
+    <img src="https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/hero-autonomous-rescue-or.png"
          width="100%"
          alt="Dr.Anmar Autonomous Rescue OR with patient, intervention stations, robot workcells, resuscitation, and physiological monitoring">
   </a>
@@ -76,17 +76,17 @@ controller/task contracts, and a named evidence boundary.
 
 | Oncologic resection | SafePlane dissection |
 | --- | --- |
-| [![Three-arm oncologic resection cell](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/oncologic-resection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalOncology/OncoSurgeryCell) | [![Exploded SafePlane dissection mechanism](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/safeplane-dissection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalDissection/SafePlaneDissectionRobot) |
+| [![Three-arm oncologic resection cell](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/oncologic-resection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalOncology/OncoSurgeryCell) | [![Exploded SafePlane dissection mechanism](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/safeplane-dissection.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalDissection/SafePlaneDissectionRobot) |
 | Three coordinated stations for sensing, resection, margin assessment, and specimen handling. | Interchangeable traction, hydro, blunt, scissors, energy, and sensing components. |
 
 | Adaptive hemostasis | Adaptive anastomosis |
 | --- | --- |
-| [![Adaptive hemostasis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/adaptive-hemostasis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot) | [![Adaptive anastomosis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/adaptive-anastomosis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot) |
+| [![Adaptive hemostasis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/adaptive-hemostasis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalHemostasis/AdaptiveHemostasisRobot) | [![Adaptive anastomosis instrument](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/adaptive-anastomosis.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot) |
 | Compression, clip, patch, suction, irrigation, and verification modes. | Alignment, approximation, staple formation, reinforcement, leak test, and patency. |
 
 | Perfusion viability | Dynamic abdominal patient |
 | --- | --- |
-| [![Multimodal perfusion assessment instrument](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/perfusion-viability.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalAssessment/PerfusionViabilityRobot) | [![Dynamic abdominal patient](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/dynamic-abdominal-patient.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/Patients/DynamicAbdominalPatient) |
+| [![Multimodal perfusion assessment instrument](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/perfusion-viability.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/SurgicalAssessment/PerfusionViabilityRobot) | [![Dynamic abdominal patient](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/dynamic-abdominal-patient.png)](https://github.com/Numi2/dr-assets/tree/main/data/Props/Patients/DynamicAbdominalPatient) |
 | Registered multimodal sensing with explicit validity and abstention behavior. | Layered abdominal access, organs, pathology, respiration, wound margins, and physiology. |
 
 Robotic motion media belongs beside the exact replay that produced it. The
@@ -102,7 +102,7 @@ attachment and integrity.
 
 | Uncontrolled vessel | Temporary compression | Retained repair |
 | --- | --- | --- |
-| ![Uncontrolled vessel](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/effect-vessel-bleeding.png) | ![Compressed vessel](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/effect-vessel-compressed.png) | ![Retained vessel repair](https://raw.githubusercontent.com/Numi2/dr-assets/10c39a9aa016639cb2723b7d23fd6c1f7e61d496/docs/media/effect-vessel-repaired.png) |
+| ![Uncontrolled vessel](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/effect-vessel-bleeding.png) | ![Compressed vessel](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/effect-vessel-compressed.png) | ![Retained vessel repair](https://raw.githubusercontent.com/Numi2/dr-assets/e0c8d0dee04ce241cc914fe2b152ad9ca15c4b1a/docs/media/effect-vessel-repaired.png) |
 | Flow and blood loss remain active. | Benefit expires when bilateral contact disappears. | Benefit persists only while repair attachment and integrity remain valid. |
 
 ```mermaid
