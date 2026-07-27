@@ -249,10 +249,18 @@ class HandoverAnalyticController(nn.Module):
             & ~receiver_any_contact
         )
 
+        giver_contact_recovery_hold = torch.zeros_like(
+            giver_approach
+        )
+        giver_translation = torch.where(
+            giver_carry_mode.unsqueeze(-1),
+            giver_contact_recovery_hold,
+            giver_approach,
+        )
         giver_translation = torch.where(
             giver_transport_active.unsqueeze(-1),
             giver_carry,
-            giver_approach,
+            giver_translation,
         )
         giver_translation = torch.where(
             (
