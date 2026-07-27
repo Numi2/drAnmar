@@ -509,7 +509,7 @@ def _teacher_action(
             receiver_grasp_offset=(
                 receiver_offset[0],
                 receiver_offset[1],
-                -0.0018,
+                -0.0025,
             ),
             receiver_roll_offset_rad=math.pi,
             position_scale=position_scale,
@@ -1651,7 +1651,7 @@ def _handover_controller_sweep(
     giver_transport_min_contact_jaws = [2] * len(values)
     giver_transport_normalized_contact_thresholds = [0.002] * len(values)
     fixed_receiver_arc_fraction = 0.65
-    selected_receiver_z_offset = -0.0018
+    selected_receiver_z_offset = -0.0025
     if parameter == "receiver_arc_fraction":
         if any(not 0.0 <= value <= 1.0 for value in values):
             return _fail("receiver arc fractions must be between 0.0 and 1.0")
