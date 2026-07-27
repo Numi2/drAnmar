@@ -382,7 +382,7 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
     assert contract["receiver_contact_flicker_steps"] == 1
     assert (
         manifest["stages"][5]["learning"]["initialization"]
-        == "online_behavior_cloning_from_closest_arm_analytic_teacher"
+        == "scheduled_dagger_from_closest_arm_analytic_teacher"
     )
     assert manifest["stages"][5]["learning"]["actor_initial_std"] == 0.05
     assert (
@@ -519,9 +519,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert '"receiver_retention_failure_causes"' in benchmark_source
     assert "def _handover_teacher_action(" in benchmark_source
     assert (
-        '"closest_arm_handover_teacher_behavior_cloning"'
+        '"closest_arm_handover_teacher_scheduled_dagger"'
         in benchmark_source
     )
+    assert "teacher_warmup_then_linear_dagger_mixture" in benchmark_source
+    assert "predicted_actions.detach()" in benchmark_source
+    assert '"student_controlled_frames"' in benchmark_source
     assert (
         'if "Handover-Needle-Dual-PSM-IK-Rel" in task:'
         in benchmark_source

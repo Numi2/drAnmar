@@ -886,7 +886,7 @@ def _handover_teacher_action(
 
 def _pretraining_algorithm(task: str) -> str:
     if "Handover-Needle-Dual-PSM-IK-Rel" in task:
-        return "closest_arm_handover_teacher_behavior_cloning"
+        return "closest_arm_handover_teacher_scheduled_dagger"
     if "Lift-" in task:
         return "analytic_grasp_lift_base_plus_learned_residual"
     return "analytic_relative_ik_base_plus_learned_residual"
@@ -894,6 +894,12 @@ def _pretraining_algorithm(task: str) -> str:
 
 def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     """Initialize and validate a task-declared analytic-base residual actor."""
+    if args.dagger_warmup_updates < 0:
+        return _fail("DAgger warm-up updates must be non-negative")
+    if not 0.0 <= args.dagger_min_teacher_fraction <= 1.0:
+        return _fail(
+            "DAgger minimum teacher fraction must be between 0 and 1"
+        )
     import gymnasium as gym
     import torch
     import torch.nn.functional as functional
@@ -936,9 +942,12 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
     losses: list[float] = []
     teacher_successes = 0
     teacher_completed = 0
+    teacher_controlled_frames = 0
+    student_controlled_frames = 0
+    dagger_teacher_fractions: list[float] = []
     started = time.perf_counter()
     try:
-        for _ in range(args.updates):
+        for update_index in range(args.updates):
             teacher_actions = _teacher_action(
                 obs,
                 args.task,
@@ -955,7 +964,51 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             losses.append(float(loss.detach().item()))
 
             with torch.no_grad():
-                obs, _, dones, _ = env.step(teacher_actions)
+                rollout_actions = teacher_actions
+                teacher_fraction = 1.0
+                if "Handover-Needle-Dual-PSM-IK-Rel" in args.task:
+                    warmup_updates = min(
+                        args.dagger_warmup_updates,
+                        args.updates,
+                    )
+                    if update_index >= warmup_updates:
+                        schedule_steps = max(
+                            args.updates - warmup_updates - 1,
+                            1,
+                        )
+                        progress = (
+                            update_index - warmup_updates
+                        ) / schedule_steps
+                        teacher_fraction = max(
+                            args.dagger_min_teacher_fraction,
+                            1.0 - progress,
+                        )
+                    teacher_mask = (
+                        torch.rand(
+                            env.unwrapped.num_envs,
+                            device=agent_cfg.device,
+                        )
+                        < teacher_fraction
+                    )
+                    rollout_actions = torch.where(
+                        teacher_mask.unsqueeze(-1),
+                        teacher_actions,
+                        predicted_actions.detach(),
+                    )
+                    teacher_controlled_frames += int(
+                        teacher_mask.sum().item()
+                    )
+                    student_controlled_frames += int(
+                        (~teacher_mask).sum().item()
+                    )
+                    dagger_teacher_fractions.append(
+                        teacher_fraction
+                    )
+                else:
+                    teacher_controlled_frames += (
+                        env.unwrapped.num_envs
+                    )
+                obs, _, dones, _ = env.step(rollout_actions)
                 successes = env.unwrapped.termination_manager.get_term("success")
             obs = obs.to(agent_cfg.device)
             teacher_successes += int(successes.sum().item())
@@ -1153,6 +1206,23 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
                 "minimum": min(losses) if losses else None,
             },
             "teacher_rollout": {
+                "control_schedule": (
+                    "teacher_warmup_then_linear_dagger_mixture"
+                    if dagger_teacher_fractions
+                    else "teacher_only"
+                ),
+                "teacher_controlled_frames": teacher_controlled_frames,
+                "student_controlled_frames": student_controlled_frames,
+                "teacher_fraction_initial": (
+                    dagger_teacher_fractions[0]
+                    if dagger_teacher_fractions
+                    else 1.0
+                ),
+                "teacher_fraction_final": (
+                    dagger_teacher_fractions[-1]
+                    if dagger_teacher_fractions
+                    else 1.0
+                ),
                 "completed_episodes": teacher_completed,
                 "successful_episodes": teacher_successes,
                 "success_rate": (
@@ -3775,6 +3845,12 @@ def _parser() -> argparse.ArgumentParser:
     pretrain.add_argument("--weight_decay", type=float, default=1e-6)
     pretrain.add_argument("--position_scale", type=float, default=0.01)
     pretrain.add_argument("--orientation_scale", type=float, default=0.05)
+    pretrain.add_argument("--dagger_warmup_updates", type=int, default=100)
+    pretrain.add_argument(
+        "--dagger_min_teacher_fraction",
+        type=float,
+        default=0.1,
+    )
     pretrain.add_argument("--seed", type=int, default=17)
     pretrain.add_argument("--output_path", required=True)
     pretrain.add_argument("--benchmark_formatter", default="schema,json")

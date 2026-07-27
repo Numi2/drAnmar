@@ -227,9 +227,9 @@
       "name": "physical_needle_handover",
       "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-v0",
       "learning": {
-        "initialization": "online_behavior_cloning_from_closest_arm_analytic_teacher",
+        "initialization": "scheduled_dagger_from_closest_arm_analytic_teacher",
         "actor_initial_std": 0.05,
-        "ppo_initialization": "resume_behavior_cloning_checkpoint",
+        "ppo_initialization": "resume_closed_loop_validated_dagger_checkpoint",
         "teacher_success_does_not_override_physical_qualification": true
       },
       "qualification_contract": {
