@@ -406,6 +406,12 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         == 0.03
     )
     assert (
+        manifest["stages"][5]["learning"][
+            "analytic_giver_vertical_action_limit"
+        ]
+        == 0.025
+    )
+    assert (
         manifest["stages"][5]["learning"]["residual_initial_std"]
         == 0.01
     )
@@ -645,7 +651,11 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "presentation_ready_tolerance: float = 0.005" in benchmark_source
     assert '"presentation_ready_tolerance_m": 0.005' in benchmark_source
     assert "carry_lateral_action_limit: float = 0.06" in benchmark_source
-    assert "carry_vertical_action_limit: float = 0.10" in benchmark_source
+    assert "carry_vertical_action_limit: float = 0.025" in benchmark_source
+    assert (
+        "self.carry_vertical_action_limit = 0.025"
+        in handover_model_source
+    )
     assert (
         '"giver_carry_starts_after_contact_window": True'
         in benchmark_source

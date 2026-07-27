@@ -544,7 +544,7 @@ def _handover_teacher_action(
     presentation_ready_tolerance: float = 0.005,
     minimum_lift_height_in_robot_frame: float = -0.139,
     carry_lateral_action_limit: float = 0.06,
-    carry_vertical_action_limit: float = 0.10,
+    carry_vertical_action_limit: float = 0.025,
 ):
     """Stage a closest-arm pickup and other-arm physical custody transfer."""
     import math
@@ -1637,7 +1637,7 @@ def _handover_controller_sweep(
     receiver_offsets = []
     receiver_roll_offsets = [0.0] * len(values)
     presentation_fractions = [0.35] * len(values)
-    carry_vertical_action_limits = [0.10] * len(values)
+    carry_vertical_action_limits = [0.025] * len(values)
     fixed_receiver_arc_fraction = 0.65
     selected_receiver_z_offset = -0.0018
     if parameter == "receiver_arc_fraction":
