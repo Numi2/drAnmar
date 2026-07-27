@@ -4389,6 +4389,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "ever_presentation_stable": torch.zeros_like(
                 first_unresolved
             ),
+            "first_stable_presentation_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "first_receiver_contact_after_stable_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
             "maximum_presentation_stable_steps": torch.zeros(
                 env.unwrapped.num_envs,
                 dtype=torch.int64,
@@ -4557,6 +4569,39 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 "presentation_stable"
                             ]
                         )
+                        first_stable_presentation = (
+                            was_first_unresolved
+                            & current_handover_state[
+                                "presentation_stable"
+                            ]
+                            & (
+                                first_handover_history[
+                                    "first_stable_presentation_frame"
+                                ]
+                                < 0
+                            )
+                        )
+                        first_handover_history[
+                            "first_stable_presentation_frame"
+                        ][first_stable_presentation] = frame_index
+                        first_receiver_contact_after_stable = (
+                            was_first_unresolved
+                            & current_handover_state[
+                                "presentation_stable"
+                            ]
+                            & current_handover_state[
+                                "receiver_any_contact_now"
+                            ]
+                            & (
+                                first_handover_history[
+                                    "first_receiver_contact_after_stable_frame"
+                                ]
+                                < 0
+                            )
+                        )
+                        first_handover_history[
+                            "first_receiver_contact_after_stable_frame"
+                        ][first_receiver_contact_after_stable] = frame_index
                         first_handover_history[
                             "maximum_presentation_stable_steps"
                         ] = torch.maximum(
@@ -5960,6 +6005,56 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "p90": float(quantiles[2].item()),
                 }
 
+            def receiver_approach_stats(mask: torch.Tensor) -> dict:
+                stable = (
+                    mask
+                    & (
+                        first_handover_history[
+                            "first_stable_presentation_frame"
+                        ]
+                        >= 0
+                    )
+                )
+                contacted = (
+                    stable
+                    & (
+                        first_handover_history[
+                            "first_receiver_contact_after_stable_frame"
+                        ]
+                        >= 0
+                    )
+                )
+                stable_frames = first_handover_history[
+                    "first_stable_presentation_frame"
+                ][stable]
+                contact_frames = first_handover_history[
+                    "first_receiver_contact_after_stable_frame"
+                ][contacted]
+                latencies = (
+                    first_handover_history[
+                        "first_receiver_contact_after_stable_frame"
+                    ][contacted]
+                    - first_handover_history[
+                        "first_stable_presentation_frame"
+                    ][contacted]
+                )
+                return {
+                    "count": int(mask.sum().item()),
+                    "stable_presentations": int(stable.sum().item()),
+                    "contacts_after_stable_presentation": int(
+                        contacted.sum().item()
+                    ),
+                    "first_stable_presentation_frame": (
+                        handover_scalar_quantiles(stable_frames)
+                    ),
+                    "first_receiver_contact_frame": (
+                        handover_scalar_quantiles(contact_frames)
+                    ),
+                    "stable_to_receiver_contact_steps": (
+                        handover_scalar_quantiles(latencies)
+                    ),
+                }
+
             first_episode_handover_diagnostics = {
                 "pickup_attempt_outcomes": {
                     "maximum_attempts": 3,
@@ -6065,6 +6160,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                 },
                 "structured_transfer_diagnostics": {
+                    "receiver_approach_by_maximum_phase": {
+                        label: receiver_approach_stats(mask)
+                        for label, mask in phase_masks.items()
+                    },
                     "environments_reaching_instant_presentation": int(
                         first_handover_history[
                             "ever_presentation_ready"

@@ -22,7 +22,7 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         ).read_text()
     )
     assert contract["status"] == "isolated_research_example_not_stage_qualified"
-    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.3"
+    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.4"
     assert contract["architecture"]["actor"].startswith("frozen_pickup_lift")
     assert contract["architecture"]["learned_authority"].startswith(
         "receiver_xyz"
@@ -55,7 +55,10 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert giver_xy["scale_2000_success_rate"] == 0.445
     pickup_15 = rejected_by_label["e2e-pickup15-v26"]
     assert pickup_15["giver_contact_without_10mm_lift"] == 94
-    for candidate in (giver_xy, pickup_15):
+    receiver_model_125 = rejected_by_label["e2e-receiver-ppo-v33-model125"]
+    assert receiver_model_125["retained_handover_success"] == 378
+    assert receiver_model_125["hard_safety_events"] == 3
+    for candidate in (giver_xy, pickup_15, receiver_model_125):
         for path_key, hash_key in (
             ("evidence_path", "evidence_sha256"),
             ("screen_600_evidence_path", "screen_600_evidence_sha256"),
@@ -125,6 +128,32 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert hashlib.sha256(hysteresis_scale.read_bytes()).hexdigest() == (
         hysteresis["scale_2000_evidence_sha256"]
     )
+    latency = contract["receiver_latency_diagnostics"]
+    latency_path = ROOT / latency["evidence_path"]
+    assert latency["retained_handover_success"] == 367
+    assert latency["stable_presentations_without_receiver_contact"] == 76
+    assert latency["successful_stable_to_receiver_contact_steps_p50"] == 98.0
+    assert hashlib.sha256(latency_path.read_bytes()).hexdigest() == (
+        latency["evidence_sha256"]
+    )
+    receiver_ppo = contract["receiver_ppo_fine_tuning_v33"]
+    receiver_training = ROOT / receiver_ppo["training_evidence_path"]
+    receiver_screen = ROOT / receiver_ppo["screen_600_evidence_path"]
+    receiver_scale = ROOT / receiver_ppo["scale_2000_evidence_path"]
+    assert receiver_ppo["checkpoint_sha256"] == (
+        "a56f61703855931d9d755beeba530bb8c1ac5232f6d6499e6254399cca8535cf"
+    )
+    assert receiver_ppo["screen_600_successes"] == 377
+    assert receiver_ppo["screen_600_receiver_retention_losses"] == 21
+    assert receiver_ppo["scale_2000_successes"] == 1021
+    assert receiver_ppo["scale_2000_hard_safety_events"] == 8
+    assert receiver_ppo["scale_2000_receiver_retention_losses"] == 45
+    for path, expected_hash in (
+        (receiver_training, receiver_ppo["training_evidence_sha256"]),
+        (receiver_screen, receiver_ppo["screen_600_evidence_sha256"]),
+        (receiver_scale, receiver_ppo["scale_2000_evidence_sha256"]),
+    ):
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected_hash
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -191,6 +220,13 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "raw[:, 103:107]" in source
     assert "receiver_offset[:, 2] = -0.003" in source
     ast.parse(source)
+
+    benchmark_source = (
+        ROOT / "scripts/dr_anmar_learning_benchmark.py"
+    ).read_text()
+    assert '"first_stable_presentation_frame"' in benchmark_source
+    assert '"first_receiver_contact_after_stable_frame"' in benchmark_source
+    assert '"receiver_approach_by_maximum_phase"' in benchmark_source
 
 
 def test_e2e_task_adds_native_contact_history_without_changing_success() -> None:
