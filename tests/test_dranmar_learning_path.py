@@ -653,10 +653,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "& ~receiver_any_contact"
         in handover_model_source
     )
-    assert (
-        "giver_pickup_transport_residual.unsqueeze(-1)"
-        in handover_model_source
-    )
+    assert "giver_pickup_transport_residual" in handover_model_source
+    assert "giver_recovery_approach_residual" in handover_model_source
     assert "giver_residual[:, :2]" in handover_model_source
     assert "giver_residual[:, :3]" not in handover_model_source
     assert (

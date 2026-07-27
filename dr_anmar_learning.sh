@@ -259,6 +259,10 @@ case "${command}" in
         if [[ "${DR_ANMAR_HANDOVER_GIVER_ADAPTATION:-0}" == "1" ]]; then
             giver_adaptation_args=(--handover_giver_adaptation)
         fi
+        pickup_recovery_adaptation_args=()
+        if [[ "${DR_ANMAR_PICKUP_RECOVERY_ADAPTATION:-0}" == "1" ]]; then
+            pickup_recovery_adaptation_args=(--pickup_recovery_adaptation)
+        fi
         pickup_vertical_action_limit_args=()
         if [[ -n "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
             pickup_vertical_action_limit_args=(
@@ -285,6 +289,13 @@ case "${command}" in
             carry_lateral_action_limit_args=(
                 --carry_lateral_action_limit
                 "${DR_ANMAR_POLICY_CARRY_LATERAL_ACTION_LIMIT}"
+            )
+        fi
+        recovery_carry_lateral_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECOVERY_CARRY_LATERAL_ACTION_LIMIT:-}" ]]; then
+            recovery_carry_lateral_action_limit_args=(
+                --recovery_carry_lateral_action_limit
+                "${DR_ANMAR_POLICY_RECOVERY_CARRY_LATERAL_ACTION_LIMIT}"
             )
         fi
         carry_lateral_ramp_height_args=()
@@ -337,6 +348,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_RECEIVER_PREPOSITION_HEIGHT_M}"
             )
         fi
+        recovery_receiver_preposition_height_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECOVERY_RECEIVER_PREPOSITION_HEIGHT_M:-}" ]]; then
+            recovery_receiver_preposition_height_args=(
+                --recovery_receiver_preposition_height
+                "${DR_ANMAR_POLICY_RECOVERY_RECEIVER_PREPOSITION_HEIGHT_M}"
+            )
+        fi
         receiver_adaptive_arc_args=()
         if [[ -n "${DR_ANMAR_POLICY_RECEIVER_ADAPTIVE_ARC:-}" ]]; then
             case "${DR_ANMAR_POLICY_RECEIVER_ADAPTIVE_ARC}" in
@@ -344,6 +362,17 @@ case "${command}" in
                 0) receiver_adaptive_arc_args=(--no-receiver_adaptive_arc) ;;
                 *)
                     echo "DR_ANMAR_POLICY_RECEIVER_ADAPTIVE_ARC must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+        receiver_grasp_retain_residual_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_GRASP_RETAIN_RESIDUAL:-}" ]]; then
+            case "${DR_ANMAR_POLICY_RECEIVER_GRASP_RETAIN_RESIDUAL}" in
+                1) receiver_grasp_retain_residual_args=(--receiver_grasp_retain_residual) ;;
+                0) receiver_grasp_retain_residual_args=(--no-receiver_grasp_retain_residual) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_RECEIVER_GRASP_RETAIN_RESIDUAL must be 0 or 1" >&2
                     exit 2
                     ;;
             esac
@@ -415,17 +444,21 @@ case "${command}" in
             --output_path "${output}" \
             "${residual_scale_args[@]}" \
             "${giver_adaptation_args[@]}" \
+            "${pickup_recovery_adaptation_args[@]}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${pickup_initial_vertical_action_limit_args[@]}" \
             "${recovery_pickup_vertical_action_limit_args[@]}" \
             "${carry_lateral_action_limit_args[@]}" \
+            "${recovery_carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${presentation_fraction_from_giver_args[@]}" \
             "${receiver_crossing_angle_args[@]}" \
             "${transport_custody_latch_args[@]}" \
             "${receiver_preposition_args[@]}" \
             "${receiver_preposition_height_args[@]}" \
+            "${recovery_receiver_preposition_height_args[@]}" \
             "${receiver_adaptive_arc_args[@]}" \
+            "${receiver_grasp_retain_residual_args[@]}" \
             "${presentation_filtered_custody_args[@]}" \
             "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_close_distance_args[@]}" \

@@ -22,7 +22,7 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         ).read_text()
     )
     assert contract["status"] == "isolated_research_example_not_stage_qualified"
-    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.5"
+    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.6"
     assert contract["architecture"]["actor"].startswith("frozen_pickup_lift")
     assert contract["architecture"]["learned_authority"].startswith(
         "receiver_xyz"
@@ -209,10 +209,12 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "self.residual_scale" in source
     assert "* physical_residual" in source
     assert "physical_action_mask = receiver_residual_mask" in source
-    assert "if self.giver_adaptation_enabled:" in source
+    assert "or self.pickup_recovery_adaptation_enabled" in source
     assert "giver_residual_mask | receiver_residual_mask" in source
     assert "exploration_mask = giver_residual_mask" in source
     assert "def configure_giver_adaptation(self)" in source
+    assert "def configure_pickup_recovery_adaptation(self)" in source
+    assert "for phase_index in (0, 1, 2, 4):" in source
     assert "giver_role_row_mask[0:2] = 1.0" in source
     assert "def configure_receiver_adaptation(self)" in source
     assert "receiver_xyz_row_mask[7:10] = 1.0" in source
@@ -235,6 +237,7 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "receiver_half_roll_offset" in controller_source
     assert "transport_custody_latch_enabled = True" in controller_source
     assert "receiver_preposition_enabled = True" in controller_source
+    assert "recovery_receiver_preposition_height" in controller_source
     assert "receiver_contact_orientation_error_target_rad = 1.95" in controller_source
     assert "receiver_adaptive_arc_enabled = False" in controller_source
     assert "phase_two_custody" in controller_source
@@ -242,6 +245,9 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "receiver_grasp_retain_residual_enabled" in controller_source
     assert "giver_presentation_hold = giver_carry.clamp(" in controller_source
     assert "giver_pre_lift_transport_ready = (" in controller_source
+    assert "giver_recovery_residual_only_for_learning" in controller_source
+    assert "giver_recovery_approach_residual" in controller_source
+    assert "recovery_carry_lateral_action_limit" in controller_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
     assert "pickup_contact_loss_steps debounce" in controller_source
     assert "class PhaseMaskedGaussianDistribution" in source
@@ -265,7 +271,14 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     )
     assert '"object_yaw_in_receiver_at_first_stable_rad"' in benchmark_source
     assert '"object_yaw_in_receiver_at_first_contact_rad"' in benchmark_source
+    assert '"outcomes_by_giver_role"' in benchmark_source
+    assert '"terminal_pickup_attempt_histogram"' in benchmark_source
     assert "--receiver_crossing_angle_rad" in benchmark_source
+    assert "--receiver_grasp_retain_residual" in benchmark_source
+    assert (
+        "receiver_grasp_retain_residual_enabled_for_learning"
+        in benchmark_source
+    )
 
 
 def test_e2e_task_adds_native_contact_history_without_changing_success() -> None:
@@ -312,12 +325,19 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         in environment_source
     )
     assert "NeedleHandoverReceiverGraspRetainEnvCfg" in environment_source
+    assert (
+        "NeedleHandoverPickupRecoveryCurriculumEnvCfg"
+        in environment_source
+    )
     assert '"presentation_use_filtered_custody": True' in environment_source
     assert "reset_receiver_curriculum_from_cache" in environment_source
     assert "TerminationsCfg" not in environment_source
     assert "RewardsCfg" not in environment_source
     assert "Isaac-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0" in registration_source
     assert "Isaac-Handover-Needle-Receiver-Curriculum-v0" in (
+        registration_source
+    )
+    assert "Isaac-Handover-Needle-Pickup-Recovery-v0" in (
         registration_source
     )
     assert "HandoverNeedleEndToEndPPORunnerCfg" in agent_source
@@ -339,6 +359,10 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         ROOT / "scripts/dr_anmar_learning_benchmark.py"
     ).read_text()
     assert "def reset_receiver_curriculum_from_cache(" in state_source
+    assert (
+        "def reset_pickup_recovery_curriculum_from_cache("
+        in state_source
+    )
     assert '"_dr_anmar_receiver_curriculum_cache"' in state_source
     assert "presentation_stable & ~cache" in state_source
     assert 'cache["reset_restores"] +=' in state_source
@@ -354,6 +378,11 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert '"pickup_lift_presentation_policy_frozen": True' in benchmark_source
     assert '"optimizer_state_reset": True' in benchmark_source
     assert "policy_model.configure_receiver_adaptation()" in benchmark_source
+    assert "configure_pickup_recovery_adaptation" in benchmark_source
+    assert '"pickup_recovery_curriculum_adaptation_contract"' in (
+        benchmark_source
+    )
+    assert '"first_attempt_residual_frozen": True' in benchmark_source
 
 
 def test_structured_transfer_state_delays_release_and_retries_receiver() -> None:
@@ -398,6 +427,9 @@ def test_experiment_launcher_keeps_teacher_until_full_trajectories_exist() -> No
     assert "PPO checkpoint rejected" in example_source
     assert launcher_source.count("DR_ANMAR_HANDOVER_GIVER_ADAPTATION") == 2
     assert "--handover_giver_adaptation" in launcher_source
+    assert "DR_ANMAR_POLICY_RECEIVER_GRASP_RETAIN_RESIDUAL" in launcher_source
+    assert "DR_ANMAR_PICKUP_RECOVERY_ADAPTATION" in launcher_source
+    assert "--pickup_recovery_adaptation" in launcher_source
 
 
 def test_promotion_gate_rejects_deterministic_success_and_safety_regression() -> None:

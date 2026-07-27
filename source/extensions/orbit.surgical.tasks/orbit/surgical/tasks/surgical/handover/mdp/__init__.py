@@ -10,5 +10,8 @@ from isaaclab.envs.mdp import *  # noqa: F401, F403
 from ...mdp_common import sticky_success_rate  # noqa: F401
 from .observations import *  # noqa: F401, F403
 from .rewards import *  # noqa: F401, F403
-from .state import reset_receiver_curriculum_from_cache  # noqa: F401
+from .state import (  # noqa: F401
+    reset_pickup_recovery_curriculum_from_cache,
+    reset_receiver_curriculum_from_cache,
+)
 from .terminations import *  # noqa: F401, F403

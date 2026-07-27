@@ -1863,11 +1863,21 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             False,
         )
     )
-    if receiver_curriculum and not args.checkpoint:
-        return _fail(
-            "receiver curriculum requires a qualified initial checkpoint"
+    pickup_recovery_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_pickup_recovery_curriculum",
+            False,
         )
-    if receiver_curriculum:
+    )
+    focused_curriculum = (
+        receiver_curriculum or pickup_recovery_curriculum
+    )
+    if focused_curriculum and not args.checkpoint:
+        return _fail(
+            "focused handover curriculum requires a qualified initial checkpoint"
+        )
+    if focused_curriculum:
         # Receiver-only adaptation has a narrow optimum: the physical replay
         # cache needs several iterations to fill, while later PPO updates can
         # overfit that cache. Preserve every update so promotion can be based
@@ -1899,7 +1909,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 f"initial checkpoint not found: {initial_checkpoint}"
             )
         load_cfg = None
-        if args.handover_giver_adaptation or receiver_curriculum:
+        if (
+            args.handover_giver_adaptation
+            or receiver_curriculum
+            or pickup_recovery_curriculum
+        ):
             if (
                 args.handover_giver_adaptation
                 and "Handover-Needle-Dual-PSM-IK-Rel" not in args.task
@@ -1916,7 +1930,18 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "rnd": False,
             }
         runner.load(str(initial_checkpoint), load_cfg=load_cfg)
-        if args.handover_giver_adaptation:
+        if pickup_recovery_curriculum:
+            policy_model = runner.alg.get_policy()
+            if not hasattr(
+                policy_model,
+                "configure_pickup_recovery_adaptation",
+            ):
+                env.close()
+                return _fail(
+                    "handover policy does not support pickup-recovery adaptation"
+                )
+            policy_model.configure_pickup_recovery_adaptation()
+        elif args.handover_giver_adaptation:
             policy_model = runner.alg.get_policy()
             if not hasattr(
                 policy_model, "configure_giver_adaptation"
@@ -1977,7 +2002,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         with early:
             runner.learn(
                 num_learning_iterations=agent_cfg.max_iterations,
-                init_at_random_ep_len=not receiver_curriculum,
+                init_at_random_ep_len=not focused_curriculum,
             )
         duration = time.perf_counter() - started
         checkpoint = run_dir / "model_final.pt"
@@ -1990,6 +2015,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         receiver_curriculum_cache = getattr(
             env.unwrapped,
             "_dr_anmar_receiver_curriculum_cache",
+            None,
+        )
+        pickup_recovery_curriculum_cache = getattr(
+            env.unwrapped,
+            "_dr_anmar_pickup_recovery_curriculum_cache",
             None,
         )
         evidence = {
@@ -2019,6 +2049,60 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "receiver_curriculum": receiver_curriculum,
             "receiver_grasp_retain_curriculum": (
                 receiver_grasp_retain_curriculum
+            ),
+            "pickup_recovery_curriculum": pickup_recovery_curriculum,
+            "pickup_recovery_curriculum_cached_envs": (
+                int(
+                    pickup_recovery_curriculum_cache[
+                        "valid"
+                    ].sum().item()
+                )
+                if pickup_recovery_curriculum_cache is not None
+                else 0
+            ),
+            "pickup_recovery_curriculum_reset_restores": (
+                int(pickup_recovery_curriculum_cache["reset_restores"])
+                if pickup_recovery_curriculum_cache is not None
+                else 0
+            ),
+            "pickup_recovery_curriculum_reset_refreshes": (
+                int(pickup_recovery_curriculum_cache["reset_refreshes"])
+                if pickup_recovery_curriculum_cache is not None
+                else 0
+            ),
+            "pickup_recovery_curriculum_cross_environment_restores": (
+                int(
+                    pickup_recovery_curriculum_cache[
+                        "cross_environment_restores"
+                    ]
+                )
+                if pickup_recovery_curriculum_cache is not None
+                else 0
+            ),
+            "pickup_recovery_curriculum_adaptation_contract": (
+                {
+                    "source_states": (
+                        "simulator_observed_physical_pickup_loss_transitions"
+                    ),
+                    "optimizer_state_reset": True,
+                    "shared_actor_features_trainable": False,
+                    "observation_normalizer_frozen": True,
+                    "trainable_phase_heads": [0, 1, 2, 4],
+                    "trainable_role_output_rows": [0, 1],
+                    "learned_giver_axes": ["x", "y"],
+                    "analytic_giver_axes": [
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                        "gripper",
+                    ],
+                    "first_attempt_residual_frozen": True,
+                    "receiver_policy_frozen_and_active": True,
+                    "hard_terminations_unchanged": True,
+                }
+                if pickup_recovery_curriculum
+                else None
             ),
             "receiver_curriculum_cached_envs": (
                 int(receiver_curriculum_cache["valid"].sum().item())
@@ -4080,6 +4164,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if checkpoint is not None:
         runner.load(str(checkpoint))
     policy_model = runner.alg.get_policy()
+    if (
+        args.handover_giver_adaptation
+        and args.pickup_recovery_adaptation
+    ):
+        env.close()
+        return _fail(
+            "full giver and pickup-recovery adaptation are mutually exclusive"
+        )
+    if args.pickup_recovery_adaptation:
+        if not hasattr(
+            policy_model,
+            "configure_pickup_recovery_adaptation",
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not support pickup-recovery adaptation"
+            )
+        policy_model.configure_pickup_recovery_adaptation()
     if args.handover_giver_adaptation:
         if not hasattr(policy_model, "configure_giver_adaptation"):
             env.close()
@@ -4100,6 +4202,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         (
             "receiver_adaptive_arc_enabled",
             args.receiver_adaptive_arc,
+        ),
+        (
+            "receiver_grasp_retain_residual_enabled_for_learning",
+            args.receiver_grasp_retain_residual,
         ),
     )
     for attribute, value in controller_boolean_overrides:
@@ -4127,6 +4233,25 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
         controller.receiver_preposition_height = (
             args.receiver_preposition_height
+        )
+    if args.recovery_receiver_preposition_height is not None:
+        if not 0.01 <= args.recovery_receiver_preposition_height <= 0.05:
+            env.close()
+            return _fail(
+                "recovery receiver preposition height must be "
+                "in [0.01, 0.05] m"
+            )
+        if controller is None or not hasattr(
+            controller,
+            "recovery_receiver_preposition_height",
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose recovery receiver "
+                "preposition height"
+            )
+        controller.recovery_receiver_preposition_height = (
+            args.recovery_receiver_preposition_height
         )
     if args.analytic_only:
         if not hasattr(policy_model, "residual_scale"):
@@ -4212,6 +4337,25 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
         controller.carry_lateral_action_limit = (
             args.carry_lateral_action_limit
+        )
+    if args.recovery_carry_lateral_action_limit is not None:
+        if not 0.0 < args.recovery_carry_lateral_action_limit <= 0.1:
+            env.close()
+            return _fail(
+                "play recovery carry lateral action limit "
+                "must be in (0.0, 0.1]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "recovery_carry_lateral_action_limit"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a recovery carry "
+                "lateral action limit"
+            )
+        controller.recovery_carry_lateral_action_limit = (
+            args.recovery_carry_lateral_action_limit
         )
     if args.carry_lateral_ramp_height is not None:
         if not 0.001 <= args.carry_lateral_ramp_height <= 0.02:
@@ -4478,6 +4622,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             handover_observation[:, 53:56],
         ).clone()
         first_handover_history = {
+            "giver_is_robot_1": giver_is_robot_1.clone(),
             "initial_object_in_giver": initial_object_in_giver,
             "ever_giver_bilateral_contact": torch.zeros_like(
                 first_unresolved
@@ -6286,6 +6431,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .mean()
                         .item()
                     ),
+                    "environments_with_recovery": int(
+                        (
+                            first_handover_history[
+                                "maximum_pickup_recoveries"
+                            ][mask]
+                            > 0
+                        )
+                        .sum()
+                        .item()
+                    ),
+                    "terminal_pickup_attempt_histogram": {
+                        str(attempt): int(
+                            (
+                                first_handover_history[
+                                    "terminal_pickup_attempts"
+                                ][mask]
+                                == attempt
+                            )
+                            .sum()
+                            .item()
+                        )
+                        for attempt in range(4)
+                    },
                 }
 
             phase_masks = {
@@ -6488,6 +6656,85 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "maximum_phase_distribution": {
                     label: int(mask.sum().item())
                     for label, mask in phase_masks.items()
+                },
+                "outcomes_by_giver_role": {
+                    role: {
+                        "count": int(role_mask.sum().item()),
+                        "success": int(
+                            (role_mask & first_outcome_success)
+                            .sum()
+                            .item()
+                        ),
+                        "reached_10mm_lift": int(
+                            (
+                                role_mask
+                                & (first_handover_max_phase >= 2)
+                            )
+                            .sum()
+                            .item()
+                        ),
+                        "reached_stable_presentation": int(
+                            (
+                                role_mask
+                                & first_handover_history[
+                                    "ever_presentation_stable"
+                                ]
+                            )
+                            .sum()
+                            .item()
+                        ),
+                        "reached_receiver_contact": int(
+                            (
+                                role_mask
+                                & first_handover_history[
+                                    "ever_receiver_any_contact"
+                                ]
+                            )
+                            .sum()
+                            .item()
+                        ),
+                        "environments_with_recovery": int(
+                            (
+                                role_mask
+                                & (
+                                    first_handover_history[
+                                        "maximum_pickup_recoveries"
+                                    ]
+                                    > 0
+                                )
+                            )
+                            .sum()
+                            .item()
+                        ),
+                        "recovered_success": int(
+                            (
+                                role_mask
+                                & first_outcome_success
+                                & (
+                                    first_handover_history[
+                                        "terminal_pickup_attempts"
+                                    ]
+                                    > 1
+                                )
+                            )
+                            .sum()
+                            .item()
+                        ),
+                    }
+                    for role, role_mask in {
+                        "robot_1": (
+                            first_completed
+                            & first_handover_history[
+                                "giver_is_robot_1"
+                            ]
+                        ),
+                        "robot_2": (
+                            first_completed
+                            & ~first_handover_history[
+                                "giver_is_robot_1"
+                            ]
+                        ),
+                    }.items()
                 },
                 "reached_phase_fraction": {
                     f"phase_{phase}_{label}": float(
@@ -6787,6 +7034,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     args.handover_giver_adaptation,
                 )
             ),
+            "policy_pickup_recovery_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "pickup_recovery_adaptation_enabled",
+                    args.pickup_recovery_adaptation,
+                )
+            ),
             "policy_residual_scale": (
                 float(policy_model.residual_scale)
                 if hasattr(policy_model, "residual_scale")
@@ -6850,6 +7104,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 and hasattr(
                     policy_model.controller,
                     "receiver_preposition_height",
+                )
+                else None
+            ),
+            "policy_recovery_receiver_preposition_height_m": (
+                float(
+                    policy_model.controller.recovery_receiver_preposition_height
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "recovery_receiver_preposition_height",
                 )
                 else None
             ),
@@ -6920,6 +7185,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 and hasattr(
                     policy_model.controller,
                     "carry_lateral_action_limit",
+                )
+                else None
+            ),
+            "policy_recovery_carry_lateral_action_limit": (
+                float(
+                    policy_model.controller.recovery_carry_lateral_action_limit
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "recovery_carry_lateral_action_limit",
                 )
                 else None
             ),
@@ -7148,6 +7424,10 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--checkpoint")
     play.add_argument("--analytic-only", action="store_true")
     play.add_argument("--handover_giver_adaptation", action="store_true")
+    play.add_argument(
+        "--pickup_recovery_adaptation",
+        action="store_true",
+    )
     play.add_argument("--num_envs", type=int, required=True)
     play.add_argument("--num_frames", type=int, required=True)
     play.add_argument("--seed", type=int, default=2361)
@@ -7163,6 +7443,10 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--pickup_initial_vertical_action_limit", type=float)
     play.add_argument("--recovery_pickup_vertical_action_limit", type=float)
     play.add_argument("--carry_lateral_action_limit", type=float)
+    play.add_argument(
+        "--recovery_carry_lateral_action_limit",
+        type=float,
+    )
     play.add_argument("--carry_lateral_ramp_height", type=float)
     play.add_argument("--presentation_fraction_from_giver", type=float)
     play.add_argument("--receiver_crossing_angle_rad", type=float)
@@ -7178,7 +7462,16 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument("--receiver_preposition_height", type=float)
     play.add_argument(
+        "--recovery_receiver_preposition_height",
+        type=float,
+    )
+    play.add_argument(
         "--receiver_adaptive_arc",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+    play.add_argument(
+        "--receiver_grasp_retain_residual",
         action=argparse.BooleanOptionalAction,
         default=None,
     )

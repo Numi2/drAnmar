@@ -1,5 +1,5 @@
 {
-  "schema_version": "dranmar-e2e-handover-experiment-1.5",
+  "schema_version": "dranmar-e2e-handover-experiment-1.6",
   "status": "isolated_research_example_not_stage_qualified",
   "baseline_commit": "c17d97c6a5e798998321b394ece2fc6642edb53b",
   "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
@@ -241,6 +241,33 @@
     "rejected_upper_centering_limit": 0.0075,
     "promotion_rationale": "retained_success_improved_on_matched_512_and_600_populations_with_unchanged_pickup_exhaustion_stable_presentation_hard_safety_count_and_success_contract",
     "qualification_boundary": "v33_remains_the_scale_qualified_baseline_until_the_candidate_passes_the_2000_environment_gate"
+  },
+  "recovery_latency_v34": {
+    "status": "multiseed_performance_champion_not_default_promoted",
+    "checkpoint_sha256": "a56f61703855931d9d755beeba530bb8c1ac5232f6d6499e6254399cca8535cf",
+    "recovery_carry_lateral_action_limit": 0.1,
+    "recovery_receiver_preposition_height_m": 0.015,
+    "first_attempt_controller_unchanged": true,
+    "seeds": [
+      17,
+      2361,
+      4099
+    ],
+    "episodes": 6000,
+    "baseline_successes": 3289,
+    "candidate_successes": 3393,
+    "baseline_success_rate": 0.5481666666666667,
+    "candidate_success_rate": 0.5655,
+    "recovered_successes_baseline": 226,
+    "recovered_successes_candidate": 329,
+    "protected_surface_force_baseline": 13,
+    "protected_surface_force_candidate": 13,
+    "object_drops_baseline": 2,
+    "object_drops_candidate": 4,
+    "excessive_object_force_baseline": 0,
+    "excessive_object_force_candidate": 0,
+    "evidence_path": "docs/experiments/evidence/recovery-latency-v34-multiseed-promotion.json",
+    "qualification_boundary": "performance_improved_on_every_seed_but_the_absolute_zero_hard_failure_gate_retains_prior_runtime_defaults"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",

@@ -315,6 +315,7 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.controller.receiver_residual_enabled_for_learning = True
         self.residual_scale = residual_scale
         self.giver_adaptation_enabled = False
+        self.pickup_recovery_adaptation_enabled = False
         self.receiver_adaptation_enabled = False
 
     def _get_latent_dim(self) -> int:
@@ -345,6 +346,7 @@ class EndToEndHandoverMLPModel(MLPModel):
         if (
             self.obs_normalization
             and not self.giver_adaptation_enabled
+            and not self.pickup_recovery_adaptation_enabled
             and not self.receiver_adaptation_enabled
         ):
             role_observation, _ = self._role_latent(obs)
@@ -448,6 +450,42 @@ class EndToEndHandoverMLPModel(MLPModel):
                 )
             )
 
+    def configure_pickup_recovery_adaptation(self) -> None:
+        """Adapt giver XY only on post-slip relift phases."""
+        self.pickup_recovery_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        giver_xy_row_mask = torch.zeros(
+            14,
+            dtype=self.phase_network.heads[1].weight.dtype,
+            device=self.phase_network.heads[1].weight.device,
+        )
+        giver_xy_row_mask[0:2] = 1.0
+        for phase_index in (0, 1, 2, 4):
+            head = self.phase_network.heads[phase_index]
+            head.weight.requires_grad_(True)
+            head.bias.requires_grad_(True)
+            head.weight.register_hook(
+                lambda gradient, row_mask=giver_xy_row_mask: (
+                    gradient * row_mask.unsqueeze(-1)
+                )
+            )
+            head.bias.register_hook(
+                lambda gradient, row_mask=giver_xy_row_mask: (
+                    gradient * row_mask
+                )
+            )
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
     def forward(
         self,
         obs,
@@ -475,7 +513,10 @@ class EndToEndHandoverMLPModel(MLPModel):
         # rotations/jaws stay under the analytic physics sequence.
         physical_action_mask = receiver_residual_mask
         exploration_mask = receiver_residual_mask
-        if self.giver_adaptation_enabled:
+        if (
+            self.giver_adaptation_enabled
+            or self.pickup_recovery_adaptation_enabled
+        ):
             physical_action_mask = (
                 giver_residual_mask | receiver_residual_mask
             )
@@ -517,6 +558,9 @@ class _EndToEndHandoverExport(nn.Module):
         self.controller = copy.deepcopy(model.controller)
         self.residual_scale = model.residual_scale
         self.giver_adaptation_enabled = model.giver_adaptation_enabled
+        self.pickup_recovery_adaptation_enabled = (
+            model.pickup_recovery_adaptation_enabled
+        )
         self.deterministic_output = (
             model.distribution.as_deterministic_output_module()
             if model.distribution is not None
@@ -547,7 +591,10 @@ class _EndToEndHandoverExport(nn.Module):
             receiver_residual_mask,
         ) = self.controller(obs)
         physical_action_mask = receiver_residual_mask
-        if self.giver_adaptation_enabled:
+        if (
+            self.giver_adaptation_enabled
+            or self.pickup_recovery_adaptation_enabled
+        ):
             physical_action_mask = (
                 giver_residual_mask | receiver_residual_mask
             )

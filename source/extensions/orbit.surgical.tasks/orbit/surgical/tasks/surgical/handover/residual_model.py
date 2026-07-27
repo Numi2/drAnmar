@@ -57,6 +57,7 @@ class HandoverAnalyticController(nn.Module):
         self.transport_custody_latch_enabled = True
         self.receiver_preposition_enabled = True
         self.receiver_preposition_height = 0.025
+        self.recovery_receiver_preposition_height = 0.025
         self.receiver_preposition_action_limit = 0.15
         # Commanded stop includes the measured ~0.25 rad actuator lag so the
         # physical jaw pose lands at the retained v33 contact boundary.
@@ -85,6 +86,10 @@ class HandoverAnalyticController(nn.Module):
         self.presentation_hold_action_limit = 0.01
         self.minimum_lift_height_in_robot_frame = -0.139
         self.carry_lateral_action_limit = 0.06
+        # Recovered grasps are physically less repeatable than reset-aligned
+        # grasps. Keep the qualified first-attempt transport unchanged while
+        # allowing a gentler recovery-only carry to preserve custody.
+        self.recovery_carry_lateral_action_limit = 0.06
         self.carry_lateral_ramp_height = 0.01
         self.pickup_vertical_action_limit = 0.01
         self.pickup_initial_vertical_action_limit = 0.01
@@ -114,6 +119,7 @@ class HandoverAnalyticController(nn.Module):
         # an untrained receiver residual merely by being reloaded for play.
         self.receiver_residual_enabled_for_learning = False
         self.receiver_grasp_retain_residual_enabled_for_learning = False
+        self.giver_recovery_residual_only_for_learning = False
         self.giver_grasp_x = float(
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
         )
@@ -490,9 +496,18 @@ class HandoverAnalyticController(nn.Module):
             receiver_future_grasp_position[:, 1] += self.receiver_grasp_y
             receiver_future_grasp_position[:, 2] += self.receiver_grasp_z
         receiver_preposition_target = receiver_future_grasp_position.clone()
-        receiver_preposition_target[:, 2] += (
-            self.receiver_preposition_height
+        receiver_preposition_height = torch.where(
+            pickup_recovery_context,
+            torch.full_like(
+                receiver_distance,
+                self.recovery_receiver_preposition_height,
+            ),
+            torch.full_like(
+                receiver_distance,
+                self.receiver_preposition_height,
+            ),
         )
+        receiver_preposition_target[:, 2] += receiver_preposition_height
         receiver_preposition = (
             (receiver_preposition_target - receiver_ee)
             / self.position_scale
@@ -569,8 +584,19 @@ class HandoverAnalyticController(nn.Module):
         carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction * (
             3.0 - 2.0 * carry_ramp_fraction
         )
+        carry_lateral_action_limit = torch.where(
+            pickup_recovery_context,
+            torch.full_like(
+                carry_ramp_fraction,
+                self.recovery_carry_lateral_action_limit,
+            ),
+            torch.full_like(
+                carry_ramp_fraction,
+                self.carry_lateral_action_limit,
+            ),
+        )
         carry_lateral_limit = (
-            self.carry_lateral_action_limit * carry_ramp_fraction
+            carry_lateral_action_limit * carry_ramp_fraction
         ).unsqueeze(-1)
         giver_lateral_action = torch.maximum(
             torch.minimum(
@@ -946,11 +972,30 @@ class HandoverAnalyticController(nn.Module):
             )
             & ~receiver_any_contact
         )
+        giver_pickup_transport_residual &= torch.where(
+            torch.full_like(
+                pickup_recovery_context,
+                self.giver_recovery_residual_only_for_learning,
+            ),
+            pickup_recovery_context,
+            torch.ones_like(pickup_recovery_context),
+        )
+        giver_recovery_approach_residual = (
+            pickup_recovery_context
+            & ((phase == 0) | (phase == 4))
+            & torch.full_like(
+                pickup_recovery_context,
+                self.giver_recovery_residual_only_for_learning,
+            )
+        )
         # The analytic controller remains the sole authority for vertical
         # lift.  A learned correction may center the grasp in the table plane,
         # but cannot reverse or accelerate the qualified pickup trajectory.
         giver_residual[:, :2] = (
-            giver_pickup_transport_residual.unsqueeze(-1)
+            (
+                giver_pickup_transport_residual
+                | giver_recovery_approach_residual
+            ).unsqueeze(-1)
         )
         receiver_residual = torch.zeros_like(receiver_action)
         receiver_residual_enabled = (

@@ -112,6 +112,110 @@ def reset_receiver_curriculum_from_cache(
     )
 
 
+def reset_pickup_recovery_curriculum_from_cache(
+    env: ManagerBasedRLEnv,
+    env_ids: torch.Tensor | None,
+) -> None:
+    """Restore simulator states captured at a real pickup-loss transition."""
+    cache = getattr(env, "_dr_anmar_pickup_recovery_curriculum_cache", None)
+    if cache is None:
+        return
+    if env_ids is None:
+        env_ids = torch.arange(
+            env.num_envs,
+            dtype=torch.long,
+            device=env.device,
+        )
+    restored_mask = getattr(
+        env,
+        "_dr_anmar_pickup_recovery_curriculum_restored",
+        None,
+    )
+    if restored_mask is None:
+        restored_mask = torch.zeros(
+            env.num_envs,
+            dtype=torch.bool,
+            device=env.device,
+        )
+        setattr(
+            env,
+            "_dr_anmar_pickup_recovery_curriculum_restored",
+            restored_mask,
+        )
+    restored_mask[env_ids] = False
+    valid = cache["valid"][env_ids]
+    restore_probability = float(
+        getattr(
+            env.cfg,
+            "dr_anmar_pickup_recovery_curriculum_restore_probability",
+            0.9,
+        )
+    )
+    restore = valid & (
+        torch.rand(env_ids.shape, device=env.device) < restore_probability
+    )
+    refresh_env_ids = env_ids[valid & ~restore]
+    if bool(refresh_env_ids.numel()):
+        cache["valid"][refresh_env_ids] = False
+        cache["reset_refreshes"] += int(refresh_env_ids.numel())
+    target_env_ids = env_ids[restore]
+    if not bool(target_env_ids.numel()):
+        return
+    cache["reset_restores"] += int(target_env_ids.numel())
+    source_env_ids = target_env_ids
+    if bool(
+        getattr(
+            env.cfg,
+            "dr_anmar_pickup_recovery_curriculum_cross_environment_sampling",
+            False,
+        )
+    ):
+        available_source_ids = torch.nonzero(
+            cache["valid"],
+            as_tuple=False,
+        ).squeeze(-1)
+        if bool(available_source_ids.numel()):
+            source_env_ids = available_source_ids[
+                torch.randint(
+                    available_source_ids.numel(),
+                    (target_env_ids.numel(),),
+                    device=env.device,
+                )
+            ]
+            cache["cross_environment_restores"] += int(
+                target_env_ids.numel()
+            )
+    robot_1: Articulation = env.scene["robot_1"]
+    robot_2: Articulation = env.scene["robot_2"]
+    obj: RigidObject = env.scene["object"]
+    robot_1.write_joint_state_to_sim(
+        cache["robot_1_joint_pos"][source_env_ids],
+        cache["robot_1_joint_vel"][source_env_ids],
+        env_ids=target_env_ids,
+    )
+    robot_2.write_joint_state_to_sim(
+        cache["robot_2_joint_pos"][source_env_ids],
+        cache["robot_2_joint_vel"][source_env_ids],
+        env_ids=target_env_ids,
+    )
+    object_root_pose_w = cache["object_root_pose_w"][source_env_ids].clone()
+    source_origins = env.scene.env_origins[source_env_ids]
+    target_origins = env.scene.env_origins[target_env_ids]
+    object_root_pose_w[:, :3] += target_origins - source_origins
+    obj.write_root_pose_to_sim(
+        object_root_pose_w,
+        env_ids=target_env_ids,
+    )
+    obj.write_root_velocity_to_sim(
+        cache["object_root_velocity_w"][source_env_ids],
+        env_ids=target_env_ids,
+    )
+    cache["restored_giver_is_robot_1"][target_env_ids] = cache[
+        "giver_is_robot_1"
+    ][source_env_ids]
+    restored_mask[target_env_ids] = True
+
+
 def _step_number(env: ManagerBasedRLEnv) -> int:
     value = env.common_step_counter
     return int(value.item()) if isinstance(value, torch.Tensor) else int(value)
@@ -478,6 +582,29 @@ def handover_state(
     state["receiver_acquisition_offset_w"][reset] = 0.0
     state["start_object_pos"][reset] = object_pos_w[reset]
     state["start_object_pos"][reset, 2] = state["support_height_w"][reset]
+    restored_recovery = getattr(
+        env,
+        "_dr_anmar_pickup_recovery_curriculum_restored",
+        None,
+    )
+    if restored_recovery is not None:
+        restored_recovery = reset & restored_recovery
+        recovery_cache = getattr(
+            env,
+            "_dr_anmar_pickup_recovery_curriculum_cache",
+            None,
+        )
+        state["phase"][restored_recovery] = 4
+        state["pickup_attempt_count"][restored_recovery] = 1
+        state["pickup_recovery_count"][restored_recovery] = 1
+        if recovery_cache is not None:
+            state["giver_is_robot_1"][restored_recovery] = recovery_cache[
+                "restored_giver_is_robot_1"
+            ][restored_recovery]
+        getattr(
+            env,
+            "_dr_anmar_pickup_recovery_curriculum_restored",
+        )[restored_recovery] = False
     state["last_reset_step"][reset] = step
     if state["last_step"] == step and not bool(torch.any(reset)):
         return state
@@ -1021,6 +1148,94 @@ def handover_state(
         pickup_attempt_failed
         & (state["pickup_attempt_count"] >= maximum_pickup_attempts)
     )
+    if bool(
+        getattr(
+            env.cfg,
+            "dr_anmar_pickup_recovery_curriculum",
+            False,
+        )
+    ):
+        cache = getattr(
+            env,
+            "_dr_anmar_pickup_recovery_curriculum_cache",
+            None,
+        )
+        robot_1: Articulation = env.scene["robot_1"]
+        robot_2: Articulation = env.scene["robot_2"]
+        if cache is None:
+            cache = {
+                "valid": torch.zeros(
+                    env.num_envs,
+                    dtype=torch.bool,
+                    device=env.device,
+                ),
+                "reset_restores": 0,
+                "reset_refreshes": 0,
+                "cross_environment_restores": 0,
+                "robot_1_joint_pos": torch.zeros_like(
+                    mdp_common.as_torch(robot_1.data.joint_pos)
+                ),
+                "robot_1_joint_vel": torch.zeros_like(
+                    mdp_common.as_torch(robot_1.data.joint_vel)
+                ),
+                "robot_2_joint_pos": torch.zeros_like(
+                    mdp_common.as_torch(robot_2.data.joint_pos)
+                ),
+                "robot_2_joint_vel": torch.zeros_like(
+                    mdp_common.as_torch(robot_2.data.joint_vel)
+                ),
+                "object_root_pose_w": torch.zeros(
+                    (env.num_envs, 7),
+                    dtype=torch.float32,
+                    device=env.device,
+                ),
+                "object_root_velocity_w": torch.zeros(
+                    (env.num_envs, 6),
+                    dtype=torch.float32,
+                    device=env.device,
+                ),
+                "giver_is_robot_1": torch.ones(
+                    env.num_envs,
+                    dtype=torch.bool,
+                    device=env.device,
+                ),
+                "restored_giver_is_robot_1": torch.ones(
+                    env.num_envs,
+                    dtype=torch.bool,
+                    device=env.device,
+                ),
+            }
+            setattr(
+                env,
+                "_dr_anmar_pickup_recovery_curriculum_cache",
+                cache,
+            )
+        capture = recovery_allowed & ~cache["valid"]
+        if bool(capture.any()):
+            cache["robot_1_joint_pos"][capture] = mdp_common.as_torch(
+                robot_1.data.joint_pos
+            )[capture]
+            cache["robot_1_joint_vel"][capture] = mdp_common.as_torch(
+                robot_1.data.joint_vel
+            )[capture]
+            cache["robot_2_joint_pos"][capture] = mdp_common.as_torch(
+                robot_2.data.joint_pos
+            )[capture]
+            cache["robot_2_joint_vel"][capture] = mdp_common.as_torch(
+                robot_2.data.joint_vel
+            )[capture]
+            cache["object_root_pose_w"][capture, :3] = object_pos_w[capture]
+            cache["object_root_pose_w"][capture, 3:7] = (
+                mdp_common.as_torch(obj.data.root_quat_w)[capture]
+            )
+            cache["object_root_velocity_w"][capture, :3] = (
+                mdp_common.as_torch(obj.data.root_lin_vel_w)[capture]
+            )
+            cache["object_root_velocity_w"][capture, 3:6] = (
+                mdp_common.as_torch(obj.data.root_ang_vel_w)[capture]
+            )
+            cache["giver_is_robot_1"][capture] = giver_is_robot_1[capture]
+            cache["valid"][capture] = True
     state["pickup_attempts_exhausted"] |= attempts_exhausted
     state["pickup_recovery_count"][recovery_allowed] += 1
     state["recovery_open_step_count"][recovery_allowed] = 0

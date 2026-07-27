@@ -117,3 +117,22 @@ class NeedleHandoverReceiverGraspRetainEnvCfg(
         self.dr_anmar_receiver_grasp_retain_curriculum = True
         self.dr_anmar_handover_contract["receiver_capture_required_steps"] = 3
         self.dr_anmar_handover_contract["giver_release_confirmation_steps"] = 3
+
+
+@configclass
+class NeedleHandoverPickupRecoveryCurriculumEnvCfg(
+    NeedleHandoverEndToEndEnvCfg
+):
+    """Train bounded relift corrections from simulator-observed pickup slips."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.dr_anmar_pickup_recovery_curriculum = True
+        self.dr_anmar_pickup_recovery_curriculum_restore_probability = 0.9
+        self.dr_anmar_pickup_recovery_curriculum_cross_environment_sampling = (
+            True
+        )
+        self.events.pickup_recovery_curriculum_reset = EventTerm(
+            func=mdp.reset_pickup_recovery_curriculum_from_cache,
+            mode="reset",
+        )
