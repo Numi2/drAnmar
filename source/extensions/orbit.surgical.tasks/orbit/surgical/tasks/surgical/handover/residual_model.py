@@ -434,7 +434,7 @@ class HandoverAnalyticController(nn.Module):
         residual_mask = torch.cat(
             (robot_1_residual, robot_2_residual),
             dim=-1,
-        ).bool()
+        ) > 0.5
         return base_action, residual_mask
 
 

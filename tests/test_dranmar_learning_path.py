@@ -526,6 +526,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         in handover_model_source
     )
     assert handover_model_source.count("~receiver_any_contact") >= 2
+    assert ") > 0.5" in handover_model_source
     assert "parameter.requires_grad_(False)" in handover_model_source
     assert "self.residual_scale = residual_scale" in handover_model_source
     assert "def handover_residual_actor(" in learning_cfg_source
