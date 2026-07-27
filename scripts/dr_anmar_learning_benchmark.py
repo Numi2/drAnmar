@@ -3444,6 +3444,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         controller.presentation_height_in_robot_frame = (
             args.presentation_height_in_robot_frame
         )
+    if args.giver_close_distance is not None:
+        if not 0.0005 <= args.giver_close_distance <= 0.005:
+            env.close()
+            return _fail(
+                "play giver close distance must be in [0.0005, 0.005]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(controller, "close_distance"):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a giver close distance"
+            )
+        controller.close_distance = args.giver_close_distance
     if args.giver_lift_on_live_contact is not None:
         controller = getattr(policy_model, "controller", None)
         if controller is None or not hasattr(
@@ -4916,6 +4929,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "policy_giver_close_distance_m": (
+                float(policy_model.controller.close_distance)
+                if hasattr(policy_model, "controller")
+                and hasattr(policy_model.controller, "close_distance")
+                else None
+            ),
             "policy_giver_lift_on_live_contact": (
                 bool(policy_model.controller.giver_lift_on_live_contact)
                 if hasattr(policy_model, "controller")
@@ -5034,6 +5053,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--carry_lateral_ramp_height", type=float)
     play.add_argument("--presentation_fraction_from_giver", type=float)
     play.add_argument("--presentation_height_in_robot_frame", type=float)
+    play.add_argument("--giver_close_distance", type=float)
     play.add_argument(
         "--giver_lift_on_live_contact",
         action=argparse.BooleanOptionalAction,
