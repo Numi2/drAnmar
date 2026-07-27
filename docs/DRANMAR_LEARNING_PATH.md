@@ -172,12 +172,9 @@ seed moves the needle 3.5 cm from the giver toward the receiver, keeping both
 instruments inside comfortable reach. Reaching that authored exchange point
 organizes the demonstration but is not part of the success predicate.
 The giver begins lifting after the three-of-five native contact window
-completes and the current frame still has physical bilateral contact. If that
-contact is absent before lift, the closed giver re-centers instead of pulling
-away; after lift, transport tolerates normal thin-needle contact flicker. Its
-handover carry limits remain below the faster Stage 4 limits because both early
-carry and the faster profile reduced transfer reliability in controlled
-dual-arm comparisons.
+completes. Its handover carry limits remain below the faster Stage 4 limits
+because both early carry and the faster profile reduced transfer reliability
+in controlled dual-arm comparisons.
 
 The PSM foundation profile owns the physical jaw contract: a 0.07 radian
 symmetric close target and 0.15 N·m actuator effort limit. Physical-parameter
