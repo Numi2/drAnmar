@@ -239,6 +239,8 @@
         "analytic_carry_lateral_action_limit": 0.06,
         "analytic_carry_lateral_ramp_height_m": 0.005,
         "analytic_carry_lateral_ramp_profile": "minimum_jerk_smoothstep_after_10mm_pickup_clearance",
+        "analytic_giver_prelift_centering_action_limit": 0.015,
+        "analytic_giver_prelift_centering_target": "geometry_qualified_needle_grasp_frame_relative_to_giver_tool_tip",
         "analytic_receiver_contact_centering_action_limit": 0.0025,
         "analytic_receiver_contact_centering_action_limit_source": "isaac_lab_seed17_1200_environment_six_way_physical_sweep",
         "reward_contract": {

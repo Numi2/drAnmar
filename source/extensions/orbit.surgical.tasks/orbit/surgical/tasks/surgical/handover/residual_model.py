@@ -46,6 +46,7 @@ class HandoverAnalyticController(nn.Module):
         self.minimum_lift_height_in_robot_frame = -0.139
         self.carry_lateral_action_limit = 0.06
         self.carry_lateral_ramp_height = 0.005
+        self.giver_prelift_centering_action_limit = 0.015
         self.pickup_vertical_action_limit = 0.015
         self.carry_vertical_action_limit = 0.015
         self.receiver_orientation_action_limit = 0.6
@@ -204,6 +205,13 @@ class HandoverAnalyticController(nn.Module):
         giver_error = (
             giver_target - object_in_giver
         ) / self.position_scale
+        giver_grasp_position = object_in_giver.clone()
+        giver_grasp_position[:, 0] += self.giver_grasp_x
+        giver_grasp_position[:, 1] += self.giver_grasp_y
+        giver_grasp_position[:, 2] += self.giver_grasp_z
+        giver_centering_error = (
+            giver_grasp_position - giver_ee
+        ) / self.position_scale
         giver_vertical_limit = torch.where(
             vertical_only,
             torch.full_like(
@@ -235,12 +243,26 @@ class HandoverAnalyticController(nn.Module):
         carry_lateral_limit = (
             self.carry_lateral_action_limit * carry_ramp_fraction
         ).unsqueeze(-1)
+        prelift_lateral_limit = torch.full_like(
+            carry_lateral_limit,
+            self.giver_prelift_centering_action_limit,
+        )
+        giver_lateral_limit = torch.where(
+            vertical_only.unsqueeze(-1),
+            prelift_lateral_limit,
+            carry_lateral_limit,
+        )
+        giver_lateral_error = torch.where(
+            vertical_only.unsqueeze(-1),
+            giver_centering_error[:, :2],
+            giver_error[:, :2],
+        )
         giver_lateral_action = torch.maximum(
             torch.minimum(
-                giver_error[:, :2],
-                carry_lateral_limit,
+                giver_lateral_error,
+                giver_lateral_limit,
             ),
-            -carry_lateral_limit,
+            -giver_lateral_limit,
         )
         giver_carry = torch.cat(
             (
