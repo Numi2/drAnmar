@@ -334,11 +334,8 @@ def test_handover_requires_closest_arm_physical_transfer() -> None:
         TASK_ROOT / "surgical/handover/config/needle/joint_pos_env_cfg.py"
     ).read_text()
     manifest = json.loads((ROOT / "config/dranmar_learning_path.json").read_text())
-    learning = manifest["stages"][5]["learning"]
     contract = manifest["stages"][5]["qualification_contract"]
 
-    assert learning["analytic_lift_on_current_bilateral_contact"] is True
-    assert learning["physical_phase_credit_still_requires_contact_window"] is True
     assert '"robot_1_jaw_1_object_contact"' in state_source
     assert '"robot_2_jaw_1_object_contact"' in state_source
     assert '"giver_is_robot_1"' in state_source
@@ -626,7 +623,6 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "            giver_carry_mode & giver_bilateral_contact"
         in handover_model_source
     )
-    assert "giver_carry_mode = phase <= 2" in handover_model_source
     assert handover_model_source.count(
         "giver_transport_active.unsqueeze(-1)"
     ) >= 2

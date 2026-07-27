@@ -265,7 +265,7 @@ class HandoverAnalyticController(nn.Module):
             receiver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
-        giver_carry_mode = phase <= 2
+        giver_carry_mode = (phase >= 1) & (phase <= 2)
         giver_transport_active = (
             giver_carry_mode & giver_bilateral_contact
         )
