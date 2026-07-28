@@ -799,13 +799,34 @@
     "qualification_boundary": "rejected_below_393_of_600_screen"
   },
   "reactive_recovered_receiver_shield_v20": {
-    "status": "implemented_awaiting_paired_runtime_evaluation",
+    "status": "rejected_contact_impulse_crossed_hard_limit_before_next_action",
     "root_cause": "unconditional_geometric_deceleration_reduced_success_while_v17_proved_all_scale_safety_events_were_receiver_non_object_contacts",
     "scope": "isaac_lab_task_space_action_term_without_changing_checkpoint_observation_or_policy",
     "activation": "recovered_receiver_phase_2_and_native_non_object_force_above_0.25_n",
     "response": "freeze_rotation_and_retract_positive_z_by_0.0005_m_per_control_step_for_three_steps",
     "hard_termination_unchanged_n": 2.0,
-    "qualification_boundary": "paired_same_source_baseline_and_candidate_required_because_environment_runtime_contract_now_includes_the_shield"
+    "runtime_result": {
+      "seed": 2361,
+      "development_successes": 393,
+      "development_episodes": 600,
+      "scale_successes": 1164,
+      "scale_episodes": 2000,
+      "scale_protected_surface_events": 5,
+      "reason": "candidate_scale_result_was_bitwise_identical_to_v15_so_the_soft_contact_signal_arrived_too_late_to_change_the_terminal_transition"
+    },
+    "qualification_boundary": "rejected_no_safety_effect_at_scale"
+  },
+  "prospective_receiver_tip_barrier_v21": {
+    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "root_cause": "reactive_force_shielding_cannot_stop_a_single_step_contact_impulse_so_collision_avoidance_must_project_the_command_before_contact",
+    "geometry": {
+      "intended_giver_receiver_grasp_frame_distance_m": 0.015198123958282841,
+      "barrier_activation_distance_m": 0.018,
+      "minimum_tip_distance_m": 0.012
+    },
+    "projection": "remove_only_the_receiver_action_component_that_would_cross_the_minimum_tip_distance_and_preserve_tangential_translation_and_orientation",
+    "scope": "pickup_recovery_context_phase_2_only",
+    "qualification_boundary": "must_retain_at_least_393_of_600_and_1140_of_2000_with_no_more_than_4_protected_surface_events"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",

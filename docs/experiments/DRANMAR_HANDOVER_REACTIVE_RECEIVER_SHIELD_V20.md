@@ -22,3 +22,10 @@ therefore requires a same-source baseline at 0.06 recovery transport and a
 candidate at the v15 0.08 contact-qualified transport ceiling. Reward,
 success, deadline, grippers, giver release, and physical force terminals are
 unchanged.
+
+## Result
+
+v20 produced 393/600, but its 2,000-environment result was bitwise identical
+to v15: 1,164 retained handovers and five protected-surface terminals. The
+contact impulse crosses 2 N before the next action can react. v20 is rejected.
+v21 instead projects the receiver command before the measured collision.

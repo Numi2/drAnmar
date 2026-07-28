@@ -61,6 +61,8 @@ class HandoverAnalyticController(nn.Module):
         self.slow_approach_radius = 0.02
         self.slow_approach_action_limit = 0.1
         self.receiver_contact_centering_action_limit = 0.005
+        self.recovery_receiver_giver_barrier_activation_distance = 0.018
+        self.recovery_receiver_giver_minimum_tip_distance = 0.012
         self.transport_custody_latch_enabled = True
         self.receiver_preposition_enabled = True
         self.receiver_preposition_height = 0.025
@@ -473,6 +475,48 @@ class HandoverAnalyticController(nn.Module):
             receiver_grasp_position[:, 1] += self.receiver_grasp_y
             receiver_grasp_position[:, 2] += self.receiver_grasp_z
         root_2_in_giver = object_in_giver - object_in_receiver
+        receiver_ee_in_giver = receiver_ee + root_2_in_giver
+        giver_to_receiver_tip = receiver_ee_in_giver - giver_ee
+        giver_receiver_tip_distance = torch.linalg.vector_norm(
+            giver_to_receiver_tip,
+            dim=-1,
+        )
+        giver_to_receiver_direction = (
+            giver_to_receiver_tip
+            / giver_receiver_tip_distance.clamp_min(1e-6).unsqueeze(-1)
+        )
+        receiver_radial_action = (
+            receiver_approach[:, :3]
+            * giver_to_receiver_direction
+        ).sum(dim=-1)
+        maximum_inward_action = (
+            (
+                giver_receiver_tip_distance
+                - self.recovery_receiver_giver_minimum_tip_distance
+            )
+            / self.position_scale
+        ).clamp_min(0.0)
+        projected_radial_action = torch.maximum(
+            receiver_radial_action,
+            -maximum_inward_action,
+        )
+        recovery_receiver_barrier_active = (
+            pickup_recovery_context
+            & (phase == 2)
+            & (
+                giver_receiver_tip_distance
+                < self.recovery_receiver_giver_barrier_activation_distance
+            )
+            & (receiver_radial_action < -maximum_inward_action)
+        )
+        receiver_barrier_correction = (
+            projected_radial_action - receiver_radial_action
+        ).unsqueeze(-1) * giver_to_receiver_direction
+        receiver_approach[:, :3] = torch.where(
+            recovery_receiver_barrier_active.unsqueeze(-1),
+            receiver_approach[:, :3] + receiver_barrier_correction,
+            receiver_approach[:, :3],
+        )
         presentation_in_giver = (
             self.presentation_fraction_from_giver
             * root_2_in_giver
