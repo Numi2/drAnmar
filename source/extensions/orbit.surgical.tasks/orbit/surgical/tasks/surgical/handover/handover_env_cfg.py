@@ -68,6 +68,13 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
         history_length=2,
     )
+    # The end-to-end qualification task opts these fields into explicit
+    # counterpart-body and table filtering. Keeping them disabled here avoids
+    # adding diagnostic contact views to unrelated handover environments.
+    robot_1_jaw_1_protected_contact_attribution: ContactSensorCfg | None = None
+    robot_1_jaw_2_protected_contact_attribution: ContactSensorCfg | None = None
+    robot_2_jaw_1_protected_contact_attribution: ContactSensorCfg | None = None
+    robot_2_jaw_2_protected_contact_attribution: ContactSensorCfg | None = None
 
     # Table
     table = AssetBaseCfg(

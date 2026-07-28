@@ -47,7 +47,10 @@ def excessive_contact_force(
 
 
 def excessive_non_object_contact_force(
-    env: ManagerBasedRLEnv, sensor_names: tuple[str, ...], hard_limit: float
+    env: ManagerBasedRLEnv,
+    sensor_names: tuple[str, ...],
+    hard_limit: float,
+    attribution_sensor_names: tuple[str, ...] = (),
 ) -> torch.Tensor:
     forces = torch.stack(
         [
@@ -69,4 +72,29 @@ def excessive_non_object_contact_force(
         terminal_forces = torch.zeros_like(forces)
     terminal_forces[violations] = forces[violations]
     env._dr_anmar_terminal_protected_surface_forces_n = terminal_forces
+    if attribution_sensor_names:
+        attribution_forces = torch.stack(
+            [
+                mdp_common.filtered_contact_force_magnitudes(
+                    env,
+                    sensor_name,
+                )
+                for sensor_name in attribution_sensor_names
+            ],
+            dim=1,
+        )
+        terminal_attribution = getattr(
+            env,
+            "_dr_anmar_terminal_protected_surface_attribution_forces_n",
+            None,
+        )
+        if (
+            terminal_attribution is None
+            or terminal_attribution.shape != attribution_forces.shape
+        ):
+            terminal_attribution = torch.zeros_like(attribution_forces)
+        terminal_attribution[violations] = attribution_forces[violations]
+        env._dr_anmar_terminal_protected_surface_attribution_forces_n = (
+            terminal_attribution
+        )
     return violations

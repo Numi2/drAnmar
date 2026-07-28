@@ -837,6 +837,43 @@
     },
     "qualification_boundary": "rejected_no_measurable_effect_at_scale"
   },
+  "protected_contact_body_attribution_v22": {
+    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "purpose": "resolve_the_remaining_receiver_non_object_force_into_counterpart_psm_body_or_support_table_before_any_further_control_change",
+    "backend_contract": "isaac_lab_physx_body_level_one_to_many_contact_filtering",
+    "diagnostic_sensor_count": 4,
+    "partner_columns_per_sensor": [
+      "counterpart_psm_base_link",
+      "counterpart_psm_remote_center_link",
+      "counterpart_psm_yaw_link",
+      "counterpart_psm_pitch_end_link",
+      "counterpart_psm_main_insertion_link",
+      "counterpart_psm_main_insertion_link_2",
+      "counterpart_psm_main_insertion_link_3",
+      "counterpart_psm_tool_roll_link",
+      "counterpart_psm_tool_pitch_link",
+      "counterpart_psm_tool_yaw_link",
+      "counterpart_psm_tool_gripper1_link",
+      "counterpart_psm_tool_gripper2_link",
+      "support_table"
+    ],
+    "capture_point": "termination_source_before_automatic_environment_reset",
+    "unchanged": [
+      "checkpoint",
+      "policy_actions",
+      "analytic_controller",
+      "rewards",
+      "success_definition",
+      "episode_deadline",
+      "hard_termination_limit"
+    ],
+    "runtime_sequence": [
+      "validate_13_partner_columns_on_small_population",
+      "replay_exact_seed_2361_on_2000_environments",
+      "select_narrow_control_fix_only_from_dominant_partner_evidence"
+    ],
+    "qualification_boundary": "diagnostics_must_preserve_the_1164_of_2000_outcome_and_identify_the_dominant_partner_for_all_five_protected_surface_terminals"
+  },
   "current_recovery_frontier": {
     "status": "performance_frontier_not_formally_promoted",
     "controller": "v15_contact_qualified_recovery_transport_at_0.08",

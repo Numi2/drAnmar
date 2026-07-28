@@ -7,6 +7,7 @@ from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import TerminationTermCfg as DoneTerm
+from isaaclab.sensors import ContactSensorCfg
 from isaaclab.utils.configclass import configclass
 
 from ... import mdp
@@ -19,6 +20,56 @@ _JAW_SENSOR_NAMES = (
     "robot_2_jaw_1_object_contact",
     "robot_2_jaw_2_object_contact",
 )
+
+_PROTECTED_CONTACT_ATTRIBUTION_SENSOR_NAMES = (
+    "robot_1_jaw_1_protected_contact_attribution",
+    "robot_1_jaw_2_protected_contact_attribution",
+    "robot_2_jaw_1_protected_contact_attribution",
+    "robot_2_jaw_2_protected_contact_attribution",
+)
+
+# PhysX provides body-level one-to-many contact filtering. Preserve one stable
+# column per counterpart rigid body, followed by the support table. This is the
+# finest attribution available without moving the task to the Newton backend.
+_COUNTERPART_BODY_NAMES = (
+    "psm_base_link",
+    "psm_remote_center_link",
+    "psm_yaw_link",
+    "psm_pitch_end_link",
+    "psm_main_insertion_link",
+    "psm_main_insertion_link_2",
+    "psm_main_insertion_link_3",
+    "psm_tool_roll_link",
+    "psm_tool_pitch_link",
+    "psm_tool_yaw_link",
+    "psm_tool_gripper1_link",
+    "psm_tool_gripper2_link",
+)
+
+
+def _protected_contact_partner_paths(counterpart_robot: str) -> list[str]:
+    return [
+        *(
+            f"{{ENV_REGEX_NS}}/{counterpart_robot}/{body_name}"
+            for body_name in _COUNTERPART_BODY_NAMES
+        ),
+        "{ENV_REGEX_NS}/Table/Table",
+    ]
+
+
+def _protected_contact_attribution_sensor(
+    robot: str,
+    jaw: int,
+    counterpart_robot: str,
+) -> ContactSensorCfg:
+    return ContactSensorCfg(
+        prim_path=(
+            f"{{ENV_REGEX_NS}}/{robot}/psm_tool_gripper{jaw}_link"
+        ),
+        filter_prim_paths_expr=_protected_contact_partner_paths(
+            counterpart_robot
+        ),
+    )
 
 
 def terminal_transfer_failure(env):
@@ -58,6 +109,21 @@ class NeedleHandoverEndToEndEnvCfg(ik_rel_env_cfg.NeedleHandoverEnvCfg):
 
     def __post_init__(self):
         super().__post_init__()
+        self.scene.robot_1_jaw_1_protected_contact_attribution = (
+            _protected_contact_attribution_sensor("Robot_1", 1, "Robot_2")
+        )
+        self.scene.robot_1_jaw_2_protected_contact_attribution = (
+            _protected_contact_attribution_sensor("Robot_1", 2, "Robot_2")
+        )
+        self.scene.robot_2_jaw_1_protected_contact_attribution = (
+            _protected_contact_attribution_sensor("Robot_2", 1, "Robot_1")
+        )
+        self.scene.robot_2_jaw_2_protected_contact_attribution = (
+            _protected_contact_attribution_sensor("Robot_2", 2, "Robot_1")
+        )
+        self.terminations.protected_surface_force.params[
+            "attribution_sensor_names"
+        ] = _PROTECTED_CONTACT_ATTRIBUTION_SENSOR_NAMES
         # This stricter contract is opt-in for the isolated structured task.
         # The standard handover environments retain their existing phase MDP.
         self.dr_anmar_handover_contract = {

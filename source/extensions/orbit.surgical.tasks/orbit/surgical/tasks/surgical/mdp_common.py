@@ -85,6 +85,23 @@ def contact_force_magnitude(env: ManagerBasedRLEnv, sensor_name: str) -> torch.T
     return torch.linalg.vector_norm(forces.reshape(env.num_envs, -1, 3), dim=-1).amax(dim=-1)
 
 
+def filtered_contact_force_magnitudes(
+    env: ManagerBasedRLEnv,
+    sensor_name: str,
+) -> torch.Tensor:
+    """Per-filter native contact magnitudes for one sensing body.
+
+    PhysX one-to-many filtered contact reporting preserves one column per
+    configured partner body. Diagnostic users can therefore attribute a jaw
+    contact without altering the aggregated contact signal used by the task.
+    """
+    sensor: ContactSensor = env.scene.sensors[sensor_name]
+    filtered = as_torch(sensor.data.force_matrix_w) if sensor.data.force_matrix_w is not None else None
+    if filtered is None:
+        return torch.zeros((env.num_envs, 0), device=env.device)
+    return torch.linalg.vector_norm(filtered.reshape(env.num_envs, -1, 3), dim=-1)
+
+
 def non_object_contact_force_magnitude(env: ManagerBasedRLEnv, sensor_name: str) -> torch.Tensor:
     """Magnitude of native jaw force not accounted for by the filtered object.
 
