@@ -707,7 +707,7 @@
     "qualification_boundary": "must_beat_390_of_600_and_1130_of_2000_with_safety_noninferiority_before_multiseed_promotion"
   },
   "force_projected_recovery_transport_v16": {
-    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "status": "rejected_noisy_force_projection_regressed_pickup_and_safety",
     "root_cause": "binary_bilateral_contact_preserved_the_full_performance_gain_but_did_not_distinguish_weak_custody_from_a_well_seated_recovered_grasp",
     "relift_and_zero_confidence_limit": 0.06,
     "full_authority_limit": 0.08,
@@ -728,7 +728,24 @@
       "protected_surface_events": 5,
       "reason_rejected": "protected_surface_rate_increase_was_0.0015_above_the_0.001_noninferiority_limit"
     },
+    "runtime_result": {
+      "seed": 2361,
+      "development_successes": 395,
+      "development_episodes": 600,
+      "scale_successes": 1141,
+      "scale_episodes": 2000,
+      "scale_recovered_successes": 119,
+      "scale_pickup_attempts_exhausted": 169,
+      "scale_protected_surface_events": 6,
+      "reason": "instantaneous_contact_force_projection_changed_recovery_dynamics_without_reducing_the_collision_tail"
+    },
     "qualification_boundary": "must_preserve_v15_development_and_scale_performance_gates_while_reducing_protected_surface_events_to_at_most_4_of_2000"
+  },
+  "protected_surface_attribution_v17": {
+    "status": "instrumented_awaiting_v15_scale_replay",
+    "purpose": "attribute_each_first_episode_protected_surface_terminal_to_maximum_phase_and_the_specific_giver_or_receiver_jaw_sensor_before_changing_control_again",
+    "controller_under_diagnosis": "v15_phase_and_live_bilateral_contact_gated_0.08_recovery_transport",
+    "no_policy_or_task_contract_change": true
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",

@@ -86,7 +86,6 @@ class HandoverAnalyticController(nn.Module):
         self.normalized_contact_threshold = 0.002
         self.contact_force_observation_scale = 0.2
         self.giver_lift_contact_force_threshold_n = 0.01
-        self.recovery_transport_full_authority_contact_force_n = 0.025
         self.giver_pre_lift_min_contact_jaws = 2
         self.presentation_fraction_from_giver = 0.35
         self.presentation_height_in_robot_frame = -0.13
@@ -595,45 +594,25 @@ class HandoverAnalyticController(nn.Module):
         carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction * (
             3.0 - 2.0 * carry_ramp_fraction
         )
-        giver_minimum_contact_force_n = (
-            giver_contacts.min(dim=-1).values
-            / self.contact_force_observation_scale
-        )
-        recovery_transport_authority_fraction = (
-            (
-                giver_minimum_contact_force_n
-                - self.giver_lift_contact_force_threshold_n
-            )
-            / (
-                self.recovery_transport_full_authority_contact_force_n
-                - self.giver_lift_contact_force_threshold_n
-            )
-        ).clamp(0.0, 1.0)
-        recovery_transport_authority_fraction = (
-            recovery_transport_authority_fraction
-            * recovery_transport_authority_fraction
-            * (3.0 - 2.0 * recovery_transport_authority_fraction)
+        giver_bilateral_contact = torch.all(
+            giver_contacts > self.normalized_contact_threshold,
+            dim=-1,
         )
         recovery_transport_qualified = (
             pickup_recovery_context
             & (phase >= 2)
+            & giver_bilateral_contact
         )
-        recovery_transport_authority_fraction = torch.where(
+        recovery_lateral_action_limit = torch.where(
             recovery_transport_qualified,
-            recovery_transport_authority_fraction,
-            torch.zeros_like(recovery_transport_authority_fraction),
-        )
-        recovery_lateral_action_limit = (
-            self.carry_lateral_action_limit
-            + (
-                self.recovery_carry_lateral_action_limit
-                - self.carry_lateral_action_limit
-            )
-            * recovery_transport_authority_fraction
-        )
-        giver_bilateral_contact = torch.all(
-            giver_contacts > self.normalized_contact_threshold,
-            dim=-1,
+            torch.full_like(
+                carry_ramp_fraction,
+                self.recovery_carry_lateral_action_limit,
+            ),
+            torch.full_like(
+                carry_ramp_fraction,
+                self.carry_lateral_action_limit,
+            ),
         )
         carry_lateral_action_limit = torch.where(
             pickup_recovery_context,

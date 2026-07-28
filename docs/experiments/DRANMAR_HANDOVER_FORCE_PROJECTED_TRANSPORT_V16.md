@@ -28,3 +28,10 @@ Rewards, success, timeout, receiver control, grippers, release, and safety
 terminations remain unchanged. Qualification still requires at least 393/600,
 at least 1,140/2,000, zero drops and excessive object-force events, and no more
 than four protected-surface terminals at scale.
+
+## Result
+
+v16 reached 395/600, but the scale result regressed to 1,141/2,000 with 169
+pickup attempts exhausted and six protected-surface terminals. Instantaneous
+force projection is rejected. The controller returns to the v15 phase and
+bilateral-contact gate while v17 adds collision attribution to the evidence.

@@ -5243,9 +5243,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     first_outcome_success = torch.zeros_like(first_unresolved)
     first_termination_counts = {name: 0 for name in termination_names}
     first_failure_distribution = {name: 0 for name in failure_names}
+    first_failure_masks = {
+        name: torch.zeros_like(first_unresolved)
+        for name in (*failure_names, "unclassified")
+    }
     lift_diagnostics = None
     first_lift_history = None
     lift_mdp_common = None
+    handover_mdp_common = None
+    handover_non_object_sensor_names: tuple[str, ...] = ()
     procedure_diagnostic_trace = None
     diagnostic_trace_frames = {
         0,
@@ -5305,11 +5311,20 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     first_handover_max_phase = None
     first_handover_history = None
     if "Handover-" in args.task:
+        from orbit.surgical.tasks.surgical import (
+            mdp_common as handover_mdp_common,
+        )
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
             needle_geometry_grasp_offset_m,
         )
 
+        handover_non_object_sensor_names = (
+            "robot_1_jaw_1_object_contact",
+            "robot_1_jaw_2_object_contact",
+            "robot_2_jaw_1_object_contact",
+            "robot_2_jaw_2_object_contact",
+        )
         receiver_grasp_offset = needle_geometry_grasp_offset_m(0.65)
         receiver_roll_offset_rad = float(
             getattr(
@@ -5335,6 +5350,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         first_handover_history = {
             "giver_is_robot_1": giver_is_robot_1.clone(),
             "initial_object_in_giver": initial_object_in_giver,
+            "maximum_non_object_force_by_sensor_n": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_non_object_sensor_names),
+                device=env.unwrapped.device,
+            ),
             "ever_giver_bilateral_contact": torch.zeros_like(
                 first_unresolved
             ),
@@ -6443,6 +6463,32 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             ],
                         )
                     )
+                if first_handover_history is not None:
+                    assert handover_mdp_common is not None
+                    current_non_object_forces = torch.stack(
+                        [
+                            handover_mdp_common.non_object_contact_force_magnitude(
+                                env.unwrapped,
+                                sensor_name,
+                            )
+                            for sensor_name in handover_non_object_sensor_names
+                        ],
+                        dim=-1,
+                    )
+                    first_handover_history[
+                        "maximum_non_object_force_by_sensor_n"
+                    ] = torch.where(
+                        was_first_unresolved.unsqueeze(-1),
+                        torch.maximum(
+                            first_handover_history[
+                                "maximum_non_object_force_by_sensor_n"
+                            ],
+                            current_non_object_forces,
+                        ),
+                        first_handover_history[
+                            "maximum_non_object_force_by_sensor_n"
+                        ],
+                    )
                 actions = policy(obs)
                 if first_handover_history is not None:
                     option_index = getattr(
@@ -6498,6 +6544,32 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                     counted_norm.max(),
                                 )
                 obs, reward, dones, extras = env.step(actions)
+                if first_handover_history is not None:
+                    assert handover_mdp_common is not None
+                    terminal_non_object_forces = torch.stack(
+                        [
+                            handover_mdp_common.non_object_contact_force_magnitude(
+                                env.unwrapped,
+                                sensor_name,
+                            )
+                            for sensor_name in handover_non_object_sensor_names
+                        ],
+                        dim=-1,
+                    )
+                    first_handover_history[
+                        "maximum_non_object_force_by_sensor_n"
+                    ] = torch.where(
+                        was_first_unresolved.unsqueeze(-1),
+                        torch.maximum(
+                            first_handover_history[
+                                "maximum_non_object_force_by_sensor_n"
+                            ],
+                            terminal_non_object_forces,
+                        ),
+                        first_handover_history[
+                            "maximum_non_object_force_by_sensor_n"
+                        ],
+                    )
                 term_values = {
                     name: termination_manager.get_term(name)
                     for name in termination_names
@@ -6608,11 +6680,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_unassigned_failures
                         & term_values[name].bool()
                     )
+                    first_failure_masks[name] |= assigned
                     first_failure_distribution[name] += int(
                         assigned.sum().item()
                     )
                     first_unassigned_failures &= ~assigned
                 if first_unassigned_failures.any().item():
+                    first_failure_masks[
+                        "unclassified"
+                    ] |= first_unassigned_failures
                     first_failure_distribution.setdefault("unclassified", 0)
                     first_failure_distribution["unclassified"] += int(
                         first_unassigned_failures.sum().item()
@@ -7459,6 +7535,64 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                 }
 
+            protected_surface_mask = first_failure_masks.get(
+                "protected_surface_force",
+                torch.zeros_like(first_unresolved),
+            )
+            protected_surface_sensor_forces = first_handover_history[
+                "maximum_non_object_force_by_sensor_n"
+            ][protected_surface_mask]
+            protected_surface_attribution = {
+                "hard_limit_n": 2.0,
+                "count": int(protected_surface_mask.sum().item()),
+                "by_maximum_phase": {
+                    label: int(
+                        (
+                            protected_surface_mask
+                            & phase_mask
+                        ).sum().item()
+                    )
+                    for label, phase_mask in phase_masks.items()
+                },
+                "maximum_force_by_sensor_n": {
+                    sensor_name: handover_scalar_quantiles(
+                        protected_surface_sensor_forces[:, index]
+                    )
+                    for index, sensor_name in enumerate(
+                        handover_non_object_sensor_names
+                    )
+                },
+                "episodes_crossing_limit_by_sensor": {
+                    sensor_name: int(
+                        (
+                            protected_surface_sensor_forces[:, index]
+                            > 2.0
+                        ).sum().item()
+                    )
+                    for index, sensor_name in enumerate(
+                        handover_non_object_sensor_names
+                    )
+                },
+                "episodes_crossing_limit_by_tool": {
+                    "robot_1": int(
+                        (
+                            protected_surface_sensor_forces[:, :2].amax(dim=-1)
+                            > 2.0
+                        ).sum().item()
+                    )
+                    if protected_surface_sensor_forces.numel()
+                    else 0,
+                    "robot_2": int(
+                        (
+                            protected_surface_sensor_forces[:, 2:].amax(dim=-1)
+                            > 2.0
+                        ).sum().item()
+                    )
+                    if protected_surface_sensor_forces.numel()
+                    else 0,
+                },
+            }
+
             first_episode_handover_diagnostics = {
                 "pickup_attempt_outcomes": {
                     "maximum_attempts": 3,
@@ -7508,6 +7642,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     label: int(mask.sum().item())
                     for label, mask in phase_masks.items()
                 },
+                "failure_by_maximum_phase": {
+                    failure_name: {
+                        label: int(
+                            (
+                                failure_mask
+                                & phase_mask
+                            ).sum().item()
+                        )
+                        for label, phase_mask in phase_masks.items()
+                    }
+                    for failure_name, failure_mask in (
+                        first_failure_masks.items()
+                    )
+                    if bool(failure_mask.any().item())
+                },
+                "protected_surface_attribution": (
+                    protected_surface_attribution
+                ),
                 "outcomes_by_giver_role": {
                     role: {
                         "count": int(role_mask.sum().item()),
