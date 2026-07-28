@@ -133,14 +133,14 @@ def _failure_stratified_receiver_sources(
     for target_offset, stratum_value in enumerate(
         nonempty_strata
     ):
+        if target_offset >= target_env_ids.numel():
+            break
         target_positions = torch.arange(
             target_offset,
             target_env_ids.numel(),
             len(nonempty_strata),
             device=target_env_ids.device,
         )
-        if not bool(target_positions.numel()):
-            continue
         candidates = available[stratum == stratum_value]
         weights = cache["source_failure_priority"][
             candidates

@@ -205,7 +205,7 @@ def test_v24_uses_canonical_geometry_balanced_roles_and_zero_adapter():
     assert "_failure_stratified_receiver_sources" in state
     assert "return target_env_ids.to(dtype=torch.long)" in state
     assert "selected = torch.empty(" in state
-    assert "if not bool(target_positions.numel()):" in state
+    assert "if target_offset >= target_env_ids.numel():" in state
 
 
 def test_durability_is_separate_from_legacy_success_contract():
