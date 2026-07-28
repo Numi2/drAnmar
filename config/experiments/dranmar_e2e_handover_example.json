@@ -472,7 +472,15 @@
       "receiver_only_retention_for_10_steps"
     ],
     "receiver_retry_steps": 15,
-    "receiver_approach_timeout_steps": 75,
+    "receiver_approach_timeout_steps": 150,
+    "rejected_receiver_approach_timeout_75": {
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 345,
+      "receiver_retries": 373,
+      "reason": "threshold_interrupted_healthy_receiver_approaches"
+    },
     "receiver_retry_contact_loss_steps": 8,
     "pickup_contact_loss_steps": 3,
     "giver_release_confirmation_steps": 1,
