@@ -17,6 +17,7 @@ def _evidence(
     protected_surface_failures: int = 0,
     population_sha256: str | None = None,
     runtime_contract_sha256: str = "frozen-runtime-contract",
+    environment_contract_sha256: str = "frozen-environment-contract",
 ) -> Path:
     path.write_text(
         json.dumps(
@@ -43,6 +44,9 @@ def _evidence(
                 },
                 "policy_runtime_contract_sha256": (
                     runtime_contract_sha256
+                ),
+                "environment_runtime_contract_sha256": (
+                    environment_contract_sha256
                 ),
                 "first_terminal_outcome_per_environment": True,
                 "initial_state_population_sha256": (
@@ -211,3 +215,41 @@ def test_multiseed_gate_requires_preregistered_aggregate_improvement(
     assert (
         result["gates"]["aggregate_improvement_gate_passed"] is False
     )
+
+
+def test_multiseed_gate_rejects_environment_contract_drift(
+    tmp_path: Path,
+) -> None:
+    module = runpy.run_path(
+        str(ROOT / "scripts/dr_anmar_handover_multiseed_promotion.py")
+    )
+    seeds = (2361, 4099, 7919)
+    baselines = [
+        _evidence(
+            tmp_path / f"baseline-env-{seed}.json",
+            seed=seed,
+            successes=1200,
+        )
+        for seed in seeds
+    ]
+    candidates = [
+        _evidence(
+            tmp_path / f"candidate-env-{seed}.json",
+            seed=seed,
+            successes=1500,
+            environment_contract_sha256="changed-environment-contract",
+        )
+        for seed in seeds
+    ]
+    try:
+        module["evaluate_multiseed"](
+            baselines,
+            candidates,
+            required_seeds=set(seeds),
+            minimum_success_rate=0.70,
+            maximum_seed_regression=0.0,
+        )
+    except ValueError as error:
+        assert "environment contracts differ" in str(error)
+    else:
+        raise AssertionError("environment contract drift must fail closed")

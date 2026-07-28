@@ -69,11 +69,11 @@ class NeedleHandoverEndToEndEnvCfg(ik_rel_env_cfg.NeedleHandoverEnvCfg):
             "receiver_capture_angular_speed_limit": 5.0,
             "giver_release_confirmation_steps": 1,
             "receiver_attempt_timeout_steps": 30,
-            # A 75-count development probe retried 373/600 trajectories and
-            # interrupted healthy approaches. At 150 counts, the retry is
-            # reserved for the long tail while still leaving time for a
-            # physical retreat and a second approach before episode timeout.
-            "receiver_approach_timeout_steps": 150,
+            # Fixed no-contact retries were rejected at both 75 and 150
+            # counts. The retained controller retries only after physical
+            # contact loss; complete misses are handled by the isolated,
+            # custody- and deadline-aware learned recovery option.
+            "receiver_approach_timeout_steps": 0,
             "receiver_retry_contact_loss_steps": 8,
             "receiver_retry_steps": 15,
         }
@@ -109,6 +109,20 @@ class NeedleHandoverEndToEndEnvCfg_PLAY(NeedleHandoverEndToEndEnvCfg):
         self.scene.num_envs = 50
         self.scene.env_spacing = 2.5
         self.observations.policy.enable_corruption = False
+
+
+@configclass
+class NeedleHandoverDeadlineContextEnvCfg(
+    NeedleHandoverEndToEndEnvCfg_PLAY
+):
+    """Expose deadline context without changing incumbent policy behavior."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.observations.policy.giver_identity = ObsTerm(
+            func=e2e_observations.giver_and_deadline_context,
+            clip=(0.0, 1.0),
+        )
 
 
 @configclass
@@ -199,6 +213,26 @@ class NeedleHandoverRecoveryReceiverGraspRetainEnvCfg(
             "recovery_carry_lateral_action_limit": 0.10,
             "recovery_receiver_preposition_height": 0.015,
         }
+
+
+@configclass
+class NeedleHandoverDeadlineRecoveryOptionEnvCfg(
+    NeedleHandoverRecoveryReceiverGraspRetainEnvCfg
+):
+    """Learn recovery-only continue, re-seat, or backoff decisions."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.observations.policy.giver_identity = ObsTerm(
+            func=e2e_observations.giver_and_deadline_context,
+            clip=(0.0, 1.0),
+        )
+        self.dr_anmar_deadline_recovery_curriculum = True
+        self.dr_anmar_deadline_recovery_rollout_steps_per_env = 128
+        self.dr_anmar_deadline_recovery_objective = (
+            "retained_handover_from_recovered_presentation_under_original_"
+            "episode_deadline"
+        )
 
 
 @configclass

@@ -381,7 +381,7 @@
     "qualification_boundary": "no_performance_claim_until_clean_multiseed_held_out_play_promotes_the_frozen_checkpoint"
   },
   "transfer_refinement_v9": {
-    "status": "implemented_awaiting_clean_runtime_qualification",
+    "status": "trained_and_rejected_on_development_population",
     "initial_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
     "source_states": "physics_owned_stable_presentation_with_complete_markov_state",
     "restore_probability": 0.98,
@@ -411,6 +411,18 @@
       "candidate_model_5_stable_presentations": 477,
       "disposition": "rejected_before_formal_qualification"
     },
+    "rejected_qualified_gate_run": {
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "screened_checkpoint_success_range": [
+        378,
+        389
+      ],
+      "best_checkpoint_successes": 389,
+      "reason": "receiver_refinement_traded_existing_acquisition_paths_without_improving_retained_transfer",
+      "disposition": "rejected_before_formal_qualification"
+    },
     "analytic_authority": [
       "both_grippers",
       "giver_release",
@@ -434,6 +446,41 @@
       "protected_surface_rate_noninferior": true
     },
     "qualification_boundary": "no_promotion_until_the_preregistered_aggregate_improvement_and_safety_gates_pass_on_fresh_held_out_populations"
+  },
+  "deadline_recovery_option_v10": {
+    "status": "implemented_awaiting_exact_zero_and_runtime_training",
+    "initial_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "root_cause": "171_of_177_lifted_without_receiver_acquisition_failures_followed_pickup_recovery_and_reached_first_lift_about_128_steps_later_than_successes",
+    "source_states": "physics_owned_recovered_stable_presentations_with_original_episode_deadline_and_complete_markov_state",
+    "restore_probability": 0.98,
+    "num_envs": 1200,
+    "rollout_steps_per_env": 128,
+    "zero_impact_adapter": true,
+    "frozen_incumbent_policy": true,
+    "features": [
+      "needle_local_receiver_se3_error",
+      "giver_current_and_previous_jaw_contact_margin",
+      "object_linear_and_angular_motion",
+      "remaining_episode_fraction",
+      "recovery_context",
+      "transfer_contract_state"
+    ],
+    "options": [
+      "continue",
+      "reseat",
+      "backoff"
+    ],
+    "learned_authority": "receiver_se3_only_after_recovered_physically_qualified_presentation",
+    "analytic_authority": [
+      "giver_motion",
+      "both_grippers_except_option_owned_receiver_open_during_reseat_or_backoff",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "deadline_replay_contract": "restore_the_captured_episode_length_instead_of_granting_a_fresh_horizon",
+    "evaluation_contract": "same_environment_contract_hash_same_seed_same_initial_state_population_hash_complete_first_terminal_population",
+    "qualification_boundary": "no_performance_claim_until_exact_zero_equivalence_then_held_out_full_task_improvement"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",
@@ -472,7 +519,7 @@
       "receiver_only_retention_for_10_steps"
     ],
     "receiver_retry_steps": 15,
-    "receiver_approach_timeout_steps": 150,
+    "receiver_approach_timeout_steps": 0,
     "rejected_receiver_approach_timeout_75": {
       "development_seed": 2361,
       "episodes": 600,
@@ -480,6 +527,14 @@
       "candidate_successes": 345,
       "receiver_retries": 373,
       "reason": "threshold_interrupted_healthy_receiver_approaches"
+    },
+    "rejected_receiver_approach_timeout_150": {
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 390,
+      "receiver_retries": 1,
+      "reason": "no_success_or_bottleneck_improvement"
     },
     "receiver_retry_contact_loss_steps": 8,
     "pickup_contact_loss_steps": 3,

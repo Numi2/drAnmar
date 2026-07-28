@@ -155,6 +155,20 @@ gym.register(
 )
 
 gym.register(
+    id="DrAnmar-Handover-Needle-Deadline-Context-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            e2e_ik_rel_env_cfg.NeedleHandoverDeadlineContextEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleEndToEndPPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
+gym.register(
     id="Isaac-Handover-Needle-Receiver-Curriculum-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     kwargs={
@@ -203,6 +217,21 @@ gym.register(
         "env_cfg_entry_point": (
             e2e_ik_rel_env_cfg
             .NeedleHandoverRecoveryReceiverGraspRetainEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleEndToEndPPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
+gym.register(
+    id="DrAnmar-Handover-Needle-Deadline-Recovery-Option-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            e2e_ik_rel_env_cfg
+            .NeedleHandoverDeadlineRecoveryOptionEnvCfg
         ),
         "rsl_rl_cfg_entry_point": (
             agents.rsl_rl_e2e_cfg.HandoverNeedleEndToEndPPORunnerCfg

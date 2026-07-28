@@ -92,7 +92,41 @@ def _policy_runtime_contract(policy_model, task: str) -> dict[str, Any]:
                 False,
             )
         ),
+        "deadline_recovery_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "deadline_recovery_adaptation_enabled",
+                False,
+            )
+        ),
         "controller_scalars": controller_scalars,
+    }
+
+
+def _environment_runtime_contract(env_cfg, task: str) -> dict[str, Any]:
+    """Return the task-side serving contract that can change policy behavior."""
+    giver_identity_term = getattr(
+        getattr(env_cfg.observations, "policy", None),
+        "giver_identity",
+        None,
+    )
+    giver_identity_function = getattr(giver_identity_term, "func", None)
+    return {
+        "task": task,
+        "environment_config_class": type(env_cfg).__name__,
+        "handover_contract": getattr(
+            env_cfg,
+            "dr_anmar_handover_contract",
+            None,
+        ),
+        "episode_length_s": getattr(env_cfg, "episode_length_s", None),
+        "decimation": getattr(env_cfg, "decimation", None),
+        "giver_identity_observation_function": (
+            f"{giver_identity_function.__module__}:"
+            f"{giver_identity_function.__name__}"
+            if giver_identity_function is not None
+            else None
+        ),
     }
 
 
@@ -2002,6 +2036,13 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             False,
         )
     )
+    deadline_recovery_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_deadline_recovery_curriculum",
+            False,
+        )
+    )
     pickup_recovery_curriculum = bool(
         getattr(
             env_cfg,
@@ -2039,6 +2080,19 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "transfer-refinement rollout steps must be positive"
             )
         agent_cfg.num_steps_per_env = refinement_rollout_steps
+    if deadline_recovery_curriculum:
+        deadline_rollout_steps = int(
+            getattr(
+                env_cfg,
+                "dr_anmar_deadline_recovery_rollout_steps_per_env",
+                128,
+            )
+        )
+        if deadline_rollout_steps <= 0:
+            return _fail(
+                "deadline-recovery rollout steps must be positive"
+            )
+        agent_cfg.num_steps_per_env = deadline_rollout_steps
     agent_cfg.max_iterations = args.max_iterations
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = Path(args.output_path).resolve() / "runs" / timestamp
@@ -2085,7 +2139,20 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "rnd": False,
             }
         runner.load(str(initial_checkpoint), load_cfg=load_cfg)
-        if transfer_refinement_curriculum:
+        if deadline_recovery_curriculum:
+            policy_model = runner.alg.get_policy()
+            configure_deadline_recovery = getattr(
+                policy_model,
+                "configure_deadline_recovery_adaptation",
+                None,
+            )
+            if configure_deadline_recovery is None:
+                env.close()
+                return _fail(
+                    "handover policy does not support deadline-aware recovery"
+                )
+            configure_deadline_recovery()
+        elif transfer_refinement_curriculum:
             policy_model = runner.alg.get_policy()
             configure_refinement = getattr(
                 policy_model,
@@ -2354,6 +2421,51 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "transfer_refinement_curriculum": (
                 transfer_refinement_curriculum
+            ),
+            "deadline_recovery_curriculum": (
+                deadline_recovery_curriculum
+            ),
+            "deadline_recovery_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_deadline_recovery_objective",
+                    None,
+                )
+                if deadline_recovery_curriculum
+                else None
+            ),
+            "deadline_recovery_adaptation_contract": (
+                {
+                    "source_states": (
+                        "physics_owned_recovered_stable_presentation_with_"
+                        "original_episode_deadline_and_complete_markov_state"
+                    ),
+                    "options": [
+                        "continue",
+                        "reseat",
+                        "backoff",
+                    ],
+                    "option_success": "unchanged_retained_handover_terminal",
+                    "incumbent_checkpoint_frozen_and_active": True,
+                    "optimizer_state_reset": True,
+                    "optimizer_schedule": "fixed",
+                    "observation_normalizer_frozen": True,
+                    "zero_impact_adapter": True,
+                    "learned_receiver_axes": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "learned_giver_axes": [],
+                    "analytic_release_authority": True,
+                    "hard_terminations_unchanged": True,
+                    "episode_horizon_unchanged": True,
+                }
+                if deadline_recovery_curriculum
+                else None
             ),
             "transfer_refinement_objective": (
                 getattr(
@@ -4668,16 +4780,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             bool(args.recovery_receiver_grasp_retain_adaptation),
             bool(args.joint_transfer_acquisition_adaptation),
             bool(args.transfer_refinement_adaptation),
+            bool(args.deadline_recovery_adaptation),
         )
     )
     if adaptation_modes > 1:
         env.close()
         return _fail(
             "giver, pickup-recovery, recovery-conditioned receiver, joint "
-            "transfer-acquisition, and transfer-refinement modes are "
-            "mutually exclusive"
+            "transfer-acquisition, transfer-refinement, and deadline-recovery "
+            "modes are mutually exclusive"
         )
-    if args.transfer_refinement_adaptation:
+    if args.deadline_recovery_adaptation:
+        configure_deadline_recovery = getattr(
+            policy_model,
+            "configure_deadline_recovery_adaptation",
+            None,
+        )
+        if configure_deadline_recovery is None:
+            env.close()
+            return _fail(
+                "loaded policy does not support deadline-aware recovery"
+            )
+        configure_deadline_recovery()
+    elif args.transfer_refinement_adaptation:
         configure_refinement = getattr(
             policy_model,
             "configure_transfer_refinement_adaptation",
@@ -5315,6 +5440,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "remaining_steps_at_first_stable": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "remaining_steps_at_first_receiver_contact": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_receiver_initial_approach_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
             "receiver_grasp_error_at_first_stable_m": torch.full(
                 (env.unwrapped.num_envs,),
                 torch.nan,
@@ -5534,6 +5676,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_handover_history[
                             "first_stable_presentation_frame"
                         ][first_stable_presentation] = frame_index
+                        first_handover_history[
+                            "remaining_steps_at_first_stable"
+                        ][first_stable_presentation] = (
+                            env.unwrapped.max_episode_length
+                            - env.unwrapped.episode_length_buf[
+                                first_stable_presentation
+                            ]
+                        )
                         first_receiver_contact_after_stable = (
                             was_first_unresolved
                             & current_handover_state[
@@ -5552,6 +5702,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_handover_history[
                             "first_receiver_contact_after_stable_frame"
                         ][first_receiver_contact_after_stable] = frame_index
+                        first_handover_history[
+                            "remaining_steps_at_first_receiver_contact"
+                        ][first_receiver_contact_after_stable] = (
+                            env.unwrapped.max_episode_length
+                            - env.unwrapped.episode_length_buf[
+                                first_receiver_contact_after_stable
+                            ]
+                        )
+                        first_handover_history[
+                            "maximum_receiver_initial_approach_steps"
+                        ] = torch.maximum(
+                            first_handover_history[
+                                "maximum_receiver_initial_approach_steps"
+                            ],
+                            current_handover_state[
+                                "receiver_approach_step_count"
+                            ],
+                        )
                         first_handover_history[
                             "maximum_presentation_stable_steps"
                         ] = torch.maximum(
@@ -7054,7 +7222,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 quantiles = torch.quantile(
                     values.float(),
                     torch.tensor(
-                        [0.1, 0.5, 0.9],
+                        [0.1, 0.5, 0.9, 0.99],
                         device=values.device,
                     ),
                 )
@@ -7062,6 +7230,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "p10": float(quantiles[0].item()),
                     "p50": float(quantiles[1].item()),
                     "p90": float(quantiles[2].item()),
+                    "p99": float(quantiles[3].item()),
+                    "max": float(values.max().item()),
                 }
 
             def receiver_approach_stats(mask: torch.Tensor) -> dict:
@@ -7115,6 +7285,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 contact_object_yaw = first_handover_history[
                     "object_yaw_in_receiver_at_first_contact_rad"
                 ][contacted]
+                remaining_at_stable = first_handover_history[
+                    "remaining_steps_at_first_stable"
+                ][stable]
+                remaining_at_contact = first_handover_history[
+                    "remaining_steps_at_first_receiver_contact"
+                ][contacted]
+                maximum_initial_approach_steps = first_handover_history[
+                    "maximum_receiver_initial_approach_steps"
+                ][mask]
                 return {
                     "count": int(mask.sum().item()),
                     "stable_presentations": int(stable.sum().item()),
@@ -7129,6 +7308,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "stable_to_receiver_contact_steps": (
                         handover_scalar_quantiles(latencies)
+                    ),
+                    "remaining_steps_at_first_stable": (
+                        handover_scalar_quantiles(remaining_at_stable)
+                    ),
+                    "remaining_steps_at_first_receiver_contact": (
+                        handover_scalar_quantiles(remaining_at_contact)
+                    ),
+                    "maximum_receiver_initial_approach_steps": (
+                        handover_scalar_quantiles(
+                            maximum_initial_approach_steps
+                        )
                     ),
                     "receiver_grasp_error_at_first_stable_m": (
                         handover_scalar_quantiles(stable_grasp_errors)
@@ -7504,6 +7694,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             policy_model,
             args.task,
         )
+        environment_runtime_contract = _environment_runtime_contract(
+            env_cfg,
+            args.task,
+        )
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -7583,6 +7777,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "policy_runtime_contract_sha256": _canonical_sha256(
                 policy_runtime_contract
             ),
+            "environment_runtime_contract": (
+                environment_runtime_contract
+            ),
+            "environment_runtime_contract_sha256": _canonical_sha256(
+                environment_runtime_contract
+            ),
             "analytic_only": bool(args.analytic_only),
             "policy_giver_adaptation_enabled": bool(
                 getattr(
@@ -7617,6 +7817,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     policy_model,
                     "transfer_refinement_adaptation_enabled",
                     args.transfer_refinement_adaptation,
+                )
+            ),
+            "policy_deadline_recovery_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "deadline_recovery_adaptation_enabled",
+                    args.deadline_recovery_adaptation,
                 )
             ),
             "policy_residual_scale": (
@@ -8016,6 +8223,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--transfer_refinement_adaptation",
+        action="store_true",
+    )
+    play.add_argument(
+        "--deadline_recovery_adaptation",
         action="store_true",
     )
     play.add_argument("--num_envs", type=int, required=True)

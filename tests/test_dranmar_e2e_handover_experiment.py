@@ -224,6 +224,18 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         130363,
         155921,
     ]
+    deadline_recovery = contract["deadline_recovery_option_v10"]
+    assert deadline_recovery["zero_impact_adapter"] is True
+    assert deadline_recovery["frozen_incumbent_policy"] is True
+    assert deadline_recovery["rollout_steps_per_env"] == 128
+    assert deadline_recovery["options"] == [
+        "continue",
+        "reseat",
+        "backoff",
+    ]
+    assert "original_episode_deadline" in (
+        deadline_recovery["source_states"]
+    )
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -244,7 +256,7 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert contract["anti_reward_hacking"]["receiver_retry_steps"] == 15
     assert (
         contract["anti_reward_hacking"]["receiver_approach_timeout_steps"]
-        == 150
+        == 0
     )
     assert contract["anti_reward_hacking"]["pickup_contact_loss_steps"] == 3
     assert "fixed_pose_presentation_stable_for_8_steps" in (
@@ -269,6 +281,7 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "class _RecoveryReceiverAdapter(nn.Module):" in source
     assert "class _JointTransferAcquisitionAdapter(nn.Module):" in source
     assert "class _TransferRefinementAdapter(nn.Module):" in source
+    assert "class _DeadlineRecoveryAdapter(nn.Module):" in source
     assert "handover_task_features(" in source
     assert "receiver_policy_grasp_offset" in source
     assert "recovery_receiver_canonical_grasp_features" in source
@@ -309,6 +322,12 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
         in source
     )
     assert "configure_transfer_refinement_adaptation" in source
+    assert "configure_deadline_recovery_adaptation" in source
+    assert "deadline_recovery_features" in source
+    assert "deadline_option_selection" in source
+    assert "reseat_role_action" in source
+    assert "backoff_role_action" in source
+    assert "deadline_recovery_residual_scale" in source
     assert "presentation_qualified = raw[:, 103] >= 1.0" in source
     assert "presentation_qualified = obs[:, 103] >= 1.0" in source
     assert "refinement_giver_active = torch.zeros_like(" in source
@@ -547,7 +566,16 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert '"receiver_approach_step_count"' in state_source
     assert "receiver_approach_stalled" in state_source
     assert "receiver_approach_timeout_steps" in state_source
-    assert '"receiver_approach_timeout_steps": 150' in environment_source
+    assert '"receiver_approach_timeout_steps": 0' in environment_source
+    assert "giver_and_deadline_context" in environment_source
+    assert "NeedleHandoverDeadlineRecoveryOptionEnvCfg" in (
+        environment_source
+    )
+    assert '"restored_episode_length_buf"' in state_source
+    assert (
+        'env.episode_length_buf[target_env_ids] = receiver_cache['
+        in state_source
+    )
     assert '"receiver_curriculum_cached_envs"' in benchmark_source
     assert '"receiver_curriculum_reset_restores"' in benchmark_source
     assert '"receiver_curriculum_reset_refreshes"' in benchmark_source
@@ -572,6 +600,9 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert "configure_transfer_refinement_adaptation" in benchmark_source
     assert '"transfer_refinement_adaptation_contract"' in benchmark_source
     assert '"policy_runtime_contract_sha256"' in benchmark_source
+    assert '"environment_runtime_contract_sha256"' in benchmark_source
+    assert "configure_deadline_recovery_adaptation" in benchmark_source
+    assert '"deadline_recovery_adaptation_contract"' in benchmark_source
     assert '"joint_transfer_acquisition_adaptation_contract"' in (
         benchmark_source
     )

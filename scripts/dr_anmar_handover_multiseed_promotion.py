@@ -59,6 +59,7 @@ def _load(path: Path) -> dict[str, Any]:
         "failure_distribution",
         "checkpoint",
         "policy_runtime_contract_sha256",
+        "environment_runtime_contract_sha256",
         "first_terminal_outcome_per_environment",
     }
     missing = sorted(required - evidence.keys())
@@ -129,6 +130,29 @@ def evaluate_multiseed(
     if len(candidate_runtime_contract_hashes) != 1:
         raise ValueError(
             "candidate evidence does not use one frozen runtime contract"
+        )
+    baseline_environment_contract_hashes = {
+        item["environment_runtime_contract_sha256"]
+        for item in baseline.values()
+    }
+    candidate_environment_contract_hashes = {
+        item["environment_runtime_contract_sha256"]
+        for item in candidate.values()
+    }
+    if len(baseline_environment_contract_hashes) != 1:
+        raise ValueError(
+            "baseline evidence does not use one frozen environment contract"
+        )
+    if len(candidate_environment_contract_hashes) != 1:
+        raise ValueError(
+            "candidate evidence does not use one frozen environment contract"
+        )
+    if (
+        baseline_environment_contract_hashes
+        != candidate_environment_contract_hashes
+    ):
+        raise ValueError(
+            "baseline and candidate environment contracts differ"
         )
 
     per_seed = []
@@ -270,7 +294,7 @@ def evaluate_multiseed(
         and paired_population_gate
     )
     return {
-        "schema_version": "dranmar-handover-multiseed-promotion-1.2",
+        "schema_version": "dranmar-handover-multiseed-promotion-1.3",
         "decision": (
             "candidate_promoted"
             if promotable
@@ -283,6 +307,9 @@ def evaluate_multiseed(
         ),
         "candidate_policy_runtime_contract_sha256": (
             candidate_runtime_contract_hashes.pop()
+        ),
+        "environment_runtime_contract_sha256": (
+            baseline_environment_contract_hashes.pop()
         ),
         "aggregate": {
             "baseline_successes": total_baseline_successes,

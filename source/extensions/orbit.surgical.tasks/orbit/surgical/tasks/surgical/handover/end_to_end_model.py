@@ -30,6 +30,7 @@ _TASK_FEATURE_DIM = 24
 _RECOVERY_RECEIVER_ADAPTER_FEATURE_DIM = 12
 _JOINT_TRANSFER_ACQUISITION_FEATURE_DIM = 31
 _TRANSFER_REFINEMENT_FEATURE_DIM = 31
+_DEADLINE_RECOVERY_FEATURE_DIM = 24
 _RECEIVER_POLICY_GRASP_OFFSET, _ = needle_geometry_grasp_frame(
     0.65,
     grasp_z_m=-0.003,
@@ -143,6 +144,14 @@ def role_action_to_physical(
         giver_action,
     )
     return torch.cat((robot_1_action, robot_2_action), dim=-1)
+
+
+def physical_action_to_role(
+    physical_action: torch.Tensor,
+    giver_is_robot_1: torch.Tensor,
+) -> torch.Tensor:
+    """Map Robot 1/Robot 2 actions into canonical giver/receiver order."""
+    return role_action_to_physical(physical_action, giver_is_robot_1)
 
 
 def handover_task_features(
@@ -321,6 +330,28 @@ def joint_transfer_acquisition_features(
     ).clamp(-5.0, 5.0)
 
 
+def deadline_recovery_features(
+    role_observation: torch.Tensor,
+    remaining_time: torch.Tensor,
+    receiver_policy_grasp_offset: torch.Tensor,
+) -> torch.Tensor:
+    """Describe recovered custody, receiver geometry, and deadline pressure."""
+    return torch.cat(
+        (
+            recovery_receiver_canonical_grasp_features(
+                role_observation,
+                receiver_policy_grasp_offset,
+            ),
+            role_observation[:, 60:66],
+            role_observation[:, 66:68],
+            role_observation[:, 99:101],
+            remaining_time,
+            role_observation[:, 98:99],
+        ),
+        dim=-1,
+    ).clamp(-5.0, 5.0)
+
+
 class PhaseMaskedGaussianDistribution(GaussianDistribution):
     """Gaussian exploration with near-zero variance on structurally inactive actions."""
 
@@ -430,6 +461,47 @@ class _TransferRefinementAdapter(nn.Module):
         return torch.tanh(self.output(self.encoder(features)))
 
 
+class _DeadlineRecoveryAdapter(nn.Module):
+    """Choose continue, re-seat, or backoff plus bounded receiver SE(3)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(_DEADLINE_RECOVERY_FEATURE_DIM, 128),
+            nn.ELU(),
+            nn.Linear(128, 64),
+            nn.ELU(),
+        )
+        self.output = nn.Linear(64, 9)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
+        self.register_buffer(
+            "continue_prior",
+            torch.tensor((2.0, 0.0, 0.0)),
+            persistent=False,
+        )
+
+    def forward(
+        self,
+        features: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        output = self.output(self.encoder(features))
+        option_logits = output[:, :3] + self.continue_prior
+        soft_selection = torch.softmax(option_logits, dim=-1)
+        hard_selection = torch.nn.functional.one_hot(
+            torch.argmax(option_logits, dim=-1),
+            num_classes=3,
+        ).to(output.dtype)
+        # Exact hard option in the forward pass with a soft gradient for PPO.
+        option_selection = (
+            hard_selection
+            + soft_selection
+            - soft_selection.detach()
+        )
+        receiver_residual = torch.tanh(output[:, 3:9])
+        return option_selection, receiver_residual
+
+
 class EndToEndHandoverMLPModel(MLPModel):
     """Physics-structured servo plus bounded phase-specialized learned residual."""
 
@@ -464,6 +536,8 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.recovery_receiver_grasp_retain_adaptation_enabled = False
         self.joint_transfer_acquisition_adaptation_enabled = False
         self.transfer_refinement_adaptation_enabled = False
+        self.deadline_recovery_adaptation_enabled = False
+        self.deadline_recovery_residual_scale = 0.02
         self.register_buffer(
             "receiver_policy_grasp_offset",
             torch.tensor(_RECEIVER_POLICY_GRASP_OFFSET),
@@ -479,6 +553,9 @@ class EndToEndHandoverMLPModel(MLPModel):
             parameter.requires_grad_(False)
         self.transfer_refinement_adapter = _TransferRefinementAdapter()
         for parameter in self.transfer_refinement_adapter.parameters():
+            parameter.requires_grad_(False)
+        self.deadline_recovery_adapter = _DeadlineRecoveryAdapter()
+        for parameter in self.deadline_recovery_adapter.parameters():
             parameter.requires_grad_(False)
         self.recovery_receiver_reference_network: (
             _PhaseHeadedNetwork | None
@@ -507,6 +584,15 @@ class EndToEndHandoverMLPModel(MLPModel):
             state_dict = state_dict.copy()
             for key, value in self.transfer_refinement_adapter.state_dict().items():
                 state_dict[f"{refinement_adapter_prefix}{key}"] = value
+        deadline_adapter_prefix = "deadline_recovery_adapter."
+        if not any(
+            key.startswith(deadline_adapter_prefix) for key in state_dict
+        ):
+            state_dict = state_dict.copy()
+            for key, value in (
+                self.deadline_recovery_adapter.state_dict().items()
+            ):
+                state_dict[f"{deadline_adapter_prefix}{key}"] = value
         if (
             self.recovery_receiver_reference_network is None
             and any(
@@ -558,6 +644,7 @@ class EndToEndHandoverMLPModel(MLPModel):
             and not self.receiver_adaptation_enabled
             and not self.joint_transfer_acquisition_adaptation_enabled
             and not self.transfer_refinement_adaptation_enabled
+            and not self.deadline_recovery_adaptation_enabled
         ):
             role_observation, _ = self._role_latent(obs)
             self.obs_normalizer.update(role_observation)
@@ -738,6 +825,39 @@ class EndToEndHandoverMLPModel(MLPModel):
                 if parameter is not None:
                     parameter.requires_grad_(False)
 
+    def configure_deadline_recovery_adaptation(self) -> None:
+        """Train only the late recovery decision and receiver correction.
+
+        The loaded pickup/recovery and nominal receiver policies remain frozen.
+        A zero-impact adapter receives gradients only after a physical pickup
+        recovery has reached a qualified presentation. Giver motion, release,
+        and the physical success predicate remain analytic.
+        """
+        self.pickup_recovery_adaptation_enabled = True
+        self.receiver_adaptation_enabled = True
+        self.deadline_recovery_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        for adapter in (
+            self.recovery_receiver_adapter,
+            self.joint_transfer_acquisition_adapter,
+            self.transfer_refinement_adapter,
+        ):
+            for parameter in adapter.parameters():
+                parameter.requires_grad_(False)
+        for parameter in self.deadline_recovery_adapter.parameters():
+            parameter.requires_grad_(True)
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
     def configure_giver_adaptation(self) -> None:
         """Learn giver XY while preserving the promoted receiver policy."""
         self.giver_adaptation_enabled = True
@@ -809,6 +929,7 @@ class EndToEndHandoverMLPModel(MLPModel):
         latent = self.get_latent(obs, masks, hidden_state)
         raw = torch.cat([obs[group] for group in self.obs_groups], dim=-1)
         phase = torch.argmax(raw[:, 77:82], dim=-1)
+        pickup_recovery_context = raw[:, 98] > 0.5
         current_role_residual = torch.tanh(
             self.phase_network(latent, phase)
         )
@@ -824,7 +945,6 @@ class EndToEndHandoverMLPModel(MLPModel):
             reference_role_residual = torch.tanh(
                 self.recovery_receiver_reference_network(latent, phase)
             )
-            pickup_recovery_context = raw[:, 98] > 0.5
             learned_role_residual = torch.where(
                 pickup_recovery_context.unsqueeze(-1),
                 current_role_residual,
@@ -882,6 +1002,36 @@ class EndToEndHandoverMLPModel(MLPModel):
                 refinement_adapter[:, 6:12]
                 * refinement_receiver_active.unsqueeze(-1)
             )
+        deadline_active = (
+            pickup_recovery_context
+            & (phase == 2)
+            & presentation_qualified
+        )
+        deadline_option_selection = torch.zeros(
+            (raw.shape[0], 3),
+            dtype=raw.dtype,
+            device=raw.device,
+        )
+        deadline_option_selection[:, 0] = 1.0
+        deadline_role_residual = torch.zeros_like(
+            learned_role_residual
+        )
+        if self.deadline_recovery_adaptation_enabled:
+            role_observation = role_normalize_handover_observation(raw)
+            (
+                deadline_option_selection,
+                deadline_receiver_residual,
+            ) = self.deadline_recovery_adapter(
+                deadline_recovery_features(
+                    role_observation,
+                    raw[:, 83:84],
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            deadline_role_residual[:, 7:13] = (
+                deadline_receiver_residual
+                * deadline_active.unsqueeze(-1)
+            )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             raw[:, 82] > 0.5,
@@ -923,6 +1073,57 @@ class EndToEndHandoverMLPModel(MLPModel):
             giver_residual_mask,
             receiver_residual_mask,
         ) = self.controller(raw)
+        if self.deadline_recovery_adaptation_enabled:
+            giver_is_robot_1 = raw[:, 82] > 0.5
+            base_role_action = physical_action_to_role(
+                base_action,
+                giver_is_robot_1,
+            )
+            reseat_role_action = base_role_action.clone()
+            reseat_role_action[:, 7:13] = 0.0
+            reseat_role_action[:, 9] = 0.10
+            reseat_role_action[:, 13] = 1.0
+            backoff_role_action = base_role_action.clone()
+            backoff_role_action[:, 7:13] = 0.0
+            backoff_role_action[:, 9] = 0.20
+            backoff_role_action[:, 13] = 1.0
+            option_candidates = torch.stack(
+                (
+                    base_role_action,
+                    reseat_role_action,
+                    backoff_role_action,
+                ),
+                dim=1,
+            )
+            selected_role_action = torch.sum(
+                deadline_option_selection.unsqueeze(-1)
+                * option_candidates,
+                dim=1,
+            )
+            selected_physical_action = role_action_to_physical(
+                selected_role_action,
+                giver_is_robot_1,
+            )
+            base_action = torch.where(
+                deadline_active.unsqueeze(-1),
+                selected_physical_action,
+                base_action,
+            )
+        deadline_physical_residual = role_action_to_physical(
+            deadline_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        deadline_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        deadline_role_action_mask[:, 7:13] = (
+            deadline_active.unsqueeze(-1)
+        )
+        deadline_physical_action_mask = role_action_to_physical(
+            deadline_role_action_mask,
+            raw[:, 82] > 0.5,
+        )
         # The promoted receiver mean remains active during giver adaptation,
         # but exploration and gradients are restricted to giver XY. Z and all
         # rotations/jaws stay under the analytic physics sequence.
@@ -949,6 +1150,10 @@ class EndToEndHandoverMLPModel(MLPModel):
             exploration_mask = (
                 exploration_mask | refinement_physical_action_mask
             )
+        if self.deadline_recovery_adaptation_enabled:
+            exploration_mask = (
+                exploration_mask | deadline_physical_action_mask
+            )
         physical_mean = (
             base_action
             + self.residual_scale
@@ -960,6 +1165,9 @@ class EndToEndHandoverMLPModel(MLPModel):
             + self.residual_scale
             * refinement_physical_residual
             * refinement_physical_action_mask.to(base_action.dtype)
+            + self.deadline_recovery_residual_scale
+            * deadline_physical_residual
+            * deadline_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         if self.distribution is None:
             return physical_mean
@@ -1004,6 +1212,12 @@ class _EndToEndHandoverExport(nn.Module):
         self.transfer_refinement_adaptation_enabled = (
             model.transfer_refinement_adaptation_enabled
         )
+        self.deadline_recovery_adaptation_enabled = (
+            model.deadline_recovery_adaptation_enabled
+        )
+        self.deadline_recovery_residual_scale = (
+            model.deadline_recovery_residual_scale
+        )
         self.recovery_receiver_reference_network = copy.deepcopy(
             model.recovery_receiver_reference_network
         )
@@ -1015,6 +1229,9 @@ class _EndToEndHandoverExport(nn.Module):
         )
         self.transfer_refinement_adapter = copy.deepcopy(
             model.transfer_refinement_adapter
+        )
+        self.deadline_recovery_adapter = copy.deepcopy(
+            model.deadline_recovery_adapter
         )
         self.register_buffer(
             "receiver_policy_grasp_offset",
@@ -1041,6 +1258,7 @@ class _EndToEndHandoverExport(nn.Module):
             dim=-1,
         )
         phase = torch.argmax(obs[:, 77:82], dim=-1)
+        pickup_recovery_context = obs[:, 98] > 0.5
         current_role_residual = torch.tanh(
             self.phase_network(latent, phase)
         )
@@ -1055,7 +1273,6 @@ class _EndToEndHandoverExport(nn.Module):
             reference_role_residual = torch.tanh(
                 self.recovery_receiver_reference_network(latent, phase)
             )
-            pickup_recovery_context = obs[:, 98] > 0.5
             learned_role_residual = torch.where(
                 pickup_recovery_context.unsqueeze(-1),
                 current_role_residual,
@@ -1110,6 +1327,35 @@ class _EndToEndHandoverExport(nn.Module):
                 refinement_adapter[:, 6:12]
                 * refinement_receiver_active.unsqueeze(-1)
             )
+        deadline_active = (
+            pickup_recovery_context
+            & (phase == 2)
+            & presentation_qualified
+        )
+        deadline_option_selection = torch.zeros(
+            (obs.shape[0], 3),
+            dtype=obs.dtype,
+            device=obs.device,
+        )
+        deadline_option_selection[:, 0] = 1.0
+        deadline_role_residual = torch.zeros_like(
+            learned_role_residual
+        )
+        if self.deadline_recovery_adaptation_enabled:
+            (
+                deadline_option_selection,
+                deadline_receiver_residual,
+            ) = self.deadline_recovery_adapter(
+                deadline_recovery_features(
+                    role_observation,
+                    obs[:, 83:84],
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            deadline_role_residual[:, 7:13] = (
+                deadline_receiver_residual
+                * deadline_active.unsqueeze(-1)
+            )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             giver_is_robot_1,
@@ -1120,6 +1366,10 @@ class _EndToEndHandoverExport(nn.Module):
         )
         refinement_physical_residual = role_action_to_physical(
             refinement_role_residual,
+            giver_is_robot_1,
+        )
+        deadline_physical_residual = role_action_to_physical(
+            deadline_role_residual,
             giver_is_robot_1,
         )
         joint_role_action_mask = torch.zeros_like(
@@ -1151,6 +1401,52 @@ class _EndToEndHandoverExport(nn.Module):
             giver_residual_mask,
             receiver_residual_mask,
         ) = self.controller(obs)
+        if self.deadline_recovery_adaptation_enabled:
+            base_role_action = physical_action_to_role(
+                base_action,
+                giver_is_robot_1,
+            )
+            reseat_role_action = base_role_action.clone()
+            reseat_role_action[:, 7:13] = 0.0
+            reseat_role_action[:, 9] = 0.10
+            reseat_role_action[:, 13] = 1.0
+            backoff_role_action = base_role_action.clone()
+            backoff_role_action[:, 7:13] = 0.0
+            backoff_role_action[:, 9] = 0.20
+            backoff_role_action[:, 13] = 1.0
+            option_candidates = torch.stack(
+                (
+                    base_role_action,
+                    reseat_role_action,
+                    backoff_role_action,
+                ),
+                dim=1,
+            )
+            selected_role_action = torch.sum(
+                deadline_option_selection.unsqueeze(-1)
+                * option_candidates,
+                dim=1,
+            )
+            selected_physical_action = role_action_to_physical(
+                selected_role_action,
+                giver_is_robot_1,
+            )
+            base_action = torch.where(
+                deadline_active.unsqueeze(-1),
+                selected_physical_action,
+                base_action,
+            )
+        deadline_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        deadline_role_action_mask[:, 7:13] = (
+            deadline_active.unsqueeze(-1)
+        )
+        deadline_physical_action_mask = role_action_to_physical(
+            deadline_role_action_mask,
+            giver_is_robot_1,
+        )
         physical_action_mask = receiver_residual_mask
         if (
             self.giver_adaptation_enabled
@@ -1170,6 +1466,9 @@ class _EndToEndHandoverExport(nn.Module):
             + self.residual_scale
             * refinement_physical_residual
             * refinement_physical_action_mask.to(base_action.dtype)
+            + self.deadline_recovery_residual_scale
+            * deadline_physical_residual
+            * deadline_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         return self.deterministic_output(physical_mean)
 

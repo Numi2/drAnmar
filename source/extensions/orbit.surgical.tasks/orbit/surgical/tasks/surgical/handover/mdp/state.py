@@ -163,6 +163,9 @@ def reset_receiver_curriculum_from_cache(
         env_ids=target_env_ids,
     )
     cache["restored_source_env_ids"][target_env_ids] = source_env_ids
+    cache["restored_episode_length_buf"][target_env_ids] = cache[
+        "episode_length_buf"
+    ][source_env_ids]
     cache["markov_state_restores"] += int(target_env_ids.numel())
     cache["recovery_context_restores"] += int(
         (
@@ -714,6 +717,9 @@ def handover_state(
             # Terminal outcomes never cross an episode boundary. Every other
             # restored tensor is part of the state that generated the cached
             # transition and is required for a Markov-complete replay.
+            env.episode_length_buf[target_env_ids] = receiver_cache[
+                "restored_episode_length_buf"
+            ][target_env_ids]
             state["successful_handover"][target_env_ids] = False
             state["premature_release"][target_env_ids] = False
             state["receiver_retention_failed"][target_env_ids] = False
@@ -946,6 +952,16 @@ def handover_state(
                     dtype=torch.long,
                     device=env.device,
                 ),
+                "episode_length_buf": torch.zeros(
+                    env.num_envs,
+                    dtype=torch.long,
+                    device=env.device,
+                ),
+                "restored_episode_length_buf": torch.zeros(
+                    env.num_envs,
+                    dtype=torch.long,
+                    device=env.device,
+                ),
                 "robot_1_joint_pos": torch.zeros_like(
                     mdp_common.as_torch(robot_1.data.joint_pos)
                 ),
@@ -1039,6 +1055,9 @@ def handover_state(
             cache["last_action"][capture] = mdp_common.as_torch(
                 env.action_manager.action
             )[capture]
+            cache["episode_length_buf"][capture] = (
+                env.episode_length_buf[capture]
+            )
             for field in _RECEIVER_CURRICULUM_STATE_FIELDS:
                 cache["handover_state"][field][capture] = state[field][
                     capture
@@ -1063,6 +1082,8 @@ def handover_state(
         & presentation_stable
         & ~receiver_any_contact_now
         & ~receiver_retry_active
+        & ~state["receiver_attempt_active"]
+        & (state["receiver_retry_count"] == 0)
     )
     state["receiver_approach_step_count"][:] = torch.where(
         receiver_approach_active,

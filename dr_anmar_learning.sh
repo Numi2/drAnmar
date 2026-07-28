@@ -281,6 +281,12 @@ case "${command}" in
                 --transfer_refinement_adaptation
             )
         fi
+        deadline_recovery_adaptation_args=()
+        if [[ "${DR_ANMAR_DEADLINE_RECOVERY_ADAPTATION:-0}" == "1" ]]; then
+            deadline_recovery_adaptation_args=(
+                --deadline_recovery_adaptation
+            )
+        fi
         pickup_vertical_action_limit_args=()
         if [[ -n "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
             pickup_vertical_action_limit_args=(
@@ -466,6 +472,7 @@ case "${command}" in
             "${recovery_receiver_grasp_retain_adaptation_args[@]}" \
             "${joint_transfer_acquisition_adaptation_args[@]}" \
             "${transfer_refinement_adaptation_args[@]}" \
+            "${deadline_recovery_adaptation_args[@]}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${pickup_initial_vertical_action_limit_args[@]}" \
             "${recovery_pickup_vertical_action_limit_args[@]}" \
