@@ -835,6 +835,7 @@ class EndToEndHandoverMLPModel(MLPModel):
         """
         self.pickup_recovery_adaptation_enabled = True
         self.receiver_adaptation_enabled = True
+        self.joint_transfer_acquisition_adaptation_enabled = True
         self.deadline_recovery_adaptation_enabled = True
         self.controller.giver_recovery_residual_only_for_learning = True
         for parameter in self.phase_network.parameters():
@@ -1142,7 +1143,10 @@ class EndToEndHandoverMLPModel(MLPModel):
                 giver_residual_mask | receiver_residual_mask
             )
             exploration_mask = giver_residual_mask
-        if self.joint_transfer_acquisition_adaptation_enabled:
+        if (
+            self.joint_transfer_acquisition_adaptation_enabled
+            and not self.deadline_recovery_adaptation_enabled
+        ):
             exploration_mask = (
                 exploration_mask | joint_physical_action_mask
             )
