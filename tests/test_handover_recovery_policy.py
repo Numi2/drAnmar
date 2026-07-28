@@ -283,6 +283,31 @@ def test_receiver_recovery_head_contract_has_no_gripper_channel() -> None:
     assert torch.equal(output, torch.zeros_like(output))
 
 
+def test_receiver_contact_loss_before_transfer_forces_full_reset() -> None:
+    policy = HandoverReceiverRecoveryPolicy(_FixedBasePolicy())
+    observation = _observation(batch_size=1)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 79] = 1.0
+    raw[:, 68:70] = 0.01
+    raw[:, 97] = -1.0
+    for _ in range(3):
+        policy(observation)
+
+    assert policy.retry_state.item() == policy.state_secure
+
+    raw[:, 68:70] = 0.0
+    for _ in range(3):
+        action = policy(observation)
+
+    assert policy.first_attempt_failed.item()
+    assert action[0, 13].item() == -1.0
+
+    for _ in range(2):
+        action = policy(observation)
+    assert action[0, 13].item() == 1.0
+
+
 def test_pickup_jit_matches_eager_and_resets_asynchronously() -> None:
     eager = HandoverPickupRecoveryPolicy(_FixedBasePolicy())
     exported_source = HandoverPickupRecoveryPolicy(_FixedBasePolicy())

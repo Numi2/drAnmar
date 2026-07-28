@@ -4183,6 +4183,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "retry_count",
                         "episode_step",
                         "contact_history",
+                        "custody_loss_dwell",
+                        "ever_bilateral",
                         "open_settle_dwell",
                         "latched_correction",
                         "failure_forces",

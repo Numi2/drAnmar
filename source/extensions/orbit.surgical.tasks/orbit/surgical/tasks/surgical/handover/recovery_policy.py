@@ -982,7 +982,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.retry_count = torch.empty(0, dtype=torch.long)
         self.episode_step = torch.empty(0, dtype=torch.long)
         self.close_dwell = torch.empty(0, dtype=torch.long)
+        self.custody_loss_dwell = torch.empty(0, dtype=torch.long)
         self.open_settle_dwell = torch.empty(0, dtype=torch.long)
+        self.ever_bilateral = torch.empty(0, dtype=torch.bool)
         self.bilateral_contact_history = torch.empty(
             (0, 5),
             dtype=torch.bool,
@@ -1018,7 +1020,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.episode_step = torch.zeros_like(self.retry_count)
         self.close_dwell = torch.zeros_like(self.retry_count)
+        self.custody_loss_dwell = torch.zeros_like(self.retry_count)
         self.open_settle_dwell = torch.zeros_like(self.retry_count)
+        self.ever_bilateral = torch.zeros(
+            batch_size,
+            dtype=torch.bool,
+            device=device,
+        )
         self.bilateral_contact_history = torch.zeros(
             (batch_size, 5),
             dtype=torch.bool,
@@ -1449,6 +1457,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         bilateral_qualified = (
             self.bilateral_contact_history.sum(dim=-1) >= 3
         )
+        self.ever_bilateral |= bilateral_qualified | (phase >= 3)
         any_contact = torch.any(
             receiver_contacts > self.normalized_contact_threshold,
             dim=-1,
@@ -1461,6 +1470,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         self.retry_state[secure_now] = self.state_secure
         self.close_dwell[secure_now] = 0
+        self.custody_loss_dwell[:] = torch.where(
+            (phase == 2)
+            & (self.retry_state == self.state_secure)
+            & ~bilateral_live,
+            self.custody_loss_dwell + 1,
+            torch.zeros_like(self.custody_loss_dwell),
+        )
 
         receiver_joint_displacement = self._select_role(
             raw[:, 6:8],
@@ -1497,7 +1513,13 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                 dim=-1,
             )
         )
-        failure = failed_close & (
+        lost_after_acquisition = (
+            (phase == 2)
+            & (self.retry_state == self.state_secure)
+            & self.ever_bilateral
+            & (self.custody_loss_dwell >= 3)
+        )
+        failure = (failed_close | lost_after_acquisition) & (
             self.retry_state != self.state_failed
         ) & (
             self.retry_state != self.state_reopening
@@ -1518,6 +1540,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.retry_state[failure] = self.state_failed
             self.open_settle_dwell[failure] = 0
             self.close_dwell[failure] = 0
+            self.custody_loss_dwell[failure] = 0
 
         failed_grasp = self.retry_state == self.state_failed
         ready_to_reopen = failed_grasp & ~torch.any(
@@ -1626,7 +1649,9 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.retry_count[mask] = 0
         self.episode_step[mask] = 0
         self.close_dwell[mask] = 0
+        self.custody_loss_dwell[mask] = 0
         self.open_settle_dwell[mask] = 0
+        self.ever_bilateral[mask] = False
         self.bilateral_contact_history[mask] = False
         self.failure_forces[mask] = 0.0
         self.failure_loss_flags[mask] = 0.0
