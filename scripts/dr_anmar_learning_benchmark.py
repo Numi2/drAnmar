@@ -4300,7 +4300,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     if checkpoint is not None:
-        runner.load(str(checkpoint))
+        runner.load(
+            str(checkpoint),
+            load_cfg={
+                "actor": True,
+                "critic": True,
+                "optimizer": False,
+                "iteration": False,
+                "rnd": False,
+            },
+        )
     policy_model = runner.alg.get_policy()
     adaptation_modes = sum(
         (

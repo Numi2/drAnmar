@@ -1148,6 +1148,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
 def test_needle_geometry_grasp_offsets_follow_composed_arc() -> None:
     scope = runpy.run_path(str(TASK_ROOT / "surgical/lift/grasp_frames.py"))
     grasp_offset = scope["needle_geometry_grasp_offset_m"]
+    grasp_frame = scope["needle_geometry_grasp_frame"]
 
     blunt_side = grasp_offset(0.0)
     one_third = grasp_offset(1.0 / 3.0)
@@ -1160,6 +1161,33 @@ def test_needle_geometry_grasp_offsets_follow_composed_arc() -> None:
     assert math.isclose(sharp_side[0], 0.019147, abs_tol=1e-6)
     assert math.isclose(sharp_side[1], -0.019548, abs_tol=1e-6)
     assert math.isclose(one_third[2], -0.00101704, abs_tol=1e-9)
+    giver_frame = grasp_frame(0.4, grasp_z_m=0.0006)
+    receiver_frame = grasp_frame(0.65, grasp_z_m=-0.003)
+    expected_giver = (
+        0.0007375535249017802,
+        0.005600696415109648,
+        0.0006,
+    )
+    expected_receiver = (
+        0.0019002163218475414,
+        -0.009119058578501121,
+        -0.003,
+    )
+    assert all(
+        math.isclose(actual, expected, abs_tol=1e-12)
+        for actual, expected in zip(giver_frame[0], expected_giver, strict=True)
+    )
+    assert all(
+        math.isclose(actual, expected, abs_tol=1e-12)
+        for actual, expected in zip(
+            receiver_frame[0], expected_receiver, strict=True
+        )
+    )
+    assert math.isclose(
+        receiver_frame[1] - giver_frame[1],
+        0.790114043036337,
+        abs_tol=1e-12,
+    )
 
 
 def test_launcher_fits_parallel_worlds_to_live_ram_and_vram() -> None:

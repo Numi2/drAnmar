@@ -69,6 +69,7 @@ class NeedleHandoverEndToEndEnvCfg(ik_rel_env_cfg.NeedleHandoverEnvCfg):
             "receiver_capture_angular_speed_limit": 5.0,
             "giver_release_confirmation_steps": 1,
             "receiver_attempt_timeout_steps": 30,
+            "receiver_approach_timeout_steps": 0,
             "receiver_retry_contact_loss_steps": 8,
             "receiver_retry_steps": 15,
         }

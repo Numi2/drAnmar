@@ -249,6 +249,7 @@ def handover_state(
     receiver_capture_angular_speed_limit: float = 5.0,
     giver_release_confirmation_steps: int = 5,
     receiver_attempt_timeout_steps: int = 30,
+    receiver_approach_timeout_steps: int = 0,
     receiver_retry_contact_loss_steps: int = 2,
     receiver_retry_steps: int = 0,
     reset_height_offset: float = -0.05,
@@ -346,6 +347,12 @@ def handover_state(
                 receiver_attempt_timeout_steps,
             )
         )
+        receiver_approach_timeout_steps = int(
+            contract.get(
+                "receiver_approach_timeout_steps",
+                receiver_approach_timeout_steps,
+            )
+        )
         receiver_retry_contact_loss_steps = int(
             contract.get(
                 "receiver_retry_contact_loss_steps",
@@ -410,6 +417,9 @@ def handover_state(
                 env.num_envs, dtype=torch.bool, device=env.device
             ),
             "receiver_attempt_step_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "receiver_approach_step_count": torch.zeros(
                 env.num_envs, dtype=torch.long, device=env.device
             ),
             "receiver_pre_release_loss_consecutive": torch.zeros(
@@ -552,6 +562,7 @@ def handover_state(
     state["receiver_capture_offset_w"][reset] = 0.0
     state["receiver_attempt_active"][reset] = False
     state["receiver_attempt_step_count"][reset] = 0
+    state["receiver_approach_step_count"][reset] = 0
     state["receiver_pre_release_loss_consecutive"][reset] = 0
     state["receiver_retry_step_count"][reset] = 0
     state["receiver_retry_count"][reset] = 0
@@ -901,6 +912,18 @@ def handover_state(
     )
     state["receiver_retry_step_count"][retry_complete] = 0
     receiver_retry_active = state["receiver_retry_step_count"] > 0
+    receiver_approach_active = (
+        structured_transfer_contract
+        & (phase == 2)
+        & presentation_stable
+        & ~receiver_any_contact_now
+        & ~receiver_retry_active
+    )
+    state["receiver_approach_step_count"][:] = torch.where(
+        receiver_approach_active,
+        state["receiver_approach_step_count"] + 1,
+        torch.zeros_like(state["receiver_approach_step_count"]),
+    )
     receiver_capture_began = (
         structured_transfer_contract
         & (phase == 2)
@@ -982,6 +1005,15 @@ def handover_state(
             < receiver_capture_required_steps
         )
     )
+    receiver_approach_stalled = (
+        receiver_approach_timeout_steps > 0
+    ) & (
+        receiver_approach_active
+        & (
+            state["receiver_approach_step_count"]
+            >= receiver_approach_timeout_steps
+        )
+    )
     receiver_release_aborted = (
         structured_transfer_contract
         & (phase == 3)
@@ -995,7 +1027,8 @@ def handover_state(
     start_receiver_retry = (
         receiver_retry_steps > 0
     ) & (
-        receiver_missed_before_capture
+        receiver_approach_stalled
+        | receiver_missed_before_capture
         | receiver_attempt_stalled
         | receiver_release_aborted
     )
@@ -1004,6 +1037,7 @@ def handover_state(
     state["receiver_retry_step_count"][start_receiver_retry] = 1
     state["receiver_attempt_active"][start_receiver_retry] = False
     state["receiver_attempt_step_count"][start_receiver_retry] = 0
+    state["receiver_approach_step_count"][start_receiver_retry] = 0
     state["receiver_capture_consecutive"][start_receiver_retry] = 0
     state["giver_release_confirmation_consecutive"][
         start_receiver_retry
@@ -1035,6 +1069,7 @@ def handover_state(
     )
     state["receiver_attempt_active"][receiver_acquired] = False
     state["receiver_attempt_step_count"][receiver_acquired] = 0
+    state["receiver_approach_step_count"][receiver_acquired] = 0
     phase[receiver_acquired] = 3
     state["progress_phase"][receiver_acquired] = torch.maximum(
         state["progress_phase"][receiver_acquired],
@@ -1264,6 +1299,7 @@ def handover_state(
     state["receiver_capture_offset_w"][recovery_allowed] = 0.0
     state["receiver_attempt_active"][recovery_allowed] = False
     state["receiver_attempt_step_count"][recovery_allowed] = 0
+    state["receiver_approach_step_count"][recovery_allowed] = 0
     state["receiver_pre_release_loss_consecutive"][
         recovery_allowed
     ] = 0
@@ -1295,6 +1331,7 @@ def handover_state(
     state["receiver_capture_offset_w"][recovery_complete] = 0.0
     state["receiver_attempt_active"][recovery_complete] = False
     state["receiver_attempt_step_count"][recovery_complete] = 0
+    state["receiver_approach_step_count"][recovery_complete] = 0
     state["receiver_pre_release_loss_consecutive"][
         recovery_complete
     ] = 0

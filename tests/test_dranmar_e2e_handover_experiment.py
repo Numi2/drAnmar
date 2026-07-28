@@ -237,7 +237,16 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "\n    def select(" not in source
     assert "self.phase_network(latent, phase)" in source
     assert "class _PhaseHeadedNetwork(nn.Module):" in source
-    assert "handover_task_features(role_observation)" in source
+    assert "class _RecoveryReceiverAdapter(nn.Module):" in source
+    assert "handover_task_features(" in source
+    assert "receiver_policy_grasp_offset" in source
+    assert "recovery_receiver_canonical_grasp_features" in source
+    assert "nn.init.zeros_(self.output.weight)" in source
+    assert "nn.init.zeros_(self.output.bias)" in source
+    assert "self.recovery_receiver_adapter(" in source
+    assert "adapter_role_residual[:, 7:13]" in source
+    assert "parameter.requires_grad_(True)" in source
+    assert "quat_apply(" in source
     assert "HandoverAnalyticController" in source
     assert "self.residual_scale" in source
     assert "* physical_residual" in source
@@ -310,7 +319,8 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "raw[:, 99:101]" in source
     assert "raw[:, 101:103]" in source
     assert "raw[:, 103:107]" in source
-    assert "receiver_offset[:, 2] = -0.003" in source
+    assert "grasp_z_m=-0.003" in source
+    assert "receiver_offset += receiver_policy_grasp_offset" in source
     ast.parse(source)
 
     benchmark_source = (
@@ -338,6 +348,8 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
         "receiver_grasp_retain_residual_enabled_for_learning"
         in benchmark_source
     )
+    assert '"optimizer": False' in benchmark_source
+    assert '"iteration": False' in benchmark_source
 
 
 def test_e2e_task_adds_native_contact_history_without_changing_success() -> None:
@@ -457,6 +469,9 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert 'capture &= state["pickup_recovery_count"] > 0' in state_source
     assert '"recovery_conditioned_captures"' in state_source
     assert "presentation_custody" in state_source
+    assert '"receiver_approach_step_count"' in state_source
+    assert "receiver_approach_stalled" in state_source
+    assert "receiver_approach_timeout_steps" in state_source
     assert '"receiver_curriculum_cached_envs"' in benchmark_source
     assert '"receiver_curriculum_reset_restores"' in benchmark_source
     assert '"receiver_curriculum_reset_refreshes"' in benchmark_source

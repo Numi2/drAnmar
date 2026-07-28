@@ -22,19 +22,26 @@ from orbit.surgical.tasks.surgical.lift.grasp_frames import (
     NEEDLE_ARC_EXTENT_RAD,
     NEEDLE_PROVISIONAL_ARC_FRACTION,
     NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
-    needle_geometry_grasp_offset_m,
+    NEEDLE_PROVISIONAL_TANGENT_YAW_RAD,
+    needle_geometry_grasp_frame,
 )
 
 _RECEIVER_ARC_FRACTION = 0.65
 _RECEIVER_ARC_CANDIDATES = (0.60, 0.65, 0.70)
 _RECEIVER_CANDIDATE_OFFSETS = tuple(
-    needle_geometry_grasp_offset_m(fraction)
+    needle_geometry_grasp_frame(fraction)[0]
     for fraction in _RECEIVER_ARC_CANDIDATES
 )
-_RECEIVER_OFFSET = needle_geometry_grasp_offset_m(_RECEIVER_ARC_FRACTION)
+(
+    _RECEIVER_OFFSET,
+    _RECEIVER_TANGENT_YAW_RAD,
+) = needle_geometry_grasp_frame(
+    _RECEIVER_ARC_FRACTION,
+    grasp_z_m=-0.003,
+)
 _RECEIVER_TANGENT_DELTA_RAD = (
-    _RECEIVER_ARC_FRACTION - NEEDLE_PROVISIONAL_ARC_FRACTION
-) * NEEDLE_ARC_EXTENT_RAD
+    _RECEIVER_TANGENT_YAW_RAD - NEEDLE_PROVISIONAL_TANGENT_YAW_RAD
+)
 _RECEIVER_BASELINE_CROSSING_ANGLE_RAD = (
     math.pi - _RECEIVER_TANGENT_DELTA_RAD
 )

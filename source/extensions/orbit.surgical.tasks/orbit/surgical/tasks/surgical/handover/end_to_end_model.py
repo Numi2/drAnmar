@@ -15,13 +15,23 @@ from torch.distributions import Normal
 
 from isaaclab.utils.math import (
     axis_angle_from_quat,
+    quat_apply,
     quat_conjugate,
     quat_mul,
+)
+
+from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+    needle_geometry_grasp_frame,
 )
 
 from .residual_model import HandoverAnalyticController
 
 _TASK_FEATURE_DIM = 24
+_RECOVERY_RECEIVER_ADAPTER_FEATURE_DIM = 12
+_RECEIVER_POLICY_GRASP_OFFSET, _ = needle_geometry_grasp_frame(
+    0.65,
+    grasp_z_m=-0.003,
+)
 
 
 def select_handover_role(
@@ -133,7 +143,10 @@ def role_action_to_physical(
     return torch.cat((robot_1_action, robot_2_action), dim=-1)
 
 
-def handover_task_features(role_observation: torch.Tensor) -> torch.Tensor:
+def handover_task_features(
+    role_observation: torch.Tensor,
+    receiver_policy_grasp_offset: torch.Tensor,
+) -> torch.Tensor:
     """Build local grasp, presentation, orientation, and contact-change features."""
     giver_ee_position = role_observation[:, 32:35]
     giver_ee_orientation = role_observation[:, 35:39]
@@ -175,9 +188,7 @@ def handover_task_features(role_observation: torch.Tensor) -> torch.Tensor:
     ) / 0.02
 
     receiver_offset = torch.zeros_like(receiver_ee_position)
-    receiver_offset[:, 0] = 0.0019002163218475414
-    receiver_offset[:, 1] = -0.009119058578501121
-    receiver_offset[:, 2] = -0.003
+    receiver_offset += receiver_policy_grasp_offset
     receiver_grasp_error = (
         object_in_receiver[:, :3] + receiver_offset - receiver_ee_position
     ) / 0.02
@@ -226,6 +237,50 @@ def handover_task_features(role_observation: torch.Tensor) -> torch.Tensor:
             receiver_orientation_error,
             pickup_clearance,
             contact_change,
+            transfer_contract,
+        ),
+        dim=-1,
+    ).clamp(-5.0, 5.0)
+
+
+def recovery_receiver_canonical_grasp_features(
+    role_observation: torch.Tensor,
+    receiver_policy_grasp_offset: torch.Tensor,
+) -> torch.Tensor:
+    """Describe the receiver target in the physically observed needle frame."""
+
+    receiver_ee_position = role_observation[:, 39:42]
+    receiver_ee_orientation = role_observation[:, 42:46]
+    object_in_receiver = role_observation[:, 53:60]
+    receiver_offset = torch.zeros_like(receiver_ee_position)
+    receiver_offset += receiver_policy_grasp_offset
+    receiver_target_position = (
+        object_in_receiver[:, :3]
+        + quat_apply(object_in_receiver[:, 3:7], receiver_offset)
+    )
+    receiver_position_error = (
+        receiver_target_position - receiver_ee_position
+    ) / 0.02
+
+    receiver_roll = torch.zeros_like(receiver_ee_orientation)
+    receiver_roll[:, 2] = 1.0
+    receiver_target_orientation = quat_mul(
+        object_in_receiver[:, 3:7],
+        receiver_roll,
+    )
+    receiver_orientation_error = axis_angle_from_quat(
+        quat_mul(
+            receiver_target_orientation,
+            quat_conjugate(receiver_ee_orientation),
+        )
+    ) / 3.141592653589793
+    receiver_contacts = role_observation[:, 68:70]
+    transfer_contract = role_observation[:, 103:107]
+    return torch.cat(
+        (
+            receiver_position_error,
+            receiver_orientation_error,
+            receiver_contacts,
             transfer_contract,
         ),
         dim=-1,
@@ -286,6 +341,23 @@ class _PhaseHeadedNetwork(nn.Module):
         return candidates[batch_indices, phase]
 
 
+class _RecoveryReceiverAdapter(nn.Module):
+    """Zero-initialized bounded correction from needle-local grasp error."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(_RECOVERY_RECEIVER_ADAPTER_FEATURE_DIM, 64),
+            nn.ELU(),
+        )
+        self.output = nn.Linear(64, 6)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return torch.tanh(self.output(self.encoder(features)))
+
+
 class EndToEndHandoverMLPModel(MLPModel):
     """Physics-structured servo plus bounded phase-specialized learned residual."""
 
@@ -318,12 +390,25 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.pickup_recovery_adaptation_enabled = False
         self.receiver_adaptation_enabled = False
         self.recovery_receiver_grasp_retain_adaptation_enabled = False
+        self.register_buffer(
+            "receiver_policy_grasp_offset",
+            torch.tensor(_RECEIVER_POLICY_GRASP_OFFSET),
+            persistent=False,
+        )
+        self.recovery_receiver_adapter = _RecoveryReceiverAdapter()
+        for parameter in self.recovery_receiver_adapter.parameters():
+            parameter.requires_grad_(False)
         self.recovery_receiver_reference_network: (
             _PhaseHeadedNetwork | None
         ) = None
 
     def load_state_dict(self, state_dict, strict: bool = True, assign: bool = False):
-        """Materialize the frozen option reference when loading a v5 checkpoint."""
+        """Load older option checkpoints while preserving an exact-zero adapter."""
+        adapter_prefix = "recovery_receiver_adapter."
+        if not any(key.startswith(adapter_prefix) for key in state_dict):
+            state_dict = state_dict.copy()
+            for key, value in self.recovery_receiver_adapter.state_dict().items():
+                state_dict[f"{adapter_prefix}{key}"] = value
         if (
             self.recovery_receiver_reference_network is None
             and any(
@@ -359,7 +444,10 @@ class EndToEndHandoverMLPModel(MLPModel):
         return torch.cat(
             (
                 normalized,
-                handover_task_features(role_observation),
+                handover_task_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                ),
             ),
             dim=-1,
         )
@@ -451,8 +539,9 @@ class EndToEndHandoverMLPModel(MLPModel):
         """Chain the frozen pickup-recovery option into receiver adaptation.
 
         The loaded checkpoint's learned giver recovery remains active at
-        inference, but only receiver SE(3) rows receive gradients or
-        exploration. This prevents the downstream option from erasing the
+        inference, but only the zero-initialized receiver adapter receives
+        gradients and exploration. Its output is restricted to receiver
+        SE(3). This prevents the downstream option from erasing the
         qualified recovery behavior that generates its source states.
         """
         self.pickup_recovery_adaptation_enabled = True
@@ -472,26 +561,8 @@ class EndToEndHandoverMLPModel(MLPModel):
             parameter.requires_grad_(False)
         for parameter in self.phase_network.parameters():
             parameter.requires_grad_(False)
-        receiver_se3_row_mask = torch.zeros(
-            14,
-            dtype=self.phase_network.heads[2].weight.dtype,
-            device=self.phase_network.heads[2].weight.device,
-        )
-        receiver_se3_row_mask[7:13] = 1.0
-        for phase_index in (2, 3):
-            receiver_head = self.phase_network.heads[phase_index]
-            receiver_head.weight.requires_grad_(True)
-            receiver_head.bias.requires_grad_(True)
-            receiver_head.weight.register_hook(
-                lambda gradient, row_mask=receiver_se3_row_mask: (
-                    gradient * row_mask.unsqueeze(-1)
-                )
-            )
-            receiver_head.bias.register_hook(
-                lambda gradient, row_mask=receiver_se3_row_mask: (
-                    gradient * row_mask
-                )
-            )
+        for parameter in self.recovery_receiver_adapter.parameters():
+            parameter.requires_grad_(True)
         if self.distribution is not None:
             for parameter_name in ("std_param", "log_std_param"):
                 parameter = getattr(
@@ -592,6 +663,23 @@ class EndToEndHandoverMLPModel(MLPModel):
                 current_role_residual,
                 reference_role_residual,
             )
+            role_observation = role_normalize_handover_observation(raw)
+            adapter_features = recovery_receiver_canonical_grasp_features(
+                role_observation,
+                self.receiver_policy_grasp_offset,
+            )
+            receiver_adapter = self.recovery_receiver_adapter(
+                adapter_features
+            )
+            adapter_role_residual = torch.zeros_like(
+                learned_role_residual
+            )
+            adapter_role_residual[:, 7:13] = receiver_adapter
+            learned_role_residual = (
+                learned_role_residual
+                + pickup_recovery_context.unsqueeze(-1)
+                * adapter_role_residual
+            ).clamp(-1.0, 1.0)
         physical_residual = role_action_to_physical(
             learned_role_residual,
             raw[:, 82] > 0.5,
@@ -665,6 +753,14 @@ class _EndToEndHandoverExport(nn.Module):
         self.recovery_receiver_reference_network = copy.deepcopy(
             model.recovery_receiver_reference_network
         )
+        self.recovery_receiver_adapter = copy.deepcopy(
+            model.recovery_receiver_adapter
+        )
+        self.register_buffer(
+            "receiver_policy_grasp_offset",
+            model.receiver_policy_grasp_offset.detach().clone(),
+            persistent=False,
+        )
         self.deterministic_output = (
             model.distribution.as_deterministic_output_module()
             if model.distribution is not None
@@ -677,7 +773,10 @@ class _EndToEndHandoverExport(nn.Module):
         latent = torch.cat(
             (
                 self.obs_normalizer(role_observation),
-                handover_task_features(role_observation),
+                handover_task_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                ),
             ),
             dim=-1,
         )
@@ -694,11 +793,28 @@ class _EndToEndHandoverExport(nn.Module):
             reference_role_residual = torch.tanh(
                 self.recovery_receiver_reference_network(latent, phase)
             )
+            pickup_recovery_context = obs[:, 98] > 0.5
             learned_role_residual = torch.where(
-                (obs[:, 98] > 0.5).unsqueeze(-1),
+                pickup_recovery_context.unsqueeze(-1),
                 current_role_residual,
                 reference_role_residual,
             )
+            adapter_features = recovery_receiver_canonical_grasp_features(
+                role_observation,
+                self.receiver_policy_grasp_offset,
+            )
+            receiver_adapter = self.recovery_receiver_adapter(
+                adapter_features
+            )
+            adapter_role_residual = torch.zeros_like(
+                learned_role_residual
+            )
+            adapter_role_residual[:, 7:13] = receiver_adapter
+            learned_role_residual = (
+                learned_role_residual
+                + pickup_recovery_context.unsqueeze(-1)
+                * adapter_role_residual
+            ).clamp(-1.0, 1.0)
         physical_residual = role_action_to_physical(
             learned_role_residual,
             giver_is_robot_1,
