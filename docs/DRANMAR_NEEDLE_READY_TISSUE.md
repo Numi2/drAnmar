@@ -75,16 +75,20 @@ The single-instance contact and validation lanes separately exercise fixture,
 retraction, release, rigid-soft contact, deterministic replay, and the Isaac
 Lab spawn/reset/step adapter.
 
-## What remains fail-closed
+## What remains unvalidated
 
 Newton VBD currently qualifies intact deformation and contact. It does not
 create a hole, persistent tract, cut, tear, or thread passage. We will not call
 needle contact a puncture and will not use a policy-written phase flag as
-evidence.
+evidence. T1 does not add a collision barrier: its training task ends when the
+safe entry frame is armed, while its continuation task keeps stepping and
+allows subsequent contact. Persistent puncture is routed to the pinned
+CRESSim-MPM backend candidate rather than being faked inside VBD.
 
 The post-handover progression is:
 
-1. approach a sampled safe-bite entry frame while retaining the needle;
+1. approach a sampled safe-bite entry frame while retaining the needle, with
+   premature contact failing and post-arm contact allowed;
 2. qualify calibrated pre-puncture indentation and unloading;
 3. promote a topology-capable backend only after persistent-tract and
    force-depth gates pass; and

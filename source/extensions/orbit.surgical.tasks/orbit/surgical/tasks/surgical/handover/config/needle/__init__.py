@@ -12,6 +12,7 @@ from . import (
     ik_abs_env_cfg,
     ik_rel_env_cfg,
     joint_pos_env_cfg,
+    t1_safe_bite_env_cfg,
 )
 
 ##
@@ -149,6 +150,52 @@ gym.register(
         ),
         "rsl_rl_cfg_entry_point": (
             agents.rsl_rl_e2e_cfg.HandoverNeedleEndToEndPPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
+##
+# Post-handover deformable-tissue progression
+##
+
+gym.register(
+    id="Isaac-Handover-Needle-Safe-Bite-T1-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            t1_safe_bite_env_cfg.NeedleHandoverSafeBiteT1EnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleSafeBitePPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
+gym.register(
+    id="Isaac-Handover-Needle-Safe-Bite-T1-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            t1_safe_bite_env_cfg.NeedleHandoverSafeBiteT1EnvCfg_PLAY
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleSafeBitePPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
+gym.register(
+    id="Isaac-Handover-Needle-Safe-Bite-Chain-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            t1_safe_bite_env_cfg.NeedleHandoverSafeBiteChainEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleSafeBitePPORunnerCfg
         ),
     },
     disable_env_checker=True,

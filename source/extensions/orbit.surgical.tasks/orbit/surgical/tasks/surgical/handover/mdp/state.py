@@ -450,6 +450,44 @@ def handover_state(
     state["start_object_pos"][reset] = object_pos_w[reset]
     state["start_object_pos"][reset, 2] = state["support_height_w"][reset]
     state["last_reset_step"][reset] = step
+    # A downstream curriculum may restore a reset-time snapshot that was
+    # captured only after this exact physical handover contract succeeded.
+    # Restore never changes an active episode and never fabricates a cache
+    # from target poses.  Rehydrate the monotonic handover state so the
+    # receiver can train the successor skill without replaying the full
+    # prerequisite on every rollout.
+    pending_safe_bite_restore = getattr(
+        env,
+        "_dr_anmar_pending_safe_bite_restore",
+        None,
+    )
+    if isinstance(pending_safe_bite_restore, dict):
+        restored = reset & pending_safe_bite_restore["episode_mask"]
+        if bool(restored.any()):
+            state["giver_is_robot_1"][restored] = (
+                pending_safe_bite_restore["giver_is_robot_1"][restored]
+            )
+            state["phase"][restored] = 3
+            state["progress_phase"][restored] = 4
+            state["rewarded_phase"][restored] = 4
+            state["giver_release_observed"][restored] = True
+            state["giver_release_authorized"][restored] = True
+            state["successful_handover"][restored] = True
+            state["receiver_only_consecutive"][restored] = (
+                required_receiver_only_steps
+            )
+            state["receiver_acquisition_offset_w"][restored] = (
+                pending_safe_bite_restore[
+                    "receiver_acquisition_offset_w"
+                ][restored]
+            )
+            # Newton contact buffers need a few substeps to repopulate after
+            # a reset write.  A negative counter is a bounded debounce, not
+            # artificial custody: geometric follow and lifted-state checks
+            # remain live and any sustained loss still terminates.
+            state["receiver_loss_consecutive"][restored] = -int(
+                pending_safe_bite_restore["contact_grace_steps"]
+            )
     if state["last_step"] == step and not bool(torch.any(reset)):
         return state
 

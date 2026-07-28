@@ -8,16 +8,15 @@ from __future__ import annotations
 import copy
 
 import torch
-from rsl_rl.models import MLPModel
-from rsl_rl.modules import GaussianDistribution
-from torch import nn
-from torch.distributions import Normal
-
 from isaaclab.utils.math import (
     axis_angle_from_quat,
     quat_conjugate,
     quat_mul,
 )
+from rsl_rl.models import MLPModel
+from rsl_rl.modules import GaussianDistribution
+from torch import nn
+from torch.distributions import Normal
 
 from .residual_model import HandoverAnalyticController
 
@@ -108,6 +107,10 @@ def role_normalize_handover_observation(raw: torch.Tensor) -> torch.Tensor:
             giver_contact_history,
             receiver_contact_history,
             raw[:, 103:107],
+            # Successor tasks append goal-conditioned state after the stable
+            # 107-value handover contract.  Preserve it verbatim while the
+            # arm-specific prefix is role normalized.
+            raw[:, 107:],
         ),
         dim=-1,
     )

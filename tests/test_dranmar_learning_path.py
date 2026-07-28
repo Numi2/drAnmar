@@ -6,7 +6,6 @@ import math
 import runpy
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 TASK_ROOT = ROOT / "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks"
 
@@ -14,7 +13,7 @@ TASK_ROOT = ROOT / "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks"
 def test_learning_path_manifest_is_ordered_and_branded() -> None:
     manifest = json.loads((ROOT / "config/dranmar_learning_path.json").read_text())
     stages = manifest["stages"]
-    assert [stage["stage"] for stage in stages] == list(range(1, 7))
+    assert [stage["stage"] for stage in stages] == list(range(1, 8))
     assert stages[0]["task"] == "DrAnmar-Reach-PSM-IK-Rel-v0"
     assert all(stage["task"].startswith("DrAnmar-") for stage in stages)
     assert manifest["defaults"]["held_out_seeds"]

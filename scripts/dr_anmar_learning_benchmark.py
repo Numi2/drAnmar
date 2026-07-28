@@ -1849,6 +1849,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
     from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    safe_bite_contract = getattr(
+        env_cfg,
+        "dr_anmar_safe_bite_contract",
+        None,
+    )
     if args.learning_rate is not None:
         if args.learning_rate <= 0.0:
             return _fail("training learning rate must be positive")
@@ -1974,6 +1979,16 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "_dr_anmar_receiver_curriculum_cache",
             None,
         )
+        safe_bite_cache = getattr(
+            env.unwrapped,
+            "_dr_anmar_safe_bite_handover_cache",
+            None,
+        )
+        safe_bite_fixture_anchor_count = getattr(
+            env.unwrapped,
+            "_dr_anmar_tissue_fixture_anchor_count",
+            None,
+        )
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "training",
@@ -2049,6 +2064,68 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "initial_policy_influence": "loaded_checkpoint",
                 }
                 if receiver_curriculum
+                else None
+            ),
+            "safe_bite_t1": (
+                {
+                    "contract_id": safe_bite_contract["id"],
+                    "initial_policy_influence": (
+                        "loaded_compatible_t1_checkpoint"
+                        if initial_checkpoint is not None
+                        else "zero_residual_analytic_handover_and_approach"
+                    ),
+                    "snapshot_cached_environments": (
+                        int(safe_bite_cache["valid"].sum().item())
+                        if safe_bite_cache is not None
+                        else 0
+                    ),
+                    "snapshot_captures": (
+                        int(safe_bite_cache["capture_count"])
+                        if safe_bite_cache is not None
+                        else 0
+                    ),
+                    "snapshot_restores": (
+                        int(safe_bite_cache["restore_count"])
+                        if safe_bite_cache is not None
+                        else 0
+                    ),
+                    "snapshot_restore_probability": float(
+                        safe_bite_contract[
+                            "handover_snapshot_curriculum"
+                        ]["restore_probability"]
+                    ),
+                    "minimum_full_chain_fraction": float(
+                        safe_bite_contract[
+                            "handover_snapshot_curriculum"
+                        ]["minimum_full_chain_fraction"]
+                    ),
+                    "fixture_anchor_nodes_per_environment": (
+                        sorted(
+                            set(
+                                safe_bite_fixture_anchor_count.detach()
+                                .cpu()
+                                .tolist()
+                            )
+                        )
+                        if safe_bite_fixture_anchor_count is not None
+                        else None
+                    ),
+                    "shared_handover_actor_features_trainable": False,
+                    "trainable_phase_head": 3,
+                    "trainable_role_output_rows": [7, 8, 9, 10, 11, 12],
+                    "learned_receiver_axes": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "analytic_gripper_authority": True,
+                    "exploration_scale_frozen": True,
+                    "puncture_mechanically_blocked": False,
+                }
+                if isinstance(safe_bite_contract, dict)
                 else None
             ),
             "handover_giver_adaptation_contract": (
@@ -2194,6 +2271,68 @@ def _lift_procedure_snapshot(env) -> dict[str, Any]:
     }
 
 
+def _safe_bite_tissue_snapshot(env) -> dict[str, Any]:
+    """Summarize native deformable state and fixture enforcement."""
+
+    import torch
+
+    from orbit.surgical.tasks.surgical import mdp_common
+
+    unwrapped = env.unwrapped
+    tissue = unwrapped.scene["tissue"]
+    position = mdp_common.as_torch(tissue.data.nodal_pos_w)
+    velocity = mdp_common.as_torch(tissue.data.nodal_vel_w)
+    targets = mdp_common.as_torch(tissue.data.nodal_kinematic_target)
+    default_position = mdp_common.as_torch(
+        tissue.data.default_nodal_state_w
+    )[..., :3]
+    anchored = targets[..., 3] == 0.0
+    free = ~anchored
+    displacement = torch.linalg.vector_norm(
+        position - default_position,
+        dim=-1,
+    )
+    anchor_error = torch.linalg.vector_norm(
+        position - targets[..., :3],
+        dim=-1,
+    )
+
+    def finite_stats(value: torch.Tensor) -> dict[str, float | bool]:
+        finite = torch.isfinite(value)
+        return {
+            "all_finite": bool(finite.all().item()),
+            "minimum": float(value[finite].min().item())
+            if bool(finite.any().item())
+            else float("nan"),
+            "mean": float(value[finite].float().mean().item())
+            if bool(finite.any().item())
+            else float("nan"),
+            "maximum": float(value[finite].max().item())
+            if bool(finite.any().item())
+            else float("nan"),
+        }
+
+    return {
+        "nodal_position_all_finite": bool(
+            torch.isfinite(position).all().item()
+        ),
+        "nodal_velocity_all_finite": bool(
+            torch.isfinite(velocity).all().item()
+        ),
+        "anchor_nodes_per_environment": sorted(
+            set(anchored.sum(dim=-1).detach().cpu().tolist())
+        ),
+        "free_nodes_per_environment": sorted(
+            set(free.sum(dim=-1).detach().cpu().tolist())
+        ),
+        "anchored_position_error_m": finite_stats(anchor_error[anchored]),
+        "free_node_displacement_m": finite_stats(displacement[free]),
+        "nodal_speed_m_s": finite_stats(
+            torch.linalg.vector_norm(velocity, dim=-1)
+        ),
+    }
+
+
 def _probe(args: argparse.Namespace, repo_root: Path) -> int:
     """Exercise a task without training and record its native runtime contract."""
     import gymnasium as gym
@@ -2204,6 +2343,11 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
     obs, _ = env.reset()
     initial_procedure_state = (
         _lift_procedure_snapshot(env) if "Lift-" in args.task else None
+    )
+    initial_safe_bite_tissue_state = (
+        _safe_bite_tissue_snapshot(env)
+        if "Safe-Bite" in args.task
+        else None
     )
     manager = env.unwrapped.termination_manager
     term_counts = {name: 0 for name in manager.active_terms}
@@ -2229,6 +2373,11 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
         final_procedure_state = (
             _lift_procedure_snapshot(env) if "Lift-" in args.task else None
         )
+        final_safe_bite_tissue_state = (
+            _safe_bite_tissue_snapshot(env)
+            if "Safe-Bite" in args.task
+            else None
+        )
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "task_probe",
@@ -2249,6 +2398,10 @@ def _probe(args: argparse.Namespace, repo_root: Path) -> int:
             "termination_term_counts": term_counts,
             "initial_procedure_state": initial_procedure_state,
             "final_procedure_state": final_procedure_state,
+            "initial_safe_bite_tissue_state": (
+                initial_safe_bite_tissue_state
+            ),
+            "final_safe_bite_tissue_state": final_safe_bite_tissue_state,
             "wall_time_s": duration,
             "total_fps": (
                 env.unwrapped.num_envs * args.num_frames / duration
@@ -4348,6 +4501,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     obs = env.get_observations()
     first_handover_max_phase = None
     first_handover_history = None
+    first_safe_bite_history = None
+    safe_bite_mdp = None
     if "Handover-" in args.task:
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
@@ -4627,6 +4782,46 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "terminal_time_out": torch.zeros_like(first_unresolved),
         }
+    if "Safe-Bite" in args.task:
+        from orbit.surgical.tasks.surgical.handover import mdp as safe_bite_mdp
+
+        first_safe_bite_history = {
+            "ever_handover_complete": torch.zeros_like(first_unresolved),
+            "ever_entry_armed": torch.zeros_like(first_unresolved),
+            "ever_tissue_contact": torch.zeros_like(first_unresolved),
+            "ever_premature_contact": torch.zeros_like(first_unresolved),
+            "ever_authorized_contact_transition": torch.zeros_like(
+                first_unresolved
+            ),
+            "snapshot_initialized": torch.zeros_like(first_unresolved),
+            "minimum_position_error_m": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.inf,
+                device=env.unwrapped.device,
+            ),
+            "minimum_normalized_error": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.inf,
+                device=env.unwrapped.device,
+            ),
+            "maximum_stable_control_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "first_entry_armed_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "first_authorized_contact_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+        }
     if lift_diagnostics is not None:
         policy_observation = obs["policy"]
         initial_object_xy = policy_observation[:, 23:25].clone()
@@ -4671,6 +4866,105 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         for frame_index in range(args.num_frames):
             with torch.inference_mode():
                 was_first_unresolved = first_unresolved.clone()
+                if first_safe_bite_history is not None:
+                    assert safe_bite_mdp is not None
+                    current_safe_bite = safe_bite_mdp.safe_bite_state(
+                        env.unwrapped
+                    )
+                    first_safe_bite_history[
+                        "ever_handover_complete"
+                    ] |= (
+                        was_first_unresolved
+                        & safe_bite_mdp.handover_state(env.unwrapped)[
+                            "successful_handover"
+                        ]
+                    )
+                    first_safe_bite_history["ever_entry_armed"] |= (
+                        was_first_unresolved
+                        & current_safe_bite["entry_armed"]
+                    )
+                    first_safe_bite_history["ever_tissue_contact"] |= (
+                        was_first_unresolved
+                        & current_safe_bite["tissue_contact"]
+                    )
+                    first_safe_bite_history["ever_premature_contact"] |= (
+                        was_first_unresolved
+                        & current_safe_bite["premature_tissue_contact"]
+                    )
+                    first_safe_bite_history[
+                        "ever_authorized_contact_transition"
+                    ] |= (
+                        was_first_unresolved
+                        & current_safe_bite["authorized_contact_transition"]
+                    )
+                    first_safe_bite_history["snapshot_initialized"] |= (
+                        was_first_unresolved
+                        & current_safe_bite["snapshot_initialized"]
+                    )
+                    first_safe_bite_history[
+                        "minimum_position_error_m"
+                    ] = torch.where(
+                        was_first_unresolved,
+                        torch.minimum(
+                            first_safe_bite_history[
+                                "minimum_position_error_m"
+                            ],
+                            current_safe_bite["position_error"],
+                        ),
+                        first_safe_bite_history["minimum_position_error_m"],
+                    )
+                    first_safe_bite_history[
+                        "minimum_normalized_error"
+                    ] = torch.where(
+                        was_first_unresolved,
+                        torch.minimum(
+                            first_safe_bite_history[
+                                "minimum_normalized_error"
+                            ],
+                            current_safe_bite["normalized_error"],
+                        ),
+                        first_safe_bite_history["minimum_normalized_error"],
+                    )
+                    first_safe_bite_history[
+                        "maximum_stable_control_steps"
+                    ] = torch.where(
+                        was_first_unresolved,
+                        torch.maximum(
+                            first_safe_bite_history[
+                                "maximum_stable_control_steps"
+                            ],
+                            current_safe_bite["stable_consecutive"],
+                        ),
+                        first_safe_bite_history[
+                            "maximum_stable_control_steps"
+                        ],
+                    )
+                    newly_armed = (
+                        was_first_unresolved
+                        & current_safe_bite["entry_armed"]
+                        & (
+                            first_safe_bite_history[
+                                "first_entry_armed_frame"
+                            ]
+                            < 0
+                        )
+                    )
+                    first_safe_bite_history["first_entry_armed_frame"][
+                        newly_armed
+                    ] = frame_index
+                    newly_authorized = (
+                        was_first_unresolved
+                        & current_safe_bite["authorized_contact_transition"]
+                        & (
+                            first_safe_bite_history[
+                                "first_authorized_contact_frame"
+                            ]
+                            < 0
+                        )
+                    )
+                    first_safe_bite_history[
+                        "first_authorized_contact_frame"
+                    ][newly_authorized] = frame_index
                 if first_handover_max_phase is not None:
                     first_stable_presentation = torch.zeros_like(
                         was_first_unresolved
@@ -5431,7 +5725,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 for name in failure_names:
                     if name != "time_out":
                         hard_failure |= term_values[name]
-                successes = term_values["success"] & ~hard_failure
+                success_term = term_values.get(
+                    "success",
+                    torch.zeros_like(dones, dtype=torch.bool),
+                )
+                successes = success_term & ~hard_failure
                 unassigned_failures = dones & ~successes
                 for name in failure_names:
                     assigned = unassigned_failures & term_values[name]
@@ -5480,6 +5778,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 first_dones = was_first_unresolved & dones.bool()
                 first_successes = first_dones & successes.bool()
                 first_outcome_success |= first_successes
+                if first_safe_bite_history is not None:
+                    first_safe_bite_history[
+                        "ever_entry_armed"
+                    ] |= first_successes
+                    newly_armed_at_termination = (
+                        first_successes
+                        & (
+                            first_safe_bite_history[
+                                "first_entry_armed_frame"
+                            ]
+                            < 0
+                        )
+                    )
+                    first_safe_bite_history[
+                        "first_entry_armed_frame"
+                    ][newly_armed_at_termination] = frame_index
                 if first_handover_max_phase is not None:
                     assert first_handover_history is not None
                     post_handover_state = getattr(
@@ -5701,6 +6015,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         procedure_diagnostics = None
         first_episode_lift_diagnostics = None
         first_episode_handover_diagnostics = None
+        first_episode_safe_bite_diagnostics = None
         if lift_diagnostics is not None:
             samples = float(lift_diagnostics["samples"].item())
             procedure_diagnostics = {
@@ -6604,6 +6919,70 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 },
                 "unresolved": int(first_unresolved.sum().item()),
             }
+        if first_safe_bite_history is not None:
+            first_completed = ~first_unresolved
+
+            def safe_bite_quantiles(values: torch.Tensor) -> dict | None:
+                finite = values[torch.isfinite(values)]
+                if not bool(finite.numel()):
+                    return None
+                quantiles = torch.quantile(
+                    finite.float(),
+                    torch.tensor(
+                        [0.1, 0.5, 0.9],
+                        device=finite.device,
+                    ),
+                )
+                return {
+                    "p10": float(quantiles[0].item()),
+                    "p50": float(quantiles[1].item()),
+                    "p90": float(quantiles[2].item()),
+                }
+
+            first_episode_safe_bite_diagnostics = {
+                "full_chain_first_outcomes": True,
+                "snapshot_initialized_count": int(
+                    first_safe_bite_history["snapshot_initialized"].sum().item()
+                ),
+                "reached_count": {
+                    key.removeprefix("ever_"): int(value.sum().item())
+                    for key, value in first_safe_bite_history.items()
+                    if key.startswith("ever_")
+                },
+                "minimum_position_error_m": safe_bite_quantiles(
+                    first_safe_bite_history["minimum_position_error_m"]
+                ),
+                "minimum_normalized_error": safe_bite_quantiles(
+                    first_safe_bite_history["minimum_normalized_error"]
+                ),
+                "maximum_stable_control_steps": safe_bite_quantiles(
+                    first_safe_bite_history[
+                        "maximum_stable_control_steps"
+                    ].float()
+                ),
+                "entry_armed_rate_over_requested_environments": float(
+                    first_safe_bite_history["ever_entry_armed"]
+                    .float()
+                    .mean()
+                    .item()
+                ),
+                "authorized_contact_transition_rate_over_requested_environments": float(
+                    first_safe_bite_history[
+                        "ever_authorized_contact_transition"
+                    ]
+                    .float()
+                    .mean()
+                    .item()
+                ),
+                "premature_contact_rate_over_requested_environments": float(
+                    first_safe_bite_history["ever_premature_contact"]
+                    .float()
+                    .mean()
+                    .item()
+                ),
+                "completed_first_outcomes": int(first_completed.sum().item()),
+                "unresolved_first_outcomes": int(first_unresolved.sum().item()),
+            }
         first_completed_count = int((~first_unresolved).sum().item())
         first_success_count = int(first_outcome_success.sum().item())
         evidence = {
@@ -6665,6 +7044,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "first_episode_handover_diagnostics": (
                 first_episode_handover_diagnostics
+            ),
+            "first_episode_safe_bite_diagnostics": (
+                first_episode_safe_bite_diagnostics
             ),
             "process_peak_memory_mib": _peak_process_memory_mib(),
             "success_rate": (

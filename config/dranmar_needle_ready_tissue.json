@@ -20,7 +20,7 @@
     "warp": "1.16.0.dev20260723",
     "intact_backend": "newton_vbd",
     "rigid_soft_coupling_target": "coupled_mjwarp_vbd_two_way",
-    "topology_backend_status": "blocked_pending_qualified_backend"
+    "topology_backend_status": "cressim_mpm_route_configured_pending_native_qualification"
   },
   "lod_policy": {
     "training": {
@@ -76,25 +76,25 @@
     {
       "stage": "T1",
       "name": "needle approach to safe bite region",
-      "status": "next",
-      "success": "receiver retains the handed-over needle and reaches a sampled safe-bite entry frame without tissue contact or hard-force violation"
+      "status": "implemented_pending_native_isaac_lab_validation",
+      "success": "receiver retains the handed-over needle and reaches a sampled safe-bite entry frame without premature tissue contact; authorized contact remains available in the continuation task"
     },
     {
       "stage": "T2",
       "name": "controlled pre-puncture indentation",
-      "status": "blocked_pending_force_depth_calibration",
+      "status": "queued_after_T1_native_validation_and_force_depth_calibration",
       "success": "measured needle-tissue contact follows a calibrated force-depth envelope and unloads without damage"
     },
     {
       "stage": "T3",
       "name": "puncture and persistent tract",
-      "status": "blocked_pending_topology_backend_and_physical_data",
+      "status": "cressim_mpm_route_open_pending_native_qualification_and_physical_data",
       "success": "one qualified entry and exit with persistent tract, no unintended crossing and calibrated force-depth agreement"
     },
     {
       "stage": "T4",
       "name": "needle arc passage and thread capture",
-      "status": "blocked_pending_T3_and_thread_tissue_coupling",
+      "status": "queued_after_qualified_T3_and_thread_tissue_coupling",
       "success": "needle and qualified Warp suture traverse the intended tract while tissue, needle and thread topology remain consistent"
     }
   ],

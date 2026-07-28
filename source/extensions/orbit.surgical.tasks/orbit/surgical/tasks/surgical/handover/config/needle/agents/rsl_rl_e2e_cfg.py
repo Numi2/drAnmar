@@ -5,7 +5,6 @@
 
 from isaaclab.utils.configclass import configclass
 from isaaclab_rl.rsl_rl import RslRlMLPModelCfg, RslRlPpoAlgorithmCfg
-
 from orbit.surgical.tasks.surgical.learning_cfg import (
     DrAnmarManipulationPPORunnerCfg,
 )
@@ -16,6 +15,14 @@ class EndToEndHandoverModelCfg(RslRlMLPModelCfg):
     class_name = (
         "orbit.surgical.tasks.surgical.handover.end_to_end_model:"
         "EndToEndHandoverMLPModel"
+    )
+
+
+@configclass
+class SafeBiteModelCfg(RslRlMLPModelCfg):
+    class_name = (
+        "orbit.surgical.tasks.surgical.handover.safe_bite_model:"
+        "SafeBiteEndToEndMLPModel"
     )
 
 
@@ -49,6 +56,44 @@ class HandoverNeedleEndToEndPPORunnerCfg(DrAnmarManipulationPPORunnerCfg):
         num_learning_epochs=3,
         num_mini_batches=16,
         learning_rate=1.0e-4,
+        schedule="adaptive",
+        gamma=0.995,
+        lam=0.95,
+        desired_kl=0.002,
+        max_grad_norm=0.5,
+    )
+
+
+@configclass
+class HandoverNeedleSafeBitePPORunnerCfg(
+    HandoverNeedleEndToEndPPORunnerCfg
+):
+    """Short-horizon receiver residual around the analytic T1 servo."""
+
+    num_steps_per_env = 48
+    max_iterations = 1500
+    experiment_name = "dranmar_needle_safe_bite_t1"
+    actor = SafeBiteModelCfg(
+        hidden_dims=[256, 128, 64],
+        activation="elu",
+        obs_normalization=True,
+        distribution_cfg=RslRlMLPModelCfg.GaussianDistributionCfg(
+            class_name=(
+                "orbit.surgical.tasks.surgical.handover.end_to_end_model:"
+                "PhaseMaskedGaussianDistribution"
+            ),
+            init_std=0.003,
+            std_type="log",
+        ),
+    )
+    algorithm = RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.05,
+        entropy_coef=0.0,
+        num_learning_epochs=3,
+        num_mini_batches=16,
+        learning_rate=5.0e-5,
         schedule="adaptive",
         gamma=0.995,
         lam=0.95,

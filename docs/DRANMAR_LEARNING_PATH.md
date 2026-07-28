@@ -12,14 +12,17 @@ flowchart LR
     C --> D["Needle lift"]
     D --> E["Block handover"]
     E --> F["Needle handover"]
+    F --> G["Retain needle and approach safe-bite frame"]
 ```
 
-Stage 6 ends the rigid-object foundation. The next frontier is deformable
-tissue, beginning with the canonical
+Stage 6 ends the rigid-object foundation. Stage 7 begins deformable-tissue
+work with the canonical
 [Needle-Ready Tissue Unit](DRANMAR_NEEDLE_READY_TISSUE.md). Its first task is
-retained-needle approach to a sampled tissue entry frame; puncture, tract,
-thread passage, and tissue damage remain blocked until topology and physical
-force gates pass.
+retained-needle approach to a sampled tissue entry frame. T1 does not disable
+puncture: contact before the entry frame is armed is premature-contact failure,
+while contact after arming remains available in the continuation task. The
+CRESSim-MPM route for persistent tracts and thread passage remains unvalidated
+until native runtime and physical force gates pass.
 
 The versioned contract is
 [`config/dranmar_learning_path.json`](../config/dranmar_learning_path.json).
