@@ -5252,6 +5252,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     lift_mdp_common = None
     handover_mdp_common = None
     handover_non_object_sensor_names: tuple[str, ...] = ()
+    physx_contact_collector = None
+    first_terminal_protected_contact_reports: dict[
+        int,
+        list[dict[str, Any]],
+    ] = {}
     procedure_diagnostic_trace = None
     diagnostic_trace_frames = {
         0,
@@ -5311,6 +5316,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     first_handover_max_phase = None
     first_handover_history = None
     if "Handover-" in args.task:
+        from dr_anmar_physx_contact_attribution import (
+            PhysxJawContactAttributionCollector,
+        )
         from orbit.surgical.tasks.surgical import (
             mdp_common as handover_mdp_common,
         )
@@ -5325,30 +5333,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "robot_2_jaw_1_object_contact",
             "robot_2_jaw_2_object_contact",
         )
-        handover_protected_attribution_sensor_names = (
-            "robot_1_jaw_1_protected_contact_attribution",
-            "robot_1_jaw_2_protected_contact_attribution",
-            "robot_2_jaw_1_protected_contact_attribution",
-            "robot_2_jaw_2_protected_contact_attribution",
-        )
-        handover_protected_partner_labels = (
-            "counterpart_remote_center_visuals",
-            "counterpart_pitch_end_visuals",
-            "counterpart_main_insertion_visuals",
-            "counterpart_main_insertion_2_visuals",
-            "counterpart_main_insertion_2_tool_main_insert",
-            "counterpart_main_insertion_3_visuals",
-            "counterpart_tool_roll_visuals",
-            "counterpart_tool_roll_collisions",
-            "counterpart_tool_pitch_visuals",
-            "counterpart_tool_pitch_collisions",
-            "counterpart_tool_yaw_visuals",
-            "counterpart_tool_yaw_geometry",
-            "counterpart_gripper_1_visual_geometry",
-            "counterpart_gripper_1_collision_geometry",
-            "counterpart_gripper_2_visual_geometry",
-            "counterpart_gripper_2_collision_geometry",
-            "support_table",
+        physx_contact_collector = PhysxJawContactAttributionCollector(
+            env.unwrapped.num_envs
         )
         receiver_grasp_offset = needle_geometry_grasp_offset_m(0.65)
         receiver_roll_offset_rad = float(
@@ -5383,12 +5369,6 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "terminal_protected_surface_force_by_sensor_n": torch.zeros(
                 env.unwrapped.num_envs,
                 len(handover_non_object_sensor_names),
-                device=env.unwrapped.device,
-            ),
-            "terminal_protected_surface_attribution_force_n": torch.zeros(
-                env.unwrapped.num_envs,
-                len(handover_protected_attribution_sensor_names),
-                len(handover_protected_partner_labels),
                 device=env.unwrapped.device,
             ),
             "ever_giver_bilateral_contact": torch.zeros_like(
@@ -5718,6 +5698,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "initial_object_xy": initial_object_xy,
             "initial_target_xy": initial_target_xy,
         }
+    if physx_contact_collector is not None:
+        physx_contact_collector.start()
     started = time.perf_counter()
     try:
         for frame_index in range(args.num_frames):
@@ -6579,6 +6561,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                     ],
                                     counted_norm.max(),
                                 )
+                if physx_contact_collector is not None:
+                    physx_contact_collector.begin_control_step()
                 obs, reward, dones, extras = env.step(actions)
                 if first_handover_history is not None:
                     assert handover_mdp_common is not None
@@ -6682,38 +6666,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 protected_surface_dones
                             ]
                         )
-                    terminal_protected_surface_attribution = getattr(
-                        env.unwrapped,
-                        (
-                            "_dr_anmar_terminal_protected_surface_"
-                            "attribution_forces_n"
-                        ),
-                        None,
-                    )
-                    if terminal_protected_surface_attribution is not None:
-                        expected_attribution_shape = (
-                            env.unwrapped.num_envs,
-                            len(
-                                handover_protected_attribution_sensor_names
-                            ),
-                            len(handover_protected_partner_labels),
-                        )
-                        if (
-                            terminal_protected_surface_attribution.shape
-                            != expected_attribution_shape
-                        ):
-                            raise RuntimeError(
-                                "Protected-contact attribution shape "
-                                f"{tuple(terminal_protected_surface_attribution.shape)} "
-                                "does not match the explicit PhysX body "
-                                f"contract {expected_attribution_shape}."
+                    if physx_contact_collector is not None:
+                        protected_environment_indices = torch.nonzero(
+                            protected_surface_dones,
+                            as_tuple=False,
+                        ).flatten().tolist()
+                        first_terminal_protected_contact_reports.update(
+                            physx_contact_collector.events_for_environments(
+                                protected_environment_indices
                             )
-                        first_handover_history[
-                            "terminal_protected_surface_attribution_force_n"
-                        ][protected_surface_dones] = (
-                            terminal_protected_surface_attribution[
-                                protected_surface_dones
-                            ]
                         )
                     post_handover_state = getattr(
                         env.unwrapped,
@@ -7628,86 +7589,76 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             protected_surface_sensor_forces = first_handover_history[
                 "terminal_protected_surface_force_by_sensor_n"
             ][protected_surface_mask]
-            protected_partner_forces = first_handover_history[
-                "terminal_protected_surface_attribution_force_n"
-            ][protected_surface_mask]
-            protected_giver_is_robot_1 = first_handover_history[
-                "giver_is_robot_1"
-            ][protected_surface_mask]
-            protected_robot_1_partner_forces = protected_partner_forces[:, :2]
-            protected_robot_2_partner_forces = protected_partner_forces[:, 2:]
-            protected_giver_partner_forces = torch.where(
-                protected_giver_is_robot_1[:, None, None],
-                protected_robot_1_partner_forces,
-                protected_robot_2_partner_forces,
-            )
-            protected_receiver_partner_forces = torch.where(
-                protected_giver_is_robot_1[:, None, None],
-                protected_robot_2_partner_forces,
-                protected_robot_1_partner_forces,
-            )
-            protected_giver_partner_max = (
-                protected_giver_partner_forces.amax(dim=1)
-            )
-            protected_receiver_partner_max = (
-                protected_receiver_partner_forces.amax(dim=1)
-            )
-
-            def dominant_partner_counts(partner_forces) -> dict[str, int]:
-                counts = {
-                    label: 0
-                    for label in handover_protected_partner_labels
-                }
-                counts["unattributed"] = 0
-                if not partner_forces.numel():
-                    return counts
-                maximum, index = partner_forces.max(dim=-1)
-                for partner_index, label in enumerate(
-                    handover_protected_partner_labels
-                ):
-                    counts[label] = int(
-                        (
-                            (index == partner_index)
-                            & (maximum > 1e-6)
-                        ).sum().item()
-                    )
-                counts["unattributed"] = int(
-                    (maximum <= 1e-6).sum().item()
+            protected_environment_indices = torch.nonzero(
+                protected_surface_mask,
+                as_tuple=False,
+            ).flatten().tolist()
+            protected_contact_report_episodes = []
+            protected_contact_report_category_counts: dict[str, int] = {}
+            for environment_index in protected_environment_indices:
+                terminal_forces = first_handover_history[
+                    "terminal_protected_surface_force_by_sensor_n"
+                ][environment_index]
+                responsible_sensor_index = int(
+                    terminal_forces.argmax().item()
                 )
-                return counts
-
-            def partner_category_attribution(partner_forces) -> dict:
-                if partner_forces.numel():
-                    arm_or_wrist = partner_forces[:, :12].amax(dim=-1)
-                    jaws = partner_forces[:, 12:16].amax(dim=-1)
-                    table = partner_forces[:, 16]
-                else:
-                    arm_or_wrist = torch.empty(
+                step_events = first_terminal_protected_contact_reports.get(
+                    environment_index,
+                    [],
+                )
+                responsible_event = next(
+                    (
+                        event
+                        for event in step_events
+                        if event["sensor_index"]
+                        == responsible_sensor_index
+                    ),
+                    None,
+                )
+                giver_is_robot_1 = bool(
+                    first_handover_history["giver_is_robot_1"][
+                        environment_index
+                    ].item()
+                )
+                reporter_is_robot_1 = responsible_sensor_index < 2
+                reporter_role = (
+                    "giver"
+                    if reporter_is_robot_1 == giver_is_robot_1
+                    else "receiver"
+                )
+                partner_category = (
+                    responsible_event["partner_category"]
+                    if responsible_event is not None
+                    else "unattributed"
+                )
+                protected_contact_report_category_counts[
+                    partner_category
+                ] = (
+                    protected_contact_report_category_counts.get(
+                        partner_category,
                         0,
-                        device=env.unwrapped.device,
                     )
-                    jaws = torch.empty(0, device=env.unwrapped.device)
-                    table = torch.empty(0, device=env.unwrapped.device)
-                return {
-                    "counterpart_arm_or_wrist": {
-                        "force_n": handover_scalar_quantiles(arm_or_wrist),
-                        "episodes_crossing_2_n": int(
-                            (arm_or_wrist > 2.0).sum().item()
+                    + 1
+                )
+                protected_contact_report_episodes.append(
+                    {
+                        "environment_index": environment_index,
+                        "responsible_sensor": (
+                            handover_non_object_sensor_names[
+                                responsible_sensor_index
+                            ]
                         ),
-                    },
-                    "counterpart_jaws": {
-                        "force_n": handover_scalar_quantiles(jaws),
-                        "episodes_crossing_2_n": int(
-                            (jaws > 2.0).sum().item()
+                        "responsible_role": reporter_role,
+                        "terminal_non_object_force_n": float(
+                            terminal_forces[
+                                responsible_sensor_index
+                            ].item()
                         ),
-                    },
-                    "support_table": {
-                        "force_n": handover_scalar_quantiles(table),
-                        "episodes_crossing_2_n": int(
-                            (table > 2.0).sum().item()
-                        ),
-                    },
-                }
+                        "partner_category": partner_category,
+                        "responsible_contact_event": responsible_event,
+                        "all_same_step_jaw_contact_events": step_events,
+                    }
+                )
 
             protected_surface_attribution = {
                 "hard_limit_n": 2.0,
@@ -7761,45 +7712,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     if protected_surface_sensor_forces.numel()
                     else 0,
                 },
-                "collider_partner_attribution": {
-                    "backend_boundary": (
-                        "physx_explicit_collision_shape_filtering"
+                "contact_report_event_attribution": {
+                    "backend": "native_physx_contact_report_subscription",
+                    "scope": (
+                        "same_control_step_as_pre_reset_hard_termination"
                     ),
-                    "partner_order": list(
-                        handover_protected_partner_labels
+                    "force_source": (
+                        "unchanged_native_contact_sensor_vector_residual"
                     ),
-                    "maximum_force_by_receiver_partner_n": {
-                        label: handover_scalar_quantiles(
-                            protected_receiver_partner_max[:, index]
-                        )
-                        for index, label in enumerate(
-                            handover_protected_partner_labels
-                        )
-                    },
-                    "maximum_force_by_giver_partner_n": {
-                        label: handover_scalar_quantiles(
-                            protected_giver_partner_max[:, index]
-                        )
-                        for index, label in enumerate(
-                            handover_protected_partner_labels
-                        )
-                    },
-                    "receiver_category": partner_category_attribution(
-                        protected_receiver_partner_max
+                    "partner_identity_source": (
+                        "physx_contact_header_collider_pair"
                     ),
-                    "giver_category": partner_category_attribution(
-                        protected_giver_partner_max
+                    "episodes_by_partner_category": (
+                        protected_contact_report_category_counts
                     ),
-                    "episodes_by_dominant_receiver_partner": (
-                        dominant_partner_counts(
-                            protected_receiver_partner_max
-                        )
-                    ),
-                    "episodes_by_dominant_giver_partner": (
-                        dominant_partner_counts(
-                            protected_giver_partner_max
-                        )
-                    ),
+                    "episodes": protected_contact_report_episodes,
                 },
             }
 
@@ -8621,6 +8548,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         _write_evidence(Path(args.output_path), "dranmar_play", evidence)
         return 0
     finally:
+        if physx_contact_collector is not None:
+            physx_contact_collector.close()
         env.close()
 
 

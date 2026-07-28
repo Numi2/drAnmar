@@ -838,30 +838,22 @@
     "qualification_boundary": "rejected_no_measurable_effect_at_scale"
   },
   "protected_contact_collider_attribution_v22": {
-    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "status": "native_contact_event_stream_implemented_awaiting_exact_runtime_evaluation",
     "purpose": "resolve_the_remaining_receiver_non_object_force_into_counterpart_psm_collision_geometry_or_support_table_before_any_further_control_change",
-    "backend_contract": "isaac_lab_physx_one_to_many_filtering_with_one_explicit_collision_shape_per_environment_and_column",
-    "diagnostic_sensor_count": 4,
-    "partner_columns_per_sensor": [
-      "counterpart_remote_center_visuals",
-      "counterpart_pitch_end_visuals",
-      "counterpart_main_insertion_visuals",
-      "counterpart_main_insertion_2_visuals",
-      "counterpart_main_insertion_2_tool_main_insert",
-      "counterpart_main_insertion_3_visuals",
-      "counterpart_tool_roll_visuals",
-      "counterpart_tool_roll_collisions",
-      "counterpart_tool_pitch_visuals",
-      "counterpart_tool_pitch_collisions",
-      "counterpart_tool_yaw_visuals",
-      "counterpart_tool_yaw_geometry",
-      "counterpart_gripper_1_visual_geometry",
-      "counterpart_gripper_1_collision_geometry",
-      "counterpart_gripper_2_visual_geometry",
-      "counterpart_gripper_2_collision_geometry",
-      "support_table"
+    "backend_contract": "native_physx_contact_report_subscription_with_collider0_and_collider1_identity",
+    "capture_point": "same_control_step_as_the_pre_reset_hard_termination",
+    "force_source": "unchanged_gpu_contact_sensor_total_minus_needle_vector_residual",
+    "partner_identity_source": "native_physx_contact_header_collider_pair",
+    "rejected_instrumentation": [
+      {
+        "method": "body_path_force_matrix_filters",
+        "reason": "multi_collider_bodies_violated_the_one_shape_per_environment_filter_contract"
+      },
+      {
+        "method": "explicit_collider_force_matrix_filters",
+        "reason": "gpu_physx_reported_complex_table_and_articulation_collider_filters_as_unsupported"
+      }
     ],
-    "capture_point": "termination_source_before_automatic_environment_reset",
     "unchanged": [
       "checkpoint",
       "policy_actions",
@@ -872,7 +864,7 @@
       "hard_termination_limit"
     ],
     "runtime_sequence": [
-      "validate_17_partner_columns_on_small_population",
+      "validate_native_contact_events_on_small_population",
       "replay_exact_seed_2361_on_2000_environments",
       "select_narrow_control_fix_only_from_dominant_partner_evidence"
     ],

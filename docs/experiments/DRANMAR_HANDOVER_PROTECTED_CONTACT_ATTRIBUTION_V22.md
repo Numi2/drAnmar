@@ -13,26 +13,25 @@ It cannot distinguish the giver instrument from the support table.
 
 ## Diagnostic contract
 
-v22 adds four end-to-end-only PhysX contact views, one for each jaw. Each view
-preserves one force column for every authored collision shape of the
-counterpart PSM and one column for the table collision shape. Forces are
-captured by the termination function before Isaac Lab automatically resets a
-terminal environment.
+v22 subscribes to the native PhysX contact-report event stream during an
+end-to-end play benchmark. On every control step it keeps the strongest
+non-object contact pair for each jaw and environment. When the unchanged
+protected-force termination fires, the evidence records the exact
+`collider0`/`collider1` pair from that same step before discarding the buffer.
 
 The unchanged v15 controller, checkpoint, actions, rewards, success definition,
 episode deadline, and 2 N termination remain authoritative. The added sensors
 cannot write task state or change policy input.
 
-The live Isaac/PhysX build requires every filter expression to resolve one
-collision shape per environment. The initial body-path probe correctly failed
-because several PSM bodies own two collision shapes and the table body path
-resolved two entries. v22 therefore uses 17 explicit, versioned collider
-columns. This is sufficient to separate counterpart jaws, counterpart arm or
-wrist, and the support table.
+Two GPU force-matrix approaches were rejected before scale. Body paths failed
+because several PSM bodies own multiple colliders. Explicit collider paths
+initialized, but PhysX reported complex articulation and table filters as
+unsupported. Neither result is accepted as evidence. The event stream is the
+supported native path that exposes the collider identities directly.
 
 ## Runtime decision
 
-First validate that all 17 partner columns resolve. Then replay the exact
+First validate native contact events on a small population. Then replay the exact
 seed-2361 2,000-environment frontier. No controller change is allowed until the
 five protected terminals have a dominant body category:
 

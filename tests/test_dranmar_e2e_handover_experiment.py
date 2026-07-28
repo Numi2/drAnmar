@@ -32,11 +32,11 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     collider_attribution = contract[
         "protected_contact_collider_attribution_v22"
     ]
-    assert collider_attribution["diagnostic_sensor_count"] == 4
-    assert len(collider_attribution["partner_columns_per_sensor"]) == 17
-    assert collider_attribution["partner_columns_per_sensor"][-1] == (
-        "support_table"
+    assert collider_attribution["backend_contract"] == (
+        "native_physx_contact_report_subscription_with_collider0_and_"
+        "collider1_identity"
     )
+    assert len(collider_attribution["rejected_instrumentation"]) == 2
     assert "policy_actions" in collider_attribution["unchanged"]
     assert "rewards" in collider_attribution["unchanged"]
     baseline = contract["known_good_baseline"]
@@ -490,14 +490,9 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
         "_dr_anmar_terminal_protected_surface_forces_n"
         in termination_source
     )
-    assert (
-        "_dr_anmar_terminal_protected_surface_attribution_forces_n"
-        in termination_source
-    )
-    assert '"collider_partner_attribution"' in benchmark_source
-    assert '"episodes_by_dominant_receiver_partner"' in benchmark_source
-    assert '"counterpart_jaws"' in benchmark_source
-    assert '"support_table"' in benchmark_source
+    assert '"contact_report_event_attribution"' in benchmark_source
+    assert '"physx_contact_header_collider_pair"' in benchmark_source
+    assert "PhysxJawContactAttributionCollector" in benchmark_source
     assert '"terminal_pickup_attempt_histogram"' in benchmark_source
     assert "--receiver_crossing_angle_rad" in benchmark_source
     assert "--receiver_grasp_retain_residual" in benchmark_source
@@ -536,17 +531,6 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert 'state["giver_release_authorized"].float()' in observation_source
     assert "previous_jaw_contacts = ObsTerm(" in environment_source
     assert "transfer_contract = ObsTerm(" in environment_source
-    assert "_COUNTERPART_COLLIDER_PATHS = (" in environment_source
-    assert '"psm_tool_yaw_link/visuals_xform/tool_yaw_link"' in (
-        environment_source
-    )
-    assert (
-        '"psm_tool_gripper1_link/collisions_xform/collisions"'
-        in environment_source
-    )
-    assert '"{ENV_REGEX_NS}/Table/Table/Table"' in environment_source
-    assert "_protected_contact_attribution_sensor(" in environment_source
-    assert '"attribution_sensor_names"' in environment_source
     assert '"presentation_stability_steps": 8' in environment_source
     assert '"receiver_capture_required_steps": 1' in environment_source
     assert '"giver_release_confirmation_steps": 1' in environment_source
@@ -645,14 +629,6 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         agent_source,
     ):
         ast.parse(source)
-    scene_source = (TASK_ROOT / "handover/handover_env_cfg.py").read_text()
-    assert (
-        "robot_1_jaw_1_protected_contact_attribution: "
-        "ContactSensorCfg | None = None"
-    ) in scene_source
-    mdp_common_source = (TASK_ROOT / "mdp_common.py").read_text()
-    assert "def filtered_contact_force_magnitudes(" in mdp_common_source
-    assert "filtered.reshape(env.num_envs, -1, 3)" in mdp_common_source
     state_source = (
         TASK_ROOT / "handover/mdp/state.py"
     ).read_text()
