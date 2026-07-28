@@ -94,6 +94,13 @@ def test_failed_pickup_fully_reopens_before_recovery_activation() -> None:
     policy = HandoverPickupRecoveryPolicy(_FixedBasePolicy())
     observation = _observation(batch_size=1)
     raw = observation["policy"]
+    raw[:, 6:8] = 0.30
+    for _ in range(policy.close_dwell_steps):
+        assert torch.equal(
+            policy(observation),
+            policy.base_policy(observation),
+        )
+
     raw[:, 6:8] = 0.43
 
     failed_action = policy(observation)
@@ -124,6 +131,9 @@ def test_recovery_correction_is_latched_bounded_and_loses_authority_on_custody()
     policy.set_fixed_correction(
         torch.tensor([0.02, 0.0, 0.0, math.radians(20.0), 0.0, 0.0])
     )
+    raw[:, 6:8] = 0.30
+    for _ in range(policy.close_dwell_steps):
+        policy(observation)
     raw[:, 6:8] = 0.43
     policy(observation)
     raw[:, 6:8] = 0.0

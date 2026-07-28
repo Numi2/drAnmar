@@ -23,11 +23,12 @@ from orbit.surgical.tasks.surgical.lift.grasp_frames import (
 )
 
 
-_FIRST_ATTEMPT = 0
-_REOPENING = 1
-_OPEN_SETTLE = 2
-_LEARNED_RETRY = 3
-_SECURE_CUSTODY = 4
+_CANONICAL_FIRST_ATTEMPT = 0
+_FAILED_GRASP = 1
+_REOPENING = 2
+_OPEN_SETTLE = 3
+_LEARNED_RETRY = 4
+_SECURE_CUSTODY = 5
 
 
 def _quat_xyzw_to_matrix(quaternion: torch.Tensor) -> torch.Tensor:
@@ -211,7 +212,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self._batch_size = batch_size
         self.retry_state = torch.full(
             (batch_size,),
-            _FIRST_ATTEMPT,
+            _CANONICAL_FIRST_ATTEMPT,
             dtype=torch.long,
             device=device,
         )
@@ -226,6 +227,11 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self.open_settle_dwell = torch.zeros_like(self.retry_count)
         self.ever_bilateral = torch.zeros(
             batch_size,
+            dtype=torch.bool,
+            device=device,
+        )
+        self.bilateral_contact_history = torch.zeros(
+            (batch_size, 5),
             dtype=torch.bool,
             device=device,
         )
@@ -312,10 +318,12 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             dtype=raw.dtype,
             device=raw.device,
         )
-        canonical_position = object_position + torch.matmul(
-            object_rotation,
-            base_offset.expand(raw.shape[0], -1).unsqueeze(-1),
-        ).squeeze(-1)
+        # The qualified controller defines its canonical grasp offset directly
+        # in the giver root frame.  Only the learned residual is expressed in
+        # needle coordinates; this makes a zero correction exactly canonical.
+        canonical_position = (
+            object_position + base_offset.expand(raw.shape[0], -1)
+        )
         position_error_root = canonical_position - giver_ee
         position_error_needle = torch.matmul(
             object_rotation.transpose(-1, -2),
@@ -448,11 +456,11 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             dtype=raw.dtype,
             device=raw.device,
         ).expand(raw.shape[0], -1)
-        local_offset = base_offset + self.correction[:, :3]
-        grasp_position = object_position + torch.matmul(
+        correction_in_giver = torch.matmul(
             object_rotation,
-            local_offset.unsqueeze(-1),
+            self.correction[:, :3].unsqueeze(-1),
         ).squeeze(-1)
+        grasp_position = object_position + base_offset + correction_in_giver
         delta = grasp_position - giver_ee
         lateral_distance = delta[:, :2].norm(dim=-1)
         above = grasp_position.clone()
@@ -500,8 +508,30 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         orientation_ready = (
             orientation_error.norm(dim=-1) < self.orientation_tolerance
         )
+        pregrasp_position = grasp_position.clone()
+        pregrasp_position[:, 2] += self.approach_height
+        orientation_wait_translation = (
+            (pregrasp_position - giver_ee) / self.position_scale
+        ).clamp(-1.0, 1.0)
+        translation = torch.where(
+            (~orientation_ready).unsqueeze(-1),
+            orientation_wait_translation,
+            translation,
+        )
+        giver_contacts = self._select_role(
+            raw[:, 66:68],
+            raw[:, 68:70],
+            giver_is_robot_1,
+        )
+        any_contact = torch.any(
+            giver_contacts > self.normalized_contact_threshold,
+            dim=-1,
+        )
         gripper = torch.where(
-            (distance < self.close_distance) & orientation_ready,
+            (
+                ((distance < self.close_distance) & orientation_ready)
+                | any_contact
+            ),
             -torch.ones_like(distance),
             torch.ones_like(distance),
         ).unsqueeze(-1)
@@ -553,12 +583,21 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             giver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
+        self.bilateral_contact_history = torch.roll(
+            self.bilateral_contact_history,
+            shifts=-1,
+            dims=-1,
+        )
+        self.bilateral_contact_history[:, -1] = bilateral_live
+        bilateral_qualified = (
+            self.bilateral_contact_history.sum(dim=-1) >= 3
+        )
         any_contact = torch.any(
             giver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
         phase = torch.argmax(raw[:, 77:82], dim=-1)
-        self.ever_bilateral |= bilateral_live | (phase >= 1)
+        self.ever_bilateral |= bilateral_qualified | (phase >= 1)
 
         giver_joint_displacement = self._select_role(
             raw[:, 6:8],
@@ -570,14 +609,11 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             raw[:, 90],
             raw[:, 97],
         )
-        base_giver_gripper_action = torch.where(
-            giver_is_robot_1,
-            base_action[:, 6],
-            base_action[:, 13],
-        )
-
         pickup_not_lifted = phase <= 1
-        secure_now = pickup_not_lifted & (phase >= 1) & bilateral_live
+        secure_now = (
+            pickup_not_lifted
+            & (phase >= 1)
+        )
         recovered_now = secure_now & (self.retry_count > 0)
         self.recovered_custody |= recovered_now
         self.retry_state[secure_now] = _SECURE_CUSTODY
@@ -589,56 +625,50 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
 
         first_or_retry_approach = (
-            (self.retry_state == _FIRST_ATTEMPT)
+            (self.retry_state == _CANONICAL_FIRST_ATTEMPT)
             | (self.retry_state == _LEARNED_RETRY)
         )
         closing = (
             pickup_not_lifted
             & first_or_retry_approach
-            & (base_giver_gripper_action < 0.0)
+            & (previous_giver_gripper_action < 0.0)
         )
-        learned_retry = self.retry_state == _LEARNED_RETRY
         corrected_action = self._corrected_giver_action(
             raw,
             giver_is_robot_1,
-        )
-        corrected_gripper = corrected_action[:, 6]
-        closing = torch.where(
-            learned_retry,
-            corrected_gripper < 0.0,
-            closing,
         )
         self.close_dwell[:] = torch.where(
             closing,
             self.close_dwell + 1,
             torch.zeros_like(self.close_dwell),
         )
-        missed_after_full_close = (
+        # Starting this timer when the close command begins would preempt the
+        # qualified 0.50 -> 0.07 rad jaw motion: at the configured 1 rad/s
+        # limit, the jaws cannot physically finish that travel in 15 control
+        # steps.  Require both the 15-step dwell and the existing full-close
+        # declaration, which preserves every valid incumbent first attempt.
+        missed_after_dwell = (
             pickup_not_lifted
             & first_or_retry_approach
-            & ~any_contact
-            & (previous_giver_gripper_action < 0.0)
+            & ~bilateral_qualified
+            & (self.close_dwell >= self.close_dwell_steps)
             & torch.all(
                 giver_joint_displacement
                 >= self.closed_joint_displacement_rad,
                 dim=-1,
             )
         )
-        missed_after_dwell = (
-            pickup_not_lifted
-            & first_or_retry_approach
-            & ~bilateral_live
-            & (self.close_dwell >= self.close_dwell_steps)
-        )
         lost_after_custody = (
             (phase == 1)
+            & self.ever_bilateral
             & (self.custody_loss_dwell >= self.custody_loss_steps)
         )
         failure = (
-            missed_after_full_close
-            | missed_after_dwell
+            missed_after_dwell
             | lost_after_custody
-        ) & (self.retry_state != _REOPENING) & (
+        ) & (self.retry_state != _FAILED_GRASP) & (
+            self.retry_state != _REOPENING
+        ) & (
             self.retry_state != _OPEN_SETTLE
         )
         if bool(failure.any()):
@@ -649,13 +679,14 @@ class HandoverPickupRecoveryPolicy(nn.Module):
                 giver_contacts[failure] <= self.normalized_contact_threshold
             ).to(raw.dtype)
             self.first_attempt_failed |= failure & (self.retry_count == 0)
-            self.retry_state[failure] = _REOPENING
+            self.retry_state[failure] = _FAILED_GRASP
             self.open_settle_dwell[failure] = 0
             self.close_dwell[failure] = 0
             self.custody_loss_dwell[failure] = 0
 
         resetting = (
-            (self.retry_state == _REOPENING)
+            (self.retry_state == _FAILED_GRASP)
+            | (self.retry_state == _REOPENING)
             | (self.retry_state == _OPEN_SETTLE)
         )
         fully_open = torch.all(
@@ -695,6 +726,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             giver_is_robot_1,
             resetting,
         )
+        self.retry_state[self.retry_state == _FAILED_GRASP] = _REOPENING
         learned_retry = (
             (self.retry_state == _LEARNED_RETRY) & (phase == 0)
         )
@@ -720,17 +752,17 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             mask = torch.ones_like(self.retry_count, dtype=torch.bool)
         else:
             mask = dones.to(device=self.retry_count.device, dtype=torch.bool)
-        self.retry_state[mask] = _FIRST_ATTEMPT
+        self.retry_state[mask] = _CANONICAL_FIRST_ATTEMPT
         self.retry_count[mask] = 0
         self.episode_step[mask] = 0
         self.close_dwell[mask] = 0
         self.custody_loss_dwell[mask] = 0
         self.open_settle_dwell[mask] = 0
         self.ever_bilateral[mask] = False
+        self.bilateral_contact_history[mask] = False
         self.failure_forces[mask] = 0.0
         self.failure_loss_flags[mask] = 0.0
         self.correction[mask] = 0.0
         self.first_attempt_failed[mask] = False
         self.recovered_custody[mask] = False
         self.activation_count[mask] = 0
-
