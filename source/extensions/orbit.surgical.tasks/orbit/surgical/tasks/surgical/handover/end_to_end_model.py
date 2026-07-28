@@ -317,6 +317,28 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.giver_adaptation_enabled = False
         self.pickup_recovery_adaptation_enabled = False
         self.receiver_adaptation_enabled = False
+        self.recovery_receiver_grasp_retain_adaptation_enabled = False
+        self.recovery_receiver_reference_network: (
+            _PhaseHeadedNetwork | None
+        ) = None
+
+    def load_state_dict(self, state_dict, strict: bool = True, assign: bool = False):
+        """Materialize the frozen option reference when loading a v5 checkpoint."""
+        if (
+            self.recovery_receiver_reference_network is None
+            and any(
+                key.startswith("recovery_receiver_reference_network.")
+                for key in state_dict
+            )
+        ):
+            self.recovery_receiver_reference_network = copy.deepcopy(
+                self.phase_network
+            )
+        return super().load_state_dict(
+            state_dict,
+            strict=strict,
+            assign=assign,
+        )
 
     def _get_latent_dim(self) -> int:
         return self.obs_dim + _TASK_FEATURE_DIM
@@ -425,6 +447,61 @@ class EndToEndHandoverMLPModel(MLPModel):
                 if parameter is not None:
                     parameter.requires_grad_(False)
 
+    def configure_recovery_receiver_grasp_retain_adaptation(self) -> None:
+        """Chain the frozen pickup-recovery option into receiver adaptation.
+
+        The loaded checkpoint's learned giver recovery remains active at
+        inference, but only receiver SE(3) rows receive gradients or
+        exploration. This prevents the downstream option from erasing the
+        qualified recovery behavior that generates its source states.
+        """
+        self.pickup_recovery_adaptation_enabled = True
+        self.receiver_adaptation_enabled = True
+        self.recovery_receiver_grasp_retain_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        self.controller.receiver_grasp_retain_residual_enabled_for_learning = (
+            True
+        )
+        if self.recovery_receiver_reference_network is None:
+            self.recovery_receiver_reference_network = copy.deepcopy(
+                self.phase_network
+            )
+        for parameter in (
+            self.recovery_receiver_reference_network.parameters()
+        ):
+            parameter.requires_grad_(False)
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        receiver_se3_row_mask = torch.zeros(
+            14,
+            dtype=self.phase_network.heads[2].weight.dtype,
+            device=self.phase_network.heads[2].weight.device,
+        )
+        receiver_se3_row_mask[7:13] = 1.0
+        for phase_index in (2, 3):
+            receiver_head = self.phase_network.heads[phase_index]
+            receiver_head.weight.requires_grad_(True)
+            receiver_head.bias.requires_grad_(True)
+            receiver_head.weight.register_hook(
+                lambda gradient, row_mask=receiver_se3_row_mask: (
+                    gradient * row_mask.unsqueeze(-1)
+                )
+            )
+            receiver_head.bias.register_hook(
+                lambda gradient, row_mask=receiver_se3_row_mask: (
+                    gradient * row_mask
+                )
+            )
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
     def configure_giver_adaptation(self) -> None:
         """Learn giver XY while preserving the promoted receiver policy."""
         self.giver_adaptation_enabled = True
@@ -496,9 +573,25 @@ class EndToEndHandoverMLPModel(MLPModel):
         latent = self.get_latent(obs, masks, hidden_state)
         raw = torch.cat([obs[group] for group in self.obs_groups], dim=-1)
         phase = torch.argmax(raw[:, 77:82], dim=-1)
-        learned_role_residual = torch.tanh(
+        current_role_residual = torch.tanh(
             self.phase_network(latent, phase)
         )
+        learned_role_residual = current_role_residual
+        if self.recovery_receiver_grasp_retain_adaptation_enabled:
+            if self.recovery_receiver_reference_network is None:
+                raise RuntimeError(
+                    "recovery receiver adaptation requires a frozen "
+                    "reference network"
+                )
+            reference_role_residual = torch.tanh(
+                self.recovery_receiver_reference_network(latent, phase)
+            )
+            pickup_recovery_context = raw[:, 98] > 0.5
+            learned_role_residual = torch.where(
+                pickup_recovery_context.unsqueeze(-1),
+                current_role_residual,
+                reference_role_residual,
+            )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             raw[:, 82] > 0.5,
@@ -513,7 +606,12 @@ class EndToEndHandoverMLPModel(MLPModel):
         # rotations/jaws stay under the analytic physics sequence.
         physical_action_mask = receiver_residual_mask
         exploration_mask = receiver_residual_mask
-        if (
+        if self.recovery_receiver_grasp_retain_adaptation_enabled:
+            physical_action_mask = (
+                giver_residual_mask | receiver_residual_mask
+            )
+            exploration_mask = receiver_residual_mask
+        elif (
             self.giver_adaptation_enabled
             or self.pickup_recovery_adaptation_enabled
         ):
@@ -561,6 +659,12 @@ class _EndToEndHandoverExport(nn.Module):
         self.pickup_recovery_adaptation_enabled = (
             model.pickup_recovery_adaptation_enabled
         )
+        self.recovery_receiver_grasp_retain_adaptation_enabled = (
+            model.recovery_receiver_grasp_retain_adaptation_enabled
+        )
+        self.recovery_receiver_reference_network = copy.deepcopy(
+            model.recovery_receiver_reference_network
+        )
         self.deterministic_output = (
             model.distribution.as_deterministic_output_module()
             if model.distribution is not None
@@ -578,9 +682,23 @@ class _EndToEndHandoverExport(nn.Module):
             dim=-1,
         )
         phase = torch.argmax(obs[:, 77:82], dim=-1)
-        learned_role_residual = torch.tanh(
+        current_role_residual = torch.tanh(
             self.phase_network(latent, phase)
         )
+        learned_role_residual = current_role_residual
+        if self.recovery_receiver_grasp_retain_adaptation_enabled:
+            if self.recovery_receiver_reference_network is None:
+                raise RuntimeError(
+                    "recovery receiver export requires a reference network"
+                )
+            reference_role_residual = torch.tanh(
+                self.recovery_receiver_reference_network(latent, phase)
+            )
+            learned_role_residual = torch.where(
+                (obs[:, 98] > 0.5).unsqueeze(-1),
+                current_role_residual,
+                reference_role_residual,
+            )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             giver_is_robot_1,

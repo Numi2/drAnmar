@@ -1,0 +1,141 @@
+{
+  "schema_version": "dranmar-handover-recovery-receiver-1.0",
+  "date_utc": "2026-07-28",
+  "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
+  "baseline_checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+  "baseline": "pickup-recovery-option-v4-model-87",
+  "architecture": {
+    "source_states": "simulator_observed_stable_presentations_after_physical_pickup_recovery",
+    "restore_probability": 0.98,
+    "fresh_rollout_probability": 0.02,
+    "pickup_recovery_policy": "frozen_and_active",
+    "nominal_reference_network": "frozen_copy_of_loaded_v4_phase_network",
+    "recovery_context_network": "trainable_receiver_se3_rows_only",
+    "trainable_phase_heads": [
+      2,
+      3
+    ],
+    "trainable_role_output_rows": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "full_handover_success_unchanged": true,
+    "reward_contract_unchanged": true,
+    "physics_and_hard_terminations_unchanged": true
+  },
+  "v5_shared_head_experiment": {
+    "decision": "rejected",
+    "reason": "reused_receiver_phase_heads_changed_nominal_first_attempt_behavior",
+    "training_requested_envs": 1200,
+    "training_admitted_envs": 512,
+    "iterations": 120,
+    "simulated_frames": 3932160,
+    "total_fps": 10307.754454091335,
+    "recovery_conditioned_captures": 400,
+    "cross_environment_restores": 2100,
+    "final_checkpoint_sha256": "7736320251b48fea8b89d16cedc03ee639ad39d95000cea5fa9070b14d6fe7e5",
+    "screen_256": {
+      "baseline_successes": 187,
+      "model_29_successes": 178,
+      "model_59_successes": 176,
+      "model_119_successes": 179
+    }
+  },
+  "v6_frozen_reference_experiment": {
+    "decision": "architecture_retained_policy_update_rejected",
+    "reason": "nominal_first_attempt_behavior_was_preserved_but_recovery_policy_did_not_improve_retained_handover",
+    "training_requested_envs": 1200,
+    "training_admitted_envs": 512,
+    "iterations": 90,
+    "simulated_frames": 2949120,
+    "total_fps": 10254.78339155387,
+    "recovery_conditioned_captures": 317,
+    "cross_environment_restores": 1264,
+    "final_checkpoint_sha256": "b0b67dd362eeb828728250be835b5d8ba56dbf8d272afa5be212bdb94c4d8321",
+    "screen_256": {
+      "baseline_successes": 187,
+      "baseline_first_attempt_successes": 163,
+      "baseline_recovered_successes": 24,
+      "model_10_successes": 187,
+      "model_10_first_attempt_successes": 163,
+      "model_10_recovered_successes": 24,
+      "later_checkpoints_regressed": true
+    }
+  },
+  "rejected_controller_hypotheses": [
+    {
+      "label": "recovery_receiver_preposition_height_10mm",
+      "scale": 1200,
+      "baseline_successes": 719,
+      "candidate_successes": 718,
+      "decision": "rejected"
+    },
+    {
+      "label": "recovery_receiver_final_approach_limit_0.12",
+      "scale": 1200,
+      "baseline_successes": 719,
+      "candidate_successes": 715,
+      "decision": "rejected_and_code_removed"
+    },
+    {
+      "label": "absolute_yaw_rotated_recovery_receiver_offset",
+      "scale": 3600,
+      "seeds": [
+        17,
+        2361,
+        4099
+      ],
+      "baseline_successes": 2197,
+      "candidate_successes": 2148,
+      "per_seed_baseline_successes": [
+        719,
+        742,
+        736
+      ],
+      "per_seed_candidate_successes": [
+        720,
+        694,
+        734
+      ],
+      "baseline_recovered_successes": 243,
+      "candidate_recovered_successes": 236,
+      "baseline_stable_presentations": 2800,
+      "candidate_stable_presentations": 2735,
+      "baseline_receiver_contacts": 2344,
+      "candidate_receiver_contacts": 2289,
+      "baseline_bilateral_captures": 2230,
+      "candidate_bilateral_captures": 2183,
+      "baseline_pickup_attempts_exhausted": 211,
+      "candidate_pickup_attempts_exhausted": 253,
+      "baseline_protected_surface_force": 6,
+      "candidate_protected_surface_force": 8,
+      "object_drops": {
+        "baseline": 0,
+        "candidate": 0
+      },
+      "excessive_object_force": {
+        "baseline": 0,
+        "candidate": 0
+      },
+      "decision": "rejected_and_code_removed",
+      "root_cause": "absolute_robot_root_yaw_is_not_the_canonical_curved_needle_grasp_frame"
+    }
+  ],
+  "raw_evidence_sha256": {
+    "v5_training": "aceb7ba1d1ccd89375de6b39afe777d328bf960413507d8c41ce3b930ffdbb0d",
+    "v6_training": "bbf2d225be573c85b9761e0ac4800618ab569b8b87424cae7a01b3ac34a96de9",
+    "v6_baseline_screen_256": "adaeee849b197538305b9948fa564debc0b2fcd181c9938ae6479690a5001b1d",
+    "v6_model_10_screen_256": "f1955badd44eea428df0871975cf69c3352c64e4bf27099387c2c1324225b304",
+    "preposition_10mm_screen_1200": "06e1d48f346aef2534f311ee6b28c5fe0b949e85eefc14361fbd45e4c750b6b8",
+    "approach_limit_012_screen_1200": "994d1d0e92e38ce487693db301ff9e0f327d3bcd53bb9c27aa7e1affdefe3e9c",
+    "absolute_yaw_seed_17_screen_1200": "90dbd49b08c4f10f01431b29e04890bcfc238467ca022ebac25f2fe3feacc01a",
+    "absolute_yaw_seed_2361_screen_1200": "20f435921799ae8ca0fcf982a23a2a55392f04ccca2bd506e81c060f059cf7b9",
+    "absolute_yaw_seed_4099_screen_1200": "eae33474df1cb539ffc658a36d71f654634d505f6b6f672fa2ff9d91b3d60934"
+  },
+  "decision": "retain_v4_checkpoint_and_v6_frozen_reference_architecture",
+  "next_required_representation": "one_canonical_needle_local_grasp_pose_with_position_and_tangent_orientation_shared_by_controller_observations_and_training"
+}

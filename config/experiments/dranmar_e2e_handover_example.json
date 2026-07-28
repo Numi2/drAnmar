@@ -1,5 +1,5 @@
 {
-  "schema_version": "dranmar-e2e-handover-experiment-1.6",
+  "schema_version": "dranmar-e2e-handover-experiment-1.7",
   "status": "isolated_research_example_not_stage_qualified",
   "baseline_commit": "c17d97c6a5e798998321b394ece2fc6642edb53b",
   "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
@@ -302,6 +302,29 @@
     "evidence_path": "docs/experiments/evidence/pickup-recovery-option-v4-multiseed-1200.json",
     "evidence_sha256": "755b77b148e96c6387cb7182623a43964fa66d8d2284bb459a86508f054608ae",
     "qualification_boundary": "reproducible_performance_champion_on_every_seed_but_absolute_zero_hard_failure_gate_retains_prior_default"
+  },
+  "recovery_receiver_option_v6": {
+    "status": "architecture_retained_policy_and_controller_candidates_rejected",
+    "initial_checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+    "source_states": "simulator_observed_recovered_stable_presentations",
+    "restore_probability": 0.98,
+    "nominal_policy": "frozen_reference_network",
+    "recovery_policy": "receiver_se3_rows_in_phase_heads_2_and_3",
+    "full_handover_success_unchanged": true,
+    "v6_baseline_screen_successes": 187,
+    "v6_model_10_screen_successes": 187,
+    "v6_baseline_first_attempt_successes": 163,
+    "v6_model_10_first_attempt_successes": 163,
+    "absolute_yaw_multiseed_baseline_successes": 2197,
+    "absolute_yaw_multiseed_candidate_successes": 2148,
+    "evidence_path": "docs/experiments/evidence/recovery-receiver-option-v6-rejected.json",
+    "evidence_sha256": "c4d760f77dd7b4f6c12677b7f6059638ef0d830d88a8d763724843f94574b62b",
+    "prohibited_repeats": [
+      "recovery_receiver_preposition_height_10mm",
+      "recovery_receiver_final_approach_limit_0.12",
+      "absolute_robot_root_yaw_rotated_receiver_offset"
+    ],
+    "next_required_representation": "canonical_needle_local_se3_grasp_pose_shared_by_controller_observations_replay_and_training"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",

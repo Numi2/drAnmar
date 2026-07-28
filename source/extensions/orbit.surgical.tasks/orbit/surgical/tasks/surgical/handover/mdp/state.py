@@ -819,6 +819,7 @@ def handover_state(
                 "reset_restores": 0,
                 "reset_refreshes": 0,
                 "cross_environment_restores": 0,
+                "recovery_conditioned_captures": 0,
                 "robot_1_joint_pos": torch.zeros_like(
                     mdp_common.as_torch(robot_1.data.joint_pos)
                 ),
@@ -848,7 +849,20 @@ def handover_state(
                 cache,
             )
         capture = presentation_stable & ~cache["valid"]
+        require_pickup_recovery = bool(
+            getattr(
+                env.cfg,
+                "dr_anmar_receiver_curriculum_require_pickup_recovery",
+                False,
+            )
+        )
+        if require_pickup_recovery:
+            capture &= state["pickup_recovery_count"] > 0
         if bool(capture.any()):
+            if require_pickup_recovery:
+                cache["recovery_conditioned_captures"] += int(
+                    capture.sum().item()
+                )
             cache["robot_1_joint_pos"][capture] = mdp_common.as_torch(
                 robot_1.data.joint_pos
             )[capture]

@@ -1863,6 +1863,13 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             False,
         )
     )
+    recovery_receiver_grasp_retain_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_recovery_receiver_grasp_retain_curriculum",
+            False,
+        )
+    )
     pickup_recovery_curriculum = bool(
         getattr(
             env_cfg,
@@ -1962,6 +1969,50 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                         f"expose {attribute}"
                     )
                 setattr(recovery_controller, attribute, value)
+        elif recovery_receiver_grasp_retain_curriculum:
+            policy_model = runner.alg.get_policy()
+            configure_recovery_receiver = getattr(
+                policy_model,
+                "configure_recovery_receiver_grasp_retain_adaptation",
+                None,
+            )
+            if configure_recovery_receiver is None:
+                env.close()
+                return _fail(
+                    "handover policy does not support recovery-conditioned "
+                    "receiver grasp-retain adaptation"
+                )
+            configure_recovery_receiver()
+            recovery_receiver_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_recovery_receiver_controller",
+                {},
+            )
+            recovery_receiver_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in (
+                recovery_receiver_controller_cfg.items()
+            ):
+                if (
+                    recovery_receiver_controller is None
+                    or not hasattr(
+                        recovery_receiver_controller,
+                        attribute,
+                    )
+                ):
+                    env.close()
+                    return _fail(
+                        "recovery-conditioned receiver curriculum "
+                        f"controller does not expose {attribute}"
+                    )
+                setattr(
+                    recovery_receiver_controller,
+                    attribute,
+                    value,
+                )
         elif args.handover_giver_adaptation:
             policy_model = runner.alg.get_policy()
             if not hasattr(
@@ -2071,6 +2122,27 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "receiver_grasp_retain_curriculum": (
                 receiver_grasp_retain_curriculum
             ),
+            "recovery_receiver_grasp_retain_curriculum": (
+                recovery_receiver_grasp_retain_curriculum
+            ),
+            "recovery_receiver_grasp_retain_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_recovery_receiver_grasp_retain_objective",
+                    None,
+                )
+                if recovery_receiver_grasp_retain_curriculum
+                else None
+            ),
+            "recovery_receiver_grasp_retain_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_recovery_receiver_controller",
+                    None,
+                )
+                if recovery_receiver_grasp_retain_curriculum
+                else None
+            ),
             "pickup_recovery_curriculum": pickup_recovery_curriculum,
             "pickup_recovery_curriculum_objective": (
                 getattr(
@@ -2167,6 +2239,15 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 if receiver_curriculum_cache is not None
                 else 0
             ),
+            "receiver_curriculum_recovery_conditioned_captures": (
+                int(
+                    receiver_curriculum_cache[
+                        "recovery_conditioned_captures"
+                    ]
+                )
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
             "receiver_curriculum_restore_probability": (
                 float(
                     getattr(
@@ -2211,6 +2292,20 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "post_contact_authority": (
                         receiver_grasp_retain_curriculum
                     ),
+                    "source_states": (
+                        "simulator_observed_recovered_stable_presentations"
+                        if recovery_receiver_grasp_retain_curriculum
+                        else "simulator_observed_stable_presentations"
+                    ),
+                    "pickup_recovery_policy_frozen_and_active": (
+                        recovery_receiver_grasp_retain_curriculum
+                    ),
+                    "option_success": (
+                        "retained_handover_from_recovered_stable_presentation"
+                        if recovery_receiver_grasp_retain_curriculum
+                        else "unchanged_retained_handover"
+                    ),
+                    "full_handover_evaluation_success_unchanged": True,
                     "cross_environment_state_sampling": bool(
                         getattr(
                             env_cfg,
@@ -4207,15 +4302,33 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if checkpoint is not None:
         runner.load(str(checkpoint))
     policy_model = runner.alg.get_policy()
-    if (
-        args.handover_giver_adaptation
-        and args.pickup_recovery_adaptation
-    ):
+    adaptation_modes = sum(
+        (
+            bool(args.handover_giver_adaptation),
+            bool(args.pickup_recovery_adaptation),
+            bool(args.recovery_receiver_grasp_retain_adaptation),
+        )
+    )
+    if adaptation_modes > 1:
         env.close()
         return _fail(
-            "full giver and pickup-recovery adaptation are mutually exclusive"
+            "giver, pickup-recovery, and recovery-conditioned receiver "
+            "adaptation modes are mutually exclusive"
         )
-    if args.pickup_recovery_adaptation:
+    if args.recovery_receiver_grasp_retain_adaptation:
+        configure_recovery_receiver = getattr(
+            policy_model,
+            "configure_recovery_receiver_grasp_retain_adaptation",
+            None,
+        )
+        if configure_recovery_receiver is None:
+            env.close()
+            return _fail(
+                "loaded policy does not support recovery-conditioned "
+                "receiver grasp-retain adaptation"
+            )
+        configure_recovery_receiver()
+    elif args.pickup_recovery_adaptation:
         if not hasattr(
             policy_model,
             "configure_pickup_recovery_adaptation",
@@ -7084,6 +7197,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     args.pickup_recovery_adaptation,
                 )
             ),
+            "policy_recovery_receiver_grasp_retain_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "recovery_receiver_grasp_retain_adaptation_enabled",
+                    args.recovery_receiver_grasp_retain_adaptation,
+                )
+            ),
             "policy_residual_scale": (
                 float(policy_model.residual_scale)
                 if hasattr(policy_model, "residual_scale")
@@ -7469,6 +7589,10 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--handover_giver_adaptation", action="store_true")
     play.add_argument(
         "--pickup_recovery_adaptation",
+        action="store_true",
+    )
+    play.add_argument(
+        "--recovery_receiver_grasp_retain_adaptation",
         action="store_true",
     )
     play.add_argument("--num_envs", type=int, required=True)

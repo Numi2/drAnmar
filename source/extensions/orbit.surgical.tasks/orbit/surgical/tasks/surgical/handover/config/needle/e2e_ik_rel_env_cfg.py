@@ -170,3 +170,27 @@ class NeedleHandoverPickupRecoveryCurriculumEnvCfg(
         self.terminations.success = DoneTerm(
             func=recovery_stable_presentation,
         )
+
+
+@configclass
+class NeedleHandoverRecoveryReceiverGraspRetainEnvCfg(
+    NeedleHandoverReceiverGraspRetainEnvCfg
+):
+    """Train retained transfer only from real post-recovery presentations."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Do not dilute the option with easy reset-aligned presentations.
+        # Cache only stable states reached after at least one physical pickup
+        # loss and relift, then preserve a two-percent stream of fresh
+        # end-to-end rollouts so the replay population cannot go stale.
+        self.dr_anmar_receiver_curriculum_require_pickup_recovery = True
+        self.dr_anmar_receiver_curriculum_restore_probability = 0.98
+        self.dr_anmar_recovery_receiver_grasp_retain_curriculum = True
+        self.dr_anmar_recovery_receiver_grasp_retain_objective = (
+            "retained_handover_from_recovered_stable_presentation"
+        )
+        self.dr_anmar_recovery_receiver_controller = {
+            "recovery_carry_lateral_action_limit": 0.10,
+            "recovery_receiver_preposition_height": 0.015,
+        }
