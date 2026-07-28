@@ -34,3 +34,12 @@ v15 must exceed both 390/600 and 1,130/2,000 on the exact incumbent
 populations. Drops and excessive object-force terminals must remain zero, and
 the protected-surface rate may increase by at most 0.1 percentage points.
 Only then can it enter the preregistered multi-seed promotion gate.
+
+## Result
+
+v15 produced 393/600 with zero protected-surface events, then 1,164/2,000
+with 133 recovered successes. The performance hypothesis is confirmed, but
+five protected-surface terminals exceed the non-inferiority limit by one
+event. Binary live contact is therefore rejected as the final safety gate.
+v16 continuously projects the extra authority using the weaker jaw's measured
+contact force.

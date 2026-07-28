@@ -429,7 +429,12 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "self.recovery_carry_lateral_action_limit = 0.08" in controller_source
     assert "recovery_transport_qualified = (" in controller_source
     assert "& (phase >= 2)" in controller_source
-    assert "& giver_bilateral_contact" in controller_source
+    assert (
+        "self.recovery_transport_full_authority_contact_force_n = 0.025"
+        in controller_source
+    )
+    assert "recovery_transport_authority_fraction = (" in controller_source
+    assert "giver_minimum_contact_force_n" in controller_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
     assert "pickup_contact_loss_steps debounce" in controller_source
     recovery_cfg_source = (
