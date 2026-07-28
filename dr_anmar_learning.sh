@@ -388,6 +388,24 @@ case "${command}" in
                 --receiver_recovery_random_corrections
             )
         fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_CANDIDATE:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_sobol_candidate
+                "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_CANDIDATE}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_SWEEP_ID:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_sweep_id
+                "${DR_ANMAR_RECEIVER_RECOVERY_SWEEP_ID}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_DATASET:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_dataset
+                "${DR_ANMAR_RECEIVER_RECOVERY_DATASET}"
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
@@ -495,6 +513,49 @@ case "${command}" in
                     ;;
             esac
         fi
+        recovery_record_args=()
+        if [[ "${DR_ANMAR_PICKUP_RECOVERY:-0}" == "1" ]]; then
+            recovery_record_args+=(--pickup_recovery)
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_CHECKPOINT:-}" ]]; then
+            recovery_record_args+=(
+                --pickup_recovery_checkpoint
+                "${DR_ANMAR_PICKUP_RECOVERY_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_POSITION_CAP_M:-}" ]]; then
+            recovery_record_args+=(
+                --pickup_recovery_position_cap
+                "${DR_ANMAR_PICKUP_RECOVERY_POSITION_CAP_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_ORIENTATION_CAP_DEG:-}" ]]; then
+            recovery_record_args+=(
+                --pickup_recovery_orientation_cap_deg
+                "${DR_ANMAR_PICKUP_RECOVERY_ORIENTATION_CAP_DEG}"
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_RECOVERY:-0}" == "1" ]]; then
+            recovery_record_args+=(--receiver_recovery)
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_recovery_checkpoint
+                "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_POSITION_CAP_M:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_recovery_position_cap
+                "${DR_ANMAR_RECEIVER_RECOVERY_POSITION_CAP_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_ORIENTATION_CAP_DEG:-}" ]]; then
+            recovery_record_args+=(
+                --receiver_recovery_orientation_cap_deg
+                "${DR_ANMAR_RECEIVER_RECOVERY_ORIENTATION_CAP_DEG}"
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
@@ -518,7 +579,8 @@ case "${command}" in
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \
             "${giver_pre_lift_min_contact_jaws_args[@]}" \
-            "${giver_lift_on_live_contact_args[@]}"
+            "${giver_lift_on_live_contact_args[@]}" \
+            "${recovery_record_args[@]}"
         ;;
     tqta-start)
         task="${2:-${DR_ANMAR_TASK}}"

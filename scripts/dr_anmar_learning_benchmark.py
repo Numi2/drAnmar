@@ -1247,6 +1247,7 @@ def _pretrain(args: argparse.Namespace, repo_root: Path) -> int:
             "algorithm": _pretraining_algorithm(args.task),
             "task": args.task,
             "seed": args.seed,
+            "episode_length_s": float(env_cfg.episode_length_s),
             "requested_num_envs": args.requested_num_envs,
             "num_envs": env.unwrapped.num_envs,
             "trusted_requested_num_envs": args.trusted_requested_num_envs,
@@ -3373,8 +3374,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     if args.pickup_recovery_sweep_replicas < 1:
         return _fail("pickup recovery sweep replicas must be positive")
     if args.pickup_recovery_sobol_candidate is not None:
-        if not 0 <= args.pickup_recovery_sobol_candidate < 64:
-            return _fail("pickup recovery Sobol candidate must be in [0, 63]")
+        if not 0 <= args.pickup_recovery_sobol_candidate <= 64:
+            return _fail("pickup recovery Sobol candidate must be in [0, 64]")
         if args.pickup_recovery_sweep_replicas != 1:
             return _fail(
                 "replayed Sobol candidates and grouped replicas are exclusive"
@@ -3402,6 +3403,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         env_cfg.events.reset_object_position.params["replicas"] = (
             args.pickup_recovery_sweep_replicas
         )
+    if args.receiver_recovery_sobol_candidate is not None:
+        if not 0 <= args.receiver_recovery_sobol_candidate <= 64:
+            return _fail(
+                "receiver recovery Sobol candidate must be in [0, 64]"
+            )
+        if not args.receiver_recovery_sweep_id:
+            return _fail(
+                "replayed receiver Sobol candidates require a stable sweep id"
+            )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
         env_cfg.viewer.resolution = (args.video_width, args.video_height)
@@ -3606,12 +3616,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         )
     pickup_recovery_policy = None
     if (
-        args.pickup_recovery_fixed_correction
-        and args.pickup_recovery_random_corrections
+        sum(
+            (
+                bool(args.pickup_recovery_fixed_correction),
+                bool(args.pickup_recovery_random_corrections),
+                args.pickup_recovery_sobol_candidate is not None,
+            )
+        )
+        > 1
     ):
         env.close()
         return _fail(
-            "fixed and randomized pickup recovery corrections are exclusive"
+            "fixed, randomized, and replayed pickup corrections are exclusive"
         )
     if (
         args.pickup_recovery
@@ -3729,16 +3745,31 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 scramble=True,
                 seed=args.seed,
             )
-            candidate_count = (
-                64
-                if args.pickup_recovery_sobol_candidate is not None
-                else args.pickup_recovery_sweep_replicas
-                if args.pickup_recovery_sweep_replicas > 1
-                else env.unwrapped.num_envs
-            )
-            normalized_candidates = (
-                2.0 * sobol.draw(candidate_count) - 1.0
-            ).to(env.unwrapped.device)
+            if args.pickup_recovery_sobol_candidate is not None:
+                sobol_candidates = (
+                    2.0 * sobol.draw(64) - 1.0
+                ).to(env.unwrapped.device)
+                # Candidate zero is the required canonical retry.  Preserve
+                # the original 1..63 replay IDs and place the previously
+                # omitted first Sobol point at ID 64, yielding zero plus all
+                # 64 bounded candidates without invalidating an active sweep.
+                normalized_candidates = torch.cat(
+                    (
+                        torch.zeros_like(sobol_candidates[:1]),
+                        sobol_candidates[1:],
+                        sobol_candidates[:1],
+                    ),
+                    dim=0,
+                )
+            else:
+                candidate_count = (
+                    args.pickup_recovery_sweep_replicas
+                    if args.pickup_recovery_sweep_replicas > 1
+                    else env.unwrapped.num_envs
+                )
+                normalized_candidates = (
+                    2.0 * sobol.draw(candidate_count) - 1.0
+                ).to(env.unwrapped.device)
             candidate_corrections = torch.cat(
                 (
                     normalized_candidates[:, :3]
@@ -3771,18 +3802,25 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
 
     receiver_recovery_policy = None
     if (
-        args.receiver_recovery_fixed_correction
-        and args.receiver_recovery_random_corrections
+        sum(
+            (
+                bool(args.receiver_recovery_fixed_correction),
+                bool(args.receiver_recovery_random_corrections),
+                args.receiver_recovery_sobol_candidate is not None,
+            )
+        )
+        > 1
     ):
         env.close()
         return _fail(
-            "fixed and randomized receiver corrections are exclusive"
+            "fixed, randomized, and replayed receiver corrections are exclusive"
         )
     if (
         args.receiver_recovery
         or args.receiver_recovery_checkpoint
         or args.receiver_recovery_fixed_correction
         or args.receiver_recovery_random_corrections
+        or args.receiver_recovery_sobol_candidate is not None
     ):
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
             HandoverReceiverRecoveryPolicy,
@@ -3823,6 +3861,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 env.close()
                 return _fail(
                     "receiver head was trained against another base policy"
+                )
+            expected_pickup_hash = (
+                _sha256(
+                    Path(args.pickup_recovery_checkpoint)
+                    .expanduser()
+                    .resolve()
+                )
+                if args.pickup_recovery_checkpoint
+                else None
+            )
+            if (
+                receiver_payload.get(
+                    "pickup_recovery_checkpoint_sha256"
+                )
+                not in {None, expected_pickup_hash}
+            ):
+                env.close()
+                return _fail(
+                    "receiver head was trained against another frozen "
+                    "pickup-recovery head"
                 )
             if (
                 receiver_payload.get("position_cap_m") is not None
@@ -3890,16 +3948,32 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
             correction[3:] = torch.deg2rad(correction[3:])
             receiver_recovery_policy.set_fixed_correction(correction)
-        elif args.receiver_recovery_random_corrections:
+        elif (
+            args.receiver_recovery_random_corrections
+            or args.receiver_recovery_sobol_candidate is not None
+        ):
             sobol = torch.quasirandom.SobolEngine(
                 dimension=6,
                 scramble=True,
                 seed=args.seed + 1,
             )
-            normalized = (
-                2.0 * sobol.draw(env.unwrapped.num_envs) - 1.0
-            ).to(env.unwrapped.device)
-            randomized = torch.cat(
+            if args.receiver_recovery_sobol_candidate is not None:
+                sobol_candidates = (
+                    2.0 * sobol.draw(64) - 1.0
+                ).to(env.unwrapped.device)
+                normalized = torch.cat(
+                    (
+                        torch.zeros_like(sobol_candidates[:1]),
+                        sobol_candidates[1:],
+                        sobol_candidates[:1],
+                    ),
+                    dim=0,
+                )
+            else:
+                normalized = (
+                    2.0 * sobol.draw(env.unwrapped.num_envs) - 1.0
+                ).to(env.unwrapped.device)
+            candidate_corrections = torch.cat(
                 (
                     normalized[:, :3]
                     * args.receiver_recovery_position_cap,
@@ -3910,7 +3984,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 ),
                 dim=-1,
             )
-            randomized[0] = 0.0
+            candidate_corrections[0] = 0.0
+            if args.receiver_recovery_sobol_candidate is not None:
+                randomized = candidate_corrections[
+                    args.receiver_recovery_sobol_candidate
+                ].expand(env.unwrapped.num_envs, -1)
+            else:
+                randomized = candidate_corrections
             receiver_recovery_policy.set_fixed_correction(randomized)
         receiver_recovery_policy.eval()
         policy = receiver_recovery_policy
@@ -4140,6 +4220,48 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if receiver_recovery_policy is not None
         else None
     )
+    first_receiver_context = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 29),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_activation_correction = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 6),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_activation_seen = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_activation_frame = (
+        torch.full(
+            (env.unwrapped.num_envs,),
+            -1,
+            dtype=torch.long,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_peak_jaw_force_n = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 2),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
     first_receiver_action_mismatch_count = (
         torch.zeros(
             env.unwrapped.num_envs,
@@ -4294,6 +4416,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 device=env.unwrapped.device,
             ),
             "first_lift_frame": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "first_receiver_acquisition_frame": torch.full(
                 (env.unwrapped.num_envs,),
                 -1,
                 dtype=torch.int64,
@@ -4514,6 +4642,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     first_handover_history["first_lift_frame"][
                         first_lift
                     ] = frame_index
+                    first_receiver_acquisition = (
+                        was_first_unresolved
+                        & (current_handover_phase >= 3)
+                        & (
+                            first_handover_history[
+                                "first_receiver_acquisition_frame"
+                            ]
+                            < 0
+                        )
+                    )
+                    first_handover_history[
+                        "first_receiver_acquisition_frame"
+                    ][first_receiver_acquisition] = frame_index
                     first_handover_history[
                         "minimum_giver_contact_force_at_first_lift_n"
                     ][first_lift] = (
@@ -4804,6 +4945,54 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             giver_contacts / 0.2,
                         ),
                         first_pickup_peak_jaw_force_n,
+                    )
+                if receiver_recovery_policy is not None:
+                    assert first_receiver_context is not None
+                    assert first_receiver_activation_correction is not None
+                    assert first_receiver_activation_seen is not None
+                    assert first_receiver_activation_frame is not None
+                    assert first_receiver_peak_jaw_force_n is not None
+                    receiver_activation = (
+                        receiver_recovery_policy.last_activation_mask
+                        & was_first_unresolved
+                        & ~first_receiver_activation_seen
+                    )
+                    if bool(receiver_activation.any()):
+                        first_receiver_context[receiver_activation] = (
+                            receiver_recovery_policy.last_context[
+                                receiver_activation
+                            ]
+                        )
+                        first_receiver_activation_correction[
+                            receiver_activation
+                        ] = receiver_recovery_policy.correction[
+                            receiver_activation
+                        ]
+                        first_receiver_activation_frame[
+                            receiver_activation
+                        ] = frame_index
+                        first_receiver_activation_seen |= receiver_activation
+                    handover_observation = obs["policy"]
+                    giver_is_robot_1 = (
+                        handover_observation[:, 82] > 0.5
+                    )
+                    receiver_is_robot_1 = ~giver_is_robot_1
+                    receiver_contacts = torch.where(
+                        receiver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 66:68],
+                        handover_observation[:, 68:70],
+                    )
+                    receiver_tracking = (
+                        first_receiver_activation_seen
+                        & was_first_unresolved
+                    )
+                    first_receiver_peak_jaw_force_n[:] = torch.where(
+                        receiver_tracking.unsqueeze(-1),
+                        torch.maximum(
+                            first_receiver_peak_jaw_force_n,
+                            receiver_contacts / 0.2,
+                        ),
+                        first_receiver_peak_jaw_force_n,
                     )
                 obs, reward, dones, extras = env.step(actions)
                 term_values = {
@@ -5778,11 +5967,160 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "sha256": _sha256(dataset_path),
                 "samples": int(dataset_mask.sum().item()),
             }
+        receiver_recovery_dataset = None
+        if (
+            receiver_recovery_policy is not None
+            and args.receiver_recovery_dataset
+        ):
+            assert first_receiver_context is not None
+            assert first_receiver_activation_correction is not None
+            assert first_receiver_activation_seen is not None
+            assert first_receiver_activation_frame is not None
+            assert first_receiver_peak_jaw_force_n is not None
+            assert first_receiver_retry_count is not None
+            assert first_receiver_recovered_acquisition is not None
+            assert first_handover_history is not None
+            assert first_handover_max_phase is not None
+            dataset_path = (
+                Path(args.receiver_recovery_dataset)
+                .expanduser()
+                .resolve()
+            )
+            dataset_path.parent.mkdir(parents=True, exist_ok=True)
+            dataset_mask = first_receiver_activation_seen
+            environment_index = torch.arange(
+                env.unwrapped.num_envs,
+                dtype=torch.long,
+                device=env.unwrapped.device,
+            )
+            receiver_safety_names = {
+                "excessive_object_force",
+                "needle_dropped_after_pickup",
+                "object_dropping",
+                "premature_giver_release",
+                "protected_surface_force",
+                "receiver_retention_lost",
+            }
+            receiver_safety_indices = [
+                termination_names.index(name)
+                for name in receiver_safety_names
+                if name in termination_names
+            ]
+            receiver_safety_failure = first_terminal_flags[
+                :, receiver_safety_indices
+            ].any(dim=-1)
+            acquisition_frame = first_handover_history[
+                "first_receiver_acquisition_frame"
+            ]
+            steps_to_acquisition = torch.where(
+                acquisition_frame >= 0,
+                acquisition_frame - first_receiver_activation_frame,
+                torch.full_like(acquisition_frame, -1),
+            )
+            acquired = first_handover_max_phase >= 3
+            torch.save(
+                {
+                    "schema_version": (
+                        "dranmar-receiver-recovery-dataset-1.0"
+                    ),
+                    "task": args.task,
+                    "seed": args.seed,
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "pickup_recovery_checkpoint_sha256": (
+                        _sha256(
+                            Path(
+                                args.pickup_recovery_checkpoint
+                            ).expanduser().resolve()
+                        )
+                        if args.pickup_recovery_checkpoint
+                        else None
+                    ),
+                    "position_cap_m": (
+                        args.receiver_recovery_position_cap
+                    ),
+                    "orientation_cap_rad": math.radians(
+                        args.receiver_recovery_orientation_cap_deg
+                    ),
+                    "sweep_id": args.receiver_recovery_sweep_id,
+                    "num_envs": env.unwrapped.num_envs,
+                    "environment_index": environment_index[
+                        dataset_mask
+                    ].cpu(),
+                    "state_index": environment_index[
+                        dataset_mask
+                    ].cpu(),
+                    "candidate_index": (
+                        torch.full_like(
+                            environment_index[dataset_mask],
+                            args.receiver_recovery_sobol_candidate,
+                        )
+                        if (
+                            args.receiver_recovery_sobol_candidate
+                            is not None
+                        )
+                        else torch.zeros_like(
+                            environment_index[dataset_mask]
+                        )
+                    ).cpu(),
+                    "context": first_receiver_context[
+                        dataset_mask
+                    ].cpu(),
+                    "correction": (
+                        first_receiver_activation_correction[
+                            dataset_mask
+                        ].cpu()
+                    ),
+                    "full_success": first_outcome_success[
+                        dataset_mask
+                    ].cpu(),
+                    "recovered_acquisition": (
+                        first_receiver_recovered_acquisition[
+                            dataset_mask
+                        ].cpu()
+                    ),
+                    "acquired": acquired[dataset_mask].cpu(),
+                    "retained": first_outcome_success[
+                        dataset_mask
+                    ].cpu(),
+                    "maximum_phase": first_handover_max_phase[
+                        dataset_mask
+                    ].cpu(),
+                    "retry_count": first_receiver_retry_count[
+                        dataset_mask
+                    ].cpu(),
+                    "activation_frame": first_receiver_activation_frame[
+                        dataset_mask
+                    ].cpu(),
+                    "steps_to_acquisition": steps_to_acquisition[
+                        dataset_mask
+                    ].cpu(),
+                    "peak_jaw_force_n": first_receiver_peak_jaw_force_n[
+                        dataset_mask
+                    ].cpu(),
+                    "termination_names": termination_names,
+                    "termination_flags": first_terminal_flags[
+                        dataset_mask
+                    ].cpu(),
+                    "receiver_safety_failure": receiver_safety_failure[
+                        dataset_mask
+                    ].cpu(),
+                    "safe_acquisition": (
+                        acquired & ~receiver_safety_failure
+                    )[dataset_mask].cpu(),
+                },
+                dataset_path,
+            )
+            receiver_recovery_dataset = {
+                "path": str(dataset_path),
+                "sha256": _sha256(dataset_path),
+                "samples": int(dataset_mask.sum().item()),
+            }
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
             "task": args.task,
             "seed": args.seed,
+            "episode_length_s": float(env_cfg.episode_length_s),
             "requested_num_envs": args.requested_num_envs,
             "num_envs": env.unwrapped.num_envs,
             "trusted_requested_num_envs": args.trusted_requested_num_envs,
@@ -5800,6 +6138,43 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "mean_reward": sum(rewards) / len(rewards) if rewards else None,
             "first_terminal_outcome_per_environment": True,
+            "environment_outcomes": {
+                "successful_indices": torch.nonzero(
+                    first_outcome_success,
+                    as_tuple=False,
+                )
+                .squeeze(-1)
+                .tolist(),
+                "lifted_10mm_indices": (
+                    torch.nonzero(
+                        first_handover_max_phase >= 2,
+                        as_tuple=False,
+                    )
+                    .squeeze(-1)
+                    .tolist()
+                    if first_handover_max_phase is not None
+                    else []
+                ),
+                "receiver_acquired_indices": (
+                    torch.nonzero(
+                        first_handover_max_phase >= 3,
+                        as_tuple=False,
+                    )
+                    .squeeze(-1)
+                    .tolist()
+                    if first_handover_max_phase is not None
+                    else []
+                ),
+                "termination_indices": {
+                    name: torch.nonzero(
+                        first_terminal_flags[:, index],
+                        as_tuple=False,
+                    )
+                    .squeeze(-1)
+                    .tolist()
+                    for index, name in enumerate(termination_names)
+                },
+            },
             "completed_episodes": first_completed_count,
             "successful_episodes": first_success_count,
             "failed_episodes": first_completed_count - first_success_count,
@@ -6020,6 +6395,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             first_pickup_retry_count
                         ).tolist()
                     },
+                    "retry_count_by_environment": (
+                        first_pickup_retry_count.tolist()
+                    ),
                     "mean_final_correction": [
                         float(
                             first_pickup_correction[:, axis].mean().item()
@@ -6061,7 +6439,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "randomized_corrections": (
                         args.receiver_recovery_random_corrections
+                        or args.receiver_recovery_sobol_candidate is not None
                     ),
+                    "sweep_id": args.receiver_recovery_sweep_id,
+                    "sobol_candidate": (
+                        args.receiver_recovery_sobol_candidate
+                    ),
+                    "dataset": receiver_recovery_dataset,
                     "first_attempt_failures": int(
                         first_receiver_failed.sum().item()
                     ),
@@ -6093,6 +6477,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             first_receiver_retry_count
                         ).tolist()
                     },
+                    "retry_count_by_environment": (
+                        first_receiver_retry_count.tolist()
+                    ),
                     "mean_final_correction": [
                         float(
                             first_receiver_correction[:, axis].mean().item()
@@ -6305,6 +6692,9 @@ def _parser() -> argparse.ArgumentParser:
         "--receiver_recovery_random_corrections",
         action="store_true",
     )
+    play.add_argument("--receiver_recovery_sobol_candidate", type=int)
+    play.add_argument("--receiver_recovery_sweep_id")
+    play.add_argument("--receiver_recovery_dataset")
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 
