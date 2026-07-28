@@ -28,32 +28,36 @@ _PROTECTED_CONTACT_ATTRIBUTION_SENSOR_NAMES = (
     "robot_2_jaw_2_protected_contact_attribution",
 )
 
-# PhysX provides body-level one-to-many contact filtering. Preserve one stable
-# column per counterpart rigid body, followed by the support table. This is the
-# finest attribution available without moving the task to the Newton backend.
-_COUNTERPART_BODY_NAMES = (
-    "psm_base_link",
-    "psm_remote_center_link",
-    "psm_yaw_link",
-    "psm_pitch_end_link",
-    "psm_main_insertion_link",
-    "psm_main_insertion_link_2",
-    "psm_main_insertion_link_3",
-    "psm_tool_roll_link",
-    "psm_tool_pitch_link",
-    "psm_tool_yaw_link",
-    "psm_tool_gripper1_link",
-    "psm_tool_gripper2_link",
+# This Isaac/PhysX build requires each filter expression to resolve one
+# collision shape per environment. Preserve one stable column per authored PSM
+# collider, followed by the single support-table collider.
+_COUNTERPART_COLLIDER_PATHS = (
+    "psm_remote_center_link/visuals_xform/visuals",
+    "psm_pitch_end_link/visuals_xform/visuals",
+    "psm_main_insertion_link/visuals_xform/visuals",
+    "psm_main_insertion_link_2/visuals_xform/visuals",
+    "psm_main_insertion_link_2/visuals_xform/tool_main_insert",
+    "psm_main_insertion_link_3/visuals_xform/visuals",
+    "psm_tool_roll_link/visuals_xform/visuals",
+    "psm_tool_roll_link/collisions_xform/collisions",
+    "psm_tool_pitch_link/visuals_xform/visuals",
+    "psm_tool_pitch_link/collisions_xform/collisions",
+    "psm_tool_yaw_link/visuals_xform/visuals",
+    "psm_tool_yaw_link/visuals_xform/tool_yaw_link",
+    "psm_tool_gripper1_link/visuals_xform/gripper_right",
+    "psm_tool_gripper1_link/collisions_xform/collisions",
+    "psm_tool_gripper2_link/visuals_xform/gripper_left",
+    "psm_tool_gripper2_link/collisions_xform/collisions",
 )
 
 
 def _protected_contact_partner_paths(counterpart_robot: str) -> list[str]:
     return [
         *(
-            f"{{ENV_REGEX_NS}}/{counterpart_robot}/{body_name}"
-            for body_name in _COUNTERPART_BODY_NAMES
+            f"{{ENV_REGEX_NS}}/{counterpart_robot}/{collider_path}"
+            for collider_path in _COUNTERPART_COLLIDER_PATHS
         ),
-        "{ENV_REGEX_NS}/Table/Table",
+        "{ENV_REGEX_NS}/Table/Table/Table",
     ]
 
 

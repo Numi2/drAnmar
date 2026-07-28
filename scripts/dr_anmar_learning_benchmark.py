@@ -5332,18 +5332,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "robot_2_jaw_2_protected_contact_attribution",
         )
         handover_protected_partner_labels = (
-            "counterpart_psm_base_link",
-            "counterpart_psm_remote_center_link",
-            "counterpart_psm_yaw_link",
-            "counterpart_psm_pitch_end_link",
-            "counterpart_psm_main_insertion_link",
-            "counterpart_psm_main_insertion_link_2",
-            "counterpart_psm_main_insertion_link_3",
-            "counterpart_psm_tool_roll_link",
-            "counterpart_psm_tool_pitch_link",
-            "counterpart_psm_tool_yaw_link",
-            "counterpart_psm_tool_gripper1_link",
-            "counterpart_psm_tool_gripper2_link",
+            "counterpart_remote_center_visuals",
+            "counterpart_pitch_end_visuals",
+            "counterpart_main_insertion_visuals",
+            "counterpart_main_insertion_2_visuals",
+            "counterpart_main_insertion_2_tool_main_insert",
+            "counterpart_main_insertion_3_visuals",
+            "counterpart_tool_roll_visuals",
+            "counterpart_tool_roll_collisions",
+            "counterpart_tool_pitch_visuals",
+            "counterpart_tool_pitch_collisions",
+            "counterpart_tool_yaw_visuals",
+            "counterpart_tool_yaw_geometry",
+            "counterpart_gripper_1_visual_geometry",
+            "counterpart_gripper_1_collision_geometry",
+            "counterpart_gripper_2_visual_geometry",
+            "counterpart_gripper_2_collision_geometry",
             "support_table",
         )
         receiver_grasp_offset = needle_geometry_grasp_offset_m(0.65)
@@ -7674,9 +7678,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
 
             def partner_category_attribution(partner_forces) -> dict:
                 if partner_forces.numel():
-                    arm_or_wrist = partner_forces[:, :10].amax(dim=-1)
-                    jaws = partner_forces[:, 10:12].amax(dim=-1)
-                    table = partner_forces[:, 12]
+                    arm_or_wrist = partner_forces[:, :12].amax(dim=-1)
+                    jaws = partner_forces[:, 12:16].amax(dim=-1)
+                    table = partner_forces[:, 16]
                 else:
                     arm_or_wrist = torch.empty(
                         0,
@@ -7757,9 +7761,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     if protected_surface_sensor_forces.numel()
                     else 0,
                 },
-                "body_level_partner_attribution": {
+                "collider_partner_attribution": {
                     "backend_boundary": (
-                        "physx_body_level_one_to_many_filtering"
+                        "physx_explicit_collision_shape_filtering"
                     ),
                     "partner_order": list(
                         handover_protected_partner_labels

@@ -837,24 +837,28 @@
     },
     "qualification_boundary": "rejected_no_measurable_effect_at_scale"
   },
-  "protected_contact_body_attribution_v22": {
+  "protected_contact_collider_attribution_v22": {
     "status": "implemented_awaiting_exact_runtime_evaluation",
-    "purpose": "resolve_the_remaining_receiver_non_object_force_into_counterpart_psm_body_or_support_table_before_any_further_control_change",
-    "backend_contract": "isaac_lab_physx_body_level_one_to_many_contact_filtering",
+    "purpose": "resolve_the_remaining_receiver_non_object_force_into_counterpart_psm_collision_geometry_or_support_table_before_any_further_control_change",
+    "backend_contract": "isaac_lab_physx_one_to_many_filtering_with_one_explicit_collision_shape_per_environment_and_column",
     "diagnostic_sensor_count": 4,
     "partner_columns_per_sensor": [
-      "counterpart_psm_base_link",
-      "counterpart_psm_remote_center_link",
-      "counterpart_psm_yaw_link",
-      "counterpart_psm_pitch_end_link",
-      "counterpart_psm_main_insertion_link",
-      "counterpart_psm_main_insertion_link_2",
-      "counterpart_psm_main_insertion_link_3",
-      "counterpart_psm_tool_roll_link",
-      "counterpart_psm_tool_pitch_link",
-      "counterpart_psm_tool_yaw_link",
-      "counterpart_psm_tool_gripper1_link",
-      "counterpart_psm_tool_gripper2_link",
+      "counterpart_remote_center_visuals",
+      "counterpart_pitch_end_visuals",
+      "counterpart_main_insertion_visuals",
+      "counterpart_main_insertion_2_visuals",
+      "counterpart_main_insertion_2_tool_main_insert",
+      "counterpart_main_insertion_3_visuals",
+      "counterpart_tool_roll_visuals",
+      "counterpart_tool_roll_collisions",
+      "counterpart_tool_pitch_visuals",
+      "counterpart_tool_pitch_collisions",
+      "counterpart_tool_yaw_visuals",
+      "counterpart_tool_yaw_geometry",
+      "counterpart_gripper_1_visual_geometry",
+      "counterpart_gripper_1_collision_geometry",
+      "counterpart_gripper_2_visual_geometry",
+      "counterpart_gripper_2_collision_geometry",
       "support_table"
     ],
     "capture_point": "termination_source_before_automatic_environment_reset",
@@ -868,7 +872,7 @@
       "hard_termination_limit"
     ],
     "runtime_sequence": [
-      "validate_13_partner_columns_on_small_population",
+      "validate_17_partner_columns_on_small_population",
       "replay_exact_seed_2361_on_2000_environments",
       "select_narrow_control_fix_only_from_dominant_partner_evidence"
     ],

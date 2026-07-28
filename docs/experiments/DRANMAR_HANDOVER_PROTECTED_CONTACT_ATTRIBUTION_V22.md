@@ -14,22 +14,25 @@ It cannot distinguish the giver instrument from the support table.
 ## Diagnostic contract
 
 v22 adds four end-to-end-only PhysX contact views, one for each jaw. Each view
-preserves one force column for every rigid body of the counterpart PSM and one
-column for the table rigid body. Forces are captured by the termination
-function before Isaac Lab automatically resets a terminal environment.
+preserves one force column for every authored collision shape of the
+counterpart PSM and one column for the table collision shape. Forces are
+captured by the termination function before Isaac Lab automatically resets a
+terminal environment.
 
 The unchanged v15 controller, checkpoint, actions, rewards, success definition,
 episode deadline, and 2 N termination remain authoritative. The added sensors
 cannot write task state or change policy input.
 
-Isaac Lab's PhysX backend supports body-level one-to-many filtering. It does not
-provide shape-level filtering; that finer boundary is available only with the
-Newton backend. Body-level evidence is sufficient to separate counterpart
-jaws, counterpart arm or wrist, and the support table.
+The live Isaac/PhysX build requires every filter expression to resolve one
+collision shape per environment. The initial body-path probe correctly failed
+because several PSM bodies own two collision shapes and the table body path
+resolved two entries. v22 therefore uses 17 explicit, versioned collider
+columns. This is sufficient to separate counterpart jaws, counterpart arm or
+wrist, and the support table.
 
 ## Runtime decision
 
-First validate that all 13 partner columns resolve. Then replay the exact
+First validate that all 17 partner columns resolve. Then replay the exact
 seed-2361 2,000-environment frontier. No controller change is allowed until the
 five protected terminals have a dominant body category:
 
