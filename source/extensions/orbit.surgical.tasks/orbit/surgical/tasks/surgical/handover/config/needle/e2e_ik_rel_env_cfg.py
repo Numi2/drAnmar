@@ -10,6 +10,7 @@ from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils.configclass import configclass
 
 from ... import mdp
+from ...mdp.actions import HandoverProtectedSurfaceShieldAction
 from . import e2e_observations, ik_rel_env_cfg
 
 
@@ -58,6 +59,19 @@ class NeedleHandoverEndToEndEnvCfg(ik_rel_env_cfg.NeedleHandoverEnvCfg):
 
     def __post_init__(self):
         super().__post_init__()
+        self.actions.robot_1_body_action.class_type = (
+            HandoverProtectedSurfaceShieldAction
+        )
+        self.actions.robot_2_body_action.class_type = (
+            HandoverProtectedSurfaceShieldAction
+        )
+        self.dr_anmar_protected_surface_shield = {
+            "scope": "recovered_receiver_phase_2_only",
+            "soft_force_limit_n": 0.25,
+            "hold_steps": 3,
+            "retreat_action_z": 0.05,
+            "hard_termination_unchanged_n": 2.0,
+        }
         # This stricter contract is opt-in for the isolated structured task.
         # The standard handover environments retain their existing phase MDP.
         self.dr_anmar_handover_contract = {

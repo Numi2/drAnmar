@@ -430,15 +430,14 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "recovery_transport_qualified = (" in controller_source
     assert "& (phase >= 2)" in controller_source
     assert "& giver_bilateral_contact" in controller_source
-    assert (
-        "self.recovery_receiver_contact_approach_radius = 0.004"
-        in controller_source
-    )
-    assert (
-        "self.recovery_receiver_contact_approach_action_limit = 0.075"
-        in controller_source
-    )
-    assert "recovery_receiver_contact_approach = (" in controller_source
+    action_source = (
+        TASK_ROOT / "handover/mdp/actions.py"
+    ).read_text()
+    assert "class HandoverProtectedSurfaceShieldAction" in action_source
+    assert "soft_force_limit_n = 0.25" in action_source
+    assert "hold_steps = 3" in action_source
+    assert "retreat_action_z = 0.05" in action_source
+    assert "shielded_actions[shield_active, :6] = 0.0" in action_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
     assert "pickup_contact_loss_steps debounce" in controller_source
     recovery_cfg_source = (
@@ -463,6 +462,7 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     benchmark_source = (
         ROOT / "scripts/dr_anmar_learning_benchmark.py"
     ).read_text()
+    assert '"protected_surface_shield"' in benchmark_source
     assert '"first_stable_presentation_frame"' in benchmark_source
     assert '"first_receiver_contact_after_stable_frame"' in benchmark_source
     assert '"receiver_approach_by_maximum_phase"' in benchmark_source

@@ -119,6 +119,11 @@ def _environment_runtime_contract(env_cfg, task: str) -> dict[str, Any]:
             "dr_anmar_handover_contract",
             None,
         ),
+        "protected_surface_shield": getattr(
+            env_cfg,
+            "dr_anmar_protected_surface_shield",
+            None,
+        ),
         "episode_length_s": getattr(env_cfg, "episode_length_s", None),
         "decimation": getattr(env_cfg, "decimation", None),
         "giver_identity_observation_function": (

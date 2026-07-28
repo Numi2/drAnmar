@@ -785,11 +785,27 @@
     "qualification_boundary": "rejected_below_393_of_600_screen"
   },
   "narrow_recovered_receiver_deceleration_v19": {
-    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "status": "rejected_unconditional_deceleration_still_erased_gain",
     "activation": "pickup_recovery_context_and_receiver_grasp_distance_below_4mm",
     "receiver_translation_action_limit": 0.075,
     "design": "one_step_scale_final_seating_energy_reduction_without_delaying_the_25mm_preposition_or_outer_approach",
-    "qualification_boundary": "must_retain_at_least_393_of_600_and_1140_of_2000_with_no_more_than_4_protected_surface_events"
+    "runtime_result": {
+      "seed": 2361,
+      "episodes": 600,
+      "successes": 391,
+      "recovered_successes": 33,
+      "protected_surface_events": 0
+    },
+    "qualification_boundary": "rejected_below_393_of_600_screen"
+  },
+  "reactive_recovered_receiver_shield_v20": {
+    "status": "implemented_awaiting_paired_runtime_evaluation",
+    "root_cause": "unconditional_geometric_deceleration_reduced_success_while_v17_proved_all_scale_safety_events_were_receiver_non_object_contacts",
+    "scope": "isaac_lab_task_space_action_term_without_changing_checkpoint_observation_or_policy",
+    "activation": "recovered_receiver_phase_2_and_native_non_object_force_above_0.25_n",
+    "response": "freeze_rotation_and_retract_positive_z_by_0.0005_m_per_control_step_for_three_steps",
+    "hard_termination_unchanged_n": 2.0,
+    "qualification_boundary": "paired_same_source_baseline_and_candidate_required_because_environment_runtime_contract_now_includes_the_shield"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",
