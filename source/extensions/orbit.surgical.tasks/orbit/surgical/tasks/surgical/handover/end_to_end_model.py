@@ -696,6 +696,9 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.last_deadline_option_active: torch.Tensor | None = None
         self.last_deadline_recovery_residual_norm: torch.Tensor | None = None
         self.last_deadline_receiver_residual_norm: torch.Tensor | None = None
+        self.last_frontier_hardening_residual_norm: (
+            torch.Tensor | None
+        ) = None
         self.recovery_receiver_reference_network: (
             _PhaseHeadedNetwork | None
         ) = None
@@ -1254,6 +1257,11 @@ class EndToEndHandoverMLPModel(MLPModel):
             learned_role_residual,
             dtype=torch.bool,
         )
+        frontier_adapter = torch.zeros(
+            (raw.shape[0], 12),
+            dtype=raw.dtype,
+            device=raw.device,
+        )
         if self.frontier_hardening_adaptation_enabled:
             role_observation = role_normalize_handover_observation(raw)
             frontier_adapter = self.frontier_hardening_adapter(
@@ -1277,6 +1285,12 @@ class EndToEndHandoverMLPModel(MLPModel):
             frontier_role_action_mask[:, 7:13] = (
                 receiver_acquisition_active.unsqueeze(-1)
             )
+        self.last_frontier_hardening_residual_norm = (
+            torch.linalg.vector_norm(
+                frontier_adapter,
+                dim=-1,
+            ).detach()
+        )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             raw[:, 82] > 0.5,

@@ -13,6 +13,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from pathlib import Path
 from typing import Any
 
 
@@ -114,6 +115,30 @@ def canonical_sha256(value: Any) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _source_file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def controller_implementation_sha256() -> dict[str, str]:
+    """Bind profiles to the source that interprets their scalar values."""
+    source_root = Path(__file__).resolve().parent
+    return {
+        "controller_profiles.py": _source_file_sha256(
+            source_root / "controller_profiles.py"
+        ),
+        "end_to_end_model.py": _source_file_sha256(
+            source_root / "end_to_end_model.py"
+        ),
+        "residual_model.py": _source_file_sha256(
+            source_root / "residual_model.py"
+        ),
+    }
+
+
 def controller_profile(name: str) -> dict[str, Any]:
     """Return an isolated profile document, failing closed on unknown names."""
     try:
@@ -127,6 +152,7 @@ def controller_profile(name: str) -> dict[str, Any]:
     document = {
         "schema_version": CONTROLLER_PROFILE_SCHEMA_VERSION,
         "name": name,
+        "implementation_sha256": controller_implementation_sha256(),
         "values": copy.deepcopy(values),
     }
     document["sha256"] = canonical_sha256(document)

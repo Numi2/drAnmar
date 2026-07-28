@@ -28,7 +28,20 @@ def _load_matrix_module():
     return module
 
 
+def _load_baseline_gate_module():
+    path = REPO_ROOT / "scripts/dr_anmar_frontier_baseline_gate.py"
+    spec = importlib.util.spec_from_file_location(
+        "dranmar_frontier_baseline_gate",
+        path,
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 MATRIX = _load_matrix_module()
+BASELINE_GATE = _load_baseline_gate_module()
 
 
 def _training_evidence(
@@ -105,6 +118,12 @@ def test_equal_frame_matrix_is_exact_for_all_environment_counts():
         for count, iterations in rows.items()
     )
     assert config["gpu_execution_requires_explicit_approval"] is True
+    assert config["qualification"]["maximum_initial_role_imbalance"] == 0
+    baseline = config["nominal_baseline_qualification"]
+    assert baseline["num_envs"] == 256
+    assert baseline["yaw_bucket_count"] == 8
+    assert baseline["minimum_completed_outcome_fraction"] == 0.95
+    assert baseline["policy_updates_allowed"] is False
 
 
 def test_matrix_rejects_missing_cells_and_ranks_equal_frame_runs():
@@ -179,6 +198,10 @@ def test_frontier_task_preserves_terminal_truth_and_uses_potential_delta():
     assert "potential_based_handover_progress" in environment
     assert "gamma * next_potential - previous" in rewards
     assert "torch.zeros_like(potential)" in rewards
+    assert "env.termination_manager.active_terms" in environment
+    assert 'env.termination_manager.get_term("success")' in environment
+    assert "env.termination_manager.terminated" in rewards
+    assert "env.termination_manager.time_outs" in rewards
 
 
 def test_v24_uses_canonical_geometry_balanced_roles_and_zero_adapter():
@@ -196,12 +219,19 @@ def test_v24_uses_canonical_geometry_balanced_roles_and_zero_adapter():
     )
     assert "canonical_needle_local_frames_enabled" in controller
     assert "return quat_apply(object_orientation, offset)" in controller
+    assert "giver_uses_object_frame" in controller
+    assert (
+        "giver_tool_target_orientation = object_pose_in_giver[:, 3:7]"
+        in controller
+    )
+    assert "giver_object_orientation.detach()" in controller
     assert "last_giver_custody_quality" in controller
     assert "custody_transport_scale" in controller
     assert "class _FrontierHardeningAdapter" in model
     assert "nn.init.zeros_(self.output.weight)" in model
     assert "frontier_hardening_features" in model
     assert "def assign_balanced_handover_roles(" in state
+    assert 'state["giver_is_robot_1"][env_ids] = forced_roles[env_ids]' in state
     assert "_failure_stratified_receiver_sources" in state
     assert "return target_env_ids.to(dtype=torch.long)" in state
     assert "selected = torch.empty(" in state
@@ -230,3 +260,97 @@ def test_native_dranmar_tasks_are_included_in_public_catalog():
     )
     assert 'if task_id.startswith("DrAnmar-")' in task_catalog
     assert "tuple(sorted(set(registered)))" in task_catalog
+
+
+def test_frontier_environment_contract_binds_semantic_source_files():
+    benchmark = _source("scripts/dr_anmar_learning_benchmark.py")
+    assert '"semantic_source_sha256"' in benchmark
+    assert "inspect.getsourcefile(value)" in benchmark
+    assert "for term_cfg in vars(manager_cfg).values()" in benchmark
+
+
+def _nominal_baseline_evidence() -> dict:
+    checkpoint_sha256 = "a" * 64
+    yaw_buckets = {
+        f"[{-180 + 45 * index},{-135 + 45 * index})": {
+            "count": 32,
+            "completed": 32,
+            "giver_bilateral_contact_rate": 0.875,
+            "reached_10mm_lift_rate": 0.8125,
+            "retained_handover_success_rate": 0.625,
+            "safety_terminal_rate": 0.0,
+            "by_giver_role": {},
+        }
+        for index in range(8)
+    }
+    return {
+        "kind": "held_out_play",
+        "task": "DrAnmar-Handover-Needle-Frontier-Eval-v0",
+        "requested_num_envs": 256,
+        "num_envs": 256,
+        "frames_per_env": 1200,
+        "completed_episodes": 256,
+        "success_rate": 0.625,
+        "checkpoint": {"sha256": checkpoint_sha256},
+        "policy_bundle": {
+            "bound": True,
+            "checkpoint_sha256": checkpoint_sha256,
+            "adaptation_mode": "frontier_hardening",
+            "controller_profile": {
+                "name": "frontier-hardening-v24",
+            },
+        },
+        "termination_term_counts": {
+            "object_dropping": 0,
+            "excessive_object_force": 0,
+            "protected_surface_force": 0,
+        },
+        "first_episode_handover_diagnostics": {
+            "initial_giver_role_population": {
+                "robot_1": 128,
+                "robot_2": 128,
+                "absolute_imbalance": 0,
+            },
+            "initial_yaw_bucket_statistics": yaw_buckets,
+            "frontier_hardening_residual": {
+                "maximum_normalized_l2": 0.0,
+            },
+            "outcomes_by_giver_role": {
+                "robot_1": {
+                    "count": 128,
+                    "reached_10mm_lift": 104,
+                },
+                "robot_2": {
+                    "count": 128,
+                    "reached_10mm_lift": 104,
+                },
+            },
+        },
+    }
+
+
+def test_nominal_baseline_gate_blocks_ppo_until_geometry_is_feasible():
+    config = json.loads(
+        (
+            REPO_ROOT
+            / "config/experiments/dranmar_rl_efficiency_matrix.json"
+        ).read_text()
+    )
+    evidence = _nominal_baseline_evidence()
+    qualified = BASELINE_GATE.analyze_nominal_baseline(
+        config,
+        evidence,
+    )
+    assert qualified["passed"] is True
+    assert qualified["policy_updates_allowed"] is True
+    assert all(qualified["checks"].values())
+
+    evidence["first_episode_handover_diagnostics"][
+        "frontier_hardening_residual"
+    ]["maximum_normalized_l2"] = 0.01
+    rejected = BASELINE_GATE.analyze_nominal_baseline(
+        config,
+        evidence,
+    )
+    assert rejected["passed"] is False
+    assert rejected["checks"]["zero_frontier_residual"] is False

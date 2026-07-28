@@ -84,6 +84,15 @@ def test_versioned_v23_bundle_and_controller_profile_are_self_consistent():
     )
     assert profile["values"]["canonical_needle_local_frames_enabled"] is False
     assert profile["values"]["custody_preserving_transport_enabled"] is False
+    assert set(profile["implementation_sha256"]) == {
+        "controller_profiles.py",
+        "end_to_end_model.py",
+        "residual_model.py",
+    }
+    assert all(
+        len(digest) == 64
+        for digest in profile["implementation_sha256"].values()
+    )
 
 
 def test_bundle_binds_exact_task_and_checkpoint_bytes(tmp_path: Path):

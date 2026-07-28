@@ -152,16 +152,15 @@ def potential_based_handover_progress(
     potential = (
         progress_phase.float() + stage_progress
     ) / 5.0
-    timeout = env.episode_length_buf >= (
-        env.max_episode_length - 1
-    )
+    # ManagerBasedRLEnv computes the termination manager before the reward
+    # manager.  Use that authoritative union rather than duplicating a list of
+    # failure predicates here.  This makes every current and future terminal
+    # (including excessive force and protected-surface contact) end with zero
+    # potential and prevents unsafe early termination from retaining shaping
+    # credit.
     terminal = (
-        state["successful_handover"]
-        | state["pickup_attempts_exhausted"]
-        | state["premature_release"]
-        | state["receiver_retention_failed"]
-        | state["needle_dropped"]
-        | timeout
+        env.termination_manager.terminated
+        | env.termination_manager.time_outs
     )
     next_potential = torch.where(
         terminal,

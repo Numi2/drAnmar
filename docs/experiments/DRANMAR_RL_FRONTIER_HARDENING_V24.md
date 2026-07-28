@@ -12,6 +12,37 @@ No v24 result may be called improved until held-out standard and durability
 qualification pass on every declared seed. This contract is simulator
 validation only; it is not physics calibration or clinical validation.
 
+The first v24 run is rejected evidence, not a starting checkpoint. It reached
+only 32/1,200 held-out successes. Its decisive diagnostics were 908 episodes
+without giver bilateral contact and an episode-zero role population of
+1,200/0. The run combined full yaw, forced roles, new canonical geometry, and
+a new residual before the nominal controller was qualified. No further PPO is
+allowed until the zero-residual baseline passes the staged qualification
+below.
+
+## Research-grounded control strategy
+
+The implementation follows the parts of the literature that reduce learning
+burden instead of merely increasing simulator throughput:
+
+- [ORBIT-Surgical](https://arxiv.org/abs/2404.16027) decomposes surgical
+  learning into explicit benchmark subtasks and uses GPU parallelism inside
+  those task contracts.
+- [Residual Reinforcement Learning](https://arxiv.org/abs/1812.03201)
+  superposes learned corrections on a useful nominal controller.
+- [Automatic Domain Randomization](https://arxiv.org/abs/1910.07113) begins
+  from a calibrated fixed environment and expands difficulty only after a
+  performance boundary is met.
+- [IndustReal](https://arxiv.org/abs/2305.17110) combines geometric rewards,
+  simulation-aware updates, and sampling curricula for contact-rich tasks.
+- [SPARR](https://arxiv.org/abs/2602.23253) retains a strong simulation policy
+  and learns a residual for the remaining discrepancy.
+
+For Dr.Anmar this means: make planar yaw equivariance analytic, prove the
+nominal pickup across yaw and both arms, keep the correction exactly zero for
+that proof, and only then spend PPO samples on the remaining contact and
+retention error.
+
 ## What changed
 
 ### Checkpoint semantics are now fail-closed
@@ -23,6 +54,12 @@ Every checkpoint launch must supply a versioned policy bundle binding:
 - adaptation mode;
 - controller profile name and profile SHA-256;
 - behavior-bearing policy and controller fields.
+
+The profile hash also includes SHA-256 receipts for the controller, policy
+model, and profile source files. Frontier environment contracts include source
+receipts for their event, observation, reward, and termination functions.
+Changing code while retaining the same profile name or task ID therefore
+invalidates the bundle instead of silently changing serving semantics.
 
 The v23 migration bundle is
 `config/policy_bundles/joint-transfer-v23.json`. A mismatched task, checkpoint,
@@ -41,6 +78,11 @@ The `frontier-hardening-v24` profile rotates every needle-local grasp offset
 with the observed `(x, y, z, w)` quaternion. The frozen v23 actor and its
 learned adapter retain their original feature tensors. Only the new v24
 adapter consumes full canonical SE(3) features.
+
+Fresh pickup, recovery, receiver prepositioning, and receiver acquisition all
+use the canonical needle frame. Before contact, the giver aligns its tool
+orientation to the sampled needle heading; after acquisition it preserves that
+heading instead of twisting the held needle back toward global identity.
 
 ### Mid-air custody is controlled before loss
 
@@ -84,6 +126,11 @@ Mass and friction randomization are intentionally disabled until measured
 instrument/needle calibration receipts define credible ranges. This is a
 calibration boundary, not a claim of robustness.
 
+The role event updates already-instantiated handover state during episode zero,
+then uses the same forced role during normal reset processing. Qualification
+rejects any initial role imbalance, so a registered event that fails to affect
+the first recorded episode cannot pass silently.
+
 Receiver-curriculum replay is stratified by giver identity and recovered versus
 first-attempt custody. Within each stratum, states that previously produced
 failures gain bounded sampling priority; successes remain in the distribution.
@@ -97,10 +144,35 @@ one-time phase bonus with:
 
 `F(s, s') = gamma * Phi(s') - Phi(s)`
 
-`Phi` is bounded, uses simulator-owned approach/lift/presentation/retention
-state, and is forced to zero on success, failure, or timeout. Approaching,
-lifting, or touching can improve credit assignment between states, but a
-failed episode cannot retain that accumulated positive credit.
+`Phi` is bounded and uses simulator-owned
+approach/lift/presentation/retention state. The `-80` failure reward reads
+every active non-success termination result, while the terminal-potential
+reset reads Isaac Lab's already-computed termination union. If retained
+handover and a safety failure fire on the same step, the failure suppresses
+the success reward. Object dropping, excessive object force,
+protected-surface force, explicit transfer failures, and timeouts therefore
+cannot become unpenalized early exits. Approaching, lifting, or touching can
+improve credit assignment between states, but a failed episode cannot retain
+accumulated positive credit.
+
+## Mandatory nominal-baseline qualification
+
+Before any v24 policy update:
+
+1. `scripts/dr_anmar_frontier_invariants.py` must prove exact 50/50
+   episode-zero roles, role alternation, yaw-rotated pickup targets, zero
+   aligned transport twist, and unchanged v23 legacy behavior.
+2. A checkpoint migrated from the source bundle with an exact-zero frontier
+   adapter is played for 1,200 frames in 256 environments.
+3. `scripts/dr_anmar_frontier_baseline_gate.py` evaluates eight 45-degree yaw
+   buckets and rejects PPO unless all predeclared thresholds pass.
+
+The baseline requires at least 80% giver bilateral contact and 75% 10 mm lift
+overall, at least 70% contact and 65% lift in every yaw bucket, at least 50%
+retained handover, no more than a 10 percentage-point arm gap, exactly balanced
+initial roles, at least 95% completed first-episode outcomes, zero safety
+terminals, and a measured frontier residual norm no larger than `1e-8`. These
+are feasibility gates, not promotion claims.
 
 ## Efficiency experiment
 
@@ -130,10 +202,9 @@ Promotion still requires:
 6. standard success at least 74% and durability success at least 65% on every
    declared seed.
 
-## Approved-run template
+## Eligible-run template
 
-Do not execute this GPU command until the user approves the 2,400-environment
-run:
+Do not execute this GPU command until the nominal-baseline gate passes:
 
 ```bash
 DR_ANMAR_TRUST_REQUESTED_NUM_ENVS=1 \

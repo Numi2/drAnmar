@@ -22,19 +22,32 @@ _JAW_SENSOR_NAMES = (
     "robot_2_jaw_2_object_contact",
 )
 
-def terminal_transfer_failure(env):
-    """Penalize physical transfer failures instead of rewarding partial progress."""
-    unsuccessful_timeout = (
-        mdp.time_out(env)
-        & ~mdp.successful_handover(env).bool()
-    )
+def _non_success_terminal(env):
+    """Return the union of every active termination term except success."""
+    failure = env.termination_manager.dones & False
+    for term_name in env.termination_manager.active_terms:
+        if term_name != "success":
+            failure |= env.termination_manager.get_term(term_name)
+    return failure
+
+
+def terminal_transfer_success(env):
+    """Reward retained transfer only when no failure fires on that step."""
     return (
-        mdp.needle_dropped_after_pickup(env)
-        | mdp.pickup_attempts_exhausted(env)
-        | mdp.premature_giver_release(env)
-        | mdp.receiver_retention_lost(env)
-        | unsuccessful_timeout
+        env.termination_manager.get_term("success")
+        & ~_non_success_terminal(env)
     ).float()
+
+
+def terminal_transfer_failure(env):
+    """Penalize every actual non-success terminal reported by Isaac Lab.
+
+    The termination manager is computed before the reward manager on each
+    environment step. Reading its per-term results keeps the reward fail-closed
+    as termination terms evolve and makes failure dominate if success and a
+    safety violation occur simultaneously.
+    """
+    return _non_success_terminal(env).float()
 
 
 def recovery_stable_presentation(env):
@@ -101,6 +114,7 @@ class NeedleHandoverEndToEndEnvCfg(ik_rel_env_cfg.NeedleHandoverEnvCfg):
         # signal preserves credit assignment without paying early lift or
         # transient receiver contact more than a failed episode costs.
         self.rewards.phase_progress.weight = 1.0
+        self.rewards.success.func = terminal_transfer_success
         self.rewards.success.weight = 80.0
         self.rewards.terminal_transfer_failure = RewTerm(
             func=terminal_transfer_failure,

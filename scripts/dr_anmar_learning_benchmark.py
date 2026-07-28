@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib.metadata as metadata
+import inspect
 import json
 import os
 import resource
@@ -23,7 +24,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from dr_anmar_policy_bundle import (
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+from dr_anmar_policy_bundle import (  # noqa: E402
     PolicyBundleError,
     build_policy_bundle_document,
     configure_policy_from_bundle,
@@ -208,6 +213,28 @@ def _environment_runtime_contract(env_cfg, task: str) -> dict[str, Any]:
             "reset_object_position",
             None,
         )
+        semantic_source_sha256: dict[str, str] = {}
+
+        def add_source_receipt(value: Any) -> None:
+            source_path = inspect.getsourcefile(value)
+            module_name = getattr(value, "__module__", None)
+            if source_path is None or module_name is None:
+                return
+            semantic_source_sha256[module_name] = _sha256(
+                Path(source_path).resolve()
+            )
+
+        add_source_receipt(type(env_cfg))
+        for manager_cfg in (
+            env_cfg.events,
+            env_cfg.rewards,
+            env_cfg.terminations,
+            env_cfg.observations.policy,
+        ):
+            for term_cfg in vars(manager_cfg).values():
+                term_function = getattr(term_cfg, "func", None)
+                if callable(term_function):
+                    add_source_receipt(term_function)
         contract["frontier_hardening"] = {
             "controller_profile": getattr(
                 env_cfg,
@@ -236,6 +263,9 @@ def _environment_runtime_contract(env_cfg, task: str) -> dict[str, Any]:
                 env_cfg,
                 "dr_anmar_durability_contract",
                 None,
+            ),
+            "semantic_source_sha256": dict(
+                sorted(semantic_source_sha256.items())
             ),
         }
     return contract
@@ -5917,14 +5947,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "progress_phase"
         ].clone()
         giver_is_robot_1 = handover_observation[:, 82] > 0.5
-        initial_object_in_giver = torch.where(
+        initial_object_pose_in_giver = torch.where(
             giver_is_robot_1.unsqueeze(-1),
-            handover_observation[:, 46:49],
-            handover_observation[:, 53:56],
+            handover_observation[:, 46:53],
+            handover_observation[:, 53:60],
         ).clone()
+        initial_object_in_giver = initial_object_pose_in_giver[:, :3]
+        initial_object_orientation_in_giver = (
+            initial_object_pose_in_giver[:, 3:7]
+        )
+        initial_object_yaw_in_giver = torch.atan2(
+            2.0
+            * (
+                initial_object_orientation_in_giver[:, 3]
+                * initial_object_orientation_in_giver[:, 2]
+                + initial_object_orientation_in_giver[:, 0]
+                * initial_object_orientation_in_giver[:, 1]
+            ),
+            1.0
+            - 2.0
+            * (
+                initial_object_orientation_in_giver[:, 1].square()
+                + initial_object_orientation_in_giver[:, 2].square()
+            ),
+        )
         first_handover_history = {
             "giver_is_robot_1": giver_is_robot_1.clone(),
             "initial_object_in_giver": initial_object_in_giver,
+            "initial_object_yaw_in_giver_rad": (
+                initial_object_yaw_in_giver
+            ),
             "maximum_non_object_force_by_sensor_n": torch.zeros(
                 env.unwrapped.num_envs,
                 len(handover_non_object_sensor_names),
@@ -6003,6 +6055,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "custody_quality_slowed_steps": torch.zeros(
                 env.unwrapped.num_envs,
                 dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_frontier_hardening_residual_norm": torch.zeros(
+                env.unwrapped.num_envs,
                 device=env.unwrapped.device,
             ),
             "first_giver_bilateral_contact_frame": torch.full(
@@ -7373,6 +7429,31 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                 actions = policy(obs)
                 if first_handover_history is not None:
+                    frontier_residual_norm = getattr(
+                        policy_model,
+                        "last_frontier_hardening_residual_norm",
+                        None,
+                    )
+                    if (
+                        isinstance(frontier_residual_norm, torch.Tensor)
+                        and frontier_residual_norm.shape
+                        == was_first_unresolved.shape
+                    ):
+                        first_handover_history[
+                            "maximum_frontier_hardening_residual_norm"
+                        ] = torch.where(
+                            was_first_unresolved,
+                            torch.maximum(
+                                first_handover_history[
+                                    "maximum_frontier_hardening_"
+                                    "residual_norm"
+                                ],
+                                frontier_residual_norm,
+                            ),
+                            first_handover_history[
+                                "maximum_frontier_hardening_residual_norm"
+                            ],
+                        )
                     controller = getattr(policy_model, "controller", None)
                     shaft_guard_active = getattr(
                         controller,
@@ -8541,6 +8622,83 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                 }
 
+            yaw_bucket_count = 8
+            initial_object_yaw = first_handover_history[
+                "initial_object_yaw_in_giver_rad"
+            ]
+            yaw_bucket_index = torch.floor(
+                (
+                    (initial_object_yaw + math.pi)
+                    / (2.0 * math.pi)
+                )
+                * yaw_bucket_count
+            ).long().clamp(0, yaw_bucket_count - 1)
+            safety_terminal = torch.zeros_like(first_unresolved)
+            for safety_name in (
+                "object_dropping",
+                "excessive_object_force",
+                "protected_surface_force",
+            ):
+                safety_terminal |= first_failure_masks.get(
+                    safety_name,
+                    torch.zeros_like(first_unresolved),
+                )
+
+            def initial_yaw_cohort_stats(
+                mask: torch.Tensor,
+            ) -> dict[str, int | float | None]:
+                count = int(mask.sum().item())
+                completed = mask & ~first_unresolved
+
+                def fraction(value: torch.Tensor) -> float | None:
+                    if not count:
+                        return None
+                    return float(
+                        (value & mask).sum().item() / count
+                    )
+
+                return {
+                    "count": count,
+                    "completed": int(completed.sum().item()),
+                    "giver_bilateral_contact_rate": fraction(
+                        first_handover_history[
+                            "ever_giver_bilateral_contact"
+                        ]
+                    ),
+                    "reached_10mm_lift_rate": fraction(
+                        first_handover_max_phase >= 2
+                    ),
+                    "retained_handover_success_rate": fraction(
+                        first_outcome_success
+                    ),
+                    "safety_terminal_rate": fraction(safety_terminal),
+                }
+
+            initial_yaw_bucket_statistics = {}
+            for yaw_bucket in range(yaw_bucket_count):
+                lower_degrees = -180 + 45 * yaw_bucket
+                upper_degrees = lower_degrees + 45
+                yaw_mask = yaw_bucket_index == yaw_bucket
+                initial_yaw_bucket_statistics[
+                    f"[{lower_degrees},{upper_degrees})"
+                ] = {
+                    **initial_yaw_cohort_stats(yaw_mask),
+                    "by_giver_role": {
+                        "robot_1": initial_yaw_cohort_stats(
+                            yaw_mask
+                            & first_handover_history[
+                                "giver_is_robot_1"
+                            ]
+                        ),
+                        "robot_2": initial_yaw_cohort_stats(
+                            yaw_mask
+                            & ~first_handover_history[
+                                "giver_is_robot_1"
+                            ]
+                        ),
+                    },
+                }
+
             protected_surface_mask = first_failure_masks.get(
                 "protected_surface_force",
                 torch.zeros_like(first_unresolved),
@@ -8893,6 +9051,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 ]
                             ).sum().item()
                         )
+                    ),
+                },
+                "initial_yaw_bucket_statistics": (
+                    initial_yaw_bucket_statistics
+                ),
+                "frontier_hardening_residual": {
+                    "maximum_normalized_l2": float(
+                        first_handover_history[
+                            "maximum_frontier_hardening_residual_norm"
+                        ].max().item()
+                    ),
+                    "mean_episode_maximum_normalized_l2": float(
+                        first_handover_history[
+                            "maximum_frontier_hardening_residual_norm"
+                        ].mean().item()
                     ),
                 },
                 "outcomes_by_giver_role": {

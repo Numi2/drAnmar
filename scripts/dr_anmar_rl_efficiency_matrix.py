@@ -159,6 +159,12 @@ def analyze_matrix(
             int(role_population.get("robot_1", 0)) > 0
             and int(role_population.get("robot_2", 0)) > 0
         )
+        role_imbalance = int(
+            role_population.get("absolute_imbalance", requested)
+        )
+        role_balance_passed = role_imbalance <= int(
+            qualification_cfg["maximum_initial_role_imbalance"]
+        )
         success_rate = float(evidence["success_rate"])
         passed = (
             success_rate >= minimum_success_rate
@@ -178,6 +184,7 @@ def analyze_matrix(
                     qualification_cfg["require_both_giver_roles"]
                 )
             )
+            and role_balance_passed
         )
         return {
             "path": str(path),
@@ -186,6 +193,8 @@ def analyze_matrix(
             "completed_outcome_fraction": completed_fraction,
             "safety_terminal_rate": safety_rate,
             "both_giver_roles_present": both_roles,
+            "initial_role_imbalance": role_imbalance,
+            "role_balance_passed": role_balance_passed,
             "passed": passed,
         }
 

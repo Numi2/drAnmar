@@ -444,7 +444,10 @@ class HandoverAnalyticController(nn.Module):
             giver_orientation
         )
         identity_tool_orientation[:, 3] = 1.0
-        giver_tool_target_orientation = identity_tool_orientation
+        if self.canonical_needle_local_frames_enabled:
+            giver_tool_target_orientation = object_pose_in_giver[:, 3:7]
+        else:
+            giver_tool_target_orientation = identity_tool_orientation
         giver_tool_orientation_error = axis_angle_from_quat(
             quat_mul(
                 giver_tool_target_orientation,
@@ -465,11 +468,18 @@ class HandoverAnalyticController(nn.Module):
             < self.giver_pregrasp_orientation_tolerance
         )
 
+        giver_uses_object_frame = (
+            pickup_recovery_context.unsqueeze(-1)
+            | torch.full_like(
+                pickup_recovery_context.unsqueeze(-1),
+                self.canonical_needle_local_frames_enabled,
+            )
+        )
         giver_approach, giver_distance = self._approach_action(
             giver_ee,
             object_in_giver,
             object_pose_in_giver[:, 3:7],
-            pickup_recovery_context,
+            giver_uses_object_frame.squeeze(-1),
             self.giver_grasp_x,
             self.giver_grasp_y,
             self.giver_grasp_z,
@@ -486,7 +496,7 @@ class HandoverAnalyticController(nn.Module):
             )
         )
         giver_pregrasp_position += torch.where(
-            pickup_recovery_context.unsqueeze(-1),
+            giver_uses_object_frame,
             giver_object_relative_pregrasp_offset,
             giver_pregrasp_offset,
         )
@@ -674,12 +684,23 @@ class HandoverAnalyticController(nn.Module):
                 identity_orientation,
             )
         else:
-            receiver_future_grasp_position = (
-                presentation_in_receiver.clone()
+            receiver_future_grasp_offset = torch.zeros_like(
+                presentation_in_receiver
             )
-            receiver_future_grasp_position[:, 0] += self.receiver_grasp_x
-            receiver_future_grasp_position[:, 1] += self.receiver_grasp_y
-            receiver_future_grasp_position[:, 2] += self.receiver_grasp_z
+            receiver_future_grasp_offset[:, 0] = self.receiver_grasp_x
+            receiver_future_grasp_offset[:, 1] = self.receiver_grasp_y
+            receiver_future_grasp_offset[:, 2] = self.receiver_grasp_z
+            if self.canonical_needle_local_frames_enabled:
+                receiver_future_grasp_offset = (
+                    self._object_relative_offset(
+                        object_pose_in_receiver[:, 3:7],
+                        receiver_future_grasp_offset,
+                    )
+                )
+            receiver_future_grasp_position = (
+                presentation_in_receiver
+                + receiver_future_grasp_offset
+            )
         receiver_preposition_target = receiver_future_grasp_position.clone()
         receiver_preposition_height = torch.where(
             pickup_recovery_context,
@@ -1128,10 +1149,22 @@ class HandoverAnalyticController(nn.Module):
 
         giver_object_orientation = object_pose_in_giver[:, 3:7]
         giver_object_angular_velocity = raw[:, 63:66]
-        giver_target_orientation = torch.zeros_like(
-            giver_object_orientation
-        )
-        giver_target_orientation[:, 3] = 1.0
+        if self.canonical_needle_local_frames_enabled:
+            # Preserve the yaw used to acquire the needle. Relative IK holds
+            # the live tool frame when its angular command is zero; matching
+            # the target to the measured object quaternion makes the
+            # proportional term exactly zero while retaining bounded angular
+            # velocity damping. Using the live tool quaternion as the target
+            # here would instead feed the tool-object grasp offset back as a
+            # spurious rotation command.
+            giver_target_orientation = (
+                giver_object_orientation.detach()
+            )
+        else:
+            giver_target_orientation = torch.zeros_like(
+                giver_object_orientation
+            )
+            giver_target_orientation[:, 3] = 1.0
         giver_orientation_error = axis_angle_from_quat(
             quat_mul(
                 giver_target_orientation,

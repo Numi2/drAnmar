@@ -574,8 +574,9 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert "self.rewards.phase_progress.weight = 1.0" in environment_source
     assert "self.rewards.success.weight = 80.0" in environment_source
     assert "terminal_transfer_failure" in environment_source
-    assert "unsuccessful_timeout" in environment_source
-    assert "mdp.time_out(env)" in environment_source
+    assert "env.termination_manager.active_terms" in environment_source
+    assert 'env.termination_manager.get_term("success")' in environment_source
+    assert "self.rewards.success.func = terminal_transfer_success" in environment_source
     assert "NeedleHandoverEnvCfg" in environment_source
     assert "NeedleHandoverReceiverCurriculumEnvCfg" in environment_source
     assert "dr_anmar_receiver_curriculum = True" in environment_source

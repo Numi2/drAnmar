@@ -97,6 +97,14 @@ def assign_balanced_handover_roles(
         (env_ids + generations[env_ids]) % 2 == 0
     )
     generations[env_ids] += 1
+    # Handover state can be initialized while managers are being prepared,
+    # before the first reset-mode events run.  Update an existing state
+    # immediately so episode zero observes the assigned role instead of the
+    # all-Robot-1 constructor default.  Subsequent reset processing applies
+    # the same forced role while clearing all other episode state.
+    state = getattr(env, "_dr_anmar_handover_state", None)
+    if state is not None:
+        state["giver_is_robot_1"][env_ids] = forced_roles[env_ids]
 
 
 def _failure_stratified_receiver_sources(
