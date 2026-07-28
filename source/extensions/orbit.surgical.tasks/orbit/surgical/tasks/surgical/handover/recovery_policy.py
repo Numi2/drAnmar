@@ -253,6 +253,14 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
         self.recovered_custody = torch.zeros_like(self.first_attempt_failed)
         self.activation_count = torch.zeros_like(self.retry_count)
+        self.first_attempt_action_mismatch_count = torch.zeros_like(
+            self.retry_count
+        )
+        self.first_attempt_action_max_abs_difference = torch.zeros(
+            batch_size,
+            dtype=dtype,
+            device=device,
+        )
         self.last_context = torch.zeros(
             (batch_size, PickupRecoveryHead.input_dim),
             dtype=dtype,
@@ -574,6 +582,9 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
 
         giver_is_robot_1 = raw[:, 82] > 0.5
+        canonical_before = (
+            self.retry_state == _CANONICAL_FIRST_ATTEMPT
+        )
         giver_contacts = self._select_role(
             raw[:, 66:68],
             raw[:, 68:70],
@@ -754,7 +765,25 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             giver_is_robot_1,
             learned_retry,
         )
-        return result.clamp(-1.0, 1.0)
+        result = result.clamp(-1.0, 1.0)
+        preservation_mask = canonical_before & ~failure
+        action_difference = (result - base_action).abs()
+        action_mismatch = preservation_mask & torch.any(
+            action_difference != 0.0,
+            dim=-1,
+        )
+        self.first_attempt_action_mismatch_count += (
+            action_mismatch.to(torch.long)
+        )
+        self.first_attempt_action_max_abs_difference[:] = torch.where(
+            preservation_mask,
+            torch.maximum(
+                self.first_attempt_action_max_abs_difference,
+                action_difference.amax(dim=-1),
+            ),
+            self.first_attempt_action_max_abs_difference,
+        )
+        return result
 
     def reset(
         self,
@@ -784,3 +813,5 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self.first_attempt_failed[mask] = False
         self.recovered_custody[mask] = False
         self.activation_count[mask] = 0
+        self.first_attempt_action_mismatch_count[mask] = 0
+        self.first_attempt_action_max_abs_difference[mask] = 0.0

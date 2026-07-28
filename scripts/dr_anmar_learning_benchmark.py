@@ -3811,6 +3811,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if pickup_recovery_policy is not None
         else None
     )
+    first_pickup_action_mismatch_count = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.long,
+            device=env.unwrapped.device,
+        )
+        if pickup_recovery_policy is not None
+        else None
+    )
+    first_pickup_action_max_abs_difference = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if pickup_recovery_policy is not None
+        else None
+    )
     first_pickup_correction = (
         torch.zeros(
             (env.unwrapped.num_envs, 6),
@@ -4557,6 +4575,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     assert first_pickup_retry_count is not None
                     assert first_pickup_failed is not None
                     assert first_pickup_recovered_custody is not None
+                    assert first_pickup_action_mismatch_count is not None
+                    assert (
+                        first_pickup_action_max_abs_difference is not None
+                    )
                     assert first_pickup_correction is not None
                     first_pickup_retry_count[first_dones] = (
                         pickup_recovery_policy.retry_count[first_dones]
@@ -4570,6 +4592,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         pickup_recovery_policy.recovered_custody[
                             first_dones
                         ]
+                    )
+                    first_pickup_action_mismatch_count[first_dones] = (
+                        pickup_recovery_policy
+                        .first_attempt_action_mismatch_count[first_dones]
+                    )
+                    first_pickup_action_max_abs_difference[first_dones] = (
+                        pickup_recovery_policy
+                        .first_attempt_action_max_abs_difference[first_dones]
                     )
                     first_pickup_correction[first_dones] = (
                         pickup_recovery_policy.correction[first_dones]
@@ -5627,6 +5657,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "dataset": pickup_recovery_dataset,
                     "first_attempt_failures": int(
                         first_pickup_failed.sum().item()
+                    ),
+                    "first_attempt_action_mismatches": int(
+                        first_pickup_action_mismatch_count.sum().item()
+                    ),
+                    "first_attempt_action_max_abs_difference": float(
+                        first_pickup_action_max_abs_difference.max().item()
                     ),
                     "episodes_with_retries": int(
                         (first_pickup_retry_count > 0).sum().item()

@@ -88,6 +88,10 @@ def test_first_pickup_action_is_bit_identical() -> None:
 
     assert torch.equal(actual, expected)
     assert torch.equal(policy.retry_count, torch.zeros_like(policy.retry_count))
+    assert not bool(policy.first_attempt_action_mismatch_count.any())
+    assert not bool(
+        policy.first_attempt_action_max_abs_difference.any()
+    )
 
 
 def test_failed_pickup_fully_reopens_before_recovery_activation() -> None:
