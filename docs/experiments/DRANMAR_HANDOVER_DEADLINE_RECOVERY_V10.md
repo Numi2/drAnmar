@@ -57,6 +57,15 @@ option without first overcoming a hand-authored logit margin. A diagnostic
 9.2-million-frame run with a `+2` continue prior was rejected because the
 largest learned bias shift was only `0.002`, so re-seat/backoff never executed.
 
+The first zero-prior checkpoint exposed a separate objective loophole. The
+terminal penalty covered drops, exhausted pickup attempts, premature release,
+and retention loss, but not an unsuccessful timeout. Model 5 therefore selected
+backoff in 60 development environments, produced zero recovered successes, and
+regressed from 390/600 to 358/600. It is rejected. An unsuccessful timeout now
+receives the same `-80` terminal-transfer penalty; a success completed on the
+last step is explicitly excluded. This changes learning credit only, not the
+environment's success or termination definitions.
+
 ## Replay correction
 
 Previous recovered-state replay restored the simulator and logical Markov

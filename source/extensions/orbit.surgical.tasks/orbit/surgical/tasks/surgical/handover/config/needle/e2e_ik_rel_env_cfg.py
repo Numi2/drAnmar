@@ -23,11 +23,16 @@ _JAW_SENSOR_NAMES = (
 
 def terminal_transfer_failure(env):
     """Penalize physical transfer failures instead of rewarding partial progress."""
+    unsuccessful_timeout = (
+        mdp.time_out(env)
+        & ~mdp.successful_handover(env).bool()
+    )
     return (
         mdp.needle_dropped_after_pickup(env)
         | mdp.pickup_attempts_exhausted(env)
         | mdp.premature_giver_release(env)
         | mdp.receiver_retention_lost(env)
+        | unsuccessful_timeout
     ).float()
 
 

@@ -243,6 +243,12 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         contract["anti_reward_hacking"]["terminal_transfer_failure_weight"]
         == -80.0
     )
+    assert (
+        contract["anti_reward_hacking"][
+            "unsuccessful_timeout_is_terminal_failure"
+        ]
+        is True
+    )
     assert contract["anti_reward_hacking"]["object_attachment_or_teleportation"] is False
     assert contract["anti_reward_hacking"]["success_source"].startswith(
         "unchanged_isaac_lab_physics"
@@ -448,6 +454,8 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert "self.rewards.phase_progress.weight = 1.0" in environment_source
     assert "self.rewards.success.weight = 80.0" in environment_source
     assert "terminal_transfer_failure" in environment_source
+    assert "unsuccessful_timeout" in environment_source
+    assert "mdp.time_out(env)" in environment_source
     assert "NeedleHandoverEnvCfg" in environment_source
     assert "NeedleHandoverReceiverCurriculumEnvCfg" in environment_source
     assert "dr_anmar_receiver_curriculum = True" in environment_source

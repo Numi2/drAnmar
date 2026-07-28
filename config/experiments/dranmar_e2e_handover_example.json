@@ -479,6 +479,17 @@
       "maximum_observed_option_bias_shift": 0.002,
       "disposition": "diagnostic_only_not_screened"
     },
+    "rejected_unpenalized_timeout_run": {
+      "checkpoint": "model_5",
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 358,
+      "recovered_successes": 0,
+      "deadline_backoff_environments": 60,
+      "reason": "terminal_transfer_failure_penalized_physical_failures_but_not_unsuccessful_timeout_so_backoff_could_avoid_the_terminal_cost",
+      "disposition": "reward_loophole_closed_and_run_rejected"
+    },
     "learned_authority": "receiver_se3_only_after_recovered_physically_qualified_presentation",
     "analytic_authority": [
       "giver_motion",
@@ -517,6 +528,7 @@
     "phase_progress_weight": 1.0,
     "retained_success_weight": 80.0,
     "terminal_transfer_failure_weight": -80.0,
+    "unsuccessful_timeout_is_terminal_failure": true,
     "required_sequence": [
       "giver_bilateral_contact",
       "minimum_10mm_physical_lift",
