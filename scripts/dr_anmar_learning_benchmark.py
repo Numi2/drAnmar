@@ -2217,6 +2217,20 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             False,
         )
     )
+    policy_migration_only = bool(args.policy_migration_only)
+    if policy_migration_only:
+        if not frontier_hardening_curriculum:
+            return _fail(
+                "policy migration is only valid for frontier hardening"
+            )
+        if args.max_iterations != 0:
+            return _fail(
+                "policy migration requires --max_iterations 0"
+            )
+        if args.learning_rate is not None or args.check_success:
+            return _fail(
+                "policy migration cannot request learning or convergence"
+            )
     pickup_recovery_curriculum = bool(
         getattr(
             env_cfg,
@@ -2583,20 +2597,23 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         policy_model.configure_giver_adaptation()
     runner.logger.git_status_repos = []
     started = time.perf_counter()
-    early = _TerminationSuccessEarlyStop(
-        env,
-        runner,
-        threshold=args.success_threshold,
-        window=args.success_window,
-        num_steps_per_env=agent_cfg.num_steps_per_env,
-        stop_on_convergence=args.check_success,
-    )
+    early = None
+    if not policy_migration_only:
+        early = _TerminationSuccessEarlyStop(
+            env,
+            runner,
+            threshold=args.success_threshold,
+            window=args.success_window,
+            num_steps_per_env=agent_cfg.num_steps_per_env,
+            stop_on_convergence=args.check_success,
+        )
     try:
-        with early:
-            runner.learn(
-                num_learning_iterations=agent_cfg.max_iterations,
-                init_at_random_ep_len=not focused_curriculum,
-            )
+        if early is not None:
+            with early:
+                runner.learn(
+                    num_learning_iterations=agent_cfg.max_iterations,
+                    init_at_random_ep_len=not focused_curriculum,
+                )
         duration = time.perf_counter() - started
         checkpoint = run_dir / "model_final.pt"
         runner.save(str(checkpoint))
@@ -2685,11 +2702,19 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 output_policy_bundle_path,
                 output_policy_bundle,
             )
-        iterations = max(1, early.framework_iteration_count)
+        iterations = (
+            max(1, early.framework_iteration_count)
+            if early is not None
+            else 0
+        )
         simulated_frames = (
             env.unwrapped.num_envs * agent_cfg.num_steps_per_env * iterations
         )
-        success_history = [float(value) for value in early.tracker.history]
+        success_history = (
+            [float(value) for value in early.tracker.history]
+            if early is not None
+            else []
+        )
         receiver_curriculum_cache = getattr(
             env.unwrapped,
             "_dr_anmar_receiver_curriculum_cache",
@@ -2712,7 +2737,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         )
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
-            "kind": "training",
+            "kind": (
+                "policy_migration"
+                if policy_migration_only
+                else "training"
+            ),
             "task": args.task,
             "seed": args.seed,
             "requested_num_envs": args.requested_num_envs,
@@ -2726,6 +2755,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "rollout_steps_per_env": agent_cfg.num_steps_per_env,
             "iterations_requested": agent_cfg.max_iterations,
             "iterations_completed": iterations,
+            "policy_migration_only": policy_migration_only,
             "policy_learning_rate": float(
                 args.learning_rate
                 if args.learning_rate is not None
@@ -3306,9 +3336,13 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "window": args.success_window,
                 "history": success_history,
                 "tail_mean": (
-                    float(early.tracker.tail_mean) if success_history else None
+                    float(early.tracker.tail_mean)
+                    if early is not None and success_history
+                    else None
                 ),
-                "converged": bool(early.tracker.converged),
+                "converged": bool(
+                    early is not None and early.tracker.converged
+                ),
             },
             "checkpoint": {
                 "path": str(checkpoint),
@@ -10007,6 +10041,14 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--task", required=True)
     train.add_argument("--num_envs", type=int, required=True)
     train.add_argument("--max_iterations", type=int, required=True)
+    train.add_argument(
+        "--policy-migration-only",
+        action="store_true",
+        help=(
+            "bind a source checkpoint to the frontier controller and "
+            "exact-zero adapter without collecting rollouts or updating PPO"
+        ),
+    )
     train.add_argument("--seed", type=int, default=17)
     train.add_argument("--output_path", required=True)
     train.add_argument("--benchmark_formatter", default="schema,json")

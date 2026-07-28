@@ -267,6 +267,9 @@ def test_frontier_environment_contract_binds_semantic_source_files():
     assert '"semantic_source_sha256"' in benchmark
     assert "inspect.getsourcefile(value)" in benchmark
     assert "for term_cfg in vars(manager_cfg).values()" in benchmark
+    assert "--policy-migration-only" in benchmark
+    assert '"policy_migration"' in benchmark
+    assert "policy migration requires --max_iterations 0" in benchmark
 
 
 def _nominal_baseline_evidence() -> dict:

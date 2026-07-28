@@ -167,6 +167,22 @@ Before any v24 policy update:
 3. `scripts/dr_anmar_frontier_baseline_gate.py` evaluates eight 45-degree yaw
    buckets and rejects PPO unless all predeclared thresholds pass.
 
+The migration is an explicit zero-rollout operation, not a zero-learning-rate
+training workaround:
+
+```bash
+DR_ANMAR_TRUST_REQUESTED_NUM_ENVS=1 \
+DR_ANMAR_INIT_CHECKPOINT=output/v8-joint-2400x90-lr1e5/runs/2026-07-28_03-19-21/model_20.pt \
+DR_ANMAR_POLICY_BUNDLE=config/policy_bundles/joint-transfer-v23.json \
+DR_ANMAR_POLICY_MIGRATION_ONLY=1 \
+DR_ANMAR_CHECK_SUCCESS=0 \
+./dr_anmar_learning.sh train \
+  DrAnmar-Handover-Needle-Frontier-Hardening-v0 \
+  64 \
+  0 \
+  output/frontier-hardening-v24/migration
+```
+
 The baseline requires at least 80% giver bilateral contact and 75% 10 mm lift
 overall, at least 70% contact and 65% lift in every yaw bucket, at least 50%
 retained handover, no more than a 10 percentage-point arm gap, exactly balanced

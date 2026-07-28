@@ -233,6 +233,10 @@ case "${command}" in
         if [[ "${DR_ANMAR_HANDOVER_GIVER_ADAPTATION:-0}" == "1" ]]; then
             giver_adaptation_args=(--handover_giver_adaptation)
         fi
+        policy_migration_args=()
+        if [[ "${DR_ANMAR_POLICY_MIGRATION_ONLY:-0}" == "1" ]]; then
+            policy_migration_args=(--policy-migration-only)
+        fi
         convergence_args=()
         if [[ "${DR_ANMAR_CHECK_SUCCESS:-1}" == "1" ]]; then
             convergence_args=(
@@ -252,7 +256,8 @@ case "${command}" in
             "${checkpoint_args[@]}" \
             "${policy_bundle_args[@]}" \
             "${learning_rate_args[@]}" \
-            "${giver_adaptation_args[@]}"
+            "${giver_adaptation_args[@]}" \
+            "${policy_migration_args[@]}"
         ;;
     play)
         require_runtime
