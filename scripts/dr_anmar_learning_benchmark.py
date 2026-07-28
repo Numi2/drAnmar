@@ -5529,6 +5529,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             rewards.append(float(reward.float().mean().item()))
             done_count += int(dones.sum().item())
             success_count += int(successes.sum().item())
+            if (
+                args.stop_after_first_episode
+                and env.unwrapped.num_envs == 1
+                and bool(dones[0].item())
+            ):
+                break
         duration = time.perf_counter() - started
         jit_path = export_dir / "policy.pt"
         onnx_path = export_dir / "policy.onnx"
@@ -6769,6 +6775,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 {
                     "resolution": [args.video_width, args.video_height],
                     "chunk_length_frames": args.video_chunk_length,
+                    "stop_after_first_episode": (
+                        args.stop_after_first_episode
+                    ),
                     "folder": str(
                         Path(
                             args.video_folder
@@ -7263,6 +7272,7 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--video_width", type=int, default=1280)
     play.add_argument("--video_height", type=int, default=720)
     play.add_argument("--video_folder")
+    play.add_argument("--stop_after_first_episode", action="store_true")
     play.add_argument(
         "--recovery_demo_rotation_deg",
         type=float,

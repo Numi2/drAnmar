@@ -605,6 +605,7 @@ case "${command}" in
             --num_frames "${frames}" \
             --seed "${DR_ANMAR_SEED}" \
             --video \
+            --stop_after_first_episode \
             --video_length "${chunk_frames}" \
             --video_chunk_length "${chunk_frames}" \
             --video_width "${DR_ANMAR_VIDEO_WIDTH:-640}" \
