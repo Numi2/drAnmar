@@ -686,9 +686,18 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             self.close_dwell[failure] = 0
             self.custody_loss_dwell[failure] = 0
 
+        # A three-step loss declares failure.  Keep the closed jaws stationary
+        # until the five-step bilateral filter is empty, so a late contact
+        # sample cannot turn the required reopening into a premature release.
+        failed_grasp = self.retry_state == _FAILED_GRASP
+        ready_to_reopen = failed_grasp & ~torch.any(
+            self.bilateral_contact_history,
+            dim=-1,
+        )
+        self.retry_state[ready_to_reopen] = _REOPENING
+        failed_grasp = self.retry_state == _FAILED_GRASP
         resetting = (
-            (self.retry_state == _FAILED_GRASP)
-            | (self.retry_state == _REOPENING)
+            (self.retry_state == _REOPENING)
             | (self.retry_state == _OPEN_SETTLE)
         )
         fully_open = torch.all(
@@ -716,19 +725,26 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             self.open_settle_dwell[activation] = 0
             self._activate_recovery(raw, giver_is_robot_1, activation)
 
-        open_action = torch.zeros(
+        hold_closed_action = torch.zeros(
             (raw.shape[0], 7),
             dtype=raw.dtype,
             device=raw.device,
         )
-        open_action[:, 6] = 1.0
+        hold_closed_action[:, 6] = -1.0
         result = self._replace_giver_action(
             base_action,
+            hold_closed_action,
+            giver_is_robot_1,
+            failed_grasp,
+        )
+        open_action = torch.zeros_like(hold_closed_action)
+        open_action[:, 6] = 1.0
+        result = self._replace_giver_action(
+            result,
             open_action,
             giver_is_robot_1,
             resetting,
         )
-        self.retry_state[self.retry_state == _FAILED_GRASP] = _REOPENING
         learned_retry = (
             (self.retry_state == _LEARNED_RETRY) & (phase <= 1)
         )

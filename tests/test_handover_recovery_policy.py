@@ -181,7 +181,7 @@ def test_custody_loss_is_not_redeclared_during_reapproach() -> None:
     assert policy.first_attempt_failed.item()
 
     raw[:, 6:8] = 0.0
-    for _ in range(policy.open_settle_steps):
+    for _ in range(policy.open_settle_steps + 2):
         policy(observation)
     assert policy.retry_count.item() == 1
 
