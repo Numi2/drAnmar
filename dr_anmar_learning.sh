@@ -302,8 +302,14 @@ case "${command}" in
                 esac
         fi
         pickup_recovery_args=()
+        if [[ -n "${DR_ANMAR_RECOVERY_DEMO_ROTATION_DEG:-}" ]]; then
+            pickup_recovery_args+=(
+                --recovery_demo_rotation_deg
+                "${DR_ANMAR_RECOVERY_DEMO_ROTATION_DEG}"
+            )
+        fi
         if [[ "${DR_ANMAR_PICKUP_RECOVERY:-0}" == "1" ]]; then
-            pickup_recovery_args=(--pickup_recovery)
+            pickup_recovery_args+=(--pickup_recovery)
         fi
         if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_CHECKPOINT:-}" ]]; then
             pickup_recovery_args+=(

@@ -3371,6 +3371,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(f"checkpoint not found: {checkpoint}")
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    if args.recovery_demo_rotation_deg:
+        if args.seed in {17, 2361, 4099}:
+            return _fail(
+                "recovery demonstration rotation is forbidden on "
+                "qualification seeds"
+            )
+        if not 0.0 < args.recovery_demo_rotation_deg <= 10.0:
+            return _fail(
+                "recovery demonstration rotation must be in (0, 10] degrees"
+            )
+        rotation_radius = math.radians(
+            args.recovery_demo_rotation_deg
+        )
+        pose_range = env_cfg.events.reset_object_position.params[
+            "pose_range"
+        ]
+        pose_range.update(
+            {
+                "roll": (-rotation_radius, rotation_radius),
+                "pitch": (-rotation_radius, rotation_radius),
+                "yaw": (-rotation_radius, rotation_radius),
+            }
+        )
     if args.pickup_recovery_sweep_replicas < 1:
         return _fail("pickup recovery sweep replicas must be positive")
     if args.pickup_recovery_sobol_candidate is not None:
@@ -6217,6 +6240,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "task": args.task,
                     "seed": args.seed,
+                    "reset_rotation_randomization_deg": (
+                        args.recovery_demo_rotation_deg
+                    ),
                     "base_checkpoint_sha256": _sha256(checkpoint),
                     "position_cap_m": (
                         args.pickup_recovery_position_cap
@@ -6527,6 +6553,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "task": args.task,
                     "seed": args.seed,
+                    "reset_rotation_randomization_deg": (
+                        args.recovery_demo_rotation_deg
+                    ),
                     "base_checkpoint_sha256": _sha256(checkpoint),
                     "pickup_recovery_checkpoint_sha256": (
                         _sha256(
@@ -6663,6 +6692,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "task": args.task,
             "seed": args.seed,
             "episode_length_s": float(env_cfg.episode_length_s),
+            "reset_rotation_randomization_deg": (
+                args.recovery_demo_rotation_deg
+            ),
             "requested_num_envs": args.requested_num_envs,
             "num_envs": env.unwrapped.num_envs,
             "trusted_requested_num_envs": args.trusted_requested_num_envs,
@@ -7231,6 +7263,15 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--video_width", type=int, default=1280)
     play.add_argument("--video_height", type=int, default=720)
     play.add_argument("--video_folder")
+    play.add_argument(
+        "--recovery_demo_rotation_deg",
+        type=float,
+        default=0.0,
+        help=(
+            "development-only reset rotation randomization for recovery "
+            "demonstration coverage"
+        ),
+    )
     play.add_argument("--residual_scale", type=float)
     play.add_argument("--pickup_vertical_action_limit", type=float)
     play.add_argument("--pickup_initial_vertical_action_limit", type=float)

@@ -149,6 +149,10 @@ def qualify(
                 and int(evidence.get("completed_episodes", -1)) == 1200
                 and int(evidence.get("frames_per_env", -1)) == 2000
                 and float(evidence.get("episode_length_s", -1.0)) == 40.0
+                and float(
+                    evidence.get("reset_rotation_randomization_deg", 0.0)
+                )
+                == 0.0
                 and bool(evidence.get("first_terminal_outcome_per_environment"))
             )
             gates.append(
