@@ -1,0 +1,153 @@
+{
+  "schema": "dr.anmar.needle-ready-tissue-runtime-contract.v1",
+  "id": "dranmar-needle-ready-tissue-runtime-v1",
+  "version": "1.1.0",
+  "status": "source_geometry_v2_1_static_qualified_native_requalification_pending",
+  "asset": {
+    "catalog_id": "dranmar-needle-ready-tissue-v2",
+    "asset_version": "2.1.0",
+    "catalog_subpath": "data/Props/SurgicalTissue/NeedleReadyTissueUnit",
+    "source_revision_binding": "current asset-submodule commit and generated catalog lock are required before release",
+    "geometry_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/geometry_contract.json",
+    "qualification_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/qualification_contract.json",
+    "default_lod": "contact"
+  },
+  "native_target": {
+    "machine": "Gilgamesh through an explicitly approved future Numi run",
+    "gpu": "NVIDIA GeForce RTX 4090 24 GiB target",
+    "isaac_sim": "pinned release required",
+    "isaac_lab_revision": "pinned revision required",
+    "newton": "pinned release required",
+    "warp": "pinned release required",
+    "intact_backend": "newton_vbd",
+    "rigid_soft_coupling_target": "coupled_mjwarp_vbd_two_way",
+    "current_topology_execution": "not_executed",
+    "topology_backend_status": "cressim_mpm_route_configured_pending_native_qualification",
+    "clinical_validation": false
+  },
+  "historical_native_evidence": {
+    "status": "retained_v2_0_traceability_only_not_current_qualification",
+    "asset_version": "2.0.0",
+    "asset_revision": "b1155e2577210e913de8fa2c36b2e37692ec43be",
+    "contact_asset_sha256": "c92285616d7015d86ed229f16dadc66b3420ca8503e196ae6e380575e5b991f2",
+    "training_asset_sha256": "cd75a5b29e5d59b3f68b206b819d4d39654b2ebdaf9b0addc06edc3f51bc429c",
+    "validation_asset_sha256": "d9e3dc508702c04bb9283a17ef9e14c81a3168b89743335b943efb6a97dc2643",
+    "evidence_root": "physics_next/benchmarks/needle-ready-tissue",
+    "health": {
+      "peak_displacement_m": 0.052552539314516776,
+      "peak_speed_m_s": 8.027626613448984,
+      "recovery_residual_m": 0.04839363940389566,
+      "assessment": "historical research-default run is retained but is not healthy calibrated tissue qualification"
+    },
+    "current_v2_1_transfer_allowed": false
+  },
+  "lod_policy": {
+    "training": {
+      "points": 560,
+      "tetrahedra": 1944,
+      "use": "large-batch policy curriculum before topology change",
+      "rendering": false
+    },
+    "contact": {
+      "points": 2470,
+      "tetrahedra": 10368,
+      "use": "needle approach, intact contact and rigid-soft qualification",
+      "rendering": "inspection_only"
+    },
+    "validation": {
+      "points": 16650,
+      "tetrahedra": 82944,
+      "use": "mesh convergence and rendered reference",
+      "rendering": "inspection_and_evidence"
+    }
+  },
+  "batching": {
+    "method": "newton_model_builder_replicate_colored_template",
+    "reason": "one colored template is batch-replicated by NVIDIA Newton instead of re-authoring and recoloring every environment",
+    "current_v2_1_native_execution": "not_executed",
+    "historical_v2_0_measured_capacity_lane": {
+      "instances": 2400,
+      "lod": "training",
+      "particles": 1344000,
+      "tetrahedra": 4665600,
+      "iterations": 4,
+      "substeps": 1,
+      "contact": false,
+      "robot": false,
+      "policy": false,
+      "cameras": false,
+      "physics_step_ms_p50": 21.704882965423167,
+      "physics_step_ms_p95": 21.722403028979897,
+      "environment_frames_per_s_p50": 110574.19677513606,
+      "inverted_tetrahedra_final": 0,
+      "global_volume_error_fraction_final": 0.0005439833125316404,
+      "measured_gpu_memory_delta_gib": 1.353515625,
+      "evidence": "physics_next/benchmarks/needle-ready-tissue/training-2400env-newton.json"
+    },
+    "claim_boundary": "The retained capacity lane used v2.0.0 topology and is not current v2.1.0 qualification; it was also not a full two-arm task, contact, camera, PPO, or trained-policy throughput result."
+  },
+  "post_handover_progression": [
+    {
+      "stage": "T0",
+      "name": "canonical geometry and intact deformation",
+      "status": "source_static_qualified_native_v2_1_requalification_pending",
+      "success": "source OpenUSD, semantic and tetrahedral quality gates pass; current-topology Newton VBD and Isaac Lab evidence remains required"
+    },
+    {
+      "stage": "T1",
+      "name": "needle approach to safe bite region",
+      "status": "implemented_pending_native_isaac_lab_validation",
+      "success": "receiver retains the handed-over needle and reaches a sampled safe-bite entry frame without premature tissue contact; authorized contact remains available in the continuation task"
+    },
+    {
+      "stage": "T2",
+      "name": "controlled pre-puncture indentation",
+      "status": "queued_after_T1_native_validation_and_force_depth_calibration",
+      "success": "measured needle-tissue contact follows a calibrated force-depth envelope and unloads without damage"
+    },
+    {
+      "stage": "T3",
+      "name": "puncture and persistent tract",
+      "status": "cressim_mpm_route_open_pending_native_qualification_and_physical_data",
+      "success": "one qualified entry and exit with persistent tract, no unintended crossing and calibrated force-depth agreement"
+    },
+    {
+      "stage": "T4",
+      "name": "needle arc passage and thread capture",
+      "status": "queued_after_qualified_T3_and_thread_tissue_coupling",
+      "success": "needle and qualified Warp suture traverse the intended tract while tissue, needle and thread topology remain consistent"
+    }
+  ],
+  "reward_boundary": {
+    "success_authority": "physics_owned_outcome",
+    "allowed_dense_learning_signals": [
+      "bounded needle-to-entry-frame distance",
+      "bounded orientation error",
+      "contact-force envelope error after calibration",
+      "retention and slip diagnostics"
+    ],
+    "dense_signals_do_not_equal_success": true,
+    "forbidden_success_shortcuts": [
+      "approach alone",
+      "contact alone",
+      "height alone",
+      "phase label alone",
+      "policy-written puncture flag",
+      "policy-written tissue state"
+    ]
+  },
+  "promotion_boundaries": {
+    "geometry": true,
+    "openusd": true,
+    "intact_newton_vbd": false,
+    "isaac_lab_spawn": false,
+    "2400_training_lod_capacity_without_full_scene": false,
+    "historical_v2_0_evidence_is_current_qualification": false,
+    "needle_tissue_puncture": false,
+    "persistent_tract": false,
+    "thread_passage": false,
+    "damage_and_tear": false,
+    "physical_calibration": false,
+    "clinical_validation": false
+  }
+}

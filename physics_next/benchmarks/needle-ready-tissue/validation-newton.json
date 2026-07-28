@@ -1,0 +1,83 @@
+{
+  "schema": "dr.anmar.needle-ready-tissue-newton-qualification.v1",
+  "created_at": "2026-07-27T21:57:43.741587+00:00",
+  "scope": "intact_deformation_and_rigid_soft_contact_only",
+  "asset": {
+    "path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/needle_ready_tissue_validation.usda",
+    "sha256": "d9e3dc508702c04bb9283a17ef9e14c81a3168b89743335b943efb6a97dc2643",
+    "lod": "validation",
+    "instances": 1,
+    "points_per_instance": 16650,
+    "tetrahedra_per_instance": 82944,
+    "total_particles": 16650,
+    "total_tetrahedra": 82944
+  },
+  "runtime": {
+    "backend": "nvidia_newton_vbd",
+    "device": "cuda:0",
+    "newton": "1.5.0.dev0",
+    "warp": "1.16.0.dev20260723",
+    "coloring_s": 0.3708427910460159,
+    "replication_s": 0.06621320999693125,
+    "finalize_s": 0.24664742895402014,
+    "gpu_memory_total_bytes": 25241190400,
+    "gpu_memory_free_initial_bytes": 16623271936,
+    "gpu_memory_free_minimum_bytes": 15963717632,
+    "gpu_memory_delta_peak_bytes": 659554304
+  },
+  "solver": {
+    "dt_s": 0.001,
+    "steps_requested": 100,
+    "substeps": 2,
+    "iterations": 4,
+    "youngs_modulus_pa_seed": 180000.0,
+    "poisson_ratio_seed": 0.47,
+    "density_kg_m3_seed": 1050.0,
+    "particle_radius_m": 0.00075,
+    "gravity_m_s2": [
+      0.0,
+      0.0,
+      -9.81
+    ],
+    "contact_probe": false,
+    "volume_audit_interval": 1
+  },
+  "metrics": {
+    "steps_completed": 100,
+    "finite_state_fraction": 1.0,
+    "physics_step_ms_p50": 2.7595669962465763,
+    "physics_step_ms_p95": 2.8622257348615676,
+    "physics_step_ms_max": 2.963862963952124,
+    "peak_displacement_m": 0.05300504809658272,
+    "peak_speed_m_s": 2.705544541689657,
+    "peak_global_volume_error_fraction": 0.006081570497310352,
+    "inverted_tetrahedra_peak": 0,
+    "recovery_residual_m": 0.05300504809658272,
+    "contact_candidates_peak": 0,
+    "geometric_contact_samples": 0,
+    "maximum_geometric_penetration_m": 0.0
+  },
+  "final_state_sha256": "efb535a1c68a0f8cef35a09119bcdc94a54fb2ef4f71aa969ad77ec9cc679c92",
+  "deterministic_replay": {
+    "reference": null,
+    "exact_final_state_hash_match": null
+  },
+  "runtime_gate_passed": true,
+  "calibration_status": "research_defaults_unvalidated",
+  "clinical_validation": false,
+  "promotion_boundaries": {
+    "geometry_and_intact_runtime": true,
+    "puncture": false,
+    "persistent_tract": false,
+    "thread_passage": false,
+    "damage_and_tear": false,
+    "physical_calibration": false,
+    "clinical_use": false
+  },
+  "limitations": [
+    "Kinematic outer fixtures and retraction nodes are engineering qualification boundary conditions, not anatomy.",
+    "The spherical contact probe is not a needle-tip puncture model.",
+    "Material values are uncalibrated research seeds.",
+    "No topology change, persistent tract, thread passage, damage, or clinical claim is established."
+  ]
+}

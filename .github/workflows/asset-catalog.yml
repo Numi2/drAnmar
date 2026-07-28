@@ -44,6 +44,32 @@ jobs:
           uv run python -m compileall -q scripts tests source/extensions/orbit.surgical.assets/orbit/surgical/assets
           git ls-files '*.sh' -z | xargs -0 -n1 bash -n
 
+      - name: Validate T1 asset sources and deterministic package contracts
+        run: |
+          uv run python -m compileall -q \
+            source/extensions/orbit.surgical.assets/tools \
+            source/extensions/orbit.surgical.assets/test
+          uv run ruff check \
+            source/extensions/orbit.surgical.assets/tools/generate_needle_ready_tissue.py \
+            source/extensions/orbit.surgical.assets/tools/generate_needle_ready_tissue_visuals.py \
+            source/extensions/orbit.surgical.assets/tools/generate_needle_t1_compatibility.py \
+            source/extensions/orbit.surgical.assets/tools/generate_psm_t1_jaw_contact_candidate.py \
+            source/extensions/orbit.surgical.assets/tools/generate_t1_collider_candidates.py \
+            source/extensions/orbit.surgical.assets/tools/generate_t1_non_tissue_visuals.py \
+            source/extensions/orbit.surgical.assets/test/test_needle_ready_tissue_geometry.py \
+            source/extensions/orbit.surgical.assets/test/test_needle_ready_tissue_visuals.py \
+            source/extensions/orbit.surgical.assets/test/test_needle_t1_compatibility.py \
+            source/extensions/orbit.surgical.assets/test/test_psm_t1_jaw_contact_candidate.py \
+            source/extensions/orbit.surgical.assets/test/test_t1_collider_candidates.py \
+            source/extensions/orbit.surgical.assets/test/test_t1_non_tissue_visuals.py
+          uv run python -m pytest -q \
+            source/extensions/orbit.surgical.assets/test/test_needle_ready_tissue_geometry.py \
+            source/extensions/orbit.surgical.assets/test/test_needle_ready_tissue_visuals.py \
+            source/extensions/orbit.surgical.assets/test/test_needle_t1_compatibility.py \
+            source/extensions/orbit.surgical.assets/test/test_psm_t1_jaw_contact_candidate.py \
+            source/extensions/orbit.surgical.assets/test/test_t1_collider_candidates.py \
+            source/extensions/orbit.surgical.assets/test/test_t1_non_tissue_visuals.py
+
       - name: Run scoped lint and type gates
         run: |
           validation_python="$(uv run python -c 'import sys; print(sys.executable)')"

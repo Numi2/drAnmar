@@ -6,7 +6,6 @@ import math
 import runpy
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 TASK_ROOT = ROOT / "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks"
 
@@ -14,7 +13,7 @@ TASK_ROOT = ROOT / "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks"
 def test_learning_path_manifest_is_ordered_and_branded() -> None:
     manifest = json.loads((ROOT / "config/dranmar_learning_path.json").read_text())
     stages = manifest["stages"]
-    assert [stage["stage"] for stage in stages] == list(range(1, 7))
+    assert [stage["stage"] for stage in stages] == list(range(1, 8))
     assert stages[0]["task"] == "DrAnmar-Reach-PSM-IK-Rel-v0"
     assert all(stage["task"].startswith("DrAnmar-") for stage in stages)
     assert manifest["defaults"]["held_out_seeds"]
@@ -629,13 +628,12 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "class HandoverAnalyticController(nn.Module):" in handover_model_source
     assert "torch.where(residual_mask, sampled, mean)" in handover_model_source
     assert (
-        "(phase == 2)\n            & presentation_ready\n"
+        "(phase == 2)\n            & presentation_stable\n"
         in handover_model_source
     )
     assert "receiver_approach_active = (" in handover_model_source
-    assert handover_model_source.count(
-        "receiver_approach_active.unsqueeze(-1)"
-    ) >= 2
+    assert "receiver_approach_active.unsqueeze(-1)" in handover_model_source
+    assert "receiver_orientation_active.unsqueeze(-1)" in handover_model_source
     assert "receiver_residual_enabled = (" in handover_model_source
     assert (
         "& self.receiver_residual_enabled_for_learning"
@@ -654,10 +652,8 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "& ~receiver_any_contact"
         in handover_model_source
     )
-    assert (
-        "giver_pickup_transport_residual.unsqueeze(-1)"
-        in handover_model_source
-    )
+    assert "giver_pickup_transport_residual" in handover_model_source
+    assert "giver_recovery_approach_residual" in handover_model_source
     assert "giver_residual[:, :2]" in handover_model_source
     assert "giver_residual[:, :3]" not in handover_model_source
     assert (
@@ -863,6 +859,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         '"policy_presentation_fraction_from_giver"'
         in benchmark_source
     )
+    assert '"full_handover_evaluation_success_unchanged": True' in (
+        benchmark_source
+    )
     assert (
         '"policy_presentation_height_in_robot_frame"'
         in benchmark_source
@@ -922,7 +921,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         "giver_transport_normalized_contact_thresholds = values"
         in benchmark_source
     )
-    assert "selected_receiver_z_offset = -0.0018" in benchmark_source
+    assert "selected_receiver_z_offset = -0.003" in benchmark_source
     assert '"rule": "minimum_reset_tool_tip_to_needle_distance"' in benchmark_source
     assert '"robot_1_selected_as_giver"' in benchmark_source
     assert '"robot_2_selected_as_giver"' in benchmark_source
@@ -1017,7 +1016,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "pickup_recovery_context," in handover_model_source
     assert "pickup_deceleration_fraction = (" in handover_model_source
     assert (
-        "self.receiver_contact_centering_action_limit = 0.0025"
+        "self.receiver_contact_centering_action_limit = 0.005"
         in handover_model_source
     )
     assert (
@@ -1044,6 +1043,10 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
     assert "& ~receiver_bilateral_contact" in benchmark_source
     assert (
         '"giver_release_waits_for_current_receiver_bilateral": True'
+        in benchmark_source
+    )
+    assert (
+        '"giver_release_uses_time_only_settle": False'
         in benchmark_source
     )
     assert "((phase == 3) & giver_any_contact)" in benchmark_source
@@ -1144,6 +1147,7 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
 def test_needle_geometry_grasp_offsets_follow_composed_arc() -> None:
     scope = runpy.run_path(str(TASK_ROOT / "surgical/lift/grasp_frames.py"))
     grasp_offset = scope["needle_geometry_grasp_offset_m"]
+    grasp_frame = scope["needle_geometry_grasp_frame"]
 
     blunt_side = grasp_offset(0.0)
     one_third = grasp_offset(1.0 / 3.0)
@@ -1156,6 +1160,33 @@ def test_needle_geometry_grasp_offsets_follow_composed_arc() -> None:
     assert math.isclose(sharp_side[0], 0.019147, abs_tol=1e-6)
     assert math.isclose(sharp_side[1], -0.019548, abs_tol=1e-6)
     assert math.isclose(one_third[2], -0.00101704, abs_tol=1e-9)
+    giver_frame = grasp_frame(0.4, grasp_z_m=0.0006)
+    receiver_frame = grasp_frame(0.65, grasp_z_m=-0.003)
+    expected_giver = (
+        0.0007375535249017802,
+        0.005600696415109648,
+        0.0006,
+    )
+    expected_receiver = (
+        0.0019002163218475414,
+        -0.009119058578501121,
+        -0.003,
+    )
+    assert all(
+        math.isclose(actual, expected, abs_tol=1e-12)
+        for actual, expected in zip(giver_frame[0], expected_giver, strict=True)
+    )
+    assert all(
+        math.isclose(actual, expected, abs_tol=1e-12)
+        for actual, expected in zip(
+            receiver_frame[0], expected_receiver, strict=True
+        )
+    )
+    assert math.isclose(
+        receiver_frame[1] - giver_frame[1],
+        0.790114043036337,
+        abs_tol=1e-12,
+    )
 
 
 def test_launcher_fits_parallel_worlds_to_live_ram_and_vram() -> None:

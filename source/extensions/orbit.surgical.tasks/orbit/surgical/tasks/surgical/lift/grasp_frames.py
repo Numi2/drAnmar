@@ -48,8 +48,28 @@ def needle_geometry_grasp_offset_m(
     )
 
 
-_NEEDLE_PROVISIONAL_GEOMETRY_OFFSET_M = needle_geometry_grasp_offset_m(
-    NEEDLE_PROVISIONAL_ARC_FRACTION
+def needle_geometry_grasp_frame(
+    arc_fraction: float,
+    *,
+    grasp_z_m: float | None = None,
+) -> tuple[tuple[float, float, float], float]:
+    """Return one needle-local grasp position and centerline tangent yaw."""
+
+    offset = needle_geometry_grasp_offset_m(arc_fraction)
+    if grasp_z_m is not None:
+        offset = (offset[0], offset[1], grasp_z_m)
+    arc_angle = (
+        NEEDLE_ARC_START_RAD + arc_fraction * NEEDLE_ARC_EXTENT_RAD
+    )
+    tangent_yaw_rad = arc_angle + math.pi / 2.0
+    return offset, tangent_yaw_rad
+
+
+(
+    _NEEDLE_PROVISIONAL_GEOMETRY_OFFSET_M,
+    NEEDLE_PROVISIONAL_TANGENT_YAW_RAD,
+) = needle_geometry_grasp_frame(
+    NEEDLE_PROVISIONAL_ARC_FRACTION,
 )
 NEEDLE_PROVISIONAL_GRASP_OFFSET_M = (
     _NEEDLE_PROVISIONAL_GEOMETRY_OFFSET_M[0],

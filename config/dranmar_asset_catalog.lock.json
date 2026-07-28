@@ -155,6 +155,60 @@
       "sha256": "5fc31f57028c9eda6004b0f4b4258bfeb66f737bc88a61928209c9fbb6bfe81a"
     },
     {
+      "bytes": 6588590,
+      "clinical_validation": false,
+      "entrypoints": [
+        "dranmar_needle_22mm_half_circle_taper_candidate.usda",
+        "dranmar_needle_22mm_half_circle_taper_candidate_base.usda",
+        "dranmar_needle_22mm_half_circle_taper_candidate_geometry.usdc",
+        "dranmar_needle_22mm_half_circle_taper_candidate_materials.usda",
+        "dranmar_needle_22mm_half_circle_taper_candidate_physics.usda",
+        "dranmar_needle_22mm_half_circle_taper_candidate_physx.usda"
+      ],
+      "file_count": 23,
+      "id": "dr_anmar:Props/SurgicalClosure/Needle22HalfCircleTaperCandidate",
+      "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle22HalfCircleTaperCandidate/LICENSE.txt",
+      "metadata": [
+        "LICENSE.txt",
+        "NOTICE.txt",
+        "PROVENANCE.md",
+        "README.md",
+        "asset_manifest.json",
+        "collision_report.json",
+        "geometry_contract.json",
+        "geometry_report.json",
+        "interaction_frames.json",
+        "physics_profile.json",
+        "provenance.json"
+      ],
+      "provider": "dr_anmar",
+      "relative_path": "Props/SurgicalClosure/Needle22HalfCircleTaperCandidate",
+      "sha256": "1be91c16dee554a7f7fcab532cd1b667724fdd06755c57372a59a1bbe77568f3"
+    },
+    {
+      "bytes": 6727763,
+      "clinical_validation": false,
+      "entrypoints": [
+        "dranmar_needle_t1_compatibility.usda"
+      ],
+      "file_count": 15,
+      "id": "dr_anmar:Props/SurgicalClosure/NeedleT1Compatibility",
+      "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleT1Compatibility/LICENSE.txt",
+      "metadata": [
+        "LICENSE.txt",
+        "NOTICE.txt",
+        "README.md",
+        "asset_manifest.json",
+        "geometry_contract.json",
+        "geometry_report.json",
+        "interaction_frames.json",
+        "physics_profile.json"
+      ],
+      "provider": "dr_anmar",
+      "relative_path": "Props/SurgicalClosure/NeedleT1Compatibility",
+      "sha256": "08368f69f16fca56d3d6c8a9e88d5bf099964d7720940357474d2e8eed94ff8c"
+    },
+    {
       "bytes": 17476594,
       "clinical_validation": false,
       "entrypoints": [
@@ -488,6 +542,63 @@
       "sha256": "500276bee068aff195ce6a832c7326ffce23068850e371541c65288db3b75dcb"
     },
     {
+      "bytes": 12832353,
+      "clinical_validation": false,
+      "entrypoints": [
+        "legacy_needle_visual_v1.usda",
+        "materials.usda",
+        "psm_visual_v1.usda",
+        "reference_or_rig_v1.usda",
+        "table_visual_v1.usda"
+      ],
+      "file_count": 22,
+      "id": "dr_anmar:Props/SurgicalScene/T1",
+      "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/LICENSE.txt",
+      "metadata": [
+        "LICENSE.txt",
+        "NOTICE.txt",
+        "PROVENANCE.md",
+        "README.md",
+        "asset_manifest.json"
+      ],
+      "provider": "dr_anmar",
+      "relative_path": "Props/SurgicalScene/T1",
+      "sha256": "4391eab983c8b4220b9f5f8d9bc0279cc4e43e7c33b70bc038ec6a96fe9fac1b"
+    },
+    {
+      "bytes": 84429662,
+      "clinical_validation": false,
+      "entrypoints": [
+        "needle_ready_tissue_contact.usda",
+        "needle_ready_tissue_contact_visual.usda",
+        "needle_ready_tissue_training.usda",
+        "needle_ready_tissue_training_visual.usda",
+        "needle_ready_tissue_unit.usda",
+        "needle_ready_tissue_validation.usda",
+        "needle_ready_tissue_validation_visual.usda",
+        "needle_ready_tissue_visual_unit.usda"
+      ],
+      "file_count": 58,
+      "id": "dr_anmar:Props/SurgicalTissue/NeedleReadyTissueUnit",
+      "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/LICENSE.txt",
+      "metadata": [
+        "LICENSE.txt",
+        "NOTICE.txt",
+        "README.md",
+        "asset_manifest.json",
+        "geometry_contract.json",
+        "geometry_report.json",
+        "interaction_frames.json",
+        "lod_mapping.json",
+        "physics_profile.json",
+        "qualification_contract.json",
+        "visual_manifest.json"
+      ],
+      "provider": "dr_anmar",
+      "relative_path": "Props/SurgicalTissue/NeedleReadyTissueUnit",
+      "sha256": "a18a08b8451aedf087cee378ad173f36a8a6b0106a1ffcab5dec43916a347a18"
+    },
+    {
       "bytes": 17062976,
       "clinical_validation": false,
       "entrypoints": [
@@ -517,18 +628,18 @@
       "sha256": "29dc4940d49f86fa11e3ddcd43c78ce18b890ef539667a3dfa012b68da7bbbfa"
     },
     {
-      "bytes": 18839808,
+      "bytes": 18863710,
       "clinical_validation": false,
       "entrypoints": [
         "table.usd"
       ],
-      "file_count": 1,
+      "file_count": 11,
       "id": "dr_anmar:Props/Table",
       "license_path": "LICENSE",
       "metadata": [],
       "provider": "dr_anmar",
       "relative_path": "Props/Table",
-      "sha256": "e803ce27ca757a6da56aa828e2e5dd0e7f26c1fdd3b8b20952129ece8029842b"
+      "sha256": "2b11a3b3ddcb246344078c47ff486a565677b156cd22c33d6cdd630607d2e9d1"
     },
     {
       "bytes": 28458239,
@@ -559,20 +670,20 @@
       "sha256": "47600f1d580529f1de12805a09046f2e603accf855af403b6419ea1e391e86d6"
     },
     {
-      "bytes": 44532251,
+      "bytes": 44605973,
       "clinical_validation": false,
       "entrypoints": [
         "psm.usd",
         "psm_col.usd",
         "psm_skin_adhesive.usda"
       ],
-      "file_count": 3,
+      "file_count": 22,
       "id": "dr_anmar:Robots/dVRK/PSM",
       "license_path": "LICENSE",
       "metadata": [],
       "provider": "dr_anmar",
       "relative_path": "Robots/dVRK/PSM",
-      "sha256": "a153cb54be657494f834b0a0fcb0b51241fff8b36dac73ddb42b7702cc798c8b"
+      "sha256": "d4e94f06571c52b29effd1523ca0683f54cf215200f5de3d6d2f025798f00227"
     },
     {
       "bytes": 3457507,
@@ -702,8 +813,8 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "0ffaf59b036c2cc9ceb90054277657dcbc0049a3b95a55c9db6b7c9aa4abf237",
-  "catalog_version": "1.3.0",
+  "catalog_sha256": "d10a22dc10625c7b65030816c2e47afb5c6cf4fb03b116c52284cce186a63155",
+  "catalog_version": "1.5.0",
   "clinical_validation": false,
   "i4h": {
     "asset_version": "0.7.0",
@@ -830,22 +941,6 @@
         "real_world_evidence": "instrumented_trigger_and_pusher_measurements_not_yet_established",
         "software_evidence": "repository_verified_asset_mechanism_and_room_contracts",
         "training_readiness": "available_for_simulation_training_and_evaluation"
-      },
-      {
-        "artifacts": {
-          "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
-          "explicit_tetmesh": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
-          "profile": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
-          "report": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.report.json"
-        },
-        "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
-        "clinical_validation": false,
-        "id": "dr-anmar-suturable-tissue-v1",
-        "native_simulator_evidence": "native_execution_not_yet_recorded",
-        "product_capability": "simulation_training_component",
-        "real_world_evidence": "deformation_puncture_pullout_and_closure_bench_evidence_not_yet_established",
-        "software_evidence": "repository_verified_asset_closure",
-        "training_readiness": "available_for_training_workcell_composition"
       },
       {
         "artifacts": {
@@ -999,6 +1094,23 @@
         "real_world_evidence": "anatomy_mechanics_and_physiology_bench_correlation_not_yet_established",
         "software_evidence": "repository_verified_asset_runtime_and_state_contracts",
         "training_readiness": "available_for_simulation_training_data_generation_and_evaluation"
+      },
+      {
+        "artifacts": {
+          "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/needle_ready_tissue_unit.usda",
+          "explicit_tetmesh": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/needle_ready_tissue_contact.usda",
+          "historical_native_evidence": "physics_next/benchmarks/needle-ready-tissue/contact-newton.json",
+          "profile": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/geometry_contract.json",
+          "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/geometry_report.json"
+        },
+        "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/needle_ready_tissue_unit.usda",
+        "clinical_validation": false,
+        "id": "dranmar-needle-ready-tissue-v2",
+        "native_simulator_evidence": "current_v2_1_topology_native_newton_isaac_lab_rtx_and_2400_environment_requalification_not_yet_recorded; historical_v2_0_receipts_are_not_current_qualification",
+        "product_capability": "simulation_training_component",
+        "real_world_evidence": "deformation_puncture_pullout_and_closure_bench_evidence_not_yet_established",
+        "software_evidence": "repository_verified_asset_closure",
+        "training_readiness": "available_for_training_workcell_composition"
       },
       {
         "artifacts": {

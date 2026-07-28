@@ -127,7 +127,7 @@ python3 scripts/dr_anmar_i4h_receipt.py verify
 
 Repository-owned source assets are additionally bounded by
 `quality.growth_budgets` in `config/dranmar_asset_catalog.json`. The catalog
-gate rejects an asset unit above 64 MiB or aggregate catalog source above
+gate rejects an asset unit above 96 MiB or aggregate catalog source above
 512 MiB. Raising either limit is a deliberate, reviewable policy change.
 Generated previews, checkpoints, recordings, datasets, and caches do not
 belong in those budgets because they remain external runtime data.

@@ -36,6 +36,7 @@ _HASH_PATTERN = re.compile(r"^[0-9a-f]{7,64}$")
 _COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 _SKIP_HASH_NAMES = frozenset({".DS_Store", ".gitattributes", ".gitignore"})
 _SKIP_HASH_DIRS = frozenset({".git", "__pycache__"})
+MEMBER_MANIFEST_NAMES = frozenset({"asset_manifest.json", "visual_manifest.json"})
 PORTFOLIO_PATH_FIELDS = frozenset(
     {
         "asset",
@@ -44,6 +45,7 @@ PORTFOLIO_PATH_FIELDS = frozenset(
         "explicit_tetmesh",
         "geometry_layer",
         "gpu_report",
+        "historical_native_evidence",
         "interaction_frames",
         "material_texture",
         "materials_layer",
@@ -444,6 +446,335 @@ def _issue(
     issues.append(CatalogIssue(severity, code, rendered_path, message))
 
 
+def _sha256_of_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _asset_extension_root(manifest_path: Path) -> Path | None:
+    """Return the local asset-extension root that owns one manifest."""
+
+    for parent in manifest_path.resolve().parents:
+        if parent.name == "orbit.surgical.assets":
+            return parent
+    return None
+
+
+def _validate_manifest_file_receipt(
+    *,
+    manifest_path: Path,
+    reference: str,
+    receipt: Mapping[str, Any],
+    base: Path,
+    repository_root: Path,
+    issues: list[CatalogIssue],
+    role: str,
+) -> None:
+    try:
+        relative = _safe_relative_path(reference)
+    except ValueError as error:
+        _issue(
+            issues,
+            "error",
+            "unsafe_member_manifest_reference",
+            manifest_path,
+            f"{role} {reference!r}: {error}",
+            repository_root,
+        )
+        return
+    base = base.resolve()
+    resolved = (base / relative).resolve()
+    if not _contains(base, resolved) or not _contains(repository_root, resolved):
+        _issue(
+            issues,
+            "error",
+            "escaping_member_manifest_reference",
+            manifest_path,
+            f"{role} escapes its declared root: {reference}",
+            repository_root,
+        )
+        return
+    if not resolved.is_file():
+        _issue(
+            issues,
+            "error",
+            "missing_member_manifest_reference",
+            manifest_path,
+            f"{role} does not exist: {reference}",
+            repository_root,
+        )
+        return
+
+    expected_bytes = receipt.get("bytes")
+    if expected_bytes is not None:
+        if (
+            not isinstance(expected_bytes, int)
+            or isinstance(expected_bytes, bool)
+            or expected_bytes < 0
+        ):
+            _issue(
+                issues,
+                "error",
+                "invalid_member_manifest_bytes",
+                manifest_path,
+                f"{role} has an invalid byte receipt: {reference}",
+                repository_root,
+            )
+        elif resolved.stat().st_size != expected_bytes:
+            _issue(
+                issues,
+                "error",
+                "member_manifest_bytes_mismatch",
+                manifest_path,
+                (
+                    f"{role} byte receipt does not match {reference}: "
+                    f"{expected_bytes} != {resolved.stat().st_size}"
+                ),
+                repository_root,
+            )
+
+    expected_sha256 = receipt.get("sha256")
+    if not isinstance(expected_sha256, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", expected_sha256
+    ):
+        _issue(
+            issues,
+            "error",
+            "invalid_member_manifest_sha256",
+            manifest_path,
+            f"{role} has no full lowercase SHA-256 receipt: {reference}",
+            repository_root,
+        )
+    elif _sha256_of_file(resolved) != expected_sha256:
+        _issue(
+            issues,
+            "error",
+            "member_manifest_sha256_mismatch",
+            manifest_path,
+            f"{role} SHA-256 receipt does not match: {reference}",
+            repository_root,
+        )
+
+
+def validate_member_manifest(
+    manifest_path: Path,
+    repository_root: Path = REPOSITORY_ROOT,
+    *,
+    payload: Mapping[str, Any] | None = None,
+) -> tuple[CatalogIssue, ...]:
+    """Validate dependency-complete member manifests and overlay receipts.
+
+    Current Dr.Anmar packages use several deliberately distinct schemas.  The
+    common integrity interface is a root ``members`` mapping with byte and
+    SHA-256 receipts, so validation keys off that interface rather than one
+    historical schema identifier.
+    """
+
+    repository_root = repository_root.expanduser().resolve()
+    manifest_path = manifest_path.expanduser().resolve()
+    issues: list[CatalogIssue] = []
+    if manifest_path.name not in MEMBER_MANIFEST_NAMES:
+        return ()
+    if payload is None:
+        try:
+            candidate = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            _issue(
+                issues,
+                "error",
+                "invalid_member_manifest",
+                manifest_path,
+                str(error),
+                repository_root,
+            )
+            return tuple(issues)
+        payload = candidate if isinstance(candidate, Mapping) else None
+    if not isinstance(payload, Mapping) or not isinstance(
+        payload.get("members"), Mapping
+    ):
+        return ()
+
+    manifest_root = manifest_path.parent.resolve()
+    members = payload["members"]
+    for reference, receipt in sorted(members.items(), key=lambda item: str(item[0])):
+        if not isinstance(reference, str) or not isinstance(receipt, Mapping):
+            _issue(
+                issues,
+                "error",
+                "invalid_member_manifest_entry",
+                manifest_path,
+                "Manifest members must map normalized paths to receipt objects.",
+                repository_root,
+            )
+            continue
+        _validate_manifest_file_receipt(
+            manifest_path=manifest_path,
+            reference=reference,
+            receipt=receipt,
+            base=manifest_root,
+            repository_root=repository_root,
+            issues=issues,
+            role="member",
+        )
+
+    local_entrypoints: list[str] = []
+    primary_usd = payload.get("primary_usd")
+    if isinstance(primary_usd, str) and primary_usd:
+        local_entrypoints.append(primary_usd)
+    entrypoints = payload.get("entrypoints")
+    if isinstance(entrypoints, Mapping):
+        local_entrypoints.extend(
+            value
+            for value in entrypoints.values()
+            if isinstance(value, str) and value
+        )
+    for reference in sorted(set(local_entrypoints)):
+        if reference not in members:
+            _issue(
+                issues,
+                "error",
+                "unreceipted_manifest_entrypoint",
+                manifest_path,
+                f"Entrypoint is not included in members: {reference}",
+                repository_root,
+            )
+
+    base_physics = payload.get("base_physics_sha256")
+    if isinstance(base_physics, Mapping):
+        for reference, expected_sha256 in sorted(base_physics.items()):
+            _validate_manifest_file_receipt(
+                manifest_path=manifest_path,
+                reference=str(reference),
+                receipt={"sha256": expected_sha256},
+                base=manifest_root,
+                repository_root=repository_root,
+                issues=issues,
+                role="base physics dependency",
+            )
+
+    extension_root = _asset_extension_root(manifest_path)
+    if extension_root is not None:
+        generator = payload.get("generator")
+        if isinstance(generator, Mapping):
+            generator_path = generator.get("path") or generator.get(
+                "repository_path"
+            )
+            if isinstance(generator_path, str) and generator_path:
+                _validate_manifest_file_receipt(
+                    manifest_path=manifest_path,
+                    reference=generator_path,
+                    receipt={"sha256": generator.get("sha256")},
+                    base=extension_root,
+                    repository_root=repository_root,
+                    issues=issues,
+                    role="generator",
+                )
+
+        preserved = payload.get("preserved_source_assets")
+        if isinstance(preserved, Mapping):
+            for reference, receipt in sorted(preserved.items()):
+                if isinstance(receipt, Mapping):
+                    _validate_manifest_file_receipt(
+                        manifest_path=manifest_path,
+                        reference=str(reference),
+                        receipt=receipt,
+                        base=extension_root,
+                        repository_root=repository_root,
+                        issues=issues,
+                        role="preserved source dependency",
+                    )
+
+        base_assets = payload.get("base_assets")
+        if isinstance(base_assets, Mapping):
+            for receipt in base_assets.values():
+                if not isinstance(receipt, Mapping):
+                    continue
+                reference = receipt.get("path")
+                if isinstance(reference, str) and reference:
+                    _validate_manifest_file_receipt(
+                        manifest_path=manifest_path,
+                        reference=reference,
+                        receipt=receipt,
+                        base=extension_root,
+                        repository_root=repository_root,
+                        issues=issues,
+                        role="base asset dependency",
+                    )
+
+        base_dependency = payload.get("base_dependency")
+        if isinstance(base_dependency, Mapping):
+            reference = base_dependency.get("repository_path")
+            if isinstance(reference, str) and reference:
+                _validate_manifest_file_receipt(
+                    manifest_path=manifest_path,
+                    reference=reference,
+                    receipt=base_dependency,
+                    base=extension_root,
+                    repository_root=repository_root,
+                    issues=issues,
+                    role="base dependency",
+                )
+
+        external_dependencies = payload.get("external_dependencies")
+        if isinstance(external_dependencies, Mapping):
+            for receipt in external_dependencies.values():
+                if not isinstance(receipt, Mapping):
+                    continue
+                reference = receipt.get("repository_path")
+                if isinstance(reference, str) and reference:
+                    _validate_manifest_file_receipt(
+                        manifest_path=manifest_path,
+                        reference=reference,
+                        receipt=receipt,
+                        base=extension_root,
+                        repository_root=repository_root,
+                        issues=issues,
+                        role="external overlay dependency",
+                    )
+
+    vendor_dependencies = payload.get("vendor_dependencies")
+    if isinstance(vendor_dependencies, Mapping):
+        for dependency in vendor_dependencies.values():
+            if not isinstance(dependency, Mapping):
+                continue
+            destination = dependency.get("destination_root")
+            dependency_members = dependency.get("members")
+            if not isinstance(destination, str) or not isinstance(
+                dependency_members, Mapping
+            ):
+                continue
+            try:
+                destination_root = (
+                    manifest_root / _safe_relative_path(destination)
+                ).resolve()
+            except ValueError as error:
+                _issue(
+                    issues,
+                    "error",
+                    "unsafe_vendor_dependency_root",
+                    manifest_path,
+                    str(error),
+                    repository_root,
+                )
+                continue
+            for reference, receipt in sorted(dependency_members.items()):
+                if isinstance(receipt, Mapping):
+                    _validate_manifest_file_receipt(
+                        manifest_path=manifest_path,
+                        reference=str(reference),
+                        receipt=receipt,
+                        base=destination_root,
+                        repository_root=repository_root,
+                        issues=issues,
+                        role="vendored dependency",
+                    )
+
+    return tuple(issues)
+
+
 def _validate_policy(
     policy: Mapping[str, Any],
     repository_root: Path,
@@ -805,6 +1136,14 @@ def _validate_json_and_usd(
                                     f"Manifest reference does not exist: {reference}",
                                     repository_root,
                                 )
+                    if isinstance(payload, Mapping):
+                        issues.extend(
+                            validate_member_manifest(
+                                path,
+                                repository_root,
+                                payload=payload,
+                            )
+                        )
             if path.suffix.lower() not in USD_SUFFIXES:
                 continue
             source = _textual_usd(path)

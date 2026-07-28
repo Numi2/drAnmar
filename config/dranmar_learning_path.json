@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.34.0",
+  "schema_version": "1.35.0",
   "name": "DrAnmar Learning Path",
   "runtime": {
     "simulator": "Isaac Sim 6",
@@ -353,6 +353,74 @@
           "policy_analytic_vertical_authority": true,
           "policy_receiver_residual_enabled": false
         }
+      }
+    },
+    {
+      "stage": 7,
+      "name": "retained_needle_safe_bite_approach",
+      "task": "DrAnmar-Handover-Needle-Safe-Bite-T1-v0",
+      "contract": "config/dranmar_safe_bite_t1.json",
+      "learning": {
+        "initialization": "full_analytic_handover_then_analytic_safe_bite_servo_plus_bounded_receiver_pose_residual",
+        "handover_checkpoint_transfer": false,
+        "handover_authority": "checkpoint_free_analytic_physical_sequence",
+        "safe_bite_residual_action_limit": 0.003,
+        "safe_bite_residual_axes": [
+          "receiver_x",
+          "receiver_y",
+          "receiver_z",
+          "receiver_roll",
+          "receiver_pitch",
+          "receiver_yaw"
+        ],
+      "handover_snapshot_restore_probability": 0.8,
+      "minimum_full_chain_fraction": 0.2,
+      "handover_snapshot_schedule": "per_environment_rotating_quota",
+      "full_chain_stride": 5,
+      "promotion_uses_snapshot_restore": false,
+        "positive_credit": "bounded_delta_pose_progress_and_terminal_retained_entry_readiness",
+        "holding_still_credit": false,
+        "absolute_proximity_credit": false,
+        "contact_credit": false,
+      "puncture_mechanically_blocked": false,
+      "authorized_contact_after_entry_armed": true,
+      "post_arm_inward_action_limit": 0.03
+      },
+      "qualification_contract": {
+        "requires_physical_handover": true,
+        "requires_receiver_bilateral_contact": true,
+        "sampled_bite_distance_from_wound_m": [
+          0.005,
+          0.009
+        ],
+        "sampled_stand_off_m": [
+          0.005,
+          0.008
+        ],
+        "position_tolerance_m": 0.005,
+        "tip_tangent_tolerance_rad": 0.4363323129985824,
+        "needle_plane_tolerance_rad": 0.5235987755982988,
+        "linear_speed_limit_m_s": 0.05,
+        "angular_speed_limit_rad_s": 3.0,
+        "stable_control_steps": 5,
+        "premature_tissue_contact_is_failure": true,
+        "authorized_contact_is_not_failure": true,
+        "success_definition": "receiver_retains_physical_needle_custody_and_stably_reaches_a_sampled_safe_bite_entry_frame_before_tissue_contact"
+      },
+      "promotion": {
+        "minimum_full_chain_success_rate": 0.8,
+        "maximum_premature_contact_rate": 0.02,
+        "maximum_retention_loss_rate": 0.05,
+        "held_out_seed_passes": 3,
+        "environments_per_seed": 1200,
+        "execution_requires_explicit_user_approval": true,
+        "required_failure_strata": [
+          "handover_prerequisite_failure",
+          "retention_loss_during_transport",
+          "premature_needle_contact",
+          "premature_tool_contact",
+          "pose_timeout"
+        ]
       }
     }
   ],

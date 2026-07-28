@@ -1,0 +1,83 @@
+{
+  "schema_version": "dranmar-handover-multiseed-promotion-1.0",
+  "decision": "baseline_retained",
+  "required_seeds": [
+    17,
+    2361,
+    4099
+  ],
+  "candidate_checkpoint_sha256": "a56f61703855931d9d755beeba530bb8c1ac5232f6d6499e6254399cca8535cf",
+  "candidate_controls": {
+    "recovery_carry_lateral_action_limit": 0.1,
+    "recovery_receiver_preposition_height_m": 0.015,
+    "first_attempt_controls_unchanged": true
+  },
+  "aggregate": {
+    "baseline_successes": 3289,
+    "candidate_successes": 3393,
+    "episodes": 6000,
+    "baseline_success_rate": 0.5481666666666667,
+    "candidate_success_rate": 0.5655,
+    "candidate_minus_baseline": 0.01733333333333331,
+    "candidate_success_wilson_95": [
+      0.5529195470239084,
+      0.5779966347891919
+    ],
+    "baseline_recovered_successes": 226,
+    "candidate_recovered_successes": 329,
+    "baseline_stable_presentations": 4205,
+    "candidate_stable_presentations": 4306,
+    "baseline_receiver_contacts": 3469,
+    "candidate_receiver_contacts": 3580,
+    "baseline_windowed_bilateral_capture": 3324,
+    "candidate_windowed_bilateral_capture": 3425,
+    "baseline_hard_failures": {
+      "excessive_object_force": 0,
+      "needle_dropped_after_pickup": 0,
+      "object_dropping": 2,
+      "premature_giver_release": 0,
+      "protected_surface_force": 13
+    },
+    "candidate_hard_failures": {
+      "excessive_object_force": 0,
+      "needle_dropped_after_pickup": 0,
+      "object_dropping": 4,
+      "premature_giver_release": 0,
+      "protected_surface_force": 13
+    }
+  },
+  "gates": {
+    "minimum_success_rate": 0.54,
+    "maximum_seed_regression": 0.0,
+    "success_gate_passed": true,
+    "per_seed_regression_gate_passed": true,
+    "zero_hard_failure_gate_passed": false
+  },
+  "per_seed": [
+    {
+      "seed": 17,
+      "baseline_successes": 1104,
+      "candidate_successes": 1135,
+      "candidate_minus_baseline": 31,
+      "baseline_evidence_sha256": "e00e22aafc90043a262cbfb4a3c9aa50c0ebb45932c42ed21286558093b8187a",
+      "candidate_evidence_sha256": "04b776be103747aeb78546c87e0d1d3d7a3ce09b21e7d02de4bb99f7e8951618"
+    },
+    {
+      "seed": 2361,
+      "baseline_successes": 1093,
+      "candidate_successes": 1137,
+      "candidate_minus_baseline": 44,
+      "baseline_evidence_sha256": "327b3626694bae420adcc0ce626a848309a87e7435153ea57cff6893b86a07b1",
+      "candidate_evidence_sha256": "49f9fd617153b846b95c9fbfc3775ba0e1f4fcf47cb88b5c32476961521a1197"
+    },
+    {
+      "seed": 4099,
+      "baseline_successes": 1092,
+      "candidate_successes": 1121,
+      "candidate_minus_baseline": 29,
+      "baseline_evidence_sha256": "d967e5262cbdeb62e0a38dfd3d24d711043adfef801cb1ec756930db5414a66b",
+      "candidate_evidence_sha256": "d8b1eac424ac88a220a6753a20e70b70a8d71ca16e7ab3f758a99f61a6cc0650"
+    }
+  ],
+  "qualification_boundary": "Performance champion only. The unchanged absolute zero-hard-failure gate retains the prior runtime defaults."
+}

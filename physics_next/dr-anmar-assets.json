@@ -56,13 +56,17 @@
       "clinical_validation": false
     },
     {
-      "id": "dr-anmar-suturable-tissue-v1",
-      "asset": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.usda",
-      "explicit_tetmesh": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.tet.usda",
-      "profile": "physics_next/tissues/dr-anmar-suturable-tissue-v1.json",
-      "report": "assets/dr_anmar/tissue/DrAnmarSuturableTissue.report.json",
-      "live_integration": "dr-anmar-suturable-tissue",
-      "live_behavior": "intact_physx_deformation_contact_attachment_and_setup_domain_with_homogenized_layer_proxy",
+      "id": "dranmar-needle-ready-tissue-v2",
+      "asset": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/needle_ready_tissue_unit.usda",
+      "explicit_tetmesh": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/needle_ready_tissue_contact.usda",
+      "profile": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/geometry_contract.json",
+      "report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/geometry_report.json",
+      "qualification": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/qualification_contract.json",
+      "historical_native_evidence": "physics_next/benchmarks/needle-ready-tissue/contact-newton.json",
+      "historical_native_evidence_scope": "needle-ready tissue v2.0.0 at asset revision b1155e2577210e913de8fa2c36b2e37692ec43be; retained for traceability and not transferable to the changed v2.1.0 topology",
+      "historical_native_evidence_health": "research-default run only; 0.052553 m peak displacement, 8.027627 m/s peak speed and 0.048394 m recovery residual are not a healthy calibrated tissue qualification",
+      "live_integration": "post_handover_needle_to_deformable_tissue_frontier",
+      "live_behavior": "source_authored_nested_layer_conforming_openusd_tetmesh_lods_with_stable_semantic_coordinates_current_topology_native_execution_pending",
       "blocked_behavior": [
         "arbitrary_puncture",
         "persistent_tract",
@@ -72,7 +76,7 @@
       "product_capability": "simulation_training_component",
       "training_readiness": "available_for_training_workcell_composition",
       "software_evidence": "repository_verified_asset_closure",
-      "native_simulator_evidence": "native_execution_not_yet_recorded",
+      "native_simulator_evidence": "current_v2_1_topology_native_newton_isaac_lab_rtx_and_2400_environment_requalification_not_yet_recorded; historical_v2_0_receipts_are_not_current_qualification",
       "real_world_evidence": "deformation_puncture_pullout_and_closure_bench_evidence_not_yet_established",
       "clinical_validation": false
     },

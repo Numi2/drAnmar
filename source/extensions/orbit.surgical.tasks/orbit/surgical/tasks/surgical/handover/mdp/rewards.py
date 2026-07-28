@@ -102,6 +102,114 @@ def phase_progress(env: ManagerBasedRLEnv) -> torch.Tensor:
     return delta.float()
 
 
+def potential_based_handover_progress(
+    env: ManagerBasedRLEnv,
+    gamma: float = 0.995,
+) -> torch.Tensor:
+    """Dense, bounded progress that cannot change the terminal optimum.
+
+    The returned reward is ``gamma * Phi(s_next) - Phi(s)``.  Potential is
+    zeroed at every physical success/failure/timeout terminal, so partial
+    approach, lift, or contact cannot retain positive episodic credit after a
+    failed outcome.
+    """
+    if not 0.0 < gamma <= 1.0:
+        raise ValueError("potential-shaping gamma must be in (0, 1]")
+    state = handover_state(env)
+    progress_phase = state["progress_phase"].clamp(0, 4)
+    phase = state["phase"]
+    approach_progress = 1.0 - torch.tanh(
+        state["giver_distance"] / 0.03
+    )
+    lift_progress = 0.5 * (
+        state["clearance"] / 0.01
+    ).clamp(0.0, 1.0) + 0.5 * state["giver_custody"].float()
+    transfer_progress = 0.5 * (
+        1.0 - torch.tanh(state["presentation_error"] / 0.02)
+    ) + 0.5 * (
+        1.0 - torch.tanh(state["receiver_distance"] / 0.03)
+    )
+    retention_progress = (
+        state["receiver_only_consecutive"].float() / 10.0
+    ).clamp(0.0, 1.0)
+    stage_progress = torch.where(
+        phase == 0,
+        approach_progress,
+        torch.where(
+            phase == 1,
+            lift_progress,
+            torch.where(
+                phase == 2,
+                transfer_progress,
+                torch.where(
+                    phase == 3,
+                    retention_progress,
+                    torch.zeros_like(approach_progress),
+                ),
+            ),
+        ),
+    )
+    potential = (
+        progress_phase.float() + stage_progress
+    ) / 5.0
+    # ManagerBasedRLEnv computes the termination manager before the reward
+    # manager.  Use that authoritative union rather than duplicating a list of
+    # failure predicates here.  This makes every current and future terminal
+    # (including excessive force and protected-surface contact) end with zero
+    # potential and prevents unsafe early termination from retaining shaping
+    # credit.
+    terminal = (
+        env.termination_manager.terminated
+        | env.termination_manager.time_outs
+    )
+    next_potential = torch.where(
+        terminal,
+        torch.zeros_like(potential),
+        potential,
+    )
+    previous = getattr(
+        env,
+        "_dr_anmar_previous_handover_potential",
+        None,
+    )
+    if previous is None or previous.shape != potential.shape:
+        previous = potential.detach().clone()
+        env._dr_anmar_previous_handover_potential = previous
+    previous_reset_step = getattr(
+        env,
+        "_dr_anmar_potential_last_reset_step",
+        None,
+    )
+    if (
+        previous_reset_step is None
+        or previous_reset_step.shape != state["last_reset_step"].shape
+    ):
+        previous_reset_step = torch.full_like(
+            state["last_reset_step"],
+            -2,
+        )
+        env._dr_anmar_potential_last_reset_step = (
+            previous_reset_step
+        )
+    reset = (
+        (env.episode_length_buf == 0)
+        | (previous_reset_step != state["last_reset_step"])
+    )
+    shaped = gamma * next_potential - previous
+    shaped = torch.where(
+        reset,
+        torch.zeros_like(shaped),
+        shaped,
+    )
+    previous[:] = torch.where(
+        reset,
+        potential.detach(),
+        next_potential.detach(),
+    )
+    previous_reset_step[:] = state["last_reset_step"]
+    return shaped
+
+
 def receiver_goal_tracking(env: ManagerBasedRLEnv, position_std: float, orientation_std: float) -> torch.Tensor:
     state = handover_state(env)
     active = state["phase"] >= 3

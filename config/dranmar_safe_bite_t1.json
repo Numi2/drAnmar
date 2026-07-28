@@ -1,0 +1,276 @@
+{
+  "schema": "dr.anmar.safe-bite-t1-contract.v3",
+  "id": "dranmar-safe-bite-t1-v3",
+  "version": "3.0.0",
+  "status": "implemented_pending_native_isaac_lab_validation",
+  "task": {
+    "training_id": "DrAnmar-Handover-Needle-Safe-Bite-T1-v0",
+    "continuation_id": "DrAnmar-Handover-Needle-Safe-Bite-Chain-v0",
+    "objective": "Retain receiver-only ownership of the handed-over needle and bring its tip to a sampled safe-bite entry frame without premature needle or tool contact with tissue.",
+    "prerequisite_authority": "simulator-derived receiver-only bilateral contact, elevated needle custody and completed giver release",
+    "success_authority": "simulator-derived grasp retention, needle geometry, live nodal tissue frame, rigid-body velocity and fail-closed precontact clearance",
+    "clinical_validation": false
+  },
+  "scene": {
+    "tissue_asset_id": "dranmar-needle-ready-tissue-v2",
+    "tissue_lod": "training",
+    "continuation_tissue_lod": "contact",
+    "tissue_position_in_environment_m": [
+      -0.15,
+      0.06,
+      0.02
+    ],
+    "surface_authority": {
+      "entry_frame": "bilinear_material_coordinate_interpolation_of_live_newton_nodal_positions",
+      "precontact_guard": "live_nodal_surface_with_rest_material_coordinate_lookup",
+      "native_contact_receipt": "required_for_entry_readiness_and_contact-transition_evidence",
+      "rest_surface_role": "sampling_and_material_coordinate_lookup_only",
+      "visual_binding": "one_to_one_visual_points_follow_simulation_particles_via_isaac_lab_contrib_fabric_sync"
+    },
+    "contact_observer": {
+      "manager": "DrAnmarCoupledMJWarpVBDManager",
+      "candidate_buffer_is_not_contact": true,
+      "penetration_definition": "newton_vbd_signed_vertex_penetration",
+      "accumulation": "cuda_graph_safe_across_every_physics_substep",
+      "rigid_sensor_route": "actual_mjwarp_solver_not_dummy_solver_base",
+      "soft_contact_route": "bounded_boundary_vertex_to_approved_rigid_shape_pairs",
+      "full_surface_edge_face_contact": false,
+      "force_calibration": false,
+      "generic_needle_contact_is_puncture": false,
+      "native_execution_status": "pending",
+      "fail_closed_on_stale_receipt_or_overflow": true
+    },
+    "contact_pipeline": {
+      "maximum_environment_count": 2400,
+      "soft_contacts_per_environment": 256,
+      "rigid_sensor_contacts_per_environment": 64,
+      "maximum_soft_candidate_pairs": 15000000,
+      "maximum_contact_pipeline_memory_bytes": 536870912,
+      "soft_contact_margin_m": 0.002,
+      "expected_surface_particles_by_lod": {
+        "training": 400,
+        "contact": 1348,
+        "validation": 5380
+      },
+      "expected_approved_soft_shapes_per_environment": 14,
+      "approved_soft_shape_label_fragments": [
+        "/object",
+        "needle",
+        "psm_tool_",
+        "/table"
+      ],
+      "memory_estimator": {
+        "bytes_per_candidate_pair": 12,
+        "bytes_per_soft_contact": 160,
+        "bytes_per_rigid_sensor_contact": 256
+      },
+      "preflight_policy": "reject_shape_particle_capacity_or_memory_drift_before_collision_pipeline_allocation"
+    },
+    "solver": "nvidia_newton_coupled_mjwarp_vbd_two_way",
+    "physics_dt_s": 0.01,
+    "control_decimation": 2,
+    "newton_substeps": 4,
+    "mjwarp": {
+      "constraint_capacity_per_environment": 96,
+      "contact_capacity_per_environment": 64,
+      "iterations": 40,
+      "line_search_iterations": 20,
+      "integrator": "implicitfast",
+      "contact_cone": "pyramidal"
+    },
+    "vbd": {
+      "iterations": 4,
+      "self_contact": false,
+      "coupling_mode": "two_way"
+    },
+    "continuation_solver": {
+      "qualification_role": "contact_transition_source_configuration_pending_native_execution",
+      "physics_dt_s": 0.01,
+      "newton_substeps": 20,
+      "soft_contact_ke": 75000.0,
+      "soft_contact_kd": 0.05,
+      "soft_contact_mu": 0.3,
+      "vbd_iterations": 8
+    },
+    "fixture": {
+      "mode": "kinematic_authored_outer_attachment_band",
+      "node_selection": "versioned outer_attachment_width_m applied to default material positions",
+      "selection_tolerance_m": 1e-09,
+      "expected_anchor_nodes_by_lod": {
+        "training": 80,
+        "contact": 380,
+        "validation": 1998
+      },
+      "count_authority": "derived_from_the_versioned_geometry_contract_and_cross_checked_against_geometry_report_anchor_outer",
+      "refinement_power_1_1_physics_requalification_status": "required_not_executed",
+      "reset_to_default_state_each_episode": true,
+      "wound_and_safe_bite_regions_remain_dynamic": true
+    }
+  },
+  "needle_frame": {
+    "asset": "Props/Surgical_needle/needle_sdf.usd",
+    "spawn_scale": 0.4,
+    "tip_offset_in_needle_root_m": [
+      0.02004,
+      -0.019154,
+      0.0
+    ],
+    "tip_forward_axis_in_needle_root": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "needle_plane_normal_in_needle_root": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "body_collision_radius_m": 0.00083,
+    "tip_contact_region_radius_m": 0.003,
+    "clearance_guard": {
+      "needle_centerline_max_spacing_m": 0.00075,
+      "receiver_tool_segment_max_spacing_m": 0.001,
+      "receiver_tool_segment_sample_count": 33,
+      "receiver_tool_collision_radius_m": 0.0015,
+      "applies_to": [
+        "receiver",
+        "giver"
+      ],
+      "role": "redundant_precontact_guard_not_native_contact_authority"
+    },
+    "frame_source": "measured_from_the_versioned_usd_geometry_not_policy_authored"
+  },
+  "sampling": {
+    "flap_probability": {
+      "left": 0.5,
+      "right": 0.5
+    },
+    "bite_distance_from_wound_m": [
+      0.005,
+      0.009
+    ],
+    "asset_safe_bite_distance_from_wound_m": [
+      0.004,
+      0.01
+    ],
+    "longitudinal_end_margin_m": 0.004,
+    "stand_off_m": [
+      0.005,
+      0.008
+    ],
+    "entry_angle_from_surface_normal_deg": [
+      35.0,
+      55.0
+    ],
+    "needle_plane_normal": "parallel_to_tissue_longitudinal_axis",
+    "resample": "once_per_episode",
+    "seed_authority": "isaac_lab_episode_rng"
+  },
+  "success": {
+    "requires_completed_physical_handover": true,
+    "requires_receiver_bilateral_contact": true,
+    "position_tolerance_m": 0.005,
+    "tip_tangent_tolerance_rad": 0.4363323129985824,
+    "needle_plane_tolerance_rad": 0.5235987755982988,
+    "linear_speed_limit_m_s": 0.05,
+    "angular_speed_limit_rad_s": 3.0,
+    "minimum_tissue_clearance_m": 0.00075,
+    "minimum_tool_clearance_m": 0.002,
+    "stable_control_steps": 5,
+    "post_arm_inward_action_limit": 0.03,
+    "training_task_terminates_when_armed": true,
+    "continuation_task_terminates_when_armed": false
+  },
+  "failures": {
+    "premature_tissue_contact": "needle, receiver tool or giver tool crosses the conservative tissue-contact clearance before the entry frame is armed",
+    "retention_loss": "receiver loses physical custody beyond the handover contact-flicker allowance",
+    "needle_drop": "needle returns to the support plane after pickup",
+    "hard_force": "native solver hard-contact termination remains active independently of reward",
+    "time_out": "entry frame is not armed within the episode horizon"
+  },
+  "handover_snapshot_curriculum": {
+    "enabled_for_training": true,
+    "capture_source": "states reached through the full physical handover sequence",
+    "restore_probability": 0.8,
+    "minimum_full_chain_fraction": 0.2,
+    "restore_schedule": "per_environment_rotating_quota",
+    "full_chain_stride": 5,
+    "post_restore_contact_grace_steps": 4,
+    "post_restore_grace_role": "require_consecutive_fresh_native_receipts_before_arming_without_suppressing_tissue_contact_failure",
+    "promotion_uses_snapshot_restore": false,
+    "reason": "avoid repeatedly spending most rollout steps on a prerequisite while retaining full-chain promotion evidence"
+  },
+  "rewards": {
+    "terminal_armed_entry": 100.0,
+    "terminal_failure": -100.0,
+    "approach_progress_weight": 5.0,
+    "approach_progress_clip_per_step": 0.25,
+    "progress_definition": "previous normalized pose error minus current normalized pose error",
+    "holding_still_reward": 0.0,
+    "absolute_proximity_reward": 0.0,
+    "contact_reward": 0.0,
+    "handover_phase_reward": 0.0,
+    "success_is_not_inferred_from_reward": true
+  },
+  "puncture_transition": {
+    "mechanically_blocked_by_t1": false,
+    "premature_contact_before_entry_armed": "failure",
+    "contact_after_entry_armed": "only_tip-local_native_contact_inside_the_sampled_entry_roi_is_recorded_as_the_authorized_transition",
+    "training_termination_is_not_a_collision_barrier": true,
+    "continuation_backend_route": "cressim_mpm",
+    "continuation_backend_revision": "09aa5009b8580351f516b6df7660e87821fc5eb6",
+    "entry_contact_roi_radius_m": 0.004,
+    "transition_authority": "entry_armed_then_fresh_accumulated_native_newton_tip-local_particle_penetration_inside_the_sampled_entry_roi_with_inward_tip-point_motion",
+    "generic_needle_contact_is_puncture": false,
+    "recorded_transition_semantics": "pre_puncture_tip_entry_contact_onset_not_puncture",
+    "policy_written_puncture_state_allowed": false,
+    "runtime_validation_status": "not_executed_in_this_local_only_change",
+    "biomechanical_calibration_status": "required_before_force_or_tissue_fidelity_claims"
+  },
+  "launch_profiles": {
+    "training_2400": {
+      "environment_count": 2400,
+      "tissue_lod": "training",
+      "expected_surface_particles_per_environment": 400,
+      "expected_approved_soft_shapes_per_environment": 14,
+      "expected_soft_candidate_pairs": 13440000,
+      "soft_contact_capacity": 614400,
+      "rigid_sensor_contact_capacity": 153600,
+      "estimated_contact_pipeline_bytes": 298905600,
+      "execution_requires_explicit_user_approval": true,
+      "native_execution_status": "not_executed"
+    },
+    "contact_qualification_256": {
+      "environment_count": 256,
+      "tissue_lod": "contact",
+      "expected_surface_particles_per_environment": 1348,
+      "expected_approved_soft_shapes_per_environment": 14,
+      "expected_soft_candidate_pairs": 4831232,
+      "soft_contact_capacity": 65536,
+      "rigid_sensor_contact_capacity": 16384,
+      "estimated_contact_pipeline_bytes": 72654848,
+      "execution_requires_explicit_user_approval": true,
+      "native_execution_status": "not_executed"
+    }
+  },
+  "metrics": {
+    "separate_rates": [
+      "full_chain_handover_success",
+      "snapshot_initialized_t1_success",
+      "full_chain_t1_success",
+      "first_attempt_t1_success",
+      "recovered_handover_t1_success",
+      "premature_contact_rate",
+      "retention_loss_rate",
+      "authorized_contact_transition_rate",
+      "time_to_entry_armed_s"
+    ],
+    "required_seed_count_for_promotion": 3,
+    "required_environment_count_per_seed": 1200,
+    "promotion_thresholds": {
+      "full_chain_t1_success_rate_min": 0.8,
+      "premature_contact_rate_max": 0.02,
+      "retention_loss_rate_max": 0.05
+    }
+  }
+}

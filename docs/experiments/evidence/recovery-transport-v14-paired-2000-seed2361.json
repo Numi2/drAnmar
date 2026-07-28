@@ -1,0 +1,42 @@
+{
+  "schema_version": "dranmar.handover.recovery_transport_comparison.v1",
+  "seed": 2361,
+  "episodes": 2000,
+  "checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+  "source_revision": "5b0fad7d13bd7f728bc3c05de288d06135dcdef4",
+  "initial_state_population_sha256": "6dff5a4db17c141b662b14de6cfc6aba505768eec93525b8038dcd0ac005668a",
+  "environment_runtime_contract_sha256": "655b1c0b3e2c56bda2e2c1a292283d9176833e93b19454fa88d1eae2ff3e3e9a",
+  "baseline": {
+    "recovery_carry_lateral_action_limit": 0.06,
+    "successful_episodes": 1130,
+    "recovered_successful_episodes": 99,
+    "lifted_without_receiver_acquisition": 708,
+    "stable_presentations": 1451,
+    "receiver_contacts": 1203,
+    "protected_surface_force": 2,
+    "drops": 0,
+    "excessive_object_force": 0,
+    "runtime_evidence": "output/v11-scale/incumbent-current-seed2361-2000/dranmar_play_20260728T055744Z.json"
+  },
+  "candidate": {
+    "recovery_carry_lateral_action_limit": 0.07,
+    "successful_episodes": 1148,
+    "recovered_successful_episodes": 117,
+    "lifted_without_receiver_acquisition": 691,
+    "stable_presentations": 1471,
+    "receiver_contacts": 1222,
+    "protected_surface_force": 4,
+    "drops": 0,
+    "excessive_object_force": 0,
+    "runtime_evidence": "output/v14-controller-contract/carry007-seed2361-2000/dranmar_play_20260728T064037Z.json"
+  },
+  "gates": {
+    "minimum_success_rate_improvement": 0.005,
+    "observed_success_rate_improvement": 0.009,
+    "maximum_protected_surface_rate_increase": 0.001,
+    "observed_protected_surface_rate_increase": 0.001,
+    "zero_drop_gate_passed": true,
+    "zero_excessive_object_force_gate_passed": true,
+    "paired_scale_gate_passed": true
+  }
+}

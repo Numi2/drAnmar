@@ -1,0 +1,88 @@
+{
+  "schema_version": "dranmar-handover-recovery-option-qualification-1.0",
+  "decision": "performance_champion_not_default_promoted",
+  "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
+  "seed": 17,
+  "frames_per_env": 1000,
+  "initial_checkpoint_sha256": "a56f61703855931d9d755beeba530bb8c1ac5232f6d6499e6254399cca8535cf",
+  "candidate_checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+  "training": {
+    "objective": "recovered_physics_owned_stable_presentation",
+    "full_handover_evaluation_success_unchanged": true,
+    "learning_rate": 1e-05,
+    "iterations": 90,
+    "num_envs": 512,
+    "simulated_frames": 2949120,
+    "total_fps": 10106.420377036253,
+    "cached_physical_slip_states": 471,
+    "cross_environment_recovery_restores": 3014,
+    "restore_probability": 0.98,
+    "tail_option_success_rate": 0.676934515561323,
+    "evidence_sha256": "c5ea1e4bcb699e81715f2f2041147ceb9d492a7c8668926bfae9bc05fb4521ea"
+  },
+  "matched_512": {
+    "baseline_successes": 352,
+    "candidate_successes": 356,
+    "baseline_recovered_successes": 35,
+    "candidate_recovered_successes": 39,
+    "baseline_pickup_attempts_exhausted": 14,
+    "candidate_pickup_attempts_exhausted": 13,
+    "baseline_stable_presentations": 415,
+    "candidate_stable_presentations": 421,
+    "baseline_receiver_contacts": 363,
+    "candidate_receiver_contacts": 366,
+    "baseline_windowed_bilateral_capture": 359,
+    "candidate_windowed_bilateral_capture": 363,
+    "candidate_hard_failures": {
+      "excessive_object_force": 0,
+      "needle_dropped_after_pickup": 0,
+      "object_dropping": 0,
+      "premature_giver_release": 0,
+      "protected_surface_force": 0
+    },
+    "candidate_evidence_sha256": "6b84125bc91f4f69170260313734524243d4139a430575d57ba33ca3f849e06c"
+  },
+  "matched_1200": {
+    "baseline_successes": 703,
+    "candidate_successes": 719,
+    "baseline_success_rate": 0.5858333333333333,
+    "candidate_success_rate": 0.5991666666666666,
+    "baseline_first_attempt_successes": 652,
+    "candidate_first_attempt_successes": 653,
+    "baseline_recovered_successes": 51,
+    "candidate_recovered_successes": 66,
+    "baseline_pickup_attempts_exhausted": 113,
+    "candidate_pickup_attempts_exhausted": 81,
+    "baseline_stable_presentations": 905,
+    "candidate_stable_presentations": 921,
+    "baseline_receiver_contacts": 756,
+    "candidate_receiver_contacts": 771,
+    "baseline_windowed_bilateral_capture": 711,
+    "candidate_windowed_bilateral_capture": 724,
+    "baseline_hard_failures": {
+      "excessive_object_force": 0,
+      "needle_dropped_after_pickup": 0,
+      "object_dropping": 0,
+      "premature_giver_release": 0,
+      "protected_surface_force": 2
+    },
+    "candidate_hard_failures": {
+      "excessive_object_force": 0,
+      "needle_dropped_after_pickup": 0,
+      "object_dropping": 0,
+      "premature_giver_release": 0,
+      "protected_surface_force": 3
+    },
+    "baseline_evidence_sha256": "fd3a5576e9a962194c79458e4d72c4f7b2426142a534e2dc71a5f8b8e0635954",
+    "candidate_evidence_sha256": "01f7ebe41a337c049d33c3afade912ff977665e06e79c9bc8f9979b854d897c1"
+  },
+  "gates": {
+    "unchanged_full_handover_success_contract": true,
+    "unchanged_hard_terminations": true,
+    "success_improved_at_512": true,
+    "success_improved_at_1200": true,
+    "pickup_recovery_improved_at_1200": true,
+    "zero_hard_failure_gate_passed": false
+  },
+  "qualification_boundary": "Performance champion only. Multiseed qualification and the unchanged absolute zero-hard-failure gate are still required for default promotion."
+}

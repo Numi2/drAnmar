@@ -165,6 +165,33 @@ case "${command}" in
         updates="${4:-32}"
         validation_frames="${5:-500}"
         output="${6:-${DR_ANMAR_LEARNING_OUTPUT}/pretrain}"
+        dagger_args=()
+        if [[ -n "${DR_ANMAR_DAGGER_WARMUP_UPDATES:-}" ]]; then
+            dagger_args+=(
+                --dagger_warmup_updates
+                "${DR_ANMAR_DAGGER_WARMUP_UPDATES}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_DAGGER_MIN_TEACHER_FRACTION:-}" ]]; then
+            dagger_args+=(
+                --dagger_min_teacher_fraction
+                "${DR_ANMAR_DAGGER_MIN_TEACHER_FRACTION}"
+            )
+        fi
+        dagger_args+=(
+            --e2e_replay_capacity_per_phase
+            "${DR_ANMAR_E2E_REPLAY_CAPACITY_PER_PHASE:-65536}"
+            --e2e_replay_batch_size
+            "${DR_ANMAR_E2E_REPLAY_BATCH_SIZE:-4096}"
+            --e2e_samples_per_phase_step
+            "${DR_ANMAR_E2E_SAMPLES_PER_PHASE_STEP:-64}"
+            --e2e_student_segment_steps
+            "${DR_ANMAR_E2E_STUDENT_SEGMENT_STEPS:-64}"
+            --e2e_teacher_recovery_steps
+            "${DR_ANMAR_E2E_TEACHER_RECOVERY_STEPS:-32}"
+            --e2e_consolidation_updates
+            "${DR_ANMAR_E2E_CONSOLIDATION_UPDATES:-2000}"
+        )
         mkdir -p "${output}"
         "${DR_ANMAR_ISAAC_PYTHON}" \
             "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" pretrain \
@@ -174,7 +201,8 @@ case "${command}" in
             --validation_frames "${validation_frames}" \
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
-            --output_path "${output}"
+            --output_path "${output}" \
+            "${dagger_args[@]}"
         ;;
     train)
         require_runtime
@@ -186,6 +214,15 @@ case "${command}" in
                 "${DR_ANMAR_INIT_CHECKPOINT}"
             )
         fi
+        policy_bundle_args=()
+        if [[ -n "${DR_ANMAR_POLICY_BUNDLE:-}" ]]; then
+            policy_bundle_args=(
+                --policy-bundle
+                "${DR_ANMAR_POLICY_BUNDLE}"
+            )
+        elif [[ "${DR_ANMAR_ALLOW_UNBUNDLED_CHECKPOINT:-0}" == "1" ]]; then
+            policy_bundle_args=(--allow-unbundled-checkpoint)
+        fi
         if [[ -n "${DR_ANMAR_POLICY_LEARNING_RATE:-}" ]]; then
             learning_rate_args=(
                 --learning_rate
@@ -196,17 +233,31 @@ case "${command}" in
         if [[ "${DR_ANMAR_HANDOVER_GIVER_ADAPTATION:-0}" == "1" ]]; then
             giver_adaptation_args=(--handover_giver_adaptation)
         fi
+        policy_migration_args=()
+        if [[ "${DR_ANMAR_POLICY_MIGRATION_ONLY:-0}" == "1" ]]; then
+            policy_migration_args=(--policy-migration-only)
+        fi
+        convergence_args=()
+        if [[ "${DR_ANMAR_CHECK_SUCCESS:-1}" == "1" ]]; then
+            convergence_args=(
+                --check_success
+                --success_threshold
+                "${DR_ANMAR_SUCCESS_THRESHOLD:-0.95}"
+                --success_window
+                10
+            )
+        fi
         run_train_benchmark \
             "${2:-${DR_ANMAR_TASK}}" \
             "${3:-${DR_ANMAR_NUM_ENVS}}" \
             "${4:-1200}" \
             "${5:-${DR_ANMAR_LEARNING_OUTPUT}/train}" \
-            --check_success \
-            --success_threshold "${DR_ANMAR_SUCCESS_THRESHOLD:-0.95}" \
-            --success_window 10 \
+            "${convergence_args[@]}" \
             "${checkpoint_args[@]}" \
+            "${policy_bundle_args[@]}" \
             "${learning_rate_args[@]}" \
-            "${giver_adaptation_args[@]}"
+            "${giver_adaptation_args[@]}" \
+            "${policy_migration_args[@]}"
         ;;
     play)
         require_runtime
@@ -220,11 +271,52 @@ case "${command}" in
         frames="${5:-500}"
         output="${6:-${DR_ANMAR_LEARNING_OUTPUT}/play}"
         mkdir -p "${output}"
+        policy_bundle_args=()
+        if [[ -n "${DR_ANMAR_POLICY_BUNDLE:-}" ]]; then
+            policy_bundle_args=(
+                --policy-bundle
+                "${DR_ANMAR_POLICY_BUNDLE}"
+            )
+        elif [[ "${DR_ANMAR_ALLOW_UNBUNDLED_CHECKPOINT:-0}" == "1" ]]; then
+            policy_bundle_args=(--allow-unbundled-checkpoint)
+        fi
         residual_scale_args=()
         if [[ -n "${DR_ANMAR_POLICY_RESIDUAL_SCALE:-}" ]]; then
             residual_scale_args=(
                 --residual_scale
                 "${DR_ANMAR_POLICY_RESIDUAL_SCALE}"
+            )
+        fi
+        giver_adaptation_args=()
+        if [[ "${DR_ANMAR_HANDOVER_GIVER_ADAPTATION:-0}" == "1" ]]; then
+            giver_adaptation_args=(--handover_giver_adaptation)
+        fi
+        pickup_recovery_adaptation_args=()
+        if [[ "${DR_ANMAR_PICKUP_RECOVERY_ADAPTATION:-0}" == "1" ]]; then
+            pickup_recovery_adaptation_args=(--pickup_recovery_adaptation)
+        fi
+        recovery_receiver_grasp_retain_adaptation_args=()
+        if [[ "${DR_ANMAR_RECOVERY_RECEIVER_GRASP_RETAIN_ADAPTATION:-0}" == "1" ]]; then
+            recovery_receiver_grasp_retain_adaptation_args=(
+                --recovery_receiver_grasp_retain_adaptation
+            )
+        fi
+        joint_transfer_acquisition_adaptation_args=()
+        if [[ "${DR_ANMAR_JOINT_TRANSFER_ACQUISITION_ADAPTATION:-0}" == "1" ]]; then
+            joint_transfer_acquisition_adaptation_args=(
+                --joint_transfer_acquisition_adaptation
+            )
+        fi
+        transfer_refinement_adaptation_args=()
+        if [[ "${DR_ANMAR_TRANSFER_REFINEMENT_ADAPTATION:-0}" == "1" ]]; then
+            transfer_refinement_adaptation_args=(
+                --transfer_refinement_adaptation
+            )
+        fi
+        deadline_recovery_adaptation_args=()
+        if [[ "${DR_ANMAR_DEADLINE_RECOVERY_ADAPTATION:-0}" == "1" ]]; then
+            deadline_recovery_adaptation_args=(
+                --deadline_recovery_adaptation
             )
         fi
         pickup_vertical_action_limit_args=()
@@ -255,6 +347,13 @@ case "${command}" in
                 "${DR_ANMAR_POLICY_CARRY_LATERAL_ACTION_LIMIT}"
             )
         fi
+        recovery_carry_lateral_action_limit_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECOVERY_CARRY_LATERAL_ACTION_LIMIT:-}" ]]; then
+            recovery_carry_lateral_action_limit_args=(
+                --recovery_carry_lateral_action_limit
+                "${DR_ANMAR_POLICY_RECOVERY_CARRY_LATERAL_ACTION_LIMIT}"
+            )
+        fi
         carry_lateral_ramp_height_args=()
         if [[ -n "${DR_ANMAR_POLICY_CARRY_LATERAL_RAMP_HEIGHT:-}" ]]; then
             carry_lateral_ramp_height_args=(
@@ -268,6 +367,82 @@ case "${command}" in
                 --presentation_fraction_from_giver
                 "${DR_ANMAR_POLICY_PRESENTATION_FRACTION_FROM_GIVER}"
             )
+        fi
+        receiver_crossing_angle_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_CROSSING_ANGLE_RAD:-}" ]]; then
+            receiver_crossing_angle_args=(
+                --receiver_crossing_angle_rad
+                "${DR_ANMAR_POLICY_RECEIVER_CROSSING_ANGLE_RAD}"
+            )
+        fi
+        transport_custody_latch_args=()
+        if [[ -n "${DR_ANMAR_POLICY_TRANSPORT_CUSTODY_LATCH:-}" ]]; then
+            case "${DR_ANMAR_POLICY_TRANSPORT_CUSTODY_LATCH}" in
+                1) transport_custody_latch_args=(--transport_custody_latch) ;;
+                0) transport_custody_latch_args=(--no-transport_custody_latch) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_TRANSPORT_CUSTODY_LATCH must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+        receiver_preposition_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_PREPOSITION:-}" ]]; then
+            case "${DR_ANMAR_POLICY_RECEIVER_PREPOSITION}" in
+                1) receiver_preposition_args=(--receiver_preposition) ;;
+                0) receiver_preposition_args=(--no-receiver_preposition) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_RECEIVER_PREPOSITION must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+        receiver_preposition_height_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_PREPOSITION_HEIGHT_M:-}" ]]; then
+            receiver_preposition_height_args=(
+                --receiver_preposition_height
+                "${DR_ANMAR_POLICY_RECEIVER_PREPOSITION_HEIGHT_M}"
+            )
+        fi
+        recovery_receiver_preposition_height_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECOVERY_RECEIVER_PREPOSITION_HEIGHT_M:-}" ]]; then
+            recovery_receiver_preposition_height_args=(
+                --recovery_receiver_preposition_height
+                "${DR_ANMAR_POLICY_RECOVERY_RECEIVER_PREPOSITION_HEIGHT_M}"
+            )
+        fi
+        receiver_adaptive_arc_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_ADAPTIVE_ARC:-}" ]]; then
+            case "${DR_ANMAR_POLICY_RECEIVER_ADAPTIVE_ARC}" in
+                1) receiver_adaptive_arc_args=(--receiver_adaptive_arc) ;;
+                0) receiver_adaptive_arc_args=(--no-receiver_adaptive_arc) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_RECEIVER_ADAPTIVE_ARC must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+        receiver_grasp_retain_residual_args=()
+        if [[ -n "${DR_ANMAR_POLICY_RECEIVER_GRASP_RETAIN_RESIDUAL:-}" ]]; then
+            case "${DR_ANMAR_POLICY_RECEIVER_GRASP_RETAIN_RESIDUAL}" in
+                1) receiver_grasp_retain_residual_args=(--receiver_grasp_retain_residual) ;;
+                0) receiver_grasp_retain_residual_args=(--no-receiver_grasp_retain_residual) ;;
+                *)
+                    echo "DR_ANMAR_POLICY_RECEIVER_GRASP_RETAIN_RESIDUAL must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+        presentation_filtered_custody_args=()
+        if [[ -n "${DR_ANMAR_PRESENTATION_USE_FILTERED_CUSTODY:-}" ]]; then
+            case "${DR_ANMAR_PRESENTATION_USE_FILTERED_CUSTODY}" in
+                1) presentation_filtered_custody_args=(--presentation_use_filtered_custody) ;;
+                0) presentation_filtered_custody_args=(--no-presentation_use_filtered_custody) ;;
+                *)
+                    echo "DR_ANMAR_PRESENTATION_USE_FILTERED_CUSTODY must be 0 or 1" >&2
+                    exit 2
+                    ;;
+            esac
         fi
         presentation_height_in_robot_frame_args=()
         if [[ -n "${DR_ANMAR_POLICY_PRESENTATION_HEIGHT_IN_ROBOT_FRAME:-}" ]]; then
@@ -318,18 +493,34 @@ case "${command}" in
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
+            "${policy_bundle_args[@]}" \
             --num_envs "${num_envs}" \
             --num_frames "${frames}" \
             --seed "${DR_ANMAR_SEED}" \
             --benchmark_formatter schema,json \
             --output_path "${output}" \
             "${residual_scale_args[@]}" \
+            "${giver_adaptation_args[@]}" \
+            "${pickup_recovery_adaptation_args[@]}" \
+            "${recovery_receiver_grasp_retain_adaptation_args[@]}" \
+            "${joint_transfer_acquisition_adaptation_args[@]}" \
+            "${transfer_refinement_adaptation_args[@]}" \
+            "${deadline_recovery_adaptation_args[@]}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${pickup_initial_vertical_action_limit_args[@]}" \
             "${recovery_pickup_vertical_action_limit_args[@]}" \
             "${carry_lateral_action_limit_args[@]}" \
+            "${recovery_carry_lateral_action_limit_args[@]}" \
             "${carry_lateral_ramp_height_args[@]}" \
             "${presentation_fraction_from_giver_args[@]}" \
+            "${receiver_crossing_angle_args[@]}" \
+            "${transport_custody_latch_args[@]}" \
+            "${receiver_preposition_args[@]}" \
+            "${receiver_preposition_height_args[@]}" \
+            "${recovery_receiver_preposition_height_args[@]}" \
+            "${receiver_adaptive_arc_args[@]}" \
+            "${receiver_grasp_retain_residual_args[@]}" \
+            "${presentation_filtered_custody_args[@]}" \
             "${presentation_height_in_robot_frame_args[@]}" \
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \
@@ -349,6 +540,15 @@ case "${command}" in
         output="${5:-${DR_ANMAR_LEARNING_OUTPUT}/record}"
         chunk_frames="${6:-${frames}}"
         mkdir -p "${output}/videos"
+        policy_bundle_args=()
+        if [[ -n "${DR_ANMAR_POLICY_BUNDLE:-}" ]]; then
+            policy_bundle_args=(
+                --policy-bundle
+                "${DR_ANMAR_POLICY_BUNDLE}"
+            )
+        elif [[ "${DR_ANMAR_ALLOW_UNBUNDLED_CHECKPOINT:-0}" == "1" ]]; then
+            policy_bundle_args=(--allow-unbundled-checkpoint)
+        fi
         pickup_vertical_action_limit_args=()
         if [[ -n "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
             pickup_vertical_action_limit_args=(
@@ -440,6 +640,7 @@ case "${command}" in
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
+            "${policy_bundle_args[@]}" \
             --num_envs 1 \
             --num_frames "${frames}" \
             --seed "${DR_ANMAR_SEED}" \

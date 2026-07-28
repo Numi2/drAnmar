@@ -1,0 +1,553 @@
+{
+  "all_episode_totals": {
+    "completed_episodes": 611,
+    "failed_episodes": 426,
+    "failure_distribution": {
+      "excessive_object_force": 0,
+      "needle_dropped_after_pickup": 2,
+      "object_dropping": 1,
+      "pickup_attempts_exhausted": 8,
+      "premature_giver_release": 0,
+      "protected_surface_force": 32,
+      "receiver_retention_lost": 140,
+      "time_out": 243
+    },
+    "successful_episodes": 185,
+    "termination_term_counts": {
+      "excessive_object_force": 0,
+      "needle_dropped_after_pickup": 2,
+      "object_dropping": 1,
+      "pickup_attempts_exhausted": 8,
+      "premature_giver_release": 0,
+      "protected_surface_force": 32,
+      "receiver_retention_lost": 140,
+      "success": 186,
+      "time_out": 244
+    }
+  },
+  "analytic_only": false,
+  "checkpoint": {
+    "path": "output/dranmar-learning/e2e-structured-ppo-low-noise-2400/runs/2026-07-27_14-24-33/model_50.pt",
+    "sha256": "dc377e48fd6d46a0034b214d99324324f6e68ea47b9f4be6dd999ab0d5a5685a"
+  },
+  "completed_episodes": 600,
+  "exports": {
+    "jit": {
+      "path": "output/dranmar-learning/e2e-structured-ppo-model50-screen-600/exported/policy.pt",
+      "sha256": "b6a61c0c470b68d21b832706502c461abe14ed2059cfaa648589eabcb30971e6"
+    },
+    "onnx": {
+      "path": "output/dranmar-learning/e2e-structured-ppo-model50-screen-600/exported/policy.onnx",
+      "sha256": "2b726895231165470d9ae8b5299da16bac12d9b242006533dbd3b7801cb0d40b"
+    }
+  },
+  "failed_episodes": 419,
+  "failure_distribution": {
+    "excessive_object_force": 0,
+    "needle_dropped_after_pickup": 2,
+    "object_dropping": 1,
+    "pickup_attempts_exhausted": 8,
+    "premature_giver_release": 0,
+    "protected_surface_force": 32,
+    "receiver_retention_lost": 133,
+    "time_out": 243
+  },
+  "first_episode_handover_diagnostics": {
+    "maximum_phase_distribution": {
+      "giver_contact_without_10mm_lift": 105,
+      "lifted_without_receiver_acquisition": 172,
+      "no_giver_bilateral_contact": 0,
+      "receiver_acquired_without_retained_success": 141,
+      "success": 182
+    },
+    "pickup_attempt_outcomes": {
+      "environments_with_recovery": 243,
+      "first_attempt_successful_episodes": 173,
+      "maximum_attempts": 3,
+      "recovered_successful_episodes": 8,
+      "terminal_attempt_histogram": {
+        "0": 0,
+        "1": 406,
+        "2": 142,
+        "3": 52
+      }
+    },
+    "pickup_causal_diagnostics": {
+      "by_maximum_phase": {
+        "giver_contact_without_10mm_lift": {
+          "count": 105,
+          "ever_giver_bilateral_contact": 105,
+          "ever_windowed_giver_contact": 105,
+          "giver_contact_force_imbalance_at_first_lift_n": null,
+          "giver_jaw_aperture_at_first_lift_rad": null,
+          "maximum_giver_contact_force_at_first_lift_n": null,
+          "mean_first_bilateral_contact_frame": 80.13333892822266,
+          "mean_first_lift_frame": null,
+          "mean_first_windowed_contact_frame": 82.13333892822266,
+          "mean_giver_bilateral_contact_steps": 175.02857971191406,
+          "mean_giver_grasp_error_at_first_lift_m": null,
+          "mean_giver_grasp_error_at_first_window_m": [
+            0.0012730647576972842,
+            3.2731379178585485e-05,
+            -4.505160541157238e-05
+          ],
+          "mean_giver_jaw_aperture_at_first_window_rad": 0.16012878715991974,
+          "mean_giver_orientation_at_first_window_xyzw": [
+            0.00047056222683750093,
+            0.0005152087542228401,
+            -0.000574634235817939,
+            0.9999995827674866
+          ],
+          "mean_initial_object_radial_offset_m": 0.014502646401524544,
+          "mean_initial_object_xy_in_giver_m": [
+            -0.0018240755889564753,
+            0.0007075060275383294
+          ],
+          "mean_maximum_clearance_m": 0.004583264235407114,
+          "mean_maximum_consecutive_bilateral_contact_steps": 81.21904754638672,
+          "mean_object_orientation_at_first_lift_xyzw": null,
+          "mean_object_orientation_at_first_window_xyzw": [
+            -0.0012796124210581183,
+            -0.00413710018619895,
+            0.10833936929702759,
+            0.9939669370651245
+          ],
+          "minimum_giver_contact_force_at_first_lift_n": null,
+          "object_angular_speed_at_first_lift_rad_s": null,
+          "object_linear_speed_at_first_lift_m_s": null
+        },
+        "lifted_without_receiver_acquisition": {
+          "count": 172,
+          "ever_giver_bilateral_contact": 172,
+          "ever_windowed_giver_contact": 172,
+          "giver_contact_force_imbalance_at_first_lift_n": {
+            "p10": 0.0011113606160506606,
+            "p50": 0.00445274543017149,
+            "p90": 0.035578157752752304
+          },
+          "giver_jaw_aperture_at_first_lift_rad": {
+            "p10": 0.14000087976455688,
+            "p50": 0.14000165462493896,
+            "p90": 0.1400023102760315
+          },
+          "maximum_giver_contact_force_at_first_lift_n": {
+            "p10": 0.02038859948515892,
+            "p50": 0.03754214942455292,
+            "p90": 0.07077339291572571
+          },
+          "mean_first_bilateral_contact_frame": 80.19185638427734,
+          "mean_first_lift_frame": 318.75579833984375,
+          "mean_first_windowed_contact_frame": 82.19185638427734,
+          "mean_giver_bilateral_contact_steps": 681.4767456054688,
+          "mean_giver_grasp_error_at_first_lift_m": [
+            0.0010488461703062057,
+            -3.121892950730398e-05,
+            -0.00013092307199258357
+          ],
+          "mean_giver_grasp_error_at_first_window_m": [
+            0.0013335013063624501,
+            4.284469468984753e-05,
+            -4.4300286390352994e-05
+          ],
+          "mean_giver_jaw_aperture_at_first_window_rad": 0.160128653049469,
+          "mean_giver_orientation_at_first_window_xyzw": [
+            0.0004552218015305698,
+            0.0005141755100339651,
+            -0.0005746965180151165,
+            0.999999463558197
+          ],
+          "mean_initial_object_radial_offset_m": 0.01546866912394762,
+          "mean_initial_object_xy_in_giver_m": [
+            0.001394840655848384,
+            0.0005640228046104312
+          ],
+          "mean_maximum_clearance_m": 0.019296543672680855,
+          "mean_maximum_consecutive_bilateral_contact_steps": 463.2616271972656,
+          "mean_object_orientation_at_first_lift_xyzw": [
+            -0.00014881962852086872,
+            0.049514636397361755,
+            0.10052631795406342,
+            0.9918792843818665
+          ],
+          "mean_object_orientation_at_first_window_xyzw": [
+            -0.001023286604322493,
+            -0.0036853391211479902,
+            0.11402007937431335,
+            0.9933335185050964
+          ],
+          "minimum_giver_contact_force_at_first_lift_n": {
+            "p10": 0.014577660709619522,
+            "p50": 0.03025646135210991,
+            "p90": 0.043716415762901306
+          },
+          "object_angular_speed_at_first_lift_rad_s": {
+            "p10": 0.5905610918998718,
+            "p50": 1.5549941062927246,
+            "p90": 4.131894111633301
+          },
+          "object_linear_speed_at_first_lift_m_s": {
+            "p10": 0.005834484472870827,
+            "p50": 0.014121048152446747,
+            "p90": 0.02811366878449917
+          }
+        },
+        "no_giver_bilateral_contact": {
+          "count": 0
+        },
+        "receiver_acquired_without_retained_success": {
+          "count": 141,
+          "ever_giver_bilateral_contact": 141,
+          "ever_windowed_giver_contact": 141,
+          "giver_contact_force_imbalance_at_first_lift_n": {
+            "p10": 0.00228129792958498,
+            "p50": 0.03020802140235901,
+            "p90": 0.04576385021209717
+          },
+          "giver_jaw_aperture_at_first_lift_rad": {
+            "p10": 0.14000141620635986,
+            "p50": 0.14000222086906433,
+            "p90": 0.14000290632247925
+          },
+          "maximum_giver_contact_force_at_first_lift_n": {
+            "p10": 0.04009205475449562,
+            "p50": 0.0739206075668335,
+            "p90": 0.0931534469127655
+          },
+          "mean_first_bilateral_contact_frame": 77.97162628173828,
+          "mean_first_lift_frame": 253.84396362304688,
+          "mean_first_windowed_contact_frame": 79.97162628173828,
+          "mean_giver_bilateral_contact_steps": 557.1985473632812,
+          "mean_giver_grasp_error_at_first_lift_m": [
+            0.0010693224612623453,
+            5.551343065235415e-07,
+            -7.359218579949811e-05
+          ],
+          "mean_giver_grasp_error_at_first_window_m": [
+            0.0013045083032920957,
+            3.75954041373916e-05,
+            -4.239475310896523e-05
+          ],
+          "mean_giver_jaw_aperture_at_first_window_rad": 0.16012848913669586,
+          "mean_giver_orientation_at_first_window_xyzw": [
+            0.00046960721374489367,
+            0.0005235839053057134,
+            -0.0005746977985836565,
+            0.9999995231628418
+          ],
+          "mean_initial_object_radial_offset_m": 0.015711477026343346,
+          "mean_initial_object_xy_in_giver_m": [
+            -0.0002842004469130188,
+            0.0009644310339353979
+          ],
+          "mean_maximum_clearance_m": 0.01989658735692501,
+          "mean_maximum_consecutive_bilateral_contact_steps": 519.0850830078125,
+          "mean_object_orientation_at_first_lift_xyzw": [
+            -0.0007300765719264746,
+            0.017484424635767937,
+            0.0966339185833931,
+            0.9946635961532593
+          ],
+          "mean_object_orientation_at_first_window_xyzw": [
+            -0.0011327959364280105,
+            -0.0037890232633799314,
+            0.11115822196006775,
+            0.99370276927948
+          ],
+          "minimum_giver_contact_force_at_first_lift_n": {
+            "p10": 0.027086354792118073,
+            "p50": 0.04212889447808266,
+            "p90": 0.06373582780361176
+          },
+          "object_angular_speed_at_first_lift_rad_s": {
+            "p10": 0.8022918701171875,
+            "p50": 2.2499468326568604,
+            "p90": 3.9189963340759277
+          },
+          "object_linear_speed_at_first_lift_m_s": {
+            "p10": 0.005790409166365862,
+            "p50": 0.012414406053721905,
+            "p90": 0.023837653920054436
+          }
+        },
+        "success": {
+          "count": 182,
+          "ever_giver_bilateral_contact": 182,
+          "ever_windowed_giver_contact": 182,
+          "giver_contact_force_imbalance_at_first_lift_n": {
+            "p10": 0.002857455750927329,
+            "p50": 0.02582087740302086,
+            "p90": 0.04568696394562721
+          },
+          "giver_jaw_aperture_at_first_lift_rad": {
+            "p10": 0.1400013267993927,
+            "p50": 0.1400020718574524,
+            "p90": 0.1400027871131897
+          },
+          "maximum_giver_contact_force_at_first_lift_n": {
+            "p10": 0.04087061434984207,
+            "p50": 0.06565239280462265,
+            "p90": 0.09097108989953995
+          },
+          "mean_first_bilateral_contact_frame": 76.80769348144531,
+          "mean_first_lift_frame": 246.09341430664062,
+          "mean_first_windowed_contact_frame": 78.80769348144531,
+          "mean_giver_bilateral_contact_steps": 519.6813354492188,
+          "mean_giver_grasp_error_at_first_lift_m": [
+            0.0010942401131615043,
+            1.0131828275916632e-05,
+            -7.801347237545997e-05
+          ],
+          "mean_giver_grasp_error_at_first_window_m": [
+            0.0013005711371079087,
+            3.599107367335819e-05,
+            -4.520193760981783e-05
+          ],
+          "mean_giver_jaw_aperture_at_first_window_rad": 0.16012848913669586,
+          "mean_giver_orientation_at_first_window_xyzw": [
+            0.00045763334492221475,
+            0.0005014652851969004,
+            -0.0005747413961216807,
+            0.9999995231628418
+          ],
+          "mean_initial_object_radial_offset_m": 0.013476616702973843,
+          "mean_initial_object_xy_in_giver_m": [
+            2.3261531168827787e-05,
+            0.0004030413692817092
+          ],
+          "mean_maximum_clearance_m": 0.0199098102748394,
+          "mean_maximum_consecutive_bilateral_contact_steps": 508.3461608886719,
+          "mean_object_orientation_at_first_lift_xyzw": [
+            -0.00044539637747220695,
+            0.018852360546588898,
+            0.09903306514024734,
+            0.9943360090255737
+          ],
+          "mean_object_orientation_at_first_window_xyzw": [
+            -0.000961866055149585,
+            -0.004372918978333473,
+            0.11076661199331284,
+            0.9937236309051514
+          ],
+          "minimum_giver_contact_force_at_first_lift_n": {
+            "p10": 0.02655448019504547,
+            "p50": 0.0393553301692009,
+            "p90": 0.06128545105457306
+          },
+          "object_angular_speed_at_first_lift_rad_s": {
+            "p10": 0.655144214630127,
+            "p50": 2.0025415420532227,
+            "p90": 4.265247344970703
+          },
+          "object_linear_speed_at_first_lift_m_s": {
+            "p10": 0.005634704604744911,
+            "p50": 0.011830538511276245,
+            "p90": 0.02751048281788826
+          }
+        }
+      },
+      "contact_threshold_n": 0.01,
+      "contact_window": "three_of_five_control_steps",
+      "overall": {
+        "count": 600,
+        "ever_giver_bilateral_contact": 600,
+        "ever_windowed_giver_contact": 600,
+        "giver_contact_force_imbalance_at_first_lift_n": {
+          "p10": 0.002045711036771536,
+          "p50": 0.008435226045548916,
+          "p90": 0.04461735114455223
+        },
+        "giver_jaw_aperture_at_first_lift_rad": {
+          "p10": 0.14000123739242554,
+          "p50": 0.14000204205513,
+          "p90": 0.1400027573108673
+        },
+        "maximum_giver_contact_force_at_first_lift_n": {
+          "p10": 0.026560373604297638,
+          "p50": 0.049063969403505325,
+          "p90": 0.09088394790887833
+        },
+        "mean_first_bilateral_contact_frame": 78.63333892822266,
+        "mean_first_lift_frame": 273.54949951171875,
+        "mean_first_windowed_contact_frame": 80.63333892822266,
+        "mean_giver_bilateral_contact_steps": 514.5650024414062,
+        "mean_giver_grasp_error_at_first_lift_m": [
+          0.0010713690426200628,
+          -6.964422937016934e-06,
+          -9.513882832834497e-05
+        ],
+        "mean_giver_grasp_error_at_first_window_m": [
+          0.0013061227509751916,
+          3.7762350984849036e-05,
+          -4.4257467379793525e-05
+        ],
+        "mean_giver_jaw_aperture_at_first_window_rad": 0.16012859344482422,
+        "mean_giver_orientation_at_first_window_xyzw": [
+          0.00046201844816096127,
+          0.0005127118201926351,
+          -0.000574699544813484,
+          0.9999996423721313
+        ],
+        "mean_initial_object_radial_offset_m": 0.014752420596778393,
+        "mean_initial_object_xy_in_giver_m": [
+          2.0909979866701178e-05,
+          0.0006343972636386752
+        ],
+        "mean_maximum_clearance_m": 0.017048755660653114,
+        "mean_maximum_consecutive_bilateral_contact_steps": 423.1983337402344,
+        "mean_object_orientation_at_first_lift_xyzw": [
+          -0.00042343419045209885,
+          0.029117073863744736,
+          0.09886854141950607,
+          0.9935756921768188
+        ],
+        "mean_object_orientation_at_first_window_xyzw": [
+          -0.0010752474190667272,
+          -0.003997329156845808,
+          0.11136652529239655,
+          0.993649423122406
+        ],
+        "minimum_giver_contact_force_at_first_lift_n": {
+          "p10": 0.02320888638496399,
+          "p50": 0.03856916353106499,
+          "p90": 0.056598689407110214
+        },
+        "object_angular_speed_at_first_lift_rad_s": {
+          "p10": 0.6483038663864136,
+          "p50": 1.9438939094543457,
+          "p90": 4.165021896362305
+        },
+        "object_linear_speed_at_first_lift_m_s": {
+          "p10": 0.005738255102187395,
+          "p50": 0.012702129781246185,
+          "p90": 0.0263527799397707
+        }
+      }
+    },
+    "reached_phase_fraction": {
+      "phase_0_no_giver_bilateral_contact": 1.0,
+      "phase_1_giver_contact_without_10mm_lift": 1.0,
+      "phase_2_lifted_without_receiver_acquisition": 0.8250000476837158,
+      "phase_3_receiver_acquired_without_retained_success": 0.5383333563804626,
+      "phase_4_success": 0.3033333420753479
+    },
+    "transport_retention_diagnostics": {
+      "by_maximum_phase": {
+        "giver_contact_without_10mm_lift": {
+          "count": 105,
+          "episodes_with_any_midair_bilateral_contact_loss": 0,
+          "episodes_with_sustained_midair_loss_3_steps": 0,
+          "maximum_loss_steps_max": 0,
+          "maximum_loss_steps_p50": 0.0,
+          "maximum_loss_steps_p90": 0.0
+        },
+        "lifted_without_receiver_acquisition": {
+          "count": 172,
+          "episodes_with_any_midair_bilateral_contact_loss": 153,
+          "episodes_with_sustained_midair_loss_3_steps": 139,
+          "maximum_loss_steps_max": 525,
+          "maximum_loss_steps_p50": 9.5,
+          "maximum_loss_steps_p90": 17.0
+        },
+        "no_giver_bilateral_contact": {
+          "count": 0
+        },
+        "receiver_acquired_without_retained_success": {
+          "count": 141,
+          "episodes_with_any_midair_bilateral_contact_loss": 25,
+          "episodes_with_sustained_midair_loss_3_steps": 15,
+          "maximum_loss_steps_max": 13,
+          "maximum_loss_steps_p50": 0.0,
+          "maximum_loss_steps_p90": 3.0
+        },
+        "success": {
+          "count": 182,
+          "episodes_with_any_midair_bilateral_contact_loss": 20,
+          "episodes_with_sustained_midair_loss_3_steps": 3,
+          "maximum_loss_steps_max": 15,
+          "maximum_loss_steps_p50": 0.0,
+          "maximum_loss_steps_p90": 1.0
+        }
+      },
+      "minimum_clearance_m": 0.01,
+      "overall": {
+        "count": 600,
+        "episodes_with_any_midair_bilateral_contact_loss": 198,
+        "episodes_with_sustained_midair_loss_3_steps": 157,
+        "maximum_loss_steps_max": 525,
+        "maximum_loss_steps_p50": 0.0,
+        "maximum_loss_steps_p90": 12.0999755859375
+      },
+      "physical_signal": "native_giver_bilateral_contact_loss_after_10mm_lift_before_receiver_acquisition",
+      "successes_after_any_midair_contact_loss": 20,
+      "sustained_loss_steps": 3,
+      "timeouts_after_any_midair_contact_loss": 123
+    },
+    "unresolved": 0
+  },
+  "first_episode_lift_diagnostics": null,
+  "first_terminal_outcome_per_environment": true,
+  "frames_per_env": 1000,
+  "free_gpu_memory_before_launch_mib": 22361,
+  "kind": "held_out_play",
+  "mean_reward": 0.0009351411936366148,
+  "num_envs": 600,
+  "policy_carry_lateral_action_limit": 0.06,
+  "policy_carry_lateral_ramp_height": 0.01,
+  "policy_giver_close_distance_m": 0.005,
+  "policy_giver_lift_contact_force_threshold_n": 0.01,
+  "policy_giver_lift_on_live_contact": true,
+  "policy_giver_pre_lift_min_contact_jaws": 2,
+  "policy_giver_transport_orientation_action_limit": 0.035,
+  "policy_pickup_initial_vertical_action_limit": 0.01,
+  "policy_pickup_vertical_action_limit": 0.01,
+  "policy_presentation_fraction_from_giver": 0.35,
+  "policy_presentation_height_in_robot_frame": -0.13,
+  "policy_recovery_pickup_vertical_action_limit": 0.01,
+  "policy_residual_scale": 0.03,
+  "procedure_diagnostic_trace": null,
+  "procedure_diagnostics": null,
+  "process_peak_memory_mib": 11410.1015625,
+  "requested_num_envs": 600,
+  "runtime": {
+    "cuda": {
+      "available": true,
+      "gpu": "NVIDIA GeForce RTX 4090, 580.159.03, 24564",
+      "torch_cuda": "12.8"
+    },
+    "packages": {
+      "isaaclab": "13.2.0",
+      "isaaclab-rl": "0.9.0",
+      "isaacsim": "6.0.1.0",
+      "rsl-rl-lib": "5.4.1",
+      "torch": "2.11.0+cu128"
+    },
+    "source": {
+      "asset_revision": "5a93af673282b2f4b6ea00727bf43963ca45a6d6",
+      "dranmar_revision": "c17d97c6a5e798998321b394ece2fc6642edb53b"
+    }
+  },
+  "schema_version": "dranmar-learning-evidence-1.0",
+  "seed": 17,
+  "single_environment_episode_trace": null,
+  "success_rate": 0.3016666666666667,
+  "successful_episodes": 181,
+  "system_memory_available_before_launch_mib": 57112,
+  "system_memory_total_mib": 63439,
+  "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
+  "termination_term_counts": {
+    "excessive_object_force": 0,
+    "needle_dropped_after_pickup": 2,
+    "object_dropping": 1,
+    "pickup_attempts_exhausted": 8,
+    "premature_giver_release": 0,
+    "protected_surface_force": 32,
+    "receiver_retention_lost": 133,
+    "success": 182,
+    "time_out": 244
+  },
+  "total_fps": 15789.754460950337,
+  "trusted_requested_num_envs": false,
+  "unresolved_episodes": 0,
+  "video_capture": null,
+  "wall_time_s": 37.999324275995605
+}
