@@ -1,0 +1,125 @@
+{
+  "schema_version": "dranmar-handover-promotion-1.0",
+  "candidate": "pickup-recovery-option-v4-model-87",
+  "candidate_checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+  "baseline": "v33-with-v34-recovery-controller",
+  "task": "Isaac-Handover-Needle-Dual-PSM-IK-Rel-Structured-Play-v0",
+  "num_envs_per_seed": 1200,
+  "frames_per_env": 1000,
+  "seeds": [
+    17,
+    2361,
+    4099
+  ],
+  "aggregate": {
+    "episodes": 3600,
+    "baseline_successes": 2163,
+    "candidate_successes": 2197,
+    "baseline_success_rate": 0.6008333333333333,
+    "candidate_success_rate": 0.6102777777777778,
+    "candidate_minus_baseline": 0.009444444444444478,
+    "candidate_success_wilson_95": [
+      0.5942374651731893,
+      0.626082992614048
+    ],
+    "first_attempt_successes": {
+      "baseline": 1953,
+      "candidate": 1954
+    },
+    "recovered_successes": {
+      "baseline": 210,
+      "candidate": 243
+    },
+    "environments_with_recovery": {
+      "baseline": 1910,
+      "candidate": 1889
+    },
+    "stable_presentations": {
+      "baseline": 2733,
+      "candidate": 2800
+    },
+    "receiver_contacts": {
+      "baseline": 2301,
+      "candidate": 2344
+    },
+    "windowed_bilateral_capture": {
+      "baseline": 2193,
+      "candidate": 2230
+    },
+    "pickup_attempts_exhausted": {
+      "baseline": 281,
+      "candidate": 211
+    },
+    "timeouts": {
+      "baseline": 1126,
+      "candidate": 1156
+    },
+    "receiver_retention_losses": {
+      "baseline": 25,
+      "candidate": 30
+    },
+    "hard_failures": {
+      "baseline": {
+        "protected_surface_force": 5,
+        "object_dropping": 0,
+        "needle_dropped_after_pickup": 0,
+        "premature_giver_release": 0,
+        "excessive_object_force": 0
+      },
+      "candidate": {
+        "protected_surface_force": 6,
+        "object_dropping": 0,
+        "needle_dropped_after_pickup": 0,
+        "premature_giver_release": 0,
+        "excessive_object_force": 0
+      }
+    }
+  },
+  "per_seed": [
+    {
+      "seed": 17,
+      "baseline_successes": 703,
+      "candidate_successes": 719,
+      "candidate_minus_baseline_successes": 16,
+      "baseline_recovered_successes": 51,
+      "candidate_recovered_successes": 66,
+      "baseline_pickup_attempts_exhausted": 113,
+      "candidate_pickup_attempts_exhausted": 81,
+      "baseline_evidence_sha256": "fd3a5576e9a962194c79458e4d72c4f7b2426142a534e2dc71a5f8b8e0635954",
+      "candidate_evidence_sha256": "01f7ebe41a337c049d33c3afade912ff977665e06e79c9bc8f9979b854d897c1"
+    },
+    {
+      "seed": 2361,
+      "baseline_successes": 732,
+      "candidate_successes": 742,
+      "candidate_minus_baseline_successes": 10,
+      "baseline_recovered_successes": 80,
+      "candidate_recovered_successes": 89,
+      "baseline_pickup_attempts_exhausted": 82,
+      "candidate_pickup_attempts_exhausted": 63,
+      "baseline_evidence_sha256": "fed0142004a888f066d38093676be48ada926314703ea4dcea4cdf5271737713",
+      "candidate_evidence_sha256": "5d88e5a91bbec65d645eb508680cdfae432f856fae5ea82b1aeefdf6b40df21f"
+    },
+    {
+      "seed": 4099,
+      "baseline_successes": 728,
+      "candidate_successes": 736,
+      "candidate_minus_baseline_successes": 8,
+      "baseline_recovered_successes": 79,
+      "candidate_recovered_successes": 88,
+      "baseline_pickup_attempts_exhausted": 86,
+      "candidate_pickup_attempts_exhausted": 67,
+      "baseline_evidence_sha256": "b54da937a7d7e420748acbb8248e2c39ff0e52a14c5076666b316f0a5a9fee8c",
+      "candidate_evidence_sha256": "3b61aa4a31fc6a78a714f0a9fc81161d8aed77d02b4d09846d9f2f58b45cddb8"
+    }
+  ],
+  "gates": {
+    "minimum_success_rate": 0.59,
+    "success_gate_passed": true,
+    "maximum_seed_regression": 0.0,
+    "per_seed_regression_gate_passed": true,
+    "zero_hard_failure_gate_passed": false
+  },
+  "decision": "baseline_retained",
+  "qualification_boundary": "The checkpoint is the reproducible performance champion and improved every seed, but the absolute zero-hard-failure gate keeps the prior default. Full handover success, reward, horizon, force limits, and object physics were unchanged."
+}

@@ -1,5 +1,5 @@
 {
-  "schema_version": "dranmar-e2e-handover-experiment-1.5",
+  "schema_version": "dranmar-e2e-handover-experiment-1.9",
   "status": "isolated_research_example_not_stage_qualified",
   "baseline_commit": "c17d97c6a5e798998321b394ece2fc6642edb53b",
   "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
@@ -242,6 +242,730 @@
     "promotion_rationale": "retained_success_improved_on_matched_512_and_600_populations_with_unchanged_pickup_exhaustion_stable_presentation_hard_safety_count_and_success_contract",
     "qualification_boundary": "v33_remains_the_scale_qualified_baseline_until_the_candidate_passes_the_2000_environment_gate"
   },
+  "recovery_latency_v34": {
+    "status": "multiseed_performance_champion_not_default_promoted",
+    "checkpoint_sha256": "a56f61703855931d9d755beeba530bb8c1ac5232f6d6499e6254399cca8535cf",
+    "recovery_carry_lateral_action_limit": 0.1,
+    "recovery_receiver_preposition_height_m": 0.015,
+    "first_attempt_controller_unchanged": true,
+    "seeds": [
+      17,
+      2361,
+      4099
+    ],
+    "episodes": 6000,
+    "baseline_successes": 3289,
+    "candidate_successes": 3393,
+    "baseline_success_rate": 0.5481666666666667,
+    "candidate_success_rate": 0.5655,
+    "recovered_successes_baseline": 226,
+    "recovered_successes_candidate": 329,
+    "protected_surface_force_baseline": 13,
+    "protected_surface_force_candidate": 13,
+    "object_drops_baseline": 2,
+    "object_drops_candidate": 4,
+    "excessive_object_force_baseline": 0,
+    "excessive_object_force_candidate": 0,
+    "evidence_path": "docs/experiments/evidence/recovery-latency-v34-multiseed-promotion.json",
+    "qualification_boundary": "performance_improved_on_every_seed_but_the_absolute_zero_hard_failure_gate_retains_prior_runtime_defaults"
+  },
+  "pickup_recovery_option_v4": {
+    "status": "multiseed_performance_champion_baseline_retained_by_zero_hard_failure_gate",
+    "initial_checkpoint_sha256": "a56f61703855931d9d755beeba530bb8c1ac5232f6d6499e6254399cca8535cf",
+    "checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+    "training_objective": "recovered_physics_owned_stable_presentation",
+    "full_handover_evaluation_success_unchanged": true,
+    "training_frames": 2949120,
+    "training_recovery_restores": 3014,
+    "matched_512_baseline_successes": 352,
+    "matched_512_candidate_successes": 356,
+    "matched_1200_baseline_successes": 703,
+    "matched_1200_candidate_successes": 719,
+    "matched_1200_baseline_recovered_successes": 51,
+    "matched_1200_candidate_recovered_successes": 66,
+    "matched_1200_baseline_pickup_attempts_exhausted": 113,
+    "matched_1200_candidate_pickup_attempts_exhausted": 81,
+    "multiseed_episodes": 3600,
+    "multiseed_baseline_successes": 2163,
+    "multiseed_candidate_successes": 2197,
+    "multiseed_baseline_success_rate": 0.6008333333333333,
+    "multiseed_candidate_success_rate": 0.6102777777777778,
+    "multiseed_recovered_successes_baseline": 210,
+    "multiseed_recovered_successes_candidate": 243,
+    "multiseed_pickup_attempts_exhausted_baseline": 281,
+    "multiseed_pickup_attempts_exhausted_candidate": 211,
+    "multiseed_seed_deltas": [
+      16,
+      10,
+      8
+    ],
+    "evidence_path": "docs/experiments/evidence/pickup-recovery-option-v4-multiseed-1200.json",
+    "evidence_sha256": "755b77b148e96c6387cb7182623a43964fa66d8d2284bb459a86508f054608ae",
+    "qualification_boundary": "reproducible_performance_champion_on_every_seed_but_absolute_zero_hard_failure_gate_retains_prior_default"
+  },
+  "recovery_receiver_option_v6": {
+    "status": "architecture_retained_policy_and_controller_candidates_rejected",
+    "initial_checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+    "source_states": "simulator_observed_recovered_stable_presentations",
+    "restore_probability": 0.98,
+    "nominal_policy": "frozen_reference_network",
+    "recovery_policy": "receiver_se3_rows_in_phase_heads_2_and_3",
+    "full_handover_success_unchanged": true,
+    "v6_baseline_screen_successes": 187,
+    "v6_model_10_screen_successes": 187,
+    "v6_baseline_first_attempt_successes": 163,
+    "v6_model_10_first_attempt_successes": 163,
+    "absolute_yaw_multiseed_baseline_successes": 2197,
+    "absolute_yaw_multiseed_candidate_successes": 2148,
+    "evidence_path": "docs/experiments/evidence/recovery-receiver-option-v6-rejected.json",
+    "evidence_sha256": "c4d760f77dd7b4f6c12677b7f6059638ef0d830d88a8d763724843f94574b62b",
+    "prohibited_repeats": [
+      "recovery_receiver_preposition_height_10mm",
+      "recovery_receiver_final_approach_limit_0.12",
+      "absolute_robot_root_yaw_rotated_receiver_offset"
+    ],
+    "next_required_representation": "canonical_needle_local_se3_grasp_pose_shared_by_controller_observations_replay_and_training"
+  },
+  "joint_transfer_acquisition_v8": {
+    "status": "development_champion_not_formally_promoted",
+    "initial_checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+    "development_champion_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "training_scale": {
+      "num_envs": 2400,
+      "rollout_steps_per_env": 64,
+      "iterations": 90,
+      "simulated_frames": 13824000,
+      "wall_time_s": 370.62,
+      "throughput_frames_per_s": 37299,
+      "peak_process_memory_mib": 34389
+    },
+    "paired_development_screen": {
+      "seeds": [
+        2361,
+        4099,
+        7919
+      ],
+      "episodes_per_seed": 600,
+      "baseline_successes": 1167,
+      "candidate_successes": 1186,
+      "candidate_minus_baseline": 19,
+      "candidate_minus_baseline_rate": 0.010555555555555556,
+      "seed_success_deltas": [
+        21,
+        -4,
+        2
+      ],
+      "candidate_catastrophic_failures": 0,
+      "baseline_protected_surface_failures": 2,
+      "candidate_protected_surface_failures": 1,
+      "qualification_status": "exploratory_only_post_hoc_thresholds_not_a_formal_promotion"
+    },
+    "source_states": "physics_owned_lifted_custody_with_complete_markov_state",
+    "restore_probability": 0.95,
+    "capture_stage": "lifted_custody",
+    "optimizer_schedule": "fixed",
+    "requested_learning_rate_must_remain_constant": true,
+    "frozen_promoted_pickup_recovery_policy": true,
+    "zero_initialized_joint_adapter": true,
+    "joint_adapter_features": "needle_local_receiver_grasp_error_presentation_error_object_twist_giver_contact_confidence_and_history_both_previous_cartesian_actions",
+    "joint_adapter_outputs": "giver_se3_and_receiver_se3_during_lifted_acquisition_only",
+    "analytic_authority": [
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "replay_contract": "robot_object_previous_action_latched_giver_phase_filters_counters_offsets_and_recovery_context_restored_together",
+    "evaluation_contract": "same_seed_same_initial_state_population_hash_complete_first_terminal_population",
+    "safety_contract": "zero_catastrophic_events_and_protected_surface_rate_noninferior_to_incumbent",
+    "qualification_boundary": "no_performance_claim_until_clean_multiseed_held_out_play_promotes_the_frozen_checkpoint"
+  },
+  "transfer_refinement_v9": {
+    "status": "trained_and_rejected_on_development_population",
+    "initial_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "source_states": "physics_owned_stable_presentation_with_complete_markov_state",
+    "restore_probability": 0.98,
+    "capture_stage": "stable_presentation",
+    "num_envs": 1200,
+    "rollout_steps_per_env": 128,
+    "optimizer_schedule": "fixed",
+    "requested_learning_rate_must_remain_constant": true,
+    "frozen_joint_transfer_development_champion": true,
+    "zero_initialized_refinement_adapter": true,
+    "learned_authority": {
+      "phase_2_giver": "none",
+      "phase_2_receiver": "se3_only_after_physical_presentation_qualification",
+      "phase_3_giver": "none",
+      "phase_3_receiver": "se3"
+    },
+    "rejected_unmasked_development_run": {
+      "reason": "stable_presentation_replay_trained_only_post_qualification_states_but_the_adapter_was_deployed_pre_qualification",
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_success_range": [
+        378,
+        380
+      ],
+      "incumbent_stable_presentations": 484,
+      "candidate_model_5_stable_presentations": 477,
+      "disposition": "rejected_before_formal_qualification"
+    },
+    "rejected_qualified_gate_run": {
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "screened_checkpoint_success_range": [
+        378,
+        389
+      ],
+      "best_checkpoint_successes": 389,
+      "reason": "receiver_refinement_traded_existing_acquisition_paths_without_improving_retained_transfer",
+      "disposition": "rejected_before_formal_qualification"
+    },
+    "analytic_authority": [
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "credit_assignment_rationale": "128_steps_covers_the_observed_stable_presentation_to_receiver_contact_latency_that_exceeded_the_previous_64_step_rollout",
+    "evaluation_contract": "fresh_preregistered_seeds_same_initial_state_population_hash_complete_first_terminal_population_one_frozen_runtime_contract",
+    "promotion_contract": {
+      "preregistered_seeds": [
+        104729,
+        130363,
+        155921
+      ],
+      "episodes_per_seed": 600,
+      "minimum_seed_count": 3,
+      "minimum_success_rate_with_wilson_lower_bound": 0.6,
+      "minimum_aggregate_improvement": 0.005,
+      "maximum_seed_regression": 0.01,
+      "zero_catastrophic_failures": true,
+      "protected_surface_rate_noninferior": true
+    },
+    "qualification_boundary": "no_promotion_until_the_preregistered_aggregate_improvement_and_safety_gates_pass_on_fresh_held_out_populations"
+  },
+  "deadline_recovery_option_v10": {
+    "status": "rejected_discrete_switching_erased_recovered_successes",
+    "initial_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "root_cause": "171_of_177_lifted_without_receiver_acquisition_failures_followed_pickup_recovery_and_reached_first_lift_about_128_steps_later_than_successes",
+    "source_states": "physics_owned_recovered_stable_presentations_with_original_episode_deadline_and_complete_markov_state",
+    "restore_probability": 0.98,
+    "num_envs": 1200,
+    "rollout_steps_per_env": 128,
+    "zero_impact_adapter": true,
+    "frozen_incumbent_policy": true,
+    "features": [
+      "needle_local_receiver_se3_error",
+      "giver_current_and_previous_jaw_contact_margin",
+      "object_linear_and_angular_motion",
+      "remaining_episode_fraction",
+      "recovery_context",
+      "transfer_contract_state"
+    ],
+    "options": [
+      "continue",
+      "reseat",
+      "backoff"
+    ],
+    "rejected_continue_logit_prior_run": {
+      "num_envs": 1200,
+      "rollout_steps_per_env": 128,
+      "iterations": 60,
+      "simulated_frames": 9216000,
+      "reason": "a_plus_2_continue_logit_prior_preserved_exact_baseline_but_prevented_ppo_from_exercising_reseat_or_backoff",
+      "maximum_observed_option_bias_shift": 0.002,
+      "disposition": "diagnostic_only_not_screened"
+    },
+    "rejected_unpenalized_timeout_run": {
+      "checkpoint": "model_5",
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 358,
+      "recovered_successes": 0,
+      "deadline_backoff_environments": 60,
+      "reason": "terminal_transfer_failure_penalized_physical_failures_but_not_unsuccessful_timeout_so_backoff_could_avoid_the_terminal_cost",
+      "disposition": "reward_loophole_closed_and_run_rejected"
+    },
+    "rejected_timeout_penalty_run": {
+      "training_num_envs": 1200,
+      "rollout_steps_per_env": 128,
+      "iterations": 30,
+      "simulated_frames": 4608000,
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "checkpoint_8_successes": 358,
+      "recovered_successes": 0,
+      "deadline_reseat_environments": 21,
+      "deadline_backoff_environments": 55,
+      "hard_safety_events": 0,
+      "reason": "closing_the_timeout_loophole_did_not_fix_the_discontinuous_option_selector_tiny_logits_still_replaced_complete_incumbent_trajectories_and_erased_recovered_successes",
+      "disposition": "architecture_rejected_not_promotable"
+    },
+    "learned_authority": "receiver_se3_only_after_recovered_physically_qualified_presentation",
+    "analytic_authority": [
+      "giver_motion",
+      "both_grippers_except_option_owned_receiver_open_during_reseat_or_backoff",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "deadline_replay_contract": "restore_the_captured_episode_length_instead_of_granting_a_fresh_horizon",
+    "evaluation_contract": "same_environment_contract_hash_same_seed_same_initial_state_population_hash_complete_first_terminal_population",
+    "qualification_boundary": "no_performance_claim_until_exact_zero_equivalence_then_held_out_full_task_improvement"
+  },
+  "deadline_recovery_residual_v11": {
+    "status": "directionally_improved_but_below_promotion_threshold",
+    "initial_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "root_cause": "the_discrete_v10_option_changed_complete_trajectories_from_microscopic_logit_differences_and_destroyed_the_incumbent_recovery_path",
+    "source_states": "physics_owned_recovered_stable_presentations_with_original_episode_deadline_and_complete_markov_state",
+    "restore_probability": 0.98,
+    "num_envs": 1200,
+    "rollout_steps_per_env": 128,
+    "zero_impact_adapter": true,
+    "frozen_incumbent_policy": true,
+    "control": "incumbent_plus_bounded_continuous_receiver_se3_residual",
+    "discrete_trajectory_switches": [],
+    "learned_authority": "receiver_se3_only_after_recovered_physically_qualified_presentation",
+    "analytic_authority": [
+      "giver_motion",
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "anti_reward_hacking": [
+      "unsuccessful_timeout_cost_equals_success_value",
+      "original_episode_deadline_restored_from_cache",
+      "complete_first_terminal_population_evaluation",
+      "unchanged_physical_success_and_safety_contract"
+    ],
+    "paired_scale_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "same_initial_state_population_hash": true,
+      "same_environment_contract_hash": true,
+      "incumbent_successes": 1130,
+      "candidate_successes": 1134,
+      "incumbent_recovered_successes": 99,
+      "candidate_recovered_successes": 103,
+      "incumbent_protected_surface_events": 2,
+      "candidate_protected_surface_events": 3,
+      "drops": 0,
+      "excessive_force_events": 0,
+      "disposition": "retain_as_evidence_do_not_promote_below_half_percentage_point_gate"
+    },
+    "rejected_higher_learning_rate_run": {
+      "learning_rate": 0.00003,
+      "checkpoint": "model_8",
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 386,
+      "reason": "larger_residual_authority_reduced_recovered_successes"
+    },
+    "evaluation_contract": "same_environment_contract_hash_same_seed_same_initial_state_population_hash_complete_first_terminal_population",
+    "qualification_boundary": "no_promotion_until_exact_zero_equivalence_and_held_out_full_task_improvement"
+  },
+  "recovered_transport_preposition_v12": {
+    "status": "rejected_wrong_actuator_and_insufficient_credit_horizon",
+    "root_cause": "403_of_708_lifted_without_receiver_acquisition_failures_never_reached_the_stable_presentation_gate_so_v11_had_no_authority_in_most_of_the_target_cohort",
+    "source_states": "physics_owned_recovered_lifted_custody_with_original_episode_deadline_and_complete_markov_state",
+    "activation": "recovered_lifted_custody_through_presentation",
+    "rollout_steps_per_env": 128,
+    "control": "incumbent_plus_bounded_continuous_receiver_se3_residual",
+    "receiver_behavior": "preposition_concurrently_while_giver_transports_then_continue_existing_acquisition",
+    "frozen_authority": [
+      "giver_motion",
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "zero_impact_adapter": true,
+    "original_episode_deadline": true,
+    "rejected_development_result": {
+      "checkpoint": "model_5",
+      "seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 387,
+      "recovered_successes": 29,
+      "hard_safety_events": 0,
+      "reason": "receiver_correction_during_transport_did_not_solve_giver_presentation_and_128_steps_did_not_span_lifted_custody_to_terminal_retention"
+    },
+    "qualification_boundary": "same_paired_full_population_and_safety_gates_as_v11"
+  },
+  "two_stage_recovered_handover_v13": {
+    "status": "rejected_learned_giver_correction_fought_competent_presentation_servo",
+    "root_cause": "the_recovered_lifted_custody_to_retained_handover_sequence_exceeds_128_steps_and_requires_different_actuators_before_and_after_stable_presentation",
+    "source_states": "physics_owned_recovered_lifted_custody_with_original_episode_deadline_and_complete_markov_state",
+    "rollout_steps_per_env": 384,
+    "stage_1": "bounded_giver_se3_residual_until_stable_presentation",
+    "stage_2": "bounded_receiver_se3_residual_after_stable_presentation",
+    "frozen_authority": [
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "zero_impact_adapter": true,
+    "terminal_credit": "retained_handover_or_equal_magnitude_unsuccessful_timeout_cost_under_original_deadline",
+    "rejected_development_result": {
+      "checkpoint": "model_4",
+      "seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 382,
+      "reason": "the_learned_pre_presentation_giver_residual_displaced_a_competent_nominal_servo_and_reduced_complete_retained_handovers"
+    },
+    "qualification_boundary": "same_paired_full_population_and_safety_gates_as_v11"
+  },
+  "recovered_transport_controller_v14": {
+    "status": "rejected_cross_population_inconsistency",
+    "root_cause": "recovered_pickups_needed_more_lateral_transport_authority_to_reach_stable_presentation_and_receiver_contact_before_the_unchanged_episode_deadline",
+    "control_change": "recovery_only_carry_lateral_action_limit_from_0.06_to_0.07",
+    "unchanged": [
+      "first_attempt_transport_authority",
+      "grasp_and_lift_controller",
+      "receiver_policy",
+      "gripper_and_release_authority",
+      "reward",
+      "success_definition",
+      "episode_deadline",
+      "hard_terminations"
+    ],
+    "paired_scale_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "same_initial_state_population_hash": true,
+      "same_environment_contract_hash": true,
+      "incumbent_successes": 1130,
+      "candidate_successes": 1148,
+      "incumbent_recovered_successes": 99,
+      "candidate_recovered_successes": 117,
+      "incumbent_lifted_without_receiver_acquisition": 708,
+      "candidate_lifted_without_receiver_acquisition": 691,
+      "incumbent_stable_presentations": 1451,
+      "candidate_stable_presentations": 1471,
+      "incumbent_receiver_contacts": 1203,
+      "candidate_receiver_contacts": 1222,
+      "incumbent_protected_surface_events": 2,
+      "candidate_protected_surface_events": 4,
+      "protected_surface_rate_increase": 0.001,
+      "maximum_protected_surface_rate_increase": 0.001,
+      "drops": 0,
+      "excessive_force_events": 0,
+      "disposition": "paired_performance_and_safety_noninferiority_gates_passed"
+    },
+    "rejected_variants": {
+      "recovery_carry_lateral_action_limit_0_08": {
+        "successes": 1164,
+        "protected_surface_events": 6,
+        "reason": "performance_winner_but_exceeded_the_predeclared_protected_surface_noninferiority_bound"
+      },
+      "carry_lateral_ramp_height_0_015": {
+        "development_episodes": 600,
+        "successes": 370,
+        "reason": "delayed_presentation_and_reduced_terminal_retention"
+      }
+    },
+    "default_contract_development_replay": {
+      "seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 388,
+      "protected_surface_events": 0,
+      "reason": "the_scale_gain_did_not_reproduce_on_the_development_population"
+    },
+    "qualification_boundary": "rejected_not_promoted_despite_paired_2000_environment_gain"
+  },
+  "contact_qualified_recovery_transport_v15": {
+    "status": "rejected_binary_contact_gate_one_event_above_safety_noninferiority",
+    "root_cause": "recovered_transport_needs_0.08_lateral_authority_after_lift_but_extra_authority_during_relift_or_contact_loss_creates_avoidable_protected_surface_tail_risk",
+    "relift_and_unqualified_contact_limit": 0.06,
+    "contact_qualified_lifted_transport_limit": 0.08,
+    "strong_authority_gate": [
+      "pickup_recovery_context",
+      "progress_phase_at_least_2",
+      "live_bilateral_giver_contact"
+    ],
+    "unchanged": [
+      "first_attempt_transport",
+      "receiver_policy",
+      "grippers",
+      "release",
+      "reward",
+      "success_definition",
+      "episode_deadline",
+      "hard_terminations"
+    ],
+    "qualification_boundary": "must_beat_390_of_600_and_1130_of_2000_with_safety_noninferiority_before_multiseed_promotion"
+  },
+  "force_projected_recovery_transport_v16": {
+    "status": "rejected_noisy_force_projection_regressed_pickup_and_safety",
+    "root_cause": "binary_bilateral_contact_preserved_the_full_performance_gain_but_did_not_distinguish_weak_custody_from_a_well_seated_recovered_grasp",
+    "relift_and_zero_confidence_limit": 0.06,
+    "full_authority_limit": 0.08,
+    "full_authority_minimum_per_jaw_force_n": 0.025,
+    "projection": "smoothstep_of_minimum_live_giver_jaw_force_between_0.01_and_0.025_n_after_lifted_custody",
+    "v15_development_result": {
+      "seed": 2361,
+      "episodes": 600,
+      "successes": 393,
+      "recovered_successes": 35,
+      "protected_surface_events": 0
+    },
+    "v15_scale_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "successes": 1164,
+      "recovered_successes": 133,
+      "protected_surface_events": 5,
+      "reason_rejected": "protected_surface_rate_increase_was_0.0015_above_the_0.001_noninferiority_limit"
+    },
+    "runtime_result": {
+      "seed": 2361,
+      "development_successes": 395,
+      "development_episodes": 600,
+      "scale_successes": 1141,
+      "scale_episodes": 2000,
+      "scale_recovered_successes": 119,
+      "scale_pickup_attempts_exhausted": 169,
+      "scale_protected_surface_events": 6,
+      "reason": "instantaneous_contact_force_projection_changed_recovery_dynamics_without_reducing_the_collision_tail"
+    },
+    "qualification_boundary": "must_preserve_v15_development_and_scale_performance_gates_while_reducing_protected_surface_events_to_at_most_4_of_2000"
+  },
+  "protected_surface_attribution_v17": {
+    "status": "complete_receiver_approach_is_collision_source",
+    "purpose": "attribute_each_first_episode_protected_surface_terminal_to_maximum_phase_and_the_specific_giver_or_receiver_jaw_sensor_before_changing_control_again",
+    "controller_under_diagnosis": "v15_phase_and_live_bilateral_contact_gated_0.08_recovery_transport",
+    "no_policy_or_task_contract_change": true,
+    "result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "protected_surface_events": 5,
+      "giver_contact_without_10mm_lift": 1,
+      "lifted_without_receiver_acquisition": 4,
+      "robot_1_events_crossing_2_n": 1,
+      "robot_2_events_crossing_2_n": 5,
+      "maximum_robot_2_jaw_force_n": 4.171040058135986
+    }
+  },
+  "recovered_receiver_contact_deceleration_v18": {
+    "status": "rejected_over_braked_receiver_and_erased_performance_gain",
+    "root_cause": "the_receiver_crossed_the_2_n_protected_surface_limit_in_all_five_v15_scale_safety_terminals_four_after_lift_before_acquisition",
+    "activation": "pickup_recovery_context_and_receiver_grasp_distance_below_6mm",
+    "receiver_translation_action_limit": 0.05,
+    "unchanged": [
+      "first_attempt_receiver_approach",
+      "receiver_pose_target",
+      "receiver_orientation",
+      "giver_transport",
+      "both_grippers",
+      "release",
+      "reward",
+      "success_definition",
+      "episode_deadline",
+      "hard_terminations"
+    ],
+    "runtime_result": {
+      "seed": 2361,
+      "episodes": 600,
+      "successes": 390,
+      "recovered_successes": 32,
+      "protected_surface_events": 0,
+      "reason": "the_6mm_0.05_limit_removed_the_development_gain"
+    },
+    "qualification_boundary": "rejected_below_393_of_600_screen"
+  },
+  "narrow_recovered_receiver_deceleration_v19": {
+    "status": "rejected_unconditional_deceleration_still_erased_gain",
+    "activation": "pickup_recovery_context_and_receiver_grasp_distance_below_4mm",
+    "receiver_translation_action_limit": 0.075,
+    "design": "one_step_scale_final_seating_energy_reduction_without_delaying_the_25mm_preposition_or_outer_approach",
+    "runtime_result": {
+      "seed": 2361,
+      "episodes": 600,
+      "successes": 391,
+      "recovered_successes": 33,
+      "protected_surface_events": 0
+    },
+    "qualification_boundary": "rejected_below_393_of_600_screen"
+  },
+  "reactive_recovered_receiver_shield_v20": {
+    "status": "rejected_contact_impulse_crossed_hard_limit_before_next_action",
+    "root_cause": "unconditional_geometric_deceleration_reduced_success_while_v17_proved_all_scale_safety_events_were_receiver_non_object_contacts",
+    "scope": "isaac_lab_task_space_action_term_without_changing_checkpoint_observation_or_policy",
+    "activation": "recovered_receiver_phase_2_and_native_non_object_force_above_0.25_n",
+    "response": "freeze_rotation_and_retract_positive_z_by_0.0005_m_per_control_step_for_three_steps",
+    "hard_termination_unchanged_n": 2.0,
+    "runtime_result": {
+      "seed": 2361,
+      "development_successes": 393,
+      "development_episodes": 600,
+      "scale_successes": 1164,
+      "scale_episodes": 2000,
+      "scale_protected_surface_events": 5,
+      "reason": "candidate_scale_result_was_bitwise_identical_to_v15_so_the_soft_contact_signal_arrived_too_late_to_change_the_terminal_transition"
+    },
+    "qualification_boundary": "rejected_no_safety_effect_at_scale"
+  },
+  "prospective_receiver_tip_barrier_v21": {
+    "status": "rejected_collision_did_not_cross_tip_distance_barrier",
+    "root_cause": "reactive_force_shielding_cannot_stop_a_single_step_contact_impulse_so_collision_avoidance_must_project_the_command_before_contact",
+    "geometry": {
+      "intended_giver_receiver_grasp_frame_distance_m": 0.015198123958282841,
+      "barrier_activation_distance_m": 0.018,
+      "minimum_tip_distance_m": 0.012
+    },
+    "projection": "remove_only_the_receiver_action_component_that_would_cross_the_minimum_tip_distance_and_preserve_tangential_translation_and_orientation",
+    "scope": "pickup_recovery_context_phase_2_only",
+    "runtime_result": {
+      "seed": 2361,
+      "development_successes": 393,
+      "development_episodes": 600,
+      "scale_successes": 1164,
+      "scale_episodes": 2000,
+      "scale_protected_surface_events": 5,
+      "reason": "scale_result_was_bitwise_identical_to_v15_so_the_collision_occurs_on_non_tip_tool_or_support_geometry"
+    },
+    "qualification_boundary": "rejected_no_measurable_effect_at_scale"
+  },
+  "protected_contact_collider_attribution_v22": {
+    "status": "complete_receiver_jaw_crosses_giver_insertion_shaft",
+    "purpose": "resolve_the_remaining_receiver_non_object_force_into_counterpart_psm_collision_geometry_or_support_table_before_any_further_control_change",
+    "backend_contract": "native_contact_force_vector_plus_pre_reset_rigid_body_poses",
+    "capture_point": "same_control_step_as_the_pre_reset_hard_termination",
+    "force_source": "unchanged_gpu_contact_sensor_total_minus_needle_vector_residual",
+    "partner_identity_source": "force_direction_and_responsible_jaw_distance_to_table_object_own_jaw_and_counterpart_tool_bodies",
+    "rejected_instrumentation": [
+      {
+        "method": "body_path_force_matrix_filters",
+        "reason": "multi_collider_bodies_violated_the_one_shape_per_environment_filter_contract"
+      },
+      {
+        "method": "explicit_collider_force_matrix_filters",
+        "reason": "gpu_physx_reported_complex_table_and_articulation_collider_filters_as_unsupported"
+      },
+      {
+        "method": "native_physx_contact_report_subscription",
+        "reason": "exact_gpu_direct_replay_reproduced_all_five_terminals_but_emitted_no_python_contact_report_events"
+      }
+    ],
+    "unchanged": [
+      "checkpoint",
+      "policy_actions",
+      "analytic_controller",
+      "rewards",
+      "success_definition",
+      "episode_deadline",
+      "hard_termination_limit"
+    ],
+    "runtime_sequence": [
+      "replay_exact_seed_2361_on_2000_environments",
+      "classify_force_direction_and_nearest_tool_or_support_geometry",
+      "select_narrow_control_fix_only_from_dominant_geometric_evidence"
+    ],
+    "interpretation_boundary": "body_origin_proximity_is_diagnostic_geometry_not_direct_collider_identity",
+    "exact_runtime_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "successes": 1164,
+      "protected_surface_events": 5,
+      "support_table_events": 0,
+      "post_lift_receiver_to_giver_shaft_or_distal_tool_events": 4,
+      "pre_lift_inter_jaw_events": 1
+    },
+    "qualification_boundary": "diagnostics_must_preserve_the_1164_of_2000_outcome_and_geometrically_explain_all_five_protected_surface_terminals"
+  },
+  "recovery_receiver_shaft_guard_v23": {
+    "status": "promoted_new_exact_seed_frontier",
+    "root_cause": "the_recovery_receiver_distal_jaw_segment_crossed_the_giver_main_insertion_shaft_behind_the_distal_needle_acquisition_zone",
+    "geometry_contract": {
+      "giver_protected_shaft_start_behind_tip_m": 0.025,
+      "activation_distance_m": 0.018,
+      "minimum_distance_m": 0.015,
+      "receiver_jaw_proximal_offset_m": 0.0093
+    },
+    "control_contract": "project_only_receiver_motion_directed_inward_toward_the_proximal_giver_shaft_and_preserve_tangential_motion",
+    "scope": [
+      "pickup_recovery_context",
+      "phase_2",
+      "proximal_giver_shaft_only"
+    ],
+    "unchanged": [
+      "checkpoint",
+      "rewards",
+      "success_definition",
+      "episode_deadline",
+      "hard_termination_limit",
+      "giver_control",
+      "first_attempt_receiver_control",
+      "distal_needle_acquisition_zone"
+    ],
+    "development_result": {
+      "seed": 2361,
+      "episodes": 600,
+      "successes": 391,
+      "recovered_successes": 33,
+      "protected_surface_events": 0,
+      "guard_activated_environments": 63
+    },
+    "scale_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "successes": 1166,
+      "recovered_successes": 135,
+      "pickup_attempts_exhausted": 138,
+      "lifted_without_receiver_acquisition": 681,
+      "stable_presentations": 1480,
+      "receiver_contacts": 1236,
+      "protected_surface_events": 3,
+      "drops": 0,
+      "excessive_object_force_events": 0,
+      "guard_activated_environments": 230,
+      "guard_active_steps": 623,
+      "evidence_path": "docs/experiments/evidence/recovery-shaft-guard-v23-seed2361-2000.json",
+      "evidence_sha256": "387b38b78c6c65fe23d0029a96873125f016dec52481290e455712cec3dcd0d0"
+    },
+    "qualification": "passes_success_floor_1140_and_protected_surface_ceiling_4_with_zero_drop_and_excessive_object_force_failures"
+  },
+  "current_recovery_frontier": {
+    "status": "promoted_exact_seed_performance_and_safety_frontier",
+    "controller": "v23_recovery_receiver_proximal_shaft_guard_over_v15_transport",
+    "checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "development_result": {
+      "seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 393,
+      "incumbent_recovered_successes": 32,
+      "candidate_recovered_successes": 35,
+      "protected_surface_events": 0
+    },
+    "scale_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "v15_successes": 1164,
+      "candidate_successes": 1166,
+      "v15_recovered_successes": 133,
+      "candidate_recovered_successes": 135,
+      "v15_pickup_attempts_exhausted": 144,
+      "candidate_pickup_attempts_exhausted": 138,
+      "v15_protected_surface_events": 5,
+      "candidate_protected_surface_events": 3,
+      "drops": 0,
+      "excessive_object_force_events": 0
+    },
+    "promotion_blocker": null,
+    "next_required_evidence": "multiseed_confirmation_before_generalization_claims"
+  },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",
     "action_space": "14d_two_cartesian_delta_poses_plus_binary_jaws",
@@ -268,6 +992,7 @@
     "phase_progress_weight": 1.0,
     "retained_success_weight": 80.0,
     "terminal_transfer_failure_weight": -80.0,
+    "unsuccessful_timeout_is_terminal_failure": true,
     "required_sequence": [
       "giver_bilateral_contact",
       "minimum_10mm_physical_lift",
@@ -279,6 +1004,23 @@
       "receiver_only_retention_for_10_steps"
     ],
     "receiver_retry_steps": 15,
+    "receiver_approach_timeout_steps": 0,
+    "rejected_receiver_approach_timeout_75": {
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 345,
+      "receiver_retries": 373,
+      "reason": "threshold_interrupted_healthy_receiver_approaches"
+    },
+    "rejected_receiver_approach_timeout_150": {
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 390,
+      "receiver_retries": 1,
+      "reason": "no_success_or_bottleneck_improvement"
+    },
     "receiver_retry_contact_loss_steps": 8,
     "pickup_contact_loss_steps": 3,
     "giver_release_confirmation_steps": 1,

@@ -68,7 +68,6 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
         filter_prim_paths_expr=["{ENV_REGEX_NS}/Object"],
         history_length=2,
     )
-
     # Table
     table = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Table",

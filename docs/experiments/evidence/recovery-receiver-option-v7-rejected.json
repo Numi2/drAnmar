@@ -1,0 +1,75 @@
+{
+  "schema_version": "dranmar-handover-recovery-receiver-1.1",
+  "date_utc": "2026-07-28",
+  "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
+  "baseline": {
+    "checkpoint": "pickup-recovery-option-v4-model-87",
+    "checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+    "retained_handover_champion_unchanged": true
+  },
+  "v7_adapter_architecture": {
+    "decision": "architecture_retained_trained_weights_rejected",
+    "trainable_parameters": 1222,
+    "input": "needle_local_receiver_se3_error_contacts_and_transfer_contract",
+    "output": "recovery_only_receiver_se3_residual",
+    "initial_output": "exact_zero",
+    "nominal_phase_network": "frozen",
+    "pickup_recovery_policy": "frozen_and_active",
+    "reward_contract_unchanged": true,
+    "success_contract_unchanged": true,
+    "hard_safety_contract_unchanged": true
+  },
+  "v7_training": {
+    "requested_envs": 1200,
+    "admitted_envs": 1200,
+    "iterations": 90,
+    "simulated_frames": 6912000,
+    "total_fps": 20857.13498315987,
+    "wall_time_s": 331.3973853830248,
+    "process_peak_memory_mib": 19223.62890625,
+    "recovery_conditioned_captures": 723,
+    "cross_environment_restores": 3095,
+    "raw_evidence_sha256": "14d390e877c9529bfbc4e79dcec51a49980589d1b55acbbe2bff3514b7b0cda5"
+  },
+  "v7_model_22_gate_256": {
+    "checkpoint_sha256": "fab149910f542f567f9c167a32c29397378bef719aa3e00652956785d2a7abe0",
+    "baseline_successes": 174,
+    "candidate_successes": 171,
+    "baseline_recovered_successes": 13,
+    "candidate_recovered_successes": 10,
+    "baseline_stable_presentations": 215,
+    "candidate_stable_presentations": 215,
+    "baseline_receiver_contacts": 187,
+    "candidate_receiver_contacts": 185,
+    "baseline_bilateral_captures": 186,
+    "candidate_bilateral_captures": 184,
+    "baseline_hard_safety_events": 0,
+    "candidate_hard_safety_events": 0,
+    "baseline_raw_evidence_sha256": "b128ab90a0478f80bf8725db1875b86c1cc3fbcbabb519accbbfd86ca83e43c0",
+    "candidate_raw_evidence_sha256": "d5871cf1397ce3f48a35a50e5f2453c46be4b8b0c8f1e66a811a2a954b495b94",
+    "decision": "rejected"
+  },
+  "receiver_retry_audit": {
+    "root_cause": "receiver_attempt_and_retry_started_only_after_contact_so_complete_geometric_misses_never_retried",
+    "baseline_retry_environments": 0,
+    "no_contact_retry_v8": {
+      "successes": 138,
+      "receiver_contacts": 151,
+      "retry_environments": 127,
+      "hard_safety_events": 0,
+      "raw_evidence_sha256": "385af241d7eaed3033f6f0dd248e8972ab2f91a94f77b2d810feaa98a9c52443",
+      "decision": "rejected_and_disabled"
+    },
+    "alternate_arc_retry_v9": {
+      "successes": 112,
+      "receiver_contacts": 134,
+      "retry_environments": 140,
+      "hard_safety_events": 0,
+      "raw_evidence_sha256": "5f684c70d94ed298f3a4c3e268fb8e06ad0472e9bf0ce0435a691d14d1a56a34",
+      "decision": "rejected_and_removed"
+    },
+    "retained_receiver_approach_timeout_steps": 0
+  },
+  "decision": "retain_v4_champion_and_disabled_zero_initialized_adapter_architecture",
+  "next_required_option": "custody_and_deadline_aware_continue_reseat_or_abort_receiver_decision"
+}

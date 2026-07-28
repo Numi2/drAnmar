@@ -72,3 +72,23 @@ def transfer_contract_state(env: ManagerBasedRLEnv) -> torch.Tensor:
         ),
         dim=-1,
     )
+
+
+def giver_and_deadline_context(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Preserve giver routing and expose the real remaining episode budget.
+
+    The end-to-end actor routes roles from channel zero and canonicalizes this
+    two-channel term before the frozen phase network sees it. Channel one is
+    therefore available to a recovery-only option without changing the
+    incumbent policy's output or the 107-value observation contract.
+    """
+    state = handover_state(env)
+    giver_is_robot_1 = state["giver_is_robot_1"].float()
+    maximum_steps = float(env.max_episode_length)
+    remaining_fraction = (
+        1.0 - env.episode_length_buf.float() / maximum_steps
+    ).clamp(0.0, 1.0)
+    return torch.stack(
+        (giver_is_robot_1, remaining_fraction),
+        dim=-1,
+    )

@@ -19,16 +19,51 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
+_RECEIVER_CURRICULUM_STATE_FIELDS = (
+    "phase",
+    "progress_phase",
+    "rewarded_phase",
+    "giver_is_robot_1",
+    "receiver_only_consecutive",
+    "giver_contact_history",
+    "receiver_contact_history",
+    "presentation_stable_consecutive",
+    "presentation_qualified",
+    "receiver_capture_consecutive",
+    "giver_release_confirmation_consecutive",
+    "giver_release_authorized",
+    "receiver_capture_offset_w",
+    "receiver_attempt_active",
+    "receiver_attempt_step_count",
+    "receiver_approach_step_count",
+    "receiver_pre_release_loss_consecutive",
+    "receiver_retry_step_count",
+    "receiver_retry_count",
+    "receiver_release_abort_count",
+    "receiver_loss_consecutive",
+    "giver_release_observed",
+    "pickup_attempt_count",
+    "pickup_recovery_count",
+    "pickup_contact_loss_consecutive",
+    "recovery_open_step_count",
+    "pickup_attempts_exhausted",
+    "giver_acquisition_offset_w",
+    "receiver_acquisition_offset_w",
+)
+
+
 def reset_receiver_curriculum_from_cache(
     env: ManagerBasedRLEnv,
     env_ids: torch.Tensor | None,
 ) -> None:
-    """Restore reset-time states captured at physical stable presentation.
+    """Restore complete Markov states captured during physical handover.
 
-    The cache is training-only and contains states each environment reached
-    through the normal pickup, lift, and presentation sequence. It never
-    modifies an active episode and is not enabled by the end-to-end
-    qualification task.
+    A replayed rigid-body state without its latched giver, phase, contact
+    filters, counters, acquisition offsets, and previous action is not the
+    state that generated the transition. The cache therefore restores both
+    simulator state here and the corresponding logical state on the next
+    ``handover_state`` update. This remains training-only and never modifies
+    an active end-to-end qualification episode.
     """
     cache = getattr(env, "_dr_anmar_receiver_curriculum_cache", None)
     if cache is None:
@@ -39,6 +74,23 @@ def reset_receiver_curriculum_from_cache(
             dtype=torch.long,
             device=env.device,
         )
+    restored_mask = getattr(
+        env,
+        "_dr_anmar_receiver_curriculum_restored",
+        None,
+    )
+    if restored_mask is None:
+        restored_mask = torch.zeros(
+            env.num_envs,
+            dtype=torch.bool,
+            device=env.device,
+        )
+        setattr(
+            env,
+            "_dr_anmar_receiver_curriculum_restored",
+            restored_mask,
+        )
+    restored_mask[env_ids] = False
     valid = cache["valid"][env_ids]
     restore_probability = float(
         getattr(
@@ -56,31 +108,180 @@ def reset_receiver_curriculum_from_cache(
     if bool(refresh_env_ids.numel()):
         cache["valid"][refresh_env_ids] = False
         cache["reset_refreshes"] += int(refresh_env_ids.numel())
-    valid_env_ids = env_ids[restore]
-    if not bool(valid_env_ids.numel()):
+    target_env_ids = env_ids[restore]
+    if not bool(target_env_ids.numel()):
         return
-    cache["reset_restores"] += int(valid_env_ids.numel())
+    cache["reset_restores"] += int(target_env_ids.numel())
+    source_env_ids = target_env_ids
+    cross_environment_sampling = bool(
+        getattr(
+            env.cfg,
+            "dr_anmar_receiver_curriculum_cross_environment_sampling",
+            False,
+        )
+    )
+    if cross_environment_sampling:
+        available_source_ids = torch.nonzero(
+            cache["valid"],
+            as_tuple=False,
+        ).squeeze(-1)
+        if bool(available_source_ids.numel()):
+            source_env_ids = available_source_ids[
+                torch.randint(
+                    available_source_ids.numel(),
+                    (target_env_ids.numel(),),
+                    device=env.device,
+                )
+            ]
+            cache["cross_environment_restores"] += int(
+                target_env_ids.numel()
+            )
     robot_1: Articulation = env.scene["robot_1"]
     robot_2: Articulation = env.scene["robot_2"]
     obj: RigidObject = env.scene["object"]
     robot_1.write_joint_state_to_sim(
-        cache["robot_1_joint_pos"][valid_env_ids],
-        cache["robot_1_joint_vel"][valid_env_ids],
-        env_ids=valid_env_ids,
+        cache["robot_1_joint_pos"][source_env_ids],
+        cache["robot_1_joint_vel"][source_env_ids],
+        env_ids=target_env_ids,
     )
     robot_2.write_joint_state_to_sim(
-        cache["robot_2_joint_pos"][valid_env_ids],
-        cache["robot_2_joint_vel"][valid_env_ids],
-        env_ids=valid_env_ids,
+        cache["robot_2_joint_pos"][source_env_ids],
+        cache["robot_2_joint_vel"][source_env_ids],
+        env_ids=target_env_ids,
     )
+    object_root_pose_w = cache["object_root_pose_w"][source_env_ids].clone()
+    if cross_environment_sampling:
+        source_origins = env.scene.env_origins[source_env_ids]
+        target_origins = env.scene.env_origins[target_env_ids]
+        object_root_pose_w[:, :3] += target_origins - source_origins
     obj.write_root_pose_to_sim(
-        cache["object_root_pose_w"][valid_env_ids],
-        env_ids=valid_env_ids,
+        object_root_pose_w,
+        env_ids=target_env_ids,
     )
     obj.write_root_velocity_to_sim(
-        cache["object_root_velocity_w"][valid_env_ids],
-        env_ids=valid_env_ids,
+        cache["object_root_velocity_w"][source_env_ids],
+        env_ids=target_env_ids,
     )
+    cache["restored_source_env_ids"][target_env_ids] = source_env_ids
+    cache["restored_episode_length_buf"][target_env_ids] = cache[
+        "episode_length_buf"
+    ][source_env_ids]
+    cache["markov_state_restores"] += int(target_env_ids.numel())
+    cache["recovery_context_restores"] += int(
+        (
+            cache["handover_state"]["pickup_recovery_count"][
+                source_env_ids
+            ]
+            > 0
+        )
+        .sum()
+        .item()
+    )
+    restored_mask[target_env_ids] = True
+
+
+def reset_pickup_recovery_curriculum_from_cache(
+    env: ManagerBasedRLEnv,
+    env_ids: torch.Tensor | None,
+) -> None:
+    """Restore simulator states captured at a real pickup-loss transition."""
+    cache = getattr(env, "_dr_anmar_pickup_recovery_curriculum_cache", None)
+    if cache is None:
+        return
+    if env_ids is None:
+        env_ids = torch.arange(
+            env.num_envs,
+            dtype=torch.long,
+            device=env.device,
+        )
+    restored_mask = getattr(
+        env,
+        "_dr_anmar_pickup_recovery_curriculum_restored",
+        None,
+    )
+    if restored_mask is None:
+        restored_mask = torch.zeros(
+            env.num_envs,
+            dtype=torch.bool,
+            device=env.device,
+        )
+        setattr(
+            env,
+            "_dr_anmar_pickup_recovery_curriculum_restored",
+            restored_mask,
+        )
+    restored_mask[env_ids] = False
+    valid = cache["valid"][env_ids]
+    restore_probability = float(
+        getattr(
+            env.cfg,
+            "dr_anmar_pickup_recovery_curriculum_restore_probability",
+            0.9,
+        )
+    )
+    restore = valid & (
+        torch.rand(env_ids.shape, device=env.device) < restore_probability
+    )
+    refresh_env_ids = env_ids[valid & ~restore]
+    if bool(refresh_env_ids.numel()):
+        cache["valid"][refresh_env_ids] = False
+        cache["reset_refreshes"] += int(refresh_env_ids.numel())
+    target_env_ids = env_ids[restore]
+    if not bool(target_env_ids.numel()):
+        return
+    cache["reset_restores"] += int(target_env_ids.numel())
+    source_env_ids = target_env_ids
+    if bool(
+        getattr(
+            env.cfg,
+            "dr_anmar_pickup_recovery_curriculum_cross_environment_sampling",
+            False,
+        )
+    ):
+        available_source_ids = torch.nonzero(
+            cache["valid"],
+            as_tuple=False,
+        ).squeeze(-1)
+        if bool(available_source_ids.numel()):
+            source_env_ids = available_source_ids[
+                torch.randint(
+                    available_source_ids.numel(),
+                    (target_env_ids.numel(),),
+                    device=env.device,
+                )
+            ]
+            cache["cross_environment_restores"] += int(
+                target_env_ids.numel()
+            )
+    robot_1: Articulation = env.scene["robot_1"]
+    robot_2: Articulation = env.scene["robot_2"]
+    obj: RigidObject = env.scene["object"]
+    robot_1.write_joint_state_to_sim(
+        cache["robot_1_joint_pos"][source_env_ids],
+        cache["robot_1_joint_vel"][source_env_ids],
+        env_ids=target_env_ids,
+    )
+    robot_2.write_joint_state_to_sim(
+        cache["robot_2_joint_pos"][source_env_ids],
+        cache["robot_2_joint_vel"][source_env_ids],
+        env_ids=target_env_ids,
+    )
+    object_root_pose_w = cache["object_root_pose_w"][source_env_ids].clone()
+    source_origins = env.scene.env_origins[source_env_ids]
+    target_origins = env.scene.env_origins[target_env_ids]
+    object_root_pose_w[:, :3] += target_origins - source_origins
+    obj.write_root_pose_to_sim(
+        object_root_pose_w,
+        env_ids=target_env_ids,
+    )
+    obj.write_root_velocity_to_sim(
+        cache["object_root_velocity_w"][source_env_ids],
+        env_ids=target_env_ids,
+    )
+    cache["restored_giver_is_robot_1"][target_env_ids] = cache[
+        "giver_is_robot_1"
+    ][source_env_ids]
+    restored_mask[target_env_ids] = True
 
 
 def _step_number(env: ManagerBasedRLEnv) -> int:
@@ -116,6 +317,7 @@ def handover_state(
     receiver_capture_angular_speed_limit: float = 5.0,
     giver_release_confirmation_steps: int = 5,
     receiver_attempt_timeout_steps: int = 30,
+    receiver_approach_timeout_steps: int = 0,
     receiver_retry_contact_loss_steps: int = 2,
     receiver_retry_steps: int = 0,
     reset_height_offset: float = -0.05,
@@ -213,6 +415,12 @@ def handover_state(
                 receiver_attempt_timeout_steps,
             )
         )
+        receiver_approach_timeout_steps = int(
+            contract.get(
+                "receiver_approach_timeout_steps",
+                receiver_approach_timeout_steps,
+            )
+        )
         receiver_retry_contact_loss_steps = int(
             contract.get(
                 "receiver_retry_contact_loss_steps",
@@ -277,6 +485,9 @@ def handover_state(
                 env.num_envs, dtype=torch.bool, device=env.device
             ),
             "receiver_attempt_step_count": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "receiver_approach_step_count": torch.zeros(
                 env.num_envs, dtype=torch.long, device=env.device
             ),
             "receiver_pre_release_loss_consecutive": torch.zeros(
@@ -419,6 +630,7 @@ def handover_state(
     state["receiver_capture_offset_w"][reset] = 0.0
     state["receiver_attempt_active"][reset] = False
     state["receiver_attempt_step_count"][reset] = 0
+    state["receiver_approach_step_count"][reset] = 0
     state["receiver_pre_release_loss_consecutive"][reset] = 0
     state["receiver_retry_step_count"][reset] = 0
     state["receiver_retry_count"][reset] = 0
@@ -449,6 +661,75 @@ def handover_state(
     state["receiver_acquisition_offset_w"][reset] = 0.0
     state["start_object_pos"][reset] = object_pos_w[reset]
     state["start_object_pos"][reset, 2] = state["support_height_w"][reset]
+    restored_recovery = getattr(
+        env,
+        "_dr_anmar_pickup_recovery_curriculum_restored",
+        None,
+    )
+    if restored_recovery is not None:
+        restored_recovery = reset & restored_recovery
+        recovery_cache = getattr(
+            env,
+            "_dr_anmar_pickup_recovery_curriculum_cache",
+            None,
+        )
+        state["phase"][restored_recovery] = 4
+        state["pickup_attempt_count"][restored_recovery] = 1
+        state["pickup_recovery_count"][restored_recovery] = 1
+        if recovery_cache is not None:
+            state["giver_is_robot_1"][restored_recovery] = recovery_cache[
+                "restored_giver_is_robot_1"
+            ][restored_recovery]
+        getattr(
+            env,
+            "_dr_anmar_pickup_recovery_curriculum_restored",
+        )[restored_recovery] = False
+    restored_receiver = getattr(
+        env,
+        "_dr_anmar_receiver_curriculum_restored",
+        None,
+    )
+    if restored_receiver is not None:
+        restored_receiver = reset & restored_receiver
+        receiver_cache = getattr(
+            env,
+            "_dr_anmar_receiver_curriculum_cache",
+            None,
+        )
+        if receiver_cache is not None and bool(restored_receiver.any()):
+            target_env_ids = torch.nonzero(
+                restored_receiver,
+                as_tuple=False,
+            ).squeeze(-1)
+            source_env_ids = receiver_cache[
+                "restored_source_env_ids"
+            ][target_env_ids]
+            for field in _RECEIVER_CURRICULUM_STATE_FIELDS:
+                state[field][target_env_ids] = receiver_cache[
+                    "handover_state"
+                ][field][source_env_ids]
+            # Event-manager reset ordering may clear action buffers after the
+            # physical restore. Restore the transition's previous action here,
+            # when observations request the logical handover state.
+            mdp_common.as_torch(env.action_manager.action)[
+                target_env_ids
+            ] = receiver_cache["last_action"][source_env_ids]
+            # Terminal outcomes never cross an episode boundary. Every other
+            # restored tensor is part of the state that generated the cached
+            # transition and is required for a Markov-complete replay.
+            env.episode_length_buf[target_env_ids] = receiver_cache[
+                "restored_episode_length_buf"
+            ][target_env_ids]
+            state["successful_handover"][target_env_ids] = False
+            state["premature_release"][target_env_ids] = False
+            state["receiver_retention_failed"][target_env_ids] = False
+            state["retention_failure_low_clearance"][target_env_ids] = False
+            state["retention_failure_follow_error"][target_env_ids] = False
+            state["retention_failure_contact_loss"][target_env_ids] = False
+        getattr(
+            env,
+            "_dr_anmar_receiver_curriculum_restored",
+        )[restored_receiver] = False
     state["last_reset_step"][reset] = step
     # A downstream curriculum may restore a reset-time snapshot that was
     # captured only after this exact physical handover contract succeeded.
@@ -651,9 +932,21 @@ def handover_state(
     giver_custody = giver_contact | (
         lifted & giver_follows
     )
+    use_filtered_presentation_custody = bool(
+        contract
+        and contract.get(
+            "presentation_use_filtered_custody",
+            False,
+        )
+    )
+    presentation_custody = (
+        giver_custody
+        if use_filtered_presentation_custody
+        else giver_contact_now
+    )
     presentation_ready_now = (
         (phase == 2)
-        & giver_contact_now
+        & presentation_custody
         & lifted
         & (presentation_error <= presentation_ready_tolerance)
         & (motion[:, 0] <= presentation_linear_speed_limit)
@@ -688,6 +981,25 @@ def handover_state(
                 ),
                 "reset_restores": 0,
                 "reset_refreshes": 0,
+                "cross_environment_restores": 0,
+                "recovery_conditioned_captures": 0,
+                "markov_state_restores": 0,
+                "recovery_context_restores": 0,
+                "restored_source_env_ids": torch.arange(
+                    env.num_envs,
+                    dtype=torch.long,
+                    device=env.device,
+                ),
+                "episode_length_buf": torch.zeros(
+                    env.num_envs,
+                    dtype=torch.long,
+                    device=env.device,
+                ),
+                "restored_episode_length_buf": torch.zeros(
+                    env.num_envs,
+                    dtype=torch.long,
+                    device=env.device,
+                ),
                 "robot_1_joint_pos": torch.zeros_like(
                     mdp_common.as_torch(robot_1.data.joint_pos)
                 ),
@@ -710,14 +1022,50 @@ def handover_state(
                     dtype=torch.float32,
                     device=env.device,
                 ),
+                "last_action": torch.zeros_like(
+                    mdp_common.as_torch(env.action_manager.action)
+                ),
+                "handover_state": {
+                    field: torch.zeros_like(state[field])
+                    for field in _RECEIVER_CURRICULUM_STATE_FIELDS
+                },
             }
             setattr(
                 env,
                 "_dr_anmar_receiver_curriculum_cache",
                 cache,
             )
-        capture = presentation_stable & ~cache["valid"]
+        capture_stage = str(
+            getattr(
+                env.cfg,
+                "dr_anmar_receiver_curriculum_capture_stage",
+                "stable_presentation",
+            )
+        )
+        if capture_stage == "stable_presentation":
+            capture_ready = presentation_stable
+        elif capture_stage == "lifted_custody":
+            capture_ready = (phase == 2) & lifted & giver_custody
+        else:
+            raise ValueError(
+                "receiver curriculum capture stage must be "
+                "'stable_presentation' or 'lifted_custody'"
+            )
+        capture = capture_ready & ~cache["valid"]
+        require_pickup_recovery = bool(
+            getattr(
+                env.cfg,
+                "dr_anmar_receiver_curriculum_require_pickup_recovery",
+                False,
+            )
+        )
+        if require_pickup_recovery:
+            capture &= state["pickup_recovery_count"] > 0
         if bool(capture.any()):
+            if require_pickup_recovery:
+                cache["recovery_conditioned_captures"] += int(
+                    capture.sum().item()
+                )
             cache["robot_1_joint_pos"][capture] = mdp_common.as_torch(
                 robot_1.data.joint_pos
             )[capture]
@@ -742,6 +1090,16 @@ def handover_state(
             cache["object_root_velocity_w"][capture, 3:6] = (
                 mdp_common.as_torch(obj.data.root_ang_vel_w)[capture]
             )
+            cache["last_action"][capture] = mdp_common.as_torch(
+                env.action_manager.action
+            )[capture]
+            cache["episode_length_buf"][capture] = (
+                env.episode_length_buf[capture]
+            )
+            for field in _RECEIVER_CURRICULUM_STATE_FIELDS:
+                cache["handover_state"][field][capture] = state[field][
+                    capture
+                ]
             cache["valid"][capture] = True
 
     retry_was_active = state["receiver_retry_step_count"] > 0
@@ -756,6 +1114,20 @@ def handover_state(
     )
     state["receiver_retry_step_count"][retry_complete] = 0
     receiver_retry_active = state["receiver_retry_step_count"] > 0
+    receiver_approach_active = (
+        structured_transfer_contract
+        & (phase == 2)
+        & presentation_stable
+        & ~receiver_any_contact_now
+        & ~receiver_retry_active
+        & ~state["receiver_attempt_active"]
+        & (state["receiver_retry_count"] == 0)
+    )
+    state["receiver_approach_step_count"][:] = torch.where(
+        receiver_approach_active,
+        state["receiver_approach_step_count"] + 1,
+        torch.zeros_like(state["receiver_approach_step_count"]),
+    )
     receiver_capture_began = (
         structured_transfer_contract
         & (phase == 2)
@@ -837,6 +1209,15 @@ def handover_state(
             < receiver_capture_required_steps
         )
     )
+    receiver_approach_stalled = (
+        receiver_approach_timeout_steps > 0
+    ) & (
+        receiver_approach_active
+        & (
+            state["receiver_approach_step_count"]
+            >= receiver_approach_timeout_steps
+        )
+    )
     receiver_release_aborted = (
         structured_transfer_contract
         & (phase == 3)
@@ -850,7 +1231,8 @@ def handover_state(
     start_receiver_retry = (
         receiver_retry_steps > 0
     ) & (
-        receiver_missed_before_capture
+        receiver_approach_stalled
+        | receiver_missed_before_capture
         | receiver_attempt_stalled
         | receiver_release_aborted
     )
@@ -859,6 +1241,7 @@ def handover_state(
     state["receiver_retry_step_count"][start_receiver_retry] = 1
     state["receiver_attempt_active"][start_receiver_retry] = False
     state["receiver_attempt_step_count"][start_receiver_retry] = 0
+    state["receiver_approach_step_count"][start_receiver_retry] = 0
     state["receiver_capture_consecutive"][start_receiver_retry] = 0
     state["giver_release_confirmation_consecutive"][
         start_receiver_retry
@@ -890,6 +1273,7 @@ def handover_state(
     )
     state["receiver_attempt_active"][receiver_acquired] = False
     state["receiver_attempt_step_count"][receiver_acquired] = 0
+    state["receiver_approach_step_count"][receiver_acquired] = 0
     phase[receiver_acquired] = 3
     state["progress_phase"][receiver_acquired] = torch.maximum(
         state["progress_phase"][receiver_acquired],
@@ -1017,6 +1401,94 @@ def handover_state(
         pickup_attempt_failed
         & (state["pickup_attempt_count"] >= maximum_pickup_attempts)
     )
+    if bool(
+        getattr(
+            env.cfg,
+            "dr_anmar_pickup_recovery_curriculum",
+            False,
+        )
+    ):
+        cache = getattr(
+            env,
+            "_dr_anmar_pickup_recovery_curriculum_cache",
+            None,
+        )
+        robot_1: Articulation = env.scene["robot_1"]
+        robot_2: Articulation = env.scene["robot_2"]
+        if cache is None:
+            cache = {
+                "valid": torch.zeros(
+                    env.num_envs,
+                    dtype=torch.bool,
+                    device=env.device,
+                ),
+                "reset_restores": 0,
+                "reset_refreshes": 0,
+                "cross_environment_restores": 0,
+                "robot_1_joint_pos": torch.zeros_like(
+                    mdp_common.as_torch(robot_1.data.joint_pos)
+                ),
+                "robot_1_joint_vel": torch.zeros_like(
+                    mdp_common.as_torch(robot_1.data.joint_vel)
+                ),
+                "robot_2_joint_pos": torch.zeros_like(
+                    mdp_common.as_torch(robot_2.data.joint_pos)
+                ),
+                "robot_2_joint_vel": torch.zeros_like(
+                    mdp_common.as_torch(robot_2.data.joint_vel)
+                ),
+                "object_root_pose_w": torch.zeros(
+                    (env.num_envs, 7),
+                    dtype=torch.float32,
+                    device=env.device,
+                ),
+                "object_root_velocity_w": torch.zeros(
+                    (env.num_envs, 6),
+                    dtype=torch.float32,
+                    device=env.device,
+                ),
+                "giver_is_robot_1": torch.ones(
+                    env.num_envs,
+                    dtype=torch.bool,
+                    device=env.device,
+                ),
+                "restored_giver_is_robot_1": torch.ones(
+                    env.num_envs,
+                    dtype=torch.bool,
+                    device=env.device,
+                ),
+            }
+            setattr(
+                env,
+                "_dr_anmar_pickup_recovery_curriculum_cache",
+                cache,
+            )
+        capture = recovery_allowed & ~cache["valid"]
+        if bool(capture.any()):
+            cache["robot_1_joint_pos"][capture] = mdp_common.as_torch(
+                robot_1.data.joint_pos
+            )[capture]
+            cache["robot_1_joint_vel"][capture] = mdp_common.as_torch(
+                robot_1.data.joint_vel
+            )[capture]
+            cache["robot_2_joint_pos"][capture] = mdp_common.as_torch(
+                robot_2.data.joint_pos
+            )[capture]
+            cache["robot_2_joint_vel"][capture] = mdp_common.as_torch(
+                robot_2.data.joint_vel
+            )[capture]
+            cache["object_root_pose_w"][capture, :3] = object_pos_w[capture]
+            cache["object_root_pose_w"][capture, 3:7] = (
+                mdp_common.as_torch(obj.data.root_quat_w)[capture]
+            )
+            cache["object_root_velocity_w"][capture, :3] = (
+                mdp_common.as_torch(obj.data.root_lin_vel_w)[capture]
+            )
+            cache["object_root_velocity_w"][capture, 3:6] = (
+                mdp_common.as_torch(obj.data.root_ang_vel_w)[capture]
+            )
+            cache["giver_is_robot_1"][capture] = giver_is_robot_1[capture]
+            cache["valid"][capture] = True
     state["pickup_attempts_exhausted"] |= attempts_exhausted
     state["pickup_recovery_count"][recovery_allowed] += 1
     state["recovery_open_step_count"][recovery_allowed] = 0
@@ -1031,6 +1503,7 @@ def handover_state(
     state["receiver_capture_offset_w"][recovery_allowed] = 0.0
     state["receiver_attempt_active"][recovery_allowed] = False
     state["receiver_attempt_step_count"][recovery_allowed] = 0
+    state["receiver_approach_step_count"][recovery_allowed] = 0
     state["receiver_pre_release_loss_consecutive"][
         recovery_allowed
     ] = 0
@@ -1062,6 +1535,7 @@ def handover_state(
     state["receiver_capture_offset_w"][recovery_complete] = 0.0
     state["receiver_attempt_active"][recovery_complete] = False
     state["receiver_attempt_step_count"][recovery_complete] = 0
+    state["receiver_approach_step_count"][recovery_complete] = 0
     state["receiver_pre_release_loss_consecutive"][
         recovery_complete
     ] = 0

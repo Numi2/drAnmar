@@ -10,6 +10,7 @@ import copy
 import torch
 from isaaclab.utils.math import (
     axis_angle_from_quat,
+    quat_apply,
     quat_conjugate,
     quat_mul,
 )
@@ -18,9 +19,21 @@ from rsl_rl.modules import GaussianDistribution
 from torch import nn
 from torch.distributions import Normal
 
+from orbit.surgical.tasks.surgical.lift.grasp_frames import (
+    needle_geometry_grasp_frame,
+)
+
 from .residual_model import HandoverAnalyticController
 
 _TASK_FEATURE_DIM = 24
+_RECOVERY_RECEIVER_ADAPTER_FEATURE_DIM = 12
+_JOINT_TRANSFER_ACQUISITION_FEATURE_DIM = 31
+_TRANSFER_REFINEMENT_FEATURE_DIM = 31
+_DEADLINE_RECOVERY_FEATURE_DIM = 24
+_RECEIVER_POLICY_GRASP_OFFSET, _ = needle_geometry_grasp_frame(
+    0.65,
+    grasp_z_m=-0.003,
+)
 
 
 def select_handover_role(
@@ -136,7 +149,18 @@ def role_action_to_physical(
     return torch.cat((robot_1_action, robot_2_action), dim=-1)
 
 
-def handover_task_features(role_observation: torch.Tensor) -> torch.Tensor:
+def physical_action_to_role(
+    physical_action: torch.Tensor,
+    giver_is_robot_1: torch.Tensor,
+) -> torch.Tensor:
+    """Map Robot 1/Robot 2 actions into canonical giver/receiver order."""
+    return role_action_to_physical(physical_action, giver_is_robot_1)
+
+
+def handover_task_features(
+    role_observation: torch.Tensor,
+    receiver_policy_grasp_offset: torch.Tensor,
+) -> torch.Tensor:
     """Build local grasp, presentation, orientation, and contact-change features."""
     giver_ee_position = role_observation[:, 32:35]
     giver_ee_orientation = role_observation[:, 35:39]
@@ -178,9 +202,7 @@ def handover_task_features(role_observation: torch.Tensor) -> torch.Tensor:
     ) / 0.02
 
     receiver_offset = torch.zeros_like(receiver_ee_position)
-    receiver_offset[:, 0] = 0.0019002163218475414
-    receiver_offset[:, 1] = -0.009119058578501121
-    receiver_offset[:, 2] = -0.003
+    receiver_offset += receiver_policy_grasp_offset
     receiver_grasp_error = (
         object_in_receiver[:, :3] + receiver_offset - receiver_ee_position
     ) / 0.02
@@ -230,6 +252,104 @@ def handover_task_features(role_observation: torch.Tensor) -> torch.Tensor:
             pickup_clearance,
             contact_change,
             transfer_contract,
+        ),
+        dim=-1,
+    ).clamp(-5.0, 5.0)
+
+
+def recovery_receiver_canonical_grasp_features(
+    role_observation: torch.Tensor,
+    receiver_policy_grasp_offset: torch.Tensor,
+) -> torch.Tensor:
+    """Describe the receiver target in the physically observed needle frame."""
+
+    receiver_ee_position = role_observation[:, 39:42]
+    receiver_ee_orientation = role_observation[:, 42:46]
+    object_in_receiver = role_observation[:, 53:60]
+    receiver_offset = torch.zeros_like(receiver_ee_position)
+    receiver_offset += receiver_policy_grasp_offset
+    receiver_target_position = (
+        object_in_receiver[:, :3]
+        + quat_apply(object_in_receiver[:, 3:7], receiver_offset)
+    )
+    receiver_position_error = (
+        receiver_target_position - receiver_ee_position
+    ) / 0.02
+
+    receiver_roll = torch.zeros_like(receiver_ee_orientation)
+    receiver_roll[:, 2] = 1.0
+    receiver_target_orientation = quat_mul(
+        object_in_receiver[:, 3:7],
+        receiver_roll,
+    )
+    receiver_orientation_error = axis_angle_from_quat(
+        quat_mul(
+            receiver_target_orientation,
+            quat_conjugate(receiver_ee_orientation),
+        )
+    ) / 3.141592653589793
+    receiver_contacts = role_observation[:, 68:70]
+    transfer_contract = role_observation[:, 103:107]
+    return torch.cat(
+        (
+            receiver_position_error,
+            receiver_orientation_error,
+            receiver_contacts,
+            transfer_contract,
+        ),
+        dim=-1,
+    ).clamp(-5.0, 5.0)
+
+
+def joint_transfer_acquisition_features(
+    role_observation: torch.Tensor,
+    receiver_policy_grasp_offset: torch.Tensor,
+) -> torch.Tensor:
+    """Describe coupled giver stabilization and receiver acquisition.
+
+    The compact option sees the needle-local receiver grasp error, the
+    presentation error, object twist, giver contact confidence/history, and
+    both tools' previous Cartesian actions. It cannot command either gripper;
+    release remains owned by the physics-derived capture contract.
+    """
+    task_features = handover_task_features(
+        role_observation,
+        receiver_policy_grasp_offset,
+    )
+    return torch.cat(
+        (
+            recovery_receiver_canonical_grasp_features(
+                role_observation,
+                receiver_policy_grasp_offset,
+            ),
+            task_features[:, 6:9],
+            role_observation[:, 60:66],
+            role_observation[:, 66:68],
+            role_observation[:, 99:101],
+            role_observation[:, 84:87],
+            role_observation[:, 91:94],
+        ),
+        dim=-1,
+    ).clamp(-5.0, 5.0)
+
+
+def deadline_recovery_features(
+    role_observation: torch.Tensor,
+    remaining_time: torch.Tensor,
+    receiver_policy_grasp_offset: torch.Tensor,
+) -> torch.Tensor:
+    """Describe recovered custody, receiver geometry, and deadline pressure."""
+    return torch.cat(
+        (
+            recovery_receiver_canonical_grasp_features(
+                role_observation,
+                receiver_policy_grasp_offset,
+            ),
+            role_observation[:, 60:66],
+            role_observation[:, 66:68],
+            role_observation[:, 99:101],
+            remaining_time,
+            role_observation[:, 98:99],
         ),
         dim=-1,
     ).clamp(-5.0, 5.0)
@@ -289,6 +409,101 @@ class _PhaseHeadedNetwork(nn.Module):
         return candidates[batch_indices, phase]
 
 
+class _RecoveryReceiverAdapter(nn.Module):
+    """Zero-initialized bounded correction from needle-local grasp error."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(_RECOVERY_RECEIVER_ADAPTER_FEATURE_DIM, 64),
+            nn.ELU(),
+        )
+        self.output = nn.Linear(64, 6)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return torch.tanh(self.output(self.encoder(features)))
+
+
+class _JointTransferAcquisitionAdapter(nn.Module):
+    """Zero-impact coupled SE(3) residual for the two tools."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(_JOINT_TRANSFER_ACQUISITION_FEATURE_DIM, 128),
+            nn.ELU(),
+            nn.Linear(128, 64),
+            nn.ELU(),
+        )
+        self.output = nn.Linear(64, 12)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return torch.tanh(self.output(self.encoder(features)))
+
+
+class _TransferRefinementAdapter(nn.Module):
+    """Zero-impact residual that refines acquisition and receiver retention."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(_TRANSFER_REFINEMENT_FEATURE_DIM, 128),
+            nn.ELU(),
+            nn.Linear(128, 64),
+            nn.ELU(),
+        )
+        self.output = nn.Linear(64, 12)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return torch.tanh(self.output(self.encoder(features)))
+
+
+class _DeadlineRecoveryAdapter(nn.Module):
+    """Produce an incumbent-preserving two-stage SE(3) recovery residual.
+
+    The nine-row output is retained so checkpoints produced by the rejected
+    discrete-option experiment remain loadable.  Rows zero through two are
+    intentionally inert; rows three through eight command the bounded
+    continuous residual.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(_DEADLINE_RECOVERY_FEATURE_DIM, 128),
+            nn.ELU(),
+            nn.Linear(128, 64),
+            nn.ELU(),
+        )
+        self.output = nn.Linear(64, 9)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
+
+    def forward(
+        self,
+        features: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        output = self.output(self.encoder(features))
+        # The discrete continue/re-seat/backoff selector was rejected: tiny
+        # logit changes switched complete trajectories and erased every
+        # recovered success. Always retaining the incumbent action makes the
+        # learned correction continuous, bounded, and exact at initialization.
+        option_selection = torch.zeros(
+            (output.shape[0], 3),
+            dtype=output.dtype,
+            device=output.device,
+        )
+        option_selection[:, 0] = 1.0
+        receiver_residual = torch.tanh(output[:, 3:9])
+        return option_selection, receiver_residual
+
+
 class EndToEndHandoverMLPModel(MLPModel):
     """Physics-structured servo plus bounded phase-specialized learned residual."""
 
@@ -318,7 +533,87 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.controller.receiver_residual_enabled_for_learning = True
         self.residual_scale = residual_scale
         self.giver_adaptation_enabled = False
+        self.pickup_recovery_adaptation_enabled = False
         self.receiver_adaptation_enabled = False
+        self.recovery_receiver_grasp_retain_adaptation_enabled = False
+        self.joint_transfer_acquisition_adaptation_enabled = False
+        self.transfer_refinement_adaptation_enabled = False
+        self.deadline_recovery_adaptation_enabled = False
+        self.deadline_recovery_residual_scale = 0.02
+        self.register_buffer(
+            "receiver_policy_grasp_offset",
+            torch.tensor(_RECEIVER_POLICY_GRASP_OFFSET),
+            persistent=False,
+        )
+        self.recovery_receiver_adapter = _RecoveryReceiverAdapter()
+        for parameter in self.recovery_receiver_adapter.parameters():
+            parameter.requires_grad_(False)
+        self.joint_transfer_acquisition_adapter = (
+            _JointTransferAcquisitionAdapter()
+        )
+        for parameter in self.joint_transfer_acquisition_adapter.parameters():
+            parameter.requires_grad_(False)
+        self.transfer_refinement_adapter = _TransferRefinementAdapter()
+        for parameter in self.transfer_refinement_adapter.parameters():
+            parameter.requires_grad_(False)
+        self.deadline_recovery_adapter = _DeadlineRecoveryAdapter()
+        for parameter in self.deadline_recovery_adapter.parameters():
+            parameter.requires_grad_(False)
+        self.last_deadline_option_index: torch.Tensor | None = None
+        self.last_deadline_option_active: torch.Tensor | None = None
+        self.last_deadline_recovery_residual_norm: torch.Tensor | None = None
+        self.last_deadline_receiver_residual_norm: torch.Tensor | None = None
+        self.recovery_receiver_reference_network: (
+            _PhaseHeadedNetwork | None
+        ) = None
+
+    def load_state_dict(self, state_dict, strict: bool = True, assign: bool = False):
+        """Load older option checkpoints while preserving an exact-zero adapter."""
+        adapter_prefix = "recovery_receiver_adapter."
+        if not any(key.startswith(adapter_prefix) for key in state_dict):
+            state_dict = state_dict.copy()
+            for key, value in self.recovery_receiver_adapter.state_dict().items():
+                state_dict[f"{adapter_prefix}{key}"] = value
+        joint_adapter_prefix = "joint_transfer_acquisition_adapter."
+        if not any(
+            key.startswith(joint_adapter_prefix) for key in state_dict
+        ):
+            state_dict = state_dict.copy()
+            for key, value in (
+                self.joint_transfer_acquisition_adapter.state_dict().items()
+            ):
+                state_dict[f"{joint_adapter_prefix}{key}"] = value
+        refinement_adapter_prefix = "transfer_refinement_adapter."
+        if not any(
+            key.startswith(refinement_adapter_prefix) for key in state_dict
+        ):
+            state_dict = state_dict.copy()
+            for key, value in self.transfer_refinement_adapter.state_dict().items():
+                state_dict[f"{refinement_adapter_prefix}{key}"] = value
+        deadline_adapter_prefix = "deadline_recovery_adapter."
+        if not any(
+            key.startswith(deadline_adapter_prefix) for key in state_dict
+        ):
+            state_dict = state_dict.copy()
+            for key, value in (
+                self.deadline_recovery_adapter.state_dict().items()
+            ):
+                state_dict[f"{deadline_adapter_prefix}{key}"] = value
+        if (
+            self.recovery_receiver_reference_network is None
+            and any(
+                key.startswith("recovery_receiver_reference_network.")
+                for key in state_dict
+            )
+        ):
+            self.recovery_receiver_reference_network = copy.deepcopy(
+                self.phase_network
+            )
+        return super().load_state_dict(
+            state_dict,
+            strict=strict,
+            assign=assign,
+        )
 
     def _get_latent_dim(self) -> int:
         return self.obs_dim + _TASK_FEATURE_DIM
@@ -339,7 +634,10 @@ class EndToEndHandoverMLPModel(MLPModel):
         return torch.cat(
             (
                 normalized,
-                handover_task_features(role_observation),
+                handover_task_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                ),
             ),
             dim=-1,
         )
@@ -348,7 +646,11 @@ class EndToEndHandoverMLPModel(MLPModel):
         if (
             self.obs_normalization
             and not self.giver_adaptation_enabled
+            and not self.pickup_recovery_adaptation_enabled
             and not self.receiver_adaptation_enabled
+            and not self.joint_transfer_acquisition_adaptation_enabled
+            and not self.transfer_refinement_adaptation_enabled
+            and not self.deadline_recovery_adaptation_enabled
         ):
             role_observation, _ = self._role_latent(obs)
             self.obs_normalizer.update(role_observation)
@@ -388,6 +690,181 @@ class EndToEndHandoverMLPModel(MLPModel):
                 if parameter is not None:
                     parameter.requires_grad_(False)
 
+    def configure_receiver_grasp_retain_adaptation(self) -> None:
+        """Adapt receiver SE(3) through approach, seating, and release."""
+        self.receiver_adaptation_enabled = True
+        self.controller.receiver_grasp_retain_residual_enabled_for_learning = (
+            True
+        )
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        receiver_se3_row_mask = torch.zeros(
+            14,
+            dtype=self.phase_network.heads[2].weight.dtype,
+            device=self.phase_network.heads[2].weight.device,
+        )
+        receiver_se3_row_mask[7:13] = 1.0
+        for phase_index in (2, 3):
+            receiver_head = self.phase_network.heads[phase_index]
+            receiver_head.weight.requires_grad_(True)
+            receiver_head.bias.requires_grad_(True)
+            receiver_head.weight.register_hook(
+                lambda gradient, row_mask=receiver_se3_row_mask: (
+                    gradient * row_mask.unsqueeze(-1)
+                )
+            )
+            receiver_head.bias.register_hook(
+                lambda gradient, row_mask=receiver_se3_row_mask: (
+                    gradient * row_mask
+                )
+            )
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
+    def configure_recovery_receiver_grasp_retain_adaptation(self) -> None:
+        """Chain the frozen pickup-recovery option into receiver adaptation.
+
+        The loaded checkpoint's learned giver recovery remains active at
+        inference, but only the zero-initialized receiver adapter receives
+        gradients and exploration. Its output is restricted to receiver
+        SE(3). This prevents the downstream option from erasing the
+        qualified recovery behavior that generates its source states.
+        """
+        self.pickup_recovery_adaptation_enabled = True
+        self.receiver_adaptation_enabled = True
+        self.recovery_receiver_grasp_retain_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        self.controller.receiver_grasp_retain_residual_enabled_for_learning = (
+            True
+        )
+        if self.recovery_receiver_reference_network is None:
+            self.recovery_receiver_reference_network = copy.deepcopy(
+                self.phase_network
+            )
+        for parameter in (
+            self.recovery_receiver_reference_network.parameters()
+        ):
+            parameter.requires_grad_(False)
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        for parameter in self.recovery_receiver_adapter.parameters():
+            parameter.requires_grad_(True)
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
+    def configure_joint_transfer_acquisition_adaptation(self) -> None:
+        """Learn coupled tool motion without altering the promoted option.
+
+        The loaded pickup-recovery policy remains active and frozen. A new
+        exact-zero adapter alone receives gradients, and it is gated to phase
+        two SE(3) motion for both tools. Gripper closure and giver release are
+        still fully analytic and require the unchanged filtered contact
+        contract.
+        """
+        self.pickup_recovery_adaptation_enabled = True
+        self.receiver_adaptation_enabled = True
+        self.joint_transfer_acquisition_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        for parameter in self.recovery_receiver_adapter.parameters():
+            parameter.requires_grad_(False)
+        for parameter in (
+            self.joint_transfer_acquisition_adapter.parameters()
+        ):
+            parameter.requires_grad_(True)
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
+    def configure_transfer_refinement_adaptation(self) -> None:
+        """Refine the frozen joint option through acquisition and retention.
+
+        A loaded joint-transfer checkpoint remains active and immutable.
+        The new exact-zero adapter alone receives gradients. It may correct
+        receiver SE(3) only after the physical presentation is qualified and
+        through bilateral acquisition/retention. The giver, both grippers, and
+        giver release stay under the unchanged analytic contact contract.
+        """
+        self.pickup_recovery_adaptation_enabled = True
+        self.receiver_adaptation_enabled = True
+        self.joint_transfer_acquisition_adaptation_enabled = True
+        self.transfer_refinement_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        for parameter in self.recovery_receiver_adapter.parameters():
+            parameter.requires_grad_(False)
+        for parameter in (
+            self.joint_transfer_acquisition_adapter.parameters()
+        ):
+            parameter.requires_grad_(False)
+        for parameter in self.transfer_refinement_adapter.parameters():
+            parameter.requires_grad_(True)
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
+    def configure_deadline_recovery_adaptation(self) -> None:
+        """Train the recovered giver-presentation/receiver-acquisition residual.
+
+        The loaded pickup/recovery and nominal joint policy remain frozen. A
+        zero-impact adapter corrects giver SE(3) before stable presentation and
+        receiver SE(3) afterward. Both grippers, release, and the physical
+        success predicate remain analytic.
+        """
+        self.pickup_recovery_adaptation_enabled = True
+        self.receiver_adaptation_enabled = True
+        self.joint_transfer_acquisition_adaptation_enabled = True
+        self.deadline_recovery_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        for adapter in (
+            self.recovery_receiver_adapter,
+            self.joint_transfer_acquisition_adapter,
+            self.transfer_refinement_adapter,
+        ):
+            for parameter in adapter.parameters():
+                parameter.requires_grad_(False)
+        for parameter in self.deadline_recovery_adapter.parameters():
+            parameter.requires_grad_(True)
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
     def configure_giver_adaptation(self) -> None:
         """Learn giver XY while preserving the promoted receiver policy."""
         self.giver_adaptation_enabled = True
@@ -413,6 +890,42 @@ class EndToEndHandoverMLPModel(MLPModel):
                 )
             )
 
+    def configure_pickup_recovery_adaptation(self) -> None:
+        """Adapt giver XY only on post-slip relift phases."""
+        self.pickup_recovery_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        giver_xy_row_mask = torch.zeros(
+            14,
+            dtype=self.phase_network.heads[1].weight.dtype,
+            device=self.phase_network.heads[1].weight.device,
+        )
+        giver_xy_row_mask[0:2] = 1.0
+        for phase_index in (0, 1, 2, 4):
+            head = self.phase_network.heads[phase_index]
+            head.weight.requires_grad_(True)
+            head.bias.requires_grad_(True)
+            head.weight.register_hook(
+                lambda gradient, row_mask=giver_xy_row_mask: (
+                    gradient * row_mask.unsqueeze(-1)
+                )
+            )
+            head.bias.register_hook(
+                lambda gradient, row_mask=giver_xy_row_mask: (
+                    gradient * row_mask
+                )
+            )
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
     def forward(
         self,
         obs,
@@ -423,11 +936,168 @@ class EndToEndHandoverMLPModel(MLPModel):
         latent = self.get_latent(obs, masks, hidden_state)
         raw = torch.cat([obs[group] for group in self.obs_groups], dim=-1)
         phase = torch.argmax(raw[:, 77:82], dim=-1)
-        learned_role_residual = torch.tanh(
+        pickup_recovery_context = raw[:, 98] > 0.5
+        current_role_residual = torch.tanh(
             self.phase_network(latent, phase)
+        )
+        learned_role_residual = current_role_residual
+        joint_role_residual = torch.zeros_like(learned_role_residual)
+        refinement_role_residual = torch.zeros_like(learned_role_residual)
+        if self.recovery_receiver_grasp_retain_adaptation_enabled:
+            if self.recovery_receiver_reference_network is None:
+                raise RuntimeError(
+                    "recovery receiver adaptation requires a frozen "
+                    "reference network"
+                )
+            reference_role_residual = torch.tanh(
+                self.recovery_receiver_reference_network(latent, phase)
+            )
+            learned_role_residual = torch.where(
+                pickup_recovery_context.unsqueeze(-1),
+                current_role_residual,
+                reference_role_residual,
+            )
+            role_observation = role_normalize_handover_observation(raw)
+            adapter_features = recovery_receiver_canonical_grasp_features(
+                role_observation,
+                self.receiver_policy_grasp_offset,
+            )
+            receiver_adapter = self.recovery_receiver_adapter(
+                adapter_features
+            )
+            adapter_role_residual = torch.zeros_like(
+                learned_role_residual
+            )
+            adapter_role_residual[:, 7:13] = receiver_adapter
+            learned_role_residual = (
+                learned_role_residual
+                + pickup_recovery_context.unsqueeze(-1)
+                * adapter_role_residual
+            ).clamp(-1.0, 1.0)
+        joint_active = phase == 2
+        if self.joint_transfer_acquisition_adaptation_enabled:
+            role_observation = role_normalize_handover_observation(raw)
+            joint_adapter = self.joint_transfer_acquisition_adapter(
+                joint_transfer_acquisition_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            joint_role_residual[:, 0:6] = joint_adapter[:, 0:6]
+            joint_role_residual[:, 7:13] = joint_adapter[:, 6:12]
+            joint_role_residual *= joint_active.unsqueeze(-1)
+        presentation_qualified = raw[:, 103] >= 1.0
+        refinement_giver_active = torch.zeros_like(
+            presentation_qualified
+        )
+        refinement_receiver_active = (
+            ((phase == 2) & presentation_qualified) | (phase == 3)
+        )
+        if self.transfer_refinement_adaptation_enabled:
+            role_observation = role_normalize_handover_observation(raw)
+            refinement_adapter = self.transfer_refinement_adapter(
+                joint_transfer_acquisition_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            refinement_role_residual[:, 0:6] = (
+                refinement_adapter[:, 0:6]
+                * refinement_giver_active.unsqueeze(-1)
+            )
+            refinement_role_residual[:, 7:13] = (
+                refinement_adapter[:, 6:12]
+                * refinement_receiver_active.unsqueeze(-1)
+            )
+        deadline_active = (
+            pickup_recovery_context
+            & (phase == 2)
+        )
+        deadline_giver_active = deadline_active & ~presentation_qualified
+        deadline_receiver_active = deadline_active & presentation_qualified
+        deadline_option_selection = torch.zeros(
+            (raw.shape[0], 3),
+            dtype=raw.dtype,
+            device=raw.device,
+        )
+        deadline_option_selection[:, 0] = 1.0
+        deadline_role_residual = torch.zeros_like(
+            learned_role_residual
+        )
+        deadline_receiver_residual = torch.zeros(
+            (raw.shape[0], 6),
+            dtype=raw.dtype,
+            device=raw.device,
+        )
+        if self.deadline_recovery_adaptation_enabled:
+            role_observation = role_normalize_handover_observation(raw)
+            (
+                deadline_option_selection,
+                deadline_receiver_residual,
+            ) = self.deadline_recovery_adapter(
+                deadline_recovery_features(
+                    role_observation,
+                    raw[:, 83:84],
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            deadline_role_residual[:, 0:6] = (
+                deadline_receiver_residual
+                * deadline_giver_active.unsqueeze(-1)
+            )
+            deadline_role_residual[:, 7:13] = (
+                deadline_receiver_residual
+                * deadline_receiver_active.unsqueeze(-1)
+            )
+        self.last_deadline_option_index = torch.argmax(
+            deadline_option_selection,
+            dim=-1,
+        ).detach()
+        self.last_deadline_option_active = deadline_active.detach()
+        deadline_recovery_residual_norm = torch.linalg.vector_norm(
+            deadline_receiver_residual,
+            dim=-1,
+        ).detach()
+        self.last_deadline_recovery_residual_norm = (
+            deadline_recovery_residual_norm
+        )
+        self.last_deadline_receiver_residual_norm = (
+            deadline_recovery_residual_norm
         )
         physical_residual = role_action_to_physical(
             learned_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        joint_physical_residual = role_action_to_physical(
+            joint_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        refinement_physical_residual = role_action_to_physical(
+            refinement_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        joint_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        joint_role_action_mask[:, 0:6] = joint_active.unsqueeze(-1)
+        joint_role_action_mask[:, 7:13] = joint_active.unsqueeze(-1)
+        joint_physical_action_mask = role_action_to_physical(
+            joint_role_action_mask,
+            raw[:, 82] > 0.5,
+        )
+        refinement_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        refinement_role_action_mask[:, 0:6] = (
+            refinement_giver_active.unsqueeze(-1)
+        )
+        refinement_role_action_mask[:, 7:13] = (
+            refinement_receiver_active.unsqueeze(-1)
+        )
+        refinement_physical_action_mask = role_action_to_physical(
+            refinement_role_action_mask,
             raw[:, 82] > 0.5,
         )
         (
@@ -435,21 +1105,71 @@ class EndToEndHandoverMLPModel(MLPModel):
             giver_residual_mask,
             receiver_residual_mask,
         ) = self.controller(raw)
+        deadline_physical_residual = role_action_to_physical(
+            deadline_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        deadline_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        deadline_role_action_mask[:, 0:6] = (
+            deadline_giver_active.unsqueeze(-1)
+        )
+        deadline_role_action_mask[:, 7:13] = (
+            deadline_receiver_active.unsqueeze(-1)
+        )
+        deadline_physical_action_mask = role_action_to_physical(
+            deadline_role_action_mask,
+            raw[:, 82] > 0.5,
+        )
         # The promoted receiver mean remains active during giver adaptation,
         # but exploration and gradients are restricted to giver XY. Z and all
         # rotations/jaws stay under the analytic physics sequence.
         physical_action_mask = receiver_residual_mask
         exploration_mask = receiver_residual_mask
-        if self.giver_adaptation_enabled:
+        if self.recovery_receiver_grasp_retain_adaptation_enabled:
+            physical_action_mask = (
+                giver_residual_mask | receiver_residual_mask
+            )
+            exploration_mask = receiver_residual_mask
+        elif (
+            self.giver_adaptation_enabled
+            or self.pickup_recovery_adaptation_enabled
+        ):
             physical_action_mask = (
                 giver_residual_mask | receiver_residual_mask
             )
             exploration_mask = giver_residual_mask
+        if (
+            self.joint_transfer_acquisition_adaptation_enabled
+            and not self.deadline_recovery_adaptation_enabled
+        ):
+            exploration_mask = (
+                exploration_mask | joint_physical_action_mask
+            )
+        if self.transfer_refinement_adaptation_enabled:
+            exploration_mask = (
+                exploration_mask | refinement_physical_action_mask
+            )
+        if self.deadline_recovery_adaptation_enabled:
+            exploration_mask = (
+                exploration_mask | deadline_physical_action_mask
+            )
         physical_mean = (
             base_action
             + self.residual_scale
             * physical_residual
             * physical_action_mask.to(base_action.dtype)
+            + self.residual_scale
+            * joint_physical_residual
+            * joint_physical_action_mask.to(base_action.dtype)
+            + self.residual_scale
+            * refinement_physical_residual
+            * refinement_physical_action_mask.to(base_action.dtype)
+            + self.deadline_recovery_residual_scale
+            * deadline_physical_residual
+            * deadline_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         if self.distribution is None:
             return physical_mean
@@ -482,6 +1202,44 @@ class _EndToEndHandoverExport(nn.Module):
         self.controller = copy.deepcopy(model.controller)
         self.residual_scale = model.residual_scale
         self.giver_adaptation_enabled = model.giver_adaptation_enabled
+        self.pickup_recovery_adaptation_enabled = (
+            model.pickup_recovery_adaptation_enabled
+        )
+        self.recovery_receiver_grasp_retain_adaptation_enabled = (
+            model.recovery_receiver_grasp_retain_adaptation_enabled
+        )
+        self.joint_transfer_acquisition_adaptation_enabled = (
+            model.joint_transfer_acquisition_adaptation_enabled
+        )
+        self.transfer_refinement_adaptation_enabled = (
+            model.transfer_refinement_adaptation_enabled
+        )
+        self.deadline_recovery_adaptation_enabled = (
+            model.deadline_recovery_adaptation_enabled
+        )
+        self.deadline_recovery_residual_scale = (
+            model.deadline_recovery_residual_scale
+        )
+        self.recovery_receiver_reference_network = copy.deepcopy(
+            model.recovery_receiver_reference_network
+        )
+        self.recovery_receiver_adapter = copy.deepcopy(
+            model.recovery_receiver_adapter
+        )
+        self.joint_transfer_acquisition_adapter = copy.deepcopy(
+            model.joint_transfer_acquisition_adapter
+        )
+        self.transfer_refinement_adapter = copy.deepcopy(
+            model.transfer_refinement_adapter
+        )
+        self.deadline_recovery_adapter = copy.deepcopy(
+            model.deadline_recovery_adapter
+        )
+        self.register_buffer(
+            "receiver_policy_grasp_offset",
+            model.receiver_policy_grasp_offset.detach().clone(),
+            persistent=False,
+        )
         self.deterministic_output = (
             model.distribution.as_deterministic_output_module()
             if model.distribution is not None
@@ -494,16 +1252,155 @@ class _EndToEndHandoverExport(nn.Module):
         latent = torch.cat(
             (
                 self.obs_normalizer(role_observation),
-                handover_task_features(role_observation),
+                handover_task_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                ),
             ),
             dim=-1,
         )
         phase = torch.argmax(obs[:, 77:82], dim=-1)
-        learned_role_residual = torch.tanh(
+        pickup_recovery_context = obs[:, 98] > 0.5
+        current_role_residual = torch.tanh(
             self.phase_network(latent, phase)
         )
+        learned_role_residual = current_role_residual
+        joint_role_residual = torch.zeros_like(learned_role_residual)
+        refinement_role_residual = torch.zeros_like(learned_role_residual)
+        if self.recovery_receiver_grasp_retain_adaptation_enabled:
+            if self.recovery_receiver_reference_network is None:
+                raise RuntimeError(
+                    "recovery receiver export requires a reference network"
+                )
+            reference_role_residual = torch.tanh(
+                self.recovery_receiver_reference_network(latent, phase)
+            )
+            learned_role_residual = torch.where(
+                pickup_recovery_context.unsqueeze(-1),
+                current_role_residual,
+                reference_role_residual,
+            )
+            adapter_features = recovery_receiver_canonical_grasp_features(
+                role_observation,
+                self.receiver_policy_grasp_offset,
+            )
+            receiver_adapter = self.recovery_receiver_adapter(
+                adapter_features
+            )
+            adapter_role_residual = torch.zeros_like(
+                learned_role_residual
+            )
+            adapter_role_residual[:, 7:13] = receiver_adapter
+            learned_role_residual = (
+                learned_role_residual
+                + pickup_recovery_context.unsqueeze(-1)
+                * adapter_role_residual
+            ).clamp(-1.0, 1.0)
+        joint_active = phase == 2
+        if self.joint_transfer_acquisition_adaptation_enabled:
+            joint_adapter = self.joint_transfer_acquisition_adapter(
+                joint_transfer_acquisition_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            joint_role_residual[:, 0:6] = joint_adapter[:, 0:6]
+            joint_role_residual[:, 7:13] = joint_adapter[:, 6:12]
+            joint_role_residual *= joint_active.unsqueeze(-1)
+        presentation_qualified = obs[:, 103] >= 1.0
+        refinement_giver_active = torch.zeros_like(
+            presentation_qualified
+        )
+        refinement_receiver_active = (
+            ((phase == 2) & presentation_qualified) | (phase == 3)
+        )
+        if self.transfer_refinement_adaptation_enabled:
+            refinement_adapter = self.transfer_refinement_adapter(
+                joint_transfer_acquisition_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            refinement_role_residual[:, 0:6] = (
+                refinement_adapter[:, 0:6]
+                * refinement_giver_active.unsqueeze(-1)
+            )
+            refinement_role_residual[:, 7:13] = (
+                refinement_adapter[:, 6:12]
+                * refinement_receiver_active.unsqueeze(-1)
+            )
+        deadline_active = (
+            pickup_recovery_context
+            & (phase == 2)
+        )
+        deadline_giver_active = deadline_active & ~presentation_qualified
+        deadline_receiver_active = deadline_active & presentation_qualified
+        deadline_option_selection = torch.zeros(
+            (obs.shape[0], 3),
+            dtype=obs.dtype,
+            device=obs.device,
+        )
+        deadline_option_selection[:, 0] = 1.0
+        deadline_role_residual = torch.zeros_like(
+            learned_role_residual
+        )
+        if self.deadline_recovery_adaptation_enabled:
+            (
+                deadline_option_selection,
+                deadline_receiver_residual,
+            ) = self.deadline_recovery_adapter(
+                deadline_recovery_features(
+                    role_observation,
+                    obs[:, 83:84],
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            deadline_role_residual[:, 0:6] = (
+                deadline_receiver_residual
+                * deadline_giver_active.unsqueeze(-1)
+            )
+            deadline_role_residual[:, 7:13] = (
+                deadline_receiver_residual
+                * deadline_receiver_active.unsqueeze(-1)
+            )
         physical_residual = role_action_to_physical(
             learned_role_residual,
+            giver_is_robot_1,
+        )
+        joint_physical_residual = role_action_to_physical(
+            joint_role_residual,
+            giver_is_robot_1,
+        )
+        refinement_physical_residual = role_action_to_physical(
+            refinement_role_residual,
+            giver_is_robot_1,
+        )
+        deadline_physical_residual = role_action_to_physical(
+            deadline_role_residual,
+            giver_is_robot_1,
+        )
+        joint_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        joint_role_action_mask[:, 0:6] = joint_active.unsqueeze(-1)
+        joint_role_action_mask[:, 7:13] = joint_active.unsqueeze(-1)
+        joint_physical_action_mask = role_action_to_physical(
+            joint_role_action_mask,
+            giver_is_robot_1,
+        )
+        refinement_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        refinement_role_action_mask[:, 0:6] = (
+            refinement_giver_active.unsqueeze(-1)
+        )
+        refinement_role_action_mask[:, 7:13] = (
+            refinement_receiver_active.unsqueeze(-1)
+        )
+        refinement_physical_action_mask = role_action_to_physical(
+            refinement_role_action_mask,
             giver_is_robot_1,
         )
         (
@@ -511,8 +1408,25 @@ class _EndToEndHandoverExport(nn.Module):
             giver_residual_mask,
             receiver_residual_mask,
         ) = self.controller(obs)
+        deadline_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        deadline_role_action_mask[:, 0:6] = (
+            deadline_giver_active.unsqueeze(-1)
+        )
+        deadline_role_action_mask[:, 7:13] = (
+            deadline_receiver_active.unsqueeze(-1)
+        )
+        deadline_physical_action_mask = role_action_to_physical(
+            deadline_role_action_mask,
+            giver_is_robot_1,
+        )
         physical_action_mask = receiver_residual_mask
-        if self.giver_adaptation_enabled:
+        if (
+            self.giver_adaptation_enabled
+            or self.pickup_recovery_adaptation_enabled
+        ):
             physical_action_mask = (
                 giver_residual_mask | receiver_residual_mask
             )
@@ -521,6 +1435,15 @@ class _EndToEndHandoverExport(nn.Module):
             + self.residual_scale
             * physical_residual
             * physical_action_mask.to(base_action.dtype)
+            + self.residual_scale
+            * joint_physical_residual
+            * joint_physical_action_mask.to(base_action.dtype)
+            + self.residual_scale
+            * refinement_physical_residual
+            * refinement_physical_action_mask.to(base_action.dtype)
+            + self.deadline_recovery_residual_scale
+            * deadline_physical_residual
+            * deadline_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         return self.deterministic_output(physical_mean)
 

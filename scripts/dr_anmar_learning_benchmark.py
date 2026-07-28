@@ -47,6 +47,98 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _policy_runtime_contract(policy_model, task: str) -> dict[str, Any]:
+    """Return the deterministic serving configuration paired with a checkpoint."""
+    controller = getattr(policy_model, "controller", None)
+    controller_scalars = {}
+    if controller is not None:
+        controller_scalars = {
+            key: value
+            for key, value in vars(controller).items()
+            if isinstance(value, (bool, int, float, str)) or value is None
+        }
+    return {
+        "task": task,
+        "model_class": type(policy_model).__name__,
+        "residual_scale": getattr(policy_model, "residual_scale", None),
+        "giver_adaptation_enabled": bool(
+            getattr(policy_model, "giver_adaptation_enabled", False)
+        ),
+        "pickup_recovery_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "pickup_recovery_adaptation_enabled",
+                False,
+            )
+        ),
+        "recovery_receiver_grasp_retain_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "recovery_receiver_grasp_retain_adaptation_enabled",
+                False,
+            )
+        ),
+        "joint_transfer_acquisition_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "joint_transfer_acquisition_adaptation_enabled",
+                False,
+            )
+        ),
+        "transfer_refinement_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "transfer_refinement_adaptation_enabled",
+                False,
+            )
+        ),
+        "deadline_recovery_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "deadline_recovery_adaptation_enabled",
+                False,
+            )
+        ),
+        "controller_scalars": controller_scalars,
+    }
+
+
+def _environment_runtime_contract(env_cfg, task: str) -> dict[str, Any]:
+    """Return the task-side serving contract that can change policy behavior."""
+    giver_identity_term = getattr(
+        getattr(env_cfg.observations, "policy", None),
+        "giver_identity",
+        None,
+    )
+    giver_identity_function = getattr(giver_identity_term, "func", None)
+    return {
+        "task": task,
+        "environment_config_class": type(env_cfg).__name__,
+        "handover_contract": getattr(
+            env_cfg,
+            "dr_anmar_handover_contract",
+            None,
+        ),
+        "episode_length_s": getattr(env_cfg, "episode_length_s", None),
+        "decimation": getattr(env_cfg, "decimation", None),
+        "giver_identity_observation_function": (
+            f"{giver_identity_function.__module__}:"
+            f"{giver_identity_function.__name__}"
+            if giver_identity_function is not None
+            else None
+        ),
+    }
+
+
+def _canonical_sha256(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def _command_output(args: list[str], cwd: Path | None = None) -> str | None:
     try:
         return subprocess.run(
@@ -162,6 +254,51 @@ def _peak_process_memory_mib() -> float:
     return peak / 1024
 
 
+def _initial_state_population_sha256(env) -> str:
+    """Hash the exact reset population used for paired qualification."""
+    import torch
+
+    unwrapped = env.unwrapped
+    origins = unwrapped.scene.env_origins
+    obj = unwrapped.scene["object"]
+    object_pose = torch.cat(
+        (
+            obj.data.root_pos_w - origins,
+            obj.data.root_quat_w,
+        ),
+        dim=-1,
+    )
+    named_tensors = (
+        ("robot_1_joint_pos", unwrapped.scene["robot_1"].data.joint_pos),
+        ("robot_1_joint_vel", unwrapped.scene["robot_1"].data.joint_vel),
+        ("robot_2_joint_pos", unwrapped.scene["robot_2"].data.joint_pos),
+        ("robot_2_joint_vel", unwrapped.scene["robot_2"].data.joint_vel),
+        ("object_root_pose_env", object_pose),
+        (
+            "object_root_velocity",
+            torch.cat(
+                (
+                    obj.data.root_lin_vel_w,
+                    obj.data.root_ang_vel_w,
+                ),
+                dim=-1,
+            ),
+        ),
+    )
+    digest = hashlib.sha256()
+    for name, tensor in named_tensors:
+        value = (
+            torch.as_tensor(tensor)
+            .detach()
+            .to(device="cpu", dtype=torch.float32)
+            .contiguous()
+        )
+        digest.update(name.encode("utf-8"))
+        digest.update(str(tuple(value.shape)).encode("ascii"))
+        digest.update(value.numpy().tobytes())
+    return digest.hexdigest()
+
+
 def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
     import torch
 
@@ -178,6 +315,14 @@ def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
             "--format=csv,noheader,nounits",
         ]
     )
+    worktree_status = _command_output(
+        ["git", "status", "--porcelain=v1"],
+        repo_root,
+    )
+    tracked_patch = _command_output(
+        ["git", "diff", "--binary", "HEAD"],
+        repo_root,
+    )
     return {
         "packages": packages,
         "cuda": {
@@ -187,6 +332,13 @@ def _runtime_evidence(repo_root: Path) -> dict[str, Any]:
         },
         "source": {
             "dranmar_revision": _command_output(["git", "rev-parse", "HEAD"], repo_root),
+            "working_tree_dirty": bool(worktree_status),
+            "working_tree_status": (
+                worktree_status.splitlines() if worktree_status else []
+            ),
+            "tracked_patch_sha256": hashlib.sha256(
+                (tracked_patch or "").encode("utf-8")
+            ).hexdigest(),
             "asset_revision": _command_output(
                 ["git", "rev-parse", "HEAD"],
                 repo_root / "source/extensions/orbit.surgical.assets",
@@ -1861,17 +2013,91 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
     receiver_curriculum = bool(
         getattr(env_cfg, "dr_anmar_receiver_curriculum", False)
     )
-    if receiver_curriculum and not args.checkpoint:
-        return _fail(
-            "receiver curriculum requires a qualified initial checkpoint"
+    receiver_grasp_retain_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_receiver_grasp_retain_curriculum",
+            False,
         )
-    if receiver_curriculum:
+    )
+    recovery_receiver_grasp_retain_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_recovery_receiver_grasp_retain_curriculum",
+            False,
+        )
+    )
+    joint_transfer_acquisition_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_joint_transfer_acquisition_curriculum",
+            False,
+        )
+    )
+    transfer_refinement_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_transfer_refinement_curriculum",
+            False,
+        )
+    )
+    deadline_recovery_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_deadline_recovery_curriculum",
+            False,
+        )
+    )
+    pickup_recovery_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_pickup_recovery_curriculum",
+            False,
+        )
+    )
+    focused_curriculum = (
+        receiver_curriculum or pickup_recovery_curriculum
+    )
+    if focused_curriculum and not args.checkpoint:
+        return _fail(
+            "focused handover curriculum requires a qualified initial checkpoint"
+        )
+    if focused_curriculum:
         # Receiver-only adaptation has a narrow optimum: the physical replay
         # cache needs several iterations to fill, while later PPO updates can
         # overfit that cache. Preserve every update so promotion can be based
         # on full-task qualification instead of assuming the final update is
-        # the best policy.
+        # the best policy. Focused option learning also uses a fixed optimizer
+        # schedule: adaptive KL scheduling previously amplified an explicitly
+        # requested 1e-5 rate to 1e-2 before the replay cache was representative.
         agent_cfg.save_interval = 1
+        agent_cfg.algorithm.schedule = "fixed"
+    if transfer_refinement_curriculum:
+        refinement_rollout_steps = int(
+            getattr(
+                env_cfg,
+                "dr_anmar_transfer_refinement_rollout_steps_per_env",
+                128,
+            )
+        )
+        if refinement_rollout_steps <= 0:
+            return _fail(
+                "transfer-refinement rollout steps must be positive"
+            )
+        agent_cfg.num_steps_per_env = refinement_rollout_steps
+    if deadline_recovery_curriculum:
+        deadline_rollout_steps = int(
+            getattr(
+                env_cfg,
+                "dr_anmar_deadline_recovery_rollout_steps_per_env",
+                128,
+            )
+        )
+        if deadline_rollout_steps <= 0:
+            return _fail(
+                "deadline-recovery rollout steps must be positive"
+            )
+        agent_cfg.num_steps_per_env = deadline_rollout_steps
     agent_cfg.max_iterations = args.max_iterations
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = Path(args.output_path).resolve() / "runs" / timestamp
@@ -1897,7 +2123,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 f"initial checkpoint not found: {initial_checkpoint}"
             )
         load_cfg = None
-        if args.handover_giver_adaptation or receiver_curriculum:
+        if (
+            args.handover_giver_adaptation
+            or receiver_curriculum
+            or pickup_recovery_curriculum
+        ):
             if (
                 args.handover_giver_adaptation
                 and "Handover-Needle-Dual-PSM-IK-Rel" not in args.task
@@ -1914,7 +2144,186 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "rnd": False,
             }
         runner.load(str(initial_checkpoint), load_cfg=load_cfg)
-        if args.handover_giver_adaptation:
+        if deadline_recovery_curriculum:
+            policy_model = runner.alg.get_policy()
+            configure_deadline_recovery = getattr(
+                policy_model,
+                "configure_deadline_recovery_adaptation",
+                None,
+            )
+            if configure_deadline_recovery is None:
+                env.close()
+                return _fail(
+                    "handover policy does not support deadline-aware recovery"
+                )
+            configure_deadline_recovery()
+            deadline_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_deadline_recovery_controller",
+                {},
+            )
+            deadline_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in deadline_controller_cfg.items():
+                if deadline_controller is None or not hasattr(
+                    deadline_controller,
+                    attribute,
+                ):
+                    env.close()
+                    return _fail(
+                        "deadline-recovery curriculum controller does not "
+                        f"expose {attribute}"
+                    )
+                setattr(deadline_controller, attribute, value)
+        elif transfer_refinement_curriculum:
+            policy_model = runner.alg.get_policy()
+            configure_refinement = getattr(
+                policy_model,
+                "configure_transfer_refinement_adaptation",
+                None,
+            )
+            if configure_refinement is None:
+                env.close()
+                return _fail(
+                    "handover policy does not support transfer refinement"
+                )
+            configure_refinement()
+            refinement_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_transfer_refinement_controller",
+                {},
+            )
+            refinement_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in refinement_controller_cfg.items():
+                if refinement_controller is None or not hasattr(
+                    refinement_controller,
+                    attribute,
+                ):
+                    env.close()
+                    return _fail(
+                        "transfer-refinement curriculum controller does not "
+                        f"expose {attribute}"
+                    )
+                setattr(refinement_controller, attribute, value)
+        elif joint_transfer_acquisition_curriculum:
+            policy_model = runner.alg.get_policy()
+            configure_joint_transfer = getattr(
+                policy_model,
+                "configure_joint_transfer_acquisition_adaptation",
+                None,
+            )
+            if configure_joint_transfer is None:
+                env.close()
+                return _fail(
+                    "handover policy does not support joint "
+                    "transfer-acquisition adaptation"
+                )
+            configure_joint_transfer()
+            joint_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_joint_transfer_acquisition_controller",
+                {},
+            )
+            joint_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in joint_controller_cfg.items():
+                if joint_controller is None or not hasattr(
+                    joint_controller,
+                    attribute,
+                ):
+                    env.close()
+                    return _fail(
+                        "joint transfer-acquisition curriculum controller "
+                        f"does not expose {attribute}"
+                    )
+                setattr(joint_controller, attribute, value)
+        elif pickup_recovery_curriculum:
+            policy_model = runner.alg.get_policy()
+            if not hasattr(
+                policy_model,
+                "configure_pickup_recovery_adaptation",
+            ):
+                env.close()
+                return _fail(
+                    "handover policy does not support pickup-recovery adaptation"
+                )
+            policy_model.configure_pickup_recovery_adaptation()
+            recovery_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_pickup_recovery_controller",
+                {},
+            )
+            recovery_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in recovery_controller_cfg.items():
+                if recovery_controller is None or not hasattr(
+                    recovery_controller,
+                    attribute,
+                ):
+                    env.close()
+                    return _fail(
+                        "pickup-recovery curriculum controller does not "
+                        f"expose {attribute}"
+                    )
+                setattr(recovery_controller, attribute, value)
+        elif recovery_receiver_grasp_retain_curriculum:
+            policy_model = runner.alg.get_policy()
+            configure_recovery_receiver = getattr(
+                policy_model,
+                "configure_recovery_receiver_grasp_retain_adaptation",
+                None,
+            )
+            if configure_recovery_receiver is None:
+                env.close()
+                return _fail(
+                    "handover policy does not support recovery-conditioned "
+                    "receiver grasp-retain adaptation"
+                )
+            configure_recovery_receiver()
+            recovery_receiver_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_recovery_receiver_controller",
+                {},
+            )
+            recovery_receiver_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in (
+                recovery_receiver_controller_cfg.items()
+            ):
+                if (
+                    recovery_receiver_controller is None
+                    or not hasattr(
+                        recovery_receiver_controller,
+                        attribute,
+                    )
+                ):
+                    env.close()
+                    return _fail(
+                        "recovery-conditioned receiver curriculum "
+                        f"controller does not expose {attribute}"
+                    )
+                setattr(
+                    recovery_receiver_controller,
+                    attribute,
+                    value,
+                )
+        elif args.handover_giver_adaptation:
             policy_model = runner.alg.get_policy()
             if not hasattr(
                 policy_model, "configure_giver_adaptation"
@@ -1924,6 +2333,17 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "handover policy does not support giver adaptation"
                 )
             policy_model.configure_giver_adaptation()
+        elif receiver_grasp_retain_curriculum:
+            policy_model = runner.alg.get_policy()
+            if not hasattr(
+                policy_model,
+                "configure_receiver_grasp_retain_adaptation",
+            ):
+                env.close()
+                return _fail(
+                    "handover policy does not support receiver grasp-retain adaptation"
+                )
+            policy_model.configure_receiver_grasp_retain_adaptation()
         elif receiver_curriculum:
             policy_model = runner.alg.get_policy()
             if not hasattr(
@@ -1964,7 +2384,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         with early:
             runner.learn(
                 num_learning_iterations=agent_cfg.max_iterations,
-                init_at_random_ep_len=not receiver_curriculum,
+                init_at_random_ep_len=not focused_curriculum,
             )
         duration = time.perf_counter() - started
         checkpoint = run_dir / "model_final.pt"
@@ -1989,6 +2409,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "_dr_anmar_tissue_fixture_anchor_count",
             None,
         )
+        pickup_recovery_curriculum_cache = getattr(
+            env.unwrapped,
+            "_dr_anmar_pickup_recovery_curriculum_cache",
+            None,
+        )
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "training",
@@ -2010,10 +2435,286 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 if args.learning_rate is not None
                 else agent_cfg.algorithm.learning_rate
             ),
+            "policy_learning_rate_schedule": str(
+                agent_cfg.algorithm.schedule
+            ),
+            "optimizer_learning_rates_final": [
+                float(group["lr"])
+                for group in runner.alg.optimizer.param_groups
+            ],
             "handover_giver_adaptation": bool(
                 args.handover_giver_adaptation
             ),
             "receiver_curriculum": receiver_curriculum,
+            "receiver_grasp_retain_curriculum": (
+                receiver_grasp_retain_curriculum
+            ),
+            "recovery_receiver_grasp_retain_curriculum": (
+                recovery_receiver_grasp_retain_curriculum
+            ),
+            "joint_transfer_acquisition_curriculum": (
+                joint_transfer_acquisition_curriculum
+            ),
+            "transfer_refinement_curriculum": (
+                transfer_refinement_curriculum
+            ),
+            "deadline_recovery_curriculum": (
+                deadline_recovery_curriculum
+            ),
+            "deadline_recovery_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_deadline_recovery_objective",
+                    None,
+                )
+                if deadline_recovery_curriculum
+                else None
+            ),
+            "deadline_recovery_adaptation_contract": (
+                {
+                    "source_states": (
+                        "physics_owned_recovered_lifted_custody_with_"
+                        "original_episode_deadline_and_complete_markov_state"
+                    ),
+                    "activation": (
+                        "recovered_lifted_custody_through_presentation"
+                    ),
+                    "control": (
+                        "incumbent_plus_bounded_two_stage_giver_then_"
+                        "receiver_se3_residual"
+                    ),
+                    "discrete_trajectory_switches": [],
+                    "success": "unchanged_retained_handover_terminal",
+                    "incumbent_checkpoint_frozen_and_active": True,
+                    "optimizer_state_reset": True,
+                    "optimizer_schedule": "fixed",
+                    "observation_normalizer_frozen": True,
+                    "zero_impact_adapter": True,
+                    "learned_giver_axes_before_stable_presentation": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "learned_receiver_axes_after_stable_presentation": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "analytic_release_authority": True,
+                    "hard_terminations_unchanged": True,
+                    "episode_horizon_unchanged": True,
+                }
+                if deadline_recovery_curriculum
+                else None
+            ),
+            "deadline_recovery_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_deadline_recovery_controller",
+                    None,
+                )
+                if deadline_recovery_curriculum
+                else None
+            ),
+            "transfer_refinement_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_transfer_refinement_objective",
+                    None,
+                )
+                if transfer_refinement_curriculum
+                else None
+            ),
+            "transfer_refinement_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_transfer_refinement_controller",
+                    None,
+                )
+                if transfer_refinement_curriculum
+                else None
+            ),
+            "transfer_refinement_adaptation_contract": (
+                {
+                    "source_states": (
+                        "physics_owned_stable_presentation_with_complete_"
+                        "markov_state"
+                    ),
+                    "option_success": "unchanged_retained_handover_terminal",
+                    "joint_transfer_checkpoint_frozen_and_active": True,
+                    "optimizer_state_reset": True,
+                    "optimizer_schedule": "fixed",
+                    "observation_normalizer_frozen": True,
+                    "zero_initialized_adapter": True,
+                    "rollout_steps_per_env": agent_cfg.num_steps_per_env,
+                    "learned_giver_axes": [],
+                    "learned_receiver_axes_after_presentation_qualification": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "analytic_gripper_authority": True,
+                    "analytic_release_authority": True,
+                    "hard_terminations_unchanged": True,
+                }
+                if transfer_refinement_curriculum
+                else None
+            ),
+            "joint_transfer_acquisition_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_joint_transfer_acquisition_objective",
+                    None,
+                )
+                if joint_transfer_acquisition_curriculum
+                else None
+            ),
+            "joint_transfer_acquisition_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_joint_transfer_acquisition_controller",
+                    None,
+                )
+                if joint_transfer_acquisition_curriculum
+                else None
+            ),
+            "joint_transfer_acquisition_adaptation_contract": (
+                {
+                    "source_states": (
+                        "physics_owned_lifted_custody_with_complete_markov_state"
+                    ),
+                    "option_success": "unchanged_retained_handover_terminal",
+                    "promoted_pickup_recovery_policy_frozen_and_active": True,
+                    "optimizer_state_reset": True,
+                    "optimizer_schedule": "fixed",
+                    "observation_normalizer_frozen": True,
+                    "zero_initialized_adapter": True,
+                    "learned_giver_axes": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "learned_receiver_axes": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "analytic_gripper_authority": True,
+                    "analytic_release_authority": True,
+                    "hard_terminations_unchanged": True,
+                }
+                if joint_transfer_acquisition_curriculum
+                else None
+            ),
+            "recovery_receiver_grasp_retain_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_recovery_receiver_grasp_retain_objective",
+                    None,
+                )
+                if recovery_receiver_grasp_retain_curriculum
+                else None
+            ),
+            "recovery_receiver_grasp_retain_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_recovery_receiver_controller",
+                    None,
+                )
+                if recovery_receiver_grasp_retain_curriculum
+                else None
+            ),
+            "pickup_recovery_curriculum": pickup_recovery_curriculum,
+            "pickup_recovery_curriculum_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_pickup_recovery_objective",
+                    None,
+                )
+                if pickup_recovery_curriculum
+                else None
+            ),
+            "pickup_recovery_curriculum_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_pickup_recovery_controller",
+                    None,
+                )
+                if pickup_recovery_curriculum
+                else None
+            ),
+            "pickup_recovery_curriculum_cached_envs": (
+                int(
+                    pickup_recovery_curriculum_cache[
+                        "valid"
+                    ].sum().item()
+                )
+                if pickup_recovery_curriculum_cache is not None
+                else 0
+            ),
+            "pickup_recovery_curriculum_reset_restores": (
+                int(pickup_recovery_curriculum_cache["reset_restores"])
+                if pickup_recovery_curriculum_cache is not None
+                else 0
+            ),
+            "pickup_recovery_curriculum_reset_refreshes": (
+                int(pickup_recovery_curriculum_cache["reset_refreshes"])
+                if pickup_recovery_curriculum_cache is not None
+                else 0
+            ),
+            "pickup_recovery_curriculum_cross_environment_restores": (
+                int(
+                    pickup_recovery_curriculum_cache[
+                        "cross_environment_restores"
+                    ]
+                )
+                if pickup_recovery_curriculum_cache is not None
+                else 0
+            ),
+            "pickup_recovery_curriculum_adaptation_contract": (
+                {
+                    "source_states": (
+                        "simulator_observed_physical_pickup_loss_transitions"
+                    ),
+                    "option_success": (
+                        "recovered_physics_owned_stable_presentation"
+                    ),
+                    "full_handover_evaluation_success_unchanged": True,
+                    "optimizer_state_reset": True,
+                    "shared_actor_features_trainable": False,
+                    "observation_normalizer_frozen": True,
+                    "trainable_phase_heads": [0, 1, 2, 4],
+                    "trainable_role_output_rows": [0, 1],
+                    "learned_giver_axes": ["x", "y"],
+                    "analytic_giver_axes": [
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                        "gripper",
+                    ],
+                    "first_attempt_residual_frozen": True,
+                    "receiver_policy_frozen_and_active": True,
+                    "hard_terminations_unchanged": True,
+                }
+                if pickup_recovery_curriculum
+                else None
+            ),
             "receiver_curriculum_cached_envs": (
                 int(receiver_curriculum_cache["valid"].sum().item())
                 if receiver_curriculum_cache is not None
@@ -2028,6 +2729,41 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 int(receiver_curriculum_cache["reset_refreshes"])
                 if receiver_curriculum_cache is not None
                 else 0
+            ),
+            "receiver_curriculum_cross_environment_restores": (
+                int(receiver_curriculum_cache["cross_environment_restores"])
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_recovery_conditioned_captures": (
+                int(
+                    receiver_curriculum_cache[
+                        "recovery_conditioned_captures"
+                    ]
+                )
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_markov_state_restores": (
+                int(receiver_curriculum_cache["markov_state_restores"])
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_recovery_context_restores": (
+                int(receiver_curriculum_cache["recovery_context_restores"])
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_capture_stage": (
+                str(
+                    getattr(
+                        env_cfg,
+                        "dr_anmar_receiver_curriculum_capture_stage",
+                        "stable_presentation",
+                    )
+                )
+                if receiver_curriculum
+                else None
             ),
             "receiver_curriculum_restore_probability": (
                 float(
@@ -2050,15 +2786,50 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "optimizer_state_reset": True,
                     "shared_actor_features_trainable": False,
                     "observation_normalizer_frozen": True,
-                    "trainable_phase_head": 2,
-                    "trainable_role_output_rows": [7, 8, 9],
-                    "learned_receiver_axes": ["x", "y", "z"],
-                    "analytic_receiver_axes": [
-                        "roll",
-                        "pitch",
-                        "yaw",
-                        "gripper",
-                    ],
+                    "trainable_phase_head": (
+                        [2, 3]
+                        if receiver_grasp_retain_curriculum
+                        else 2
+                    ),
+                    "trainable_role_output_rows": (
+                        [7, 8, 9, 10, 11, 12]
+                        if receiver_grasp_retain_curriculum
+                        else [7, 8, 9]
+                    ),
+                    "learned_receiver_axes": (
+                        ["x", "y", "z", "roll", "pitch", "yaw"]
+                        if receiver_grasp_retain_curriculum
+                        else ["x", "y", "z"]
+                    ),
+                    "analytic_receiver_axes": (
+                        ["gripper"]
+                        if receiver_grasp_retain_curriculum
+                        else ["roll", "pitch", "yaw", "gripper"]
+                    ),
+                    "post_contact_authority": (
+                        receiver_grasp_retain_curriculum
+                    ),
+                    "source_states": (
+                        "simulator_observed_recovered_stable_presentations"
+                        if recovery_receiver_grasp_retain_curriculum
+                        else "simulator_observed_stable_presentations"
+                    ),
+                    "pickup_recovery_policy_frozen_and_active": (
+                        recovery_receiver_grasp_retain_curriculum
+                    ),
+                    "option_success": (
+                        "retained_handover_from_recovered_stable_presentation"
+                        if recovery_receiver_grasp_retain_curriculum
+                        else "unchanged_retained_handover"
+                    ),
+                    "full_handover_evaluation_success_unchanged": True,
+                    "cross_environment_state_sampling": bool(
+                        getattr(
+                            env_cfg,
+                            "dr_anmar_receiver_curriculum_cross_environment_sampling",
+                            False,
+                        )
+                    ),
                     "pickup_lift_presentation_policy_frozen": True,
                     "exploration_scale_frozen": True,
                     "initial_policy_influence": "loaded_checkpoint",
@@ -4141,6 +4912,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             return _fail(f"checkpoint not found: {checkpoint}")
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    if args.presentation_use_filtered_custody is not None:
+        contract = getattr(
+            env_cfg,
+            "dr_anmar_handover_contract",
+            None,
+        )
+        if contract is None:
+            return _fail(
+                "filtered presentation custody requires a structured handover task"
+            )
+        contract["presentation_use_filtered_custody"] = (
+            args.presentation_use_filtered_custody
+        )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
         env_cfg.viewer.resolution = (args.video_width, args.video_height)
@@ -4171,8 +4955,94 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
     runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     if checkpoint is not None:
-        runner.load(str(checkpoint))
+        runner.load(
+            str(checkpoint),
+            load_cfg={
+                "actor": True,
+                "critic": True,
+                "optimizer": False,
+                "iteration": False,
+                "rnd": False,
+            },
+        )
     policy_model = runner.alg.get_policy()
+    adaptation_modes = sum(
+        (
+            bool(args.handover_giver_adaptation),
+            bool(args.pickup_recovery_adaptation),
+            bool(args.recovery_receiver_grasp_retain_adaptation),
+            bool(args.joint_transfer_acquisition_adaptation),
+            bool(args.transfer_refinement_adaptation),
+            bool(args.deadline_recovery_adaptation),
+        )
+    )
+    if adaptation_modes > 1:
+        env.close()
+        return _fail(
+            "giver, pickup-recovery, recovery-conditioned receiver, joint "
+            "transfer-acquisition, transfer-refinement, and deadline-recovery "
+            "modes are mutually exclusive"
+        )
+    if args.deadline_recovery_adaptation:
+        configure_deadline_recovery = getattr(
+            policy_model,
+            "configure_deadline_recovery_adaptation",
+            None,
+        )
+        if configure_deadline_recovery is None:
+            env.close()
+            return _fail(
+                "loaded policy does not support deadline-aware recovery"
+            )
+        configure_deadline_recovery()
+    elif args.transfer_refinement_adaptation:
+        configure_refinement = getattr(
+            policy_model,
+            "configure_transfer_refinement_adaptation",
+            None,
+        )
+        if configure_refinement is None:
+            env.close()
+            return _fail(
+                "loaded policy does not support transfer refinement"
+            )
+        configure_refinement()
+    elif args.joint_transfer_acquisition_adaptation:
+        configure_joint_transfer = getattr(
+            policy_model,
+            "configure_joint_transfer_acquisition_adaptation",
+            None,
+        )
+        if configure_joint_transfer is None:
+            env.close()
+            return _fail(
+                "loaded policy does not support joint "
+                "transfer-acquisition adaptation"
+            )
+        configure_joint_transfer()
+    elif args.recovery_receiver_grasp_retain_adaptation:
+        configure_recovery_receiver = getattr(
+            policy_model,
+            "configure_recovery_receiver_grasp_retain_adaptation",
+            None,
+        )
+        if configure_recovery_receiver is None:
+            env.close()
+            return _fail(
+                "loaded policy does not support recovery-conditioned "
+                "receiver grasp-retain adaptation"
+            )
+        configure_recovery_receiver()
+    elif args.pickup_recovery_adaptation:
+        if not hasattr(
+            policy_model,
+            "configure_pickup_recovery_adaptation",
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not support pickup-recovery adaptation"
+            )
+        policy_model.configure_pickup_recovery_adaptation()
     if args.handover_giver_adaptation:
         if not hasattr(policy_model, "configure_giver_adaptation"):
             env.close()
@@ -4180,6 +5050,70 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "loaded policy does not support giver adaptation"
             )
         policy_model.configure_giver_adaptation()
+    controller = getattr(policy_model, "controller", None)
+    controller_boolean_overrides = (
+        (
+            "transport_custody_latch_enabled",
+            args.transport_custody_latch,
+        ),
+        (
+            "receiver_preposition_enabled",
+            args.receiver_preposition,
+        ),
+        (
+            "receiver_adaptive_arc_enabled",
+            args.receiver_adaptive_arc,
+        ),
+        (
+            "receiver_grasp_retain_residual_enabled_for_learning",
+            args.receiver_grasp_retain_residual,
+        ),
+    )
+    for attribute, value in controller_boolean_overrides:
+        if value is None:
+            continue
+        if controller is None or not hasattr(controller, attribute):
+            env.close()
+            return _fail(
+                f"loaded policy does not expose {attribute}"
+            )
+        setattr(controller, attribute, value)
+    if args.receiver_preposition_height is not None:
+        if not 0.01 <= args.receiver_preposition_height <= 0.05:
+            env.close()
+            return _fail(
+                "receiver preposition height must be in [0.01, 0.05] m"
+            )
+        if controller is None or not hasattr(
+            controller,
+            "receiver_preposition_height",
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose receiver preposition height"
+            )
+        controller.receiver_preposition_height = (
+            args.receiver_preposition_height
+        )
+    if args.recovery_receiver_preposition_height is not None:
+        if not 0.01 <= args.recovery_receiver_preposition_height <= 0.05:
+            env.close()
+            return _fail(
+                "recovery receiver preposition height must be "
+                "in [0.01, 0.05] m"
+            )
+        if controller is None or not hasattr(
+            controller,
+            "recovery_receiver_preposition_height",
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose recovery receiver "
+                "preposition height"
+            )
+        controller.recovery_receiver_preposition_height = (
+            args.recovery_receiver_preposition_height
+        )
     if args.analytic_only:
         if not hasattr(policy_model, "residual_scale"):
             env.close()
@@ -4264,6 +5198,25 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
         controller.carry_lateral_action_limit = (
             args.carry_lateral_action_limit
+        )
+    if args.recovery_carry_lateral_action_limit is not None:
+        if not 0.0 < args.recovery_carry_lateral_action_limit <= 0.1:
+            env.close()
+            return _fail(
+                "play recovery carry lateral action limit "
+                "must be in (0.0, 0.1]"
+            )
+        controller = getattr(policy_model, "controller", None)
+        if controller is None or not hasattr(
+            controller, "recovery_carry_lateral_action_limit"
+        ):
+            env.close()
+            return _fail(
+                "loaded policy does not expose a recovery carry "
+                "lateral action limit"
+            )
+        controller.recovery_carry_lateral_action_limit = (
+            args.recovery_carry_lateral_action_limit
         )
     if args.carry_lateral_ramp_height is not None:
         if not 0.001 <= args.carry_lateral_ramp_height <= 0.02:
@@ -4443,9 +5396,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     first_outcome_success = torch.zeros_like(first_unresolved)
     first_termination_counts = {name: 0 for name in termination_names}
     first_failure_distribution = {name: 0 for name in failure_names}
+    first_failure_masks = {
+        name: torch.zeros_like(first_unresolved)
+        for name in (*failure_names, "unclassified")
+    }
     lift_diagnostics = None
     first_lift_history = None
     lift_mdp_common = None
+    handover_mdp_common = None
+    handover_non_object_sensor_names: tuple[str, ...] = ()
+    handover_protected_attribution_body_names: tuple[str, ...] = ()
     procedure_diagnostic_trace = None
     diagnostic_trace_frames = {
         0,
@@ -4499,16 +5459,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
         }
     obs = env.get_observations()
+    initial_state_population_sha256 = (
+        _initial_state_population_sha256(env)
+    )
     first_handover_max_phase = None
     first_handover_history = None
     first_safe_bite_history = None
     safe_bite_mdp = None
     if "Handover-" in args.task:
+        from orbit.surgical.tasks.surgical import (
+            mdp_common as handover_mdp_common,
+        )
         from orbit.surgical.tasks.surgical.lift.grasp_frames import (
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
             needle_geometry_grasp_offset_m,
         )
 
+        handover_non_object_sensor_names = (
+            "robot_1_jaw_1_object_contact",
+            "robot_1_jaw_2_object_contact",
+            "robot_2_jaw_1_object_contact",
+            "robot_2_jaw_2_object_contact",
+        )
+        handover_protected_attribution_body_names = (
+            "psm_main_insertion_link_3",
+            "psm_tool_roll_link",
+            "psm_tool_pitch_link",
+            "psm_tool_yaw_link",
+            "psm_tool_gripper1_link",
+            "psm_tool_gripper2_link",
+        )
         receiver_grasp_offset = needle_geometry_grasp_offset_m(0.65)
         receiver_roll_offset_rad = float(
             getattr(
@@ -4532,7 +5512,41 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             handover_observation[:, 53:56],
         ).clone()
         first_handover_history = {
+            "giver_is_robot_1": giver_is_robot_1.clone(),
             "initial_object_in_giver": initial_object_in_giver,
+            "maximum_non_object_force_by_sensor_n": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_non_object_sensor_names),
+                device=env.unwrapped.device,
+            ),
+            "terminal_protected_surface_force_by_sensor_n": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_non_object_sensor_names),
+                device=env.unwrapped.device,
+            ),
+            "terminal_protected_surface_force_vector_w_n": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_non_object_sensor_names),
+                3,
+                device=env.unwrapped.device,
+            ),
+            "terminal_protected_surface_robot_1_body_poses_w": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_protected_attribution_body_names),
+                7,
+                device=env.unwrapped.device,
+            ),
+            "terminal_protected_surface_robot_2_body_poses_w": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_protected_attribution_body_names),
+                7,
+                device=env.unwrapped.device,
+            ),
+            "terminal_protected_surface_object_position_w": torch.zeros(
+                env.unwrapped.num_envs,
+                3,
+                device=env.unwrapped.device,
+            ),
             "ever_giver_bilateral_contact": torch.zeros_like(
                 first_unresolved
             ),
@@ -4678,6 +5692,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "remaining_steps_at_first_stable": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "remaining_steps_at_first_receiver_contact": torch.full(
+                (env.unwrapped.num_envs,),
+                -1,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_receiver_initial_approach_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
             "receiver_grasp_error_at_first_stable_m": torch.full(
                 (env.unwrapped.num_envs,),
                 torch.nan,
@@ -4775,6 +5806,41 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "recovery_receiver_shaft_guard_active_steps": torch.zeros(
+                (),
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "ever_recovery_receiver_shaft_guard_active": torch.zeros_like(
+                first_unresolved
+            ),
+            "minimum_recovery_receiver_shaft_distance_m": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.inf,
+                device=env.unwrapped.device,
+            ),
+            "deadline_option_step_counts": torch.zeros(
+                3,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "deadline_residual_active_steps": torch.zeros(
+                (),
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "deadline_residual_norm_sum": torch.zeros(
+                (),
+                dtype=torch.float32,
+                device=env.unwrapped.device,
+            ),
+            "deadline_residual_norm_max": torch.zeros(
+                (),
+                dtype=torch.float32,
+                device=env.unwrapped.device,
+            ),
+            "ever_deadline_reseat": torch.zeros_like(first_unresolved),
+            "ever_deadline_backoff": torch.zeros_like(first_unresolved),
             "terminal_pickup_attempts": torch.zeros(
                 env.unwrapped.num_envs,
                 dtype=torch.int64,
@@ -5085,6 +6151,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_handover_history[
                             "first_stable_presentation_frame"
                         ][first_stable_presentation] = frame_index
+                        first_handover_history[
+                            "remaining_steps_at_first_stable"
+                        ][first_stable_presentation] = (
+                            env.unwrapped.max_episode_length
+                            - env.unwrapped.episode_length_buf[
+                                first_stable_presentation
+                            ]
+                        )
                         first_receiver_contact_after_stable = (
                             was_first_unresolved
                             & current_handover_state[
@@ -5103,6 +6177,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_handover_history[
                             "first_receiver_contact_after_stable_frame"
                         ][first_receiver_contact_after_stable] = frame_index
+                        first_handover_history[
+                            "remaining_steps_at_first_receiver_contact"
+                        ][first_receiver_contact_after_stable] = (
+                            env.unwrapped.max_episode_length
+                            - env.unwrapped.episode_length_buf[
+                                first_receiver_contact_after_stable
+                            ]
+                        )
+                        first_handover_history[
+                            "maximum_receiver_initial_approach_steps"
+                        ] = torch.maximum(
+                            first_handover_history[
+                                "maximum_receiver_initial_approach_steps"
+                            ],
+                            current_handover_state[
+                                "receiver_approach_step_count"
+                            ],
+                        )
                         first_handover_history[
                             "maximum_presentation_stable_steps"
                         ] = torch.maximum(
@@ -5764,8 +6856,165 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             ],
                         )
                     )
+                if first_handover_history is not None:
+                    assert handover_mdp_common is not None
+                    current_non_object_forces = torch.stack(
+                        [
+                            handover_mdp_common.non_object_contact_force_magnitude(
+                                env.unwrapped,
+                                sensor_name,
+                            )
+                            for sensor_name in handover_non_object_sensor_names
+                        ],
+                        dim=-1,
+                    )
+                    first_handover_history[
+                        "maximum_non_object_force_by_sensor_n"
+                    ] = torch.where(
+                        was_first_unresolved.unsqueeze(-1),
+                        torch.maximum(
+                            first_handover_history[
+                                "maximum_non_object_force_by_sensor_n"
+                            ],
+                            current_non_object_forces,
+                        ),
+                        first_handover_history[
+                            "maximum_non_object_force_by_sensor_n"
+                        ],
+                    )
                 actions = policy(obs)
+                if first_handover_history is not None:
+                    controller = getattr(policy_model, "controller", None)
+                    shaft_guard_active = getattr(
+                        controller,
+                        "last_recovery_receiver_shaft_guard_active",
+                        None,
+                    )
+                    shaft_distance = getattr(
+                        controller,
+                        "last_recovery_receiver_shaft_distance_m",
+                        None,
+                    )
+                    if (
+                        shaft_guard_active is not None
+                        and shaft_distance is not None
+                    ):
+                        policy_observation = obs["policy"]
+                        shaft_guard_eligible = (
+                            was_first_unresolved
+                            & (policy_observation[:, 98] > 0.5)
+                            & (
+                                torch.argmax(
+                                    policy_observation[:, 77:82],
+                                    dim=-1,
+                                )
+                                == 2
+                            )
+                        )
+                        counted_shaft_guard = (
+                            shaft_guard_eligible & shaft_guard_active
+                        )
+                        first_handover_history[
+                            "recovery_receiver_shaft_guard_active_steps"
+                        ] += counted_shaft_guard.sum()
+                        first_handover_history[
+                            "ever_recovery_receiver_shaft_guard_active"
+                        ] |= counted_shaft_guard
+                        first_handover_history[
+                            "minimum_recovery_receiver_shaft_distance_m"
+                        ] = torch.where(
+                            shaft_guard_eligible,
+                            torch.minimum(
+                                first_handover_history[
+                                    "minimum_recovery_receiver_"
+                                    "shaft_distance_m"
+                                ],
+                                shaft_distance,
+                            ),
+                            first_handover_history[
+                                "minimum_recovery_receiver_"
+                                "shaft_distance_m"
+                            ],
+                        )
+                    option_index = getattr(
+                        policy_model,
+                        "last_deadline_option_index",
+                        None,
+                    )
+                    option_active = getattr(
+                        policy_model,
+                        "last_deadline_option_active",
+                        None,
+                    )
+                    residual_norm = getattr(
+                        policy_model,
+                        "last_deadline_recovery_residual_norm",
+                        getattr(
+                            policy_model,
+                            "last_deadline_receiver_residual_norm",
+                            None,
+                        ),
+                    )
+                    if option_index is not None and option_active is not None:
+                        counted_option = (
+                            was_first_unresolved & option_active
+                        )
+                        for option in range(3):
+                            first_handover_history[
+                                "deadline_option_step_counts"
+                            ][option] += (
+                                counted_option & (option_index == option)
+                            ).sum()
+                        first_handover_history[
+                            "ever_deadline_reseat"
+                        ] |= counted_option & (option_index == 1)
+                        first_handover_history[
+                            "ever_deadline_backoff"
+                        ] |= counted_option & (option_index == 2)
+                        if residual_norm is not None:
+                            counted_norm = residual_norm[counted_option]
+                            first_handover_history[
+                                "deadline_residual_active_steps"
+                            ] += counted_norm.numel()
+                            first_handover_history[
+                                "deadline_residual_norm_sum"
+                            ] += counted_norm.sum()
+                            if counted_norm.numel() > 0:
+                                first_handover_history[
+                                    "deadline_residual_norm_max"
+                                ] = torch.maximum(
+                                    first_handover_history[
+                                        "deadline_residual_norm_max"
+                                    ],
+                                    counted_norm.max(),
+                                )
                 obs, reward, dones, extras = env.step(actions)
+                if first_handover_history is not None:
+                    assert handover_mdp_common is not None
+                    terminal_non_object_forces = torch.stack(
+                        [
+                            handover_mdp_common.non_object_contact_force_magnitude(
+                                env.unwrapped,
+                                sensor_name,
+                            )
+                            for sensor_name in handover_non_object_sensor_names
+                        ],
+                        dim=-1,
+                    )
+                    first_handover_history[
+                        "maximum_non_object_force_by_sensor_n"
+                    ] = torch.where(
+                        was_first_unresolved.unsqueeze(-1),
+                        torch.maximum(
+                            first_handover_history[
+                                "maximum_non_object_force_by_sensor_n"
+                            ],
+                            terminal_non_object_forces,
+                        ),
+                        first_handover_history[
+                            "maximum_non_object_force_by_sensor_n"
+                        ],
+                    )
                 term_values = {
                     name: termination_manager.get_term(name)
                     for name in termination_names
@@ -5845,6 +7094,57 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ][newly_armed_at_termination] = frame_index
                 if first_handover_max_phase is not None:
                     assert first_handover_history is not None
+                    protected_surface_dones = (
+                        first_dones
+                        & term_values["protected_surface_force"].bool()
+                    )
+                    terminal_protected_surface_forces = getattr(
+                        env.unwrapped,
+                        "_dr_anmar_terminal_protected_surface_forces_n",
+                        None,
+                    )
+                    if terminal_protected_surface_forces is not None:
+                        first_handover_history[
+                            "terminal_protected_surface_force_by_sensor_n"
+                        ][protected_surface_dones] = (
+                            terminal_protected_surface_forces[
+                                protected_surface_dones
+                            ]
+                        )
+                    protected_terminal_attributes = (
+                        (
+                            "terminal_protected_surface_force_vector_w_n",
+                            "_dr_anmar_terminal_protected_surface_"
+                            "force_vectors_w_n",
+                        ),
+                        (
+                            "terminal_protected_surface_robot_1_body_poses_w",
+                            "_dr_anmar_terminal_protected_surface_"
+                            "robot_1_body_poses_w",
+                        ),
+                        (
+                            "terminal_protected_surface_robot_2_body_poses_w",
+                            "_dr_anmar_terminal_protected_surface_"
+                            "robot_2_body_poses_w",
+                        ),
+                        (
+                            "terminal_protected_surface_object_position_w",
+                            "_dr_anmar_terminal_protected_surface_"
+                            "object_position_w",
+                        ),
+                    )
+                    for history_key, environment_attribute in (
+                        protected_terminal_attributes
+                    ):
+                        terminal_value = getattr(
+                            env.unwrapped,
+                            environment_attribute,
+                            None,
+                        )
+                        if terminal_value is not None:
+                            first_handover_history[history_key][
+                                protected_surface_dones
+                            ] = terminal_value[protected_surface_dones]
                     post_handover_state = getattr(
                         env.unwrapped,
                         "_dr_anmar_handover_state",
@@ -5896,11 +7196,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_unassigned_failures
                         & term_values[name].bool()
                     )
+                    first_failure_masks[name] |= assigned
                     first_failure_distribution[name] += int(
                         assigned.sum().item()
                     )
                     first_unassigned_failures &= ~assigned
                 if first_unassigned_failures.any().item():
+                    first_failure_masks[
+                        "unclassified"
+                    ] |= first_unassigned_failures
                     first_failure_distribution.setdefault("unclassified", 0)
                     first_failure_distribution["unclassified"] += int(
                         first_unassigned_failures.sum().item()
@@ -6549,6 +7853,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .mean()
                         .item()
                     ),
+                    "environments_with_recovery": int(
+                        (
+                            first_handover_history[
+                                "maximum_pickup_recoveries"
+                            ][mask]
+                            > 0
+                        )
+                        .sum()
+                        .item()
+                    ),
+                    "terminal_pickup_attempt_histogram": {
+                        str(attempt): int(
+                            (
+                                first_handover_history[
+                                    "terminal_pickup_attempts"
+                                ][mask]
+                                == attempt
+                            )
+                            .sum()
+                            .item()
+                        )
+                        for attempt in range(4)
+                    },
                 }
 
             phase_masks = {
@@ -6603,7 +7930,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 quantiles = torch.quantile(
                     values.float(),
                     torch.tensor(
-                        [0.1, 0.5, 0.9],
+                        [0.1, 0.5, 0.9, 0.99],
                         device=values.device,
                     ),
                 )
@@ -6611,6 +7938,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "p10": float(quantiles[0].item()),
                     "p50": float(quantiles[1].item()),
                     "p90": float(quantiles[2].item()),
+                    "p99": float(quantiles[3].item()),
+                    "max": float(values.max().item()),
                 }
 
             def receiver_approach_stats(mask: torch.Tensor) -> dict:
@@ -6664,6 +7993,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 contact_object_yaw = first_handover_history[
                     "object_yaw_in_receiver_at_first_contact_rad"
                 ][contacted]
+                remaining_at_stable = first_handover_history[
+                    "remaining_steps_at_first_stable"
+                ][stable]
+                remaining_at_contact = first_handover_history[
+                    "remaining_steps_at_first_receiver_contact"
+                ][contacted]
+                maximum_initial_approach_steps = first_handover_history[
+                    "maximum_receiver_initial_approach_steps"
+                ][mask]
                 return {
                     "count": int(mask.sum().item()),
                     "stable_presentations": int(stable.sum().item()),
@@ -6678,6 +8016,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "stable_to_receiver_contact_steps": (
                         handover_scalar_quantiles(latencies)
+                    ),
+                    "remaining_steps_at_first_stable": (
+                        handover_scalar_quantiles(remaining_at_stable)
+                    ),
+                    "remaining_steps_at_first_receiver_contact": (
+                        handover_scalar_quantiles(remaining_at_contact)
+                    ),
+                    "maximum_receiver_initial_approach_steps": (
+                        handover_scalar_quantiles(
+                            maximum_initial_approach_steps
+                        )
                     ),
                     "receiver_grasp_error_at_first_stable_m": (
                         handover_scalar_quantiles(stable_grasp_errors)
@@ -6702,6 +8051,265 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         handover_scalar_quantiles(contact_object_yaw)
                     ),
                 }
+
+            protected_surface_mask = first_failure_masks.get(
+                "protected_surface_force",
+                torch.zeros_like(first_unresolved),
+            )
+            protected_surface_sensor_forces = first_handover_history[
+                "terminal_protected_surface_force_by_sensor_n"
+            ][protected_surface_mask]
+            protected_environment_indices = torch.nonzero(
+                protected_surface_mask,
+                as_tuple=False,
+            ).flatten().tolist()
+            protected_geometric_episodes = []
+            table_surface_world_z_m = 0.00019999074935913
+            for environment_index in protected_environment_indices:
+                terminal_forces = first_handover_history[
+                    "terminal_protected_surface_force_by_sensor_n"
+                ][environment_index]
+                responsible_sensor_index = int(
+                    terminal_forces.argmax().item()
+                )
+                force_vectors = first_handover_history[
+                    "terminal_protected_surface_force_vector_w_n"
+                ][environment_index]
+                responsible_force_vector = force_vectors[
+                    responsible_sensor_index
+                ]
+                responsible_force_norm = torch.linalg.vector_norm(
+                    responsible_force_vector
+                )
+                vertical_force_fraction = (
+                    float(
+                        (
+                            responsible_force_vector[2].abs()
+                            / responsible_force_norm
+                        ).item()
+                    )
+                    if float(responsible_force_norm.item()) > 0.0
+                    else 0.0
+                )
+                giver_is_robot_1 = bool(
+                    first_handover_history["giver_is_robot_1"][
+                        environment_index
+                    ].item()
+                )
+                reporter_is_robot_1 = responsible_sensor_index < 2
+                reporter_role = (
+                    "giver"
+                    if reporter_is_robot_1 == giver_is_robot_1
+                    else "receiver"
+                )
+                reporter_robot_name = (
+                    "robot_1" if reporter_is_robot_1 else "robot_2"
+                )
+                counterpart_robot_name = (
+                    "robot_2" if reporter_is_robot_1 else "robot_1"
+                )
+                reporter_body_poses = first_handover_history[
+                    "terminal_protected_surface_"
+                    f"{reporter_robot_name}_body_poses_w"
+                ][environment_index]
+                counterpart_body_poses = first_handover_history[
+                    "terminal_protected_surface_"
+                    f"{counterpart_robot_name}_body_poses_w"
+                ][environment_index]
+                responsible_jaw_body_index = (
+                    4 + (responsible_sensor_index % 2)
+                )
+                responsible_jaw_position = reporter_body_poses[
+                    responsible_jaw_body_index,
+                    :3,
+                ]
+                counterpart_distances = torch.linalg.vector_norm(
+                    counterpart_body_poses[:, :3]
+                    - responsible_jaw_position.unsqueeze(0),
+                    dim=-1,
+                )
+                minimum_counterpart_body_index = int(
+                    counterpart_distances.argmin().item()
+                )
+                other_jaw_body_index = (
+                    5 if responsible_jaw_body_index == 4 else 4
+                )
+                own_other_jaw_distance = torch.linalg.vector_norm(
+                    reporter_body_poses[other_jaw_body_index, :3]
+                    - responsible_jaw_position
+                )
+                object_position = first_handover_history[
+                    "terminal_protected_surface_object_position_w"
+                ][environment_index]
+                object_center_distance = torch.linalg.vector_norm(
+                    object_position - responsible_jaw_position
+                )
+                protected_geometric_episodes.append(
+                    {
+                        "environment_index": environment_index,
+                        "responsible_sensor": (
+                            handover_non_object_sensor_names[
+                                responsible_sensor_index
+                            ]
+                        ),
+                        "responsible_role": reporter_role,
+                        "terminal_non_object_force_n": float(
+                            terminal_forces[
+                                responsible_sensor_index
+                            ].item()
+                        ),
+                        "terminal_force_vector_w_n": [
+                            float(value)
+                            for value in responsible_force_vector.tolist()
+                        ],
+                        "force_vertical_fraction": vertical_force_fraction,
+                        "all_terminal_force_vectors_w_n": [
+                            [float(value) for value in vector]
+                            for vector in force_vectors.tolist()
+                        ],
+                        "reporter_robot": reporter_robot_name,
+                        "counterpart_robot": counterpart_robot_name,
+                        "responsible_jaw_body": (
+                            handover_protected_attribution_body_names[
+                                responsible_jaw_body_index
+                            ]
+                        ),
+                        "responsible_jaw_pose_w": [
+                            float(value)
+                            for value in reporter_body_poses[
+                                responsible_jaw_body_index
+                            ].tolist()
+                        ],
+                        "responsible_jaw_origin_height_above_table_m": float(
+                            responsible_jaw_position[2].item()
+                            - table_surface_world_z_m
+                        ),
+                        "object_position_w": [
+                            float(value) for value in object_position.tolist()
+                        ],
+                        "responsible_jaw_to_object_center_distance_m": float(
+                            object_center_distance.item()
+                        ),
+                        "responsible_jaw_to_own_other_jaw_origin_distance_m": (
+                            float(own_other_jaw_distance.item())
+                        ),
+                        "minimum_counterpart_body": (
+                            handover_protected_attribution_body_names[
+                                minimum_counterpart_body_index
+                            ]
+                        ),
+                        "minimum_counterpart_body_origin_distance_m": float(
+                            counterpart_distances[
+                                minimum_counterpart_body_index
+                            ].item()
+                        ),
+                        "counterpart_body_origin_distances_m": {
+                            body_name: float(
+                                counterpart_distances[index].item()
+                            )
+                            for index, body_name in enumerate(
+                                handover_protected_attribution_body_names
+                            )
+                        },
+                        "reporter_body_poses_w": {
+                            body_name: [
+                                float(value)
+                                for value in reporter_body_poses[
+                                    index
+                                ].tolist()
+                            ]
+                            for index, body_name in enumerate(
+                                handover_protected_attribution_body_names
+                            )
+                        },
+                        "counterpart_body_poses_w": {
+                            body_name: [
+                                float(value)
+                                for value in counterpart_body_poses[
+                                    index
+                                ].tolist()
+                            ]
+                            for index, body_name in enumerate(
+                                handover_protected_attribution_body_names
+                            )
+                        },
+                    }
+                )
+
+            protected_surface_attribution = {
+                "hard_limit_n": 2.0,
+                "count": int(protected_surface_mask.sum().item()),
+                "by_maximum_phase": {
+                    label: int(
+                        (
+                            protected_surface_mask
+                            & phase_mask
+                        ).sum().item()
+                    )
+                    for label, phase_mask in phase_masks.items()
+                },
+                "maximum_force_by_sensor_n": {
+                    sensor_name: handover_scalar_quantiles(
+                        protected_surface_sensor_forces[:, index]
+                    )
+                    for index, sensor_name in enumerate(
+                        handover_non_object_sensor_names
+                    )
+                },
+                "capture_point": (
+                    "termination_source_before_automatic_environment_reset"
+                ),
+                "episodes_crossing_limit_by_sensor": {
+                    sensor_name: int(
+                        (
+                            protected_surface_sensor_forces[:, index]
+                            > 2.0
+                        ).sum().item()
+                    )
+                    for index, sensor_name in enumerate(
+                        handover_non_object_sensor_names
+                    )
+                },
+                "episodes_crossing_limit_by_tool": {
+                    "robot_1": int(
+                        (
+                            protected_surface_sensor_forces[:, :2].amax(dim=-1)
+                            > 2.0
+                        ).sum().item()
+                    )
+                    if protected_surface_sensor_forces.numel()
+                    else 0,
+                    "robot_2": int(
+                        (
+                            protected_surface_sensor_forces[:, 2:].amax(dim=-1)
+                            > 2.0
+                        ).sum().item()
+                    )
+                    if protected_surface_sensor_forces.numel()
+                    else 0,
+                },
+                "pre_reset_geometric_attribution": {
+                    "backend": "native_contact_force_plus_rigid_body_state",
+                    "scope": (
+                        "same_control_step_as_pre_reset_hard_termination"
+                    ),
+                    "force_source": (
+                        "unchanged_native_contact_sensor_vector_residual"
+                    ),
+                    "geometry_source": (
+                        "simulator_owned_articulation_body_poses"
+                    ),
+                    "interpretation_boundary": (
+                        "body_origin_distance_is_diagnostic_proximity_not_"
+                        "direct_collider_identity"
+                    ),
+                    "table_surface_world_z_m": table_surface_world_z_m,
+                    "body_names": list(
+                        handover_protected_attribution_body_names
+                    ),
+                    "episodes": protected_geometric_episodes,
+                },
+            }
 
             first_episode_handover_diagnostics = {
                 "pickup_attempt_outcomes": {
@@ -6751,6 +8359,103 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "maximum_phase_distribution": {
                     label: int(mask.sum().item())
                     for label, mask in phase_masks.items()
+                },
+                "failure_by_maximum_phase": {
+                    failure_name: {
+                        label: int(
+                            (
+                                failure_mask
+                                & phase_mask
+                            ).sum().item()
+                        )
+                        for label, phase_mask in phase_masks.items()
+                    }
+                    for failure_name, failure_mask in (
+                        first_failure_masks.items()
+                    )
+                    if bool(failure_mask.any().item())
+                },
+                "protected_surface_attribution": (
+                    protected_surface_attribution
+                ),
+                "outcomes_by_giver_role": {
+                    role: {
+                        "count": int(role_mask.sum().item()),
+                        "success": int(
+                            (role_mask & first_outcome_success)
+                            .sum()
+                            .item()
+                        ),
+                        "reached_10mm_lift": int(
+                            (
+                                role_mask
+                                & (first_handover_max_phase >= 2)
+                            )
+                            .sum()
+                            .item()
+                        ),
+                        "reached_stable_presentation": int(
+                            (
+                                role_mask
+                                & first_handover_history[
+                                    "ever_presentation_stable"
+                                ]
+                            )
+                            .sum()
+                            .item()
+                        ),
+                        "reached_receiver_contact": int(
+                            (
+                                role_mask
+                                & first_handover_history[
+                                    "ever_receiver_any_contact"
+                                ]
+                            )
+                            .sum()
+                            .item()
+                        ),
+                        "environments_with_recovery": int(
+                            (
+                                role_mask
+                                & (
+                                    first_handover_history[
+                                        "maximum_pickup_recoveries"
+                                    ]
+                                    > 0
+                                )
+                            )
+                            .sum()
+                            .item()
+                        ),
+                        "recovered_success": int(
+                            (
+                                role_mask
+                                & first_outcome_success
+                                & (
+                                    first_handover_history[
+                                        "terminal_pickup_attempts"
+                                    ]
+                                    > 1
+                                )
+                            )
+                            .sum()
+                            .item()
+                        ),
+                    }
+                    for role, role_mask in {
+                        "robot_1": (
+                            first_completed
+                            & first_handover_history[
+                                "giver_is_robot_1"
+                            ]
+                        ),
+                        "robot_2": (
+                            first_completed
+                            & ~first_handover_history[
+                                "giver_is_robot_1"
+                            ]
+                        ),
+                    }.items()
                 },
                 "reached_phase_fraction": {
                     f"phase_{phase}_{label}": float(
@@ -6965,6 +8670,86 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .sum()
                         .item()
                     ),
+                    "recovery_receiver_shaft_guard": {
+                        "active_steps": int(
+                            first_handover_history[
+                                "recovery_receiver_shaft_guard_active_steps"
+                            ].item()
+                        ),
+                        "environments_activated": int(
+                            first_handover_history[
+                                "ever_recovery_receiver_"
+                                "shaft_guard_active"
+                            ][first_completed]
+                            .sum()
+                            .item()
+                        ),
+                        "minimum_distance_m": (
+                            handover_scalar_quantiles(
+                                first_handover_history[
+                                    "minimum_recovery_receiver_"
+                                    "shaft_distance_m"
+                                ][
+                                    torch.isfinite(
+                                        first_handover_history[
+                                            "minimum_recovery_receiver_"
+                                            "shaft_distance_m"
+                                        ]
+                                    )
+                                ]
+                            )
+                        ),
+                    },
+                    "deadline_option_step_counts": {
+                        label: int(
+                            first_handover_history[
+                                "deadline_option_step_counts"
+                            ][index].item()
+                        )
+                        for index, label in enumerate(
+                            ("continue", "reseat", "backoff")
+                        )
+                    },
+                    "environments_with_deadline_reseat": int(
+                        first_handover_history[
+                            "ever_deadline_reseat"
+                        ][first_completed].sum().item()
+                    ),
+                    "environments_with_deadline_backoff": int(
+                        first_handover_history[
+                            "ever_deadline_backoff"
+                        ][first_completed].sum().item()
+                    ),
+                    "deadline_receiver_residual": {
+                        "active_steps": int(
+                            first_handover_history[
+                                "deadline_residual_active_steps"
+                            ].item()
+                        ),
+                        "mean_normalized_l2": (
+                            float(
+                                first_handover_history[
+                                    "deadline_residual_norm_sum"
+                                ].item()
+                            )
+                            / int(
+                                first_handover_history[
+                                    "deadline_residual_active_steps"
+                                ].item()
+                            )
+                            if int(
+                                first_handover_history[
+                                    "deadline_residual_active_steps"
+                                ].item()
+                            )
+                            else 0.0
+                        ),
+                        "maximum_normalized_l2": float(
+                            first_handover_history[
+                                "deadline_residual_norm_max"
+                            ].item()
+                        ),
+                    },
                 },
                 "unresolved": int(first_unresolved.sum().item()),
             }
@@ -7039,6 +8824,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             }
         first_completed_count = int((~first_unresolved).sum().item())
         first_success_count = int(first_outcome_success.sum().item())
+        policy_runtime_contract = _policy_runtime_contract(
+            policy_model,
+            args.task,
+        )
+        environment_runtime_contract = _environment_runtime_contract(
+            env_cfg,
+            args.task,
+        )
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -7061,6 +8854,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "mean_reward": sum(rewards) / len(rewards) if rewards else None,
             "first_terminal_outcome_per_environment": True,
+            "initial_state_population_sha256": (
+                initial_state_population_sha256
+            ),
             "completed_episodes": first_completed_count,
             "successful_episodes": first_success_count,
             "failed_episodes": first_completed_count - first_success_count,
@@ -7114,12 +8910,57 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             }
             if checkpoint is not None
             else None,
+            "policy_runtime_contract": policy_runtime_contract,
+            "policy_runtime_contract_sha256": _canonical_sha256(
+                policy_runtime_contract
+            ),
+            "environment_runtime_contract": (
+                environment_runtime_contract
+            ),
+            "environment_runtime_contract_sha256": _canonical_sha256(
+                environment_runtime_contract
+            ),
             "analytic_only": bool(args.analytic_only),
             "policy_giver_adaptation_enabled": bool(
                 getattr(
                     policy_model,
                     "giver_adaptation_enabled",
                     args.handover_giver_adaptation,
+                )
+            ),
+            "policy_pickup_recovery_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "pickup_recovery_adaptation_enabled",
+                    args.pickup_recovery_adaptation,
+                )
+            ),
+            "policy_recovery_receiver_grasp_retain_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "recovery_receiver_grasp_retain_adaptation_enabled",
+                    args.recovery_receiver_grasp_retain_adaptation,
+                )
+            ),
+            "policy_joint_transfer_acquisition_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "joint_transfer_acquisition_adaptation_enabled",
+                    args.joint_transfer_acquisition_adaptation,
+                )
+            ),
+            "policy_transfer_refinement_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "transfer_refinement_adaptation_enabled",
+                    args.transfer_refinement_adaptation,
+                )
+            ),
+            "policy_deadline_recovery_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "deadline_recovery_adaptation_enabled",
+                    args.deadline_recovery_adaptation,
                 )
             ),
             "policy_residual_scale": (
@@ -7149,6 +8990,85 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "receiver_residual_enabled_for_learning",
                 )
                 else None
+            ),
+            "policy_receiver_grasp_retain_residual_enabled": (
+                bool(
+                    policy_model.controller.receiver_grasp_retain_residual_enabled_for_learning
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_grasp_retain_residual_enabled_for_learning",
+                )
+                else None
+            ),
+            "policy_transport_custody_latch_enabled": (
+                bool(policy_model.controller.transport_custody_latch_enabled)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "transport_custody_latch_enabled",
+                )
+                else None
+            ),
+            "policy_receiver_preposition_enabled": (
+                bool(policy_model.controller.receiver_preposition_enabled)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_preposition_enabled",
+                )
+                else None
+            ),
+            "policy_receiver_preposition_height_m": (
+                float(policy_model.controller.receiver_preposition_height)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_preposition_height",
+                )
+                else None
+            ),
+            "policy_recovery_receiver_preposition_height_m": (
+                float(
+                    policy_model.controller.recovery_receiver_preposition_height
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "recovery_receiver_preposition_height",
+                )
+                else None
+            ),
+            "policy_receiver_contact_orientation_error_target_rad": (
+                float(
+                    policy_model.controller.receiver_contact_orientation_error_target_rad
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_contact_orientation_error_target_rad",
+                )
+                else None
+            ),
+            "policy_receiver_adaptive_arc_enabled": (
+                bool(policy_model.controller.receiver_adaptive_arc_enabled)
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "receiver_adaptive_arc_enabled",
+                )
+                else None
+            ),
+            "policy_presentation_use_filtered_custody": bool(
+                getattr(
+                    env_cfg,
+                    "dr_anmar_handover_contract",
+                    {},
+                ).get(
+                    "presentation_use_filtered_custody",
+                    False,
+                )
             ),
             "policy_pickup_vertical_action_limit": (
                 float(policy_model.controller.pickup_vertical_action_limit)
@@ -7187,6 +9107,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 and hasattr(
                     policy_model.controller,
                     "carry_lateral_action_limit",
+                )
+                else None
+            ),
+            "policy_recovery_carry_lateral_action_limit": (
+                float(
+                    policy_model.controller.recovery_carry_lateral_action_limit
+                )
+                if hasattr(policy_model, "controller")
+                and hasattr(
+                    policy_model.controller,
+                    "recovery_carry_lateral_action_limit",
                 )
                 else None
             ),
@@ -7415,6 +9346,26 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--checkpoint")
     play.add_argument("--analytic-only", action="store_true")
     play.add_argument("--handover_giver_adaptation", action="store_true")
+    play.add_argument(
+        "--pickup_recovery_adaptation",
+        action="store_true",
+    )
+    play.add_argument(
+        "--recovery_receiver_grasp_retain_adaptation",
+        action="store_true",
+    )
+    play.add_argument(
+        "--joint_transfer_acquisition_adaptation",
+        action="store_true",
+    )
+    play.add_argument(
+        "--transfer_refinement_adaptation",
+        action="store_true",
+    )
+    play.add_argument(
+        "--deadline_recovery_adaptation",
+        action="store_true",
+    )
     play.add_argument("--num_envs", type=int, required=True)
     play.add_argument("--num_frames", type=int, required=True)
     play.add_argument("--seed", type=int, default=2361)
@@ -7430,9 +9381,43 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--pickup_initial_vertical_action_limit", type=float)
     play.add_argument("--recovery_pickup_vertical_action_limit", type=float)
     play.add_argument("--carry_lateral_action_limit", type=float)
+    play.add_argument(
+        "--recovery_carry_lateral_action_limit",
+        type=float,
+    )
     play.add_argument("--carry_lateral_ramp_height", type=float)
     play.add_argument("--presentation_fraction_from_giver", type=float)
     play.add_argument("--receiver_crossing_angle_rad", type=float)
+    play.add_argument(
+        "--transport_custody_latch",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+    play.add_argument(
+        "--receiver_preposition",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+    play.add_argument("--receiver_preposition_height", type=float)
+    play.add_argument(
+        "--recovery_receiver_preposition_height",
+        type=float,
+    )
+    play.add_argument(
+        "--receiver_adaptive_arc",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+    play.add_argument(
+        "--receiver_grasp_retain_residual",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
+    play.add_argument(
+        "--presentation_use_filtered_custody",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+    )
     play.add_argument("--presentation_height_in_robot_frame", type=float)
     play.add_argument("--giver_close_distance", type=float)
     play.add_argument("--giver_lift_contact_force_threshold", type=float)
