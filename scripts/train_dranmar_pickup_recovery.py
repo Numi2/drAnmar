@@ -14,6 +14,9 @@ import torch
 import torch.nn.functional as functional
 
 
+DEVELOPMENT_SEEDS = {104729, 130363, 196613}
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -83,6 +86,10 @@ def main(argv: list[str]) -> int:
             != PickupRecoveryHead.output_dim
         ):
             raise ValueError(f"recovery correction shape drifted in {path}")
+        if int(payload["seed"]) not in DEVELOPMENT_SEEDS:
+            raise ValueError(
+                f"dataset seed is not development-only: {path}"
+            )
 
     base_hashes = {payload["base_checkpoint_sha256"] for payload in payloads}
     position_caps = {float(payload["position_cap_m"]) for payload in payloads}
