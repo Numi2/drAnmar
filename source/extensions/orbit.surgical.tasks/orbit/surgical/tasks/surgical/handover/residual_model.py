@@ -95,11 +95,11 @@ class HandoverAnalyticController(nn.Module):
         self.carry_lateral_action_limit = 0.06
         # Recovered grasps are physically less repeatable than reset-aligned
         # grasps. Keep the qualified first-attempt transport unchanged while
-        # giving only recovered transport enough lateral authority to reach
-        # presentation before the original episode deadline.  A paired
-        # 2,000-environment screen selected 0.07: 0.08 recovered more episodes
-        # but exceeded the protected-surface non-inferiority bound.
-        self.recovery_carry_lateral_action_limit = 0.07
+        # giving only contact-qualified, already-lifted recovery transport
+        # enough lateral authority to reach presentation before the original
+        # episode deadline. Relift and live-contact loss fall back to the
+        # qualified 0.06 first-attempt limit.
+        self.recovery_carry_lateral_action_limit = 0.08
         self.carry_lateral_ramp_height = 0.01
         self.pickup_vertical_action_limit = 0.01
         self.pickup_initial_vertical_action_limit = 0.01
@@ -594,12 +594,29 @@ class HandoverAnalyticController(nn.Module):
         carry_ramp_fraction = carry_ramp_fraction * carry_ramp_fraction * (
             3.0 - 2.0 * carry_ramp_fraction
         )
-        carry_lateral_action_limit = torch.where(
-            pickup_recovery_context,
+        giver_bilateral_contact = torch.all(
+            giver_contacts > self.normalized_contact_threshold,
+            dim=-1,
+        )
+        recovery_transport_qualified = (
+            pickup_recovery_context
+            & (phase >= 2)
+            & giver_bilateral_contact
+        )
+        recovery_lateral_action_limit = torch.where(
+            recovery_transport_qualified,
             torch.full_like(
                 carry_ramp_fraction,
                 self.recovery_carry_lateral_action_limit,
             ),
+            torch.full_like(
+                carry_ramp_fraction,
+                self.carry_lateral_action_limit,
+            ),
+        )
+        carry_lateral_action_limit = torch.where(
+            pickup_recovery_context,
+            recovery_lateral_action_limit,
             torch.full_like(
                 carry_ramp_fraction,
                 self.carry_lateral_action_limit,
@@ -620,10 +637,6 @@ class HandoverAnalyticController(nn.Module):
                 giver_lateral_action,
                 giver_vertical_action,
             ),
-            dim=-1,
-        )
-        giver_bilateral_contact = torch.all(
-            giver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
         giver_lift_contact_qualified = torch.all(

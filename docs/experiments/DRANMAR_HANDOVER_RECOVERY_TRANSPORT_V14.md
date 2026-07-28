@@ -1,12 +1,13 @@
 # Recovery-Transport Controller v14
 
-## Decision
+## Scale result and final disposition
 
 The recovered-lift bottleneck did not require a new option selector or more
 learned giver authority. It required the existing recovery transport to reach
 the already-qualified presentation pose before the unchanged episode deadline.
 
-v14 increases only the recovered-pickup lateral carry limit from 0.06 to 0.07.
+v14 tested increasing only the recovered-pickup lateral carry limit from 0.06
+to 0.07.
 First-attempt transport, grasp, lift, receiver acquisition, gripper commands,
 release, reward, success, timeout, and hard terminations are unchanged.
 
@@ -27,9 +28,14 @@ outcome from every environment.
 | Drops | 0 | 0 |
 | Excessive object-force terminals | 0 | 0 |
 
-The retained-success gain is 18/2,000, or 0.9 percentage points. The
+The retained-success gain was 18/2,000, or 0.9 percentage points. The
 protected-surface increase is exactly 0.1 percentage points, equal to the
 predeclared non-inferiority limit.
+
+A fresh default-contract replay then produced 388/600 against the 390/600
+incumbent development result. v14 is therefore rejected for cross-population
+inconsistency; the 2,000-environment gain remains useful causal evidence but is
+not a promotion.
 
 ## Rejected nearby variants
 
@@ -46,6 +52,8 @@ v14 explicitly applies and records the deadline controller configuration.
 All recovery curricula now declare the same 0.07 carry limit and the qualified
 25 mm receiver preposition used by serving.
 
-The next gate is a fresh replay using the new defaults with no command-line
-controller override, followed by the preregistered multi-seed promotion gate.
-These are simulator results, not physics calibration or clinical validation.
+v15 keeps 0.06 authority during relift and contact loss, and enables 0.08 only
+after lifted custody with live bilateral giver contact. It must beat both
+development and scale incumbents before the preregistered multi-seed promotion
+gate. These are simulator results, not physics calibration or clinical
+validation.

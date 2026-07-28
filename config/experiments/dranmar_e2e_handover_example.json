@@ -626,7 +626,7 @@
     "qualification_boundary": "same_paired_full_population_and_safety_gates_as_v11"
   },
   "recovered_transport_controller_v14": {
-    "status": "paired_scale_gate_passed_pending_fresh_default_contract_replay",
+    "status": "rejected_cross_population_inconsistency",
     "root_cause": "recovered_pickups_needed_more_lateral_transport_authority_to_reach_stable_presentation_and_receiver_contact_before_the_unchanged_episode_deadline",
     "control_change": "recovery_only_carry_lateral_action_limit_from_0.06_to_0.07",
     "unchanged": [
@@ -674,7 +674,37 @@
         "reason": "delayed_presentation_and_reduced_terminal_retention"
       }
     },
-    "qualification_boundary": "fresh_default_contract_replay_then_preregistered_multiseed_promotion"
+    "default_contract_development_replay": {
+      "seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 388,
+      "protected_surface_events": 0,
+      "reason": "the_scale_gain_did_not_reproduce_on_the_development_population"
+    },
+    "qualification_boundary": "rejected_not_promoted_despite_paired_2000_environment_gain"
+  },
+  "contact_qualified_recovery_transport_v15": {
+    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "root_cause": "recovered_transport_needs_0.08_lateral_authority_after_lift_but_extra_authority_during_relift_or_contact_loss_creates_avoidable_protected_surface_tail_risk",
+    "relift_and_unqualified_contact_limit": 0.06,
+    "contact_qualified_lifted_transport_limit": 0.08,
+    "strong_authority_gate": [
+      "pickup_recovery_context",
+      "progress_phase_at_least_2",
+      "live_bilateral_giver_contact"
+    ],
+    "unchanged": [
+      "first_attempt_transport",
+      "receiver_policy",
+      "grippers",
+      "release",
+      "reward",
+      "success_definition",
+      "episode_deadline",
+      "hard_terminations"
+    ],
+    "qualification_boundary": "must_beat_390_of_600_and_1130_of_2000_with_safety_noninferiority_before_multiseed_promotion"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",
