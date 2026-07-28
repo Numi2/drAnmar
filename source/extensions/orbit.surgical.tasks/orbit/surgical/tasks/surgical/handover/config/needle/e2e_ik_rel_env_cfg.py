@@ -232,11 +232,16 @@ class NeedleHandoverDeadlineRecoveryResidualEnvCfg(
             func=e2e_observations.giver_and_deadline_context,
             clip=(0.0, 1.0),
         )
+        # More than half of the lifted acquisition failures never reached the
+        # old stable-presentation gate. Replay recovered lifted custody so the
+        # receiver can preposition concurrently with giver transport instead
+        # of spending another 50--60 control steps after presentation.
+        self.dr_anmar_receiver_curriculum_capture_stage = "lifted_custody"
         self.dr_anmar_deadline_recovery_curriculum = True
         self.dr_anmar_deadline_recovery_rollout_steps_per_env = 128
         self.dr_anmar_deadline_recovery_objective = (
-            "retained_handover_from_recovered_presentation_under_original_"
-            "episode_deadline"
+            "retained_handover_from_recovered_lifted_custody_under_original_"
+            "episode_deadline_with_concurrent_receiver_preposition"
         )
         self.dr_anmar_deadline_recovery_control = (
             "incumbent_plus_bounded_continuous_receiver_se3_residual"

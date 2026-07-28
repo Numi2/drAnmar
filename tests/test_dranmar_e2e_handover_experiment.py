@@ -247,6 +247,12 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         "incumbent_plus_bounded_continuous_receiver_se3_residual"
     )
     assert continuous_recovery["discrete_trajectory_switches"] == []
+    transport_recovery = contract["recovered_transport_preposition_v12"]
+    assert transport_recovery["zero_impact_adapter"] is True
+    assert transport_recovery["original_episode_deadline"] is True
+    assert transport_recovery["activation"] == (
+        "recovered_lifted_custody_through_presentation"
+    )
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -347,6 +353,12 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "Always retaining the incumbent action" in source
     assert "deadline_recovery_residual_scale" in source
     assert "last_deadline_option_index" in source
+    assert source.count(
+        "deadline_active = (\n"
+        "            pickup_recovery_context\n"
+        "            & (phase == 2)\n"
+        "        )"
+    ) == 2
     assert "presentation_qualified = raw[:, 103] >= 1.0" in source
     assert "presentation_qualified = obs[:, 103] >= 1.0" in source
     assert "refinement_giver_active = torch.zeros_like(" in source
@@ -595,6 +607,7 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert "NeedleHandoverDeadlineRecoveryResidualEnvCfg" in (
         environment_source
     )
+    assert "concurrent_receiver_preposition" in environment_source
     assert '"restored_episode_length_buf"' in state_source
     assert (
         'env.episode_length_buf[target_env_ids] = receiver_cache['
@@ -628,6 +641,7 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert "configure_deadline_recovery_adaptation" in benchmark_source
     assert '"deadline_recovery_adaptation_contract"' in benchmark_source
     assert '"discrete_trajectory_switches": []' in benchmark_source
+    assert "recovered_lifted_custody_with_" in benchmark_source
     assert '"deadline_option_step_counts"' in benchmark_source
     assert '"joint_transfer_acquisition_adaptation_contract"' in (
         benchmark_source

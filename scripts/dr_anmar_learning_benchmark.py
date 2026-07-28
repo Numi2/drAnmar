@@ -2437,8 +2437,11 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             "deadline_recovery_adaptation_contract": (
                 {
                     "source_states": (
-                        "physics_owned_recovered_stable_presentation_with_"
+                        "physics_owned_recovered_lifted_custody_with_"
                         "original_episode_deadline_and_complete_markov_state"
+                    ),
+                    "activation": (
+                        "recovered_lifted_custody_through_presentation"
                     ),
                     "control": (
                         "incumbent_plus_bounded_continuous_receiver_se3_"

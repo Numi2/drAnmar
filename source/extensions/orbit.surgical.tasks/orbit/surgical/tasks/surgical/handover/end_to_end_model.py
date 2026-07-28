@@ -1008,7 +1008,6 @@ class EndToEndHandoverMLPModel(MLPModel):
         deadline_active = (
             pickup_recovery_context
             & (phase == 2)
-            & presentation_qualified
         )
         deadline_option_selection = torch.zeros(
             (raw.shape[0], 3),
@@ -1314,7 +1313,6 @@ class _EndToEndHandoverExport(nn.Module):
         deadline_active = (
             pickup_recovery_context
             & (phase == 2)
-            & presentation_qualified
         )
         deadline_option_selection = torch.zeros(
             (obs.shape[0], 3),

@@ -519,7 +519,7 @@
     "qualification_boundary": "no_performance_claim_until_exact_zero_equivalence_then_held_out_full_task_improvement"
   },
   "deadline_recovery_residual_v11": {
-    "status": "implemented_awaiting_exact_zero_and_runtime_training",
+    "status": "directionally_improved_but_below_promotion_threshold",
     "initial_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
     "root_cause": "the_discrete_v10_option_changed_complete_trajectories_from_microscopic_logit_differences_and_destroyed_the_incumbent_recovery_path",
     "source_states": "physics_owned_recovered_stable_presentations_with_original_episode_deadline_and_complete_markov_state",
@@ -544,8 +544,51 @@
       "complete_first_terminal_population_evaluation",
       "unchanged_physical_success_and_safety_contract"
     ],
+    "paired_scale_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "same_initial_state_population_hash": true,
+      "same_environment_contract_hash": true,
+      "incumbent_successes": 1130,
+      "candidate_successes": 1134,
+      "incumbent_recovered_successes": 99,
+      "candidate_recovered_successes": 103,
+      "incumbent_protected_surface_events": 2,
+      "candidate_protected_surface_events": 3,
+      "drops": 0,
+      "excessive_force_events": 0,
+      "disposition": "retain_as_evidence_do_not_promote_below_half_percentage_point_gate"
+    },
+    "rejected_higher_learning_rate_run": {
+      "learning_rate": 0.00003,
+      "checkpoint": "model_8",
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 386,
+      "reason": "larger_residual_authority_reduced_recovered_successes"
+    },
     "evaluation_contract": "same_environment_contract_hash_same_seed_same_initial_state_population_hash_complete_first_terminal_population",
     "qualification_boundary": "no_promotion_until_exact_zero_equivalence_and_held_out_full_task_improvement"
+  },
+  "recovered_transport_preposition_v12": {
+    "status": "implemented_awaiting_exact_zero_and_runtime_training",
+    "root_cause": "403_of_708_lifted_without_receiver_acquisition_failures_never_reached_the_stable_presentation_gate_so_v11_had_no_authority_in_most_of_the_target_cohort",
+    "source_states": "physics_owned_recovered_lifted_custody_with_original_episode_deadline_and_complete_markov_state",
+    "activation": "recovered_lifted_custody_through_presentation",
+    "rollout_steps_per_env": 128,
+    "control": "incumbent_plus_bounded_continuous_receiver_se3_residual",
+    "receiver_behavior": "preposition_concurrently_while_giver_transports_then_continue_existing_acquisition",
+    "frozen_authority": [
+      "giver_motion",
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "zero_impact_adapter": true,
+    "original_episode_deadline": true,
+    "qualification_boundary": "same_paired_full_population_and_safety_gates_as_v11"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",
