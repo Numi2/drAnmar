@@ -233,18 +233,20 @@ class NeedleHandoverDeadlineRecoveryResidualEnvCfg(
             clip=(0.0, 1.0),
         )
         # More than half of the lifted acquisition failures never reached the
-        # old stable-presentation gate. Replay recovered lifted custody so the
-        # receiver can preposition concurrently with giver transport instead
-        # of spending another 50--60 control steps after presentation.
+        # old stable-presentation gate. Replay recovered lifted custody so one
+        # rollout can learn giver presentation followed by receiver acquisition
+        # from the physical state that caused the late deadline.
         self.dr_anmar_receiver_curriculum_capture_stage = "lifted_custody"
         self.dr_anmar_deadline_recovery_curriculum = True
-        self.dr_anmar_deadline_recovery_rollout_steps_per_env = 128
+        self.dr_anmar_deadline_recovery_rollout_steps_per_env = 384
         self.dr_anmar_deadline_recovery_objective = (
             "retained_handover_from_recovered_lifted_custody_under_original_"
-            "episode_deadline_with_concurrent_receiver_preposition"
+            "episode_deadline_with_giver_presentation_then_receiver_"
+            "acquisition"
         )
         self.dr_anmar_deadline_recovery_control = (
-            "incumbent_plus_bounded_continuous_receiver_se3_residual"
+            "incumbent_plus_bounded_two_stage_giver_then_receiver_se3_"
+            "residual"
         )
 
 

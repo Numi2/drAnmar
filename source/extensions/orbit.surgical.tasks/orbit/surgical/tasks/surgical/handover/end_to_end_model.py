@@ -462,7 +462,7 @@ class _TransferRefinementAdapter(nn.Module):
 
 
 class _DeadlineRecoveryAdapter(nn.Module):
-    """Produce an incumbent-preserving receiver SE(3) recovery residual.
+    """Produce an incumbent-preserving two-stage SE(3) recovery residual.
 
     The nine-row output is retained so checkpoints produced by the rejected
     discrete-option experiment remain loadable.  Rows zero through two are
@@ -558,6 +558,7 @@ class EndToEndHandoverMLPModel(MLPModel):
             parameter.requires_grad_(False)
         self.last_deadline_option_index: torch.Tensor | None = None
         self.last_deadline_option_active: torch.Tensor | None = None
+        self.last_deadline_recovery_residual_norm: torch.Tensor | None = None
         self.last_deadline_receiver_residual_norm: torch.Tensor | None = None
         self.recovery_receiver_reference_network: (
             _PhaseHeadedNetwork | None
@@ -828,12 +829,12 @@ class EndToEndHandoverMLPModel(MLPModel):
                     parameter.requires_grad_(False)
 
     def configure_deadline_recovery_adaptation(self) -> None:
-        """Train only the late recovery decision and receiver correction.
+        """Train the recovered giver-presentation/receiver-acquisition residual.
 
-        The loaded pickup/recovery and nominal receiver policies remain frozen.
-        A zero-impact adapter receives gradients only after a physical pickup
-        recovery has reached a qualified presentation. Giver motion, release,
-        and the physical success predicate remain analytic.
+        The loaded pickup/recovery and nominal joint policy remain frozen. A
+        zero-impact adapter corrects giver SE(3) before stable presentation and
+        receiver SE(3) afterward. Both grippers, release, and the physical
+        success predicate remain analytic.
         """
         self.pickup_recovery_adaptation_enabled = True
         self.receiver_adaptation_enabled = True
@@ -1009,6 +1010,8 @@ class EndToEndHandoverMLPModel(MLPModel):
             pickup_recovery_context
             & (phase == 2)
         )
+        deadline_giver_active = deadline_active & ~presentation_qualified
+        deadline_receiver_active = deadline_active & presentation_qualified
         deadline_option_selection = torch.zeros(
             (raw.shape[0], 3),
             dtype=raw.dtype,
@@ -1035,19 +1038,29 @@ class EndToEndHandoverMLPModel(MLPModel):
                     self.receiver_policy_grasp_offset,
                 )
             )
+            deadline_role_residual[:, 0:6] = (
+                deadline_receiver_residual
+                * deadline_giver_active.unsqueeze(-1)
+            )
             deadline_role_residual[:, 7:13] = (
                 deadline_receiver_residual
-                * deadline_active.unsqueeze(-1)
+                * deadline_receiver_active.unsqueeze(-1)
             )
         self.last_deadline_option_index = torch.argmax(
             deadline_option_selection,
             dim=-1,
         ).detach()
         self.last_deadline_option_active = deadline_active.detach()
-        self.last_deadline_receiver_residual_norm = torch.linalg.vector_norm(
+        deadline_recovery_residual_norm = torch.linalg.vector_norm(
             deadline_receiver_residual,
             dim=-1,
         ).detach()
+        self.last_deadline_recovery_residual_norm = (
+            deadline_recovery_residual_norm
+        )
+        self.last_deadline_receiver_residual_norm = (
+            deadline_recovery_residual_norm
+        )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             raw[:, 82] > 0.5,
@@ -1097,8 +1110,11 @@ class EndToEndHandoverMLPModel(MLPModel):
             learned_role_residual,
             dtype=torch.bool,
         )
+        deadline_role_action_mask[:, 0:6] = (
+            deadline_giver_active.unsqueeze(-1)
+        )
         deadline_role_action_mask[:, 7:13] = (
-            deadline_active.unsqueeze(-1)
+            deadline_receiver_active.unsqueeze(-1)
         )
         deadline_physical_action_mask = role_action_to_physical(
             deadline_role_action_mask,
@@ -1314,6 +1330,8 @@ class _EndToEndHandoverExport(nn.Module):
             pickup_recovery_context
             & (phase == 2)
         )
+        deadline_giver_active = deadline_active & ~presentation_qualified
+        deadline_receiver_active = deadline_active & presentation_qualified
         deadline_option_selection = torch.zeros(
             (obs.shape[0], 3),
             dtype=obs.dtype,
@@ -1334,9 +1352,13 @@ class _EndToEndHandoverExport(nn.Module):
                     self.receiver_policy_grasp_offset,
                 )
             )
+            deadline_role_residual[:, 0:6] = (
+                deadline_receiver_residual
+                * deadline_giver_active.unsqueeze(-1)
+            )
             deadline_role_residual[:, 7:13] = (
                 deadline_receiver_residual
-                * deadline_active.unsqueeze(-1)
+                * deadline_receiver_active.unsqueeze(-1)
             )
         physical_residual = role_action_to_physical(
             learned_role_residual,
@@ -1387,8 +1409,11 @@ class _EndToEndHandoverExport(nn.Module):
             learned_role_residual,
             dtype=torch.bool,
         )
+        deadline_role_action_mask[:, 0:6] = (
+            deadline_giver_active.unsqueeze(-1)
+        )
         deadline_role_action_mask[:, 7:13] = (
-            deadline_active.unsqueeze(-1)
+            deadline_receiver_active.unsqueeze(-1)
         )
         deadline_physical_action_mask = role_action_to_physical(
             deadline_role_action_mask,

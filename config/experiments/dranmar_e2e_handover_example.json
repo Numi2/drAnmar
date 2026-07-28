@@ -572,7 +572,7 @@
     "qualification_boundary": "no_promotion_until_exact_zero_equivalence_and_held_out_full_task_improvement"
   },
   "recovered_transport_preposition_v12": {
-    "status": "implemented_awaiting_exact_zero_and_runtime_training",
+    "status": "rejected_wrong_actuator_and_insufficient_credit_horizon",
     "root_cause": "403_of_708_lifted_without_receiver_acquisition_failures_never_reached_the_stable_presentation_gate_so_v11_had_no_authority_in_most_of_the_target_cohort",
     "source_states": "physics_owned_recovered_lifted_custody_with_original_episode_deadline_and_complete_markov_state",
     "activation": "recovered_lifted_custody_through_presentation",
@@ -588,6 +588,33 @@
     ],
     "zero_impact_adapter": true,
     "original_episode_deadline": true,
+    "rejected_development_result": {
+      "checkpoint": "model_5",
+      "seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 387,
+      "recovered_successes": 29,
+      "hard_safety_events": 0,
+      "reason": "receiver_correction_during_transport_did_not_solve_giver_presentation_and_128_steps_did_not_span_lifted_custody_to_terminal_retention"
+    },
+    "qualification_boundary": "same_paired_full_population_and_safety_gates_as_v11"
+  },
+  "two_stage_recovered_handover_v13": {
+    "status": "implemented_awaiting_exact_zero_and_runtime_training",
+    "root_cause": "the_recovered_lifted_custody_to_retained_handover_sequence_exceeds_128_steps_and_requires_different_actuators_before_and_after_stable_presentation",
+    "source_states": "physics_owned_recovered_lifted_custody_with_original_episode_deadline_and_complete_markov_state",
+    "rollout_steps_per_env": 384,
+    "stage_1": "bounded_giver_se3_residual_until_stable_presentation",
+    "stage_2": "bounded_receiver_se3_residual_after_stable_presentation",
+    "frozen_authority": [
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "zero_impact_adapter": true,
+    "terminal_credit": "retained_handover_or_equal_magnitude_unsuccessful_timeout_cost_under_original_deadline",
     "qualification_boundary": "same_paired_full_population_and_safety_gates_as_v11"
   },
   "architecture": {

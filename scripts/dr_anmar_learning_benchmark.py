@@ -2444,8 +2444,8 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                         "recovered_lifted_custody_through_presentation"
                     ),
                     "control": (
-                        "incumbent_plus_bounded_continuous_receiver_se3_"
-                        "residual"
+                        "incumbent_plus_bounded_two_stage_giver_then_"
+                        "receiver_se3_residual"
                     ),
                     "discrete_trajectory_switches": [],
                     "success": "unchanged_retained_handover_terminal",
@@ -2454,7 +2454,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "optimizer_schedule": "fixed",
                     "observation_normalizer_frozen": True,
                     "zero_impact_adapter": True,
-                    "learned_receiver_axes": [
+                    "learned_giver_axes_before_stable_presentation": [
                         "x",
                         "y",
                         "z",
@@ -2462,7 +2462,14 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                         "pitch",
                         "yaw",
                     ],
-                    "learned_giver_axes": [],
+                    "learned_receiver_axes_after_stable_presentation": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
                     "analytic_release_authority": True,
                     "hard_terminations_unchanged": True,
                     "episode_horizon_unchanged": True,
@@ -6420,8 +6427,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                     residual_norm = getattr(
                         policy_model,
-                        "last_deadline_receiver_residual_norm",
-                        None,
+                        "last_deadline_recovery_residual_norm",
+                        getattr(
+                            policy_model,
+                            "last_deadline_receiver_residual_norm",
+                            None,
+                        ),
                     )
                     if option_index is not None and option_active is not None:
                         counted_option = (
