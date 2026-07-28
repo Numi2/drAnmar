@@ -1432,8 +1432,8 @@ class HandController {
       await this.video.play();
       if (generation !== this.startGeneration) return;
       const settings = this.stream.getVideoTracks()[0]?.getSettings?.() || {};
-      // v4 follows the corrected physical handedness convention and stores the
-      // orientation-compensated neutral palm scale used for relative depth.
+      // v5 continuously learns a robust physical pinch span without a setup
+      // wizard and stores the orientation-compensated neutral palm scale.
       this.calibrationKey = `drAnmar.handCalibration.v5:${settings.deviceId || "default"}`;
       const storedCalibration = localStorage.getItem(this.calibrationKey);
       try {
