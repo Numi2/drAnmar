@@ -184,7 +184,7 @@ def main(argv: list[str]) -> int:
             )
             if canonical is None:
                 replay_groups_without_canonical_reference += 1
-                canonical = candidates[0]
+                continue
             reference = canonical["context"]
             per_candidate_spread = (
                 contexts - reference
