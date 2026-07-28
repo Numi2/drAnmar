@@ -150,7 +150,8 @@ def test_recovery_correction_is_latched_bounded_and_loses_authority_on_custody()
     raw[:, 78] = 1.0
     raw[:, 66:68] = 0.01
     expected = policy.base_policy(observation)
-    actual = policy(observation)
+    for _ in range(3):
+        actual = policy(observation)
 
     assert torch.equal(actual, expected)
     assert policy.recovered_custody.item()

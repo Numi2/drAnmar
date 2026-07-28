@@ -613,6 +613,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         secure_now = (
             pickup_not_lifted
             & (phase >= 1)
+            & bilateral_qualified
         )
         recovered_now = secure_now & (self.retry_count > 0)
         self.recovered_custody |= recovered_now
@@ -728,7 +729,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
         self.retry_state[self.retry_state == _FAILED_GRASP] = _REOPENING
         learned_retry = (
-            (self.retry_state == _LEARNED_RETRY) & (phase == 0)
+            (self.retry_state == _LEARNED_RETRY) & (phase <= 1)
         )
         result = self._replace_giver_action(
             result,
