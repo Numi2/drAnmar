@@ -1,0 +1,58 @@
+{
+  "schema_version": "dranmar-handover-recovery-paired-baseline-1.0",
+  "base_checkpoint_sha256": "f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad",
+  "controller_tree": "183c7194ab016aba1094404b40df92837b73c42f",
+  "asset_revision": "ac20fb02ba2e8541a6243ec4884e51db35c0a202",
+  "episode_length_s": 40.0,
+  "environments_per_seed": 1200,
+  "control_frames_per_environment": 2000,
+  "seeds": {
+    "17": {
+      "successful": 716,
+      "lifted_10mm": 965,
+      "receiver_acquired": 734,
+      "needle_dropped_after_pickup": 203,
+      "protected_surface_force": 2,
+      "premature_giver_release": 0,
+      "excessive_object_force": 0,
+      "object_dropping": 0,
+      "evidence_path": "/home/numi/dr_anmar/repro/gripper-retry-reopen/close007-1200-seed17-timeout40-v6/dranmar_play_20260728T200811Z.json",
+      "evidence_sha256": "d94fc5d465c6cedcd268b4478b362a0771a2753cae356eff5f84e7e4b4715ad8"
+    },
+    "2361": {
+      "successful": 674,
+      "lifted_10mm": 963,
+      "receiver_acquired": 703,
+      "needle_dropped_after_pickup": 226,
+      "protected_surface_force": 0,
+      "premature_giver_release": 0,
+      "excessive_object_force": 0,
+      "object_dropping": 0,
+      "evidence_path": "/home/numi/dr_anmar/repro/recovery80/baseline-seed2361/dranmar_play_20260728T204751Z.json",
+      "evidence_sha256": "a935bfaf31c5206d8f9603d11b5807d76bc31b2d0a885947bf6a256ea0ca8925"
+    },
+    "4099": {
+      "successful": 675,
+      "lifted_10mm": 951,
+      "receiver_acquired": 694,
+      "needle_dropped_after_pickup": 223,
+      "protected_surface_force": 2,
+      "premature_giver_release": 0,
+      "excessive_object_force": 0,
+      "object_dropping": 0,
+      "evidence_path": "/home/numi/dr_anmar/repro/recovery80/baseline-seed4099/dranmar_play_20260728T205651Z.json",
+      "evidence_sha256": "b2f4bbf795bf5c56a72183c2a8de2210b8e05f0eefa106b2c96cf0954f8abb86"
+    }
+  },
+  "aggregate": {
+    "episodes": 3600,
+    "successful": 2065,
+    "success_rate": 0.5736111111111111,
+    "lifted_10mm": 2879,
+    "lift_rate": 0.7997222222222222,
+    "receiver_acquired": 2131,
+    "receiver_acquisition_given_lift": 0.7401875651267801,
+    "retention_given_acquisition": 0.9690286259971844
+  },
+  "qualification_note": "These establish the aggregate incumbent funnel. Final promotion reruns paired baselines with per-environment outcome caches required by the fail-closed preservation gate."
+}

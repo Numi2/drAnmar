@@ -149,3 +149,30 @@ def test_base_policy_lock_matches_fail_closed_qualification() -> None:
     assert lock["controller"]["physical_observation_values"] == 98
     assert lock["controller"]["physical_action_values"] == 14
     assert lock["qualification_seeds"] == [17, 2361, 4099]
+
+
+def test_paired_baseline_funnel_is_internally_consistent() -> None:
+    baseline_path = (
+        Path(__file__).resolve().parents[1]
+        / "docs/handover_recovery_80/paired_40s_baseline.json"
+    )
+    baseline = json.loads(baseline_path.read_text())
+    aggregate = baseline["aggregate"]
+    seeds = baseline["seeds"].values()
+
+    assert aggregate["episodes"] == 3600
+    assert aggregate["successful"] == sum(
+        seed["successful"] for seed in seeds
+    )
+    assert aggregate["lifted_10mm"] == sum(
+        seed["lifted_10mm"] for seed in seeds
+    )
+    assert aggregate["receiver_acquired"] == sum(
+        seed["receiver_acquired"] for seed in seeds
+    )
+    assert aggregate["success_rate"] == (
+        aggregate["successful"] / aggregate["episodes"]
+    )
+    assert aggregate["receiver_acquisition_given_lift"] == (
+        aggregate["receiver_acquired"] / aggregate["lifted_10mm"]
+    )
