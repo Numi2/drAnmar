@@ -27,6 +27,8 @@ from orbit.surgical.tasks.surgical.lift.grasp_frames import (
     needle_geometry_grasp_frame,
 )
 
+from .controller_profiles import apply_controller_profile
+
 _RECEIVER_ARC_FRACTION = 0.65
 _RECEIVER_ARC_CANDIDATES = (0.60, 0.65, 0.70)
 _RECEIVER_CANDIDATE_OFFSETS = tuple(
@@ -77,6 +79,16 @@ class HandoverAnalyticController(nn.Module):
         )
         self.register_buffer(
             "last_recovery_receiver_shaft_distance_m",
+            torch.empty(0),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_giver_custody_quality",
+            torch.empty(0),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_giver_transport_scale",
             torch.empty(0),
             persistent=False,
         )
@@ -161,6 +173,22 @@ class HandoverAnalyticController(nn.Module):
         self.receiver_grasp_x = float(_RECEIVER_OFFSET[0])
         self.receiver_grasp_y = float(_RECEIVER_OFFSET[1])
         self.receiver_grasp_z = -0.003
+        # New geometric and custody semantics are opt-in through a versioned
+        # controller profile.  Keeping these defaults false preserves every
+        # unbundled legacy checkpoint exactly.
+        self.canonical_needle_local_frames_enabled = False
+        self.custody_quality_features_enabled = False
+        self.custody_preserving_transport_enabled = False
+        self.custody_quality_slow_threshold = 0.55
+        self.custody_quality_stop_threshold = 0.30
+        self.custody_quality_centering_action_limit = 0.02
+        self.custody_quality_minimum_transport_scale = 0.20
+        self.controller_profile_name = "unbundled-source-default"
+        self.controller_profile_sha256 = None
+
+    def configure_profile(self, name: str) -> dict[str, object]:
+        """Apply a versioned profile to every non-checkpoint controller field."""
+        return apply_controller_profile(self, name)
 
     def _select_role(
         self,
@@ -173,6 +201,37 @@ class HandoverAnalyticController(nn.Module):
             robot_1_value,
             robot_2_value,
         )
+
+    def _object_relative_offset(
+        self,
+        object_orientation: torch.Tensor,
+        offset: torch.Tensor,
+    ) -> torch.Tensor:
+        """Rotate a needle-local offset with legacy-compatible semantics."""
+        if self.canonical_needle_local_frames_enabled:
+            return quat_apply(object_orientation, offset)
+        quaternion_x = object_orientation[:, 0]
+        quaternion_y = object_orientation[:, 1]
+        quaternion_z = object_orientation[:, 2]
+        quaternion_w = object_orientation[:, 3]
+        yaw_sine = 2.0 * (
+            quaternion_w * quaternion_z
+            + quaternion_x * quaternion_y
+        )
+        yaw_cosine = 1.0 - 2.0 * (
+            quaternion_y * quaternion_y
+            + quaternion_z * quaternion_z
+        )
+        object_relative_grasp_offset = offset.clone()
+        object_relative_grasp_offset[:, 0] = (
+            yaw_cosine * offset[:, 0]
+            - yaw_sine * offset[:, 1]
+        )
+        object_relative_grasp_offset[:, 1] = (
+            yaw_sine * offset[:, 0]
+            + yaw_cosine * offset[:, 1]
+        )
+        return object_relative_grasp_offset
 
     def _approach_action(
         self,
@@ -188,26 +247,9 @@ class HandoverAnalyticController(nn.Module):
         grasp_offset[:, 0] = grasp_x
         grasp_offset[:, 1] = grasp_y
         grasp_offset[:, 2] = grasp_z
-        quaternion_x = object_orientation[:, 0]
-        quaternion_y = object_orientation[:, 1]
-        quaternion_z = object_orientation[:, 2]
-        quaternion_w = object_orientation[:, 3]
-        yaw_sine = 2.0 * (
-            quaternion_w * quaternion_z
-            + quaternion_x * quaternion_y
-        )
-        yaw_cosine = 1.0 - 2.0 * (
-            quaternion_y * quaternion_y
-            + quaternion_z * quaternion_z
-        )
-        object_relative_grasp_offset = grasp_offset.clone()
-        object_relative_grasp_offset[:, 0] = (
-            yaw_cosine * grasp_offset[:, 0]
-            - yaw_sine * grasp_offset[:, 1]
-        )
-        object_relative_grasp_offset[:, 1] = (
-            yaw_sine * grasp_offset[:, 0]
-            + yaw_cosine * grasp_offset[:, 1]
+        object_relative_grasp_offset = self._object_relative_offset(
+            object_orientation,
+            grasp_offset,
         )
         rotated_grasp_offset = torch.where(
             use_object_relative_grasp.unsqueeze(-1),
@@ -264,27 +306,38 @@ class HandoverAnalyticController(nn.Module):
             -1,
             -1,
         )
-        quaternion_x = object_orientation[:, 0].unsqueeze(-1)
-        quaternion_y = object_orientation[:, 1].unsqueeze(-1)
-        quaternion_z = object_orientation[:, 2].unsqueeze(-1)
-        quaternion_w = object_orientation[:, 3].unsqueeze(-1)
-        yaw_sine = 2.0 * (
-            quaternion_w * quaternion_z
-            + quaternion_x * quaternion_y
-        )
-        yaw_cosine = 1.0 - 2.0 * (
-            quaternion_y * quaternion_y
-            + quaternion_z * quaternion_z
-        )
-        rotated_offsets = candidate_offsets.clone()
-        rotated_offsets[:, :, 0] = (
-            yaw_cosine * candidate_offsets[:, :, 0]
-            - yaw_sine * candidate_offsets[:, :, 1]
-        )
-        rotated_offsets[:, :, 1] = (
-            yaw_sine * candidate_offsets[:, :, 0]
-            + yaw_cosine * candidate_offsets[:, :, 1]
-        )
+        if self.canonical_needle_local_frames_enabled:
+            expanded_orientation = object_orientation.unsqueeze(1).expand(
+                -1,
+                candidate_offsets.shape[1],
+                -1,
+            )
+            rotated_offsets = quat_apply(
+                expanded_orientation.reshape(-1, 4),
+                candidate_offsets.reshape(-1, 3),
+            ).reshape_as(candidate_offsets)
+        else:
+            quaternion_x = object_orientation[:, 0].unsqueeze(-1)
+            quaternion_y = object_orientation[:, 1].unsqueeze(-1)
+            quaternion_z = object_orientation[:, 2].unsqueeze(-1)
+            quaternion_w = object_orientation[:, 3].unsqueeze(-1)
+            yaw_sine = 2.0 * (
+                quaternion_w * quaternion_z
+                + quaternion_x * quaternion_y
+            )
+            yaw_cosine = 1.0 - 2.0 * (
+                quaternion_y * quaternion_y
+                + quaternion_z * quaternion_z
+            )
+            rotated_offsets = candidate_offsets.clone()
+            rotated_offsets[:, :, 0] = (
+                yaw_cosine * candidate_offsets[:, :, 0]
+                - yaw_sine * candidate_offsets[:, :, 1]
+            )
+            rotated_offsets[:, :, 1] = (
+                yaw_sine * candidate_offsets[:, :, 0]
+                + yaw_cosine * candidate_offsets[:, :, 1]
+            )
         candidate_positions = (
             object_position.unsqueeze(1) + rotated_offsets
         )
@@ -378,6 +431,11 @@ class HandoverAnalyticController(nn.Module):
             raw[:, 68:70],
             ~giver_is_robot_1,
         )
+        previous_giver_contacts = self._select_role(
+            raw[:, 99:101],
+            raw[:, 101:103],
+            giver_is_robot_1,
+        )
         phase = torch.argmax(raw[:, 77:82], dim=-1)
         pickup_recovery_context = raw[:, 98] > 0.5
         presentation_stable = raw[:, 103] >= 1.0
@@ -421,28 +479,11 @@ class HandoverAnalyticController(nn.Module):
         giver_pregrasp_offset[:, 0] = self.giver_grasp_x
         giver_pregrasp_offset[:, 1] = self.giver_grasp_y
         giver_pregrasp_offset[:, 2] = self.giver_grasp_z
-        giver_quaternion_x = object_pose_in_giver[:, 3]
-        giver_quaternion_y = object_pose_in_giver[:, 4]
-        giver_quaternion_z = object_pose_in_giver[:, 5]
-        giver_quaternion_w = object_pose_in_giver[:, 6]
-        giver_yaw_sine = 2.0 * (
-            giver_quaternion_w * giver_quaternion_z
-            + giver_quaternion_x * giver_quaternion_y
-        )
-        giver_yaw_cosine = 1.0 - 2.0 * (
-            giver_quaternion_y * giver_quaternion_y
-            + giver_quaternion_z * giver_quaternion_z
-        )
         giver_object_relative_pregrasp_offset = (
-            giver_pregrasp_offset.clone()
-        )
-        giver_object_relative_pregrasp_offset[:, 0] = (
-            giver_yaw_cosine * giver_pregrasp_offset[:, 0]
-            - giver_yaw_sine * giver_pregrasp_offset[:, 1]
-        )
-        giver_object_relative_pregrasp_offset[:, 1] = (
-            giver_yaw_sine * giver_pregrasp_offset[:, 0]
-            + giver_yaw_cosine * giver_pregrasp_offset[:, 1]
+            self._object_relative_offset(
+                object_pose_in_giver[:, 3:7],
+                giver_pregrasp_offset,
+            )
         )
         giver_pregrasp_position += torch.where(
             pickup_recovery_context.unsqueeze(-1),
@@ -467,18 +508,22 @@ class HandoverAnalyticController(nn.Module):
                 receiver_approach,
                 receiver_distance,
                 receiver_arc_fraction,
-                receiver_grasp_position,
+                _,
             ) = self._receiver_approach_action(
                 receiver_ee,
                 object_in_receiver,
                 object_pose_in_receiver[:, 3:7],
             )
         else:
+            receiver_uses_object_frame = torch.full_like(
+                pickup_recovery_context,
+                self.canonical_needle_local_frames_enabled,
+            )
             receiver_approach, receiver_distance = self._approach_action(
                 receiver_ee,
                 object_in_receiver,
                 object_pose_in_receiver[:, 3:7],
-                torch.zeros_like(pickup_recovery_context),
+                receiver_uses_object_frame,
                 self.receiver_grasp_x,
                 self.receiver_grasp_y,
                 self.receiver_grasp_z,
@@ -487,10 +532,6 @@ class HandoverAnalyticController(nn.Module):
                 receiver_distance,
                 self.receiver_default_arc_fraction,
             )
-            receiver_grasp_position = object_in_receiver.clone()
-            receiver_grasp_position[:, 0] += self.receiver_grasp_x
-            receiver_grasp_position[:, 1] += self.receiver_grasp_y
-            receiver_grasp_position[:, 2] += self.receiver_grasp_z
         root_2_in_giver = object_in_giver - object_in_receiver
         # Both PSM roots have the same fixed orientation in this task. Express
         # the receiver's distal jaw segment in the giver root frame, then keep
@@ -732,6 +773,72 @@ class HandoverAnalyticController(nn.Module):
             giver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
+        contact_reference = max(
+            self.normalized_contact_threshold,
+            (
+                self.giver_lift_contact_force_threshold_n
+                * self.contact_force_observation_scale
+            ),
+        )
+        minimum_contact_confidence = (
+            torch.amin(giver_contacts, dim=-1) / contact_reference
+        ).clamp(0.0, 1.0)
+        contact_balance = (
+            1.0
+            - torch.abs(giver_contacts[:, 0] - giver_contacts[:, 1])
+            / giver_contacts.sum(dim=-1).clamp_min(contact_reference)
+        ).clamp(0.0, 1.0)
+        minimum_contact_trend = torch.amin(
+            giver_contacts - previous_giver_contacts,
+            dim=-1,
+        )
+        contact_trend_quality = (
+            1.0 + minimum_contact_trend / contact_reference
+        ).clamp(0.0, 1.0)
+        object_linear_speed = torch.linalg.vector_norm(
+            raw[:, 60:63],
+            dim=-1,
+        )
+        object_angular_speed = torch.linalg.vector_norm(
+            raw[:, 63:66],
+            dim=-1,
+        )
+        motion_quality = (
+            1.0
+            - 0.5 * torch.tanh(object_linear_speed / 0.05)
+            - 0.5 * torch.tanh(object_angular_speed / 5.0)
+        ).clamp(0.0, 1.0)
+        giver_custody_quality = (
+            0.45 * minimum_contact_confidence
+            + 0.20 * contact_balance
+            + 0.20 * contact_trend_quality
+            + 0.15 * motion_quality
+        ).clamp(0.0, 1.0)
+        if not self.custody_quality_features_enabled:
+            giver_custody_quality = torch.ones_like(
+                giver_custody_quality
+            )
+        quality_span = max(
+            self.custody_quality_slow_threshold
+            - self.custody_quality_stop_threshold,
+            1.0e-6,
+        )
+        custody_transport_scale = (
+            (
+                giver_custody_quality
+                - self.custody_quality_stop_threshold
+            )
+            / quality_span
+        ).clamp(
+            self.custody_quality_minimum_transport_scale,
+            1.0,
+        )
+        custody_transport_scale = torch.where(
+            giver_custody_quality
+            >= self.custody_quality_slow_threshold,
+            torch.ones_like(custody_transport_scale),
+            custody_transport_scale,
+        )
         recovery_transport_qualified = (
             pickup_recovery_context
             & (phase >= 2)
@@ -772,6 +879,35 @@ class HandoverAnalyticController(nn.Module):
                 giver_vertical_action,
             ),
             dim=-1,
+        )
+        if self.custody_preserving_transport_enabled:
+            giver_carry = (
+                giver_carry
+                * custody_transport_scale.unsqueeze(-1)
+            )
+            giver_grasp_target = (
+                object_in_giver
+                + giver_object_relative_pregrasp_offset
+            )
+            giver_centering_error = (
+                (giver_grasp_target - giver_ee) / self.position_scale
+            ).clamp(
+                -self.custody_quality_centering_action_limit,
+                self.custody_quality_centering_action_limit,
+            )
+            giver_carry[:, :2] += (
+                giver_centering_error[:, :2]
+                * (1.0 - custody_transport_scale).unsqueeze(-1)
+            )
+        else:
+            custody_transport_scale = torch.ones_like(
+                custody_transport_scale
+            )
+        self.last_giver_custody_quality = (
+            giver_custody_quality.detach()
+        )
+        self.last_giver_transport_scale = (
+            custody_transport_scale.detach()
         )
         giver_lift_contact_qualified = torch.all(
             giver_contacts

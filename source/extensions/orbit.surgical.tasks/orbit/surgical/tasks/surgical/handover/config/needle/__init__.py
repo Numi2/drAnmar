@@ -286,6 +286,50 @@ gym.register(
     disable_env_checker=True,
 )
 
+gym.register(
+    id="DrAnmar-Handover-Needle-Frontier-Hardening-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            e2e_ik_rel_env_cfg
+            .NeedleHandoverFrontierHardeningEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleEndToEndPPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
+gym.register(
+    id="DrAnmar-Handover-Needle-Frontier-Eval-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            e2e_ik_rel_env_cfg.NeedleHandoverFrontierEvalEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleEndToEndPPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
+gym.register(
+    id="DrAnmar-Handover-Needle-Frontier-Durability-Eval-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            e2e_ik_rel_env_cfg
+            .NeedleHandoverFrontierDurabilityEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleEndToEndPPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
 ##
 # Post-handover deformable-tissue progression
 ##

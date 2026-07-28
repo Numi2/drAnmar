@@ -214,6 +214,15 @@ case "${command}" in
                 "${DR_ANMAR_INIT_CHECKPOINT}"
             )
         fi
+        policy_bundle_args=()
+        if [[ -n "${DR_ANMAR_POLICY_BUNDLE:-}" ]]; then
+            policy_bundle_args=(
+                --policy-bundle
+                "${DR_ANMAR_POLICY_BUNDLE}"
+            )
+        elif [[ "${DR_ANMAR_ALLOW_UNBUNDLED_CHECKPOINT:-0}" == "1" ]]; then
+            policy_bundle_args=(--allow-unbundled-checkpoint)
+        fi
         if [[ -n "${DR_ANMAR_POLICY_LEARNING_RATE:-}" ]]; then
             learning_rate_args=(
                 --learning_rate
@@ -224,15 +233,24 @@ case "${command}" in
         if [[ "${DR_ANMAR_HANDOVER_GIVER_ADAPTATION:-0}" == "1" ]]; then
             giver_adaptation_args=(--handover_giver_adaptation)
         fi
+        convergence_args=()
+        if [[ "${DR_ANMAR_CHECK_SUCCESS:-1}" == "1" ]]; then
+            convergence_args=(
+                --check_success
+                --success_threshold
+                "${DR_ANMAR_SUCCESS_THRESHOLD:-0.95}"
+                --success_window
+                10
+            )
+        fi
         run_train_benchmark \
             "${2:-${DR_ANMAR_TASK}}" \
             "${3:-${DR_ANMAR_NUM_ENVS}}" \
             "${4:-1200}" \
             "${5:-${DR_ANMAR_LEARNING_OUTPUT}/train}" \
-            --check_success \
-            --success_threshold "${DR_ANMAR_SUCCESS_THRESHOLD:-0.95}" \
-            --success_window 10 \
+            "${convergence_args[@]}" \
             "${checkpoint_args[@]}" \
+            "${policy_bundle_args[@]}" \
             "${learning_rate_args[@]}" \
             "${giver_adaptation_args[@]}"
         ;;
@@ -248,6 +266,15 @@ case "${command}" in
         frames="${5:-500}"
         output="${6:-${DR_ANMAR_LEARNING_OUTPUT}/play}"
         mkdir -p "${output}"
+        policy_bundle_args=()
+        if [[ -n "${DR_ANMAR_POLICY_BUNDLE:-}" ]]; then
+            policy_bundle_args=(
+                --policy-bundle
+                "${DR_ANMAR_POLICY_BUNDLE}"
+            )
+        elif [[ "${DR_ANMAR_ALLOW_UNBUNDLED_CHECKPOINT:-0}" == "1" ]]; then
+            policy_bundle_args=(--allow-unbundled-checkpoint)
+        fi
         residual_scale_args=()
         if [[ -n "${DR_ANMAR_POLICY_RESIDUAL_SCALE:-}" ]]; then
             residual_scale_args=(
@@ -461,6 +488,7 @@ case "${command}" in
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
+            "${policy_bundle_args[@]}" \
             --num_envs "${num_envs}" \
             --num_frames "${frames}" \
             --seed "${DR_ANMAR_SEED}" \
@@ -507,6 +535,15 @@ case "${command}" in
         output="${5:-${DR_ANMAR_LEARNING_OUTPUT}/record}"
         chunk_frames="${6:-${frames}}"
         mkdir -p "${output}/videos"
+        policy_bundle_args=()
+        if [[ -n "${DR_ANMAR_POLICY_BUNDLE:-}" ]]; then
+            policy_bundle_args=(
+                --policy-bundle
+                "${DR_ANMAR_POLICY_BUNDLE}"
+            )
+        elif [[ "${DR_ANMAR_ALLOW_UNBUNDLED_CHECKPOINT:-0}" == "1" ]]; then
+            policy_bundle_args=(--allow-unbundled-checkpoint)
+        fi
         pickup_vertical_action_limit_args=()
         if [[ -n "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
             pickup_vertical_action_limit_args=(
@@ -598,6 +635,7 @@ case "${command}" in
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
+            "${policy_bundle_args[@]}" \
             --num_envs 1 \
             --num_frames "${frames}" \
             --seed "${DR_ANMAR_SEED}" \

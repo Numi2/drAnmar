@@ -30,6 +30,7 @@ _RECOVERY_RECEIVER_ADAPTER_FEATURE_DIM = 12
 _JOINT_TRANSFER_ACQUISITION_FEATURE_DIM = 31
 _TRANSFER_REFINEMENT_FEATURE_DIM = 31
 _DEADLINE_RECOVERY_FEATURE_DIM = 24
+_FRONTIER_HARDENING_FEATURE_DIM = 42
 _RECEIVER_POLICY_GRASP_OFFSET, _ = needle_geometry_grasp_frame(
     0.65,
     grasp_z_m=-0.003,
@@ -355,6 +356,114 @@ def deadline_recovery_features(
     ).clamp(-5.0, 5.0)
 
 
+def frontier_hardening_features(
+    role_observation: torch.Tensor,
+    remaining_time: torch.Tensor,
+    receiver_policy_grasp_offset: torch.Tensor,
+) -> torch.Tensor:
+    """Build canonical geometry and incipient custody-loss features.
+
+    This feature set feeds only the zero-initialized v24 adapter.  The frozen
+    v23 actor and joint-transfer adapter keep their exact legacy inputs.
+    """
+    giver_ee_position = role_observation[:, 32:35]
+    object_in_giver = role_observation[:, 46:53]
+    giver_offset = torch.zeros_like(giver_ee_position)
+    giver_offset[:, 0] = 0.0007375535249017802
+    giver_offset[:, 1] = 0.005600696415109648
+    giver_offset[:, 2] = 0.0006
+    giver_target_position = (
+        object_in_giver[:, :3]
+        + quat_apply(object_in_giver[:, 3:7], giver_offset)
+    )
+    giver_grasp_error = (
+        giver_target_position - giver_ee_position
+    ) / 0.02
+
+    root_2_in_giver = (
+        role_observation[:, 46:49]
+        - role_observation[:, 53:56]
+    )
+    presentation_target = 0.35 * root_2_in_giver
+    presentation_target[:, 2] = -0.13
+    presentation_error = (
+        presentation_target - object_in_giver[:, :3]
+    ) / 0.05
+
+    giver_contacts = role_observation[:, 66:68]
+    previous_giver_contacts = role_observation[:, 99:101]
+    contact_reference = 0.002
+    minimum_contact_confidence = (
+        torch.amin(giver_contacts, dim=-1, keepdim=True)
+        / contact_reference
+    ).clamp(0.0, 1.0)
+    contact_balance = (
+        1.0
+        - torch.abs(
+            giver_contacts[:, 0:1] - giver_contacts[:, 1:2]
+        )
+        / giver_contacts.sum(dim=-1, keepdim=True).clamp_min(
+            contact_reference
+        )
+    ).clamp(0.0, 1.0)
+    minimum_contact_trend = torch.amin(
+        giver_contacts - previous_giver_contacts,
+        dim=-1,
+        keepdim=True,
+    )
+    contact_trend_quality = (
+        1.0 + minimum_contact_trend / contact_reference
+    ).clamp(0.0, 1.0)
+    object_twist = role_observation[:, 60:66]
+    motion_quality = (
+        1.0
+        - 0.5
+        * torch.tanh(
+            torch.linalg.vector_norm(
+                object_twist[:, :3],
+                dim=-1,
+                keepdim=True,
+            )
+            / 0.05
+        )
+        - 0.5
+        * torch.tanh(
+            torch.linalg.vector_norm(
+                object_twist[:, 3:],
+                dim=-1,
+                keepdim=True,
+            )
+            / 5.0
+        )
+    ).clamp(0.0, 1.0)
+    custody_quality = torch.cat(
+        (
+            minimum_contact_confidence,
+            contact_balance,
+            contact_trend_quality,
+            motion_quality,
+        ),
+        dim=-1,
+    )
+    return torch.cat(
+        (
+            recovery_receiver_canonical_grasp_features(
+                role_observation,
+                receiver_policy_grasp_offset,
+            ),
+            giver_grasp_error,
+            presentation_error,
+            object_twist,
+            custody_quality,
+            role_observation[:, 84:90],
+            role_observation[:, 91:97],
+            role_observation[:, 98:99],
+            remaining_time,
+        ),
+        dim=-1,
+    ).clamp(-5.0, 5.0)
+
+
 class PhaseMaskedGaussianDistribution(GaussianDistribution):
     """Gaussian exploration with near-zero variance on structurally inactive actions."""
 
@@ -504,6 +613,25 @@ class _DeadlineRecoveryAdapter(nn.Module):
         return option_selection, receiver_residual
 
 
+class _FrontierHardeningAdapter(nn.Module):
+    """Exact-zero SE(3) correction for pickup, custody, and acquisition."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(_FRONTIER_HARDENING_FEATURE_DIM, 128),
+            nn.ELU(),
+            nn.Linear(128, 64),
+            nn.ELU(),
+        )
+        self.output = nn.Linear(64, 12)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return torch.tanh(self.output(self.encoder(features)))
+
+
 class EndToEndHandoverMLPModel(MLPModel):
     """Physics-structured servo plus bounded phase-specialized learned residual."""
 
@@ -539,7 +667,9 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.joint_transfer_acquisition_adaptation_enabled = False
         self.transfer_refinement_adaptation_enabled = False
         self.deadline_recovery_adaptation_enabled = False
+        self.frontier_hardening_adaptation_enabled = False
         self.deadline_recovery_residual_scale = 0.02
+        self.frontier_hardening_residual_scale = 0.01
         self.register_buffer(
             "receiver_policy_grasp_offset",
             torch.tensor(_RECEIVER_POLICY_GRASP_OFFSET),
@@ -558,6 +688,9 @@ class EndToEndHandoverMLPModel(MLPModel):
             parameter.requires_grad_(False)
         self.deadline_recovery_adapter = _DeadlineRecoveryAdapter()
         for parameter in self.deadline_recovery_adapter.parameters():
+            parameter.requires_grad_(False)
+        self.frontier_hardening_adapter = _FrontierHardeningAdapter()
+        for parameter in self.frontier_hardening_adapter.parameters():
             parameter.requires_grad_(False)
         self.last_deadline_option_index: torch.Tensor | None = None
         self.last_deadline_option_active: torch.Tensor | None = None
@@ -599,6 +732,16 @@ class EndToEndHandoverMLPModel(MLPModel):
                 self.deadline_recovery_adapter.state_dict().items()
             ):
                 state_dict[f"{deadline_adapter_prefix}{key}"] = value
+        frontier_adapter_prefix = "frontier_hardening_adapter."
+        if not any(
+            key.startswith(frontier_adapter_prefix)
+            for key in state_dict
+        ):
+            state_dict = state_dict.copy()
+            for key, value in (
+                self.frontier_hardening_adapter.state_dict().items()
+            ):
+                state_dict[f"{frontier_adapter_prefix}{key}"] = value
         if (
             self.recovery_receiver_reference_network is None
             and any(
@@ -651,6 +794,7 @@ class EndToEndHandoverMLPModel(MLPModel):
             and not self.joint_transfer_acquisition_adaptation_enabled
             and not self.transfer_refinement_adaptation_enabled
             and not self.deadline_recovery_adaptation_enabled
+            and not self.frontier_hardening_adaptation_enabled
         ):
             role_observation, _ = self._role_latent(obs)
             self.obs_normalizer.update(role_observation)
@@ -865,6 +1009,45 @@ class EndToEndHandoverMLPModel(MLPModel):
                 if parameter is not None:
                     parameter.requires_grad_(False)
 
+    def configure_frontier_hardening_adaptation(self) -> None:
+        """Train only the v24 adapter over the frozen v23 control stack.
+
+        The existing analytic controller, phase network, and joint-transfer
+        adapter remain active.  A new exact-zero adapter receives gradients on
+        canonical geometry and custody-quality features; gripper commands stay
+        analytic and terminal predicates stay simulator-owned.
+        """
+        self.pickup_recovery_adaptation_enabled = True
+        self.receiver_adaptation_enabled = True
+        self.recovery_receiver_grasp_retain_adaptation_enabled = False
+        self.joint_transfer_acquisition_adaptation_enabled = True
+        self.transfer_refinement_adaptation_enabled = False
+        self.deadline_recovery_adaptation_enabled = False
+        self.frontier_hardening_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        self.controller.configure_profile("frontier-hardening-v24")
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        for adapter in (
+            self.recovery_receiver_adapter,
+            self.joint_transfer_acquisition_adapter,
+            self.transfer_refinement_adapter,
+            self.deadline_recovery_adapter,
+        ):
+            for parameter in adapter.parameters():
+                parameter.requires_grad_(False)
+        for parameter in self.frontier_hardening_adapter.parameters():
+            parameter.requires_grad_(True)
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
     def configure_giver_adaptation(self) -> None:
         """Learn giver XY while preserving the promoted receiver policy."""
         self.giver_adaptation_enabled = True
@@ -943,6 +1126,9 @@ class EndToEndHandoverMLPModel(MLPModel):
         learned_role_residual = current_role_residual
         joint_role_residual = torch.zeros_like(learned_role_residual)
         refinement_role_residual = torch.zeros_like(learned_role_residual)
+        frontier_role_residual = torch.zeros_like(
+            learned_role_residual
+        )
         if self.recovery_receiver_grasp_retain_adaptation_enabled:
             if self.recovery_receiver_reference_network is None:
                 raise RuntimeError(
@@ -1064,6 +1250,33 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.last_deadline_receiver_residual_norm = (
             deadline_recovery_residual_norm
         )
+        frontier_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        if self.frontier_hardening_adaptation_enabled:
+            role_observation = role_normalize_handover_observation(raw)
+            frontier_adapter = self.frontier_hardening_adapter(
+                frontier_hardening_features(
+                    role_observation,
+                    raw[:, 83:84],
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            frontier_role_residual[:, 0:6] = frontier_adapter[:, 0:6]
+            frontier_role_residual[:, 7:13] = frontier_adapter[:, 6:12]
+            giver_centering_active = (phase == 0) | (phase == 4)
+            giver_transport_active = (phase == 1) | (phase == 2)
+            receiver_acquisition_active = phase == 2
+            frontier_role_action_mask[:, 0:2] = (
+                giver_centering_active | giver_transport_active
+            ).unsqueeze(-1)
+            frontier_role_action_mask[:, 2:6] = (
+                giver_transport_active.unsqueeze(-1)
+            )
+            frontier_role_action_mask[:, 7:13] = (
+                receiver_acquisition_active.unsqueeze(-1)
+            )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             raw[:, 82] > 0.5,
@@ -1074,6 +1287,14 @@ class EndToEndHandoverMLPModel(MLPModel):
         )
         refinement_physical_residual = role_action_to_physical(
             refinement_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        frontier_physical_residual = role_action_to_physical(
+            frontier_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        frontier_physical_action_mask = role_action_to_physical(
+            frontier_role_action_mask,
             raw[:, 82] > 0.5,
         )
         joint_role_action_mask = torch.zeros_like(
@@ -1156,6 +1377,10 @@ class EndToEndHandoverMLPModel(MLPModel):
             exploration_mask = (
                 exploration_mask | deadline_physical_action_mask
             )
+        if self.frontier_hardening_adaptation_enabled:
+            exploration_mask = (
+                exploration_mask | frontier_physical_action_mask
+            )
         physical_mean = (
             base_action
             + self.residual_scale
@@ -1170,6 +1395,9 @@ class EndToEndHandoverMLPModel(MLPModel):
             + self.deadline_recovery_residual_scale
             * deadline_physical_residual
             * deadline_physical_action_mask.to(base_action.dtype)
+            + self.frontier_hardening_residual_scale
+            * frontier_physical_residual
+            * frontier_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         if self.distribution is None:
             return physical_mean
@@ -1217,8 +1445,14 @@ class _EndToEndHandoverExport(nn.Module):
         self.deadline_recovery_adaptation_enabled = (
             model.deadline_recovery_adaptation_enabled
         )
+        self.frontier_hardening_adaptation_enabled = (
+            model.frontier_hardening_adaptation_enabled
+        )
         self.deadline_recovery_residual_scale = (
             model.deadline_recovery_residual_scale
+        )
+        self.frontier_hardening_residual_scale = (
+            model.frontier_hardening_residual_scale
         )
         self.recovery_receiver_reference_network = copy.deepcopy(
             model.recovery_receiver_reference_network
@@ -1234,6 +1468,9 @@ class _EndToEndHandoverExport(nn.Module):
         )
         self.deadline_recovery_adapter = copy.deepcopy(
             model.deadline_recovery_adapter
+        )
+        self.frontier_hardening_adapter = copy.deepcopy(
+            model.frontier_hardening_adapter
         )
         self.register_buffer(
             "receiver_policy_grasp_offset",
@@ -1267,6 +1504,9 @@ class _EndToEndHandoverExport(nn.Module):
         learned_role_residual = current_role_residual
         joint_role_residual = torch.zeros_like(learned_role_residual)
         refinement_role_residual = torch.zeros_like(learned_role_residual)
+        frontier_role_residual = torch.zeros_like(
+            learned_role_residual
+        )
         if self.recovery_receiver_grasp_retain_adaptation_enabled:
             if self.recovery_receiver_reference_network is None:
                 raise RuntimeError(
@@ -1363,6 +1603,32 @@ class _EndToEndHandoverExport(nn.Module):
                 deadline_receiver_residual
                 * deadline_receiver_active.unsqueeze(-1)
             )
+        frontier_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        if self.frontier_hardening_adaptation_enabled:
+            frontier_adapter = self.frontier_hardening_adapter(
+                frontier_hardening_features(
+                    role_observation,
+                    obs[:, 83:84],
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            frontier_role_residual[:, 0:6] = frontier_adapter[:, 0:6]
+            frontier_role_residual[:, 7:13] = frontier_adapter[:, 6:12]
+            giver_centering_active = (phase == 0) | (phase == 4)
+            giver_transport_active = (phase == 1) | (phase == 2)
+            receiver_acquisition_active = phase == 2
+            frontier_role_action_mask[:, 0:2] = (
+                giver_centering_active | giver_transport_active
+            ).unsqueeze(-1)
+            frontier_role_action_mask[:, 2:6] = (
+                giver_transport_active.unsqueeze(-1)
+            )
+            frontier_role_action_mask[:, 7:13] = (
+                receiver_acquisition_active.unsqueeze(-1)
+            )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             giver_is_robot_1,
@@ -1377,6 +1643,14 @@ class _EndToEndHandoverExport(nn.Module):
         )
         deadline_physical_residual = role_action_to_physical(
             deadline_role_residual,
+            giver_is_robot_1,
+        )
+        frontier_physical_residual = role_action_to_physical(
+            frontier_role_residual,
+            giver_is_robot_1,
+        )
+        frontier_physical_action_mask = role_action_to_physical(
+            frontier_role_action_mask,
             giver_is_robot_1,
         )
         joint_role_action_mask = torch.zeros_like(
@@ -1444,6 +1718,9 @@ class _EndToEndHandoverExport(nn.Module):
             + self.deadline_recovery_residual_scale
             * deadline_physical_residual
             * deadline_physical_action_mask.to(base_action.dtype)
+            + self.frontier_hardening_residual_scale
+            * frontier_physical_residual
+            * frontier_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         return self.deterministic_output(physical_mean)
 

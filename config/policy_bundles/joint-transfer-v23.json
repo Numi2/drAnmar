@@ -1,0 +1,59 @@
+{
+  "schema_version": "dranmar-policy-bundle-1.0",
+  "bundle_id": "joint-transfer-v23-development-champion",
+  "task": "DrAnmar-Handover-Needle-Deadline-Context-v0",
+  "compatible_training_tasks": [
+    "DrAnmar-Handover-Needle-Frontier-Hardening-v0"
+  ],
+  "adaptation_mode": "joint_transfer_acquisition",
+  "checkpoint": {
+    "path_hint": "output/v8-joint-2400x90-lr1e5/runs/2026-07-28_03-19-21/model_20.pt",
+    "sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b"
+  },
+  "environment_runtime_contract_sha256": {
+    "DrAnmar-Handover-Needle-Deadline-Context-v0": "655b1c0b3e2c56bda2e2c1a292283d9176833e93b19454fa88d1eae2ff3e3e9a"
+  },
+  "controller_profile": {
+    "name": "joint-transfer-v23",
+    "sha256": "305673c53f469ea940fb71ad797b5f49d9260b8577b039329fc1437e35543e2c"
+  },
+  "runtime_expectations": {
+    "model_class": "EndToEndHandoverMLPModel",
+    "residual_scale": 0.01,
+    "policy_fields": {
+      "giver_adaptation_enabled": false,
+      "pickup_recovery_adaptation_enabled": true,
+      "recovery_receiver_grasp_retain_adaptation_enabled": false,
+      "joint_transfer_acquisition_adaptation_enabled": true,
+      "transfer_refinement_adaptation_enabled": false,
+      "deadline_recovery_adaptation_enabled": false,
+      "frontier_hardening_adaptation_enabled": false
+    },
+    "controller_fields": {
+      "controller_profile_name": "joint-transfer-v23",
+      "controller_profile_sha256": "305673c53f469ea940fb71ad797b5f49d9260b8577b039329fc1437e35543e2c",
+      "giver_recovery_residual_only_for_learning": true,
+      "canonical_needle_local_frames_enabled": false,
+      "custody_quality_features_enabled": false,
+      "custody_preserving_transport_enabled": false,
+      "close_distance": 0.005,
+      "giver_lift_contact_force_threshold_n": 0.01,
+      "giver_pre_lift_min_contact_jaws": 2,
+      "pickup_vertical_action_limit": 0.01,
+      "recovery_pickup_vertical_action_limit": 0.01,
+      "carry_lateral_action_limit": 0.06,
+      "recovery_carry_lateral_action_limit": 0.08,
+      "giver_transport_orientation_action_limit": 0.035,
+      "recovery_receiver_shaft_guard_start_from_tip_m": 0.025,
+      "recovery_receiver_shaft_guard_activation_distance_m": 0.018,
+      "recovery_receiver_shaft_guard_minimum_distance_m": 0.015
+    }
+  },
+  "evidence": {
+    "qualification_scope": "single-seed development evidence; not multi-seed promotion",
+    "path": "docs/experiments/evidence/recovery-shaft-guard-v23-seed2361-2000.json",
+    "policy_runtime_contract_sha256": "24573269a390b74085bba246de712f009416b709b0f2ea7ee31c6b5ecf73bc7c",
+    "environment_runtime_contract_sha256": "655b1c0b3e2c56bda2e2c1a292283d9176833e93b19454fa88d1eae2ff3e3e9a"
+  },
+  "contract_sha256": "3ad89d0b48cc26dc49f496efe28664ceaea6cfd442796a0f1d67082d68287d5c"
+}

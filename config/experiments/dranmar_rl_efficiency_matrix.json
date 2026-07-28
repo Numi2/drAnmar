@@ -1,0 +1,41 @@
+{
+  "schema_version": "dranmar-rl-efficiency-matrix-1.0",
+  "experiment_id": "needle-handover-frontier-hardening-v24",
+  "training_task": "DrAnmar-Handover-Needle-Frontier-Hardening-v0",
+  "source_policy_bundle": "config/policy_bundles/joint-transfer-v23.json",
+  "controller_profile": "frontier-hardening-v24",
+  "fixed_simulated_frames": 13824000,
+  "rollout_steps_per_environment": 64,
+  "environment_counts": [
+    {
+      "num_envs": 600,
+      "max_iterations": 360
+    },
+    {
+      "num_envs": 1200,
+      "max_iterations": 180
+    },
+    {
+      "num_envs": 2400,
+      "max_iterations": 90
+    }
+  ],
+  "seeds": [
+    17,
+    2361,
+    104729
+  ],
+  "training_success_threshold": 0.74,
+  "qualification": {
+    "task": "DrAnmar-Handover-Needle-Frontier-Eval-v0",
+    "durability_task": "DrAnmar-Handover-Needle-Frontier-Durability-Eval-v0",
+    "minimum_standard_success_rate": 0.74,
+    "minimum_durability_success_rate": 0.65,
+    "minimum_completed_outcome_fraction": 0.95,
+    "maximum_safety_terminal_rate": 0.0,
+    "require_both_giver_roles": true,
+    "require_all_seeds": true
+  },
+  "selection_rule": "lowest multi-seed median estimated wall time to threshold among candidates passing standard and durability qualification",
+  "gpu_execution_requires_explicit_approval": true
+}

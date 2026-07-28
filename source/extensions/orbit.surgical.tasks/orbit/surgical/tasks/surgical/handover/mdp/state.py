@@ -52,6 +52,145 @@ _RECEIVER_CURRICULUM_STATE_FIELDS = (
 )
 
 
+def assign_balanced_handover_roles(
+    env: ManagerBasedRLEnv,
+    env_ids: torch.Tensor | None,
+) -> None:
+    """Assign alternating giver roles without changing physical observations.
+
+    Initial populations are exactly balanced when the environment count is
+    even.  Each environment swaps giver on every subsequent reset, preventing
+    the closest-arm reset geometry from collapsing all experience onto one
+    physical robot.
+    """
+    if env_ids is None:
+        env_ids = torch.arange(
+            env.num_envs,
+            dtype=torch.long,
+            device=env.device,
+        )
+    forced_roles = getattr(
+        env,
+        "_dr_anmar_forced_giver_is_robot_1",
+        None,
+    )
+    generations = getattr(
+        env,
+        "_dr_anmar_balanced_role_generation",
+        None,
+    )
+    if forced_roles is None:
+        forced_roles = torch.zeros(
+            env.num_envs,
+            dtype=torch.bool,
+            device=env.device,
+        )
+        env._dr_anmar_forced_giver_is_robot_1 = forced_roles
+    if generations is None:
+        generations = torch.zeros(
+            env.num_envs,
+            dtype=torch.long,
+            device=env.device,
+        )
+        env._dr_anmar_balanced_role_generation = generations
+    forced_roles[env_ids] = (
+        (env_ids + generations[env_ids]) % 2 == 0
+    )
+    generations[env_ids] += 1
+
+
+def _failure_stratified_receiver_sources(
+    cache: dict[str, Any],
+    target_env_ids: torch.Tensor,
+) -> torch.Tensor:
+    """Sample every available role/recovery stratum, weighted by failures."""
+    available = torch.nonzero(
+        cache["valid"],
+        as_tuple=False,
+    ).squeeze(-1)
+    if not bool(available.numel()):
+        return target_env_ids
+    giver_is_robot_1 = cache["handover_state"][
+        "giver_is_robot_1"
+    ][available]
+    recovered = cache["handover_state"][
+        "pickup_recovery_count"
+    ][available] > 0
+    stratum = giver_is_robot_1.long() + 2 * recovered.long()
+    nonempty_strata = [
+        value
+        for value in range(4)
+        if bool((stratum == value).any())
+    ]
+    selected = torch.empty_like(target_env_ids)
+    for target_offset, stratum_value in enumerate(
+        nonempty_strata
+    ):
+        target_positions = torch.arange(
+            target_offset,
+            target_env_ids.numel(),
+            len(nonempty_strata),
+            device=target_env_ids.device,
+        )
+        candidates = available[stratum == stratum_value]
+        weights = cache["source_failure_priority"][
+            candidates
+        ].clamp_min(0.05)
+        sampled = torch.multinomial(
+            weights,
+            target_positions.numel(),
+            replacement=True,
+        )
+        selected[target_positions] = candidates[sampled]
+    cache["failure_stratified_restores"] += int(
+        target_env_ids.numel()
+    )
+    return selected
+
+
+def _update_receiver_source_failure_priority(
+    env: ManagerBasedRLEnv,
+    cache: dict[str, Any],
+    env_ids: torch.Tensor,
+) -> None:
+    """Feed simulator terminal outcomes back into replay sampling priority."""
+    previously_restored = cache["active_restore_valid"][env_ids]
+    if not bool(previously_restored.any()):
+        return
+    state = getattr(env, "_dr_anmar_handover_state", None)
+    if state is None:
+        return
+    completed_env_ids = env_ids[previously_restored]
+    source_ids = cache["active_restore_source_env_ids"][
+        completed_env_ids
+    ]
+    succeeded = state["successful_handover"][completed_env_ids]
+    target_priority = torch.where(
+        succeeded,
+        torch.full_like(
+            source_ids,
+            0.25,
+            dtype=torch.float32,
+        ),
+        torch.full_like(
+            source_ids,
+            2.0,
+            dtype=torch.float32,
+        ),
+    )
+    for source_id in torch.unique(source_ids):
+        source_mask = source_ids == source_id
+        observed_priority = target_priority[source_mask].mean()
+        cache["source_failure_priority"][source_id] = (
+            0.8 * cache["source_failure_priority"][source_id]
+            + 0.2 * observed_priority
+        )
+    cache["failure_priority_updates"] += int(
+        source_ids.numel()
+    )
+    cache["active_restore_valid"][completed_env_ids] = False
+
+
 def reset_receiver_curriculum_from_cache(
     env: ManagerBasedRLEnv,
     env_ids: torch.Tensor | None,
@@ -90,6 +229,19 @@ def reset_receiver_curriculum_from_cache(
             "_dr_anmar_receiver_curriculum_restored",
             restored_mask,
         )
+    if bool(
+        getattr(
+            env.cfg,
+            "dr_anmar_failure_stratified_curriculum",
+            False,
+        )
+    ):
+        _update_receiver_source_failure_priority(
+            env,
+            cache,
+            env_ids,
+        )
+    cache["active_restore_valid"][env_ids] = False
     restored_mask[env_ids] = False
     valid = cache["valid"][env_ids]
     restore_probability = float(
@@ -121,18 +273,31 @@ def reset_receiver_curriculum_from_cache(
         )
     )
     if cross_environment_sampling:
-        available_source_ids = torch.nonzero(
-            cache["valid"],
-            as_tuple=False,
-        ).squeeze(-1)
-        if bool(available_source_ids.numel()):
-            source_env_ids = available_source_ids[
-                torch.randint(
-                    available_source_ids.numel(),
-                    (target_env_ids.numel(),),
-                    device=env.device,
-                )
-            ]
+        if bool(
+            getattr(
+                env.cfg,
+                "dr_anmar_failure_stratified_curriculum",
+                False,
+            )
+        ):
+            source_env_ids = _failure_stratified_receiver_sources(
+                cache,
+                target_env_ids,
+            )
+        else:
+            available_source_ids = torch.nonzero(
+                cache["valid"],
+                as_tuple=False,
+            ).squeeze(-1)
+            if bool(available_source_ids.numel()):
+                source_env_ids = available_source_ids[
+                    torch.randint(
+                        available_source_ids.numel(),
+                        (target_env_ids.numel(),),
+                        device=env.device,
+                    )
+                ]
+        if bool(source_env_ids.numel()):
             cache["cross_environment_restores"] += int(
                 target_env_ids.numel()
             )
@@ -163,6 +328,10 @@ def reset_receiver_curriculum_from_cache(
         env_ids=target_env_ids,
     )
     cache["restored_source_env_ids"][target_env_ids] = source_env_ids
+    cache["active_restore_source_env_ids"][
+        target_env_ids
+    ] = source_env_ids
+    cache["active_restore_valid"][target_env_ids] = True
     cache["restored_episode_length_buf"][target_env_ids] = cache[
         "episode_length_buf"
     ][source_env_ids]
@@ -430,6 +599,16 @@ def handover_state(
         receiver_retry_steps = int(
             contract.get("receiver_retry_steps", receiver_retry_steps)
         )
+        required_receiver_only_steps = int(
+            contract.get(
+                "required_receiver_only_steps",
+                required_receiver_only_steps,
+            )
+        )
+        if required_receiver_only_steps <= 0:
+            raise ValueError(
+                "required_receiver_only_steps must be positive"
+            )
     step = _step_number(env)
     state = getattr(env, "_dr_anmar_handover_state", None)
     if state is None:
@@ -594,9 +773,19 @@ def handover_state(
     robot_2_distance = torch.linalg.vector_norm(
         robot_2_position_w - object_pos_w, dim=-1
     )
-    state["giver_is_robot_1"][reset] = (
-        robot_1_distance[reset] <= robot_2_distance[reset]
+    forced_giver_is_robot_1 = getattr(
+        env,
+        "_dr_anmar_forced_giver_is_robot_1",
+        None,
     )
+    if forced_giver_is_robot_1 is None:
+        state["giver_is_robot_1"][reset] = (
+            robot_1_distance[reset] <= robot_2_distance[reset]
+        )
+    else:
+        state["giver_is_robot_1"][reset] = (
+            forced_giver_is_robot_1[reset]
+        )
     state["last_pickup_attempt_count"][reset] = state[
         "pickup_attempt_count"
     ][reset]
@@ -982,12 +1171,24 @@ def handover_state(
                 "reset_restores": 0,
                 "reset_refreshes": 0,
                 "cross_environment_restores": 0,
+                "failure_stratified_restores": 0,
+                "failure_priority_updates": 0,
                 "recovery_conditioned_captures": 0,
                 "markov_state_restores": 0,
                 "recovery_context_restores": 0,
                 "restored_source_env_ids": torch.arange(
                     env.num_envs,
                     dtype=torch.long,
+                    device=env.device,
+                ),
+                "active_restore_source_env_ids": torch.arange(
+                    env.num_envs,
+                    dtype=torch.long,
+                    device=env.device,
+                ),
+                "active_restore_valid": torch.zeros(
+                    env.num_envs,
+                    dtype=torch.bool,
                     device=env.device,
                 ),
                 "episode_length_buf": torch.zeros(
@@ -1024,6 +1225,11 @@ def handover_state(
                 ),
                 "last_action": torch.zeros_like(
                     mdp_common.as_torch(env.action_manager.action)
+                ),
+                "source_failure_priority": torch.ones(
+                    env.num_envs,
+                    dtype=torch.float32,
+                    device=env.device,
                 ),
                 "handover_state": {
                     field: torch.zeros_like(state[field])
@@ -1101,6 +1307,7 @@ def handover_state(
                     capture
                 ]
             cache["valid"][capture] = True
+            cache["source_failure_priority"][capture] = 1.0
 
     retry_was_active = state["receiver_retry_step_count"] > 0
     state["receiver_retry_step_count"][:] = torch.where(
@@ -1555,6 +1762,11 @@ def handover_state(
             "giver_custody": giver_custody,
             "receiver_contact_now": receiver_contact_now,
             "receiver_any_contact_now": receiver_any_contact_now,
+            "giver_distance": torch.where(
+                giver_is_robot_1,
+                robot_1_distance,
+                robot_2_distance,
+            ),
             "receiver_distance": receiver_distance,
             "clearance": clearance,
             "lifted": lifted,

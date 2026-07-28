@@ -23,6 +23,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from dr_anmar_policy_bundle import (
+    PolicyBundleError,
+    build_policy_bundle_document,
+    configure_policy_from_bundle,
+    load_policy_bundle,
+    validate_bundle_invocation,
+    validate_environment_contract,
+    write_policy_bundle,
+)
+
 
 def _fail(message: str) -> int:
     print(f"error: {message}", file=sys.stderr)
@@ -99,7 +109,61 @@ def _policy_runtime_contract(policy_model, task: str) -> dict[str, Any]:
                 False,
             )
         ),
+        "frontier_hardening_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "frontier_hardening_adaptation_enabled",
+                False,
+            )
+        ),
+        "frontier_hardening_residual_scale": getattr(
+            policy_model,
+            "frontier_hardening_residual_scale",
+            None,
+        ),
         "controller_scalars": controller_scalars,
+    }
+
+
+def _bundle_runtime_expectations(
+    policy_model,
+    profile: dict[str, Any],
+) -> dict[str, Any]:
+    """Select behavior-bearing fields that a serving bundle must reproduce."""
+    policy_fields = {}
+    for field in (
+        "giver_adaptation_enabled",
+        "pickup_recovery_adaptation_enabled",
+        "receiver_adaptation_enabled",
+        "recovery_receiver_grasp_retain_adaptation_enabled",
+        "joint_transfer_acquisition_adaptation_enabled",
+        "transfer_refinement_adaptation_enabled",
+        "deadline_recovery_adaptation_enabled",
+        "frontier_hardening_adaptation_enabled",
+        "frontier_hardening_residual_scale",
+    ):
+        if hasattr(policy_model, field):
+            policy_fields[field] = getattr(policy_model, field)
+    controller_fields = dict(profile["values"])
+    controller_fields.update(
+        {
+            "controller_profile_name": profile["name"],
+            "controller_profile_sha256": profile["sha256"],
+        }
+    )
+    controller = getattr(policy_model, "controller", None)
+    for field in (
+        "giver_recovery_residual_only_for_learning",
+        "receiver_grasp_retain_residual_enabled_for_learning",
+        "receiver_residual_enabled_for_learning",
+    ):
+        if controller is not None and hasattr(controller, field):
+            controller_fields[field] = getattr(controller, field)
+    return {
+        "model_class": type(policy_model).__name__,
+        "residual_scale": getattr(policy_model, "residual_scale", None),
+        "policy_fields": policy_fields,
+        "controller_fields": controller_fields,
     }
 
 
@@ -111,7 +175,7 @@ def _environment_runtime_contract(env_cfg, task: str) -> dict[str, Any]:
         None,
     )
     giver_identity_function = getattr(giver_identity_term, "func", None)
-    return {
+    contract = {
         "task": task,
         "environment_config_class": type(env_cfg).__name__,
         "handover_contract": getattr(
@@ -128,6 +192,53 @@ def _environment_runtime_contract(env_cfg, task: str) -> dict[str, Any]:
             else None
         ),
     }
+    if hasattr(env_cfg, "dr_anmar_controller_profile"):
+        balanced_role_term = getattr(
+            env_cfg.events,
+            "balanced_handover_roles",
+            None,
+        )
+        balanced_role_function = getattr(
+            balanced_role_term,
+            "func",
+            None,
+        )
+        reset_object_term = getattr(
+            env_cfg.events,
+            "reset_object_position",
+            None,
+        )
+        contract["frontier_hardening"] = {
+            "controller_profile": getattr(
+                env_cfg,
+                "dr_anmar_controller_profile",
+                None,
+            ),
+            "balanced_role_function": (
+                f"{balanced_role_function.__module__}:"
+                f"{balanced_role_function.__name__}"
+                if balanced_role_function is not None
+                else None
+            ),
+            "object_reset_pose_range": (
+                getattr(reset_object_term, "params", {}).get(
+                    "pose_range"
+                )
+                if reset_object_term is not None
+                else None
+            ),
+            "randomization_contract": getattr(
+                env_cfg,
+                "dr_anmar_randomization_contract",
+                None,
+            ),
+            "durability_contract": getattr(
+                env_cfg,
+                "dr_anmar_durability_contract",
+                None,
+            ),
+        }
+    return contract
 
 
 def _canonical_sha256(value: Any) -> str:
@@ -137,6 +248,27 @@ def _canonical_sha256(value: Any) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def _policy_bundle_evidence(args: argparse.Namespace) -> dict[str, Any]:
+    """Record whether checkpoint semantics were bound before Isaac launch."""
+    bundle = getattr(args, "policy_bundle_document", None)
+    if bundle is None:
+        return {
+            "bound": False,
+            "unsafe_unbundled_checkpoint_allowed": bool(
+                getattr(args, "allow_unbundled_checkpoint", False)
+            ),
+        }
+    return {
+        "bound": True,
+        "path": getattr(args, "policy_bundle_path", None),
+        "bundle_id": bundle["bundle_id"],
+        "contract_sha256": bundle["contract_sha256"],
+        "checkpoint_sha256": bundle["checkpoint"]["sha256"],
+        "controller_profile": bundle["controller_profile"],
+        "adaptation_mode": bundle["adaptation_mode"],
+    }
 
 
 def _command_output(args: list[str], cwd: Path | None = None) -> str | None:
@@ -2048,6 +2180,13 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             False,
         )
     )
+    frontier_hardening_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_frontier_hardening_curriculum",
+            False,
+        )
+    )
     pickup_recovery_curriculum = bool(
         getattr(
             env_cfg,
@@ -2061,6 +2200,13 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
     if focused_curriculum and not args.checkpoint:
         return _fail(
             "focused handover curriculum requires a qualified initial checkpoint"
+        )
+    if (
+        frontier_hardening_curriculum
+        and args.policy_bundle_document is None
+    ):
+        return _fail(
+            "frontier hardening requires a bound source --policy-bundle"
         )
     if focused_curriculum:
         # Receiver-only adaptation has a narrow optimum: the physical replay
@@ -2098,6 +2244,19 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "deadline-recovery rollout steps must be positive"
             )
         agent_cfg.num_steps_per_env = deadline_rollout_steps
+    if frontier_hardening_curriculum:
+        frontier_rollout_steps = int(
+            getattr(
+                env_cfg,
+                "dr_anmar_frontier_hardening_rollout_steps_per_env",
+                64,
+            )
+        )
+        if frontier_rollout_steps <= 0:
+            return _fail(
+                "frontier-hardening rollout steps must be positive"
+            )
+        agent_cfg.num_steps_per_env = frontier_rollout_steps
     agent_cfg.max_iterations = args.max_iterations
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = Path(args.output_path).resolve() / "runs" / timestamp
@@ -2144,7 +2303,29 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "rnd": False,
             }
         runner.load(str(initial_checkpoint), load_cfg=load_cfg)
-        if deadline_recovery_curriculum:
+        if args.policy_bundle_document is not None:
+            try:
+                configure_policy_from_bundle(
+                    runner.alg.get_policy(),
+                    args.policy_bundle_document,
+                )
+            except PolicyBundleError as error:
+                env.close()
+                return _fail(str(error))
+        if frontier_hardening_curriculum:
+            policy_model = runner.alg.get_policy()
+            configure_frontier = getattr(
+                policy_model,
+                "configure_frontier_hardening_adaptation",
+                None,
+            )
+            if configure_frontier is None:
+                env.close()
+                return _fail(
+                    "handover policy does not support frontier hardening"
+                )
+            configure_frontier()
+        elif deadline_recovery_curriculum:
             policy_model = runner.alg.get_policy()
             configure_deadline_recovery = getattr(
                 policy_model,
@@ -2389,6 +2570,91 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         duration = time.perf_counter() - started
         checkpoint = run_dir / "model_final.pt"
         runner.save(str(checkpoint))
+        output_policy_bundle_path = None
+        output_policy_bundle = None
+        if frontier_hardening_curriculum:
+            from orbit.surgical.tasks.surgical.handover.controller_profiles import (
+                controller_profile,
+            )
+
+            trained_policy = runner.alg.get_policy()
+            profile_name = str(
+                getattr(
+                    env_cfg,
+                    "dr_anmar_controller_profile",
+                    "frontier-hardening-v24",
+                )
+            )
+            profile = controller_profile(profile_name)
+            source_bundle = args.policy_bundle_document
+            serving_task = str(
+                getattr(
+                    env_cfg,
+                    "dr_anmar_policy_serving_task",
+                    args.task,
+                )
+            )
+            compatible_play_tasks = list(
+                getattr(
+                    env_cfg,
+                    "dr_anmar_policy_compatible_play_tasks",
+                    [],
+                )
+            )
+            environment_contract_hashes = {}
+            for serving_contract_task in (
+                serving_task,
+                *compatible_play_tasks,
+            ):
+                serving_env_cfg, _ = _load_configs(
+                    serving_contract_task,
+                    1,
+                    args.seed,
+                )
+                environment_contract_hashes[serving_contract_task] = (
+                    _canonical_sha256(
+                        _environment_runtime_contract(
+                            serving_env_cfg,
+                            serving_contract_task,
+                        )
+                    )
+                )
+            output_policy_bundle = build_policy_bundle_document(
+                bundle_id=(
+                    f"frontier-hardening-v24-{timestamp}"
+                ),
+                task=serving_task,
+                checkpoint_path=checkpoint,
+                adaptation_mode="frontier_hardening",
+                controller_profile={
+                    "name": profile["name"],
+                    "sha256": profile["sha256"],
+                },
+                runtime_expectations=_bundle_runtime_expectations(
+                    trained_policy,
+                    profile,
+                ),
+                environment_runtime_contract_sha256=(
+                    environment_contract_hashes
+                ),
+                compatible_play_tasks=compatible_play_tasks,
+                lineage={
+                    "source_bundle_id": source_bundle["bundle_id"],
+                    "source_bundle_contract_sha256": source_bundle[
+                        "contract_sha256"
+                    ],
+                    "source_checkpoint_sha256": source_bundle[
+                        "checkpoint"
+                    ]["sha256"],
+                },
+            )
+            output_policy_bundle_path = (
+                run_dir / "model_final.policy-bundle.json"
+            )
+            write_policy_bundle(
+                output_policy_bundle_path,
+                output_policy_bundle,
+            )
         iterations = max(1, early.framework_iteration_count)
         simulated_frames = (
             env.unwrapped.num_envs * agent_cfg.num_steps_per_env * iterations
@@ -2460,6 +2726,41 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "deadline_recovery_curriculum": (
                 deadline_recovery_curriculum
+            ),
+            "frontier_hardening_curriculum": (
+                frontier_hardening_curriculum
+            ),
+            "frontier_hardening_contract": (
+                {
+                    "objective": getattr(
+                        env_cfg,
+                        "dr_anmar_frontier_hardening_objective",
+                        None,
+                    ),
+                    "controller_profile": getattr(
+                        env_cfg,
+                        "dr_anmar_controller_profile",
+                        None,
+                    ),
+                    "failure_stratified_curriculum": bool(
+                        getattr(
+                            env_cfg,
+                            "dr_anmar_failure_stratified_curriculum",
+                            False,
+                        )
+                    ),
+                    "randomization": getattr(
+                        env_cfg,
+                        "dr_anmar_randomization_contract",
+                        None,
+                    ),
+                    "source_checkpoint_frozen_and_active": True,
+                    "zero_impact_adapter": True,
+                    "analytic_gripper_authority": True,
+                    "terminal_success_and_failure_unchanged": True,
+                }
+                if frontier_hardening_curriculum
+                else None
             ),
             "deadline_recovery_objective": (
                 getattr(
@@ -2735,6 +3036,26 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 if receiver_curriculum_cache is not None
                 else 0
             ),
+            "receiver_curriculum_failure_stratified_restores": (
+                int(
+                    receiver_curriculum_cache.get(
+                        "failure_stratified_restores",
+                        0,
+                    )
+                )
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
+            "receiver_curriculum_failure_priority_updates": (
+                int(
+                    receiver_curriculum_cache.get(
+                        "failure_priority_updates",
+                        0,
+                    )
+                )
+                if receiver_curriculum_cache is not None
+                else 0
+            ),
             "receiver_curriculum_recovery_conditioned_captures": (
                 int(
                     receiver_curriculum_cache[
@@ -2963,6 +3284,24 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "path": str(checkpoint),
                 "sha256": _sha256(checkpoint),
             },
+            "output_policy_bundle": (
+                {
+                    "path": str(output_policy_bundle_path),
+                    "sha256": _sha256(output_policy_bundle_path),
+                    "bundle_id": output_policy_bundle["bundle_id"],
+                    "contract_sha256": output_policy_bundle[
+                        "contract_sha256"
+                    ],
+                    "serving_task": output_policy_bundle["task"],
+                    "compatible_play_tasks": output_policy_bundle.get(
+                        "compatible_play_tasks",
+                        [],
+                    ),
+                }
+                if output_policy_bundle_path is not None
+                and output_policy_bundle is not None
+                else None
+            ),
             "initial_checkpoint": (
                 {
                     "path": str(initial_checkpoint),
@@ -2971,6 +3310,7 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 if initial_checkpoint is not None
                 else None
             ),
+            "initial_policy_bundle": _policy_bundle_evidence(args),
             "gpu_peak_memory_bytes": (
                 torch.cuda.max_memory_allocated() if torch.cuda.is_available() else None
             ),
@@ -4910,8 +5250,70 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         checkpoint = Path(args.checkpoint).expanduser().resolve()
         if not checkpoint.is_file():
             return _fail(f"checkpoint not found: {checkpoint}")
+    if args.policy_bundle_document is not None:
+        flag_overrides = (
+            "handover_giver_adaptation",
+            "pickup_recovery_adaptation",
+            "recovery_receiver_grasp_retain_adaptation",
+            "joint_transfer_acquisition_adaptation",
+            "transfer_refinement_adaptation",
+            "deadline_recovery_adaptation",
+        )
+        value_overrides = (
+            "residual_scale",
+            "pickup_vertical_action_limit",
+            "pickup_initial_vertical_action_limit",
+            "recovery_pickup_vertical_action_limit",
+            "carry_lateral_action_limit",
+            "recovery_carry_lateral_action_limit",
+            "carry_lateral_ramp_height",
+            "presentation_fraction_from_giver",
+            "receiver_crossing_angle_rad",
+            "transport_custody_latch",
+            "receiver_preposition",
+            "receiver_preposition_height",
+            "recovery_receiver_preposition_height",
+            "receiver_adaptive_arc",
+            "receiver_grasp_retain_residual",
+            "presentation_use_filtered_custody",
+            "presentation_height_in_robot_frame",
+            "giver_close_distance",
+            "giver_lift_contact_force_threshold",
+            "giver_pre_lift_min_contact_jaws",
+            "giver_transport_orientation_action_limit",
+            "giver_lift_on_live_contact",
+        )
+        conflicts = [
+            f"--{name.replace('_', '-')}"
+            for name in flag_overrides
+            if bool(getattr(args, name))
+        ]
+        conflicts.extend(
+            f"--{name.replace('_', '-')}"
+            for name in value_overrides
+            if getattr(args, name) is not None
+        )
+        if conflicts:
+            return _fail(
+                "policy bundles reject behavior-changing CLI overrides: "
+                + ", ".join(conflicts)
+            )
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    if args.policy_bundle_document is not None:
+        try:
+            validate_environment_contract(
+                args.policy_bundle_document,
+                args.task,
+                _canonical_sha256(
+                    _environment_runtime_contract(
+                        env_cfg,
+                        args.task,
+                    )
+                ),
+            )
+        except PolicyBundleError as error:
+            return _fail(str(error))
     if args.presentation_use_filtered_custody is not None:
         contract = getattr(
             env_cfg,
@@ -4966,6 +5368,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             },
         )
     policy_model = runner.alg.get_policy()
+    if args.policy_bundle_document is not None:
+        try:
+            configure_policy_from_bundle(
+                policy_model,
+                args.policy_bundle_document,
+            )
+        except PolicyBundleError as error:
+            env.close()
+            return _fail(str(error))
     adaptation_modes = sum(
         (
             bool(args.handover_giver_adaptation),
@@ -5581,6 +5992,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "minimum_giver_custody_quality": torch.ones(
+                env.unwrapped.num_envs,
+                device=env.unwrapped.device,
+            ),
+            "minimum_giver_transport_scale": torch.ones(
+                env.unwrapped.num_envs,
+                device=env.unwrapped.device,
+            ),
+            "custody_quality_slowed_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
             "first_giver_bilateral_contact_frame": torch.full(
                 (env.unwrapped.num_envs,),
                 -1,
@@ -6103,6 +6527,71 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_handover_max_phase,
                     )
                     assert first_handover_history is not None
+                    controller = getattr(
+                        policy_model,
+                        "controller",
+                        None,
+                    )
+                    custody_quality = getattr(
+                        controller,
+                        "last_giver_custody_quality",
+                        None,
+                    )
+                    custody_transport_scale = getattr(
+                        controller,
+                        "last_giver_transport_scale",
+                        None,
+                    )
+                    if (
+                        isinstance(custody_quality, torch.Tensor)
+                        and isinstance(
+                            custody_transport_scale,
+                            torch.Tensor,
+                        )
+                        and custody_quality.shape
+                        == was_first_unresolved.shape
+                        and custody_transport_scale.shape
+                        == was_first_unresolved.shape
+                    ):
+                        custody_active = (
+                            was_first_unresolved
+                            & current_handover_state["lifted"]
+                            & (current_handover_state["phase"] <= 2)
+                        )
+                        first_handover_history[
+                            "minimum_giver_custody_quality"
+                        ] = torch.where(
+                            custody_active,
+                            torch.minimum(
+                                first_handover_history[
+                                    "minimum_giver_custody_quality"
+                                ],
+                                custody_quality,
+                            ),
+                            first_handover_history[
+                                "minimum_giver_custody_quality"
+                            ],
+                        )
+                        first_handover_history[
+                            "minimum_giver_transport_scale"
+                        ] = torch.where(
+                            custody_active,
+                            torch.minimum(
+                                first_handover_history[
+                                    "minimum_giver_transport_scale"
+                                ],
+                                custody_transport_scale,
+                            ),
+                            first_handover_history[
+                                "minimum_giver_transport_scale"
+                            ],
+                        )
+                        first_handover_history[
+                            "custody_quality_slowed_steps"
+                        ] += (
+                            custody_active
+                            & (custody_transport_scale < 0.999)
+                        ).long()
                     first_handover_history[
                         "maximum_pickup_attempts"
                     ] = torch.maximum(
@@ -8378,6 +8867,34 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "protected_surface_attribution": (
                     protected_surface_attribution
                 ),
+                "initial_giver_role_population": {
+                    "robot_1": int(
+                        first_handover_history[
+                            "giver_is_robot_1"
+                        ].sum().item()
+                    ),
+                    "robot_2": int(
+                        (
+                            ~first_handover_history[
+                                "giver_is_robot_1"
+                            ]
+                        ).sum().item()
+                    ),
+                    "absolute_imbalance": abs(
+                        int(
+                            first_handover_history[
+                                "giver_is_robot_1"
+                            ].sum().item()
+                        )
+                        - int(
+                            (
+                                ~first_handover_history[
+                                    "giver_is_robot_1"
+                                ]
+                            ).sum().item()
+                        )
+                    ),
+                },
                 "outcomes_by_giver_role": {
                     role: {
                         "count": int(role_mask.sum().item()),
@@ -8488,6 +9005,43 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "by_maximum_phase": {
                         label: handover_retention_stats(mask)
                         for label, mask in phase_masks.items()
+                    },
+                    "custody_quality_governor": {
+                        "enabled": bool(
+                            getattr(
+                                getattr(
+                                    policy_model,
+                                    "controller",
+                                    None,
+                                ),
+                                "custody_preserving_transport_enabled",
+                                False,
+                            )
+                        ),
+                        "minimum_quality_quantiles": (
+                            handover_scalar_quantiles(
+                                first_handover_history[
+                                    "minimum_giver_custody_quality"
+                                ][first_completed]
+                            )
+                        ),
+                        "minimum_transport_scale_quantiles": (
+                            handover_scalar_quantiles(
+                                first_handover_history[
+                                    "minimum_giver_transport_scale"
+                                ][first_completed]
+                            )
+                        ),
+                        "episodes_slowed": int(
+                            (
+                                first_handover_history[
+                                    "custody_quality_slowed_steps"
+                                ]
+                                > 0
+                            )
+                            .sum()
+                            .item()
+                        ),
                     },
                     "timeouts_after_any_midair_contact_loss": int(
                         (
@@ -8910,6 +9464,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             }
             if checkpoint is not None
             else None,
+            "policy_bundle": _policy_bundle_evidence(args),
             "policy_runtime_contract": policy_runtime_contract,
             "policy_runtime_contract_sha256": _canonical_sha256(
                 policy_runtime_contract
@@ -9286,6 +9841,12 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--success_threshold", type=float, default=0.95)
     train.add_argument("--success_window", type=int, default=10)
     train.add_argument("--checkpoint")
+    train.add_argument("--policy-bundle")
+    train.add_argument(
+        "--allow-unbundled-checkpoint",
+        action="store_true",
+        help="development-only escape hatch; evidence records the unsafe launch",
+    )
     train.add_argument("--learning_rate", type=float)
     train.add_argument(
         "--handover_giver_adaptation",
@@ -9344,6 +9905,12 @@ def _parser() -> argparse.ArgumentParser:
     play = subparsers.add_parser("play")
     play.add_argument("--task", required=True)
     play.add_argument("--checkpoint")
+    play.add_argument("--policy-bundle")
+    play.add_argument(
+        "--allow-unbundled-checkpoint",
+        action="store_true",
+        help="development-only escape hatch; evidence records the unsafe launch",
+    )
     play.add_argument("--analytic-only", action="store_true")
     play.add_argument("--handover_giver_adaptation", action="store_true")
     play.add_argument(
@@ -9451,6 +10018,39 @@ def main(argv: list[str]) -> int:
         return 0
     if not args.task.startswith("DrAnmar-"):
         return _fail("--task must name a registered DrAnmar learning task")
+    args.policy_bundle_document = None
+    checkpoint_value = getattr(args, "checkpoint", None)
+    policy_bundle_value = getattr(args, "policy_bundle", None)
+    allow_unbundled = bool(
+        getattr(args, "allow_unbundled_checkpoint", False)
+    )
+    if policy_bundle_value and not checkpoint_value:
+        return _fail("--policy-bundle requires --checkpoint")
+    if checkpoint_value and not policy_bundle_value and not allow_unbundled:
+        return _fail(
+            "checkpoint launches require --policy-bundle; use "
+            "--allow-unbundled-checkpoint only for explicitly unsafe "
+            "development diagnostics"
+        )
+    if policy_bundle_value:
+        try:
+            bundle_path = Path(policy_bundle_value).expanduser().resolve()
+            args.policy_bundle_document = load_policy_bundle(bundle_path)
+            args.policy_bundle_path = str(bundle_path)
+            validate_bundle_invocation(
+                args.policy_bundle_document,
+                task=args.task,
+                checkpoint_path=Path(checkpoint_value)
+                .expanduser()
+                .resolve(),
+                purpose=(
+                    "train"
+                    if args.mode == "train"
+                    else "play"
+                ),
+            )
+        except PolicyBundleError as error:
+            return _fail(str(error))
 
     minimum_free_mib = int(os.environ.get("DR_ANMAR_MIN_FREE_GPU_MIB", "1024"))
     free_mib = _free_gpu_memory_mib()

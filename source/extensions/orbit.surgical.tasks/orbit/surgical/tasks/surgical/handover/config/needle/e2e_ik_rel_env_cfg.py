@@ -3,6 +3,8 @@
 
 """Isolated end-to-end needle-handover environment configuration."""
 
+import math
+
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
@@ -313,4 +315,121 @@ class NeedleHandoverTransferRefinementEnvCfg(
         self.dr_anmar_transfer_refinement_controller = {
             "recovery_carry_lateral_action_limit": 0.08,
             "recovery_receiver_preposition_height": 0.025,
+        }
+
+
+@configclass
+class NeedleHandoverFrontierHardeningEnvCfg(
+    NeedleHandoverJointTransferAcquisitionEnvCfg
+):
+    """Train a zero-impact v24 adapter over the frozen v23 handover stack."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.dr_anmar_joint_transfer_acquisition_curriculum = False
+        self.dr_anmar_frontier_hardening_curriculum = True
+        self.dr_anmar_failure_stratified_curriculum = True
+        self.dr_anmar_frontier_hardening_rollout_steps_per_env = 64
+        self.dr_anmar_frontier_hardening_objective = (
+            "retained_handover_with_canonical_needle_geometry_balanced_roles_"
+            "and_contact_quality_preserving_transport"
+        )
+        self.dr_anmar_controller_profile = "frontier-hardening-v24"
+        self.dr_anmar_policy_serving_task = (
+            "DrAnmar-Handover-Needle-Frontier-Eval-v0"
+        )
+        self.dr_anmar_policy_compatible_play_tasks = [
+            "DrAnmar-Handover-Needle-Frontier-Durability-Eval-v0",
+        ]
+        self.events.balanced_handover_roles = EventTerm(
+            func=mdp.assign_balanced_handover_roles,
+            mode="reset",
+        )
+        # A resting needle is planar: randomize the full in-plane heading and
+        # measured placement tolerance, not physically impossible free-space
+        # roll/pitch.  Dynamics randomization remains disabled until calibrated
+        # material/mass receipts exist.
+        self.events.reset_object_position.params["pose_range"] = {
+            "x": (-0.025, 0.025),
+            "y": (-0.025, 0.025),
+            "z": (-0.05, -0.05),
+            "roll": (0.0, 0.0),
+            "pitch": (0.0, 0.0),
+            "yaw": (-math.pi, math.pi),
+        }
+        self.dr_anmar_randomization_contract = {
+            "tier": "calibrated_pose_v1",
+            "placement_xy_m": [-0.025, 0.025],
+            "resting_roll_pitch_rad": [0.0, 0.0],
+            "heading_yaw_rad": [-math.pi, math.pi],
+            "mass_randomization_enabled": False,
+            "friction_randomization_enabled": False,
+            "reason_physics_randomization_disabled": (
+                "requires measured instrument-needle calibration receipts"
+            ),
+        }
+        # Terminal +/-80 remains dominant.  Dense credit is a bounded
+        # potential difference whose terminal potential is zero, so a failed
+        # lift/contact trajectory cannot retain positive return.
+        self.rewards.phase_progress.weight = 0.0
+        self.rewards.potential_based_progress = RewTerm(
+            func=mdp.potential_based_handover_progress,
+            params={"gamma": 0.995},
+            weight=4.0,
+        )
+
+
+@configclass
+class NeedleHandoverFrontierEvalEnvCfg(
+    NeedleHandoverDeadlineContextEnvCfg
+):
+    """Held-out balanced-role evaluation for the v24 handover contract."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.dr_anmar_controller_profile = "frontier-hardening-v24"
+        self.events.balanced_handover_roles = EventTerm(
+            func=mdp.assign_balanced_handover_roles,
+            mode="reset",
+        )
+        self.events.reset_object_position.params["pose_range"] = {
+            "x": (-0.025, 0.025),
+            "y": (-0.025, 0.025),
+            "z": (-0.05, -0.05),
+            "roll": (0.0, 0.0),
+            "pitch": (0.0, 0.0),
+            "yaw": (-math.pi, math.pi),
+        }
+        self.dr_anmar_randomization_contract = {
+            "tier": "calibrated_pose_v1",
+            "placement_xy_m": [-0.025, 0.025],
+            "resting_roll_pitch_rad": [0.0, 0.0],
+            "heading_yaw_rad": [-math.pi, math.pi],
+            "mass_randomization_enabled": False,
+            "friction_randomization_enabled": False,
+            "reason_physics_randomization_disabled": (
+                "requires measured instrument-needle calibration receipts"
+            ),
+        }
+
+
+@configclass
+class NeedleHandoverFrontierDurabilityEnvCfg(
+    NeedleHandoverFrontierEvalEnvCfg
+):
+    """Held-out handover requiring over one second of retained custody."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.dr_anmar_handover_contract[
+            "required_receiver_only_steps"
+        ] = 60
+        self.dr_anmar_durability_contract = {
+            "receiver_only_control_steps": 60,
+            "control_period_s": self.sim.dt * self.decimation,
+            "minimum_receiver_only_duration_s": (
+                60 * self.sim.dt * self.decimation
+            ),
+            "success_remains_physics_owned": True,
+            "legacy_ten_step_success_task_unchanged": True,
         }
