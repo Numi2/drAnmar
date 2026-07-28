@@ -557,6 +557,7 @@ def _handover_teacher_action(
     import math
 
     import torch
+    from orbit.surgical.assets import PSM_GRIPPER_PROFILE
 
     policy_obs = obs["policy"]
     giver_is_robot_1 = policy_obs[:, 82] > 0.5
@@ -605,6 +606,22 @@ def _handover_teacher_action(
         policy_obs[:, 68:70],
         giver_is_robot_1,
     )
+    giver_gripper_joint_displacement = select_role(
+        policy_obs[:, 6:8],
+        policy_obs[:, 22:24],
+        giver_is_robot_1,
+    ).abs().mean(dim=-1)
+    previous_giver_gripper_action = torch.where(
+        giver_is_robot_1,
+        policy_obs[:, 90],
+        policy_obs[:, 97],
+    )
+    gripper_travel_rad = abs(
+        float(PSM_GRIPPER_PROFILE["open_rad"])
+        - float(PSM_GRIPPER_PROFILE["close_rad"])
+    )
+    giver_retry_open_displacement_rad = 0.05 * gripper_travel_rad
+    giver_retry_closed_displacement_rad = 0.95 * gripper_travel_rad
     receiver_contacts = select_role(
         policy_obs[:, 66:68],
         policy_obs[:, 68:70],
@@ -739,11 +756,61 @@ def _handover_teacher_action(
         & giver_bilateral_contact
         & ~receiver_any_contact
     )
+    giver_retry_reopen_required = (
+        (phase <= 2)
+        & ~giver_any_contact
+        & (previous_giver_gripper_action < 0.0)
+        & (
+            (
+                (phase >= 1)
+                & (giver_distance >= close_distance)
+            )
+            | (
+                (phase == 0)
+                & (
+                    giver_gripper_joint_displacement
+                    >= giver_retry_closed_displacement_rad
+                )
+            )
+        )
+    )
+    giver_retry_reopening = (
+        (phase <= 2)
+        & ~giver_any_contact
+        & (previous_giver_gripper_action > 0.0)
+        & (
+            giver_gripper_joint_displacement
+            > giver_retry_open_displacement_rad
+        )
+    )
+    giver_retry_waiting_for_reapproach = (
+        (phase <= 2)
+        & ~giver_any_contact
+        & (previous_giver_gripper_action > 0.0)
+        & (
+            giver_gripper_joint_displacement
+            <= giver_retry_open_displacement_rad
+        )
+        & (giver_distance >= close_distance)
+    )
+    giver_retry_reset_active = (
+        giver_retry_reopen_required
+        | giver_retry_reopening
+    )
+    giver_retry_open_active = (
+        giver_retry_reset_active
+        | giver_retry_waiting_for_reapproach
+    )
 
     giver_translation = torch.where(
         giver_transport_active.unsqueeze(-1),
         giver_carry,
         giver_approach,
+    )
+    giver_translation = torch.where(
+        giver_retry_reset_active.unsqueeze(-1),
+        torch.zeros_like(giver_translation),
+        giver_translation,
     )
     giver_contact_recovery = giver_approach.clamp(
         -giver_contact_recovery_action_limit,
@@ -822,6 +889,7 @@ def _handover_teacher_action(
         (phase == 3)
         & ~receiver_bilateral_contact
     )
+    giver_closing &= ~giver_retry_open_active
     receiver_closing = (
         (phase >= 2)
         & (

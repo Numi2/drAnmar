@@ -216,8 +216,11 @@ def handover_state(
         physical_action[:, 6],
         physical_action[:, 13],
     )
+    # Opening while custody still exists is a premature release. Once current
+    # bilateral custody is gone, opening is the required reset for reacquisition.
     state["premature_release"] |= (
         before_acquisition
+        & giver_contact_now
         & (giver_open_action > 0.0)
     )
     phase[

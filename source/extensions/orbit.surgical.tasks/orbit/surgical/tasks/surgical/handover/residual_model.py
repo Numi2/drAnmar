@@ -17,6 +17,7 @@ from isaaclab.utils.math import (
     quat_mul,
 )
 
+from orbit.surgical.assets import PSM_GRIPPER_PROFILE
 from orbit.surgical.tasks.surgical.lift.grasp_frames import (
     NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
     needle_geometry_grasp_offset_m,
@@ -57,6 +58,12 @@ class HandoverAnalyticController(nn.Module):
         self.giver_pregrasp_orientation_action_limit = 0.6
         self.giver_pregrasp_orientation_tolerance = 0.035
         self.receiver_orientation_action_limit = 0.6
+        gripper_travel_rad = abs(
+            float(PSM_GRIPPER_PROFILE["open_rad"])
+            - float(PSM_GRIPPER_PROFILE["close_rad"])
+        )
+        self.giver_retry_open_displacement_rad = 0.05 * gripper_travel_rad
+        self.giver_retry_closed_displacement_rad = 0.95 * gripper_travel_rad
         self.giver_grasp_x = float(
             NEEDLE_PROVISIONAL_GRASP_OFFSET_M[0]
         )
@@ -167,6 +174,16 @@ class HandoverAnalyticController(nn.Module):
             raw[:, 66:68],
             raw[:, 68:70],
             giver_is_robot_1,
+        )
+        giver_gripper_joint_displacement = self._select_role(
+            raw[:, 6:8],
+            raw[:, 22:24],
+            giver_is_robot_1,
+        ).abs().mean(dim=-1)
+        previous_giver_gripper_action = torch.where(
+            giver_is_robot_1,
+            raw[:, 90],
+            raw[:, 97],
         )
         receiver_contacts = self._select_role(
             raw[:, 66:68],
@@ -372,11 +389,64 @@ class HandoverAnalyticController(nn.Module):
             & giver_bilateral_contact
             & ~receiver_any_contact
         )
+        giver_retry_reopen_required = (
+            (phase <= 2)
+            & ~giver_any_contact
+            & (previous_giver_gripper_action < 0.0)
+            & (
+                (
+                    (phase >= 1)
+                    & (giver_distance >= self.close_distance)
+                )
+                | (
+                    (phase == 0)
+                    & (
+                        giver_gripper_joint_displacement
+                        >= self.giver_retry_closed_displacement_rad
+                    )
+                )
+            )
+        )
+        giver_retry_reopening = (
+            (phase <= 2)
+            & ~giver_any_contact
+            & (previous_giver_gripper_action > 0.0)
+            & (
+                giver_gripper_joint_displacement
+                > self.giver_retry_open_displacement_rad
+            )
+        )
+        giver_retry_waiting_for_reapproach = (
+            (phase <= 2)
+            & ~giver_any_contact
+            & (previous_giver_gripper_action > 0.0)
+            & (
+                giver_gripper_joint_displacement
+                <= self.giver_retry_open_displacement_rad
+            )
+            & (giver_distance >= self.close_distance)
+        )
+        giver_retry_reset_active = (
+            giver_retry_reopen_required
+            | giver_retry_reopening
+        )
+        giver_retry_open_active = (
+            giver_retry_reset_active
+            | giver_retry_waiting_for_reapproach
+        )
 
         giver_translation = torch.where(
             giver_transport_active.unsqueeze(-1),
             giver_carry,
             giver_approach,
+        )
+        # Do not begin the retry approach until the failed grasp has completed
+        # its open reset. Once fully open, approach resumes and the jaws remain
+        # open until the tool returns to grasp distance.
+        giver_translation = torch.where(
+            giver_retry_reset_active.unsqueeze(-1),
+            torch.zeros_like(giver_translation),
+            giver_translation,
         )
         giver_translation = torch.where(
             (
@@ -446,6 +516,9 @@ class HandoverAnalyticController(nn.Module):
         giver_closing |= (
             (phase == 3) & ~receiver_bilateral_contact
         )
+        # The previous binary action supplies hysteresis, so every miss opens
+        # fully before proximity can initiate the next close without chattering.
+        giver_closing &= ~giver_retry_open_active
         receiver_closing = (
             (phase >= 2)
             & (
