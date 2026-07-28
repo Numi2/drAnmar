@@ -50,12 +50,31 @@ class reset_root_state_uniform_grouped(ManagerTermBase):
         asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
         replicas: int = 1,
     ) -> None:
-        if replicas < 1 or len(env_ids) % replicas != 0:
-            raise ValueError(
-                "recovery sweep replicas must evenly divide reset env ids"
-            )
+        if replicas < 1:
+            raise ValueError("recovery sweep replicas must be positive")
         asset: RigidObject | Articulation = env.scene[asset_cfg.name]
-        group_count = len(env_ids) // replicas
+        complete_groups = (
+            len(env_ids) % replicas == 0
+            and bool(
+                torch.all(
+                    env_ids.reshape(-1, replicas)[:, 0] % replicas == 0
+                )
+            )
+            and bool(
+                torch.all(
+                    env_ids.reshape(-1, replicas)
+                    == (
+                        env_ids.reshape(-1, replicas)[:, :1]
+                        + torch.arange(
+                            replicas,
+                            device=env_ids.device,
+                        )
+                    )
+                )
+            )
+        )
+        active_replicas = replicas if complete_groups else 1
+        group_count = len(env_ids) // active_replicas
         default_pose = asset.data.default_root_pose.torch[env_ids]
         default_velocity = asset.data.default_root_vel.torch[env_ids]
 
@@ -64,7 +83,7 @@ class reset_root_state_uniform_grouped(ManagerTermBase):
             self._pose_ranges[:, 1],
             (group_count, 6),
             device=asset.device,
-        ).repeat_interleave(replicas, dim=0)
+        ).repeat_interleave(active_replicas, dim=0)
         positions = (
             default_pose[:, :3]
             + env.scene.env_origins[env_ids]
@@ -84,7 +103,7 @@ class reset_root_state_uniform_grouped(ManagerTermBase):
             self._velocity_ranges[:, 1],
             (group_count, 6),
             device=asset.device,
-        ).repeat_interleave(replicas, dim=0)
+        ).repeat_interleave(active_replicas, dim=0)
         velocities = default_velocity + velocity_samples
 
         asset.write_root_pose_to_sim_index(
