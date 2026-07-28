@@ -104,8 +104,10 @@ Phase-two lateral transport and receiver acquisition additionally require
 current native bilateral giver custody. A latched phase label cannot command
 motion through a physical contact loss. The receiver-to-giver-shaft capsule
 guard applies to every qualified acquisition, including first attempts, and
-projects only an unsafe inward receiver component; it does not create contact
-or change success.
+uses the exact closest points between the finite receiver-jaw and giver-shaft
+segments. This catches an interior crossing that endpoint-only sampling
+misses. The guard projects only an unsafe inward receiver component; it does
+not create contact or change success.
 
 ### The new residual is narrow and exact-zero
 

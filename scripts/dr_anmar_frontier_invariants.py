@@ -356,6 +356,80 @@ def _assert_yaw_equivariant_pickup(device: torch.device) -> dict:
     }
 
 
+def _assert_finite_segment_collision_geometry(
+    device: torch.device,
+) -> dict:
+    dtype = torch.float32
+    first_start = torch.tensor(
+        [[-1.0, 0.0, 0.0]],
+        dtype=dtype,
+        device=device,
+    )
+    first_end = torch.tensor(
+        [[1.0, 0.0, 0.0]],
+        dtype=dtype,
+        device=device,
+    )
+    second_start = torch.tensor(
+        [[0.0, -1.0, 0.0]],
+        dtype=dtype,
+        device=device,
+    )
+    second_end = torch.tensor(
+        [[0.0, 1.0, 0.0]],
+        dtype=dtype,
+        device=device,
+    )
+    endpoint_distance = torch.linalg.vector_norm(
+        second_start - first_start,
+        dim=-1,
+    ).minimum(
+        torch.linalg.vector_norm(second_end - first_end, dim=-1)
+    )
+    crossing_delta = HandoverAnalyticController._segment_to_segment_delta(
+        first_start,
+        first_end,
+        second_start,
+        second_end,
+    )
+    crossing_distance = torch.linalg.vector_norm(
+        crossing_delta,
+        dim=-1,
+    )
+    if float(endpoint_distance.item()) <= 1.0:
+        raise AssertionError("synthetic endpoints do not expose the sampling gap")
+    if float(crossing_distance.item()) > 1.0e-6:
+        raise AssertionError("finite-segment geometry missed an interior crossing")
+
+    separated_delta = HandoverAnalyticController._segment_to_segment_delta(
+        first_start,
+        first_end,
+        second_start + torch.tensor(
+            [[0.0, 0.0, 0.25]],
+            dtype=dtype,
+            device=device,
+        ),
+        second_end + torch.tensor(
+            [[0.0, 0.0, 0.25]],
+            dtype=dtype,
+            device=device,
+        ),
+    )
+    separated_distance = torch.linalg.vector_norm(
+        separated_delta,
+        dim=-1,
+    )
+    if abs(float(separated_distance.item()) - 0.25) > 1.0e-6:
+        raise AssertionError("finite-segment distance is not metric-correct")
+    return {
+        "endpoint_sample_distance_for_crossing_m": float(
+            endpoint_distance.item()
+        ),
+        "exact_crossing_distance_m": float(crossing_distance.item()),
+        "exact_separated_distance_m": float(separated_distance.item()),
+    }
+
+
 def main() -> int:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     evidence = {
@@ -367,6 +441,9 @@ def main() -> int:
         ),
         "yaw_equivariant_controller": _assert_yaw_equivariant_pickup(
             device
+        ),
+        "finite_segment_collision_geometry": (
+            _assert_finite_segment_collision_geometry(device)
         ),
         "passed": True,
     }

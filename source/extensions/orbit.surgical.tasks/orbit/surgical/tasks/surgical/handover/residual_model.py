@@ -72,6 +72,7 @@ class HandoverAnalyticController(nn.Module):
         self.recovery_receiver_shaft_guard_activation_distance_m = 0.018
         self.recovery_receiver_shaft_guard_minimum_distance_m = 0.015
         self.receiver_shaft_guard_all_pickups_enabled = False
+        self.receiver_shaft_guard_segment_distance_enabled = False
         self.receiver_jaw_proximal_offset_m = 0.0093
         self.register_buffer(
             "last_recovery_receiver_shaft_guard_active",
@@ -190,6 +191,69 @@ class HandoverAnalyticController(nn.Module):
     def configure_profile(self, name: str) -> dict[str, object]:
         """Apply a versioned profile to every non-checkpoint controller field."""
         return apply_controller_profile(self, name)
+
+    @staticmethod
+    def _segment_to_segment_delta(
+        first_start: torch.Tensor,
+        first_end: torch.Tensor,
+        second_start: torch.Tensor,
+        second_end: torch.Tensor,
+    ) -> torch.Tensor:
+        """Return the batched shortest vector from one finite segment to another."""
+        first_vector = first_end - first_start
+        second_vector = second_end - second_start
+        start_delta = first_start - second_start
+        first_length_squared = (first_vector * first_vector).sum(
+            dim=-1
+        ).clamp_min(1.0e-12)
+        second_length_squared = (second_vector * second_vector).sum(
+            dim=-1
+        ).clamp_min(1.0e-12)
+        first_second_dot = (first_vector * second_vector).sum(dim=-1)
+        first_delta_dot = (first_vector * start_delta).sum(dim=-1)
+        second_delta_dot = (second_vector * start_delta).sum(dim=-1)
+        denominator = (
+            first_length_squared * second_length_squared
+            - first_second_dot * first_second_dot
+        )
+        first_fraction = torch.where(
+            denominator > 1.0e-12,
+            (
+                first_second_dot * second_delta_dot
+                - first_delta_dot * second_length_squared
+            )
+            / denominator.clamp_min(1.0e-12),
+            torch.zeros_like(denominator),
+        ).clamp(0.0, 1.0)
+        second_fraction = (
+            first_second_dot * first_fraction + second_delta_dot
+        ) / second_length_squared
+        second_before_start = second_fraction < 0.0
+        second_after_end = second_fraction > 1.0
+        first_fraction_at_second_start = (
+            -first_delta_dot / first_length_squared
+        ).clamp(0.0, 1.0)
+        first_fraction_at_second_end = (
+            (first_second_dot - first_delta_dot)
+            / first_length_squared
+        ).clamp(0.0, 1.0)
+        first_fraction = torch.where(
+            second_before_start,
+            first_fraction_at_second_start,
+            torch.where(
+                second_after_end,
+                first_fraction_at_second_end,
+                first_fraction,
+            ),
+        )
+        second_fraction = second_fraction.clamp(0.0, 1.0)
+        first_closest = (
+            first_start + first_fraction.unsqueeze(-1) * first_vector
+        )
+        second_closest = (
+            second_start + second_fraction.unsqueeze(-1) * second_vector
+        )
+        return second_closest - first_closest
 
     def _select_role(
         self,
@@ -604,15 +668,42 @@ class HandoverAnalyticController(nn.Module):
             receiver_proximal_shaft_distance
             < receiver_tip_shaft_distance
         )
-        receiver_shaft_distance = torch.where(
+        endpoint_receiver_shaft_distance = torch.where(
             proximal_is_closer,
             receiver_proximal_shaft_distance,
             receiver_tip_shaft_distance,
         )
-        receiver_from_shaft = torch.where(
+        endpoint_receiver_from_shaft = torch.where(
             proximal_is_closer.unsqueeze(-1),
             receiver_shaft_deltas[:, 1],
             receiver_shaft_deltas[:, 0],
+        )
+        # Endpoint sampling can report clearance while the interiors of the
+        # finite jaw and shaft segments cross. v24 uses the exact closest
+        # feature pair; the legacy endpoint result remains selectable for v23.
+        segment_receiver_from_shaft = self._segment_to_segment_delta(
+            giver_shaft_start,
+            giver_shaft_start + giver_shaft_vector,
+            receiver_ee_in_giver,
+            receiver_jaw_proximal_in_giver,
+        )
+        segment_receiver_shaft_distance = torch.linalg.vector_norm(
+            segment_receiver_from_shaft,
+            dim=-1,
+        )
+        use_segment_distance = torch.full_like(
+            proximal_is_closer,
+            self.receiver_shaft_guard_segment_distance_enabled,
+        )
+        receiver_shaft_distance = torch.where(
+            use_segment_distance,
+            segment_receiver_shaft_distance,
+            endpoint_receiver_shaft_distance,
+        )
+        receiver_from_shaft = torch.where(
+            use_segment_distance.unsqueeze(-1),
+            segment_receiver_from_shaft,
+            endpoint_receiver_from_shaft,
         )
         receiver_from_shaft_direction = (
             receiver_from_shaft
