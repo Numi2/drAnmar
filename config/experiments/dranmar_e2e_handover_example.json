@@ -742,10 +742,39 @@
     "qualification_boundary": "must_preserve_v15_development_and_scale_performance_gates_while_reducing_protected_surface_events_to_at_most_4_of_2000"
   },
   "protected_surface_attribution_v17": {
-    "status": "instrumented_awaiting_v15_scale_replay",
+    "status": "complete_receiver_approach_is_collision_source",
     "purpose": "attribute_each_first_episode_protected_surface_terminal_to_maximum_phase_and_the_specific_giver_or_receiver_jaw_sensor_before_changing_control_again",
     "controller_under_diagnosis": "v15_phase_and_live_bilateral_contact_gated_0.08_recovery_transport",
-    "no_policy_or_task_contract_change": true
+    "no_policy_or_task_contract_change": true,
+    "result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "protected_surface_events": 5,
+      "giver_contact_without_10mm_lift": 1,
+      "lifted_without_receiver_acquisition": 4,
+      "robot_1_events_crossing_2_n": 1,
+      "robot_2_events_crossing_2_n": 5,
+      "maximum_robot_2_jaw_force_n": 4.171040058135986
+    }
+  },
+  "recovered_receiver_contact_deceleration_v18": {
+    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "root_cause": "the_receiver_crossed_the_2_n_protected_surface_limit_in_all_five_v15_scale_safety_terminals_four_after_lift_before_acquisition",
+    "activation": "pickup_recovery_context_and_receiver_grasp_distance_below_6mm",
+    "receiver_translation_action_limit": 0.05,
+    "unchanged": [
+      "first_attempt_receiver_approach",
+      "receiver_pose_target",
+      "receiver_orientation",
+      "giver_transport",
+      "both_grippers",
+      "release",
+      "reward",
+      "success_definition",
+      "episode_deadline",
+      "hard_terminations"
+    ],
+    "qualification_boundary": "must_retain_at_least_393_of_600_and_1140_of_2000_with_no_more_than_4_protected_surface_events"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",

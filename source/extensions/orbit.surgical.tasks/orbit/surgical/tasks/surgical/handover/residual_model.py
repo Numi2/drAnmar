@@ -60,6 +60,8 @@ class HandoverAnalyticController(nn.Module):
         self.receiver_close_distance = 0.001
         self.slow_approach_radius = 0.02
         self.slow_approach_action_limit = 0.1
+        self.recovery_receiver_contact_approach_radius = 0.006
+        self.recovery_receiver_contact_approach_action_limit = 0.05
         self.receiver_contact_centering_action_limit = 0.005
         self.transport_custody_latch_enabled = True
         self.receiver_preposition_enabled = True
@@ -472,6 +474,21 @@ class HandoverAnalyticController(nn.Module):
             receiver_grasp_position[:, 0] += self.receiver_grasp_x
             receiver_grasp_position[:, 1] += self.receiver_grasp_y
             receiver_grasp_position[:, 2] += self.receiver_grasp_z
+        recovery_receiver_contact_approach = (
+            pickup_recovery_context
+            & (
+                receiver_distance
+                < self.recovery_receiver_contact_approach_radius
+            )
+        )
+        receiver_approach = torch.where(
+            recovery_receiver_contact_approach.unsqueeze(-1),
+            receiver_approach.clamp(
+                -self.recovery_receiver_contact_approach_action_limit,
+                self.recovery_receiver_contact_approach_action_limit,
+            ),
+            receiver_approach,
+        )
         root_2_in_giver = object_in_giver - object_in_receiver
         presentation_in_giver = (
             self.presentation_fraction_from_giver

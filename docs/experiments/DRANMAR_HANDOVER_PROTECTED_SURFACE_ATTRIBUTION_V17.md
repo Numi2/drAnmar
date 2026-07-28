@@ -20,3 +20,11 @@ before reset. Post-step sensor snapshots are not used for attribution.
 The diagnostic is evaluated on the v15 0.08 phase- and contact-qualified
 controller at the exact 2,000-environment population. The next control change
 must target the measured collision path.
+
+## Result
+
+All five protected-surface terminals crossed 2 N on robot 2, the receiver.
+Robot 1 crossed 2 N in one overlapping episode. Four of five events occurred
+after lift and before receiver acquisition; the maximum receiver-jaw force was
+4.171 N. v18 therefore leaves giver transport unchanged and decelerates only
+the last 6 mm of recovered receiver translation.
