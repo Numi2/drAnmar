@@ -5760,6 +5760,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "first_lift_frame"
                 ][mask]
                 lifted = first_lift_frame >= 0
+                first_receiver_acquisition_frame = first_handover_history[
+                    "first_receiver_acquisition_frame"
+                ][mask]
+                receiver_acquired = first_receiver_acquisition_frame >= 0
+                lift_to_receiver_acquisition_steps = (
+                    first_receiver_acquisition_frame[receiver_acquired]
+                    - first_lift_frame[receiver_acquired]
+                )
                 minimum_lift_contact_force = first_handover_history[
                     "minimum_giver_contact_force_at_first_lift_n"
                 ][mask][lifted]
@@ -5791,7 +5799,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     quantiles = torch.quantile(
                         values.float(),
                         torch.tensor(
-                            [0.1, 0.5, 0.9],
+                            [0.1, 0.5, 0.9, 0.95, 0.99],
                             device=values.device,
                         ),
                     )
@@ -5799,6 +5807,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "p10": float(quantiles[0].item()),
                         "p50": float(quantiles[1].item()),
                         "p90": float(quantiles[2].item()),
+                        "p95": float(quantiles[3].item()),
+                        "p99": float(quantiles[4].item()),
+                        "max": float(values.max().item()),
                     }
 
                 return {
@@ -5897,6 +5908,18 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         float(first_lift_frame[lifted].float().mean().item())
                         if bool(lifted.any().item())
                         else None
+                    ),
+                    "first_receiver_acquisition_frame": (
+                        scalar_quantiles(
+                            first_receiver_acquisition_frame[
+                                receiver_acquired
+                            ]
+                        )
+                    ),
+                    "lift_to_receiver_acquisition_steps": (
+                        scalar_quantiles(
+                            lift_to_receiver_acquisition_steps
+                        )
                     ),
                     "minimum_giver_contact_force_at_first_lift_n": (
                         scalar_quantiles(minimum_lift_contact_force)
