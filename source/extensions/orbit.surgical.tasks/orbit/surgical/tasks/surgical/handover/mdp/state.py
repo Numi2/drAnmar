@@ -109,7 +109,7 @@ def _failure_stratified_receiver_sources(
         as_tuple=False,
     ).squeeze(-1)
     if not bool(available.numel()):
-        return target_env_ids
+        return target_env_ids.to(dtype=torch.long)
     giver_is_robot_1 = cache["handover_state"][
         "giver_is_robot_1"
     ][available]
@@ -122,7 +122,14 @@ def _failure_stratified_receiver_sources(
         for value in range(4)
         if bool((stratum == value).any())
     ]
-    selected = torch.empty_like(target_env_ids)
+    # Isaac's reset IDs may be int32 while ``torch.nonzero`` and tensor
+    # indexing use int64.  Source IDs are indices, so keep them long
+    # regardless of the event-manager input dtype.
+    selected = torch.empty(
+        target_env_ids.shape,
+        dtype=torch.long,
+        device=target_env_ids.device,
+    )
     for target_offset, stratum_value in enumerate(
         nonempty_strata
     ):
