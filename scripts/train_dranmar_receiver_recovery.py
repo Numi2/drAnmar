@@ -69,15 +69,16 @@ def main(argv: list[str]) -> int:
         for path in dataset_paths
     ]
     for path, payload in zip(dataset_paths, payloads, strict=True):
-        if (
-            payload.get("schema_version")
-            != "dranmar-receiver-recovery-dataset-1.0"
-        ):
+        if payload.get("schema_version") not in {
+            "dranmar-receiver-recovery-dataset-1.0",
+            "dranmar-receiver-recovery-dataset-1.1",
+        }:
             raise ValueError(f"unsupported receiver dataset: {path}")
-        if payload["context"].shape[-1] != ReceiverRecoveryHead.input_dim:
+        samples = payload.get("attempts") or payload
+        if samples["context"].shape[-1] != ReceiverRecoveryHead.input_dim:
             raise ValueError(f"receiver context shape drifted in {path}")
         if (
-            payload["correction"].shape[-1]
+            samples["correction"].shape[-1]
             != ReceiverRecoveryHead.output_dim
         ):
             raise ValueError(f"receiver correction shape drifted in {path}")
@@ -106,26 +107,27 @@ def main(argv: list[str]) -> int:
     successful_candidate_count = 0
     retained_candidate_count = 0
     for payload_index, payload in enumerate(payloads):
-        context = payload["context"].float()
-        correction = payload["correction"].float()
-        safe_acquisition = payload["safe_acquisition"].bool()
-        retained = payload.get(
+        samples = payload.get("attempts") or payload
+        context = samples["context"].float()
+        correction = samples["correction"].float()
+        safe_acquisition = samples["safe_acquisition"].bool()
+        retained = samples.get(
             "retained",
-            payload["full_success"],
+            samples["full_success"],
         ).bool()
-        peak_force = payload.get(
+        peak_force = samples.get(
             "peak_jaw_force_n",
             torch.full((context.shape[0], 2), float("inf")),
         ).float()
-        steps = payload.get(
+        steps = samples.get(
             "steps_to_acquisition",
             torch.full((context.shape[0],), 2**31 - 1),
         ).long()
-        state_index = payload.get(
+        state_index = samples.get(
             "state_index",
             torch.arange(context.shape[0]),
         ).long()
-        candidate_index = payload.get(
+        candidate_index = samples.get(
             "candidate_index",
             torch.zeros(context.shape[0], dtype=torch.long),
         ).long()
@@ -385,7 +387,11 @@ def main(argv: list[str]) -> int:
                 "path": str(path),
                 "sha256": _sha256(path),
                 "seed": int(payload["seed"]),
-                "samples": int(payload["context"].shape[0]),
+                "samples": int(
+                    (payload.get("attempts") or payload)[
+                        "context"
+                    ].shape[0]
+                ),
             }
             for path, payload in zip(dataset_paths, payloads, strict=True)
         ],

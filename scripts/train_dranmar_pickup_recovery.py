@@ -70,11 +70,16 @@ def main(argv: list[str]) -> int:
         if payload.get("schema_version") not in {
             "dranmar-pickup-recovery-dataset-1.0",
             "dranmar-pickup-recovery-dataset-1.1",
+            "dranmar-pickup-recovery-dataset-1.2",
         }:
             raise ValueError(f"unsupported recovery dataset: {path}")
-        if payload["context"].shape[-1] != PickupRecoveryHead.input_dim:
+        samples = payload.get("attempts") or payload
+        if samples["context"].shape[-1] != PickupRecoveryHead.input_dim:
             raise ValueError(f"recovery context shape drifted in {path}")
-        if payload["correction"].shape[-1] != PickupRecoveryHead.output_dim:
+        if (
+            samples["correction"].shape[-1]
+            != PickupRecoveryHead.output_dim
+        ):
             raise ValueError(f"recovery correction shape drifted in {path}")
 
     base_hashes = {payload["base_checkpoint_sha256"] for payload in payloads}
@@ -90,7 +95,8 @@ def main(argv: list[str]) -> int:
     orientation_cap = orientation_caps.pop()
 
     total_samples = sum(
-        int(payload["context"].shape[0]) for payload in payloads
+        int((payload.get("attempts") or payload)["context"].shape[0])
+        for payload in payloads
     )
     successful_candidate_count = 0
     positive_context_parts = []
@@ -98,27 +104,28 @@ def main(argv: list[str]) -> int:
     candidate_groups: dict[tuple[str, int], list[dict[str, object]]] = {}
     strict_replay_groups: set[tuple[str, int]] = set()
     for payload_index, payload in enumerate(payloads):
-        payload_context = payload["context"].float()
-        payload_correction = payload["correction"].float()
-        safe_lift = payload.get(
+        samples = payload.get("attempts") or payload
+        payload_context = samples["context"].float()
+        payload_correction = samples["correction"].float()
+        safe_lift = samples.get(
             "safe_lift",
-            payload["recovered_custody"].bool()
-            & payload["lifted"].bool(),
+            samples["recovered_custody"].bool()
+            & samples["lifted"].bool(),
         ).bool()
         successful_candidate_count += int(safe_lift.sum().item())
-        state_index = payload.get(
+        state_index = samples.get(
             "state_index",
             torch.arange(payload_context.shape[0]),
         ).long()
-        candidate_index = payload.get(
+        candidate_index = samples.get(
             "candidate_index",
             torch.zeros(payload_context.shape[0], dtype=torch.long),
         ).long()
-        peak_force = payload.get(
+        peak_force = samples.get(
             "peak_jaw_force_n",
             torch.full((payload_context.shape[0], 2), float("inf")),
         ).float()
-        steps_to_lift = payload.get(
+        steps_to_lift = samples.get(
             "steps_to_lift",
             torch.full((payload_context.shape[0],), 2**31 - 1),
         ).long()
@@ -377,7 +384,11 @@ def main(argv: list[str]) -> int:
                 "path": str(path),
                 "sha256": _sha256(path),
                 "seed": int(payload["seed"]),
-                "samples": int(payload["context"].shape[0]),
+                "samples": int(
+                    (payload.get("attempts") or payload)[
+                        "context"
+                    ].shape[0]
+                ),
             }
             for path, payload in zip(dataset_paths, payloads, strict=True)
         ],

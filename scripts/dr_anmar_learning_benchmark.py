@@ -4316,6 +4316,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if pickup_recovery_policy is not None
         else None
     )
+    pickup_activation_events: list[dict[str, Any]] = []
     first_receiver_retry_count = (
         torch.zeros(
             env.unwrapped.num_envs,
@@ -4386,6 +4387,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if receiver_recovery_policy is not None
         else None
     )
+    receiver_activation_events: list[dict[str, Any]] = []
     first_receiver_action_mismatch_count = (
         torch.zeros(
             env.unwrapped.num_envs,
@@ -5033,9 +5035,47 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     assert first_pickup_activation_seen is not None
                     assert first_pickup_activation_frame is not None
                     assert first_pickup_peak_jaw_force_n is not None
-                    activation = (
+                    all_pickup_activations = (
                         pickup_recovery_policy.last_activation_mask
                         & was_first_unresolved
+                    )
+                    if bool(all_pickup_activations.any()):
+                        pickup_activation_events.append(
+                            {
+                                "environment_index": torch.nonzero(
+                                    all_pickup_activations,
+                                    as_tuple=False,
+                                )
+                                .squeeze(-1)
+                                .cpu(),
+                                "retry_count": (
+                                    pickup_recovery_policy.retry_count[
+                                        all_pickup_activations
+                                    ].cpu()
+                                ),
+                                "activation_frame": torch.full(
+                                    (
+                                        int(
+                                            all_pickup_activations.sum().item()
+                                        ),
+                                    ),
+                                    frame_index,
+                                    dtype=torch.long,
+                                ),
+                                "context": (
+                                    pickup_recovery_policy.last_context[
+                                        all_pickup_activations
+                                    ].cpu()
+                                ),
+                                "correction": (
+                                    pickup_recovery_policy.correction[
+                                        all_pickup_activations
+                                    ].cpu()
+                                ),
+                            }
+                        )
+                    activation = (
+                        all_pickup_activations
                         & ~first_pickup_activation_seen
                     )
                     if bool(activation.any()):
@@ -5076,9 +5116,47 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     assert first_receiver_activation_seen is not None
                     assert first_receiver_activation_frame is not None
                     assert first_receiver_peak_jaw_force_n is not None
-                    receiver_activation = (
+                    all_receiver_activations = (
                         receiver_recovery_policy.last_activation_mask
                         & was_first_unresolved
+                    )
+                    if bool(all_receiver_activations.any()):
+                        receiver_activation_events.append(
+                            {
+                                "environment_index": torch.nonzero(
+                                    all_receiver_activations,
+                                    as_tuple=False,
+                                )
+                                .squeeze(-1)
+                                .cpu(),
+                                "retry_count": (
+                                    receiver_recovery_policy.retry_count[
+                                        all_receiver_activations
+                                    ].cpu()
+                                ),
+                                "activation_frame": torch.full(
+                                    (
+                                        int(
+                                            all_receiver_activations.sum().item()
+                                        ),
+                                    ),
+                                    frame_index,
+                                    dtype=torch.long,
+                                ),
+                                "context": (
+                                    receiver_recovery_policy.last_context[
+                                        all_receiver_activations
+                                    ].cpu()
+                                ),
+                                "correction": (
+                                    receiver_recovery_policy.correction[
+                                        all_receiver_activations
+                                    ].cpu()
+                                ),
+                            }
+                        )
+                    receiver_activation = (
+                        all_receiver_activations
                         & ~first_receiver_activation_seen
                     )
                     if bool(receiver_activation.any()):
@@ -6005,10 +6083,135 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 first_lift_frame - first_pickup_activation_frame,
                 torch.full_like(first_lift_frame, -1),
             )
+            pickup_attempts = None
+            if pickup_activation_events:
+                attempt_environment = torch.cat(
+                    [
+                        event["environment_index"]
+                        for event in pickup_activation_events
+                    ]
+                ).long()
+                attempt_retry = torch.cat(
+                    [
+                        event["retry_count"]
+                        for event in pickup_activation_events
+                    ]
+                ).long()
+                attempt_frame = torch.cat(
+                    [
+                        event["activation_frame"]
+                        for event in pickup_activation_events
+                    ]
+                ).long()
+                attempt_context = torch.cat(
+                    [event["context"] for event in pickup_activation_events]
+                ).float()
+                attempt_correction = torch.cat(
+                    [
+                        event["correction"]
+                        for event in pickup_activation_events
+                    ]
+                ).float()
+                next_attempt_frame = torch.full_like(attempt_frame, -1)
+                previous_attempt_by_environment: dict[int, int] = {}
+                for attempt_index, environment in enumerate(
+                    attempt_environment.tolist()
+                ):
+                    previous = previous_attempt_by_environment.get(
+                        environment
+                    )
+                    if previous is not None:
+                        next_attempt_frame[previous] = attempt_frame[
+                            attempt_index
+                        ]
+                    previous_attempt_by_environment[environment] = (
+                        attempt_index
+                    )
+                if args.pickup_recovery_local_sobol_candidate is not None:
+                    attempt_candidate = torch.full_like(
+                        attempt_environment,
+                        args.pickup_recovery_local_sobol_candidate,
+                    )
+                elif args.pickup_recovery_sobol_candidate is not None:
+                    attempt_candidate = torch.full_like(
+                        attempt_environment,
+                        args.pickup_recovery_sobol_candidate,
+                    )
+                elif sweep_replicas > 1:
+                    attempt_candidate = (
+                        attempt_environment % sweep_replicas
+                    )
+                else:
+                    attempt_candidate = torch.zeros_like(
+                        attempt_environment
+                    )
+                attempt_state = attempt_environment // sweep_replicas
+                later_attempt = attempt_retry > 1
+                attempt_state[later_attempt] = (
+                    attempt_environment[later_attempt]
+                    + env.unwrapped.num_envs
+                    * (
+                        attempt_retry[later_attempt]
+                        + 1000
+                        * (
+                            attempt_candidate[later_attempt]
+                            + 1
+                        )
+                    )
+                )
+                lift_frame_by_attempt = first_lift_frame.cpu()[
+                    attempt_environment
+                ]
+                attempt_lifted = (
+                    (lift_frame_by_attempt >= attempt_frame)
+                    & (
+                        (next_attempt_frame < 0)
+                        | (lift_frame_by_attempt < next_attempt_frame)
+                    )
+                )
+                attempt_safety_failure = pickup_safety_failure.cpu()[
+                    attempt_environment
+                ]
+                pickup_attempts = {
+                    "environment_index": attempt_environment,
+                    "state_index": attempt_state,
+                    "candidate_index": attempt_candidate,
+                    "context": attempt_context,
+                    "correction": attempt_correction,
+                    "full_success": first_outcome_success.cpu()[
+                        attempt_environment
+                    ],
+                    "recovered_custody": attempt_lifted,
+                    "lifted": attempt_lifted,
+                    "maximum_phase": first_handover_max_phase.cpu()[
+                        attempt_environment
+                    ],
+                    "retry_count": attempt_retry,
+                    "activation_frame": attempt_frame,
+                    "next_activation_frame": next_attempt_frame,
+                    "steps_to_lift": torch.where(
+                        attempt_lifted,
+                        lift_frame_by_attempt - attempt_frame,
+                        torch.full_like(attempt_frame, -1),
+                    ),
+                    "peak_jaw_force_n": first_pickup_peak_jaw_force_n.cpu()[
+                        attempt_environment
+                    ],
+                    "termination_flags": first_terminal_flags.cpu()[
+                        attempt_environment
+                    ],
+                    "hard_failure": hard_failure.cpu()[
+                        attempt_environment
+                    ],
+                    "pickup_safety_failure": attempt_safety_failure,
+                    "safe_lift": (
+                        attempt_lifted & ~attempt_safety_failure
+                    ),
+                }
             torch.save(
                 {
                     "schema_version": (
-                        "dranmar-pickup-recovery-dataset-1.1"
+                        "dranmar-pickup-recovery-dataset-1.2"
                     ),
                     "task": args.task,
                     "seed": args.seed,
@@ -6126,6 +6329,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         (first_handover_max_phase >= 2)
                         & ~pickup_safety_failure
                     )[dataset_mask].cpu(),
+                    "attempts": pickup_attempts,
                 },
                 dataset_path,
             )
@@ -6185,10 +6389,139 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 torch.full_like(acquisition_frame, -1),
             )
             acquired = first_handover_max_phase >= 3
+            receiver_attempts = None
+            if receiver_activation_events:
+                attempt_environment = torch.cat(
+                    [
+                        event["environment_index"]
+                        for event in receiver_activation_events
+                    ]
+                ).long()
+                attempt_retry = torch.cat(
+                    [
+                        event["retry_count"]
+                        for event in receiver_activation_events
+                    ]
+                ).long()
+                attempt_frame = torch.cat(
+                    [
+                        event["activation_frame"]
+                        for event in receiver_activation_events
+                    ]
+                ).long()
+                attempt_context = torch.cat(
+                    [
+                        event["context"]
+                        for event in receiver_activation_events
+                    ]
+                ).float()
+                attempt_correction = torch.cat(
+                    [
+                        event["correction"]
+                        for event in receiver_activation_events
+                    ]
+                ).float()
+                next_attempt_frame = torch.full_like(attempt_frame, -1)
+                previous_attempt_by_environment: dict[int, int] = {}
+                for attempt_index, environment in enumerate(
+                    attempt_environment.tolist()
+                ):
+                    previous = previous_attempt_by_environment.get(
+                        environment
+                    )
+                    if previous is not None:
+                        next_attempt_frame[previous] = attempt_frame[
+                            attempt_index
+                        ]
+                    previous_attempt_by_environment[environment] = (
+                        attempt_index
+                    )
+                if args.receiver_recovery_local_sobol_candidate is not None:
+                    attempt_candidate = torch.full_like(
+                        attempt_environment,
+                        args.receiver_recovery_local_sobol_candidate,
+                    )
+                elif args.receiver_recovery_sobol_candidate is not None:
+                    attempt_candidate = torch.full_like(
+                        attempt_environment,
+                        args.receiver_recovery_sobol_candidate,
+                    )
+                else:
+                    attempt_candidate = torch.zeros_like(
+                        attempt_environment
+                    )
+                attempt_state = attempt_environment.clone()
+                later_attempt = attempt_retry > 1
+                attempt_state[later_attempt] = (
+                    attempt_environment[later_attempt]
+                    + env.unwrapped.num_envs
+                    * (
+                        attempt_retry[later_attempt]
+                        + 1000
+                        * (
+                            attempt_candidate[later_attempt]
+                            + 1
+                        )
+                    )
+                )
+                acquisition_frame_by_attempt = acquisition_frame.cpu()[
+                    attempt_environment
+                ]
+                attempt_acquired = (
+                    (acquisition_frame_by_attempt >= attempt_frame)
+                    & (
+                        (next_attempt_frame < 0)
+                        | (
+                            acquisition_frame_by_attempt
+                            < next_attempt_frame
+                        )
+                    )
+                )
+                attempt_safety_failure = receiver_safety_failure.cpu()[
+                    attempt_environment
+                ]
+                receiver_attempts = {
+                    "environment_index": attempt_environment,
+                    "state_index": attempt_state,
+                    "candidate_index": attempt_candidate,
+                    "context": attempt_context,
+                    "correction": attempt_correction,
+                    "full_success": first_outcome_success.cpu()[
+                        attempt_environment
+                    ],
+                    "recovered_acquisition": attempt_acquired,
+                    "acquired": attempt_acquired,
+                    "retained": first_outcome_success.cpu()[
+                        attempt_environment
+                    ],
+                    "maximum_phase": first_handover_max_phase.cpu()[
+                        attempt_environment
+                    ],
+                    "retry_count": attempt_retry,
+                    "activation_frame": attempt_frame,
+                    "next_activation_frame": next_attempt_frame,
+                    "steps_to_acquisition": torch.where(
+                        attempt_acquired,
+                        acquisition_frame_by_attempt - attempt_frame,
+                        torch.full_like(attempt_frame, -1),
+                    ),
+                    "peak_jaw_force_n": (
+                        first_receiver_peak_jaw_force_n.cpu()[
+                            attempt_environment
+                        ]
+                    ),
+                    "termination_flags": first_terminal_flags.cpu()[
+                        attempt_environment
+                    ],
+                    "receiver_safety_failure": attempt_safety_failure,
+                    "safe_acquisition": (
+                        attempt_acquired & ~attempt_safety_failure
+                    ),
+                }
             torch.save(
                 {
                     "schema_version": (
-                        "dranmar-receiver-recovery-dataset-1.0"
+                        "dranmar-receiver-recovery-dataset-1.1"
                     ),
                     "task": args.task,
                     "seed": args.seed,
@@ -6313,6 +6646,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "safe_acquisition": (
                         acquired & ~receiver_safety_failure
                     )[dataset_mask].cpu(),
+                    "attempts": receiver_attempts,
                 },
                 dataset_path,
             )
