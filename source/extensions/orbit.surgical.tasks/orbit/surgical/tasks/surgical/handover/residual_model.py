@@ -70,12 +70,16 @@ class HandoverAnalyticController(nn.Module):
         self.recovery_receiver_shaft_guard_activation_distance_m = 0.018
         self.recovery_receiver_shaft_guard_minimum_distance_m = 0.015
         self.receiver_jaw_proximal_offset_m = 0.0093
-        self.last_recovery_receiver_shaft_guard_active: (
-            torch.Tensor | None
-        ) = None
-        self.last_recovery_receiver_shaft_distance_m: (
-            torch.Tensor | None
-        ) = None
+        self.register_buffer(
+            "last_recovery_receiver_shaft_guard_active",
+            torch.empty(0, dtype=torch.bool),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_recovery_receiver_shaft_distance_m",
+            torch.empty(0),
+            persistent=False,
+        )
         self.transport_custody_latch_enabled = True
         self.receiver_preposition_enabled = True
         self.receiver_preposition_height = 0.025
