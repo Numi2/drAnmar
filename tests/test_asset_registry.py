@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ from dr_anmar_asset_registry import (  # noqa: E402
     resolve_provider_asset,
     sha256_of_folder,
     validate_catalog,
+    validate_member_manifest,
     validate_portfolio,
     validate_release_artifacts,
     verify_lock,
@@ -39,6 +41,21 @@ def test_i4h_provider_is_fully_pinned() -> None:
     assert provider["content_hash"] == "724f82e"
     assert len(provider["catalog_commit"]) == 40
     assert provider["license_review_required"] is True
+
+
+def test_t1_overlay_packages_are_inside_curated_metadata_policy() -> None:
+    quality = load_policy(ROOT)["quality"]
+    prefixes = quality["metadata_required_prefixes"]["dr_anmar"]
+    contract_names = quality["metadata_contract_names"]
+
+    assert "Props/SurgicalScene" in prefixes
+    for name in (
+        "asset_manifest.json",
+        "dependency_lock.json",
+        "qualification_contract.json",
+        "visual_manifest.json",
+    ):
+        assert name in contract_names
 
 
 def test_inventory_spans_extension_and_repository_assets() -> None:
@@ -97,6 +114,27 @@ def test_portfolio_contract_covers_every_declared_artifact() -> None:
     assert validate_portfolio(ROOT) == ()
 
 
+def test_changed_tissue_topology_does_not_inherit_historical_native_claims() -> None:
+    portfolio = json.loads(
+        (ROOT / "physics_next/dr-anmar-assets.json").read_text(encoding="utf-8")
+    )
+    tissue = next(
+        asset
+        for asset in portfolio["assets"]
+        if asset["id"] == "dranmar-needle-ready-tissue-v2"
+    )
+
+    assert "native_evidence" not in tissue
+    assert tissue["historical_native_evidence"].endswith("contact-newton.json")
+    assert "v2.0.0" in tissue["historical_native_evidence_scope"]
+    assert "v2.1.0" in tissue["historical_native_evidence_scope"]
+    assert "not a healthy" in tissue["historical_native_evidence_health"]
+    assert tissue["native_simulator_evidence"].startswith(
+        "current_v2_1_topology_native_"
+    )
+    assert "not_yet_recorded" in tissue["native_simulator_evidence"]
+
+
 def test_capability_payload_covers_the_authoritative_portfolio() -> None:
     portfolio = json.loads((ROOT / "physics_next/dr-anmar-assets.json").read_text(encoding="utf-8"))
     assets, portfolio_path, error = _dr_anmar_portfolio_assets()
@@ -139,6 +177,110 @@ def test_folder_hash_includes_names_and_contents(tmp_path: Path) -> None:
     (second / "renamed.usda").write_text("#usda 1.0\n", encoding="utf-8")
 
     assert sha256_of_folder(first) != sha256_of_folder(second)
+
+
+def test_versioned_member_manifest_rejects_stale_receipts(tmp_path: Path) -> None:
+    asset = tmp_path / "asset"
+    asset.mkdir()
+    member = asset / "fixture.usda"
+    member.write_text("#usda 1.0\n", encoding="utf-8")
+    manifest = asset / "asset_manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema": "dr.anmar.sim-ready-asset-manifest.v3",
+                "asset_id": "fixture",
+                "primary_usd": "fixture.usda",
+                "members": {
+                    "fixture.usda": {
+                        "bytes": member.stat().st_size + 1,
+                        "sha256": "0" * 64,
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    issues = validate_member_manifest(manifest, tmp_path)
+    assert {issue.code for issue in issues} == {
+        "member_manifest_bytes_mismatch",
+        "member_manifest_sha256_mismatch",
+    }
+
+
+def test_overlay_manifest_rejects_stale_external_base_receipt(
+    tmp_path: Path,
+) -> None:
+    extension = tmp_path / "orbit.surgical.assets"
+    base = extension / "data/Props/Base/base.usda"
+    overlay = extension / "data/Props/Overlay"
+    base.parent.mkdir(parents=True)
+    overlay.mkdir(parents=True)
+    base.write_text("#usda 1.0\n", encoding="utf-8")
+    member = overlay / "overlay.usda"
+    member.write_text("#usda 1.0\n", encoding="utf-8")
+    manifest = overlay / "asset_manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema": "dr.anmar.t1-overlay-package.v1",
+                "asset_id": "fixture-overlay",
+                "entrypoints": {"overlay": "overlay.usda"},
+                "members": {
+                    "overlay.usda": {
+                        "bytes": member.stat().st_size,
+                        "sha256": hashlib.sha256(member.read_bytes()).hexdigest(),
+                    }
+                },
+                "external_dependencies": {
+                    "base": {
+                        "repository_path": "data/Props/Base/base.usda",
+                        "bytes": base.stat().st_size,
+                        "sha256": "0" * 64,
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    issues = validate_member_manifest(manifest, tmp_path)
+    assert len(issues) == 1
+    assert issues[0].code == "member_manifest_sha256_mismatch"
+    assert "external overlay dependency" in issues[0].message
+
+
+def test_current_t1_member_manifests_have_dependency_receipts() -> None:
+    manifest_paths = (
+        ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/"
+        "NeedleReadyTissueUnit/asset_manifest.json",
+        ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/"
+        "NeedleReadyTissueUnit/visual_manifest.json",
+        ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/"
+        "asset_manifest.json",
+        ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/"
+        "NeedleT1Compatibility/asset_manifest.json",
+        ROOT
+        / "source/extensions/orbit.surgical.assets/data/Robots/dVRK/PSM/"
+        "T1JawContactCandidate/asset_manifest.json",
+        ROOT
+        / "source/extensions/orbit.surgical.assets/data/Robots/dVRK/PSM/"
+        "T1ColliderCandidate/asset_manifest.json",
+        ROOT
+        / "source/extensions/orbit.surgical.assets/data/Props/Table/"
+        "T1ColliderCandidate/asset_manifest.json",
+    )
+
+    for manifest in manifest_paths:
+        assert manifest.is_file(), manifest
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        assert isinstance(payload.get("members"), dict), manifest
+        assert validate_member_manifest(manifest, ROOT) == (), manifest
 
 
 def test_release_lock_detects_asset_change(tmp_path: Path) -> None:

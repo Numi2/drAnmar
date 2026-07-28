@@ -188,11 +188,39 @@ gym.register(
 )
 
 gym.register(
+    id="Isaac-Handover-Needle-Safe-Bite-T1-Visual-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            t1_safe_bite_env_cfg.NeedleHandoverSafeBiteT1VisualEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleSafeBitePPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
+gym.register(
     id="Isaac-Handover-Needle-Safe-Bite-Chain-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     kwargs={
         "env_cfg_entry_point": (
             t1_safe_bite_env_cfg.NeedleHandoverSafeBiteChainEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleSafeBitePPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)
+
+gym.register(
+    id="Isaac-Handover-Needle-Safe-Bite-Chain-Visual-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            t1_safe_bite_env_cfg.NeedleHandoverSafeBiteChainVisualEnvCfg
         ),
         "rsl_rl_cfg_entry_point": (
             agents.rsl_rl_e2e_cfg.HandoverNeedleSafeBitePPORunnerCfg

@@ -30,12 +30,17 @@ def test_runtime_contract_locks_the_canonical_asset_and_fail_closed_scope():
     geometry = load_json(ASSET_ROOT / "geometry_contract.json")
     qualification = load_json(ASSET_ROOT / "qualification_contract.json")
     assert runtime["asset"]["catalog_id"] == geometry["id"]
-    assert runtime["asset"]["dr_assets_commit"] == (
+    assert runtime["asset"]["asset_version"] == geometry["version"] == "2.1.0"
+    assert runtime["historical_native_evidence"]["asset_revision"] == (
         "b1155e2577210e913de8fa2c36b2e37692ec43be"
     )
     assert runtime["promotion_boundaries"]["geometry"] is True
-    assert runtime["promotion_boundaries"]["intact_newton_vbd"] is True
+    assert runtime["promotion_boundaries"]["openusd"] is True
     for capability in (
+        "intact_newton_vbd",
+        "isaac_lab_spawn",
+        "2400_training_lod_capacity_without_full_scene",
+        "historical_v2_0_evidence_is_current_qualification",
         "needle_tissue_puncture",
         "persistent_tract",
         "thread_passage",
@@ -67,7 +72,7 @@ def test_geometry_report_and_lod_hashes_are_consistent():
         assert sha256(path) == values["usd_sha256"]
 
 
-def test_newton_and_isaaclab_evidence_preserve_claim_boundaries():
+def test_historical_native_evidence_is_retained_but_not_transferred():
     required = (
         "training-newton.json",
         "contact-newton.json",
@@ -80,14 +85,15 @@ def test_newton_and_isaaclab_evidence_preserve_claim_boundaries():
     for name in required:
         assert (EVIDENCE_ROOT / name).is_file(), name
 
-    for name in (
+    historical_runtime_evidence = (
         "training-newton.json",
         "contact-newton.json",
         "contact-newton-replay.json",
         "validation-newton.json",
         "training-1200env-newton.json",
         "training-2400env-newton.json",
-    ):
+    )
+    for name in historical_runtime_evidence:
         evidence = load_json(EVIDENCE_ROOT / name)
         assert evidence["runtime_gate_passed"] is True, name
         assert evidence["metrics"]["finite_state_fraction"] == 1.0, name
@@ -95,6 +101,17 @@ def test_newton_and_isaaclab_evidence_preserve_claim_boundaries():
         assert evidence["clinical_validation"] is False, name
         assert evidence["promotion_boundaries"]["puncture"] is False, name
         assert evidence["promotion_boundaries"]["thread_passage"] is False, name
+
+    current_report = load_json(ASSET_ROOT / "geometry_report.json")
+    historical_lod_receipts = {
+        "training": load_json(EVIDENCE_ROOT / "training-newton.json"),
+        "contact": load_json(EVIDENCE_ROOT / "contact-newton.json"),
+        "validation": load_json(EVIDENCE_ROOT / "validation-newton.json"),
+    }
+    for lod, evidence in historical_lod_receipts.items():
+        assert evidence["asset"]["sha256"] != current_report["lods"][lod][
+            "usd_sha256"
+        ]
 
     contact = load_json(EVIDENCE_ROOT / "contact-newton.json")
     replay = load_json(EVIDENCE_ROOT / "contact-newton-replay.json")
@@ -104,6 +121,9 @@ def test_newton_and_isaaclab_evidence_preserve_claim_boundaries():
     assert contact["final_state_sha256"] == replay["final_state_sha256"]
     assert contact["metrics"]["contact_candidates_peak"] > 0
     assert contact["metrics"]["geometric_contact_samples"] > 0
+    assert contact["metrics"]["peak_displacement_m"] > 0.05
+    assert contact["metrics"]["peak_speed_m_s"] > 8.0
+    assert contact["metrics"]["recovery_residual_m"] > 0.048
 
     capacity = load_json(
         EVIDENCE_ROOT / "training-2400env-newton.json"
@@ -112,8 +132,12 @@ def test_newton_and_isaaclab_evidence_preserve_claim_boundaries():
     assert capacity["asset"]["total_particles"] == 1_344_000
     assert capacity["asset"]["total_tetrahedra"] == 4_665_600
     assert capacity["solver"]["contact_probe"] is False
-    capacity_contract = load_json(RUNTIME_CONTRACT)["batching"][
-        "measured_capacity_lane"
+    runtime_contract = load_json(RUNTIME_CONTRACT)
+    assert runtime_contract["batching"]["current_v2_1_native_execution"] == (
+        "not_executed"
+    )
+    capacity_contract = runtime_contract["batching"][
+        "historical_v2_0_measured_capacity_lane"
     ]
     assert (
         capacity_contract["physics_step_ms_p50"]
@@ -131,6 +155,9 @@ def test_newton_and_isaaclab_evidence_preserve_claim_boundaries():
     assert isaaclab["spawn_gate_passed"] is True
     assert isaaclab["clinical_validation"] is False
     assert isaaclab["scope"] == "spawn_reset_and_finite_step_only"
+    assert runtime_contract["historical_native_evidence"][
+        "current_v2_1_transfer_allowed"
+    ] is False
 
 
 def test_batch_benchmark_uses_newton_template_replication():
@@ -146,3 +173,17 @@ def test_batch_benchmark_uses_newton_template_replication():
         )
     ]
     assert "add_soft_mesh" not in replication_block
+
+
+def test_documentation_marks_previous_native_results_as_historical():
+    documentation = (
+        ROOT / "docs/DRANMAR_NEEDLE_READY_TISSUE.md"
+    ).read_text(encoding="utf-8")
+    for required in (
+        "prior v2.0.0",
+        "do not transfer",
+        "not healthy calibrated-tissue qualification",
+        "Current-topology",
+        "remain unexecuted",
+    ):
+        assert required in documentation

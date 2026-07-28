@@ -8,9 +8,9 @@ It records software and asset provenance; it is not clinical-validation evidence
 ## Release identity
 
 - Catalog schema: `dr.anmar.asset-catalog-lock.v3`
-- Catalog version: `1.4.0`
-- Catalog SHA-256: `fba80108412b78ebd972e3e718f555f6e90e7dc61cd2b19ed28f25fa174652aa`
-- Local asset units: `30`
+- Catalog version: `1.5.0`
+- Catalog SHA-256: `3118392a0b6597eb1c93654cd4438e000094e58e8c6eea66904a16c7da178e02`
+- Local asset units: `32`
 - Product portfolio assets: `21`
 - Clinical validation: `false`
 
@@ -32,6 +32,7 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 | `dr_anmar:Props/SurgicalAssessment/PerfusionViabilityRobot` | 7 | 49 | 35118832 | `f4bd998140b6e1c59f3f67af3cf3f9d698f6cf7a7002b8a0cd1f040d0e609b34` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/ClosureRobot` | 6 | 134 | 14929244 | `fa67ba1568caf9fe7d6fa8a6cb61bc897280abacd565321b1e4fae5ac5bce56b` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/ClosureRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/Needle` | 1 | 9 | 2523083 | `5fc31f57028c9eda6004b0f4b4258bfeb66f737bc88a61928209c9fbb6bfe81a` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalClosure/NeedleT1Compatibility` | 1 | 15 | 6727763 | `08368f69f16fca56d3d6c8a9e88d5bf099964d7720940357474d2e8eed94ff8c` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleT1Compatibility/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/NeedleThread` | 3 | 14 | 17476594 | `997d88ad1443985f9c4bdb3e339e180824f0ebc5d78f9552819c82b408e728cd` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/SkinAdhesive` | 4 | 33 | 8669690 | `0aad8ed335a0b2062e60211f9c80709db8b301ce68e43a0e67c8201b001557a0` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/SkinStapler` | 3 | 72 | 59730460 | `3e1bba9536a83a97fe3acce31428f64c0452895d2ed79d9761ad74579f3880cb` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinStapler/LICENSE.txt` |
@@ -44,13 +45,14 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 | `dr_anmar:Props/SurgicalOncology/OncoSurgeryCell` | 13 | 59 | 12671992 | `2970dc0bfd6695c35762e648f1dc681a5654b8ffe9c72665052c1b14c2ab44dd` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalPreparation/WoundPreparationRobot` | 9 | 43 | 26825404 | `654f5e14927c94432af165f92c806f7d3c2841a1b93a7685184e7662df6a288e` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalReconstruction/AdaptiveAnastomosisRobot` | 8 | 41 | 36651526 | `500276bee068aff195ce6a832c7326ffce23068850e371541c65288db3b75dcb` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalTissue/NeedleReadyTissueUnit` | 4 | 14 | 12355292 | `58430fd3f5eeb594e5794b25fcf93c4881abfe0fa0f5da60d5ad3158fc1fcae8` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalScene/T1` | 4 | 21 | 11281945 | `892fa2a732955ef90f399c2e5759de2bf1c5ded5ebbbfe5bb3b92eeb83319653` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalTissue/NeedleReadyTissueUnit` | 8 | 50 | 49581633 | `ac57a0f9f3f4b799e1121f09ea757f9986c3a33edc9efb4c8187074f349243dd` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/LICENSE.txt` |
 | `dr_anmar:Props/Surgical_block` | 1 | 1 | 17062976 | `08e0245c10695d1bf9c93ab4c039a98ea3f540ff193635153049969285d55ed4` | `LICENSE` |
 | `dr_anmar:Props/Surgical_needle` | 2 | 2 | 1802638 | `29dc4940d49f86fa11e3ddcd43c78ce18b890ef539667a3dfa012b68da7bbbfa` | `LICENSE` |
-| `dr_anmar:Props/Table` | 1 | 1 | 18839808 | `e803ce27ca757a6da56aa828e2e5dd0e7f26c1fdd3b8b20952129ece8029842b` | `LICENSE` |
+| `dr_anmar:Props/Table` | 1 | 11 | 18863710 | `2b11a3b3ddcb246344078c47ff486a565677b156cd22c33d6cdd630607d2e9d1` | `LICENSE` |
 | `dr_anmar:Robots/STAR` | 1 | 1 | 28458239 | `7d4420a62f8db2b08e545d817e65ea50b11a74eb19f460a0bc52e6502efc7c52` | `LICENSE` |
 | `dr_anmar:Robots/dVRK/ECM` | 1 | 1 | 274543 | `47600f1d580529f1de12805a09046f2e603accf855af403b6419ea1e391e86d6` | `LICENSE` |
-| `dr_anmar:Robots/dVRK/PSM` | 3 | 3 | 44532251 | `a153cb54be657494f834b0a0fcb0b51241fff8b36dac73ddb42b7702cc798c8b` | `LICENSE` |
+| `dr_anmar:Robots/dVRK/PSM` | 3 | 22 | 44605973 | `d4e94f06571c52b29effd1523ca0683f54cf215200f5de3d6d2f025798f00227` | `LICENSE` |
 | `dr_anmar_repository:assets/dr_anmar/hemostasis` | 3 | 7 | 3457507 | `3249e9f6117ba240200a6967c129f05094ab4d5b34e5345e16deaffd7d92155d` | `LICENSE` |
 | `dr_anmar_repository:assets/dr_anmar/multimodal/cosmos_h_dreams_knot_tying_v1` | 1 | 5 | 73383 | `da81602eb767657b7457b8156f2bd9536ed372e95d218a3d777bb4e591ae420f` | `LICENSE` |
 | `dr_anmar_repository:assets/dr_anmar/needle` | 8 | 24 | 2086740 | `b4e1b8b1435f0bc6e29078404fae064291ff4e965e4d10f3eee41fe243913e82` | `LICENSE` |
@@ -107,7 +109,7 @@ and clinical evidence are deliberately separate claims.
 | `dranmar-autonomous-rescue-or-v0.4.0` | native multiarm and deformable runtime evidence not yet recorded for v0… | contact flow tissue and resuscitation bench evidence not yet established | `not established` |
 | `dranmar-cosmos-h-dreams-source-audit-v1` | native execution not yet recorded for this bundle | paired capture and instrumented bench evidence not yet established | `not established` |
 | `dranmar-dynamic-abdominal-patient-v1` | recorded surface deformable access transition only volume deformables p… | anatomy mechanics and physiology bench correlation not yet established | `not established` |
-| `dranmar-needle-ready-tissue-v2` | newton vbd contact deterministic replay isaac lab spawn and 2400 traini… | deformation puncture pullout and closure bench evidence not yet establi… | `not established` |
+| `dranmar-needle-ready-tissue-v2` | current v2 1 topology native newton isaac lab rtx and 2400 environment … | deformation puncture pullout and closure bench evidence not yet establi… | `not established` |
 | `dranmar-oncosurgery-cell-v1` | non contact dynamic volume stability recorded on rtx 4090 2026 07 25 co… | instrumented payload tissue sensor energy and specimen bench evidence n… | `not established` |
 | `dranmar-perfusion-viability-robot-v1` | standalone loaded franka and serialized six camera depth matrix recorde… | sensor calibration flow bench and tissue correlation not yet established | `not established` |
 | `dranmar-safeplane-dissection-robot-v1` | runtime composition observed current native matrix not yet established | contact derived bridge work release and instrumented dissection bench e… | `not established` |

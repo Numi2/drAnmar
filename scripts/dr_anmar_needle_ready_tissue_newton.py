@@ -35,6 +35,14 @@ YOUNGS_MODULUS_PA = 180_000.0
 POISSON_RATIO = 0.47
 DENSITY_KG_M3 = 1_050.0
 DT = 0.001
+ENGINEERING_SANITY_LIMITS = {
+    "minimum_full_trajectory_steps": 120,
+    "maximum_peak_displacement_m": 0.015,
+    "maximum_peak_speed_m_s": 2.0,
+    "maximum_global_volume_error_fraction": 0.02,
+    "maximum_recovery_residual_m": 0.006,
+    "maximum_final_free_speed_m_s": 0.10,
+}
 
 
 @wp.kernel
@@ -455,6 +463,7 @@ def main() -> int:
                 )
 
     final_q = np.asarray(state_0.particle_q.numpy(), dtype=np.float64)
+    final_qd = np.asarray(state_0.particle_qd.numpy(), dtype=np.float64)
     final_volumes = signed_tet_volumes(final_q, rest_tets_all)
     inverted_peak = max(
         inverted_peak,
@@ -468,6 +477,9 @@ def main() -> int:
     free_mask = constraint_kind_np != 1
     recovery_residual = float(
         np.linalg.norm(final_q[free_mask] - rest_q_np[free_mask], axis=1).max()
+    )
+    final_free_speed = float(
+        np.linalg.norm(final_qd[free_mask], axis=1).max()
     )
     completed = finite_samples
     contact_passed = (
@@ -490,11 +502,50 @@ def main() -> int:
         replay_exact_match = (
             reference.get("final_state_sha256") == final_state_sha256
         )
+    sanity_gates = {
+        "full_fixture_retraction_release_trajectory": (
+            requested_steps
+            >= int(
+                ENGINEERING_SANITY_LIMITS[
+                    "minimum_full_trajectory_steps"
+                ]
+            )
+        ),
+        "peak_displacement_bounded": (
+            peak_displacement
+            <= ENGINEERING_SANITY_LIMITS[
+                "maximum_peak_displacement_m"
+            ]
+        ),
+        "peak_speed_bounded": (
+            peak_speed
+            <= ENGINEERING_SANITY_LIMITS["maximum_peak_speed_m_s"]
+        ),
+        "global_volume_error_bounded": (
+            peak_volume_error
+            <= ENGINEERING_SANITY_LIMITS[
+                "maximum_global_volume_error_fraction"
+            ]
+        ),
+        "recovery_residual_bounded": (
+            recovery_residual
+            <= ENGINEERING_SANITY_LIMITS[
+                "maximum_recovery_residual_m"
+            ]
+        ),
+        "final_free_speed_bounded": (
+            final_free_speed
+            <= ENGINEERING_SANITY_LIMITS[
+                "maximum_final_free_speed_m_s"
+            ]
+        ),
+    }
     runtime_passed = (
         completed == requested_steps
         and inverted_peak == 0
         and contact_passed
         and replay_exact_match is not False
+        and all(sanity_gates.values())
     )
     result = {
         "schema": "dr.anmar.needle-ready-tissue-newton-qualification.v1",
@@ -549,10 +600,13 @@ def main() -> int:
             "peak_global_volume_error_fraction": peak_volume_error,
             "inverted_tetrahedra_peak": inverted_peak,
             "recovery_residual_m": recovery_residual,
+            "final_free_speed_m_s": final_free_speed,
             "contact_candidates_peak": contact_candidates_peak,
             "geometric_contact_samples": geometric_contact_samples,
             "maximum_geometric_penetration_m": maximum_geometric_penetration,
         },
+        "engineering_sanity_limits": ENGINEERING_SANITY_LIMITS,
+        "engineering_sanity_gates": sanity_gates,
         "final_state_sha256": final_state_sha256,
         "deterministic_replay": {
             "reference": replay_reference,

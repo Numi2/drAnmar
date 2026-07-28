@@ -1,26 +1,45 @@
 {
   "schema": "dr.anmar.needle-ready-tissue-runtime-contract.v1",
   "id": "dranmar-needle-ready-tissue-runtime-v1",
-  "version": "1.0.0",
-  "status": "geometry_and_intact_deformation_qualified_on_gilgamesh",
+  "version": "1.1.0",
+  "status": "source_geometry_v2_1_static_qualified_native_requalification_pending",
   "asset": {
     "catalog_id": "dranmar-needle-ready-tissue-v2",
+    "asset_version": "2.1.0",
     "catalog_subpath": "data/Props/SurgicalTissue/NeedleReadyTissueUnit",
-    "dr_assets_commit": "b1155e2577210e913de8fa2c36b2e37692ec43be",
+    "source_revision_binding": "current asset-submodule commit and generated catalog lock are required before release",
     "geometry_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/geometry_contract.json",
     "qualification_contract": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/qualification_contract.json",
     "default_lod": "contact"
   },
-  "runtime": {
-    "machine": "gilgamesh-System-Product-Name",
-    "gpu": "NVIDIA GeForce RTX 4090 24 GiB",
-    "isaac_sim": "6.0.1.0",
-    "isaac_lab_revision": "51104d55d46192f9c981f2b63007d5156e141cec",
-    "newton": "1.5.0.dev0",
-    "warp": "1.16.0.dev20260723",
+  "native_target": {
+    "machine": "Gilgamesh through an explicitly approved future Numi run",
+    "gpu": "NVIDIA GeForce RTX 4090 24 GiB target",
+    "isaac_sim": "pinned release required",
+    "isaac_lab_revision": "pinned revision required",
+    "newton": "pinned release required",
+    "warp": "pinned release required",
     "intact_backend": "newton_vbd",
     "rigid_soft_coupling_target": "coupled_mjwarp_vbd_two_way",
-    "topology_backend_status": "cressim_mpm_route_configured_pending_native_qualification"
+    "current_topology_execution": "not_executed",
+    "topology_backend_status": "cressim_mpm_route_configured_pending_native_qualification",
+    "clinical_validation": false
+  },
+  "historical_native_evidence": {
+    "status": "retained_v2_0_traceability_only_not_current_qualification",
+    "asset_version": "2.0.0",
+    "asset_revision": "b1155e2577210e913de8fa2c36b2e37692ec43be",
+    "contact_asset_sha256": "c92285616d7015d86ed229f16dadc66b3420ca8503e196ae6e380575e5b991f2",
+    "training_asset_sha256": "cd75a5b29e5d59b3f68b206b819d4d39654b2ebdaf9b0addc06edc3f51bc429c",
+    "validation_asset_sha256": "d9e3dc508702c04bb9283a17ef9e14c81a3168b89743335b943efb6a97dc2643",
+    "evidence_root": "physics_next/benchmarks/needle-ready-tissue",
+    "health": {
+      "peak_displacement_m": 0.052552539314516776,
+      "peak_speed_m_s": 8.027626613448984,
+      "recovery_residual_m": 0.04839363940389566,
+      "assessment": "historical research-default run is retained but is not healthy calibrated tissue qualification"
+    },
+    "current_v2_1_transfer_allowed": false
   },
   "lod_policy": {
     "training": {
@@ -45,7 +64,8 @@
   "batching": {
     "method": "newton_model_builder_replicate_colored_template",
     "reason": "one colored template is batch-replicated by NVIDIA Newton instead of re-authoring and recoloring every environment",
-    "measured_capacity_lane": {
+    "current_v2_1_native_execution": "not_executed",
+    "historical_v2_0_measured_capacity_lane": {
       "instances": 2400,
       "lod": "training",
       "particles": 1344000,
@@ -64,14 +84,14 @@
       "measured_gpu_memory_delta_gib": 1.353515625,
       "evidence": "physics_next/benchmarks/needle-ready-tissue/training-2400env-newton.json"
     },
-    "claim_boundary": "This capacity lane is not a full two-arm task, contact, camera, PPO, or trained-policy throughput result."
+    "claim_boundary": "The retained capacity lane used v2.0.0 topology and is not current v2.1.0 qualification; it was also not a full two-arm task, contact, camera, PPO, or trained-policy throughput result."
   },
   "post_handover_progression": [
     {
       "stage": "T0",
       "name": "canonical geometry and intact deformation",
-      "status": "qualified",
-      "success": "OpenUSD, semantic, Newton VBD and Isaac Lab gates pass"
+      "status": "source_static_qualified_native_v2_1_requalification_pending",
+      "success": "source OpenUSD, semantic and tetrahedral quality gates pass; current-topology Newton VBD and Isaac Lab evidence remains required"
     },
     {
       "stage": "T1",
@@ -119,9 +139,10 @@
   "promotion_boundaries": {
     "geometry": true,
     "openusd": true,
-    "intact_newton_vbd": true,
-    "isaac_lab_spawn": true,
-    "2400_training_lod_capacity_without_full_scene": true,
+    "intact_newton_vbd": false,
+    "isaac_lab_spawn": false,
+    "2400_training_lod_capacity_without_full_scene": false,
+    "historical_v2_0_evidence_is_current_qualification": false,
     "needle_tissue_puncture": false,
     "persistent_tract": false,
     "thread_passage": false,

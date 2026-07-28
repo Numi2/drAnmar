@@ -34,7 +34,7 @@ All three are generated deterministically from the same versioned contract.
 
 ## NVIDIA and open-source leverage
 
-The runtime uses NVIDIA's current stack directly:
+The intended native runtime uses NVIDIA's stack directly:
 
 - OpenUSD `TetMesh` is the solver-neutral geometry representation;
 - Isaac Lab `DeformableObjectCfg` discovers and spawns the canonical TetMesh;
@@ -46,19 +46,22 @@ The runtime uses NVIDIA's current stack directly:
 That last point matters for efficiency. Repeatedly calling `add_soft_mesh()`
 for every environment rebuilt surface-edge data against an ever-growing
 builder and became the dominant setup cost. Replicating one colored template
-is NVIDIA's native batched path and reduced the measured 1,200-instance
-replication step to about 1.32 seconds.
+is NVIDIA's native batched path. The timing previously recorded for this route
+used tissue v2.0.0; it is retained as history and is not current v2.1.0
+qualification.
 
 Isaac Lab and the original ORBIT-Surgical compatibility foundation are
 BSD-3-Clause. Newton, Warp, and the reviewed SoftMimicGen reference are
 Apache-2.0. CRESSim-MPM is a BSD-3-Clause future topology-backend candidate.
-No external tissue geometry, patient mesh, or texture is copied into the
-asset.
+No external tissue geometry or patient mesh is copied into the asset. The
+visual package vendors NVIDIA PhysicalAI SimReady Materials v0.2.0's MIT-0
+OpenPBR base and one unchanged skin micro-normal input with exact provenance;
+DrAnmar authors the remaining seeded textures.
 
-## Measured Gilgamesh result
+## Historical Gilgamesh result
 
-The isolated training-LOD capacity lane ran 2,400 simultaneous tissues on the
-RTX 4090:
+The prior v2.0.0 training-LOD capacity lane ran 2,400 simultaneous tissues on
+the RTX 4090:
 
 - 1,344,000 particles and 4,665,600 tetrahedra;
 - 21.70 ms median and 21.72 ms p95 physics step;
@@ -66,24 +69,27 @@ RTX 4090:
 - 0.0544% final global volume error; and
 - about 1.35 GiB measured GPU-memory delta.
 
-This is roughly 110,600 tissue-environment frames/s. It excludes robot
+This was roughly 110,600 tissue-environment frames/s. It excluded robot
 articulations, rigid-soft contact, cameras, observations, PPO, and policy
 networks, so it is a geometry/VBD capacity result—not a full-task throughput
-claim.
+claim. Tissue topology and hashes changed in v2.1.0, so this capacity receipt,
+the v2.0.0 deterministic replay, and the v2.0.0 Isaac spawn smoke test do not transfer.
 
-The single-instance contact and validation lanes separately exercise fixture,
-retraction, release, rigid-soft contact, deterministic replay, and the Isaac
-Lab spawn/reset/step adapter.
+The historical contact run reached 52.6 mm peak displacement, 8.03 m/s peak
+speed and 48.4 mm recovery residual. It remains useful diagnostic evidence but
+is not healthy calibrated-tissue qualification.
 
 ## What remains unvalidated
 
-Newton VBD currently qualifies intact deformation and contact. It does not
-create a hole, persistent tract, cut, tear, or thread passage. We will not call
-needle contact a puncture and will not use a policy-written phase flag as
-evidence. T1 does not add a collision barrier: its training task ends when the
-safe entry frame is armed, while its continuation task keeps stepping and
-allows subsequent contact. Persistent puncture is routed to the pinned
-CRESSim-MPM backend candidate rather than being faked inside VBD.
+The v2.1.0 source geometry and static receipts qualify. Current-topology
+Newton VBD stability, native contact, Isaac composition, visual synchronization
+and 2,400-environment capacity remain unexecuted. VBD does not create a hole,
+persistent tract, cut, tear, or thread passage. We will not call needle contact
+a puncture and will not use a policy-written phase flag as evidence. T1 does
+not add a collision barrier: its training task ends when the safe entry frame
+is armed, while its continuation task keeps stepping and allows subsequent
+contact. Persistent puncture remains routed to a qualified topology-capable
+backend rather than being faked inside VBD.
 
 The post-handover progression is:
 

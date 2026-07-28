@@ -4793,6 +4793,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "ever_authorized_contact_transition": torch.zeros_like(
                 first_unresolved
             ),
+            "ever_native_contact_available": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_native_contact_overflow": torch.zeros_like(
+                first_unresolved
+            ),
+            "ever_tip_entry_contact": torch.zeros_like(first_unresolved),
+            "ever_live_frame_invalid": torch.zeros_like(first_unresolved),
             "snapshot_initialized": torch.zeros_like(first_unresolved),
             "minimum_position_error_m": torch.full(
                 (env.unwrapped.num_envs,),
@@ -4805,6 +4813,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 device=env.unwrapped.device,
             ),
             "maximum_stable_control_steps": torch.zeros(
+                env.unwrapped.num_envs,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "maximum_contact_fresh_generations": torch.zeros(
                 env.unwrapped.num_envs,
                 dtype=torch.int64,
                 device=env.unwrapped.device,
@@ -4897,6 +4910,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         was_first_unresolved
                         & current_safe_bite["authorized_contact_transition"]
                     )
+                    first_safe_bite_history[
+                        "ever_native_contact_available"
+                    ] |= (
+                        was_first_unresolved
+                        & current_safe_bite["native_contact_available"]
+                    )
+                    first_safe_bite_history[
+                        "ever_native_contact_overflow"
+                    ] |= (
+                        was_first_unresolved
+                        & current_safe_bite["native_contact_overflow"]
+                    )
+                    first_safe_bite_history["ever_tip_entry_contact"] |= (
+                        was_first_unresolved
+                        & current_safe_bite["native_tip_entry_contact"]
+                    )
+                    first_safe_bite_history["ever_live_frame_invalid"] |= (
+                        was_first_unresolved
+                        & ~current_safe_bite["live_frame_valid"]
+                    )
                     first_safe_bite_history["snapshot_initialized"] |= (
                         was_first_unresolved
                         & current_safe_bite["snapshot_initialized"]
@@ -4937,6 +4970,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         ),
                         first_safe_bite_history[
                             "maximum_stable_control_steps"
+                        ],
+                    )
+                    first_safe_bite_history[
+                        "maximum_contact_fresh_generations"
+                    ] = torch.where(
+                        was_first_unresolved,
+                        torch.maximum(
+                            first_safe_bite_history[
+                                "maximum_contact_fresh_generations"
+                            ],
+                            current_safe_bite[
+                                "contact_fresh_consecutive"
+                            ],
+                        ),
+                        first_safe_bite_history[
+                            "maximum_contact_fresh_generations"
                         ],
                     )
                     newly_armed = (
@@ -6958,6 +7007,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 "maximum_stable_control_steps": safe_bite_quantiles(
                     first_safe_bite_history[
                         "maximum_stable_control_steps"
+                    ].float()
+                ),
+                "maximum_contact_fresh_generations": safe_bite_quantiles(
+                    first_safe_bite_history[
+                        "maximum_contact_fresh_generations"
                     ].float()
                 ),
                 "entry_armed_rate_over_requested_environments": float(

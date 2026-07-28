@@ -81,6 +81,18 @@ def test_catalog_resolution_fails_closed(monkeypatch, tmp_path):
         catalog.asset_directory("not-an-asset")
 
 
+def test_usd_reference_parser_ignores_empty_asset_defaults():
+    catalog = load_catalog()
+    source = """
+        asset inputs:empty_before = @@
+        asset inputs:normal_map = @./textures/micro_normal.png@
+        asset inputs:empty_after = @@
+    """
+    assert tuple(catalog._iter_usd_asset_references(source)) == (
+        "./textures/micro_normal.png",
+    )
+
+
 def test_catalog_index_is_deterministic_and_dependency_complete():
     spec = importlib.util.spec_from_file_location(
         "dranmar_asset_catalog_index_test_module", INDEX_GENERATOR_PATH
