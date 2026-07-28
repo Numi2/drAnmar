@@ -299,7 +299,35 @@ case "${command}" in
                     echo "DR_ANMAR_POLICY_GIVER_LIFT_ON_LIVE_CONTACT must be 0 or 1" >&2
                     exit 2
                     ;;
-            esac
+                esac
+        fi
+        pickup_recovery_args=()
+        if [[ "${DR_ANMAR_PICKUP_RECOVERY:-0}" == "1" ]]; then
+            pickup_recovery_args=(--pickup_recovery)
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_CHECKPOINT:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_checkpoint
+                "${DR_ANMAR_PICKUP_RECOVERY_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_POSITION_CAP_M:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_position_cap
+                "${DR_ANMAR_PICKUP_RECOVERY_POSITION_CAP_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_ORIENTATION_CAP_DEG:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_orientation_cap_deg
+                "${DR_ANMAR_PICKUP_RECOVERY_ORIENTATION_CAP_DEG}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_fixed_correction
+                "${DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION}"
+            )
         fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
@@ -319,7 +347,8 @@ case "${command}" in
             "${giver_close_distance_args[@]}" \
             "${giver_lift_contact_force_threshold_args[@]}" \
             "${giver_pre_lift_min_contact_jaws_args[@]}" \
-            "${giver_lift_on_live_contact_args[@]}"
+            "${giver_lift_on_live_contact_args[@]}" \
+            "${pickup_recovery_args[@]}"
         ;;
     record)
         require_runtime

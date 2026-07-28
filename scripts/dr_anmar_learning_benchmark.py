@@ -3571,7 +3571,76 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         controller.giver_lift_on_live_contact = (
             args.giver_lift_on_live_contact
         )
-    policy = runner.get_inference_policy(device=env.unwrapped.device)
+    pickup_recovery_policy = None
+    if (
+        args.pickup_recovery
+        or args.pickup_recovery_checkpoint
+        or args.pickup_recovery_fixed_correction
+    ):
+        from orbit.surgical.tasks.surgical.handover.recovery_policy import (
+            HandoverPickupRecoveryPolicy,
+            PickupRecoveryHead,
+        )
+
+        recovery_head = PickupRecoveryHead().to(env.unwrapped.device)
+        if args.pickup_recovery_checkpoint:
+            recovery_checkpoint = (
+                Path(args.pickup_recovery_checkpoint).expanduser().resolve()
+            )
+            if not recovery_checkpoint.is_file():
+                env.close()
+                return _fail(
+                    "pickup recovery checkpoint not found: "
+                    f"{recovery_checkpoint}"
+                )
+            recovery_payload = torch.load(
+                recovery_checkpoint,
+                map_location=env.unwrapped.device,
+                weights_only=False,
+            )
+            if isinstance(recovery_payload, dict) and (
+                "pickup_recovery_head" in recovery_payload
+            ):
+                recovery_state = recovery_payload["pickup_recovery_head"]
+            elif isinstance(recovery_payload, dict):
+                recovery_state = recovery_payload
+            else:
+                env.close()
+                return _fail(
+                    "pickup recovery checkpoint must contain a state dictionary"
+                )
+            recovery_head.load_state_dict(recovery_state, strict=True)
+        pickup_recovery_policy = HandoverPickupRecoveryPolicy(
+            policy_model,
+            recovery_head,
+            position_cap_m=args.pickup_recovery_position_cap,
+            orientation_cap_rad=math.radians(
+                args.pickup_recovery_orientation_cap_deg
+            ),
+            episode_frames=args.num_frames,
+        ).to(env.unwrapped.device)
+        if args.pickup_recovery_fixed_correction:
+            correction_values = [
+                float(value.strip())
+                for value in args.pickup_recovery_fixed_correction.split(",")
+            ]
+            if len(correction_values) != 6:
+                env.close()
+                return _fail(
+                    "fixed pickup recovery correction requires "
+                    "dx,dy,dz,rx,ry,rz"
+                )
+            correction = torch.tensor(
+                correction_values,
+                dtype=torch.float32,
+                device=env.unwrapped.device,
+            )
+            correction[3:] = torch.deg2rad(correction[3:])
+            pickup_recovery_policy.set_fixed_correction(correction)
+        pickup_recovery_policy.eval()
+        policy = pickup_recovery_policy
+    else:
+        policy = runner.get_inference_policy(device=env.unwrapped.device)
 
     export_dir = Path(args.output_path).resolve() / "exported"
     export_dir.mkdir(parents=True, exist_ok=True)
@@ -3596,6 +3665,34 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         device=env.unwrapped.device,
     )
     first_outcome_success = torch.zeros_like(first_unresolved)
+    first_pickup_retry_count = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.long,
+            device=env.unwrapped.device,
+        )
+        if pickup_recovery_policy is not None
+        else None
+    )
+    first_pickup_failed = (
+        torch.zeros_like(first_unresolved)
+        if pickup_recovery_policy is not None
+        else None
+    )
+    first_pickup_recovered_custody = (
+        torch.zeros_like(first_unresolved)
+        if pickup_recovery_policy is not None
+        else None
+    )
+    first_pickup_correction = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 6),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if pickup_recovery_policy is not None
+        else None
+    )
     first_termination_counts = {name: 0 for name in termination_names}
     first_failure_distribution = {name: 0 for name in failure_names}
     lift_diagnostics = None
@@ -4235,6 +4332,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     single_environment_episode_start_frame = frame_index + 1
                 first_dones = was_first_unresolved & dones.bool()
                 first_successes = first_dones & successes.bool()
+                if pickup_recovery_policy is not None:
+                    assert first_pickup_retry_count is not None
+                    assert first_pickup_failed is not None
+                    assert first_pickup_recovered_custody is not None
+                    assert first_pickup_correction is not None
+                    first_pickup_retry_count[first_dones] = (
+                        pickup_recovery_policy.retry_count[first_dones]
+                    )
+                    first_pickup_failed[first_dones] = (
+                        pickup_recovery_policy.first_attempt_failed[
+                            first_dones
+                        ]
+                    )
+                    first_pickup_recovered_custody[first_dones] = (
+                        pickup_recovery_policy.recovered_custody[
+                            first_dones
+                        ]
+                    )
+                    first_pickup_correction[first_dones] = (
+                        pickup_recovery_policy.correction[first_dones]
+                    )
                 first_outcome_success |= first_successes
                 if first_handover_max_phase is not None:
                     first_handover_max_phase = torch.where(
@@ -5106,6 +5224,70 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 )
                 else None
             ),
+            "pickup_recovery": (
+                {
+                    "enabled": True,
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "head_checkpoint": (
+                        {
+                            "path": str(
+                                Path(
+                                    args.pickup_recovery_checkpoint
+                                ).expanduser().resolve()
+                            ),
+                            "sha256": _sha256(
+                                Path(
+                                    args.pickup_recovery_checkpoint
+                                ).expanduser().resolve()
+                            ),
+                        }
+                        if args.pickup_recovery_checkpoint
+                        else None
+                    ),
+                    "position_cap_m": (
+                        args.pickup_recovery_position_cap
+                    ),
+                    "orientation_cap_deg": (
+                        args.pickup_recovery_orientation_cap_deg
+                    ),
+                    "fixed_correction": (
+                        args.pickup_recovery_fixed_correction
+                    ),
+                    "first_attempt_failures": int(
+                        first_pickup_failed.sum().item()
+                    ),
+                    "episodes_with_retries": int(
+                        (first_pickup_retry_count > 0).sum().item()
+                    ),
+                    "recovered_bilateral_custody": int(
+                        first_pickup_recovered_custody.sum().item()
+                    ),
+                    "successful_after_retry": int(
+                        (
+                            first_outcome_success
+                            & (first_pickup_retry_count > 0)
+                        )
+                        .sum()
+                        .item()
+                    ),
+                    "retry_histogram": {
+                        str(retry): int(
+                            (first_pickup_retry_count == retry).sum().item()
+                        )
+                        for retry in range(
+                            int(first_pickup_retry_count.max().item()) + 1
+                        )
+                    },
+                    "mean_final_correction": [
+                        float(
+                            first_pickup_correction[:, axis].mean().item()
+                        )
+                        for axis in range(6)
+                    ],
+                }
+                if pickup_recovery_policy is not None
+                else {"enabled": False}
+            ),
             "exports": {
                 "jit": {"path": str(jit_path), "sha256": _sha256(jit_path)},
                 "onnx": {"path": str(onnx_path), "sha256": _sha256(onnx_path)},
@@ -5222,6 +5404,29 @@ def _parser() -> argparse.ArgumentParser:
         "--giver_lift_on_live_contact",
         action=argparse.BooleanOptionalAction,
         default=None,
+    )
+    play.add_argument(
+        "--pickup_recovery",
+        action="store_true",
+        help="enable the isolated post-reset pickup recovery head",
+    )
+    play.add_argument("--pickup_recovery_checkpoint")
+    play.add_argument(
+        "--pickup_recovery_position_cap",
+        type=float,
+        default=0.005,
+    )
+    play.add_argument(
+        "--pickup_recovery_orientation_cap_deg",
+        type=float,
+        default=5.0,
+    )
+    play.add_argument(
+        "--pickup_recovery_fixed_correction",
+        help=(
+            "controlled retry correction as "
+            "dx,dy,dz metres and rx,ry,rz degrees"
+        ),
     )
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
