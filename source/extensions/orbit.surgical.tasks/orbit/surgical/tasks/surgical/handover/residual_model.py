@@ -157,6 +157,7 @@ class HandoverAnalyticController(nn.Module):
         )
         self.transport_custody_latch_enabled = True
         self.receiver_preposition_enabled = True
+        self.receiver_preposition_translation_enabled = True
         self.receiver_preposition_height = 0.025
         self.recovery_receiver_preposition_height = 0.025
         self.receiver_preposition_action_limit = 0.15
@@ -1550,6 +1551,13 @@ class HandoverAnalyticController(nn.Module):
                 )
             )
         )
+        receiver_preposition_translation_active = (
+            receiver_preposition_active
+            & torch.full_like(
+                receiver_preposition_active,
+                self.receiver_preposition_translation_enabled,
+            )
+        )
         receiver_approach_shaft_guard_eligible = (
             receiver_shaft_guard_context & receiver_approach_active
         )
@@ -1596,9 +1604,9 @@ class HandoverAnalyticController(nn.Module):
         )
         receiver_preposition_shaft_guard_eligible = (
             receiver_shaft_guard_context
-            & receiver_preposition_active
+            & receiver_preposition_translation_active
             & torch.full_like(
-                receiver_preposition_active,
+                receiver_preposition_translation_active,
                 self.receiver_shaft_guard_preposition_enabled,
             )
         )
@@ -1619,9 +1627,9 @@ class HandoverAnalyticController(nn.Module):
         )
         receiver_preposition_distal_tool_guard_eligible = (
             receiver_distal_tool_guard_context
-            & receiver_preposition_active
+            & receiver_preposition_translation_active
             & torch.full_like(
-                receiver_preposition_active,
+                receiver_preposition_translation_active,
                 self.receiver_shaft_guard_preposition_enabled,
             )
         )
@@ -1733,7 +1741,7 @@ class HandoverAnalyticController(nn.Module):
             receiver_approach_active.unsqueeze(-1),
             receiver_approach,
             torch.where(
-                receiver_preposition_active.unsqueeze(-1),
+                receiver_preposition_translation_active.unsqueeze(-1),
                 receiver_preposition,
                 torch.zeros_like(receiver_approach),
             ),

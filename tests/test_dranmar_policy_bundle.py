@@ -93,6 +93,7 @@ def test_versioned_v23_bundle_and_controller_profile_are_self_consistent():
     assert profile["values"]["receiver_shaft_guard_preposition_enabled"] is False
     assert profile["values"]["receiver_distal_tool_guard_enabled"] is False
     assert profile["values"]["receiver_swept_tool_guard_enabled"] is False
+    assert profile["values"]["receiver_preposition_translation_enabled"] is True
     assert profile["values"]["custody_quality_minimum_transport_scale"] == 0.20
     assert profile["values"]["custody_quality_axial_centering_enabled"] is False
     frontier = PROFILES.controller_profile("frontier-hardening-v24")
@@ -105,6 +106,10 @@ def test_versioned_v23_bundle_and_controller_profile_are_self_consistent():
     assert frontier["values"]["receiver_shaft_guard_preposition_enabled"] is True
     assert frontier["values"]["receiver_distal_tool_guard_enabled"] is True
     assert frontier["values"]["receiver_swept_tool_guard_enabled"] is True
+    assert (
+        frontier["values"]["receiver_preposition_translation_enabled"]
+        is False
+    )
     assert (
         frontier["values"]["receiver_distal_tool_guard_minimum_distance_m"]
         == 0.008

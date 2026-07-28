@@ -44,6 +44,7 @@ _V23_VALUES: dict[str, bool | float | int] = {
     "receiver_swept_tool_guard_enabled": False,
     "transport_custody_latch_enabled": True,
     "receiver_preposition_enabled": True,
+    "receiver_preposition_translation_enabled": True,
     "receiver_preposition_height": 0.025,
     "recovery_receiver_preposition_height": 0.025,
     "receiver_preposition_action_limit": 0.15,
@@ -124,6 +125,9 @@ _PROFILE_VALUES: dict[str, dict[str, bool | float | int]] = {
         # motion of both tools. Evaluate the combined SE(3) command and retain
         # the least-modified collision-safe two-tool motion pair.
         "receiver_swept_tool_guard_enabled": True,
+        # Preorient while the giver transports, but do not translate the
+        # receiver into the custody-bearing arm's presentation corridor.
+        "receiver_preposition_translation_enabled": False,
         # A two-jaw grasp can be usable while briefly asymmetric.  This score
         # slows transport before physical custody is lost; it does not create
         # contact, success, or permission to open the giver.

@@ -15,7 +15,7 @@
   },
   "controller_profile": {
     "name": "joint-transfer-v23",
-    "sha256": "19fc48b94ed81dbb61c26812cbcde334f9151650dbf1ce05d761f271e962f078"
+    "sha256": "ce96cda8630efcbbaef9339969f1e4a7551db34bc3095671c848c8bebdcdaa31"
   },
   "runtime_expectations": {
     "model_class": "EndToEndHandoverMLPModel",
@@ -31,7 +31,7 @@
     },
     "controller_fields": {
       "controller_profile_name": "joint-transfer-v23",
-      "controller_profile_sha256": "19fc48b94ed81dbb61c26812cbcde334f9151650dbf1ce05d761f271e962f078",
+      "controller_profile_sha256": "ce96cda8630efcbbaef9339969f1e4a7551db34bc3095671c848c8bebdcdaa31",
       "giver_recovery_residual_only_for_learning": true,
       "canonical_needle_local_frames_enabled": false,
       "custody_quality_features_enabled": false,
@@ -59,5 +59,5 @@
     "policy_runtime_contract_sha256": "24573269a390b74085bba246de712f009416b709b0f2ea7ee31c6b5ecf73bc7c",
     "environment_runtime_contract_sha256": "655b1c0b3e2c56bda2e2c1a292283d9176833e93b19454fa88d1eae2ff3e3e9a"
   },
-  "contract_sha256": "4b677efb0565558d25d938a734babfddad5524540eb9988a21662aa83b7f978c"
+  "contract_sha256": "a4c6a0de81d8382548cc6b5dca713a01aca613627135f008a818bfad5e86c834"
 }

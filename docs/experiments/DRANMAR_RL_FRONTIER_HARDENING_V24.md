@@ -134,6 +134,12 @@ nominal action. Receiver motion is modified before custody-bearing giver
 motion when either choice is safe. This is a bounded local safety layer, not a
 claim that it replaces global cuRobo/cuMotion planning.
 
+Receiver preorientation and translation are separate in v24. The receiver may
+rotate in place while the giver transports, subject to the same swept safety
+projection, but it does not translate into the presentation corridor until
+the giver establishes a stable presentation. The final receiver approach then
+uses the existing geometric waypoint and acquisition controller.
+
 ### Causal audit after guarded preposition
 
 The seed-17, 256-environment, 1,200-frame zero-residual baseline at commit
@@ -150,6 +156,15 @@ and the collision barrier must cover receiver orientation sweep. The evidence
 is retained under
 `output/frontier-hardening-v24/nominal-baseline-distal-custody-stop-seed17`
 on Numi. It is rejected evidence, not a promoted policy.
+
+A later two-tool swept-action diagnostic reduced safety terminations from 21
+to 1 and sustained mid-air losses from 120 to 72, but it also reduced retained
+success to 5/256. Telemetry showed why: the guard stopped giver motion in 103
+environments after concurrent receiver prepositioning had already occupied
+the presentation corridor. That run is retained under
+`output/frontier-hardening-v24/nominal-baseline-two-tool-swept-seed17` and is
+also rejected. The sequenced preorientation contract removes the causal
+conflict rather than weakening the collision threshold.
 
 ### The new residual is narrow and exact-zero
 
