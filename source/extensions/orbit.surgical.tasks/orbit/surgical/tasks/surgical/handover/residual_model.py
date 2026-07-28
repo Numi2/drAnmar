@@ -370,7 +370,7 @@ class HandoverAnalyticController(nn.Module):
         giver_carry_mode = (
             ((phase >= 1) & (phase <= 2))
             | ((phase == 0) & self.giver_lift_on_live_contact)
-        )
+        ).bool()
         giver_transport_active = giver_carry_mode & torch.where(
             phase <= 1,
             giver_pre_lift_contact,
