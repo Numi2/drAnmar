@@ -38,6 +38,21 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert len(collider_attribution["rejected_instrumentation"]) == 3
     assert "policy_actions" in collider_attribution["unchanged"]
     assert "rewards" in collider_attribution["unchanged"]
+    shaft_guard = contract["recovery_receiver_shaft_guard_v23"]
+    assert shaft_guard["status"] == "promoted_new_exact_seed_frontier"
+    assert shaft_guard["geometry_contract"]["minimum_distance_m"] == 0.015
+    shaft_scale = shaft_guard["scale_result"]
+    shaft_evidence_path = ROOT / shaft_scale["evidence_path"]
+    assert shaft_scale["successes"] == 1166
+    assert shaft_scale["protected_surface_events"] == 3
+    assert hashlib.sha256(shaft_evidence_path.read_bytes()).hexdigest() == (
+        shaft_scale["evidence_sha256"]
+    )
+    shaft_evidence = json.loads(shaft_evidence_path.read_text())
+    assert shaft_evidence["successful_episodes"] == 1166
+    assert shaft_evidence["failure_distribution"][
+        "protected_surface_force"
+    ] == 3
     baseline = contract["known_good_baseline"]
     baseline_path = ROOT / baseline["evidence_path"]
     assert baseline["retained_handover_success"] == 14

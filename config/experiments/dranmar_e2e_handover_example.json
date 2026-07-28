@@ -838,7 +838,7 @@
     "qualification_boundary": "rejected_no_measurable_effect_at_scale"
   },
   "protected_contact_collider_attribution_v22": {
-    "status": "pre_reset_geometric_attribution_implemented_awaiting_exact_runtime_evaluation",
+    "status": "complete_receiver_jaw_crosses_giver_insertion_shaft",
     "purpose": "resolve_the_remaining_receiver_non_object_force_into_counterpart_psm_collision_geometry_or_support_table_before_any_further_control_change",
     "backend_contract": "native_contact_force_vector_plus_pre_reset_rigid_body_poses",
     "capture_point": "same_control_step_as_the_pre_reset_hard_termination",
@@ -873,11 +873,72 @@
       "select_narrow_control_fix_only_from_dominant_geometric_evidence"
     ],
     "interpretation_boundary": "body_origin_proximity_is_diagnostic_geometry_not_direct_collider_identity",
+    "exact_runtime_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "successes": 1164,
+      "protected_surface_events": 5,
+      "support_table_events": 0,
+      "post_lift_receiver_to_giver_shaft_or_distal_tool_events": 4,
+      "pre_lift_inter_jaw_events": 1
+    },
     "qualification_boundary": "diagnostics_must_preserve_the_1164_of_2000_outcome_and_geometrically_explain_all_five_protected_surface_terminals"
   },
+  "recovery_receiver_shaft_guard_v23": {
+    "status": "promoted_new_exact_seed_frontier",
+    "root_cause": "the_recovery_receiver_distal_jaw_segment_crossed_the_giver_main_insertion_shaft_behind_the_distal_needle_acquisition_zone",
+    "geometry_contract": {
+      "giver_protected_shaft_start_behind_tip_m": 0.025,
+      "activation_distance_m": 0.018,
+      "minimum_distance_m": 0.015,
+      "receiver_jaw_proximal_offset_m": 0.0093
+    },
+    "control_contract": "project_only_receiver_motion_directed_inward_toward_the_proximal_giver_shaft_and_preserve_tangential_motion",
+    "scope": [
+      "pickup_recovery_context",
+      "phase_2",
+      "proximal_giver_shaft_only"
+    ],
+    "unchanged": [
+      "checkpoint",
+      "rewards",
+      "success_definition",
+      "episode_deadline",
+      "hard_termination_limit",
+      "giver_control",
+      "first_attempt_receiver_control",
+      "distal_needle_acquisition_zone"
+    ],
+    "development_result": {
+      "seed": 2361,
+      "episodes": 600,
+      "successes": 391,
+      "recovered_successes": 33,
+      "protected_surface_events": 0,
+      "guard_activated_environments": 63
+    },
+    "scale_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "successes": 1166,
+      "recovered_successes": 135,
+      "pickup_attempts_exhausted": 138,
+      "lifted_without_receiver_acquisition": 681,
+      "stable_presentations": 1480,
+      "receiver_contacts": 1236,
+      "protected_surface_events": 3,
+      "drops": 0,
+      "excessive_object_force_events": 0,
+      "guard_activated_environments": 230,
+      "guard_active_steps": 623,
+      "evidence_path": "docs/experiments/evidence/recovery-shaft-guard-v23-seed2361-2000.json",
+      "evidence_sha256": "3b276d1427b46d8fec00b40641c115ad71c8731509301e408a74744df33c0b40"
+    },
+    "qualification": "passes_success_floor_1140_and_protected_surface_ceiling_4_with_zero_drop_and_excessive_object_force_failures"
+  },
   "current_recovery_frontier": {
-    "status": "performance_frontier_not_formally_promoted",
-    "controller": "v15_contact_qualified_recovery_transport_at_0.08",
+    "status": "promoted_exact_seed_performance_and_safety_frontier",
+    "controller": "v23_recovery_receiver_proximal_shaft_guard_over_v15_transport",
     "checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
     "development_result": {
       "seed": 2361,
@@ -891,19 +952,19 @@
     "scale_result": {
       "seed": 2361,
       "episodes": 2000,
-      "incumbent_successes": 1130,
-      "candidate_successes": 1164,
-      "incumbent_recovered_successes": 99,
-      "candidate_recovered_successes": 133,
-      "incumbent_lifted_without_receiver_acquisition": 708,
-      "candidate_lifted_without_receiver_acquisition": 676,
-      "incumbent_protected_surface_events": 2,
-      "candidate_protected_surface_events": 5,
+      "v15_successes": 1164,
+      "candidate_successes": 1166,
+      "v15_recovered_successes": 133,
+      "candidate_recovered_successes": 135,
+      "v15_pickup_attempts_exhausted": 144,
+      "candidate_pickup_attempts_exhausted": 138,
+      "v15_protected_surface_events": 5,
+      "candidate_protected_surface_events": 3,
       "drops": 0,
       "excessive_object_force_events": 0
     },
-    "promotion_blocker": "three_additional_protected_surface_events_exceed_the_two_event_0.001_noninferiority_allowance_by_one_event",
-    "next_required_evidence": "collider_level_receiver_jaw_vs_giver_tool_vs_support_surface_attribution"
+    "promotion_blocker": null,
+    "next_required_evidence": "multiseed_confirmation_before_generalization_claims"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",
