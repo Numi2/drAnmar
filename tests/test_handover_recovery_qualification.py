@@ -63,6 +63,8 @@ def _run(seed: int, *, candidate: bool) -> dict:
             {
                 "enabled": True,
                 "head_checkpoint": {"sha256": "pickup"},
+                "position_cap_m": 0.0025,
+                "orientation_cap_deg": 2.0,
                 "retry_count_by_environment": retry_counts,
                 "first_attempt_action_mismatches": 0,
                 "first_attempt_action_max_abs_difference": 0.0,
@@ -74,6 +76,8 @@ def _run(seed: int, *, candidate: bool) -> dict:
             {
                 "enabled": True,
                 "head_checkpoint": {"sha256": "receiver"},
+                "position_cap_m": 0.0025,
+                "orientation_cap_deg": 2.0,
                 "retry_count_by_environment": retry_counts,
                 "first_attempt_action_mismatches": 0,
                 "first_attempt_action_max_abs_difference": 0.0,

@@ -24,6 +24,11 @@ SAFETY_TERMS = (
     "object_dropping",
 )
 ZERO_TERMS = ("excessive_object_force", "object_dropping")
+ALLOWED_CORRECTION_CAPS = {
+    (0.0025, 2.0),
+    (0.004, 4.0),
+    (0.005, 5.0),
+}
 
 
 def _sha256(path: Path) -> str:
@@ -385,12 +390,28 @@ def qualify(
         run["runtime"]["source"]["asset_revision"]
         for run in all_candidate_runs
     }
+    pickup_caps = {
+        (
+            float(run["pickup_recovery"]["position_cap_m"]),
+            float(run["pickup_recovery"]["orientation_cap_deg"]),
+        )
+        for run in all_candidate_runs
+    }
+    receiver_caps = {
+        (
+            float(run["receiver_recovery"]["position_cap_m"]),
+            float(run["receiver_recovery"]["orientation_cap_deg"]),
+        )
+        for run in all_candidate_runs
+    }
     immutable_bundle = {
         "base_checkpoint_sha256": sorted(base_hashes),
         "pickup_head_sha256": sorted(pickup_hashes),
         "receiver_head_sha256": sorted(receiver_hashes),
         "controller_revisions": sorted(controller_revisions),
         "asset_revisions": sorted(asset_revisions),
+        "pickup_correction_caps": sorted(pickup_caps),
+        "receiver_correction_caps": sorted(receiver_caps),
     }
     gates.append(
         _gate(
@@ -403,9 +424,23 @@ def qualify(
                     receiver_hashes,
                     controller_revisions,
                     asset_revisions,
+                    pickup_caps,
+                    receiver_caps,
                 )
             ),
             bundle=immutable_bundle,
+        )
+    )
+    gates.append(
+        _gate(
+            "correction_caps_are_approved_and_frozen",
+            len(pickup_caps) == 1
+            and len(receiver_caps) == 1
+            and pickup_caps <= ALLOWED_CORRECTION_CAPS
+            and receiver_caps <= ALLOWED_CORRECTION_CAPS,
+            approved=sorted(ALLOWED_CORRECTION_CAPS),
+            pickup=sorted(pickup_caps),
+            receiver=sorted(receiver_caps),
         )
     )
     gates.append(
