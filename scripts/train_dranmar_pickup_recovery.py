@@ -107,7 +107,8 @@ def main(argv: list[str]) -> int:
         int((payload.get("attempts") or payload)["context"].shape[0])
         for payload in payloads
     )
-    successful_candidate_count = 0
+    safe_lift_candidate_count = 0
+    end_to_end_successful_candidate_count = 0
     positive_context_parts = []
     positive_correction_parts = []
     candidate_groups: dict[tuple[str, int], list[dict[str, object]]] = {}
@@ -132,7 +133,11 @@ def main(argv: list[str]) -> int:
             samples["recovered_custody"].bool()
             & samples["lifted"].bool(),
         ).bool()
-        successful_candidate_count += int(safe_lift.sum().item())
+        full_success = samples["full_success"].bool()
+        safe_lift_candidate_count += int(safe_lift.sum().item())
+        end_to_end_successful_candidate_count += int(
+            full_success.sum().item()
+        )
         state_index = samples.get(
             "state_index",
             torch.arange(payload_context.shape[0]),
@@ -175,6 +180,9 @@ def main(argv: list[str]) -> int:
                     "context": payload_context[sample_index],
                     "correction": payload_correction[sample_index],
                     "safe_lift": bool(safe_lift[sample_index].item()),
+                    "full_success": bool(
+                        full_success[sample_index].item()
+                    ),
                     "peak_force": float(
                         peak_force[sample_index].amax().item()
                     ),
@@ -303,7 +311,7 @@ def main(argv: list[str]) -> int:
         successful = [
             candidate
             for candidate in candidates
-            if candidate["safe_lift"]
+            if candidate["full_success"]
         ]
         if not successful:
             continue
@@ -335,7 +343,8 @@ def main(argv: list[str]) -> int:
         positive_correction = torch.empty(0, PickupRecoveryHead.output_dim)
     if positive_context.shape[0] < 32:
         raise ValueError(
-            "at least 32 distinct safe-lift recovery states are required"
+            "at least 32 distinct end-to-end successful recovery states "
+            "are required"
         )
     normalized_target = torch.cat(
         (
@@ -428,14 +437,17 @@ def main(argv: list[str]) -> int:
         "position_cap_m": position_cap,
         "orientation_cap_rad": orientation_cap,
         "training": {
-            "algorithm": "successful_offset_behavior_cloning",
+            "algorithm": "end_to_end_successful_offset_behavior_cloning",
             "seed": args.seed,
             "epochs": args.epochs,
             "batch_size": args.batch_size,
             "learning_rate": args.learning_rate,
             "weight_decay": args.weight_decay,
             "dataset_samples": total_samples,
-            "successful_candidates": successful_candidate_count,
+            "safe_lift_candidates": safe_lift_candidate_count,
+            "end_to_end_successful_candidates": (
+                end_to_end_successful_candidate_count
+            ),
             "successful_demonstrations": int(
                 positive_context.shape[0]
             ),
