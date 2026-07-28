@@ -125,12 +125,14 @@ valid needle-acquisition corridor. Exact segment crossings use a stable
 receiver-side separating normal, so a zero-distance intersection cannot
 silently produce a zero correction.
 
-Translation projection alone is insufficient because the receiver translates
-and rotates in the same relative-IK action. v24 samples the combined giver and
-receiver SE(3) step at its midpoint and endpoint, then keeps the largest of
-the full, half, or zero receiver-orientation commands that preserves both
-capsule clearances. This is a bounded local safety layer, not a claim that it
-replaces global cuRobo/cuMotion planning.
+Translation projection alone is insufficient because both tools translate
+while the receiver also rotates in the same relative-IK step. v24 samples the
+combined giver and receiver SE(3) step at its midpoint and endpoint. It tests
+the Cartesian product of full, half, and zero motion for both tools, then
+chooses the collision-safe pair with the least weighted deviation from the
+nominal action. Receiver motion is modified before custody-bearing giver
+motion when either choice is safe. This is a bounded local safety layer, not a
+claim that it replaces global cuRobo/cuMotion planning.
 
 ### Causal audit after guarded preposition
 

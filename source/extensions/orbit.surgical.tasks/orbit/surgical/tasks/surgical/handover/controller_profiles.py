@@ -120,9 +120,9 @@ _PROFILE_VALUES: dict[str, dict[str, bool | float | int]] = {
         # Cover that distinct 10--25 mm region with its own asset-sized
         # capsule while leaving the needle-acquisition corridor at the tip.
         "receiver_distal_tool_guard_enabled": True,
-        # Translation-only projection cannot protect against a simultaneous
-        # receiver orientation sweep. Evaluate the combined SE(3) command and
-        # retain the largest collision-safe orientation fraction.
+        # Translation-only projection cannot protect against simultaneous
+        # motion of both tools. Evaluate the combined SE(3) command and retain
+        # the least-modified collision-safe two-tool motion pair.
         "receiver_swept_tool_guard_enabled": True,
         # A two-jaw grasp can be usable while briefly asymmetric.  This score
         # slows transport before physical custody is lost; it does not create

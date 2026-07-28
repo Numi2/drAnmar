@@ -126,12 +126,17 @@ class HandoverAnalyticController(nn.Module):
             persistent=False,
         )
         self.register_buffer(
-            "last_receiver_swept_orientation_scale",
+            "last_receiver_swept_motion_scale",
             torch.empty(0),
             persistent=False,
         )
         self.register_buffer(
-            "receiver_swept_guard_orientation_scales",
+            "last_giver_swept_motion_scale",
+            torch.empty(0),
+            persistent=False,
+        )
+        self.register_buffer(
+            "receiver_swept_guard_motion_scales",
             torch.tensor((1.0, 0.5, 0.0)),
             persistent=False,
         )
@@ -528,7 +533,7 @@ class HandoverAnalyticController(nn.Module):
             torch.linalg.vector_norm(receiver_from_distal, dim=-1),
         )
 
-    def _collision_safe_receiver_orientation_scale(
+    def _collision_safe_intertool_motion_scales(
         self,
         *,
         giver_ee: torch.Tensor,
@@ -540,55 +545,75 @@ class HandoverAnalyticController(nn.Module):
         current_shaft_distance: torch.Tensor,
         current_distal_distance: torch.Tensor,
         eligible: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Select the largest sampled orientation fraction with safe swept clearance."""
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Select the least-modified safe two-tool motion pair."""
         count = giver_ee.shape[0]
-        orientation_scales = (
-            self.receiver_swept_guard_orientation_scales.to(
-                dtype=giver_ee.dtype,
-                device=giver_ee.device,
-            )
+        motion_scales = self.receiver_swept_guard_motion_scales.to(
+            dtype=giver_ee.dtype,
+            device=giver_ee.device,
         )
         time_fractions = self.receiver_swept_guard_time_fractions.to(
             dtype=giver_ee.dtype,
             device=giver_ee.device,
         )
-        candidate_count = orientation_scales.numel()
+        candidate_count = motion_scales.numel()
         sample_count = time_fractions.numel()
-        time_grid = time_fractions.view(1, 1, sample_count, 1)
-        orientation_grid = orientation_scales.view(
+        time_grid = time_fractions.view(1, 1, 1, sample_count, 1)
+        receiver_scale_grid = motion_scales.view(
+            1,
+            candidate_count,
+            1,
+            1,
+            1,
+        )
+        giver_scale_grid = motion_scales.view(
+            1,
             1,
             candidate_count,
             1,
             1,
         )
         sampled_giver_ee = (
-            giver_ee[:, None, None, :]
+            giver_ee[:, None, None, None, :]
             + time_grid
-            * giver_translation[:, None, None, :]
+            * giver_scale_grid
+            * giver_translation[:, None, None, None, :]
             * self.position_scale
-        ).expand(-1, candidate_count, -1, -1)
+        ).expand(-1, candidate_count, -1, -1, -1)
         sampled_receiver_ee = (
-            receiver_ee_in_giver[:, None, None, :]
+            receiver_ee_in_giver[:, None, None, None, :]
             + time_grid
-            * receiver_translation[:, None, None, :]
+            * receiver_scale_grid
+            * receiver_translation[:, None, None, None, :]
             * self.position_scale
-        ).expand(-1, candidate_count, -1, -1)
+        ).expand(-1, -1, candidate_count, -1, -1)
         sampled_axis_angle = (
-            receiver_orientation_action[:, None, None, :]
+            receiver_orientation_action[:, None, None, None, :]
             * self.orientation_scale
-            * orientation_grid
+            * receiver_scale_grid
             * time_grid
-        )
+        ).expand(-1, -1, candidate_count, -1, -1)
         sampled_delta_orientation = self._quaternion_from_axis_angle(
             sampled_axis_angle
         )
         sampled_receiver_orientation = quat_mul(
             sampled_delta_orientation.reshape(-1, 4),
-            receiver_orientation[:, None, None, :]
-            .expand(-1, candidate_count, sample_count, -1)
+            receiver_orientation[:, None, None, None, :]
+            .expand(
+                -1,
+                candidate_count,
+                candidate_count,
+                sample_count,
+                -1,
+            )
             .reshape(-1, 4),
-        ).reshape(count, candidate_count, sample_count, 4)
+        ).reshape(
+            count,
+            candidate_count,
+            candidate_count,
+            sample_count,
+            4,
+        )
         sampled_shaft_distance, sampled_distal_distance = (
             self._receiver_tool_capsule_distances(
                 sampled_giver_ee,
@@ -612,32 +637,56 @@ class HandoverAnalyticController(nn.Module):
         )
         candidate_safe = (
             sampled_shaft_distance
-            >= required_shaft_distance[:, None, None] - 1.0e-6
+            >= required_shaft_distance[:, None, None, None] - 1.0e-6
         )
         if self.receiver_distal_tool_guard_enabled:
             candidate_safe &= (
                 sampled_distal_distance
-                >= required_distal_distance[:, None, None] - 1.0e-6
+                >= required_distal_distance[:, None, None, None] - 1.0e-6
             )
         candidate_safe = candidate_safe.all(dim=-1)
-        any_safe = candidate_safe.any(dim=-1)
-        selected_index = torch.argmax(
-            candidate_safe.to(dtype=torch.int64),
+        receiver_cost = (
+            1.0 - motion_scales[:, None]
+        ).square()
+        giver_cost = 2.0 * (
+            1.0 - motion_scales[None, :]
+        ).square()
+        candidate_cost = receiver_cost + giver_cost
+        safe_cost = torch.where(
+            candidate_safe,
+            candidate_cost.unsqueeze(0),
+            torch.full_like(candidate_safe, torch.inf, dtype=giver_ee.dtype),
+        )
+        flattened_safe_cost = safe_cost.reshape(count, -1)
+        selected_index = torch.argmin(
+            flattened_safe_cost,
             dim=-1,
         )
-        selected_scale = orientation_scales[selected_index]
-        selected_scale = torch.where(
-            any_safe,
-            selected_scale,
-            torch.zeros_like(selected_scale),
-        )
-        selected_scale = torch.where(
+        receiver_candidate_scale = motion_scales[:, None].expand(
+            candidate_count,
+            candidate_count,
+        ).reshape(-1)
+        giver_candidate_scale = motion_scales[None, :].expand(
+            candidate_count,
+            candidate_count,
+        ).reshape(-1)
+        selected_receiver_scale = receiver_candidate_scale[selected_index]
+        selected_giver_scale = giver_candidate_scale[selected_index]
+        selected_receiver_scale = torch.where(
             eligible,
-            selected_scale,
-            torch.ones_like(selected_scale),
+            selected_receiver_scale,
+            torch.ones_like(selected_receiver_scale),
         )
-        active = eligible & (selected_scale < 1.0 - 1.0e-6)
-        return selected_scale, active
+        selected_giver_scale = torch.where(
+            eligible,
+            selected_giver_scale,
+            torch.ones_like(selected_giver_scale),
+        )
+        active = eligible & (
+            (selected_receiver_scale < 1.0 - 1.0e-6)
+            | (selected_giver_scale < 1.0 - 1.0e-6)
+        )
+        return selected_receiver_scale, selected_giver_scale, active
 
     def _select_role(
         self,
@@ -1883,9 +1932,10 @@ class HandoverAnalyticController(nn.Module):
         )
         if self.receiver_swept_tool_guard_enabled:
             (
-                receiver_swept_orientation_scale,
+                receiver_swept_motion_scale,
+                giver_swept_motion_scale,
                 receiver_swept_tool_guard_active,
-            ) = self._collision_safe_receiver_orientation_scale(
+            ) = self._collision_safe_intertool_motion_scales(
                 giver_ee=giver_ee,
                 receiver_ee_in_giver=receiver_ee_in_giver,
                 receiver_orientation=receiver_orientation,
@@ -1897,20 +1947,29 @@ class HandoverAnalyticController(nn.Module):
                 eligible=receiver_swept_tool_guard_eligible,
             )
         else:
-            receiver_swept_orientation_scale = torch.ones_like(
+            receiver_swept_motion_scale = torch.ones_like(
+                receiver_shaft_distance
+            )
+            giver_swept_motion_scale = torch.ones_like(
                 receiver_shaft_distance
             )
             receiver_swept_tool_guard_active = torch.zeros_like(
                 receiver_shaft_guard_context
             )
+        receiver_translation *= receiver_swept_motion_scale.unsqueeze(-1)
         receiver_orientation_action *= (
-            receiver_swept_orientation_scale.unsqueeze(-1)
+            receiver_swept_motion_scale.unsqueeze(-1)
         )
+        giver_translation *= giver_swept_motion_scale.unsqueeze(-1)
+        giver_orientation_action *= giver_swept_motion_scale.unsqueeze(-1)
         self.last_receiver_swept_tool_guard_active = (
             receiver_swept_tool_guard_active.detach()
         )
-        self.last_receiver_swept_orientation_scale = (
-            receiver_swept_orientation_scale.detach()
+        self.last_receiver_swept_motion_scale = (
+            receiver_swept_motion_scale.detach()
+        )
+        self.last_giver_swept_motion_scale = (
+            giver_swept_motion_scale.detach()
         )
         self.last_recovery_receiver_shaft_guard_active = (
             self.last_recovery_receiver_shaft_guard_active

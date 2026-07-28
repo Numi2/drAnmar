@@ -6372,7 +6372,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "ever_receiver_swept_tool_guard_active": torch.zeros_like(
                 first_unresolved
             ),
-            "minimum_receiver_swept_orientation_scale": torch.ones(
+            "minimum_receiver_swept_motion_scale": torch.ones(
+                env.unwrapped.num_envs,
+                device=env.unwrapped.device,
+            ),
+            "minimum_giver_swept_motion_scale": torch.ones(
                 env.unwrapped.num_envs,
                 device=env.unwrapped.device,
             ),
@@ -7575,9 +7579,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "last_receiver_swept_tool_guard_active",
                         None,
                     )
-                    swept_orientation_scale = getattr(
+                    receiver_swept_motion_scale = getattr(
                         controller,
-                        "last_receiver_swept_orientation_scale",
+                        "last_receiver_swept_motion_scale",
+                        None,
+                    )
+                    giver_swept_motion_scale = getattr(
+                        controller,
+                        "last_giver_swept_motion_scale",
                         None,
                     )
                     if (
@@ -7677,7 +7686,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         )
                     if (
                         swept_tool_guard_active is not None
-                        and swept_orientation_scale is not None
+                        and receiver_swept_motion_scale is not None
+                        and giver_swept_motion_scale is not None
                     ):
                         counted_swept_tool_guard = (
                             was_first_unresolved
@@ -7690,22 +7700,42 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             "ever_receiver_swept_tool_guard_active"
                         ] |= counted_swept_tool_guard
                         first_handover_history[
-                            "minimum_receiver_swept_orientation_scale"
+                            "minimum_receiver_swept_motion_scale"
                         ] = torch.where(
                             was_first_unresolved,
                             torch.minimum(
                                 first_handover_history[
                                     (
                                         "minimum_receiver_swept_"
-                                        "orientation_scale"
+                                        "motion_scale"
                                     )
                                 ],
-                                swept_orientation_scale,
+                                receiver_swept_motion_scale,
                             ),
                             first_handover_history[
                                 (
                                     "minimum_receiver_swept_"
-                                    "orientation_scale"
+                                    "motion_scale"
+                                )
+                            ],
+                        )
+                        first_handover_history[
+                            "minimum_giver_swept_motion_scale"
+                        ] = torch.where(
+                            was_first_unresolved,
+                            torch.minimum(
+                                first_handover_history[
+                                    (
+                                        "minimum_giver_swept_"
+                                        "motion_scale"
+                                    )
+                                ],
+                                giver_swept_motion_scale,
+                            ),
+                            first_handover_history[
+                                (
+                                    "minimum_giver_swept_"
+                                    "motion_scale"
                                 )
                             ],
                         )
@@ -9720,12 +9750,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 .sum()
                                 .item()
                             ),
-                            "minimum_orientation_scale": (
+                            "minimum_receiver_motion_scale": (
                                 handover_scalar_quantiles(
                                     first_handover_history[
                                         (
                                             "minimum_receiver_swept_"
-                                            "orientation_scale"
+                                            "motion_scale"
+                                        )
+                                    ][first_completed]
+                                )
+                            ),
+                            "minimum_giver_motion_scale": (
+                                handover_scalar_quantiles(
+                                    first_handover_history[
+                                        (
+                                            "minimum_giver_swept_"
+                                            "motion_scale"
                                         )
                                     ][first_completed]
                                 )

@@ -471,8 +471,8 @@ def _assert_finite_segment_collision_geometry(
         dtype=dtype,
         device=device,
     )
-    inward_scale, swept_active = (
-        controller._collision_safe_receiver_orientation_scale(
+    inward_receiver_scale, inward_giver_scale, swept_active = (
+        controller._collision_safe_intertool_motion_scales(
             giver_ee=giver_ee,
             receiver_ee_in_giver=receiver_ee,
             receiver_orientation=identity_orientation,
@@ -484,12 +484,15 @@ def _assert_finite_segment_collision_geometry(
             eligible=torch.ones(1, dtype=torch.bool, device=device),
         )
     )
-    if not bool(swept_active.item()) or float(inward_scale.item()) >= 1.0:
+    if (
+        not bool(swept_active.item())
+        or float(inward_receiver_scale.item()) >= 1.0
+    ):
         raise AssertionError(
             "swept guard retained a full unsafe orientation command"
         )
-    outward_scale, outward_active = (
-        controller._collision_safe_receiver_orientation_scale(
+    outward_receiver_scale, outward_giver_scale, outward_active = (
+        controller._collision_safe_intertool_motion_scales(
             giver_ee=giver_ee,
             receiver_ee_in_giver=receiver_ee,
             receiver_orientation=identity_orientation,
@@ -502,8 +505,11 @@ def _assert_finite_segment_collision_geometry(
         )
     )
     if bool(outward_active.item()) or not torch.allclose(
-        outward_scale,
-        torch.ones_like(outward_scale),
+        outward_receiver_scale,
+        torch.ones_like(outward_receiver_scale),
+    ) or not torch.allclose(
+        outward_giver_scale,
+        torch.ones_like(outward_giver_scale),
     ):
         raise AssertionError(
             "swept guard altered an orientation command that increases clearance"
@@ -542,8 +548,14 @@ def _assert_finite_segment_collision_geometry(
         "crossing_projected_inward_action": float(
             projected_inward_action.item()
         ),
-        "unsafe_orientation_scale": float(inward_scale.item()),
-        "safe_orientation_scale": float(outward_scale.item()),
+        "unsafe_receiver_motion_scale": float(
+            inward_receiver_scale.item()
+        ),
+        "unsafe_giver_motion_scale": float(inward_giver_scale.item()),
+        "safe_receiver_motion_scale": float(
+            outward_receiver_scale.item()
+        ),
+        "safe_giver_motion_scale": float(outward_giver_scale.item()),
     }
 
 
