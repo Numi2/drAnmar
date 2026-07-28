@@ -139,6 +139,8 @@ def _failure_stratified_receiver_sources(
             len(nonempty_strata),
             device=target_env_ids.device,
         )
+        if not bool(target_positions.numel()):
+            continue
         candidates = available[stratum == stratum_value]
         weights = cache["source_failure_priority"][
             candidates
