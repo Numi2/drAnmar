@@ -3384,6 +3384,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             return _fail(
                 "replayed Sobol candidates require a stable sweep id"
             )
+    if args.pickup_recovery_local_sobol_candidate is not None:
+        if not 0 <= args.pickup_recovery_local_sobol_candidate < 32:
+            return _fail(
+                "local pickup Sobol candidate must be in [0, 31]"
+            )
+        if not args.pickup_recovery_checkpoint:
+            return _fail(
+                "local pickup DAgger search requires a recovery checkpoint"
+            )
+        if not args.pickup_recovery_sweep_id:
+            return _fail(
+                "local pickup DAgger candidates require a stable sweep id"
+            )
     if args.pickup_recovery_sweep_replicas > 1:
         if not args.pickup_recovery_random_corrections:
             return _fail(
@@ -3411,6 +3424,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if not args.receiver_recovery_sweep_id:
             return _fail(
                 "replayed receiver Sobol candidates require a stable sweep id"
+            )
+    if args.receiver_recovery_local_sobol_candidate is not None:
+        if not 0 <= args.receiver_recovery_local_sobol_candidate < 32:
+            return _fail(
+                "local receiver Sobol candidate must be in [0, 31]"
+            )
+        if not args.receiver_recovery_checkpoint:
+            return _fail(
+                "local receiver DAgger search requires a recovery checkpoint"
+            )
+        if not args.receiver_recovery_sweep_id:
+            return _fail(
+                "local receiver DAgger candidates require a stable sweep id"
             )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
@@ -3621,6 +3647,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 bool(args.pickup_recovery_fixed_correction),
                 bool(args.pickup_recovery_random_corrections),
                 args.pickup_recovery_sobol_candidate is not None,
+                args.pickup_recovery_local_sobol_candidate is not None,
             )
         )
         > 1
@@ -3635,6 +3662,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.pickup_recovery_fixed_correction
         or args.pickup_recovery_random_corrections
         or args.pickup_recovery_sobol_candidate is not None
+        or args.pickup_recovery_local_sobol_candidate is not None
     ):
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
             HandoverPickupRecoveryPolicy,
@@ -3736,6 +3764,53 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
             correction[3:] = torch.deg2rad(correction[3:])
             pickup_recovery_policy.set_fixed_correction(correction)
+        elif args.pickup_recovery_local_sobol_candidate is not None:
+            if not (
+                0.0
+                < args.pickup_recovery_local_position_radius
+                <= args.pickup_recovery_position_cap
+            ):
+                env.close()
+                return _fail(
+                    "local pickup position radius must be inside the cap"
+                )
+            if not (
+                0.0
+                < args.pickup_recovery_local_orientation_radius_deg
+                <= args.pickup_recovery_orientation_cap_deg
+            ):
+                env.close()
+                return _fail(
+                    "local pickup orientation radius must be inside the cap"
+                )
+            local_sobol = torch.quasirandom.SobolEngine(
+                dimension=6,
+                scramble=True,
+                seed=args.seed + 17,
+            )
+            local_normalized = torch.cat(
+                (
+                    torch.zeros(1, 6),
+                    2.0 * local_sobol.draw(31) - 1.0,
+                ),
+                dim=0,
+            ).to(env.unwrapped.device)
+            local_corrections = torch.cat(
+                (
+                    local_normalized[:, :3]
+                    * args.pickup_recovery_local_position_radius,
+                    local_normalized[:, 3:]
+                    * math.radians(
+                        args.pickup_recovery_local_orientation_radius_deg
+                    ),
+                ),
+                dim=-1,
+            )
+            pickup_recovery_policy.set_fixed_correction_delta(
+                local_corrections[
+                    args.pickup_recovery_local_sobol_candidate
+                ].expand(env.unwrapped.num_envs, -1)
+            )
         elif (
             args.pickup_recovery_random_corrections
             or args.pickup_recovery_sobol_candidate is not None
@@ -3807,6 +3882,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 bool(args.receiver_recovery_fixed_correction),
                 bool(args.receiver_recovery_random_corrections),
                 args.receiver_recovery_sobol_candidate is not None,
+                args.receiver_recovery_local_sobol_candidate is not None,
             )
         )
         > 1
@@ -3821,6 +3897,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.receiver_recovery_fixed_correction
         or args.receiver_recovery_random_corrections
         or args.receiver_recovery_sobol_candidate is not None
+        or args.receiver_recovery_local_sobol_candidate is not None
     ):
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
             HandoverReceiverRecoveryPolicy,
@@ -3948,6 +4025,53 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
             correction[3:] = torch.deg2rad(correction[3:])
             receiver_recovery_policy.set_fixed_correction(correction)
+        elif args.receiver_recovery_local_sobol_candidate is not None:
+            if not (
+                0.0
+                < args.receiver_recovery_local_position_radius
+                <= args.receiver_recovery_position_cap
+            ):
+                env.close()
+                return _fail(
+                    "local receiver position radius must be inside the cap"
+                )
+            if not (
+                0.0
+                < args.receiver_recovery_local_orientation_radius_deg
+                <= args.receiver_recovery_orientation_cap_deg
+            ):
+                env.close()
+                return _fail(
+                    "local receiver orientation radius must be inside the cap"
+                )
+            local_sobol = torch.quasirandom.SobolEngine(
+                dimension=6,
+                scramble=True,
+                seed=args.seed + 19,
+            )
+            local_normalized = torch.cat(
+                (
+                    torch.zeros(1, 6),
+                    2.0 * local_sobol.draw(31) - 1.0,
+                ),
+                dim=0,
+            ).to(env.unwrapped.device)
+            local_corrections = torch.cat(
+                (
+                    local_normalized[:, :3]
+                    * args.receiver_recovery_local_position_radius,
+                    local_normalized[:, 3:]
+                    * math.radians(
+                        args.receiver_recovery_local_orientation_radius_deg
+                    ),
+                ),
+                dim=-1,
+            )
+            receiver_recovery_policy.set_fixed_correction_delta(
+                local_corrections[
+                    args.receiver_recovery_local_sobol_candidate
+                ].expand(env.unwrapped.num_envs, -1)
+            )
         elif (
             args.receiver_recovery_random_corrections
             or args.receiver_recovery_sobol_candidate is not None
@@ -5897,6 +6021,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "sweep_replicas": sweep_replicas,
                     "sweep_id": args.pickup_recovery_sweep_id,
+                    "search_mode": (
+                        "dagger_local"
+                        if (
+                            args.pickup_recovery_local_sobol_candidate
+                            is not None
+                        )
+                        else "global_sobol"
+                        if args.pickup_recovery_sobol_candidate is not None
+                        else "grouped_approximate"
+                        if sweep_replicas > 1
+                        else "policy"
+                    ),
+                    "local_position_radius_m": (
+                        args.pickup_recovery_local_position_radius
+                        if (
+                            args.pickup_recovery_local_sobol_candidate
+                            is not None
+                        )
+                        else None
+                    ),
+                    "local_orientation_radius_rad": (
+                        math.radians(
+                            args.pickup_recovery_local_orientation_radius_deg
+                        )
+                        if (
+                            args.pickup_recovery_local_sobol_candidate
+                            is not None
+                        )
+                        else None
+                    ),
                     "num_envs": env.unwrapped.num_envs,
                     "environment_index": environment_index[
                         dataset_mask
@@ -5907,9 +6061,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "candidate_index": (
                         torch.full_like(
                             environment_index[dataset_mask],
-                            args.pickup_recovery_sobol_candidate,
+                            (
+                                args.pickup_recovery_local_sobol_candidate
+                                if (
+                                    args.pickup_recovery_local_sobol_candidate
+                                    is not None
+                                )
+                                else args.pickup_recovery_sobol_candidate
+                            ),
                         )
-                        if args.pickup_recovery_sobol_candidate is not None
+                        if (
+                            args.pickup_recovery_sobol_candidate is not None
+                            or (
+                                args.pickup_recovery_local_sobol_candidate
+                                is not None
+                            )
+                        )
                         else (
                             environment_index[dataset_mask]
                             % sweep_replicas
@@ -6042,6 +6209,34 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         args.receiver_recovery_orientation_cap_deg
                     ),
                     "sweep_id": args.receiver_recovery_sweep_id,
+                    "search_mode": (
+                        "dagger_local"
+                        if (
+                            args.receiver_recovery_local_sobol_candidate
+                            is not None
+                        )
+                        else "global_sobol"
+                        if args.receiver_recovery_sobol_candidate is not None
+                        else "policy"
+                    ),
+                    "local_position_radius_m": (
+                        args.receiver_recovery_local_position_radius
+                        if (
+                            args.receiver_recovery_local_sobol_candidate
+                            is not None
+                        )
+                        else None
+                    ),
+                    "local_orientation_radius_rad": (
+                        math.radians(
+                            args.receiver_recovery_local_orientation_radius_deg
+                        )
+                        if (
+                            args.receiver_recovery_local_sobol_candidate
+                            is not None
+                        )
+                        else None
+                    ),
                     "num_envs": env.unwrapped.num_envs,
                     "environment_index": environment_index[
                         dataset_mask
@@ -6052,11 +6247,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "candidate_index": (
                         torch.full_like(
                             environment_index[dataset_mask],
-                            args.receiver_recovery_sobol_candidate,
+                            (
+                                args.receiver_recovery_local_sobol_candidate
+                                if (
+                                    args.receiver_recovery_local_sobol_candidate
+                                    is not None
+                                )
+                                else args.receiver_recovery_sobol_candidate
+                            ),
                         )
                         if (
                             args.receiver_recovery_sobol_candidate
                             is not None
+                            or (
+                                args.receiver_recovery_local_sobol_candidate
+                                is not None
+                            )
                         )
                         else torch.zeros_like(
                             environment_index[dataset_mask]
@@ -6355,6 +6561,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "randomized_corrections": (
                         args.pickup_recovery_random_corrections
                         or args.pickup_recovery_sobol_candidate is not None
+                        or (
+                            args.pickup_recovery_local_sobol_candidate
+                            is not None
+                        )
                     ),
                     "sweep_replicas": (
                         args.pickup_recovery_sweep_replicas
@@ -6362,6 +6572,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "sweep_id": args.pickup_recovery_sweep_id,
                     "sobol_candidate": (
                         args.pickup_recovery_sobol_candidate
+                    ),
+                    "local_sobol_candidate": (
+                        args.pickup_recovery_local_sobol_candidate
+                    ),
+                    "local_position_radius_m": (
+                        args.pickup_recovery_local_position_radius
+                    ),
+                    "local_orientation_radius_deg": (
+                        args.pickup_recovery_local_orientation_radius_deg
                     ),
                     "dataset": pickup_recovery_dataset,
                     "first_attempt_failures": int(
@@ -6440,10 +6659,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "randomized_corrections": (
                         args.receiver_recovery_random_corrections
                         or args.receiver_recovery_sobol_candidate is not None
+                        or (
+                            args.receiver_recovery_local_sobol_candidate
+                            is not None
+                        )
                     ),
                     "sweep_id": args.receiver_recovery_sweep_id,
                     "sobol_candidate": (
                         args.receiver_recovery_sobol_candidate
+                    ),
+                    "local_sobol_candidate": (
+                        args.receiver_recovery_local_sobol_candidate
+                    ),
+                    "local_position_radius_m": (
+                        args.receiver_recovery_local_position_radius
+                    ),
+                    "local_orientation_radius_deg": (
+                        args.receiver_recovery_local_orientation_radius_deg
                     ),
                     "dataset": receiver_recovery_dataset,
                     "first_attempt_failures": int(
@@ -6669,6 +6901,17 @@ def _parser() -> argparse.ArgumentParser:
         default=1,
     )
     play.add_argument("--pickup_recovery_sobol_candidate", type=int)
+    play.add_argument("--pickup_recovery_local_sobol_candidate", type=int)
+    play.add_argument(
+        "--pickup_recovery_local_position_radius",
+        type=float,
+        default=0.001,
+    )
+    play.add_argument(
+        "--pickup_recovery_local_orientation_radius_deg",
+        type=float,
+        default=1.0,
+    )
     play.add_argument("--pickup_recovery_sweep_id")
     play.add_argument("--pickup_recovery_dataset")
     play.add_argument(
@@ -6693,6 +6936,17 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
     )
     play.add_argument("--receiver_recovery_sobol_candidate", type=int)
+    play.add_argument("--receiver_recovery_local_sobol_candidate", type=int)
+    play.add_argument(
+        "--receiver_recovery_local_position_radius",
+        type=float,
+        default=0.001,
+    )
+    play.add_argument(
+        "--receiver_recovery_local_orientation_radius_deg",
+        type=float,
+        default=1.0,
+    )
     play.add_argument("--receiver_recovery_sweep_id")
     play.add_argument("--receiver_recovery_dataset")
     play.add_argument("--benchmark_formatter", default="schema,json")

@@ -221,6 +221,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
 
         self._batch_size = 0
         self._fixed_correction: torch.Tensor | None = None
+        self._fixed_correction_delta: torch.Tensor | None = None
         self.retry_state = torch.empty(0, dtype=torch.long)
         self.retry_count = torch.empty(0, dtype=torch.long)
         self.episode_step = torch.empty(0, dtype=torch.long)
@@ -325,6 +326,24 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         if correction.ndim not in {1, 2} or correction.shape[-1] != 6:
             raise ValueError("fixed pickup recovery correction must end in 6")
         self._fixed_correction = correction.detach().clone()
+        self._fixed_correction_delta = None
+
+    def set_fixed_correction_delta(
+        self,
+        correction_delta: torch.Tensor | None,
+    ) -> None:
+        """Add a controlled local DAgger offset to the head prediction."""
+
+        if correction_delta is None:
+            self._fixed_correction_delta = None
+            return
+        if (
+            correction_delta.ndim not in {1, 2}
+            or correction_delta.shape[-1] != 6
+        ):
+            raise ValueError("fixed pickup correction delta must end in 6")
+        self._fixed_correction_delta = correction_delta.detach().clone()
+        self._fixed_correction = None
 
     def _select_role(
         self,
@@ -464,6 +483,18 @@ class HandoverPickupRecoveryPolicy(nn.Module):
                     "fixed correction batch does not match policy batch"
                 )
             proposed = fixed
+        elif self._fixed_correction_delta is not None:
+            fixed_delta = self._fixed_correction_delta.to(
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+            if fixed_delta.ndim == 1:
+                fixed_delta = fixed_delta.expand(raw.shape[0], -1)
+            if fixed_delta.shape[0] != raw.shape[0]:
+                raise ValueError(
+                    "fixed correction delta batch does not match policy batch"
+                )
+            proposed = proposed + fixed_delta
         projected = torch.cat(
             (
                 _project_vector(proposed[:, :3], self.position_cap_m),
@@ -946,6 +977,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
 
         self._batch_size = 0
         self._fixed_correction: torch.Tensor | None = None
+        self._fixed_correction_delta: torch.Tensor | None = None
         self.retry_state = torch.empty(0, dtype=torch.long)
         self.retry_count = torch.empty(0, dtype=torch.long)
         self.episode_step = torch.empty(0, dtype=torch.long)
@@ -1039,6 +1071,22 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         if correction.ndim not in {1, 2} or correction.shape[-1] != 6:
             raise ValueError("fixed receiver recovery correction must end in 6")
         self._fixed_correction = correction.detach().clone()
+        self._fixed_correction_delta = None
+
+    def set_fixed_correction_delta(
+        self,
+        correction_delta: torch.Tensor | None,
+    ) -> None:
+        if correction_delta is None:
+            self._fixed_correction_delta = None
+            return
+        if (
+            correction_delta.ndim not in {1, 2}
+            or correction_delta.shape[-1] != 6
+        ):
+            raise ValueError("fixed receiver correction delta must end in 6")
+        self._fixed_correction_delta = correction_delta.detach().clone()
+        self._fixed_correction = None
 
     def _select_role(
         self,
@@ -1188,6 +1236,18 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
                     "fixed receiver correction batch does not match policy"
                 )
             proposed = fixed
+        elif self._fixed_correction_delta is not None:
+            fixed_delta = self._fixed_correction_delta.to(
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+            if fixed_delta.ndim == 1:
+                fixed_delta = fixed_delta.expand(raw.shape[0], -1)
+            if fixed_delta.shape[0] != raw.shape[0]:
+                raise ValueError(
+                    "fixed receiver correction delta batch does not match policy"
+                )
+            proposed = proposed + fixed_delta
         projected = torch.cat(
             (
                 _project_vector(proposed[:, :3], self.position_cap_m),

@@ -344,6 +344,24 @@ case "${command}" in
                 "${DR_ANMAR_PICKUP_RECOVERY_SOBOL_CANDIDATE}"
             )
         fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_LOCAL_SOBOL_CANDIDATE:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_local_sobol_candidate
+                "${DR_ANMAR_PICKUP_RECOVERY_LOCAL_SOBOL_CANDIDATE}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_LOCAL_POSITION_RADIUS_M:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_local_position_radius
+                "${DR_ANMAR_PICKUP_RECOVERY_LOCAL_POSITION_RADIUS_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_LOCAL_ORIENTATION_RADIUS_DEG:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_local_orientation_radius_deg
+                "${DR_ANMAR_PICKUP_RECOVERY_LOCAL_ORIENTATION_RADIUS_DEG}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_SWEEP_ID:-}" ]]; then
             pickup_recovery_args+=(
                 --pickup_recovery_sweep_id
@@ -392,6 +410,24 @@ case "${command}" in
             pickup_recovery_args+=(
                 --receiver_recovery_sobol_candidate
                 "${DR_ANMAR_RECEIVER_RECOVERY_SOBOL_CANDIDATE}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_CANDIDATE:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_local_sobol_candidate
+                "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_SOBOL_CANDIDATE}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_POSITION_RADIUS_M:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_local_position_radius
+                "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_POSITION_RADIUS_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_ORIENTATION_RADIUS_DEG:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_local_orientation_radius_deg
+                "${DR_ANMAR_RECEIVER_RECOVERY_LOCAL_ORIENTATION_RADIUS_DEG}"
             )
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_SWEEP_ID:-}" ]]; then

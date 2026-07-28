@@ -190,6 +190,29 @@ def test_recovery_head_contract_has_no_gripper_channel() -> None:
     assert torch.equal(output, torch.zeros_like(output))
 
 
+def test_dagger_offset_is_added_to_head_prediction_and_latched() -> None:
+    policy = HandoverPickupRecoveryPolicy(_FixedBasePolicy())
+    observation = _observation(batch_size=1)
+    raw = observation["policy"]
+    local_delta = torch.tensor(
+        [0.001, -0.0005, 0.0, math.radians(0.5), 0.0, 0.0]
+    )
+    policy.set_fixed_correction_delta(local_delta)
+    raw[:, 6:8] = 0.30
+    for _ in range(policy.close_dwell_steps):
+        policy(observation)
+    raw[:, 6:8] = 0.43
+    policy(observation)
+    raw[:, 6:8] = 0.0
+    for _ in range(policy.open_settle_steps):
+        policy(observation)
+
+    assert torch.allclose(policy.correction[0], local_delta)
+    latched = policy.correction.clone()
+    policy(observation)
+    assert torch.equal(policy.correction, latched)
+
+
 def test_custody_loss_is_not_redeclared_during_reapproach() -> None:
     policy = HandoverPickupRecoveryPolicy(_FixedBasePolicy())
     observation = _observation(batch_size=1)
