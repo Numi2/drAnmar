@@ -367,14 +367,9 @@ class HandoverAnalyticController(nn.Module):
             receiver_contacts > self.normalized_contact_threshold,
             dim=-1,
         )
-        live_contact_lift_enabled = torch.full_like(
-            phase,
-            self.giver_lift_on_live_contact,
-            dtype=torch.bool,
-        )
         giver_carry_mode = (
             ((phase >= 1) & (phase <= 2))
-            | ((phase == 0) & live_contact_lift_enabled)
+            | ((phase == 0) & self.giver_lift_on_live_contact)
         )
         giver_transport_active = giver_carry_mode & torch.where(
             phase <= 1,

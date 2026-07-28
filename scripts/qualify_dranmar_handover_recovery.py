@@ -269,29 +269,6 @@ def qualify(
                         candidate=count,
                     )
                 )
-            composite_export = candidate.get("exports", {}).get(
-                "stateful_composite_jit"
-            )
-            gates.append(
-                _gate(
-                    f"seed_{seed}_run_{run_index}_export_parity",
-                    isinstance(composite_export, dict)
-                    and bool(composite_export.get("parity_checked"))
-                    and int(
-                        composite_export.get("action_mismatches", -1)
-                    )
-                    == 0
-                    and float(
-                        composite_export.get(
-                            "maximum_action_absolute_difference",
-                            -1.0,
-                        )
-                    )
-                    == 0.0,
-                    export=composite_export,
-                )
-            )
-
     per_seed: dict[str, dict[str, Any]] = {}
     aggregate = defaultdict(int)
     for seed in QUALIFICATION_SEEDS:

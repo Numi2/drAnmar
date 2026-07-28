@@ -448,9 +448,6 @@ case "${command}" in
                 "${DR_ANMAR_RECEIVER_RECOVERY_DATASET}"
             )
         fi
-        if [[ "${DR_ANMAR_SKIP_RECOVERY_EXPORT_PARITY:-0}" == "1" ]]; then
-            pickup_recovery_args+=(--skip_recovery_export_parity)
-        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \
