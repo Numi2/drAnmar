@@ -106,8 +106,10 @@ motion through a physical contact loss. The receiver-to-giver-shaft capsule
 guard applies to every qualified acquisition, including first attempts, and
 uses the exact closest points between the finite receiver-jaw and giver-shaft
 segments. This catches an interior crossing that endpoint-only sampling
-misses. The guard projects only an unsafe inward receiver component; it does
-not create contact or change success.
+misses. The same constraint covers concurrent receiver pre-position motion
+during giver lift and transport, not only the final acquisition action. The
+guard projects only an unsafe inward receiver component; it does not create
+contact or change success.
 
 ### The new residual is narrow and exact-zero
 

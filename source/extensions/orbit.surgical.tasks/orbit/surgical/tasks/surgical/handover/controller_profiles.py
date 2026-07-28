@@ -34,6 +34,7 @@ _V23_VALUES: dict[str, bool | float | int] = {
     "recovery_receiver_shaft_guard_minimum_distance_m": 0.015,
     "receiver_shaft_guard_all_pickups_enabled": False,
     "receiver_shaft_guard_segment_distance_enabled": False,
+    "receiver_shaft_guard_preposition_enabled": False,
     "receiver_jaw_proximal_offset_m": 0.0093,
     "transport_custody_latch_enabled": True,
     "receiver_preposition_enabled": True,
@@ -105,6 +106,9 @@ _PROFILE_VALUES: dict[str, dict[str, bool | float | int]] = {
         # Endpoint sampling misses an interior crossing of the receiver jaw
         # and giver shaft. Use their exact finite-segment closest distance.
         "receiver_shaft_guard_segment_distance_enabled": True,
+        # Receiver preposition moves concurrently with giver lift/transport
+        # and therefore needs the same physical inter-tool constraint.
+        "receiver_shaft_guard_preposition_enabled": True,
         # A two-jaw grasp can be usable while briefly asymmetric.  This score
         # slows transport before physical custody is lost; it does not create
         # contact, success, or permission to open the giver.

@@ -6328,6 +6328,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "ever_recovery_receiver_shaft_guard_active": torch.zeros_like(
                 first_unresolved
             ),
+            "receiver_preposition_shaft_guard_active_steps": torch.zeros(
+                (),
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "ever_receiver_preposition_shaft_guard_active": (
+                torch.zeros_like(first_unresolved)
+            ),
             "minimum_recovery_receiver_shaft_distance_m": torch.full(
                 (env.unwrapped.num_envs,),
                 torch.inf,
@@ -7494,6 +7502,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "last_recovery_receiver_shaft_guard_active",
                         None,
                     )
+                    shaft_guard_eligible = getattr(
+                        controller,
+                        "last_receiver_shaft_guard_eligible",
+                        None,
+                    )
+                    preposition_shaft_guard_active = getattr(
+                        controller,
+                        "last_receiver_preposition_shaft_guard_active",
+                        None,
+                    )
                     shaft_distance = getattr(
                         controller,
                         "last_recovery_receiver_shaft_distance_m",
@@ -7501,19 +7519,12 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                     if (
                         shaft_guard_active is not None
+                        and shaft_guard_eligible is not None
+                        and preposition_shaft_guard_active is not None
                         and shaft_distance is not None
                     ):
-                        policy_observation = obs["policy"]
                         shaft_guard_eligible = (
-                            was_first_unresolved
-                            & (policy_observation[:, 98] > 0.5)
-                            & (
-                                torch.argmax(
-                                    policy_observation[:, 77:82],
-                                    dim=-1,
-                                )
-                                == 2
-                            )
+                            was_first_unresolved & shaft_guard_eligible
                         )
                         counted_shaft_guard = (
                             shaft_guard_eligible & shaft_guard_active
@@ -7524,6 +7535,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_handover_history[
                             "ever_recovery_receiver_shaft_guard_active"
                         ] |= counted_shaft_guard
+                        counted_preposition_shaft_guard = (
+                            was_first_unresolved
+                            & preposition_shaft_guard_active
+                        )
+                        first_handover_history[
+                            "receiver_preposition_shaft_guard_active_steps"
+                        ] += counted_preposition_shaft_guard.sum()
+                        first_handover_history[
+                            "ever_receiver_preposition_shaft_guard_active"
+                        ] |= counted_preposition_shaft_guard
                         first_handover_history[
                             "minimum_recovery_receiver_shaft_distance_m"
                         ] = torch.where(
@@ -9432,6 +9453,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .item()
                     ),
                     "recovery_receiver_shaft_guard": {
+                        "scope": "all_controller_reported_receiver_motion",
                         "active_steps": int(
                             first_handover_history[
                                 "recovery_receiver_shaft_guard_active_steps"
@@ -9440,6 +9462,20 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "environments_activated": int(
                             first_handover_history[
                                 "ever_recovery_receiver_"
+                                "shaft_guard_active"
+                            ][first_completed]
+                            .sum()
+                            .item()
+                        ),
+                        "preposition_active_steps": int(
+                            first_handover_history[
+                                "receiver_preposition_"
+                                "shaft_guard_active_steps"
+                            ].item()
+                        ),
+                        "preposition_environments_activated": int(
+                            first_handover_history[
+                                "ever_receiver_preposition_"
                                 "shaft_guard_active"
                             ][first_completed]
                             .sum()

@@ -73,9 +73,20 @@ class HandoverAnalyticController(nn.Module):
         self.recovery_receiver_shaft_guard_minimum_distance_m = 0.015
         self.receiver_shaft_guard_all_pickups_enabled = False
         self.receiver_shaft_guard_segment_distance_enabled = False
+        self.receiver_shaft_guard_preposition_enabled = False
         self.receiver_jaw_proximal_offset_m = 0.0093
         self.register_buffer(
             "last_recovery_receiver_shaft_guard_active",
+            torch.empty(0, dtype=torch.bool),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_receiver_shaft_guard_eligible",
+            torch.empty(0, dtype=torch.bool),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_receiver_preposition_shaft_guard_active",
             torch.empty(0, dtype=torch.bool),
             persistent=False,
         )
@@ -709,9 +720,6 @@ class HandoverAnalyticController(nn.Module):
             receiver_from_shaft
             / receiver_shaft_distance.clamp_min(1e-6).unsqueeze(-1)
         )
-        receiver_shaft_radial_action = (
-            receiver_approach[:, :3] * receiver_from_shaft_direction
-        ).sum(dim=-1)
         maximum_receiver_shaft_inward_action = (
             (
                 receiver_shaft_distance
@@ -719,43 +727,12 @@ class HandoverAnalyticController(nn.Module):
             )
             / self.position_scale
         ).clamp_min(0.0)
-        projected_receiver_shaft_radial_action = torch.maximum(
-            receiver_shaft_radial_action,
-            -maximum_receiver_shaft_inward_action,
-        )
         receiver_shaft_guard_context = (
             pickup_recovery_context
             | torch.full_like(
                 pickup_recovery_context,
                 self.receiver_shaft_guard_all_pickups_enabled,
             )
-        )
-        recovery_receiver_shaft_guard_active = (
-            receiver_shaft_guard_context
-            & (phase == 2)
-            & (
-                receiver_shaft_distance
-                < self.recovery_receiver_shaft_guard_activation_distance_m
-            )
-            & (
-                receiver_shaft_radial_action
-                < -maximum_receiver_shaft_inward_action
-            )
-        )
-        receiver_shaft_correction = (
-            projected_receiver_shaft_radial_action
-            - receiver_shaft_radial_action
-        ).unsqueeze(-1) * receiver_from_shaft_direction
-        receiver_approach[:, :3] = torch.where(
-            recovery_receiver_shaft_guard_active.unsqueeze(-1),
-            receiver_approach[:, :3] + receiver_shaft_correction,
-            receiver_approach[:, :3],
-        )
-        self.last_recovery_receiver_shaft_guard_active = (
-            recovery_receiver_shaft_guard_active.detach()
-        )
-        self.last_recovery_receiver_shaft_distance_m = (
-            receiver_shaft_distance.detach()
         )
         presentation_in_giver = (
             self.presentation_fraction_from_giver
@@ -1107,6 +1084,94 @@ class HandoverAnalyticController(nn.Module):
                     & phase_two_custody
                 )
             )
+        )
+        receiver_approach_shaft_radial_action = (
+            receiver_approach[:, :3] * receiver_from_shaft_direction
+        ).sum(dim=-1)
+        projected_receiver_approach_shaft_radial_action = torch.maximum(
+            receiver_approach_shaft_radial_action,
+            -maximum_receiver_shaft_inward_action,
+        )
+        receiver_approach_shaft_guard_eligible = (
+            receiver_shaft_guard_context & receiver_approach_active
+        )
+        receiver_approach_shaft_guard_active = (
+            receiver_approach_shaft_guard_eligible
+            & (
+                receiver_shaft_distance
+                < self.recovery_receiver_shaft_guard_activation_distance_m
+            )
+            & (
+                receiver_approach_shaft_radial_action
+                < -maximum_receiver_shaft_inward_action
+            )
+        )
+        receiver_approach_shaft_correction = (
+            projected_receiver_approach_shaft_radial_action
+            - receiver_approach_shaft_radial_action
+        ).unsqueeze(-1) * receiver_from_shaft_direction
+        receiver_approach[:, :3] = torch.where(
+            receiver_approach_shaft_guard_active.unsqueeze(-1),
+            receiver_approach[:, :3]
+            + receiver_approach_shaft_correction,
+            receiver_approach[:, :3],
+        )
+
+        receiver_preposition_shaft_radial_action = (
+            receiver_preposition[:, :3] * receiver_from_shaft_direction
+        ).sum(dim=-1)
+        projected_receiver_preposition_shaft_radial_action = torch.maximum(
+            receiver_preposition_shaft_radial_action,
+            -maximum_receiver_shaft_inward_action,
+        )
+        receiver_preposition_shaft_guard_eligible = (
+            receiver_shaft_guard_context
+            & receiver_preposition_active
+            & torch.full_like(
+                receiver_preposition_active,
+                self.receiver_shaft_guard_preposition_enabled,
+            )
+        )
+        receiver_preposition_shaft_guard_active = (
+            receiver_preposition_shaft_guard_eligible
+            & (
+                receiver_shaft_distance
+                < self.recovery_receiver_shaft_guard_activation_distance_m
+            )
+            & (
+                receiver_preposition_shaft_radial_action
+                < -maximum_receiver_shaft_inward_action
+            )
+        )
+        receiver_preposition_shaft_correction = (
+            projected_receiver_preposition_shaft_radial_action
+            - receiver_preposition_shaft_radial_action
+        ).unsqueeze(-1) * receiver_from_shaft_direction
+        receiver_preposition[:, :3] = torch.where(
+            receiver_preposition_shaft_guard_active.unsqueeze(-1),
+            receiver_preposition[:, :3]
+            + receiver_preposition_shaft_correction,
+            receiver_preposition[:, :3],
+        )
+        receiver_shaft_guard_eligible = (
+            receiver_approach_shaft_guard_eligible
+            | receiver_preposition_shaft_guard_eligible
+        )
+        receiver_shaft_guard_active = (
+            receiver_approach_shaft_guard_active
+            | receiver_preposition_shaft_guard_active
+        )
+        self.last_recovery_receiver_shaft_guard_active = (
+            receiver_shaft_guard_active.detach()
+        )
+        self.last_receiver_shaft_guard_eligible = (
+            receiver_shaft_guard_eligible.detach()
+        )
+        self.last_receiver_preposition_shaft_guard_active = (
+            receiver_preposition_shaft_guard_active.detach()
+        )
+        self.last_recovery_receiver_shaft_distance_m = (
+            receiver_shaft_distance.detach()
         )
         giver_translation = torch.where(
             giver_transport_active.unsqueeze(-1),
