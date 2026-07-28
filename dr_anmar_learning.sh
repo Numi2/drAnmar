@@ -338,6 +338,18 @@ case "${command}" in
                 "${DR_ANMAR_PICKUP_RECOVERY_SWEEP_REPLICAS}"
             )
         fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_SOBOL_CANDIDATE:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_sobol_candidate
+                "${DR_ANMAR_PICKUP_RECOVERY_SOBOL_CANDIDATE}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_SWEEP_ID:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_sweep_id
+                "${DR_ANMAR_PICKUP_RECOVERY_SWEEP_ID}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_DATASET:-}" ]]; then
             pickup_recovery_args+=(
                 --pickup_recovery_dataset

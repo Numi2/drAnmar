@@ -3372,6 +3372,17 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
     if args.pickup_recovery_sweep_replicas < 1:
         return _fail("pickup recovery sweep replicas must be positive")
+    if args.pickup_recovery_sobol_candidate is not None:
+        if not 0 <= args.pickup_recovery_sobol_candidate < 64:
+            return _fail("pickup recovery Sobol candidate must be in [0, 63]")
+        if args.pickup_recovery_sweep_replicas != 1:
+            return _fail(
+                "replayed Sobol candidates and grouped replicas are exclusive"
+            )
+        if not args.pickup_recovery_sweep_id:
+            return _fail(
+                "replayed Sobol candidates require a stable sweep id"
+            )
     if args.pickup_recovery_sweep_replicas > 1:
         if not args.pickup_recovery_random_corrections:
             return _fail(
@@ -3607,6 +3618,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         or args.pickup_recovery_checkpoint
         or args.pickup_recovery_fixed_correction
         or args.pickup_recovery_random_corrections
+        or args.pickup_recovery_sobol_candidate is not None
     ):
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
             HandoverPickupRecoveryPolicy,
@@ -3708,14 +3720,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
             correction[3:] = torch.deg2rad(correction[3:])
             pickup_recovery_policy.set_fixed_correction(correction)
-        elif args.pickup_recovery_random_corrections:
+        elif (
+            args.pickup_recovery_random_corrections
+            or args.pickup_recovery_sobol_candidate is not None
+        ):
             sobol = torch.quasirandom.SobolEngine(
                 dimension=6,
                 scramble=True,
                 seed=args.seed,
             )
             candidate_count = (
-                args.pickup_recovery_sweep_replicas
+                64
+                if args.pickup_recovery_sobol_candidate is not None
+                else args.pickup_recovery_sweep_replicas
                 if args.pickup_recovery_sweep_replicas > 1
                 else env.unwrapped.num_envs
             )
@@ -3734,7 +3751,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dim=-1,
             )
             candidate_corrections[0] = 0.0
-            if args.pickup_recovery_sweep_replicas > 1:
+            if args.pickup_recovery_sobol_candidate is not None:
+                randomized = candidate_corrections[
+                    args.pickup_recovery_sobol_candidate
+                ].expand(env.unwrapped.num_envs, -1)
+            elif args.pickup_recovery_sweep_replicas > 1:
                 randomized = candidate_corrections.repeat(
                     env.unwrapped.num_envs
                     // args.pickup_recovery_sweep_replicas,
@@ -5322,6 +5343,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         args.pickup_recovery_orientation_cap_deg
                     ),
                     "sweep_replicas": sweep_replicas,
+                    "sweep_id": args.pickup_recovery_sweep_id,
+                    "num_envs": env.unwrapped.num_envs,
                     "environment_index": environment_index[
                         dataset_mask
                     ].cpu(),
@@ -5329,7 +5352,15 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         environment_index[dataset_mask] // sweep_replicas
                     ).cpu(),
                     "candidate_index": (
-                        environment_index[dataset_mask] % sweep_replicas
+                        torch.full_like(
+                            environment_index[dataset_mask],
+                            args.pickup_recovery_sobol_candidate,
+                        )
+                        if args.pickup_recovery_sobol_candidate is not None
+                        else (
+                            environment_index[dataset_mask]
+                            % sweep_replicas
+                        )
                     ).cpu(),
                     "context": first_pickup_context[
                         dataset_mask
@@ -5584,9 +5615,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "randomized_corrections": (
                         args.pickup_recovery_random_corrections
+                        or args.pickup_recovery_sobol_candidate is not None
                     ),
                     "sweep_replicas": (
                         args.pickup_recovery_sweep_replicas
+                    ),
+                    "sweep_id": args.pickup_recovery_sweep_id,
+                    "sobol_candidate": (
+                        args.pickup_recovery_sobol_candidate
                     ),
                     "dataset": pickup_recovery_dataset,
                     "first_attempt_failures": int(
@@ -5773,6 +5809,8 @@ def _parser() -> argparse.ArgumentParser:
         type=int,
         default=1,
     )
+    play.add_argument("--pickup_recovery_sobol_candidate", type=int)
+    play.add_argument("--pickup_recovery_sweep_id")
     play.add_argument("--pickup_recovery_dataset")
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser

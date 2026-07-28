@@ -95,7 +95,9 @@ def main(argv: list[str]) -> int:
     successful_candidate_count = 0
     positive_context_parts = []
     positive_correction_parts = []
-    for payload in payloads:
+    candidate_groups: dict[tuple[str, int], list[dict[str, object]]] = {}
+    strict_replay_groups: set[tuple[str, int]] = set()
+    for payload_index, payload in enumerate(payloads):
         payload_context = payload["context"].float()
         payload_correction = payload["correction"].float()
         safe_lift = payload.get(
@@ -116,38 +118,85 @@ def main(argv: list[str]) -> int:
             "steps_to_lift",
             torch.full((payload_context.shape[0],), 2**31 - 1),
         ).long()
-        for state in torch.unique(state_index).tolist():
-            state_candidates = torch.nonzero(
-                (state_index == state) & safe_lift,
-                as_tuple=False,
-            ).flatten()
-            if state_candidates.numel() == 0:
-                continue
-            normalized = torch.cat(
-                (
-                    payload_correction[state_candidates, :3]
-                    / position_cap,
-                    payload_correction[state_candidates, 3:]
-                    / orientation_cap,
-                ),
-                dim=-1,
+        sweep_id = payload.get("sweep_id")
+        if sweep_id:
+            group_prefix = (
+                f"{sweep_id}|seed={int(payload['seed'])}|"
+                f"num_envs={int(payload['num_envs'])}"
             )
-            correction_size = normalized.norm(dim=-1)
-            candidate_peak_force = peak_force[
-                state_candidates
-            ].amax(dim=-1)
-            candidate_lift_steps = steps_to_lift[state_candidates]
-            chosen_offset = min(
-                range(state_candidates.numel()),
-                key=lambda offset: (
-                    float(correction_size[offset].item()),
-                    float(candidate_peak_force[offset].item()),
-                    int(candidate_lift_steps[offset].item()),
-                ),
+        else:
+            group_prefix = f"dataset={payload_index}"
+        for sample_index in range(payload_context.shape[0]):
+            key = (
+                group_prefix,
+                int(state_index[sample_index].item()),
             )
-            chosen = int(state_candidates[chosen_offset].item())
-            positive_context_parts.append(payload_context[chosen])
-            positive_correction_parts.append(payload_correction[chosen])
+            candidate_groups.setdefault(key, []).append(
+                {
+                    "context": payload_context[sample_index],
+                    "correction": payload_correction[sample_index],
+                    "safe_lift": bool(safe_lift[sample_index].item()),
+                    "peak_force": float(
+                        peak_force[sample_index].amax().item()
+                    ),
+                    "steps_to_lift": int(
+                        steps_to_lift[sample_index].item()
+                    ),
+                }
+            )
+            if sweep_id:
+                strict_replay_groups.add(key)
+    maximum_replay_context_spread = 0.0
+    for key, candidates in candidate_groups.items():
+        candidate_contexts = torch.stack(
+            [candidate["context"] for candidate in candidates]
+        )
+        context_spread = float(
+            (
+                candidate_contexts
+                - candidate_contexts[:1]
+            )
+            .abs()
+            .max()
+            .item()
+        )
+        if key in strict_replay_groups:
+            maximum_replay_context_spread = max(
+                maximum_replay_context_spread,
+                context_spread,
+            )
+            if context_spread > 1.0e-5:
+                raise ValueError(
+                    "replayed recovery candidates did not start from the "
+                    f"same failed state: {key} spread={context_spread}"
+                )
+        successful = [
+            candidate
+            for candidate in candidates
+            if candidate["safe_lift"]
+        ]
+        if not successful:
+            continue
+        chosen = min(
+            successful,
+            key=lambda candidate: (
+                float(
+                    torch.cat(
+                        (
+                            candidate["correction"][:3] / position_cap,
+                            candidate["correction"][3:]
+                            / orientation_cap,
+                        )
+                    )
+                    .norm()
+                    .item()
+                ),
+                candidate["peak_force"],
+                candidate["steps_to_lift"],
+            ),
+        )
+        positive_context_parts.append(chosen["context"])
+        positive_correction_parts.append(chosen["correction"])
     if positive_context_parts:
         positive_context = torch.stack(positive_context_parts)
         positive_correction = torch.stack(positive_correction_parts)
@@ -259,6 +308,10 @@ def main(argv: list[str]) -> int:
             "successful_candidates": successful_candidate_count,
             "successful_demonstrations": int(
                 positive_context.shape[0]
+            ),
+            "paired_failed_states": len(candidate_groups),
+            "maximum_replay_context_spread": (
+                maximum_replay_context_spread
             ),
             "training_demonstrations": int(training_context.shape[0]),
             "validation_demonstrations": int(validation_context.shape[0]),
