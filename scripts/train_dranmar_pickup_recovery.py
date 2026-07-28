@@ -157,32 +157,6 @@ def main(argv: list[str]) -> int:
                 dtype=torch.long,
             )
         )
-        loss_flags = payload_context[:, 18:20] > 0.5
-        ever_bilateral = payload_context[:, 20] > 0.5
-        for sample_index in range(payload_context.shape[0]):
-            if not bool(ever_bilateral[sample_index].item()):
-                failure_cohort = "never_bilateral"
-            elif bool(loss_flags[sample_index, 0].item()) and bool(
-                loss_flags[sample_index, 1].item()
-            ):
-                failure_cohort = "lost_both"
-            elif bool(loss_flags[sample_index, 0].item()):
-                failure_cohort = "lost_jaw_1"
-            elif bool(loss_flags[sample_index, 1].item()):
-                failure_cohort = "lost_jaw_2"
-            else:
-                failure_cohort = "lost_both"
-            retry_value = int(retry_count[sample_index].item())
-            retry_cohort = (
-                "1"
-                if retry_value <= 1
-                else "2"
-                if retry_value == 2
-                else "3_plus"
-            )
-            collection_cohorts[
-                f"{failure_cohort}|retry_{retry_cohort}"
-            ] += 1
         sweep_id = payload.get("sweep_id")
         if sweep_id:
             group_prefix = (
@@ -217,8 +191,48 @@ def main(argv: list[str]) -> int:
             )
             if sweep_id:
                 strict_replay_groups.add(key)
+    collection_state_count = 0
+    for key, candidates in candidate_groups.items():
+        if key in strict_replay_groups:
+            reference = next(
+                (
+                    candidate
+                    for candidate in candidates
+                    if candidate["candidate_index"] == 0
+                ),
+                None,
+            )
+            if reference is None:
+                continue
+        else:
+            reference = candidates[0]
+        context = reference["context"]
+        loss_flags = context[18:20] > 0.5
+        ever_bilateral = bool((context[20] > 0.5).item())
+        if not ever_bilateral:
+            failure_cohort = "never_bilateral"
+        elif bool(loss_flags[0].item()) and bool(loss_flags[1].item()):
+            failure_cohort = "lost_both"
+        elif bool(loss_flags[0].item()):
+            failure_cohort = "lost_jaw_1"
+        elif bool(loss_flags[1].item()):
+            failure_cohort = "lost_jaw_2"
+        else:
+            failure_cohort = "lost_both"
+        retry_value = int(reference["retry_count"])
+        retry_cohort = (
+            "1"
+            if retry_value <= 1
+            else "2"
+            if retry_value == 2
+            else "3_plus"
+        )
+        collection_cohorts[
+            f"{failure_cohort}|retry_{retry_cohort}"
+        ] += 1
+        collection_state_count += 1
     collection_gate_passed = (
-        total_samples >= 12_000
+        collection_state_count >= 12_000
         and all(
             count >= args.minimum_per_cohort
             for count in collection_cohorts.values()
@@ -227,7 +241,8 @@ def main(argv: list[str]) -> int:
     if args.require_collection_gate and not collection_gate_passed:
         raise ValueError(
             "pickup recovery collection gate failed: "
-            f"samples={total_samples}, cohorts={collection_cohorts}"
+            f"unique_states={collection_state_count}, "
+            f"raw_samples={total_samples}, cohorts={collection_cohorts}"
         )
     maximum_replay_context_spread = 0.0
     maximum_observed_replay_context_spread = 0.0
@@ -439,7 +454,9 @@ def main(argv: list[str]) -> int:
             ),
             "collection_gate": {
                 "passed": collection_gate_passed,
-                "minimum_total_samples": 12_000,
+                "unique_states": collection_state_count,
+                "raw_candidate_samples": total_samples,
+                "minimum_total_unique_states": 12_000,
                 "minimum_per_cohort": args.minimum_per_cohort,
                 "cohorts": collection_cohorts,
             },
