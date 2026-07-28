@@ -67,7 +67,16 @@ def _register_dranmar_learning_path() -> tuple[str, ...]:
                 disable_env_checker=True,
             )
         registered.append(dranmar_id)
-    return tuple(sorted(registered))
+    # Some newer Dr.Anmar-native tasks have no legacy ``Isaac-*`` alias.
+    # Include those direct registrations in the public catalog as well so a
+    # task can never be runnable by Gym while remaining undiscoverable to the
+    # launcher and qualification tooling.
+    registered.extend(
+        task_id
+        for task_id in gym.registry
+        if task_id.startswith("DrAnmar-")
+    )
+    return tuple(sorted(set(registered)))
 
 
 DRANMAR_LEARNING_TASK_IDS = _register_dranmar_learning_path()

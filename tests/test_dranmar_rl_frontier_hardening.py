@@ -218,3 +218,12 @@ def test_durability_is_separate_from_legacy_success_contract():
     assert '"required_receiver_only_steps"' in environment
     assert "= 60" in environment
     assert "Frontier-Durability-Eval-v0" in registration
+
+
+def test_native_dranmar_tasks_are_included_in_public_catalog():
+    task_catalog = _source(
+        "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks/"
+        "__init__.py"
+    )
+    assert 'if task_id.startswith("DrAnmar-")' in task_catalog
+    assert "tuple(sorted(set(registered)))" in task_catalog
