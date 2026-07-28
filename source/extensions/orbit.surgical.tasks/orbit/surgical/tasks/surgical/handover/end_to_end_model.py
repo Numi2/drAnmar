@@ -477,7 +477,7 @@ class _DeadlineRecoveryAdapter(nn.Module):
         nn.init.zeros_(self.output.bias)
         self.register_buffer(
             "continue_prior",
-            torch.tensor((2.0, 0.0, 0.0)),
+            torch.zeros(3),
             persistent=False,
         )
 
@@ -492,7 +492,10 @@ class _DeadlineRecoveryAdapter(nn.Module):
             torch.argmax(option_logits, dim=-1),
             num_classes=3,
         ).to(output.dtype)
-        # Exact hard option in the forward pass with a soft gradient for PPO.
+        # At the all-zero initialization argmax deterministically chooses the
+        # first (continue) option. The tie keeps the forward pass exact while
+        # avoiding a large prior that PPO would need to overcome before it can
+        # exercise re-seat or backoff.
         option_selection = (
             hard_selection
             + soft_selection
@@ -557,6 +560,8 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.deadline_recovery_adapter = _DeadlineRecoveryAdapter()
         for parameter in self.deadline_recovery_adapter.parameters():
             parameter.requires_grad_(False)
+        self.last_deadline_option_index: torch.Tensor | None = None
+        self.last_deadline_option_active: torch.Tensor | None = None
         self.recovery_receiver_reference_network: (
             _PhaseHeadedNetwork | None
         ) = None
@@ -1033,6 +1038,11 @@ class EndToEndHandoverMLPModel(MLPModel):
                 deadline_receiver_residual
                 * deadline_active.unsqueeze(-1)
             )
+        self.last_deadline_option_index = torch.argmax(
+            deadline_option_selection,
+            dim=-1,
+        ).detach()
+        self.last_deadline_option_active = deadline_active.detach()
         physical_residual = role_action_to_physical(
             learned_role_residual,
             raw[:, 82] > 0.5,

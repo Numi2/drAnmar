@@ -51,6 +51,11 @@ It makes an explicit differentiable hard choice among continue, re-seat, and
 backoff, then adds at most a bounded receiver SE(3) correction. The output layer
 is zero initialized and the continue option is the exact initial action, so an
 untrained v10 checkpoint must match the incumbent bit-for-bit at policy output.
+The three logits begin tied at zero: deterministic `argmax` selects continue,
+while the straight-through soft gradient lets PPO cross into either recovery
+option without first overcoming a hand-authored logit margin. A diagnostic
+9.2-million-frame run with a `+2` continue prior was rejected because the
+largest learned bias shift was only `0.002`, so re-seat/backoff never executed.
 
 ## Replay correction
 

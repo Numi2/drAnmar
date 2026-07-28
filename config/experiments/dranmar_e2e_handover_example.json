@@ -470,6 +470,15 @@
       "reseat",
       "backoff"
     ],
+    "rejected_continue_logit_prior_run": {
+      "num_envs": 1200,
+      "rollout_steps_per_env": 128,
+      "iterations": 60,
+      "simulated_frames": 9216000,
+      "reason": "a_plus_2_continue_logit_prior_preserved_exact_baseline_but_prevented_ppo_from_exercising_reseat_or_backoff",
+      "maximum_observed_option_bias_shift": 0.002,
+      "disposition": "diagnostic_only_not_screened"
+    },
     "learned_authority": "receiver_se3_only_after_recovered_physically_qualified_presentation",
     "analytic_authority": [
       "giver_motion",

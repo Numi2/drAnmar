@@ -5554,6 +5554,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "deadline_option_step_counts": torch.zeros(
+                3,
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "ever_deadline_reseat": torch.zeros_like(first_unresolved),
+            "ever_deadline_backoff": torch.zeros_like(first_unresolved),
             "terminal_pickup_attempts": torch.zeros(
                 env.unwrapped.num_envs,
                 dtype=torch.int64,
@@ -6382,6 +6389,33 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         )
                     )
                 actions = policy(obs)
+                if first_handover_history is not None:
+                    option_index = getattr(
+                        policy_model,
+                        "last_deadline_option_index",
+                        None,
+                    )
+                    option_active = getattr(
+                        policy_model,
+                        "last_deadline_option_active",
+                        None,
+                    )
+                    if option_index is not None and option_active is not None:
+                        counted_option = (
+                            was_first_unresolved & option_active
+                        )
+                        for option in range(3):
+                            first_handover_history[
+                                "deadline_option_step_counts"
+                            ][option] += (
+                                counted_option & (option_index == option)
+                            ).sum()
+                        first_handover_history[
+                            "ever_deadline_reseat"
+                        ] |= counted_option & (option_index == 1)
+                        first_handover_history[
+                            "ever_deadline_backoff"
+                        ] |= counted_option & (option_index == 2)
                 obs, reward, dones, extras = env.step(actions)
                 term_values = {
                     name: termination_manager.get_term(name)
@@ -7684,6 +7718,26 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         ][first_completed]
                         .sum()
                         .item()
+                    ),
+                    "deadline_option_step_counts": {
+                        label: int(
+                            first_handover_history[
+                                "deadline_option_step_counts"
+                            ][index].item()
+                        )
+                        for index, label in enumerate(
+                            ("continue", "reseat", "backoff")
+                        )
+                    },
+                    "environments_with_deadline_reseat": int(
+                        first_handover_history[
+                            "ever_deadline_reseat"
+                        ][first_completed].sum().item()
+                    ),
+                    "environments_with_deadline_backoff": int(
+                        first_handover_history[
+                            "ever_deadline_backoff"
+                        ][first_completed].sum().item()
                     ),
                 },
                 "unresolved": int(first_unresolved.sum().item()),

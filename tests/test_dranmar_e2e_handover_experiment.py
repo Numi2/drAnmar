@@ -328,6 +328,7 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "reseat_role_action" in source
     assert "backoff_role_action" in source
     assert "deadline_recovery_residual_scale" in source
+    assert "last_deadline_option_index" in source
     assert "presentation_qualified = raw[:, 103] >= 1.0" in source
     assert "presentation_qualified = obs[:, 103] >= 1.0" in source
     assert "refinement_giver_active = torch.zeros_like(" in source
@@ -603,6 +604,7 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert '"environment_runtime_contract_sha256"' in benchmark_source
     assert "configure_deadline_recovery_adaptation" in benchmark_source
     assert '"deadline_recovery_adaptation_contract"' in benchmark_source
+    assert '"deadline_option_step_counts"' in benchmark_source
     assert '"joint_transfer_acquisition_adaptation_contract"' in (
         benchmark_source
     )
