@@ -218,3 +218,32 @@ class NeedleHandoverJointTransferAcquisitionEnvCfg(
             "recovery_carry_lateral_action_limit": 0.10,
             "recovery_receiver_preposition_height": 0.015,
         }
+
+
+@configclass
+class NeedleHandoverTransferRefinementEnvCfg(
+    NeedleHandoverJointTransferAcquisitionEnvCfg
+):
+    """Refine a frozen joint option from stable presentation to retention."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Model 20 already improved the complete lifted-custody trajectory.
+        # Replay the downstream bottleneck instead of spending most PPO
+        # samples repeating pickup and transport. A 128-step rollout covers
+        # the measured stable-presentation-to-contact latency and lets terminal
+        # retention credit reach the acquisition actions that caused it.
+        self.dr_anmar_receiver_curriculum_capture_stage = (
+            "stable_presentation"
+        )
+        self.dr_anmar_receiver_curriculum_restore_probability = 0.98
+        self.dr_anmar_joint_transfer_acquisition_curriculum = False
+        self.dr_anmar_transfer_refinement_curriculum = True
+        self.dr_anmar_transfer_refinement_rollout_steps_per_env = 128
+        self.dr_anmar_transfer_refinement_objective = (
+            "retained_handover_from_physics_owned_stable_presentation"
+        )
+        self.dr_anmar_transfer_refinement_controller = {
+            "recovery_carry_lateral_action_limit": 0.10,
+            "recovery_receiver_preposition_height": 0.015,
+        }

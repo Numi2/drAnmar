@@ -225,3 +225,18 @@ gym.register(
     },
     disable_env_checker=True,
 )
+
+gym.register(
+    id="DrAnmar-Handover-Needle-Transfer-Refinement-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": (
+            e2e_ik_rel_env_cfg
+            .NeedleHandoverTransferRefinementEnvCfg
+        ),
+        "rsl_rl_cfg_entry_point": (
+            agents.rsl_rl_e2e_cfg.HandoverNeedleEndToEndPPORunnerCfg
+        ),
+    },
+    disable_env_checker=True,
+)

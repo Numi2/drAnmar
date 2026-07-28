@@ -22,7 +22,7 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
         ).read_text()
     )
     assert contract["status"] == "isolated_research_example_not_stage_qualified"
-    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.8"
+    assert contract["schema_version"] == "dranmar-e2e-handover-experiment-1.9"
     assert contract["architecture"]["actor"].startswith("frozen_pickup_lift")
     assert contract["architecture"]["learned_authority"].startswith(
         "receiver_xyz"
@@ -208,6 +208,21 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert joint_transfer["qualification_boundary"].startswith(
         "no_performance_claim"
     )
+    refinement = contract["transfer_refinement_v9"]
+    assert refinement["capture_stage"] == "stable_presentation"
+    assert refinement["rollout_steps_per_env"] == 128
+    assert refinement["zero_initialized_refinement_adapter"] is True
+    assert refinement["learned_authority"]["phase_3_giver"] == "none"
+    assert refinement["learned_authority"]["phase_3_receiver"] == "se3"
+    assert (
+        refinement["promotion_contract"]["minimum_aggregate_improvement"]
+        == 0.005
+    )
+    assert refinement["promotion_contract"]["preregistered_seeds"] == [
+        104729,
+        130363,
+        155921,
+    ]
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -248,6 +263,7 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "class _PhaseHeadedNetwork(nn.Module):" in source
     assert "class _RecoveryReceiverAdapter(nn.Module):" in source
     assert "class _JointTransferAcquisitionAdapter(nn.Module):" in source
+    assert "class _TransferRefinementAdapter(nn.Module):" in source
     assert "handover_task_features(" in source
     assert "receiver_policy_grasp_offset" in source
     assert "recovery_receiver_canonical_grasp_features" in source
@@ -259,6 +275,7 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "joint_role_residual[:, 0:6]" in source
     assert "joint_role_residual[:, 7:13]" in source
     assert "joint_physical_action_mask" in source
+    assert "refinement_physical_action_mask" in source
     assert "parameter.requires_grad_(True)" in source
     assert "quat_apply(" in source
     assert "HandoverAnalyticController" in source
@@ -286,6 +303,8 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
         "configure_joint_transfer_acquisition_adaptation"
         in source
     )
+    assert "configure_transfer_refinement_adaptation" in source
+    assert "refinement_receiver_active = (phase == 2) | (phase == 3)" in source
     assert "receiver_se3_row_mask[7:13] = 1.0" in source
     assert (
         "self.recovery_receiver_grasp_retain_adaptation_enabled"
@@ -430,6 +449,7 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         "NeedleHandoverJointTransferAcquisitionEnvCfg"
         in environment_source
     )
+    assert "NeedleHandoverTransferRefinementEnvCfg" in environment_source
     assert (
         "dr_anmar_receiver_curriculum_require_pickup_recovery = True"
         in environment_source
@@ -444,6 +464,10 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     )
     assert (
         'dr_anmar_receiver_curriculum_capture_stage = "lifted_custody"'
+        in environment_source
+    )
+    assert (
+        "dr_anmar_transfer_refinement_rollout_steps_per_env = 128"
         in environment_source
     )
     assert '"presentation_use_filtered_custody": True' in environment_source
@@ -468,6 +492,9 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert (
         "DrAnmar-Handover-Needle-Joint-Transfer-Acquisition-v0"
         in registration_source
+    )
+    assert "DrAnmar-Handover-Needle-Transfer-Refinement-v0" in (
+        registration_source
     )
     assert "HandoverNeedleEndToEndPPORunnerCfg" in agent_source
     assert "init_std=0.005" in agent_source
@@ -534,6 +561,9 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         "configure_joint_transfer_acquisition_adaptation"
         in benchmark_source
     )
+    assert "configure_transfer_refinement_adaptation" in benchmark_source
+    assert '"transfer_refinement_adaptation_contract"' in benchmark_source
+    assert '"policy_runtime_contract_sha256"' in benchmark_source
     assert '"joint_transfer_acquisition_adaptation_contract"' in (
         benchmark_source
     )
@@ -594,6 +624,8 @@ def test_experiment_launcher_keeps_teacher_until_full_trajectories_exist() -> No
     assert "DR_ANMAR_POLICY_RECEIVER_GRASP_RETAIN_RESIDUAL" in launcher_source
     assert "DR_ANMAR_PICKUP_RECOVERY_ADAPTATION" in launcher_source
     assert "--pickup_recovery_adaptation" in launcher_source
+    assert "DR_ANMAR_TRANSFER_REFINEMENT_ADAPTATION" in launcher_source
+    assert "--transfer_refinement_adaptation" in launcher_source
 
 
 def test_promotion_gate_rejects_deterministic_success_and_safety_regression() -> None:

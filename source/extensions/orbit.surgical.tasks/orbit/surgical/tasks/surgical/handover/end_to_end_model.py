@@ -29,6 +29,7 @@ from .residual_model import HandoverAnalyticController
 _TASK_FEATURE_DIM = 24
 _RECOVERY_RECEIVER_ADAPTER_FEATURE_DIM = 12
 _JOINT_TRANSFER_ACQUISITION_FEATURE_DIM = 31
+_TRANSFER_REFINEMENT_FEATURE_DIM = 31
 _RECEIVER_POLICY_GRASP_OFFSET, _ = needle_geometry_grasp_frame(
     0.65,
     grasp_z_m=-0.003,
@@ -410,6 +411,25 @@ class _JointTransferAcquisitionAdapter(nn.Module):
         return torch.tanh(self.output(self.encoder(features)))
 
 
+class _TransferRefinementAdapter(nn.Module):
+    """Zero-impact residual that refines acquisition and receiver retention."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(_TRANSFER_REFINEMENT_FEATURE_DIM, 128),
+            nn.ELU(),
+            nn.Linear(128, 64),
+            nn.ELU(),
+        )
+        self.output = nn.Linear(64, 12)
+        nn.init.zeros_(self.output.weight)
+        nn.init.zeros_(self.output.bias)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return torch.tanh(self.output(self.encoder(features)))
+
+
 class EndToEndHandoverMLPModel(MLPModel):
     """Physics-structured servo plus bounded phase-specialized learned residual."""
 
@@ -443,6 +463,7 @@ class EndToEndHandoverMLPModel(MLPModel):
         self.receiver_adaptation_enabled = False
         self.recovery_receiver_grasp_retain_adaptation_enabled = False
         self.joint_transfer_acquisition_adaptation_enabled = False
+        self.transfer_refinement_adaptation_enabled = False
         self.register_buffer(
             "receiver_policy_grasp_offset",
             torch.tensor(_RECEIVER_POLICY_GRASP_OFFSET),
@@ -455,6 +476,9 @@ class EndToEndHandoverMLPModel(MLPModel):
             _JointTransferAcquisitionAdapter()
         )
         for parameter in self.joint_transfer_acquisition_adapter.parameters():
+            parameter.requires_grad_(False)
+        self.transfer_refinement_adapter = _TransferRefinementAdapter()
+        for parameter in self.transfer_refinement_adapter.parameters():
             parameter.requires_grad_(False)
         self.recovery_receiver_reference_network: (
             _PhaseHeadedNetwork | None
@@ -476,6 +500,13 @@ class EndToEndHandoverMLPModel(MLPModel):
                 self.joint_transfer_acquisition_adapter.state_dict().items()
             ):
                 state_dict[f"{joint_adapter_prefix}{key}"] = value
+        refinement_adapter_prefix = "transfer_refinement_adapter."
+        if not any(
+            key.startswith(refinement_adapter_prefix) for key in state_dict
+        ):
+            state_dict = state_dict.copy()
+            for key, value in self.transfer_refinement_adapter.state_dict().items():
+                state_dict[f"{refinement_adapter_prefix}{key}"] = value
         if (
             self.recovery_receiver_reference_network is None
             and any(
@@ -526,6 +557,7 @@ class EndToEndHandoverMLPModel(MLPModel):
             and not self.pickup_recovery_adaptation_enabled
             and not self.receiver_adaptation_enabled
             and not self.joint_transfer_acquisition_adaptation_enabled
+            and not self.transfer_refinement_adaptation_enabled
         ):
             role_observation, _ = self._role_latent(obs)
             self.obs_normalizer.update(role_observation)
@@ -672,6 +704,40 @@ class EndToEndHandoverMLPModel(MLPModel):
                 if parameter is not None:
                     parameter.requires_grad_(False)
 
+    def configure_transfer_refinement_adaptation(self) -> None:
+        """Refine the frozen joint option through acquisition and retention.
+
+        A loaded joint-transfer checkpoint remains active and immutable.
+        The new exact-zero adapter alone receives gradients. During phase two,
+        it may correct giver and receiver SE(3); after bilateral acquisition,
+        only receiver SE(3) remains learnable while both grippers and giver
+        release stay under the unchanged analytic contact contract.
+        """
+        self.pickup_recovery_adaptation_enabled = True
+        self.receiver_adaptation_enabled = True
+        self.joint_transfer_acquisition_adaptation_enabled = True
+        self.transfer_refinement_adaptation_enabled = True
+        self.controller.giver_recovery_residual_only_for_learning = True
+        for parameter in self.phase_network.parameters():
+            parameter.requires_grad_(False)
+        for parameter in self.recovery_receiver_adapter.parameters():
+            parameter.requires_grad_(False)
+        for parameter in (
+            self.joint_transfer_acquisition_adapter.parameters()
+        ):
+            parameter.requires_grad_(False)
+        for parameter in self.transfer_refinement_adapter.parameters():
+            parameter.requires_grad_(True)
+        if self.distribution is not None:
+            for parameter_name in ("std_param", "log_std_param"):
+                parameter = getattr(
+                    self.distribution,
+                    parameter_name,
+                    None,
+                )
+                if parameter is not None:
+                    parameter.requires_grad_(False)
+
     def configure_giver_adaptation(self) -> None:
         """Learn giver XY while preserving the promoted receiver policy."""
         self.giver_adaptation_enabled = True
@@ -748,6 +814,7 @@ class EndToEndHandoverMLPModel(MLPModel):
         )
         learned_role_residual = current_role_residual
         joint_role_residual = torch.zeros_like(learned_role_residual)
+        refinement_role_residual = torch.zeros_like(learned_role_residual)
         if self.recovery_receiver_grasp_retain_adaptation_enabled:
             if self.recovery_receiver_reference_network is None:
                 raise RuntimeError(
@@ -792,12 +859,34 @@ class EndToEndHandoverMLPModel(MLPModel):
             joint_role_residual[:, 0:6] = joint_adapter[:, 0:6]
             joint_role_residual[:, 7:13] = joint_adapter[:, 6:12]
             joint_role_residual *= joint_active.unsqueeze(-1)
+        refinement_giver_active = phase == 2
+        refinement_receiver_active = (phase == 2) | (phase == 3)
+        if self.transfer_refinement_adaptation_enabled:
+            role_observation = role_normalize_handover_observation(raw)
+            refinement_adapter = self.transfer_refinement_adapter(
+                joint_transfer_acquisition_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            refinement_role_residual[:, 0:6] = (
+                refinement_adapter[:, 0:6]
+                * refinement_giver_active.unsqueeze(-1)
+            )
+            refinement_role_residual[:, 7:13] = (
+                refinement_adapter[:, 6:12]
+                * refinement_receiver_active.unsqueeze(-1)
+            )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             raw[:, 82] > 0.5,
         )
         joint_physical_residual = role_action_to_physical(
             joint_role_residual,
+            raw[:, 82] > 0.5,
+        )
+        refinement_physical_residual = role_action_to_physical(
+            refinement_role_residual,
             raw[:, 82] > 0.5,
         )
         joint_role_action_mask = torch.zeros_like(
@@ -808,6 +897,20 @@ class EndToEndHandoverMLPModel(MLPModel):
         joint_role_action_mask[:, 7:13] = joint_active.unsqueeze(-1)
         joint_physical_action_mask = role_action_to_physical(
             joint_role_action_mask,
+            raw[:, 82] > 0.5,
+        )
+        refinement_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        refinement_role_action_mask[:, 0:6] = (
+            refinement_giver_active.unsqueeze(-1)
+        )
+        refinement_role_action_mask[:, 7:13] = (
+            refinement_receiver_active.unsqueeze(-1)
+        )
+        refinement_physical_action_mask = role_action_to_physical(
+            refinement_role_action_mask,
             raw[:, 82] > 0.5,
         )
         (
@@ -837,6 +940,10 @@ class EndToEndHandoverMLPModel(MLPModel):
             exploration_mask = (
                 exploration_mask | joint_physical_action_mask
             )
+        if self.transfer_refinement_adaptation_enabled:
+            exploration_mask = (
+                exploration_mask | refinement_physical_action_mask
+            )
         physical_mean = (
             base_action
             + self.residual_scale
@@ -845,6 +952,9 @@ class EndToEndHandoverMLPModel(MLPModel):
             + self.residual_scale
             * joint_physical_residual
             * joint_physical_action_mask.to(base_action.dtype)
+            + self.residual_scale
+            * refinement_physical_residual
+            * refinement_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         if self.distribution is None:
             return physical_mean
@@ -886,6 +996,9 @@ class _EndToEndHandoverExport(nn.Module):
         self.joint_transfer_acquisition_adaptation_enabled = (
             model.joint_transfer_acquisition_adaptation_enabled
         )
+        self.transfer_refinement_adaptation_enabled = (
+            model.transfer_refinement_adaptation_enabled
+        )
         self.recovery_receiver_reference_network = copy.deepcopy(
             model.recovery_receiver_reference_network
         )
@@ -894,6 +1007,9 @@ class _EndToEndHandoverExport(nn.Module):
         )
         self.joint_transfer_acquisition_adapter = copy.deepcopy(
             model.joint_transfer_acquisition_adapter
+        )
+        self.transfer_refinement_adapter = copy.deepcopy(
+            model.transfer_refinement_adapter
         )
         self.register_buffer(
             "receiver_policy_grasp_offset",
@@ -925,6 +1041,7 @@ class _EndToEndHandoverExport(nn.Module):
         )
         learned_role_residual = current_role_residual
         joint_role_residual = torch.zeros_like(learned_role_residual)
+        refinement_role_residual = torch.zeros_like(learned_role_residual)
         if self.recovery_receiver_grasp_retain_adaptation_enabled:
             if self.recovery_receiver_reference_network is None:
                 raise RuntimeError(
@@ -966,12 +1083,33 @@ class _EndToEndHandoverExport(nn.Module):
             joint_role_residual[:, 0:6] = joint_adapter[:, 0:6]
             joint_role_residual[:, 7:13] = joint_adapter[:, 6:12]
             joint_role_residual *= joint_active.unsqueeze(-1)
+        refinement_giver_active = phase == 2
+        refinement_receiver_active = (phase == 2) | (phase == 3)
+        if self.transfer_refinement_adaptation_enabled:
+            refinement_adapter = self.transfer_refinement_adapter(
+                joint_transfer_acquisition_features(
+                    role_observation,
+                    self.receiver_policy_grasp_offset,
+                )
+            )
+            refinement_role_residual[:, 0:6] = (
+                refinement_adapter[:, 0:6]
+                * refinement_giver_active.unsqueeze(-1)
+            )
+            refinement_role_residual[:, 7:13] = (
+                refinement_adapter[:, 6:12]
+                * refinement_receiver_active.unsqueeze(-1)
+            )
         physical_residual = role_action_to_physical(
             learned_role_residual,
             giver_is_robot_1,
         )
         joint_physical_residual = role_action_to_physical(
             joint_role_residual,
+            giver_is_robot_1,
+        )
+        refinement_physical_residual = role_action_to_physical(
+            refinement_role_residual,
             giver_is_robot_1,
         )
         joint_role_action_mask = torch.zeros_like(
@@ -982,6 +1120,20 @@ class _EndToEndHandoverExport(nn.Module):
         joint_role_action_mask[:, 7:13] = joint_active.unsqueeze(-1)
         joint_physical_action_mask = role_action_to_physical(
             joint_role_action_mask,
+            giver_is_robot_1,
+        )
+        refinement_role_action_mask = torch.zeros_like(
+            learned_role_residual,
+            dtype=torch.bool,
+        )
+        refinement_role_action_mask[:, 0:6] = (
+            refinement_giver_active.unsqueeze(-1)
+        )
+        refinement_role_action_mask[:, 7:13] = (
+            refinement_receiver_active.unsqueeze(-1)
+        )
+        refinement_physical_action_mask = role_action_to_physical(
+            refinement_role_action_mask,
             giver_is_robot_1,
         )
         (
@@ -1005,6 +1157,9 @@ class _EndToEndHandoverExport(nn.Module):
             + self.residual_scale
             * joint_physical_residual
             * joint_physical_action_mask.to(base_action.dtype)
+            + self.residual_scale
+            * refinement_physical_residual
+            * refinement_physical_action_mask.to(base_action.dtype)
         ).clamp(-1.0, 1.0)
         return self.deterministic_output(physical_mean)
 

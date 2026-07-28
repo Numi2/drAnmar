@@ -275,6 +275,12 @@ case "${command}" in
                 --joint_transfer_acquisition_adaptation
             )
         fi
+        transfer_refinement_adaptation_args=()
+        if [[ "${DR_ANMAR_TRANSFER_REFINEMENT_ADAPTATION:-0}" == "1" ]]; then
+            transfer_refinement_adaptation_args=(
+                --transfer_refinement_adaptation
+            )
+        fi
         pickup_vertical_action_limit_args=()
         if [[ -n "${DR_ANMAR_POLICY_PICKUP_VERTICAL_ACTION_LIMIT:-}" ]]; then
             pickup_vertical_action_limit_args=(
@@ -459,6 +465,7 @@ case "${command}" in
             "${pickup_recovery_adaptation_args[@]}" \
             "${recovery_receiver_grasp_retain_adaptation_args[@]}" \
             "${joint_transfer_acquisition_adaptation_args[@]}" \
+            "${transfer_refinement_adaptation_args[@]}" \
             "${pickup_vertical_action_limit_args[@]}" \
             "${pickup_initial_vertical_action_limit_args[@]}" \
             "${recovery_pickup_vertical_action_limit_args[@]}" \

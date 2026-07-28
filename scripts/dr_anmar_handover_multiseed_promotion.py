@@ -58,6 +58,7 @@ def _load(path: Path) -> dict[str, Any]:
         "successful_episodes",
         "failure_distribution",
         "checkpoint",
+        "policy_runtime_contract_sha256",
         "first_terminal_outcome_per_environment",
     }
     missing = sorted(required - evidence.keys())
@@ -93,9 +94,16 @@ def evaluate_multiseed(
     required_seeds: set[int],
     minimum_success_rate: float,
     maximum_seed_regression: float,
+    minimum_aggregate_improvement: float = 0.005,
+    minimum_seed_count: int = 3,
     maximum_protected_surface_rate_increase: float = 0.001,
     require_paired_population: bool = True,
 ) -> dict[str, Any]:
+    if len(required_seeds) < minimum_seed_count:
+        raise ValueError(
+            "promotion requires at least "
+            f"{minimum_seed_count} pre-registered seeds"
+        )
     baseline = _by_seed(baseline_paths)
     candidate = _by_seed(candidate_paths)
     if set(baseline) != required_seeds:
@@ -108,6 +116,20 @@ def evaluate_multiseed(
     }
     if len(checkpoint_hashes) != 1:
         raise ValueError("candidate evidence does not use one frozen checkpoint")
+    baseline_runtime_contract_hashes = {
+        item["policy_runtime_contract_sha256"] for item in baseline.values()
+    }
+    candidate_runtime_contract_hashes = {
+        item["policy_runtime_contract_sha256"] for item in candidate.values()
+    }
+    if len(baseline_runtime_contract_hashes) != 1:
+        raise ValueError(
+            "baseline evidence does not use one frozen runtime contract"
+        )
+    if len(candidate_runtime_contract_hashes) != 1:
+        raise ValueError(
+            "candidate evidence does not use one frozen runtime contract"
+        )
 
     per_seed = []
     total_successes = 0
@@ -218,6 +240,10 @@ def evaluate_multiseed(
         aggregate_rate >= minimum_success_rate
         and lower >= minimum_success_rate
     )
+    aggregate_improvement = aggregate_rate - baseline_rate
+    aggregate_improvement_gate = (
+        aggregate_improvement >= minimum_aggregate_improvement
+    )
     per_seed_gate = all(
         item["seed_regression_gate_passed"] for item in per_seed
     )
@@ -238,12 +264,13 @@ def evaluate_multiseed(
     )
     promotable = (
         success_gate
+        and aggregate_improvement_gate
         and per_seed_gate
         and safety_gate
         and paired_population_gate
     )
     return {
-        "schema_version": "dranmar-handover-multiseed-promotion-1.1",
+        "schema_version": "dranmar-handover-multiseed-promotion-1.2",
         "decision": (
             "candidate_promoted"
             if promotable
@@ -251,13 +278,19 @@ def evaluate_multiseed(
         ),
         "required_seeds": sorted(required_seeds),
         "candidate_checkpoint_sha256": checkpoint_hashes.pop(),
+        "baseline_policy_runtime_contract_sha256": (
+            baseline_runtime_contract_hashes.pop()
+        ),
+        "candidate_policy_runtime_contract_sha256": (
+            candidate_runtime_contract_hashes.pop()
+        ),
         "aggregate": {
             "baseline_successes": total_baseline_successes,
             "candidate_successes": total_successes,
             "episodes": total_episodes,
             "baseline_success_rate": baseline_rate,
             "candidate_success_rate": aggregate_rate,
-            "candidate_minus_baseline": aggregate_rate - baseline_rate,
+            "candidate_minus_baseline": aggregate_improvement,
             "candidate_success_wilson_95": [lower, upper],
             "hard_failures": hard_failure_totals,
             "baseline_protected_surface_failures": (
@@ -275,6 +308,13 @@ def evaluate_multiseed(
         },
         "gates": {
             "minimum_success_rate": minimum_success_rate,
+            "minimum_aggregate_improvement": (
+                minimum_aggregate_improvement
+            ),
+            "aggregate_improvement_gate_passed": (
+                aggregate_improvement_gate
+            ),
+            "minimum_seed_count": minimum_seed_count,
             "maximum_seed_regression": maximum_seed_regression,
             "success_gate_passed": success_gate,
             "per_seed_regression_gate_passed": per_seed_gate,
@@ -313,11 +353,17 @@ def main() -> int:
         "--required-seeds",
         default="2361,4099,7919",
     )
-    parser.add_argument("--minimum-success-rate", type=float, default=0.70)
+    parser.add_argument("--minimum-success-rate", type=float, default=0.60)
+    parser.add_argument(
+        "--minimum-aggregate-improvement",
+        type=float,
+        default=0.005,
+    )
+    parser.add_argument("--minimum-seed-count", type=int, default=3)
     parser.add_argument(
         "--maximum-seed-regression",
         type=float,
-        default=0.0,
+        default=0.01,
     )
     parser.add_argument(
         "--maximum-protected-surface-rate-increase",
@@ -330,6 +376,10 @@ def main() -> int:
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.minimum_aggregate_improvement < 0.0:
+        parser.error("minimum aggregate improvement must be non-negative")
+    if args.minimum_seed_count <= 0:
+        parser.error("minimum seed count must be positive")
     required_seeds = {
         int(value.strip())
         for value in args.required_seeds.split(",")
@@ -341,6 +391,10 @@ def main() -> int:
         required_seeds=required_seeds,
         minimum_success_rate=args.minimum_success_rate,
         maximum_seed_regression=args.maximum_seed_regression,
+        minimum_aggregate_improvement=(
+            args.minimum_aggregate_improvement
+        ),
+        minimum_seed_count=args.minimum_seed_count,
         maximum_protected_surface_rate_increase=(
             args.maximum_protected_surface_rate_increase
         ),

@@ -47,6 +47,64 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _policy_runtime_contract(policy_model, task: str) -> dict[str, Any]:
+    """Return the deterministic serving configuration paired with a checkpoint."""
+    controller = getattr(policy_model, "controller", None)
+    controller_scalars = {}
+    if controller is not None:
+        controller_scalars = {
+            key: value
+            for key, value in vars(controller).items()
+            if isinstance(value, (bool, int, float, str)) or value is None
+        }
+    return {
+        "task": task,
+        "model_class": type(policy_model).__name__,
+        "residual_scale": getattr(policy_model, "residual_scale", None),
+        "giver_adaptation_enabled": bool(
+            getattr(policy_model, "giver_adaptation_enabled", False)
+        ),
+        "pickup_recovery_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "pickup_recovery_adaptation_enabled",
+                False,
+            )
+        ),
+        "recovery_receiver_grasp_retain_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "recovery_receiver_grasp_retain_adaptation_enabled",
+                False,
+            )
+        ),
+        "joint_transfer_acquisition_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "joint_transfer_acquisition_adaptation_enabled",
+                False,
+            )
+        ),
+        "transfer_refinement_adaptation_enabled": bool(
+            getattr(
+                policy_model,
+                "transfer_refinement_adaptation_enabled",
+                False,
+            )
+        ),
+        "controller_scalars": controller_scalars,
+    }
+
+
+def _canonical_sha256(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def _command_output(args: list[str], cwd: Path | None = None) -> str | None:
     try:
         return subprocess.run(
@@ -1937,6 +1995,13 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             False,
         )
     )
+    transfer_refinement_curriculum = bool(
+        getattr(
+            env_cfg,
+            "dr_anmar_transfer_refinement_curriculum",
+            False,
+        )
+    )
     pickup_recovery_curriculum = bool(
         getattr(
             env_cfg,
@@ -1961,6 +2026,19 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
         # requested 1e-5 rate to 1e-2 before the replay cache was representative.
         agent_cfg.save_interval = 1
         agent_cfg.algorithm.schedule = "fixed"
+    if transfer_refinement_curriculum:
+        refinement_rollout_steps = int(
+            getattr(
+                env_cfg,
+                "dr_anmar_transfer_refinement_rollout_steps_per_env",
+                128,
+            )
+        )
+        if refinement_rollout_steps <= 0:
+            return _fail(
+                "transfer-refinement rollout steps must be positive"
+            )
+        agent_cfg.num_steps_per_env = refinement_rollout_steps
     agent_cfg.max_iterations = args.max_iterations
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = Path(args.output_path).resolve() / "runs" / timestamp
@@ -2007,7 +2085,41 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 "rnd": False,
             }
         runner.load(str(initial_checkpoint), load_cfg=load_cfg)
-        if joint_transfer_acquisition_curriculum:
+        if transfer_refinement_curriculum:
+            policy_model = runner.alg.get_policy()
+            configure_refinement = getattr(
+                policy_model,
+                "configure_transfer_refinement_adaptation",
+                None,
+            )
+            if configure_refinement is None:
+                env.close()
+                return _fail(
+                    "handover policy does not support transfer refinement"
+                )
+            configure_refinement()
+            refinement_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_transfer_refinement_controller",
+                {},
+            )
+            refinement_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in refinement_controller_cfg.items():
+                if refinement_controller is None or not hasattr(
+                    refinement_controller,
+                    attribute,
+                ):
+                    env.close()
+                    return _fail(
+                        "transfer-refinement curriculum controller does not "
+                        f"expose {attribute}"
+                    )
+                setattr(refinement_controller, attribute, value)
+        elif joint_transfer_acquisition_curriculum:
             policy_model = runner.alg.get_policy()
             configure_joint_transfer = getattr(
                 policy_model,
@@ -2239,6 +2351,63 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
             ),
             "joint_transfer_acquisition_curriculum": (
                 joint_transfer_acquisition_curriculum
+            ),
+            "transfer_refinement_curriculum": (
+                transfer_refinement_curriculum
+            ),
+            "transfer_refinement_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_transfer_refinement_objective",
+                    None,
+                )
+                if transfer_refinement_curriculum
+                else None
+            ),
+            "transfer_refinement_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_transfer_refinement_controller",
+                    None,
+                )
+                if transfer_refinement_curriculum
+                else None
+            ),
+            "transfer_refinement_adaptation_contract": (
+                {
+                    "source_states": (
+                        "physics_owned_stable_presentation_with_complete_"
+                        "markov_state"
+                    ),
+                    "option_success": "unchanged_retained_handover_terminal",
+                    "joint_transfer_checkpoint_frozen_and_active": True,
+                    "optimizer_state_reset": True,
+                    "optimizer_schedule": "fixed",
+                    "observation_normalizer_frozen": True,
+                    "zero_initialized_adapter": True,
+                    "rollout_steps_per_env": agent_cfg.num_steps_per_env,
+                    "learned_giver_axes_phase_2": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "learned_receiver_axes_phases_2_and_3": [
+                        "x",
+                        "y",
+                        "z",
+                        "roll",
+                        "pitch",
+                        "yaw",
+                    ],
+                    "analytic_gripper_authority": True,
+                    "analytic_release_authority": True,
+                    "hard_terminations_unchanged": True,
+                }
+                if transfer_refinement_curriculum
+                else None
             ),
             "joint_transfer_acquisition_objective": (
                 getattr(
@@ -4505,15 +4674,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             bool(args.pickup_recovery_adaptation),
             bool(args.recovery_receiver_grasp_retain_adaptation),
             bool(args.joint_transfer_acquisition_adaptation),
+            bool(args.transfer_refinement_adaptation),
         )
     )
     if adaptation_modes > 1:
         env.close()
         return _fail(
-            "giver, pickup-recovery, recovery-conditioned receiver, and "
-            "joint transfer-acquisition modes are mutually exclusive"
+            "giver, pickup-recovery, recovery-conditioned receiver, joint "
+            "transfer-acquisition, and transfer-refinement modes are "
+            "mutually exclusive"
         )
-    if args.joint_transfer_acquisition_adaptation:
+    if args.transfer_refinement_adaptation:
+        configure_refinement = getattr(
+            policy_model,
+            "configure_transfer_refinement_adaptation",
+            None,
+        )
+        if configure_refinement is None:
+            env.close()
+            return _fail(
+                "loaded policy does not support transfer refinement"
+            )
+        configure_refinement()
+    elif args.joint_transfer_acquisition_adaptation:
         configure_joint_transfer = getattr(
             policy_model,
             "configure_joint_transfer_acquisition_adaptation",
@@ -7324,6 +7507,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             }
         first_completed_count = int((~first_unresolved).sum().item())
         first_success_count = int(first_outcome_success.sum().item())
+        policy_runtime_contract = _policy_runtime_contract(
+            policy_model,
+            args.task,
+        )
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -7399,6 +7586,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             }
             if checkpoint is not None
             else None,
+            "policy_runtime_contract": policy_runtime_contract,
+            "policy_runtime_contract_sha256": _canonical_sha256(
+                policy_runtime_contract
+            ),
             "analytic_only": bool(args.analytic_only),
             "policy_giver_adaptation_enabled": bool(
                 getattr(
@@ -7426,6 +7617,13 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     policy_model,
                     "joint_transfer_acquisition_adaptation_enabled",
                     args.joint_transfer_acquisition_adaptation,
+                )
+            ),
+            "policy_transfer_refinement_adaptation_enabled": bool(
+                getattr(
+                    policy_model,
+                    "transfer_refinement_adaptation_enabled",
+                    args.transfer_refinement_adaptation,
                 )
             ),
             "policy_residual_scale": (
@@ -7821,6 +8019,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument(
         "--joint_transfer_acquisition_adaptation",
+        action="store_true",
+    )
+    play.add_argument(
+        "--transfer_refinement_adaptation",
         action="store_true",
     )
     play.add_argument("--num_envs", type=int, required=True)

@@ -1,5 +1,5 @@
 {
-  "schema_version": "dranmar-e2e-handover-experiment-1.8",
+  "schema_version": "dranmar-e2e-handover-experiment-1.9",
   "status": "isolated_research_example_not_stage_qualified",
   "baseline_commit": "c17d97c6a5e798998321b394ece2fc6642edb53b",
   "task": "DrAnmar-Handover-Needle-Dual-PSM-IK-Rel-Structured-v0",
@@ -327,8 +327,39 @@
     "next_required_representation": "canonical_needle_local_se3_grasp_pose_shared_by_controller_observations_replay_and_training"
   },
   "joint_transfer_acquisition_v8": {
-    "status": "implemented_awaiting_clean_runtime_qualification",
+    "status": "development_champion_not_formally_promoted",
     "initial_checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+    "development_champion_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "training_scale": {
+      "num_envs": 2400,
+      "rollout_steps_per_env": 64,
+      "iterations": 90,
+      "simulated_frames": 13824000,
+      "wall_time_s": 370.62,
+      "throughput_frames_per_s": 37299,
+      "peak_process_memory_mib": 34389
+    },
+    "paired_development_screen": {
+      "seeds": [
+        2361,
+        4099,
+        7919
+      ],
+      "episodes_per_seed": 600,
+      "baseline_successes": 1167,
+      "candidate_successes": 1186,
+      "candidate_minus_baseline": 19,
+      "candidate_minus_baseline_rate": 0.010555555555555556,
+      "seed_success_deltas": [
+        21,
+        -4,
+        2
+      ],
+      "candidate_catastrophic_failures": 0,
+      "baseline_protected_surface_failures": 2,
+      "candidate_protected_surface_failures": 1,
+      "qualification_status": "exploratory_only_post_hoc_thresholds_not_a_formal_promotion"
+    },
     "source_states": "physics_owned_lifted_custody_with_complete_markov_state",
     "restore_probability": 0.95,
     "capture_stage": "lifted_custody",
@@ -348,6 +379,48 @@
     "evaluation_contract": "same_seed_same_initial_state_population_hash_complete_first_terminal_population",
     "safety_contract": "zero_catastrophic_events_and_protected_surface_rate_noninferior_to_incumbent",
     "qualification_boundary": "no_performance_claim_until_clean_multiseed_held_out_play_promotes_the_frozen_checkpoint"
+  },
+  "transfer_refinement_v9": {
+    "status": "implemented_awaiting_clean_runtime_qualification",
+    "initial_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "source_states": "physics_owned_stable_presentation_with_complete_markov_state",
+    "restore_probability": 0.98,
+    "capture_stage": "stable_presentation",
+    "num_envs": 1200,
+    "rollout_steps_per_env": 128,
+    "optimizer_schedule": "fixed",
+    "requested_learning_rate_must_remain_constant": true,
+    "frozen_joint_transfer_development_champion": true,
+    "zero_initialized_refinement_adapter": true,
+    "learned_authority": {
+      "phase_2_giver": "se3",
+      "phase_2_receiver": "se3",
+      "phase_3_giver": "none",
+      "phase_3_receiver": "se3"
+    },
+    "analytic_authority": [
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "credit_assignment_rationale": "128_steps_covers_the_observed_stable_presentation_to_receiver_contact_latency_that_exceeded_the_previous_64_step_rollout",
+    "evaluation_contract": "fresh_preregistered_seeds_same_initial_state_population_hash_complete_first_terminal_population_one_frozen_runtime_contract",
+    "promotion_contract": {
+      "preregistered_seeds": [
+        104729,
+        130363,
+        155921
+      ],
+      "episodes_per_seed": 600,
+      "minimum_seed_count": 3,
+      "minimum_success_rate_with_wilson_lower_bound": 0.6,
+      "minimum_aggregate_improvement": 0.005,
+      "maximum_seed_regression": 0.01,
+      "zero_catastrophic_failures": true,
+      "protected_surface_rate_noninferior": true
+    },
+    "qualification_boundary": "no_promotion_until_the_preregistered_aggregate_improvement_and_safety_gates_pass_on_fresh_held_out_populations"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",
