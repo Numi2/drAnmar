@@ -276,6 +276,7 @@ def qualify(
                 _gate(
                     f"seed_{seed}_run_{run_index}_export_parity",
                     isinstance(composite_export, dict)
+                    and bool(composite_export.get("parity_checked"))
                     and int(
                         composite_export.get("action_mismatches", -1)
                     )

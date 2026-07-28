@@ -87,6 +87,7 @@ def _run(seed: int, *, candidate: bool) -> dict:
         ),
         "exports": {
             "stateful_composite_jit": {
+                "parity_checked": True,
                 "action_mismatches": 0,
                 "maximum_action_absolute_difference": 0.0,
             }
@@ -135,6 +136,22 @@ def test_missing_cached_success_and_safety_regression_fail_closed() -> None:
     assert (
         "seed_17_run_1_needle_dropped_after_pickup_nonincrease"
         in failed
+    )
+
+
+def test_skipped_composite_export_parity_fails_closed() -> None:
+    incumbents, candidates = _qualification_inputs()
+    candidates[17][0]["exports"]["stateful_composite_jit"][
+        "parity_checked"
+    ] = False
+
+    report = QUALIFICATION.qualify(incumbents, candidates)
+
+    assert report["qualified"] is False
+    assert any(
+        gate["id"] == "seed_17_run_1_export_parity"
+        and not gate["passed"]
+        for gate in report["gates"]
     )
 
 

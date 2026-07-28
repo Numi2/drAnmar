@@ -25,6 +25,10 @@ from pathlib import Path
 from typing import Any
 
 
+RECOVERY_DEVELOPMENT_SEEDS = {104729, 130363, 196613}
+RECOVERY_QUALIFICATION_SEEDS = {17, 2361, 4099}
+
+
 def _fail(message: str) -> int:
     print(f"error: {message}", file=sys.stderr)
     return 2
@@ -3372,7 +3376,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
     if args.recovery_demo_rotation_deg:
-        if args.seed in {17, 2361, 4099}:
+        if args.seed in RECOVERY_QUALIFICATION_SEEDS:
             return _fail(
                 "recovery demonstration rotation is forbidden on "
                 "qualification seeds"
@@ -3460,6 +3464,22 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         if not args.receiver_recovery_sweep_id:
             return _fail(
                 "local receiver DAgger candidates require a stable sweep id"
+            )
+    if args.skip_recovery_export_parity:
+        if args.seed not in RECOVERY_DEVELOPMENT_SEEDS:
+            return _fail(
+                "recovery export parity may only be skipped on development "
+                "seeds 104729, 130363, and 196613"
+            )
+        if not (
+            args.pickup_recovery
+            or args.pickup_recovery_checkpoint
+            or args.receiver_recovery
+            or args.receiver_recovery_checkpoint
+        ):
+            return _fail(
+                "recovery export parity skip requires an enabled recovery "
+                "controller"
             )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
@@ -4147,6 +4167,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     runner.export_policy_to_jit(path=str(export_dir), filename="policy.pt")
     runner.export_policy_to_onnx(path=str(export_dir), filename="policy.onnx")
     composite_jit_policy = None
+    composite_jit_parity_enabled = not args.skip_recovery_export_parity
     composite_jit_path = None
     recovery_state_contract_path = None
     recovery_head_onnx_paths: dict[str, Path] = {}
@@ -5037,7 +5058,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         )
                     )
                 actions = policy(obs)
-                if composite_jit_policy is not None:
+                if (
+                    composite_jit_policy is not None
+                    and composite_jit_parity_enabled
+                ):
                     exported_actions = composite_jit_policy(obs["policy"])
                     export_difference = (
                         exported_actions - actions
@@ -5524,7 +5548,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             }
                         )
                 policy.reset(dones)
-                if composite_jit_policy is not None:
+                if (
+                    composite_jit_policy is not None
+                    and composite_jit_parity_enabled
+                ):
                     composite_jit_policy.reset(dones)
             rewards.append(float(reward.float().mean().item()))
             done_count += int(dones.sum().item())
@@ -7148,11 +7175,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     {
                         "path": str(composite_jit_path),
                         "sha256": _sha256(composite_jit_path),
+                        "parity_checked": composite_jit_parity_enabled,
                         "action_mismatches": (
                             composite_jit_action_mismatches
+                            if composite_jit_parity_enabled
+                            else None
                         ),
                         "maximum_action_absolute_difference": (
                             composite_jit_action_max_abs_difference
+                            if composite_jit_parity_enabled
+                            else None
                         ),
                     }
                     if composite_jit_path is not None
@@ -7378,6 +7410,14 @@ def _parser() -> argparse.ArgumentParser:
     )
     play.add_argument("--receiver_recovery_sweep_id")
     play.add_argument("--receiver_recovery_dataset")
+    play.add_argument(
+        "--skip_recovery_export_parity",
+        action="store_true",
+        help=(
+            "development-seed demonstration collection only; still exports "
+            "the composite but does not execute its duplicate per-frame pass"
+        ),
+    )
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 
