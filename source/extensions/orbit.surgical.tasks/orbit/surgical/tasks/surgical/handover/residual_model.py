@@ -95,8 +95,11 @@ class HandoverAnalyticController(nn.Module):
         self.carry_lateral_action_limit = 0.06
         # Recovered grasps are physically less repeatable than reset-aligned
         # grasps. Keep the qualified first-attempt transport unchanged while
-        # allowing a gentler recovery-only carry to preserve custody.
-        self.recovery_carry_lateral_action_limit = 0.06
+        # giving only recovered transport enough lateral authority to reach
+        # presentation before the original episode deadline.  A paired
+        # 2,000-environment screen selected 0.07: 0.08 recovered more episodes
+        # but exceeded the protected-surface non-inferiority bound.
+        self.recovery_carry_lateral_action_limit = 0.07
         self.carry_lateral_ramp_height = 0.01
         self.pickup_vertical_action_limit = 0.01
         self.pickup_initial_vertical_action_limit = 0.01

@@ -258,6 +258,23 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert two_stage_recovery["rollout_steps_per_env"] == 384
     assert two_stage_recovery["stage_1"].startswith("bounded_giver_se3")
     assert two_stage_recovery["stage_2"].startswith("bounded_receiver_se3")
+    assert two_stage_recovery["status"].startswith("rejected_")
+    transport_controller = contract["recovered_transport_controller_v14"]
+    assert transport_controller["paired_scale_result"]["candidate_successes"] == 1148
+    assert (
+        transport_controller["paired_scale_result"][
+            "candidate_recovered_successes"
+        ]
+        == 117
+    )
+    assert (
+        transport_controller["paired_scale_result"][
+            "protected_surface_rate_increase"
+        ]
+        <= transport_controller["paired_scale_result"][
+            "maximum_protected_surface_rate_increase"
+        ]
+    )
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -409,6 +426,7 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "giver_recovery_residual_only_for_learning" in controller_source
     assert "giver_recovery_approach_residual" in controller_source
     assert "recovery_carry_lateral_action_limit" in controller_source
+    assert "self.recovery_carry_lateral_action_limit = 0.07" in controller_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
     assert "pickup_contact_loss_steps debounce" in controller_source
     recovery_cfg_source = (
@@ -653,6 +671,8 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert '"environment_runtime_contract_sha256"' in benchmark_source
     assert "configure_deadline_recovery_adaptation" in benchmark_source
     assert '"deadline_recovery_adaptation_contract"' in benchmark_source
+    assert '"deadline_recovery_controller"' in benchmark_source
+    assert "deadline-recovery curriculum controller does not " in benchmark_source
     assert '"discrete_trajectory_switches": []' in benchmark_source
     assert "recovered_lifted_custody_with_" in benchmark_source
     assert '"learned_giver_axes_before_stable_presentation"' in (

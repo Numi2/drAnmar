@@ -601,7 +601,7 @@
     "qualification_boundary": "same_paired_full_population_and_safety_gates_as_v11"
   },
   "two_stage_recovered_handover_v13": {
-    "status": "implemented_awaiting_exact_zero_and_runtime_training",
+    "status": "rejected_learned_giver_correction_fought_competent_presentation_servo",
     "root_cause": "the_recovered_lifted_custody_to_retained_handover_sequence_exceeds_128_steps_and_requires_different_actuators_before_and_after_stable_presentation",
     "source_states": "physics_owned_recovered_lifted_custody_with_original_episode_deadline_and_complete_markov_state",
     "rollout_steps_per_env": 384,
@@ -615,7 +615,66 @@
     ],
     "zero_impact_adapter": true,
     "terminal_credit": "retained_handover_or_equal_magnitude_unsuccessful_timeout_cost_under_original_deadline",
+    "rejected_development_result": {
+      "checkpoint": "model_4",
+      "seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 382,
+      "reason": "the_learned_pre_presentation_giver_residual_displaced_a_competent_nominal_servo_and_reduced_complete_retained_handovers"
+    },
     "qualification_boundary": "same_paired_full_population_and_safety_gates_as_v11"
+  },
+  "recovered_transport_controller_v14": {
+    "status": "paired_scale_gate_passed_pending_fresh_default_contract_replay",
+    "root_cause": "recovered_pickups_needed_more_lateral_transport_authority_to_reach_stable_presentation_and_receiver_contact_before_the_unchanged_episode_deadline",
+    "control_change": "recovery_only_carry_lateral_action_limit_from_0.06_to_0.07",
+    "unchanged": [
+      "first_attempt_transport_authority",
+      "grasp_and_lift_controller",
+      "receiver_policy",
+      "gripper_and_release_authority",
+      "reward",
+      "success_definition",
+      "episode_deadline",
+      "hard_terminations"
+    ],
+    "paired_scale_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "same_initial_state_population_hash": true,
+      "same_environment_contract_hash": true,
+      "incumbent_successes": 1130,
+      "candidate_successes": 1148,
+      "incumbent_recovered_successes": 99,
+      "candidate_recovered_successes": 117,
+      "incumbent_lifted_without_receiver_acquisition": 708,
+      "candidate_lifted_without_receiver_acquisition": 691,
+      "incumbent_stable_presentations": 1451,
+      "candidate_stable_presentations": 1471,
+      "incumbent_receiver_contacts": 1203,
+      "candidate_receiver_contacts": 1222,
+      "incumbent_protected_surface_events": 2,
+      "candidate_protected_surface_events": 4,
+      "protected_surface_rate_increase": 0.001,
+      "maximum_protected_surface_rate_increase": 0.001,
+      "drops": 0,
+      "excessive_force_events": 0,
+      "disposition": "paired_performance_and_safety_noninferiority_gates_passed"
+    },
+    "rejected_variants": {
+      "recovery_carry_lateral_action_limit_0_08": {
+        "successes": 1164,
+        "protected_surface_events": 6,
+        "reason": "performance_winner_but_exceeded_the_predeclared_protected_surface_noninferiority_bound"
+      },
+      "carry_lateral_ramp_height_0_015": {
+        "development_episodes": 600,
+        "successes": 370,
+        "reason": "delayed_presentation_and_reduced_terminal_retention"
+      }
+    },
+    "qualification_boundary": "fresh_default_contract_replay_then_preregistered_multiseed_promotion"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",

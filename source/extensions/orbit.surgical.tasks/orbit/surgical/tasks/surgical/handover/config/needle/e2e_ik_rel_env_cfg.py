@@ -180,8 +180,8 @@ class NeedleHandoverPickupRecoveryCurriculumEnvCfg(
             "recovered_physics_owned_stable_presentation"
         )
         self.dr_anmar_pickup_recovery_controller = {
-            "recovery_carry_lateral_action_limit": 0.10,
-            "recovery_receiver_preposition_height": 0.015,
+            "recovery_carry_lateral_action_limit": 0.07,
+            "recovery_receiver_preposition_height": 0.025,
         }
         self.events.pickup_recovery_curriculum_reset = EventTerm(
             func=mdp.reset_pickup_recovery_curriculum_from_cache,
@@ -215,8 +215,8 @@ class NeedleHandoverRecoveryReceiverGraspRetainEnvCfg(
             "retained_handover_from_recovered_stable_presentation"
         )
         self.dr_anmar_recovery_receiver_controller = {
-            "recovery_carry_lateral_action_limit": 0.10,
-            "recovery_receiver_preposition_height": 0.015,
+            "recovery_carry_lateral_action_limit": 0.07,
+            "recovery_receiver_preposition_height": 0.025,
         }
 
 
@@ -248,6 +248,14 @@ class NeedleHandoverDeadlineRecoveryResidualEnvCfg(
             "incumbent_plus_bounded_two_stage_giver_then_receiver_se3_"
             "residual"
         )
+        # Training must use the same qualified recovered-transport contract as
+        # full-task play. This field is applied explicitly by the benchmark;
+        # inheriting a controller dictionary without applying it previously
+        # made the evidence claim a configuration the policy never received.
+        self.dr_anmar_deadline_recovery_controller = {
+            "recovery_carry_lateral_action_limit": 0.07,
+            "recovery_receiver_preposition_height": 0.025,
+        }
 
 
 @configclass
@@ -275,8 +283,8 @@ class NeedleHandoverJointTransferAcquisitionEnvCfg(
             "retained_handover_from_physics_owned_lifted_custody"
         )
         self.dr_anmar_joint_transfer_acquisition_controller = {
-            "recovery_carry_lateral_action_limit": 0.10,
-            "recovery_receiver_preposition_height": 0.015,
+            "recovery_carry_lateral_action_limit": 0.07,
+            "recovery_receiver_preposition_height": 0.025,
         }
 
 
@@ -304,6 +312,6 @@ class NeedleHandoverTransferRefinementEnvCfg(
             "retained_handover_from_physics_owned_stable_presentation"
         )
         self.dr_anmar_transfer_refinement_controller = {
-            "recovery_carry_lateral_action_limit": 0.10,
-            "recovery_receiver_preposition_height": 0.015,
+            "recovery_carry_lateral_action_limit": 0.07,
+            "recovery_receiver_preposition_height": 0.025,
         }

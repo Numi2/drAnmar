@@ -2152,6 +2152,27 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "handover policy does not support deadline-aware recovery"
                 )
             configure_deadline_recovery()
+            deadline_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_deadline_recovery_controller",
+                {},
+            )
+            deadline_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in deadline_controller_cfg.items():
+                if deadline_controller is None or not hasattr(
+                    deadline_controller,
+                    attribute,
+                ):
+                    env.close()
+                    return _fail(
+                        "deadline-recovery curriculum controller does not "
+                        f"expose {attribute}"
+                    )
+                setattr(deadline_controller, attribute, value)
         elif transfer_refinement_curriculum:
             policy_model = runner.alg.get_policy()
             configure_refinement = getattr(
@@ -2474,6 +2495,15 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "hard_terminations_unchanged": True,
                     "episode_horizon_unchanged": True,
                 }
+                if deadline_recovery_curriculum
+                else None
+            ),
+            "deadline_recovery_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_deadline_recovery_controller",
+                    None,
+                )
                 if deadline_recovery_curriculum
                 else None
             ),
