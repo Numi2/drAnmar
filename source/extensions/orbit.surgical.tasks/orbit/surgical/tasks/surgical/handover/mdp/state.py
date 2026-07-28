@@ -81,6 +81,12 @@ def handover_state(
             "giver_release_observed": torch.zeros(
                 env.num_envs, dtype=torch.bool, device=env.device
             ),
+            "giver_loss_consecutive": torch.zeros(
+                env.num_envs, dtype=torch.long, device=env.device
+            ),
+            "giver_recovery_open_authorized": torch.zeros(
+                env.num_envs, dtype=torch.bool, device=env.device
+            ),
             "premature_release": torch.zeros(
                 env.num_envs, dtype=torch.bool, device=env.device
             ),
@@ -138,6 +144,8 @@ def handover_state(
     state["receiver_contact_history"][reset] = False
     state["receiver_loss_consecutive"][reset] = 0
     state["giver_release_observed"][reset] = False
+    state["giver_loss_consecutive"][reset] = 0
+    state["giver_recovery_open_authorized"][reset] = False
     state["premature_release"][reset] = False
     state["last_retention_failure_low_clearance"][reset] = state[
         "retention_failure_low_clearance"
@@ -216,13 +224,36 @@ def handover_state(
         physical_action[:, 6],
         physical_action[:, 13],
     )
+    state["giver_loss_consecutive"][:] = torch.where(
+        (phase == 1) & ~giver_contact_now,
+        state["giver_loss_consecutive"] + 1,
+        torch.zeros_like(state["giver_loss_consecutive"]),
+    )
+    state["giver_recovery_open_authorized"] |= (
+        (phase == 1)
+        & (state["giver_loss_consecutive"] >= 3)
+    )
+    authorized_recovery_open = (
+        (phase == 1)
+        & state["giver_recovery_open_authorized"]
+        & (giver_open_action > 0.0)
+    )
     # Opening while custody still exists is a premature release. Once current
-    # bilateral custody is gone, opening is the required reset for reacquisition.
+    # bilateral custody has been absent for three consecutive steps, opening
+    # is the required reset for reacquisition.  Keep that authorization
+    # latched through contact flicker while the jaws physically reopen.
     state["premature_release"] |= (
         before_acquisition
         & giver_contact_now
         & (giver_open_action > 0.0)
+        & ~authorized_recovery_open
     )
+    recovery_reacquired = (
+        (phase == 1)
+        & giver_contact
+        & (giver_open_action < 0.0)
+    )
+    state["giver_recovery_open_authorized"][recovery_reacquired] = False
     phase[
         (phase == 1)
         & lifted
@@ -236,6 +267,7 @@ def handover_state(
         - receiver_position_w[receiver_acquired]
     )
     phase[receiver_acquired] = 3
+    state["giver_recovery_open_authorized"][phase != 1] = False
     state["giver_release_observed"] |= (
         (phase == 3)
         & (giver_open_action > 0.0)
