@@ -67,9 +67,10 @@ def main(argv: list[str]) -> int:
         for path in dataset_paths
     ]
     for path, payload in zip(dataset_paths, payloads, strict=True):
-        if payload.get("schema_version") != (
-            "dranmar-pickup-recovery-dataset-1.0"
-        ):
+        if payload.get("schema_version") not in {
+            "dranmar-pickup-recovery-dataset-1.0",
+            "dranmar-pickup-recovery-dataset-1.1",
+        }:
             raise ValueError(f"unsupported recovery dataset: {path}")
         if payload["context"].shape[-1] != PickupRecoveryHead.input_dim:
             raise ValueError(f"recovery context shape drifted in {path}")
@@ -88,20 +89,74 @@ def main(argv: list[str]) -> int:
     position_cap = position_caps.pop()
     orientation_cap = orientation_caps.pop()
 
-    context = torch.cat([payload["context"].float() for payload in payloads])
-    correction = torch.cat(
-        [payload["correction"].float() for payload in payloads]
+    total_samples = sum(
+        int(payload["context"].shape[0]) for payload in payloads
     )
-    recovered = torch.cat(
-        [payload["recovered_custody"].bool() for payload in payloads]
-    )
-    lifted = torch.cat([payload["lifted"].bool() for payload in payloads])
-    successful_demonstration = recovered & lifted
-    positive_context = context[successful_demonstration]
-    positive_correction = correction[successful_demonstration]
+    successful_candidate_count = 0
+    positive_context_parts = []
+    positive_correction_parts = []
+    for payload in payloads:
+        payload_context = payload["context"].float()
+        payload_correction = payload["correction"].float()
+        safe_lift = payload.get(
+            "safe_lift",
+            payload["recovered_custody"].bool()
+            & payload["lifted"].bool(),
+        ).bool()
+        successful_candidate_count += int(safe_lift.sum().item())
+        state_index = payload.get(
+            "state_index",
+            torch.arange(payload_context.shape[0]),
+        ).long()
+        peak_force = payload.get(
+            "peak_jaw_force_n",
+            torch.full((payload_context.shape[0], 2), float("inf")),
+        ).float()
+        steps_to_lift = payload.get(
+            "steps_to_lift",
+            torch.full((payload_context.shape[0],), 2**31 - 1),
+        ).long()
+        for state in torch.unique(state_index).tolist():
+            state_candidates = torch.nonzero(
+                (state_index == state) & safe_lift,
+                as_tuple=False,
+            ).flatten()
+            if state_candidates.numel() == 0:
+                continue
+            normalized = torch.cat(
+                (
+                    payload_correction[state_candidates, :3]
+                    / position_cap,
+                    payload_correction[state_candidates, 3:]
+                    / orientation_cap,
+                ),
+                dim=-1,
+            )
+            correction_size = normalized.norm(dim=-1)
+            candidate_peak_force = peak_force[
+                state_candidates
+            ].amax(dim=-1)
+            candidate_lift_steps = steps_to_lift[state_candidates]
+            chosen_offset = min(
+                range(state_candidates.numel()),
+                key=lambda offset: (
+                    float(correction_size[offset].item()),
+                    float(candidate_peak_force[offset].item()),
+                    int(candidate_lift_steps[offset].item()),
+                ),
+            )
+            chosen = int(state_candidates[chosen_offset].item())
+            positive_context_parts.append(payload_context[chosen])
+            positive_correction_parts.append(payload_correction[chosen])
+    if positive_context_parts:
+        positive_context = torch.stack(positive_context_parts)
+        positive_correction = torch.stack(positive_correction_parts)
+    else:
+        positive_context = torch.empty(0, PickupRecoveryHead.input_dim)
+        positive_correction = torch.empty(0, PickupRecoveryHead.output_dim)
     if positive_context.shape[0] < 32:
         raise ValueError(
-            "at least 32 recovered-and-lifted demonstrations are required"
+            "at least 32 distinct safe-lift recovery states are required"
         )
     normalized_target = torch.cat(
         (
@@ -200,9 +255,10 @@ def main(argv: list[str]) -> int:
             "batch_size": args.batch_size,
             "learning_rate": args.learning_rate,
             "weight_decay": args.weight_decay,
-            "dataset_samples": int(context.shape[0]),
+            "dataset_samples": total_samples,
+            "successful_candidates": successful_candidate_count,
             "successful_demonstrations": int(
-                successful_demonstration.sum().item()
+                positive_context.shape[0]
             ),
             "training_demonstrations": int(training_context.shape[0]),
             "validation_demonstrations": int(validation_context.shape[0]),

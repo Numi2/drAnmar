@@ -3370,6 +3370,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         return _fail(f"checkpoint not found: {checkpoint}")
 
     env_cfg, agent_cfg = _load_configs(args.task, args.num_envs, args.seed)
+    if args.pickup_recovery_sweep_replicas < 1:
+        return _fail("pickup recovery sweep replicas must be positive")
+    if args.pickup_recovery_sweep_replicas > 1:
+        if not args.pickup_recovery_random_corrections:
+            return _fail(
+                "grouped pickup recovery sweeps require randomized corrections"
+            )
+        if args.num_envs % args.pickup_recovery_sweep_replicas != 0:
+            return _fail(
+                "pickup recovery sweep replicas must divide num_envs"
+            )
+        from orbit.surgical.tasks.surgical.handover.mdp import (
+            reset_root_state_uniform_grouped,
+        )
+
+        env_cfg.events.reset_object_position.func = (
+            reset_root_state_uniform_grouped
+        )
+        env_cfg.events.reset_object_position.params["replicas"] = (
+            args.pickup_recovery_sweep_replicas
+        )
     env_kwargs: dict[str, Any] = {"cfg": env_cfg}
     if args.video:
         env_cfg.viewer.resolution = (args.video_width, args.video_height)
@@ -3585,6 +3606,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         args.pickup_recovery
         or args.pickup_recovery_checkpoint
         or args.pickup_recovery_fixed_correction
+        or args.pickup_recovery_random_corrections
     ):
         from orbit.surgical.tasks.surgical.handover.recovery_policy import (
             HandoverPickupRecoveryPolicy,
@@ -3692,21 +3714,34 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 scramble=True,
                 seed=args.seed,
             )
-            normalized = (
-                2.0 * sobol.draw(env.unwrapped.num_envs) - 1.0
+            candidate_count = (
+                args.pickup_recovery_sweep_replicas
+                if args.pickup_recovery_sweep_replicas > 1
+                else env.unwrapped.num_envs
+            )
+            normalized_candidates = (
+                2.0 * sobol.draw(candidate_count) - 1.0
             ).to(env.unwrapped.device)
-            randomized = torch.cat(
+            candidate_corrections = torch.cat(
                 (
-                    normalized[:, :3]
+                    normalized_candidates[:, :3]
                     * args.pickup_recovery_position_cap,
-                    normalized[:, 3:]
+                    normalized_candidates[:, 3:]
                     * math.radians(
                         args.pickup_recovery_orientation_cap_deg
                     ),
                 ),
                 dim=-1,
             )
-            randomized[0] = 0.0
+            candidate_corrections[0] = 0.0
+            if args.pickup_recovery_sweep_replicas > 1:
+                randomized = candidate_corrections.repeat(
+                    env.unwrapped.num_envs
+                    // args.pickup_recovery_sweep_replicas,
+                    1,
+                )
+            else:
+                randomized = candidate_corrections
             pickup_recovery_policy.set_fixed_correction(randomized)
         pickup_recovery_policy.eval()
         policy = pickup_recovery_policy
@@ -3786,6 +3821,30 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         torch.zeros_like(first_unresolved)
         if pickup_recovery_policy is not None
         else None
+    )
+    first_pickup_activation_frame = (
+        torch.full(
+            (env.unwrapped.num_envs,),
+            -1,
+            dtype=torch.long,
+            device=env.unwrapped.device,
+        )
+        if pickup_recovery_policy is not None
+        else None
+    )
+    first_pickup_peak_jaw_force_n = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 2),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if pickup_recovery_policy is not None
+        else None
+    )
+    first_terminal_flags = torch.zeros(
+        (env.unwrapped.num_envs, len(termination_names)),
+        dtype=torch.bool,
+        device=env.unwrapped.device,
     )
     first_termination_counts = {name: 0 for name in termination_names}
     first_failure_distribution = {name: 0 for name in failure_names}
@@ -4373,6 +4432,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     assert first_pickup_context is not None
                     assert first_pickup_activation_correction is not None
                     assert first_pickup_activation_seen is not None
+                    assert first_pickup_activation_frame is not None
+                    assert first_pickup_peak_jaw_force_n is not None
                     activation = (
                         pickup_recovery_policy.last_activation_mask
                         & was_first_unresolved
@@ -4385,7 +4446,31 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_pickup_activation_correction[activation] = (
                             pickup_recovery_policy.correction[activation]
                         )
+                        first_pickup_activation_frame[activation] = (
+                            frame_index
+                        )
                         first_pickup_activation_seen |= activation
+                    handover_observation = obs["policy"]
+                    giver_is_robot_1 = (
+                        handover_observation[:, 82] > 0.5
+                    )
+                    giver_contacts = torch.where(
+                        giver_is_robot_1.unsqueeze(-1),
+                        handover_observation[:, 66:68],
+                        handover_observation[:, 68:70],
+                    )
+                    recovery_tracking = (
+                        first_pickup_activation_seen
+                        & was_first_unresolved
+                    )
+                    first_pickup_peak_jaw_force_n[:] = torch.where(
+                        recovery_tracking.unsqueeze(-1),
+                        torch.maximum(
+                            first_pickup_peak_jaw_force_n,
+                            giver_contacts / 0.2,
+                        ),
+                        first_pickup_peak_jaw_force_n,
+                    )
                 obs, reward, dones, extras = env.step(actions)
                 term_values = {
                     name: termination_manager.get_term(name)
@@ -4443,6 +4528,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     single_environment_episode_start_frame = frame_index + 1
                 first_dones = was_first_unresolved & dones.bool()
                 first_successes = first_dones & successes.bool()
+                for term_index, name in enumerate(termination_names):
+                    first_terminal_flags[first_dones, term_index] = (
+                        term_values[name][first_dones].bool()
+                    )
                 if pickup_recovery_policy is not None:
                     assert first_pickup_retry_count is not None
                     assert first_pickup_failed is not None
@@ -5173,6 +5262,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             assert first_pickup_context is not None
             assert first_pickup_activation_correction is not None
             assert first_pickup_activation_seen is not None
+            assert first_pickup_activation_frame is not None
+            assert first_pickup_peak_jaw_force_n is not None
             assert first_pickup_correction is not None
             assert first_pickup_retry_count is not None
             assert first_pickup_recovered_custody is not None
@@ -5181,10 +5272,45 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
             dataset_path.parent.mkdir(parents=True, exist_ok=True)
             dataset_mask = first_pickup_activation_seen
+            environment_index = torch.arange(
+                env.unwrapped.num_envs,
+                dtype=torch.long,
+                device=env.unwrapped.device,
+            )
+            sweep_replicas = args.pickup_recovery_sweep_replicas
+            hard_failure_indices = [
+                termination_names.index(name)
+                for name in failure_names
+                if name != "time_out"
+            ]
+            hard_failure = first_terminal_flags[:, hard_failure_indices].any(
+                dim=-1
+            )
+            pickup_safety_names = {
+                "excessive_object_force",
+                "needle_dropped_after_pickup",
+                "object_dropping",
+                "premature_giver_release",
+                "protected_surface_force",
+            }
+            pickup_safety_indices = [
+                termination_names.index(name)
+                for name in pickup_safety_names
+                if name in termination_names
+            ]
+            pickup_safety_failure = first_terminal_flags[
+                :, pickup_safety_indices
+            ].any(dim=-1)
+            first_lift_frame = first_handover_history["first_lift_frame"]
+            steps_to_lift = torch.where(
+                first_lift_frame >= 0,
+                first_lift_frame - first_pickup_activation_frame,
+                torch.full_like(first_lift_frame, -1),
+            )
             torch.save(
                 {
                     "schema_version": (
-                        "dranmar-pickup-recovery-dataset-1.0"
+                        "dranmar-pickup-recovery-dataset-1.1"
                     ),
                     "task": args.task,
                     "seed": args.seed,
@@ -5195,6 +5321,16 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "orientation_cap_rad": math.radians(
                         args.pickup_recovery_orientation_cap_deg
                     ),
+                    "sweep_replicas": sweep_replicas,
+                    "environment_index": environment_index[
+                        dataset_mask
+                    ].cpu(),
+                    "state_index": (
+                        environment_index[dataset_mask] // sweep_replicas
+                    ).cpu(),
+                    "candidate_index": (
+                        environment_index[dataset_mask] % sweep_replicas
+                    ).cpu(),
                     "context": first_pickup_context[
                         dataset_mask
                     ].cpu(),
@@ -5218,6 +5354,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "retry_count": first_pickup_retry_count[
                         dataset_mask
                     ].cpu(),
+                    "activation_frame": first_pickup_activation_frame[
+                        dataset_mask
+                    ].cpu(),
+                    "steps_to_lift": steps_to_lift[
+                        dataset_mask
+                    ].cpu(),
+                    "peak_jaw_force_n": first_pickup_peak_jaw_force_n[
+                        dataset_mask
+                    ].cpu(),
+                    "termination_names": termination_names,
+                    "termination_flags": first_terminal_flags[
+                        dataset_mask
+                    ].cpu(),
+                    "hard_failure": hard_failure[dataset_mask].cpu(),
+                    "pickup_safety_failure": pickup_safety_failure[
+                        dataset_mask
+                    ].cpu(),
+                    "safe_lift": (
+                        (first_handover_max_phase >= 2)
+                        & ~pickup_safety_failure
+                    )[dataset_mask].cpu(),
                 },
                 dataset_path,
             )
@@ -5428,6 +5585,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "randomized_corrections": (
                         args.pickup_recovery_random_corrections
                     ),
+                    "sweep_replicas": (
+                        args.pickup_recovery_sweep_replicas
+                    ),
                     "dataset": pickup_recovery_dataset,
                     "first_attempt_failures": int(
                         first_pickup_failed.sum().item()
@@ -5450,9 +5610,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         str(retry): int(
                             (first_pickup_retry_count == retry).sum().item()
                         )
-                        for retry in range(
-                            int(first_pickup_retry_count.max().item()) + 1
-                        )
+                        for retry in torch.unique(
+                            first_pickup_retry_count
+                        ).tolist()
                     },
                     "mean_final_correction": [
                         float(
@@ -5607,6 +5767,11 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument(
         "--pickup_recovery_random_corrections",
         action="store_true",
+    )
+    play.add_argument(
+        "--pickup_recovery_sweep_replicas",
+        type=int,
+        default=1,
     )
     play.add_argument("--pickup_recovery_dataset")
     play.add_argument("--benchmark_formatter", default="schema,json")

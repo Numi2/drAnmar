@@ -332,6 +332,12 @@ case "${command}" in
         if [[ "${DR_ANMAR_PICKUP_RECOVERY_RANDOM_CORRECTIONS:-0}" == "1" ]]; then
             pickup_recovery_args+=(--pickup_recovery_random_corrections)
         fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_SWEEP_REPLICAS:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_sweep_replicas
+                "${DR_ANMAR_PICKUP_RECOVERY_SWEEP_REPLICAS}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_DATASET:-}" ]]; then
             pickup_recovery_args+=(
                 --pickup_recovery_dataset
