@@ -1941,6 +1941,27 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "handover policy does not support pickup-recovery adaptation"
                 )
             policy_model.configure_pickup_recovery_adaptation()
+            recovery_controller_cfg = getattr(
+                env_cfg,
+                "dr_anmar_pickup_recovery_controller",
+                {},
+            )
+            recovery_controller = getattr(
+                policy_model,
+                "controller",
+                None,
+            )
+            for attribute, value in recovery_controller_cfg.items():
+                if recovery_controller is None or not hasattr(
+                    recovery_controller,
+                    attribute,
+                ):
+                    env.close()
+                    return _fail(
+                        "pickup-recovery curriculum controller does not "
+                        f"expose {attribute}"
+                    )
+                setattr(recovery_controller, attribute, value)
         elif args.handover_giver_adaptation:
             policy_model = runner.alg.get_policy()
             if not hasattr(
@@ -2051,6 +2072,24 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                 receiver_grasp_retain_curriculum
             ),
             "pickup_recovery_curriculum": pickup_recovery_curriculum,
+            "pickup_recovery_curriculum_objective": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_pickup_recovery_objective",
+                    None,
+                )
+                if pickup_recovery_curriculum
+                else None
+            ),
+            "pickup_recovery_curriculum_controller": (
+                getattr(
+                    env_cfg,
+                    "dr_anmar_pickup_recovery_controller",
+                    None,
+                )
+                if pickup_recovery_curriculum
+                else None
+            ),
             "pickup_recovery_curriculum_cached_envs": (
                 int(
                     pickup_recovery_curriculum_cache[
@@ -2084,6 +2123,10 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "source_states": (
                         "simulator_observed_physical_pickup_loss_transitions"
                     ),
+                    "option_success": (
+                        "recovered_physics_owned_stable_presentation"
+                    ),
+                    "full_handover_evaluation_success_unchanged": True,
                     "optimizer_state_reset": True,
                     "shared_actor_features_trainable": False,
                     "observation_normalizer_frozen": True,

@@ -860,6 +860,9 @@ def test_block_lift_requires_physics_owned_height_and_sustained_contact() -> Non
         '"policy_presentation_fraction_from_giver"'
         in benchmark_source
     )
+    assert '"full_handover_evaluation_success_unchanged": True' in (
+        benchmark_source
+    )
     assert (
         '"policy_presentation_height_in_robot_frame"'
         in benchmark_source

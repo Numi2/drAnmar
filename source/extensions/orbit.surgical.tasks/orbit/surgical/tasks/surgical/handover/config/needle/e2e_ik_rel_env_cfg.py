@@ -6,6 +6,7 @@
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
+from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils.configclass import configclass
 
 from ... import mdp
@@ -28,6 +29,22 @@ def terminal_transfer_failure(env):
         | mdp.premature_giver_release(env)
         | mdp.receiver_retention_lost(env)
     ).float()
+
+
+def recovery_stable_presentation(env):
+    """Qualify the recovery option at a stable, physically held presentation."""
+    state = mdp.handover_state(env)
+    return (
+        (state["pickup_recovery_count"] > 0)
+        & state["presentation_stable"]
+        & state["giver_custody"]
+        & state["lifted"]
+    )
+
+
+def recovery_stable_presentation_reward(env):
+    """Reward only the physical state that terminates the recovery option."""
+    return recovery_stable_presentation(env).float()
 
 
 @configclass
@@ -128,11 +145,28 @@ class NeedleHandoverPickupRecoveryCurriculumEnvCfg(
     def __post_init__(self):
         super().__post_init__()
         self.dr_anmar_pickup_recovery_curriculum = True
-        self.dr_anmar_pickup_recovery_curriculum_restore_probability = 0.9
+        # Once a simulator-observed slip has been cached, spend almost every
+        # reset on the recovery option. The remaining two percent still
+        # refresh the cache from an end-to-end physical rollout.
+        self.dr_anmar_pickup_recovery_curriculum_restore_probability = 0.98
         self.dr_anmar_pickup_recovery_curriculum_cross_environment_sampling = (
             True
         )
+        self.dr_anmar_pickup_recovery_objective = (
+            "recovered_physics_owned_stable_presentation"
+        )
+        self.dr_anmar_pickup_recovery_controller = {
+            "recovery_carry_lateral_action_limit": 0.10,
+            "recovery_receiver_preposition_height": 0.015,
+        }
         self.events.pickup_recovery_curriculum_reset = EventTerm(
             func=mdp.reset_pickup_recovery_curriculum_from_cache,
             mode="reset",
+        )
+        self.rewards.success = RewTerm(
+            func=recovery_stable_presentation_reward,
+            weight=80.0,
+        )
+        self.terminations.success = DoneTerm(
+            func=recovery_stable_presentation,
         )

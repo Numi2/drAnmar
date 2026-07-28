@@ -269,6 +269,26 @@
     "evidence_path": "docs/experiments/evidence/recovery-latency-v34-multiseed-promotion.json",
     "qualification_boundary": "performance_improved_on_every_seed_but_the_absolute_zero_hard_failure_gate_retains_prior_runtime_defaults"
   },
+  "pickup_recovery_option_v4": {
+    "status": "seed17_performance_champion_pending_multiseed_and_zero_hard_failure_gates",
+    "initial_checkpoint_sha256": "a56f61703855931d9d755beeba530bb8c1ac5232f6d6499e6254399cca8535cf",
+    "checkpoint_sha256": "e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80",
+    "training_objective": "recovered_physics_owned_stable_presentation",
+    "full_handover_evaluation_success_unchanged": true,
+    "training_frames": 2949120,
+    "training_recovery_restores": 3014,
+    "matched_512_baseline_successes": 352,
+    "matched_512_candidate_successes": 356,
+    "matched_1200_baseline_successes": 703,
+    "matched_1200_candidate_successes": 719,
+    "matched_1200_baseline_recovered_successes": 51,
+    "matched_1200_candidate_recovered_successes": 66,
+    "matched_1200_baseline_pickup_attempts_exhausted": 113,
+    "matched_1200_candidate_pickup_attempts_exhausted": 81,
+    "evidence_path": "docs/experiments/evidence/pickup-recovery-option-v4-seed17.json",
+    "evidence_sha256": "f253a7cf4d3086b98f27100e7c05fbfb93c8543e4490e077d6e7fc7e7f1a3d6d",
+    "qualification_boundary": "performance_champion_only_until_multiseed_and_absolute_zero_hard_failure_gates_pass"
+  },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",
     "action_space": "14d_two_cartesian_delta_poses_plus_binary_jaws",

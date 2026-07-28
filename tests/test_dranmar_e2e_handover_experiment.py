@@ -166,6 +166,17 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert hashlib.sha256(contact_centering_path.read_bytes()).hexdigest() == (
         contact_centering["evidence_sha256"]
     )
+    recovery_option = contract["pickup_recovery_option_v4"]
+    recovery_option_path = ROOT / recovery_option["evidence_path"]
+    assert recovery_option["matched_512_candidate_successes"] == 356
+    assert recovery_option["matched_1200_candidate_successes"] == 719
+    assert (
+        recovery_option["matched_1200_candidate_recovered_successes"] == 66
+    )
+    assert (
+        hashlib.sha256(recovery_option_path.read_bytes()).hexdigest()
+        == recovery_option["evidence_sha256"]
+    )
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -250,6 +261,16 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "recovery_carry_lateral_action_limit" in controller_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
     assert "pickup_contact_loss_steps debounce" in controller_source
+    recovery_cfg_source = (
+        TASK_ROOT / "handover/config/needle/e2e_ik_rel_env_cfg.py"
+    ).read_text()
+    assert "def recovery_stable_presentation(env):" in recovery_cfg_source
+    assert 'state["giver_custody"]' in recovery_cfg_source
+    assert 'state["lifted"]' in recovery_cfg_source
+    assert (
+        '"recovered_physics_owned_stable_presentation"'
+        in recovery_cfg_source
+    )
     assert "class PhaseMaskedGaussianDistribution" in source
     assert "object_state_manipulation" not in source
     assert "raw[:, 99:101]" in source
@@ -329,6 +350,10 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
         "NeedleHandoverPickupRecoveryCurriculumEnvCfg"
         in environment_source
     )
+    assert (
+        "dr_anmar_pickup_recovery_curriculum_restore_probability = 0.98"
+        in environment_source
+    )
     assert '"presentation_use_filtered_custody": True' in environment_source
     assert "reset_receiver_curriculum_from_cache" in environment_source
     assert "TerminationsCfg" not in environment_source
@@ -337,7 +362,7 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert "Isaac-Handover-Needle-Receiver-Curriculum-v0" in (
         registration_source
     )
-    assert "Isaac-Handover-Needle-Pickup-Recovery-v0" in (
+    assert "DrAnmar-Handover-Needle-Pickup-Recovery-v0" in (
         registration_source
     )
     assert "HandoverNeedleEndToEndPPORunnerCfg" in agent_source

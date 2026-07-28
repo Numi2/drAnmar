@@ -169,7 +169,7 @@ gym.register(
 )
 
 gym.register(
-    id="Isaac-Handover-Needle-Pickup-Recovery-v0",
+    id="DrAnmar-Handover-Needle-Pickup-Recovery-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     kwargs={
         "env_cfg_entry_point": (
