@@ -9,8 +9,8 @@ It records software and asset provenance; it is not clinical-validation evidence
 
 - Catalog schema: `dr.anmar.asset-catalog-lock.v3`
 - Catalog version: `1.5.0`
-- Catalog SHA-256: `3118392a0b6597eb1c93654cd4438e000094e58e8c6eea66904a16c7da178e02`
-- Local asset units: `32`
+- Catalog SHA-256: `d10a22dc10625c7b65030816c2e47afb5c6cf4fb03b116c52284cce186a63155`
+- Local asset units: `33`
 - Product portfolio assets: `21`
 - Clinical validation: `false`
 
@@ -32,6 +32,7 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 | `dr_anmar:Props/SurgicalAssessment/PerfusionViabilityRobot` | 7 | 49 | 35118832 | `f4bd998140b6e1c59f3f67af3cf3f9d698f6cf7a7002b8a0cd1f040d0e609b34` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalAssessment/PerfusionViabilityRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/ClosureRobot` | 6 | 134 | 14929244 | `fa67ba1568caf9fe7d6fa8a6cb61bc897280abacd565321b1e4fae5ac5bce56b` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/ClosureRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/Needle` | 1 | 9 | 2523083 | `5fc31f57028c9eda6004b0f4b4258bfeb66f737bc88a61928209c9fbb6bfe81a` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalClosure/Needle22HalfCircleTaperCandidate` | 6 | 23 | 6588590 | `1be91c16dee554a7f7fcab532cd1b667724fdd06755c57372a59a1bbe77568f3` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle22HalfCircleTaperCandidate/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/NeedleT1Compatibility` | 1 | 15 | 6727763 | `08368f69f16fca56d3d6c8a9e88d5bf099964d7720940357474d2e8eed94ff8c` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleT1Compatibility/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/NeedleThread` | 3 | 14 | 17476594 | `997d88ad1443985f9c4bdb3e339e180824f0ebc5d78f9552819c82b408e728cd` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleThread/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalClosure/SkinAdhesive` | 4 | 33 | 8669690 | `0aad8ed335a0b2062e60211f9c80709db8b301ce68e43a0e67c8201b001557a0` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/SkinAdhesive/LICENSE.txt` |
@@ -45,8 +46,8 @@ Downloaded NVIDIA assets retain their provider-specific license terms.
 | `dr_anmar:Props/SurgicalOncology/OncoSurgeryCell` | 13 | 59 | 12671992 | `2970dc0bfd6695c35762e648f1dc681a5654b8ffe9c72665052c1b14c2ab44dd` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalOncology/OncoSurgeryCell/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalPreparation/WoundPreparationRobot` | 9 | 43 | 26825404 | `654f5e14927c94432af165f92c806f7d3c2841a1b93a7685184e7662df6a288e` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalPreparation/WoundPreparationRobot/LICENSE.txt` |
 | `dr_anmar:Props/SurgicalReconstruction/AdaptiveAnastomosisRobot` | 8 | 41 | 36651526 | `500276bee068aff195ce6a832c7326ffce23068850e371541c65288db3b75dcb` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalReconstruction/AdaptiveAnastomosisRobot/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalScene/T1` | 4 | 21 | 11281945 | `892fa2a732955ef90f399c2e5759de2bf1c5ded5ebbbfe5bb3b92eeb83319653` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/LICENSE.txt` |
-| `dr_anmar:Props/SurgicalTissue/NeedleReadyTissueUnit` | 8 | 50 | 49581633 | `ac57a0f9f3f4b799e1121f09ea757f9986c3a33edc9efb4c8187074f349243dd` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalScene/T1` | 5 | 22 | 12832353 | `4391eab983c8b4220b9f5f8d9bc0279cc4e43e7c33b70bc038ec6a96fe9fac1b` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/LICENSE.txt` |
+| `dr_anmar:Props/SurgicalTissue/NeedleReadyTissueUnit` | 8 | 58 | 84429662 | `a18a08b8451aedf087cee378ad173f36a8a6b0106a1ffcab5dec43916a347a18` | `source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/LICENSE.txt` |
 | `dr_anmar:Props/Surgical_block` | 1 | 1 | 17062976 | `08e0245c10695d1bf9c93ab4c039a98ea3f540ff193635153049969285d55ed4` | `LICENSE` |
 | `dr_anmar:Props/Surgical_needle` | 2 | 2 | 1802638 | `29dc4940d49f86fa11e3ddcd43c78ce18b890ef539667a3dfa012b68da7bbbfa` | `LICENSE` |
 | `dr_anmar:Props/Table` | 1 | 11 | 18863710 | `2b11a3b3ddcb246344078c47ff486a565677b156cd22c33d6cdd630607d2e9d1` | `LICENSE` |

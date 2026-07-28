@@ -1,7 +1,7 @@
 {
   "schema": "dr.anmar.t1-asset-quality-contract.v1",
   "id": "dranmar-t1-asset-quality-v1",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "status": "source_static_integrity_qualified_native_qualification_pending",
   "scope": {
     "task_contract": "config/dranmar_safe_bite_t1.json",
@@ -89,29 +89,30 @@
     "assets": {
       "tissue": {
         "asset_id": "dranmar-needle-ready-tissue-v2",
-        "asset_version": "2.1.0",
+        "asset_version": "2.2.0",
         "status": "source_static_geometry_and_receipts_qualified_native_requalification_pending",
         "manifest": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/asset_manifest.json",
-        "manifest_sha256": "b68b0539f302071a7f83f0c47aab914190a349c8adbd0c8d3cb7edac77e7eb2b",
+        "manifest_sha256": "f41aa1e45bb3f8f892aab4448c7d319824d4b3c685d7b5c0819c722c761581c7",
         "visual_manifest": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/visual_manifest.json",
-        "visual_manifest_sha256": "60b38c8c9d3bc36c37090f29dafc96bbcb98c9b7ff17e0dc91e93d627667607c",
+        "visual_manifest_sha256": "72dd6f65c835d69bd6e3c9c4103a450fb0e35230b218ce0cb944e73fd919a99a",
         "geometry_report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/geometry_report.json",
-        "geometry_report_sha256": "31bd186229973560d26818ed33996f27b8c1c8cd8cb0ea26194a45c7f1cc9268",
+        "geometry_report_sha256": "54f01040c67c90ac544c399d38edf18b46b4a8e54c926a3bd76841351413ad27",
         "license": "Apache-2.0",
         "clinical_validation": false
       },
       "scene_visuals": {
         "asset_id": "dranmar-t1-non-tissue-visuals",
-        "asset_version": "1.1.0",
+        "asset_version": "1.2.0",
         "status": "source_static_visual_overlay_qualified_native_rtx_pending",
         "manifest": "source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/asset_manifest.json",
-        "manifest_sha256": "926672420695f7725182589acd9d70fe5d4bebac16d21f6eb4378b57fb412577",
+        "manifest_sha256": "821828bd8c037833a3ef2169db5aed420b29213979d9374414b490ea969fc4e0",
         "dependency_complete_directory": false,
         "base_overlay_dependencies_hash_locked": true,
         "entrypoints": {
           "psm": "source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/psm_visual_v1.usda",
           "table": "source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/table_visual_v1.usda",
-          "legacy_needle": "source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/legacy_needle_visual_v1.usda"
+          "legacy_needle": "source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/legacy_needle_visual_v1.usda",
+          "reference_or_rig": "source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/reference_or_rig_v1.usda"
         },
         "physics_authority": false,
         "collision_authority": false,
@@ -137,6 +138,25 @@
         "physics_profile": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleT1Compatibility/physics_profile.json",
         "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/NeedleT1Compatibility/interaction_frames.json",
         "spawn_scale": 1.0,
+        "active_replacement": false,
+        "native_dynamics_qualified": false,
+        "clinical_validation": false
+      },
+      "needle_22mm_half_circle_taper_candidate": {
+        "asset_id": "dranmar-needle-22mm-half-circle-taper-category-candidate-v1",
+        "asset_version": "1.0.0",
+        "status": "inactive_unqualified_category_candidate",
+        "entrypoint": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle22HalfCircleTaperCandidate/dranmar_needle_22mm_half_circle_taper_candidate.usda",
+        "manifest": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle22HalfCircleTaperCandidate/asset_manifest.json",
+        "manifest_sha256": "0bbc187a4cfd44d40b96e42caba00ab9a00377cdecd0c85f04cdb85e9a8e9f35",
+        "geometry_report": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle22HalfCircleTaperCandidate/geometry_report.json",
+        "geometry_report_sha256": "29ae480d3858e13af4be81704872bb4aea98c44ca0fd66a04a6254d47355af38",
+        "physics_profile": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle22HalfCircleTaperCandidate/physics_profile.json",
+        "physics_profile_sha256": "161518626f0585a3442f0d6ba9dd7a2a40fbe3008316d30b2bf433ead760ded7",
+        "interaction_frames": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle22HalfCircleTaperCandidate/interaction_frames.json",
+        "interaction_frames_sha256": "ee719d3eca07d7d96980f548fee710e46756db44cf9da859ec98c710b506528e",
+        "spawn_scale": 1.0,
+        "default_physics_variant": "none",
         "active_replacement": false,
         "native_dynamics_qualified": false,
         "clinical_validation": false
@@ -209,7 +229,7 @@
       }
     },
     "geometry_quality": {
-      "asset_version": "2.1.0",
+      "asset_version": "2.2.0",
       "wound_edge_refinement_power": 1.1,
       "fixture_anchor_nodes": {
         "training": 80,
@@ -217,20 +237,33 @@
         "validation": 1998
       },
       "training": {
-        "minimum_mean_ratio": 0.34008520142576615,
-        "minimum_scaled_jacobian": 0.12190526836238841,
-        "maximum_edge_ratio": 7.371556633945674
+        "minimum_mean_ratio": 0.34054921891817236,
+        "minimum_scaled_jacobian": 0.1224825715451153,
+        "maximum_edge_ratio": 7.402172210853091
       },
       "contact": {
-        "minimum_mean_ratio": 0.5078597221517341,
-        "minimum_scaled_jacobian": 0.23550927543044453,
-        "maximum_edge_ratio": 3.814037266001925
+        "minimum_mean_ratio": 0.5026569092095158,
+        "minimum_scaled_jacobian": 0.23199621339789583,
+        "maximum_edge_ratio": 3.8829943222139525
       },
       "validation": {
-        "minimum_mean_ratio": 0.5055627356781335,
-        "minimum_scaled_jacobian": 0.22978356824770169,
-        "maximum_edge_ratio": 3.8297187927804734
+        "minimum_mean_ratio": 0.5006210115703613,
+        "minimum_scaled_jacobian": 0.23033276998400706,
+        "maximum_edge_ratio": 3.8972274309578183
       },
+      "local_thickness_range_m": [
+        0.005842962323770445,
+        0.0061714383552351915
+      ],
+      "rest_wound_gap_range_m": [
+        0.003918535325745575,
+        0.00612832681654904
+      ],
+      "wound_material_layers": [
+        "surface",
+        "bulk",
+        "fascia"
+      ],
       "source_quality_gates_passed": true,
       "native_deformation_stability_qualified": false
     },
@@ -245,11 +278,11 @@
       "fallback": "UsdPreviewSurface",
       "nvidia_source": "PhysicalAI SimReady Materials v0.2.0 MIT-0",
       "texture_resolution_px": 2048,
-      "normal_encoding": "JPEG quality 99 4:4:4",
+      "normal_encoding": "lossless PNG",
       "other_texture_encoding": "lossless PNG",
       "thin_walled": false,
       "metalness": 0.0,
-      "surface_and_wound_roughness_minimum": 0.58,
+      "surface_and_wound_roughness_minimum": 0.63,
       "coat_weight": 0.0,
       "subsurface_weight_is_spatially_varying": true,
       "appearance_parameters_are_not_biomechanical_calibration": true
@@ -299,6 +332,36 @@
       ],
       "clearcoat_weight": 0.0,
       "directional_microtexture": true
+    },
+    "surgical_scale_candidate": {
+      "asset_id": "dranmar-needle-22mm-half-circle-taper-category-candidate-v1",
+      "centerline_arc_length_m": 0.022,
+      "centerline_radius_m": 0.0070028174960433945,
+      "body_diameter_m": 0.00053,
+      "tip_curvature_radius_m": 0.000018,
+      "swage_outer_diameter_m": 0.00036,
+      "swage_recess_depth_m": 0.00082,
+      "grasp_land_length_m": 0.0042,
+      "longitudinal_ribs_per_face": 3,
+      "vertex_count": 34882,
+      "triangle_count": 69760,
+      "watertight": true,
+      "mass_kg": 0.00003230037764112291,
+      "collision_segment_count": 48,
+      "collision_shape_count_with_tip": 49,
+      "friction_static_dynamic": [
+        0.28,
+        0.2
+      ],
+      "friction_combine_mode": "min",
+      "material_roughness_range": [
+        0.36,
+        0.52
+      ],
+      "clearcoat_weight": 0.0,
+      "default_physics_variant": "none",
+      "active": false,
+      "native_qualified": false
     }
   },
   "psm": {
@@ -360,11 +423,11 @@
     }
   },
   "historical_evidence_boundary": {
-    "current_tissue_version": "2.1.0",
+    "current_tissue_version": "2.2.0",
     "historical_tissue_version": "2.0.0",
     "historical_asset_revision": "b1155e2577210e913de8fa2c36b2e37692ec43be",
     "historical_contact_sha256": "c92285616d7015d86ed229f16dadc66b3420ca8503e196ae6e380575e5b991f2",
-    "current_contact_sha256": "2932c4d00b482deac30dda83c48159b0f4bc799b825b04e413c395e8393df764",
+    "current_contact_sha256": "b234193e135f016e83a8c2b7dbbd1245a6b4e3c0671c21b7d23fb52861af409e",
     "topology_changed": true,
     "historical_deterministic_replay_transfers": false,
     "historical_isaac_spawn_transfers": false,
@@ -429,7 +492,7 @@
   "claims": {
     "source_contract_implemented": true,
     "static_source_integrity_qualified": true,
-    "tissue_v2_1_geometry_quality_qualified": true,
+    "tissue_v2_2_geometry_quality_qualified": true,
     "visual_packages_source_qualified": true,
     "inactive_candidates_source_qualified": true,
     "native_current_tissue_newton_qualified": false,

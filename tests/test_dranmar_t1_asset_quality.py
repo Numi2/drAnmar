@@ -17,6 +17,9 @@ ASSET_DATA = ROOT / "source/extensions/orbit.surgical.assets/data"
 TISSUE_ROOT = ASSET_DATA / "Props/SurgicalTissue/NeedleReadyTissueUnit"
 SCENE_ROOT = ASSET_DATA / "Props/SurgicalScene/T1"
 NEEDLE_ROOT = ASSET_DATA / "Props/SurgicalClosure/NeedleT1Compatibility"
+NEEDLE22_ROOT = (
+    ASSET_DATA / "Props/SurgicalClosure/Needle22HalfCircleTaperCandidate"
+)
 PSM_CANDIDATE_ROOT = ASSET_DATA / "Robots/dVRK/PSM/T1JawContactCandidate"
 PSM_COLLIDER_ROOT = ASSET_DATA / "Robots/dVRK/PSM/T1ColliderCandidate"
 TABLE_COLLIDER_ROOT = ASSET_DATA / "Props/Table/T1ColliderCandidate"
@@ -38,7 +41,7 @@ def sha256(path: Path) -> str:
 def test_contract_separates_source_qualification_from_native_claims():
     contract = load_json(CONTRACT_PATH)
     assert contract["schema"] == "dr.anmar.t1-asset-quality-contract.v1"
-    assert contract["version"] == "1.1.0"
+    assert contract["version"] == "1.2.0"
     assert contract["status"] == (
         "source_static_integrity_qualified_native_qualification_pending"
     )
@@ -47,7 +50,7 @@ def test_contract_separates_source_qualification_from_native_claims():
     for claim in (
         "source_contract_implemented",
         "static_source_integrity_qualified",
-        "tissue_v2_1_geometry_quality_qualified",
+        "tissue_v2_2_geometry_quality_qualified",
         "visual_packages_source_qualified",
         "inactive_candidates_source_qualified",
     ):
@@ -95,6 +98,26 @@ def test_current_t1_manifest_receipts_match_repository_bytes():
         (assets["tissue"], "geometry_report", "geometry_report_sha256"),
         (assets["scene_visuals"], "manifest", "manifest_sha256"),
         (assets["needle_t1_candidate"], "manifest", "manifest_sha256"),
+        (
+            assets["needle_22mm_half_circle_taper_candidate"],
+            "manifest",
+            "manifest_sha256",
+        ),
+        (
+            assets["needle_22mm_half_circle_taper_candidate"],
+            "geometry_report",
+            "geometry_report_sha256",
+        ),
+        (
+            assets["needle_22mm_half_circle_taper_candidate"],
+            "physics_profile",
+            "physics_profile_sha256",
+        ),
+        (
+            assets["needle_22mm_half_circle_taper_candidate"],
+            "interaction_frames",
+            "interaction_frames_sha256",
+        ),
         (assets["psm_jaw_contact_candidate"], "manifest", "manifest_sha256"),
         (assets["psm_collider_candidate"], "manifest", "manifest_sha256"),
         (assets["table_collider_candidate"], "manifest", "manifest_sha256"),
@@ -131,11 +154,11 @@ def test_current_t1_manifest_receipts_match_repository_bytes():
         assert assets[name]["external_overlay_dependencies_hash_locked"] is True
 
 
-def test_tissue_v2_1_counts_fixture_and_quality_metrics_are_exact():
+def test_tissue_v2_2_counts_fixture_and_quality_metrics_are_exact():
     contract = load_json(CONTRACT_PATH)["tissue"]
     report = load_json(TISSUE_ROOT / "geometry_report.json")
     geometry = contract["geometry_quality"]
-    assert report["asset_version"] == geometry["asset_version"] == "2.1.0"
+    assert report["asset_version"] == geometry["asset_version"] == "2.2.0"
     assert geometry["wound_edge_refinement_power"] == 1.1
 
     expected_points = {"training": 560, "contact": 2470, "validation": 16650}
@@ -166,6 +189,13 @@ def test_tissue_v2_1_counts_fixture_and_quality_metrics_are_exact():
     assert contract["visual_sync"][
         "detached_high_resolution_visual_surface_allowed"
     ] is False
+    assert geometry["local_thickness_range_m"] == report["lods"]["validation"][
+        "local_thickness_range_m"
+    ]
+    assert geometry["rest_wound_gap_range_m"] == report["lods"]["validation"][
+        "rest_wound_gap_range_m"
+    ]
+    assert geometry["wound_material_layers"] == ["surface", "bulk", "fascia"]
     assert contract["lod_policy"]["silent_lod_substitution_allowed"] is False
     assert geometry["native_deformation_stability_qualified"] is False
 
@@ -179,8 +209,8 @@ def test_tissue_and_scene_material_contracts_are_matte_and_visual_only():
     assert tissue["primary"] == "OpenPBR 1.1 MaterialX"
     assert tissue["fallback"] == "UsdPreviewSurface"
     assert tissue["texture_resolution_px"] == 2048
-    assert tissue["normal_encoding"] == "JPEG quality 99 4:4:4"
-    assert tissue["surface_and_wound_roughness_minimum"] >= 0.58
+    assert tissue["normal_encoding"] == "lossless PNG"
+    assert tissue["surface_and_wound_roughness_minimum"] >= 0.63
     assert tissue["coat_weight"] == 0.0
     assert tissue["metalness"] == 0.0
     assert tissue["thin_walled"] is False
@@ -241,6 +271,10 @@ def test_needle_scale_quaternion_and_composed_parity_contract_fail_closed():
     assert "NeedleT1Compatibility" not in T1_TASK_CONFIG.read_text(
         encoding="utf-8"
     )
+    assert "Needle22HalfCircleTaperCandidate" not in active_source
+    assert "Needle22HalfCircleTaperCandidate" not in T1_TASK_CONFIG.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_needle_candidate_geometry_material_and_dynamics_stay_inactive():
@@ -278,6 +312,42 @@ def test_needle_candidate_geometry_material_and_dynamics_stay_inactive():
     assert round(maximum / 255.0, 3) == 0.6
     assert needle["candidate_material"]["metalness"] == 1.0
     assert needle["candidate_material"]["clearcoat_weight"] == 0.0
+
+
+def test_surgical_scale_needle_geometry_material_and_dynamics_stay_inactive():
+    contract = load_json(CONTRACT_PATH)
+    needle = contract["needle"]["surgical_scale_candidate"]
+    receipt = contract["manifest_and_provenance"]["assets"][
+        "needle_22mm_half_circle_taper_candidate"
+    ]
+    geometry = load_json(NEEDLE22_ROOT / "geometry_contract.json")
+    report = load_json(NEEDLE22_ROOT / "geometry_report.json")
+    physics = load_json(NEEDLE22_ROOT / "physics_profile.json")
+
+    assert geometry["centerline"]["arc_length_m"] == (
+        needle["centerline_arc_length_m"]
+    ) == 0.022
+    assert geometry["centerline"]["radius_m"] == needle["centerline_radius_m"]
+    assert geometry["render_geometry"]["body_diameter_m"] == (
+        needle["body_diameter_m"]
+    )
+    assert report["topology"]["watertight"] is needle["watertight"] is True
+    assert report["topology"]["vertex_count"] == needle["vertex_count"] == 34882
+    assert report["topology"]["triangle_count"] == (
+        needle["triangle_count"]
+    ) == 69760
+    assert physics["mass_properties"]["mass_kg"] == needle["mass_kg"]
+    assert physics["collision"]["segment_count"] == (
+        needle["collision_segment_count"]
+    ) == 48
+    assert physics["material"]["physx_friction_combine_mode"] == (
+        needle["friction_combine_mode"]
+    ) == "min"
+    assert physics["layer_contract"]["default_variant"] == (
+        needle["default_physics_variant"]
+    ) == receipt["default_physics_variant"] == "none"
+    assert physics["active_replacement"] is needle["active"] is False
+    assert physics["native_qualified"] is needle["native_qualified"] is False
 
 
 def test_psm_contact_candidate_is_friction_only_and_unqualified():
@@ -371,7 +441,7 @@ def test_changed_tissue_topology_does_not_inherit_old_native_evidence():
         ROOT / "physics_next/benchmarks/needle-ready-tissue/contact-newton.json"
     )
 
-    assert boundary["current_tissue_version"] == report["asset_version"] == "2.1.0"
+    assert boundary["current_tissue_version"] == report["asset_version"] == "2.2.0"
     assert boundary["historical_tissue_version"] == "2.0.0"
     assert boundary["historical_contact_sha256"] == contact["asset"]["sha256"]
     assert boundary["current_contact_sha256"] == report["lods"]["contact"][
@@ -407,12 +477,14 @@ def test_render_capture_and_documentation_preserve_claim_boundaries():
         ROOT / "docs/DRANMAR_T1_ASSET_REALISM.md"
     ).read_text(encoding="utf-8")
     for required in (
-        "80 | 0.340085",
-        "380 | 0.507860",
-        "1,998 | 0.505563",
+        "80 | 0.340549",
+        "380 | 0.502657",
+        "1,998 | 0.500621",
         "scale **0.4**",
         "scale **1.0**",
         "0.475–0.600",
+        "22 mm centreline arc",
+        "0.36–0.52",
         "(x, y, z, w)",
         "(w, x, y, z)",
         "288,052",

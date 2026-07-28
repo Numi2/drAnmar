@@ -13,30 +13,35 @@ object scale or task geometry.
 
 ## Current source-qualified assets
 
-### Needle-ready tissue v2.1.0
+### Needle-ready tissue v2.2.0
 
 The current tissue is a deterministic, layered tetrahedral asset with two
-separate wound flaps. Its wound-side refinement was improved while preserving
-the three LOD point and tetrahedron counts:
+separate wound flaps. It now uses correlated, independently shaped wound lips,
+smooth local thickness variation from 5.843 to 6.171 mm, and a wound gap that
+varies from 3.919 to 6.128 mm instead of remaining mathematically constant.
+The three LOD point and tetrahedron counts remain unchanged:
 
 | LOD | points | tetrahedra | fixture nodes | minimum mean ratio | minimum scaled Jacobian | maximum edge ratio |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| training | 560 | 1,944 | 80 | 0.340085 | 0.121905 | 7.371557 |
-| contact | 2,470 | 10,368 | 380 | 0.507860 | 0.235509 | 3.814037 |
-| validation | 16,650 | 82,944 | 1,998 | 0.505563 | 0.229784 | 3.829719 |
+| training | 560 | 1,944 | 80 | 0.340549 | 0.122483 | 7.402172 |
+| contact | 2,470 | 10,368 | 380 | 0.502657 | 0.231996 | 3.882994 |
+| validation | 16,650 | 82,944 | 1,998 | 0.500621 | 0.230333 | 3.897227 |
 
 The authored `anchor_outer` sets are the fixture authority. The visual surface
 is one-to-one, same-index geometry for the selected physics LOD; a detached
 high-resolution surface and silent LOD substitution are forbidden.
 
 The visual package uses 2K spatially varying color, roughness, normal and
-subsurface-weight maps. OpenPBR 1.1 MaterialX is primary and
+subsurface-weight maps. Exposed wound walls bind separate surface, bulk and
+fascia materials rather than one uniform red wall. OpenPBR 1.1 MaterialX is primary and
 UsdPreviewSurface is the portable fallback. NVIDIA PhysicalAI SimReady
 Materials v0.2.0 contributes an unchanged MIT-0 OpenPBR base and a bounded
 skin micro-normal input; the tissue geometry and other textures are
-deterministically authored by DrAnmar. Normal maps use quality-99, 4:4:4 JPEG;
-other maps remain lossless PNG. Surface and wound roughness never drop below
-0.58, coat weight is zero, and the support cassette is visual-only.
+deterministically authored by DrAnmar. All normal and scalar maps are lossless
+PNG. Surface and wound roughness never drop below 0.63, coat weight is zero,
+and moisture is sparse rather than a uniform glossy coating. The former
+floating rail fixture is replaced by rounded clamps aligned to the two actual
+attachment bands plus a folded render-only drape.
 
 These are static source, topology and receipt qualifications. They are not
 native deformable-motion, RTX appearance, biomechanical or clinical
@@ -47,12 +52,14 @@ qualifications.
 The `Props/SurgicalScene/T1` package provides appearance-only overlays:
 
 - The PSM overlay preserves articulation, joints, transforms and collision,
-  removes dangling material bindings, and applies restrained satin metal and
-  matte polymer responses.
+  removes dangling material bindings, and separates restrained shaft, wrist,
+  jaw and matte-polymer responses.
 - The table overlay preserves the legacy collision while adding UV-authored
-  operating-table, pad and drape render geometry.
+  rounded-edge operating-table, pad and drape render geometry.
 - The compatibility-needle overlay preserves the active legacy needle and its
   authored task scale of **0.4**.
+- A neutral 58 mm reference camera and broad 4,300–5,000 K light rig provide
+  repeatable asset review without becoming task or physics authority.
 
 The package is source-qualified for dependency closure, hashes, materials and
 physics-layer parity. Native composition, RTX render review and live
@@ -82,6 +89,29 @@ parity, so it is not presented as a clinically representative needle. It
 cannot replace the active asset until held-out pickup, single-arm retention,
 mid-air transport and two-arm handover parity pass in the pinned native
 runtime.
+
+### Surgical-scale 22 mm half-circle taper-point candidate
+
+`Needle22HalfCircleTaperCandidate` is the realistic successor geometry, kept
+inactive until the controller and native contact path are retargeted. It uses
+an exact 22 mm centreline arc with 7.0028 mm radius, 0.530 mm body, finite
+18 micrometre taper apex, reduced 0.360 mm swage, a true 0.820 mm blind swage
+recess, and a 4.2 mm flattened driver land with three shallow longitudinal
+ribs per face.
+
+The render body is one connected watertight 34,882-vertex mesh. Its 32.3004 mg
+mass, centre of mass and inertia come from that actual recessed solid. Render
+geometry is never collision authority: physics uses 48 adaptive centreline
+segments plus a separate precise taper-tip shape. Static/dynamic friction is
+ordered at 0.28/0.20 with `min` combine, no adhesion, attachment, magnetism or
+suction. Satin steel uses 2K OpenPBR maps, 0.36–0.52 roughness and no clear
+coat.
+
+The package defaults to `Physics=none`, uses unit scale, and explicitly records
+both runtime `(x, y, z, w)` and OpenUSD `(w, x, y, z)` quaternions. J&J/Ethicon
+material supports only the public category facts—22 mm, half-circle, taper
+point, ribbing and swaging. The asset is independently generated and is not a
+manufacturer digital twin or clinically validated device.
 
 ### PSM jaw-contact candidate
 
@@ -130,9 +160,9 @@ These are capture requirements, not completed evidence.
 
 ## Native promotion still required
 
-The current topology changed from v2.0.0 to v2.1.0. Older Newton, Isaac Lab,
+The current topology changed from v2.0.0 to v2.2.0. Older Newton, Isaac Lab,
 deterministic-replay and 2,400-environment receipts remain historical records;
-their asset hashes do not match v2.1.0 and they do not transfer. The historical
+their asset hashes do not match v2.2.0 and they do not transfer. The historical
 contact run also reached 52.6 mm displacement, 8.03 m/s peak speed and
 48.4 mm recovery residual, so it is not healthy calibrated-tissue evidence.
 

@@ -155,6 +155,37 @@
       "sha256": "5fc31f57028c9eda6004b0f4b4258bfeb66f737bc88a61928209c9fbb6bfe81a"
     },
     {
+      "bytes": 6588590,
+      "clinical_validation": false,
+      "entrypoints": [
+        "dranmar_needle_22mm_half_circle_taper_candidate.usda",
+        "dranmar_needle_22mm_half_circle_taper_candidate_base.usda",
+        "dranmar_needle_22mm_half_circle_taper_candidate_geometry.usdc",
+        "dranmar_needle_22mm_half_circle_taper_candidate_materials.usda",
+        "dranmar_needle_22mm_half_circle_taper_candidate_physics.usda",
+        "dranmar_needle_22mm_half_circle_taper_candidate_physx.usda"
+      ],
+      "file_count": 23,
+      "id": "dr_anmar:Props/SurgicalClosure/Needle22HalfCircleTaperCandidate",
+      "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalClosure/Needle22HalfCircleTaperCandidate/LICENSE.txt",
+      "metadata": [
+        "LICENSE.txt",
+        "NOTICE.txt",
+        "PROVENANCE.md",
+        "README.md",
+        "asset_manifest.json",
+        "collision_report.json",
+        "geometry_contract.json",
+        "geometry_report.json",
+        "interaction_frames.json",
+        "physics_profile.json",
+        "provenance.json"
+      ],
+      "provider": "dr_anmar",
+      "relative_path": "Props/SurgicalClosure/Needle22HalfCircleTaperCandidate",
+      "sha256": "1be91c16dee554a7f7fcab532cd1b667724fdd06755c57372a59a1bbe77568f3"
+    },
+    {
       "bytes": 6727763,
       "clinical_validation": false,
       "entrypoints": [
@@ -511,15 +542,16 @@
       "sha256": "500276bee068aff195ce6a832c7326ffce23068850e371541c65288db3b75dcb"
     },
     {
-      "bytes": 11281945,
+      "bytes": 12832353,
       "clinical_validation": false,
       "entrypoints": [
         "legacy_needle_visual_v1.usda",
         "materials.usda",
         "psm_visual_v1.usda",
+        "reference_or_rig_v1.usda",
         "table_visual_v1.usda"
       ],
-      "file_count": 21,
+      "file_count": 22,
       "id": "dr_anmar:Props/SurgicalScene/T1",
       "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalScene/T1/LICENSE.txt",
       "metadata": [
@@ -531,10 +563,10 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalScene/T1",
-      "sha256": "892fa2a732955ef90f399c2e5759de2bf1c5ded5ebbbfe5bb3b92eeb83319653"
+      "sha256": "4391eab983c8b4220b9f5f8d9bc0279cc4e43e7c33b70bc038ec6a96fe9fac1b"
     },
     {
-      "bytes": 49581633,
+      "bytes": 84429662,
       "clinical_validation": false,
       "entrypoints": [
         "needle_ready_tissue_contact.usda",
@@ -546,7 +578,7 @@
         "needle_ready_tissue_validation_visual.usda",
         "needle_ready_tissue_visual_unit.usda"
       ],
-      "file_count": 50,
+      "file_count": 58,
       "id": "dr_anmar:Props/SurgicalTissue/NeedleReadyTissueUnit",
       "license_path": "source/extensions/orbit.surgical.assets/data/Props/SurgicalTissue/NeedleReadyTissueUnit/LICENSE.txt",
       "metadata": [
@@ -564,7 +596,7 @@
       ],
       "provider": "dr_anmar",
       "relative_path": "Props/SurgicalTissue/NeedleReadyTissueUnit",
-      "sha256": "ac57a0f9f3f4b799e1121f09ea757f9986c3a33edc9efb4c8187074f349243dd"
+      "sha256": "a18a08b8451aedf087cee378ad173f36a8a6b0106a1ffcab5dec43916a347a18"
     },
     {
       "bytes": 17062976,
@@ -781,7 +813,7 @@
       "sha256": "b949f4a2cb9237b8cfc86b56f1022a1a03dcaa8df4c33c1fe9731d2278b9a80e"
     }
   ],
-  "catalog_sha256": "3118392a0b6597eb1c93654cd4438e000094e58e8c6eea66904a16c7da178e02",
+  "catalog_sha256": "d10a22dc10625c7b65030816c2e47afb5c6cf4fb03b116c52284cce186a63155",
   "catalog_version": "1.5.0",
   "clinical_validation": false,
   "i4h": {

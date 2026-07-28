@@ -114,7 +114,7 @@
       "__pycache__"
     ],
     "growth_budgets": {
-      "maximum_asset_unit_bytes": 67108864,
+      "maximum_asset_unit_bytes": 100663296,
       "maximum_catalog_bytes": 536870912,
       "policy": "Large binary growth requires an explicit reviewed budget change; runtime data remains external."
     },
