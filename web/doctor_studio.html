@@ -200,7 +200,7 @@
 <script>
   const operatorId=(()=>{let value=sessionStorage.getItem('drAnmarOperatorId');if(!value){const random=crypto.randomUUID?crypto.randomUUID():`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;value=`browser-${random}`;sessionStorage.setItem('drAnmarOperatorId',value)}return value})();
   const MAIN_PROCEDURE_ID='nvidia-native-surgical-bench';
-  const S={curriculum:null,catalog:null,progress:null,status:null,anatomy:null,procedures:null,selectedProcedure:MAIN_PROCEDURE_ID,selectedBenchAssets:[],benchAssetDraft:[],gripperOpenRad:.5,gripperCloseRad:.07,gripperOpenDraft:.5,gripperCloseDraft:.07,operatingContext:'main',activeBenchLesson:'',researchHighlight:'',anatomySignature:'',workerInstance:'',courseId:'learning-from-demonstration',lessonId:'needle-lift',view:'learn',selectedAnatomy:0,trainingPrepared:false,demos:[],selectedDemo:null,datasetCards:[],scenarios:[],experiments:[],matrixScenarioIds:[],matrix:null,healthcare:null,healthcareJob:null,healthcareLogJob:'',multimodalStudies:[],studyModalities:[]};
+  const S={curriculum:null,catalog:null,progress:null,status:null,anatomy:null,procedures:null,selectedProcedure:MAIN_PROCEDURE_ID,selectedBenchAssets:[],benchAssetDraft:[],gripperOpenRad:.5,gripperCloseRad:.03,gripperOpenDraft:.5,gripperCloseDraft:.03,operatingContext:'main',activeBenchLesson:'',researchHighlight:'',anatomySignature:'',workerInstance:'',courseId:'learning-from-demonstration',lessonId:'needle-lift',view:'learn',selectedAnatomy:0,trainingPrepared:false,demos:[],selectedDemo:null,datasetCards:[],scenarios:[],experiments:[],matrixScenarioIds:[],matrix:null,healthcare:null,healthcareJob:null,healthcareLogJob:'',multimodalStudies:[],studyModalities:[]};
   let roomRequestSerial=0;
   const workerBase=()=>'/workstation',workerOrigin=()=>location.origin;
   const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -248,7 +248,7 @@
   function procedureById(id=S.selectedProcedure){return S.procedures?.rooms.find(x=>x.id===id)}
   function benchProcedure(){return procedureById(MAIN_PROCEDURE_ID)}
   function defaultBenchAssets(){return (benchProcedure()?.bench_asset_catalog||[]).filter(x=>x.default).map(x=>x.id)}
-  function defaultGripperProfile(){return benchProcedure()?.gripper_profile||{open_rad:.5,close_rad:.07}}
+  function defaultGripperProfile(){return benchProcedure()?.gripper_profile||{open_rad:.5,close_rad:.03}}
   function sameAssets(left,right){return left.length===right.length&&left.every((item,index)=>item===right[index])}
   function sameGripperProfile(openA,closeA,openB,closeB){return Math.abs(openA-openB)<.0001&&Math.abs(closeA-closeB)<.0001}
   function gripperProfileError(){if(!Number.isFinite(S.gripperOpenDraft)||S.gripperOpenDraft<.1||S.gripperOpenDraft>.6)return'Open target must be 0.10–0.60 rad.';if(!Number.isFinite(S.gripperCloseDraft)||S.gripperCloseDraft<0||S.gripperCloseDraft>.15)return'Closed target must be 0.00–0.15 rad.';if(S.gripperCloseDraft>=S.gripperOpenDraft)return'Closed target must be numerically smaller than open target.';return''}

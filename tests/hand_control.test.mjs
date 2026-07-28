@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   OneEuroFilter,
+  adaptiveCalibrationProfile,
   adaptiveMotionGain,
   assignHandDetections,
   conditionPoseVector,
@@ -175,6 +176,55 @@ test("robust calibration rejects motion and ignores isolated outliers", () => {
     () => robustCalibrationSample(Array.from({ length: 12 }, (_, index) => 0.1 + index * 0.03)),
     /moved too much/,
   );
+});
+
+test("automatic calibration starts safely without a setup wizard", () => {
+  assert.deepEqual(adaptiveCalibrationProfile([]), {
+    closeRatio: 0.10,
+    openRatio: 0.50,
+    neutralScale: 1,
+    stability: 0,
+  });
+});
+
+test("automatic calibration learns a natural pinch span and rejects outliers", () => {
+  const samples = [
+    ...Array.from({ length: 24 }, (_, index) => ({
+      pinchRatio: 0.11 + index * 0.001,
+      depthScale: 0.22 + (index % 3 - 1) * 0.0005,
+      quality: 0.95,
+    })),
+    ...Array.from({ length: 24 }, (_, index) => ({
+      pinchRatio: 0.48 + index * 0.001,
+      depthScale: 0.22 + (index % 3 - 1) * 0.0005,
+      quality: 0.95,
+    })),
+    { pinchRatio: 0.90, depthScale: 0.60, quality: 0.20 },
+  ];
+  const profile = adaptiveCalibrationProfile(samples);
+  assert.ok(profile.closeRatio < 0.15);
+  assert.ok(profile.openRatio > 0.45);
+  assert.ok(profile.openRatio - profile.closeRatio > 0.28);
+  assert.ok(Math.abs(profile.neutralScale - 0.22) < 0.002);
+  assert.ok(profile.stability > 0.9);
+});
+
+test("automatic calibration preserves a usable span during one-sided pinching", () => {
+  const previous = {
+    closeRatio: 0.12,
+    openRatio: 0.50,
+    neutralScale: 0.22,
+    stability: 1,
+  };
+  const closedHold = Array.from({ length: 18 }, (_, index) => ({
+    pinchRatio: 0.08 + (index % 4) * 0.002,
+    depthScale: 0.22,
+    quality: 0.96,
+  }));
+  const profile = adaptiveCalibrationProfile(closedHold, previous);
+  assert.ok(profile.closeRatio < previous.closeRatio);
+  assert.equal(profile.openRatio, previous.openRatio);
+  assert.ok(profile.openRatio - profile.closeRatio >= 0.16);
 });
 
 test("spatial continuity prevents a low-confidence one-frame label swap", () => {

@@ -24,6 +24,11 @@ const MAX_TRANSLATION_M = 0.12;
 const MAX_ROTATION_RAD = 0.80;
 const IDENTITY_CONFIDENCE_LOCK = 0.78;
 const IDENTITY_AMBIGUITY_MARGIN = 0.12;
+const AUTO_CALIBRATION_WINDOW = 48;
+const AUTO_CALIBRATION_MIN_SPAN = 0.16;
+const AUTO_CALIBRATION_PERSIST_INTERVAL_MS = 1000;
+const DEFAULT_CLOSE_RATIO = 0.10;
+const DEFAULT_OPEN_RATIO = 0.50;
 
 export const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 
@@ -362,6 +367,85 @@ export function robustCalibrationSample(values, minimumSamples = 12) {
   };
 }
 
+export function adaptiveCalibrationProfile(samples, previous = null) {
+  const valid = (samples || []).filter(sample => (
+    Number.isFinite(Number(sample?.pinchRatio))
+    && Number.isFinite(Number(sample?.depthScale))
+    && Number(sample.depthScale) > 0
+    && Number(sample.pinchRatio) >= 0.03
+    && Number(sample.pinchRatio) <= 0.90
+    && Number(sample.quality ?? 1) >= MIN_TRACKING_QUALITY
+  ));
+  if (!valid.length) {
+    return previous
+      ? { ...previous }
+      : {
+          closeRatio: DEFAULT_CLOSE_RATIO,
+          openRatio: DEFAULT_OPEN_RATIO,
+          neutralScale: 1,
+          stability: 0,
+        };
+  }
+
+  const pinches = valid.map(sample => Number(sample.pinchRatio)).sort((a, b) => a - b);
+  const depths = valid.map(sample => Number(sample.depthScale));
+  const pinchMedian = median(pinches);
+  const depthMedian = median(depths);
+  const depthMad = median(depths.map(value => Math.abs(value - depthMedian)));
+  const priorClose = Number.isFinite(Number(previous?.closeRatio))
+    ? Number(previous.closeRatio)
+    : DEFAULT_CLOSE_RATIO;
+  const priorOpen = Number.isFinite(Number(previous?.openRatio))
+    ? Number(previous.openRatio)
+    : DEFAULT_OPEN_RATIO;
+  const priorNeutral = Number.isFinite(Number(previous?.neutralScale)) && Number(previous.neutralScale) > 0
+    ? Number(previous.neutralScale)
+    : depthMedian;
+  const midpoint = (priorClose + priorOpen) * 0.5;
+  let targetClose = priorClose;
+  let targetOpen = priorOpen;
+
+  if (valid.length >= 6) {
+    const lower = pinches[Math.floor((pinches.length - 1) * 0.20)];
+    const upper = pinches[Math.ceil((pinches.length - 1) * 0.80)];
+    if (upper - lower >= AUTO_CALIBRATION_MIN_SPAN * 0.72) {
+      targetClose = lower;
+      targetOpen = upper;
+    } else if (pinchMedian <= midpoint - 0.035) {
+      targetClose = pinchMedian;
+    } else if (pinchMedian >= midpoint + 0.035) {
+      targetOpen = pinchMedian;
+    }
+  }
+
+  const adaptation = previous ? 0.22 : 0.55;
+  let closeRatio = clamp(
+    priorClose + adaptation * (targetClose - priorClose),
+    0.03,
+    0.62,
+  );
+  let openRatio = clamp(
+    priorOpen + adaptation * (targetOpen - priorOpen),
+    0.18,
+    0.90,
+  );
+  if (openRatio - closeRatio < AUTO_CALIBRATION_MIN_SPAN) {
+    const center = (openRatio + closeRatio) * 0.5;
+    closeRatio = clamp(center - AUTO_CALIBRATION_MIN_SPAN * 0.5, 0.03, 0.62);
+    openRatio = clamp(closeRatio + AUTO_CALIBRATION_MIN_SPAN, 0.18, 0.90);
+  }
+
+  const neutralAdaptation = previous ? 0.08 : 1;
+  const neutralScale = priorNeutral + neutralAdaptation * (depthMedian - priorNeutral);
+  const relativeDepthMad = depthMad / Math.max(depthMedian, 1e-6);
+  return {
+    closeRatio,
+    openRatio,
+    neutralScale,
+    stability: clamp(1 - relativeDepthMad / 0.10, 0, 1),
+  };
+}
+
 function smoothingAlpha(cutoff, dt) {
   const tau = 1 / (2 * Math.PI * cutoff);
   return 1 / (1 + tau / dt);
@@ -618,6 +702,7 @@ function createInterface() {
     .hand-banner{box-sizing:border-box;position:absolute;z-index:3;left:10px;top:10px;max-width:62%;padding:6px 9px;border-radius:7px;background:#07151ddd;border:1px solid #315766;color:#b7d5dc;font:700 10px/1.35 ui-monospace,SFMono-Regular;white-space:normal}.hand-banner.good{color:#42e49b;border-color:#32725e}.hand-banner.warn{color:#ffba93;border-color:#82513d}
     .hand-metrics{position:absolute;z-index:3;right:10px;top:10px;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:72%}.hand-metrics span{padding:5px 7px;border-radius:6px;background:#07151ddd;border:1px solid #264653;color:#9db6bf;font:700 9px ui-monospace,SFMono-Regular}
     .hand-surface-guide{position:absolute;z-index:2;left:0;right:0;bottom:0;height:8%;display:flex;align-items:flex-end;justify-content:space-between;padding:0 10px 7px;box-sizing:border-box;border-top:1px dashed #66828b99;background:linear-gradient(180deg,transparent,#07151d99);color:#91aab2;pointer-events:none;transition:border-color 140ms ease,background 140ms ease,color 140ms ease,box-shadow 140ms ease}.hand-surface-guide span,.hand-surface-guide b{padding:3px 6px;border-radius:5px;background:#07151ddd;font:800 8px/1 ui-monospace,SFMono-Regular;letter-spacing:.04em}.hand-surface-guide b{color:#c5d6da}.hand-surface-guide.pointing{border-color:#2cd2e8cc;color:#7fefff;background:linear-gradient(180deg,transparent,#08313a99);box-shadow:0 -14px 28px #2cd2e811}.hand-surface-guide.engaged{border-color:#42e49b;color:#8ef0bd;background:linear-gradient(180deg,transparent,#0a352799);box-shadow:0 -22px 38px #42e49b16}.hand-surface-guide.contact{border-top-style:solid;border-color:#f4d27a;color:#ffe8a8;background:linear-gradient(180deg,transparent,#4b371699);box-shadow:0 -32px 48px #e5b83b24}.hand-surface-guide.contact b{color:#ffe8a8}
+    .hand-banner,.hand-metrics,.hand-surface-guide{display:none!important}
     .hand-cards{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.hand-card{padding:8px;border:1px solid #24404d;border-radius:9px;background:#091920}.hand-card.inactive{opacity:.62}.hand-card.quality-hold{border-color:#82513d;background:#1b1412}.hand-card header{height:auto;padding:0;border:0;background:none}.hand-card b{font-size:11px}.hand-card .track{margin-left:auto;color:#ff8a90;font:800 8px ui-monospace}.hand-card.tracked .track{color:#42e49b}.hand-card dl{display:grid;grid-template-columns:auto 1fr;margin:7px 0 0;gap:3px 7px;font:9px ui-monospace,SFMono-Regular}.hand-card dt{color:#71929d}.hand-card dd{margin:0;text-align:right}.hand-card button{width:100%;margin-top:7px;min-height:30px}
     .hand-advanced.hidden{display:none}
     .hand-privacy{margin:10px 2px 0;color:#6f909b;font-size:10px}
@@ -648,7 +733,7 @@ function createInterface() {
   panel.className = "hand-panel hidden";
   panel.setAttribute("aria-label", "Webcam hand control");
   panel.innerHTML = `
-    <div class="hand-head"><div><h2>Point-down surgical control</h2><p>Index ↓ to move · fingertip to table line</p></div><div class="spacer"></div><div class="hand-head-actions"><button id="handFreezeAll" class="hand-head-compact" data-shortcut="FREEZE" aria-label="Freeze both instruments">Freeze</button><button id="handRecalibrate" class="hand-head-compact" data-shortcut="CAL" aria-label="Recalibrate webcam hand control">Cal</button><button id="handPanelReset" aria-label="Reset webcam window position and size">Fit</button><button id="handControlsToggle" aria-controls="handAdvanced" aria-expanded="false">Controls</button><button id="handClose" data-shortcut="CAM">Close</button></div></div>
+    <div class="hand-head"><div><h2>Webcam control</h2></div><div class="spacer"></div><div class="hand-head-actions"><button id="handClose" data-shortcut="CAM">Close</button></div></div>
     <div class="hand-video-wrap"><video id="handVideo" playsinline muted></video><canvas id="handOverlay"></canvas><div id="handBanner" class="hand-banner">Camera off</div><div class="hand-metrics"><span id="handRate">0 Hz</span><span id="handInference">— ms vision</span><span id="handLatency">— ms loop</span></div><div id="handSurfaceGuide" class="hand-surface-guide"><span>POINT INDEX ↓</span><b>TABLE REACH</b></div></div>
     <div id="handAdvanced" class="hand-advanced hidden">
       <div class="hand-cards">
@@ -657,7 +742,6 @@ function createInterface() {
       </div>
       <p class="hand-privacy">Only calibrated numeric pose commands leave this browser. Webcam frames and raw landmarks are never uploaded or recorded. Single-camera depth is relative, not metric or clinical-grade.</p>
     </div>
-    <button id="handPanelResize" class="hand-resize-handle" aria-label="Resize webcam window" title="Drag to resize · arrow keys also work"></button>
   `;
   document.body.append(panel);
   return { launch, panel };
@@ -717,6 +801,8 @@ class HandController {
     this.secondHandAdmissionArmed = false;
     this.secondHandPointSince = null;
     this.provisionalCalibration = [null, null];
+    this.autoCalibrationSamples = [[], []];
+    this.lastCalibrationPersistAt = [0, 0];
     this.autoEngagePending = false;
     this.autoEngageTimer = null;
     this.clutchReadySince = [null, null];
@@ -778,27 +864,14 @@ class HandController {
   }
 
   bind() {
+    this.launch.addEventListener("pointerdown", event => event.stopPropagation());
     this.launch.addEventListener("click", () => this.open());
     this.panel.querySelector("#handClose").addEventListener("click", () => this.close());
-    this.panel.querySelector("#handControlsToggle").addEventListener(
-      "click",
-      () => this.toggleAdvancedControls(),
-    );
-    this.panel.querySelector("#handPanelReset").addEventListener(
-      "click",
-      () => this.resetPanelGeometry(),
-    );
     const dragHandle = this.panel.querySelector(".hand-head");
     dragHandle.addEventListener("pointerdown", event => this.startPanelDrag(event));
     dragHandle.addEventListener("pointermove", event => this.movePanel(event));
     dragHandle.addEventListener("pointerup", event => this.endPanelDrag(event));
     dragHandle.addEventListener("pointercancel", event => this.endPanelDrag(event));
-    const resizeHandle = this.panel.querySelector("#handPanelResize");
-    resizeHandle.addEventListener("pointerdown", event => this.startPanelResize(event));
-    resizeHandle.addEventListener("pointermove", event => this.movePanelResize(event));
-    resizeHandle.addEventListener("pointerup", event => this.endPanelResize(event));
-    resizeHandle.addEventListener("pointercancel", event => this.endPanelResize(event));
-    resizeHandle.addEventListener("keydown", event => this.resizePanelFromKeyboard(event));
     this.handleWindowResize = () => this.constrainPanelToViewport(true);
     window.addEventListener("resize", this.handleWindowResize);
     if (typeof ResizeObserver === "function") {
@@ -809,16 +882,6 @@ class HandController {
       });
       this.panelResizeObserver.observe(this.panel);
     }
-    this.panel.querySelector("#handFreezeAll").addEventListener("click", () => {
-      this.cancelAutomaticEngage();
-      this.hardFreeze("operator_freeze");
-    });
-    this.panel.querySelector("#handRecalibrate").addEventListener("click", () => {
-      const targetArms = this.controlMode === "single" && this.primaryArm !== null
-        ? [this.primaryArm]
-        : [];
-      this.beginCalibration({ targetArms });
-    });
     this.panel.querySelectorAll("[data-hand-arm]").forEach(button => {
       button.addEventListener("click", () => {
         this.cancelAutomaticEngage();
@@ -1097,17 +1160,8 @@ class HandController {
     this.controlMode = "dual";
     this.freezeAll(false);
     this.renderModeControl();
-    const secondArm = this.primaryArm === 0 ? 1 : 0;
-    if (!this.calibration?.hands?.[secondArm]) {
-      this.beginCalibration({ targetArms: [secondArm] });
-      this.setBanner(
-        `Add ${secondArm === 0 ? "left" : "right"} hand · calibration starts automatically`,
-        "warn",
-      );
-      return;
-    }
     this.autoEngagePending = false;
-    this.setBanner("Two-hand mode · point each index finger down to move", "good");
+    this.setBanner("Two-hand mode ready", "good");
     this.renderCards();
   }
 
@@ -1366,9 +1420,9 @@ class HandController {
       await this.video.play();
       if (generation !== this.startGeneration) return;
       const settings = this.stream.getVideoTracks()[0]?.getSettings?.() || {};
-      // v4 follows the corrected physical handedness convention and stores the
-      // orientation-compensated neutral palm scale used for relative depth.
-      this.calibrationKey = `drAnmar.handCalibration.v4:${settings.deviceId || "default"}`;
+      // v5 continuously learns a robust physical pinch span without a setup
+      // wizard and stores the orientation-compensated neutral palm scale.
+      this.calibrationKey = `drAnmar.handCalibration.v5:${settings.deviceId || "default"}`;
       const storedCalibration = localStorage.getItem(this.calibrationKey);
       try {
         this.calibration = numericCalibration(JSON.parse(storedCalibration || "null"));
@@ -1376,6 +1430,11 @@ class HandController {
         localStorage.removeItem(this.calibrationKey);
         this.calibration = null;
       }
+      this.provisionalCalibration = [0, 1].map(arm => {
+        const saved = this.calibration?.hands?.[arm];
+        return saved ? { ...saved } : null;
+      });
+      this.autoCalibrationSamples = [[], []];
       try {
         const workerReady = await this.initializeVisionWorker();
         if (!workerReady) throw new Error("Vision worker is unavailable");
@@ -1419,12 +1478,12 @@ class HandController {
       this.launch.classList.add("state-active");
       this.setBanner("Tracking hands · motion frozen", "good");
       await this.setServerEnabled(true, "camera_started");
-      if (this.calibration) {
-        this.autoEngagePending = false;
-        this.setBanner("Point index down to move · relax the point to freeze", "good");
-      } else {
-        this.beginCalibration();
-      }
+      // A stable tracked hand should reach control directly. Saved profiles
+      // are reused and new operators are calibrated continuously in motion.
+      this.calibrationActive = false;
+      this.calibrationAutomatic = false;
+      this.calibrationCapture = null;
+      this.autoEngagePending = true;
       this.scheduleFrame();
     } catch (error) {
       if (generation === this.startGeneration) {
@@ -1803,6 +1862,9 @@ class HandController {
         pose,
       });
       if (quality >= MIN_TRACKING_QUALITY) next.set(arm, pose);
+      if (quality >= MIN_TRACKING_QUALITY) {
+        this.observeAutomaticCalibration(arm, pose, timestampSeconds);
+      }
     }
     for (let arm = 0; arm < 2; arm += 1) {
       if (!next.has(arm) && this.poses.has(arm)) {
@@ -1823,44 +1885,18 @@ class HandController {
     this.maybeAddSecondHandAutomatically(timestampSeconds);
   }
 
-  updatePointDownClutch(timestampSeconds) {
+  updatePointDownClutch(_timestampSeconds) {
     if (this.calibrationActive) return;
     if (this.controlMode === "single" && this.primaryArm === null) {
       const arm = this.bestTrackedArm();
       if (arm !== null) this.selectPrimaryArm(arm);
     }
-    for (const arm of [0, 1]) {
-      const pose = this.poses.get(arm);
-      if (!pose || !this.isArmEnabled(arm)) {
-        this.clutchReadySince[arm] = null;
-        continue;
-      }
-      const score = Number(pose.clutchScore || 0);
-      if (this.engaged[arm]) {
-        if (score <= CLUTCH_RELEASE_SCORE) {
-          this.clutchReadySince[arm] = null;
-          this.freezeArm(arm, { automatic: true });
-          this.setBanner(`Instrument ${arm + 1} frozen · recenter freely`, "good");
-        }
-        continue;
-      }
-      if (score < CLUTCH_ENGAGE_SCORE || this.clutchEngagePending[arm]) {
-        if (score < CLUTCH_ENGAGE_SCORE) this.clutchReadySince[arm] = null;
-        continue;
-      }
-      if (this.clutchReadySince[arm] === null) {
-        this.clutchReadySince[arm] = timestampSeconds;
-        continue;
-      }
-      if (timestampSeconds - this.clutchReadySince[arm] < CLUTCH_ENGAGE_HOLD_S) continue;
-      this.clutchReadySince[arm] = null;
-      this.clutchEngagePending[arm] = true;
-      this.engageArm(arm, { automatic: true })
-        .catch(error => this.setBanner(error.message, "warn"))
-        .finally(() => {
-          this.clutchEngagePending[arm] = false;
-        });
-    }
+    const trackedArms = [0, 1].filter(
+      arm => this.poses.has(arm) && this.isArmEnabled(arm),
+    );
+    if (!trackedArms.length || trackedArms.some(arm => this.engaged[arm])) return;
+    this.autoEngagePending = true;
+    this.scheduleAutomaticEngage();
   }
 
   updateCommands(timestampSeconds) {
@@ -2001,17 +2037,49 @@ class HandController {
   }
 
   controlCalibration(arm, pose) {
-    const calibrated = this.calibration?.hands?.[arm];
+    const calibrated = this.provisionalCalibration[arm] || this.calibration?.hands?.[arm];
     if (calibrated) return calibrated;
-    if (!this.provisionalCalibration[arm]) {
-      this.provisionalCalibration[arm] = {
-        neutralScale: pose.depthScale,
-        closeRatio: 0.10,
-        openRatio: 0.50,
-        stability: 0,
-      };
-    }
+    this.provisionalCalibration[arm] = adaptiveCalibrationProfile([{
+      pinchRatio: pose.pinchRatio,
+      depthScale: pose.depthScale,
+      quality: pose.quality,
+    }]);
     return this.provisionalCalibration[arm];
+  }
+
+  observeAutomaticCalibration(arm, pose, timestampSeconds) {
+    const samples = this.autoCalibrationSamples[arm];
+    samples.push({
+      pinchRatio: pose.pinchRatio,
+      depthScale: pose.depthScale,
+      quality: pose.quality,
+    });
+    if (samples.length > AUTO_CALIBRATION_WINDOW) {
+      samples.splice(0, samples.length - AUTO_CALIBRATION_WINDOW);
+    }
+    const previous = this.provisionalCalibration[arm] || this.calibration?.hands?.[arm] || null;
+    const profile = adaptiveCalibrationProfile(samples, previous);
+    if (this.engaged[arm] && previous) profile.neutralScale = previous.neutralScale;
+    this.provisionalCalibration[arm] = profile;
+
+    const timestampMs = Number(timestampSeconds) * 1000;
+    if (
+      !this.calibrationKey
+      || timestampMs - this.lastCalibrationPersistAt[arm] < AUTO_CALIBRATION_PERSIST_INTERVAL_MS
+    ) {
+      return;
+    }
+    this.lastCalibrationPersistAt[arm] = timestampMs;
+    this.calibration = {
+      version: 2,
+      hands: {
+        ...(this.calibration?.hands || {}),
+        [arm]: { ...profile },
+      },
+    };
+    try {
+      localStorage.setItem(this.calibrationKey, JSON.stringify(this.calibration));
+    } catch (_error) {}
   }
 
   commandForArm(arm) {
@@ -2173,10 +2241,6 @@ class HandController {
     }
     if (this.controlMode === "single" && this.primaryArm !== arm) {
       this.selectPrimaryArm(arm);
-      if (!this.calibration?.hands?.[arm]) {
-        this.beginCalibration({ targetArms: [arm] });
-        return;
-      }
     }
     if (!this.serverEnabled && !(await this.setServerEnabled(true))) return;
     if (this.reacquire[arm]) {
@@ -2326,7 +2390,7 @@ class HandController {
       if (!this.autoEngagePending || !this.running || !this.poses.size) return;
       this.autoEngagePending = false;
       await this.engageAll({ automatic: true });
-    }, 450);
+    }, 180);
   }
 
   freezeAll(transmit = true) {
@@ -2505,30 +2569,12 @@ class HandController {
       if (accepted) {
         const thumb = points[4];
         const index = points[8];
-        const palm = points[9];
-        const aperture = this.commandForArm(arm).aperture_normalized;
         this.context.lineWidth = Math.max(5, width / 220);
         this.context.strokeStyle = this.engaged[arm] ? "#42e49b" : "#2cd2e8";
         this.context.beginPath();
         this.context.moveTo(thumb.x, thumb.y);
         this.context.lineTo(index.x, index.y);
         this.context.stroke();
-        this.context.fillStyle = "#07151ddd";
-        this.context.strokeStyle = this.engaged[arm] ? "#42e49b" : "#2cd2e8";
-        this.context.lineWidth = Math.max(2, width / 500);
-        this.context.beginPath();
-        this.context.arc(palm.x, palm.y, Math.max(24, width / 30), 0, Math.PI * 2);
-        this.context.fill();
-        this.context.stroke();
-        this.context.fillStyle = this.engaged[arm] ? "#42e49b" : "#b9f6ff";
-        this.context.font = `800 ${Math.max(14, width / 55)}px ui-monospace,SFMono-Regular`;
-        this.context.textAlign = "center";
-        this.context.textBaseline = "middle";
-        this.context.fillText(
-          `${this.engaged[arm] ? "MOVE" : "FROZEN"} ${Math.round(aperture * 100)}%`,
-          palm.x,
-          palm.y,
-        );
       }
     }
   }
