@@ -71,6 +71,7 @@ class HandoverAnalyticController(nn.Module):
         self.recovery_receiver_shaft_guard_start_from_tip_m = 0.025
         self.recovery_receiver_shaft_guard_activation_distance_m = 0.018
         self.recovery_receiver_shaft_guard_minimum_distance_m = 0.015
+        self.receiver_shaft_guard_all_pickups_enabled = False
         self.receiver_jaw_proximal_offset_m = 0.0093
         self.register_buffer(
             "last_recovery_receiver_shaft_guard_active",
@@ -631,8 +632,15 @@ class HandoverAnalyticController(nn.Module):
             receiver_shaft_radial_action,
             -maximum_receiver_shaft_inward_action,
         )
-        recovery_receiver_shaft_guard_active = (
+        receiver_shaft_guard_context = (
             pickup_recovery_context
+            | torch.full_like(
+                pickup_recovery_context,
+                self.receiver_shaft_guard_all_pickups_enabled,
+            )
+        )
+        recovery_receiver_shaft_guard_active = (
+            receiver_shaft_guard_context
             & (phase == 2)
             & (
                 receiver_shaft_distance

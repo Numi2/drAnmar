@@ -100,6 +100,13 @@ regrasp/re-lift recovery remains authoritative. Evidence separately records
 minimum quality, minimum transport scale, and episodes where the governor was
 active.
 
+Phase-two lateral transport and receiver acquisition additionally require
+current native bilateral giver custody. A latched phase label cannot command
+motion through a physical contact loss. The receiver-to-giver-shaft capsule
+guard applies to every qualified acquisition, including first attempts, and
+projects only an unsafe inward receiver component; it does not create contact
+or change success.
+
 ### The new residual is narrow and exact-zero
 
 `_FrontierHardeningAdapter` sees canonical giver/receiver grasp errors,

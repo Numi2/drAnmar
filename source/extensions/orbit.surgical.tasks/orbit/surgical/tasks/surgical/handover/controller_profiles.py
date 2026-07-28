@@ -32,6 +32,7 @@ _V23_VALUES: dict[str, bool | float | int] = {
     "recovery_receiver_shaft_guard_start_from_tip_m": 0.025,
     "recovery_receiver_shaft_guard_activation_distance_m": 0.018,
     "recovery_receiver_shaft_guard_minimum_distance_m": 0.015,
+    "receiver_shaft_guard_all_pickups_enabled": False,
     "receiver_jaw_proximal_offset_m": 0.0093,
     "transport_custody_latch_enabled": True,
     "receiver_preposition_enabled": True,
@@ -94,6 +95,12 @@ _PROFILE_VALUES: dict[str, dict[str, bool | float | int]] = {
         "canonical_needle_local_frames_enabled": True,
         "custody_quality_features_enabled": True,
         "custody_preserving_transport_enabled": True,
+        # Phase membership is not evidence that the needle remains held.
+        # Require current bilateral custody for phase-two motion.
+        "transport_custody_latch_enabled": False,
+        # The same physical giver shaft exists on every pickup, not only after
+        # a retry. Project only the receiver's unsafe inward component.
+        "receiver_shaft_guard_all_pickups_enabled": True,
         # A two-jaw grasp can be usable while briefly asymmetric.  This score
         # slows transport before physical custody is lost; it does not create
         # contact, success, or permission to open the giver.
