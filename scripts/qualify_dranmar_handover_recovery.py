@@ -13,6 +13,9 @@ from typing import Any
 
 
 QUALIFICATION_SEEDS = (17, 2361, 4099)
+IMMUTABLE_BASE_SHA256 = (
+    "f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad"
+)
 SAFETY_TERMS = (
     "needle_dropped_after_pickup",
     "protected_surface_force",
@@ -165,6 +168,21 @@ def qualify(
         )
         incumbent_terms = incumbent["termination_term_counts"]
         for run_index, candidate in enumerate(runs, start=1):
+            run_counts = _run_counts(candidate)
+            gates.append(
+                _gate(
+                    f"seed_{seed}_run_{run_index}_success_at_least_78_percent",
+                    _rate(
+                        run_counts["success"],
+                        run_counts["episodes"],
+                    )
+                    >= 0.78,
+                    observed=_rate(
+                        run_counts["success"],
+                        run_counts["episodes"],
+                    ),
+                )
+            )
             pickup_retries = _retry_counts(candidate, "pickup_recovery")
             receiver_retries = _retry_counts(
                 candidate,
@@ -191,7 +209,15 @@ def qualify(
                     ),
                     not missing
                     and int(pickup["first_attempt_action_mismatches"]) == 0
-                    and int(receiver["first_attempt_action_mismatches"]) == 0,
+                    and int(receiver["first_attempt_action_mismatches"]) == 0
+                    and float(
+                        pickup["first_attempt_action_max_abs_difference"]
+                    )
+                    == 0.0
+                    and float(
+                        receiver["first_attempt_action_max_abs_difference"]
+                    )
+                    == 0.0,
                     incumbent_successes=len(incumbent_successes),
                     preserved=len(incumbent_successes) - len(missing),
                     missing_environment_indices=missing,
@@ -200,6 +226,16 @@ def qualify(
                     ),
                     receiver_action_mismatches=int(
                         receiver["first_attempt_action_mismatches"]
+                    ),
+                    pickup_maximum_action_difference=float(
+                        pickup[
+                            "first_attempt_action_max_abs_difference"
+                        ]
+                    ),
+                    receiver_maximum_action_difference=float(
+                        receiver[
+                            "first_attempt_action_max_abs_difference"
+                        ]
                     ),
                 )
             )
@@ -366,6 +402,14 @@ def qualify(
                 )
             ),
             bundle=immutable_bundle,
+        )
+    )
+    gates.append(
+        _gate(
+            "immutable_base_checkpoint_matches_lock",
+            base_hashes == {IMMUTABLE_BASE_SHA256},
+            expected=IMMUTABLE_BASE_SHA256,
+            observed=sorted(base_hashes),
         )
     )
 

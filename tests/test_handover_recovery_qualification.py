@@ -49,7 +49,9 @@ def _run(seed: int, *, candidate: bool) -> dict:
             "excessive_object_force": 0,
             "object_dropping": 0,
         },
-        "checkpoint": {"sha256": "base"},
+        "checkpoint": {
+            "sha256": QUALIFICATION.IMMUTABLE_BASE_SHA256
+        },
         "runtime": {
             "source": {
                 "dranmar_revision": "controller",
@@ -62,6 +64,7 @@ def _run(seed: int, *, candidate: bool) -> dict:
                 "head_checkpoint": {"sha256": "pickup"},
                 "retry_count_by_environment": retry_counts,
                 "first_attempt_action_mismatches": 0,
+                "first_attempt_action_max_abs_difference": 0.0,
             }
             if candidate
             else {"enabled": False}
@@ -72,6 +75,7 @@ def _run(seed: int, *, candidate: bool) -> dict:
                 "head_checkpoint": {"sha256": "receiver"},
                 "retry_count_by_environment": retry_counts,
                 "first_attempt_action_mismatches": 0,
+                "first_attempt_action_max_abs_difference": 0.0,
             }
             if candidate
             else {"enabled": False}
