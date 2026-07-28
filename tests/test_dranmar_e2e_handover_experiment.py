@@ -173,6 +173,13 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert (
         recovery_option["matched_1200_candidate_recovered_successes"] == 66
     )
+    assert recovery_option["multiseed_candidate_successes"] == 2197
+    assert recovery_option["multiseed_recovered_successes_candidate"] == 243
+    assert (
+        recovery_option["multiseed_pickup_attempts_exhausted_candidate"]
+        == 211
+    )
+    assert recovery_option["multiseed_seed_deltas"] == [16, 10, 8]
     assert (
         hashlib.sha256(recovery_option_path.read_bytes()).hexdigest()
         == recovery_option["evidence_sha256"]

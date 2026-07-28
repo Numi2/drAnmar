@@ -20,6 +20,20 @@ terminations remain unchanged.
 | Receiver contacts at 1,200 | 756 | 771 | +15 |
 | Windowed bilateral capture at 1,200 | 711 | 724 | +13 |
 
+The matched three-seed, 3,600-episode gate reproduced the gain on every seed:
+
+| Metric | Frozen v33 | Recovery option v4 | Change |
+| --- | ---: | ---: | ---: |
+| Retained handovers | 2,163 | 2,197 | +34 |
+| Success rate | 60.08% | 61.03% | +0.94 points |
+| Recovered successes | 210 | 243 | +33 |
+| Exhausted pickup retries | 281 | 211 | -70 |
+| Stable presentations | 2,733 | 2,800 | +67 |
+| Receiver contacts | 2,301 | 2,344 | +43 |
+| Windowed bilateral capture | 2,193 | 2,230 | +37 |
+
+Per-seed retained-success changes were `+16`, `+10`, and `+8`.
+
 ## Structural change
 
 The previous pickup-recovery learner had to wait for a complete receiver
@@ -37,11 +51,11 @@ recovery controller during training. A 90-update run at `1e-5` processed
 ## Qualification boundary
 
 Checkpoint `e73720b8430f8ef8d57d28d4013d5384257e4dc85d62aa206fb3ae4ccd698c80`
-is the seed-17 performance champion. It is not the default promoted policy:
-the matched 1,200 candidate had three protected-surface terminations versus
-two for v33, so multiseed evaluation and the unchanged absolute
-zero-hard-failure gate remain open. Drops and excessive object force were zero
-for both policies.
+is the reproducible multiseed performance champion. It is not the default
+promoted policy: the 3,600-episode candidate had six protected-surface
+terminations versus five for v33, so the unchanged absolute zero-hard-failure
+gate retains the prior default. Drops and excessive object force were zero for
+both policies.
 
 The hashed qualification record is
-[`pickup-recovery-option-v4-seed17.json`](evidence/pickup-recovery-option-v4-seed17.json).
+[`pickup-recovery-option-v4-multiseed-1200.json`](evidence/pickup-recovery-option-v4-multiseed-1200.json).
