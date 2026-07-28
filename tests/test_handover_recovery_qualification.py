@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from copy import deepcopy
 from pathlib import Path
 
@@ -131,3 +132,20 @@ def test_missing_cached_success_and_safety_regression_fail_closed() -> None:
         "seed_17_run_1_needle_dropped_after_pickup_nonincrease"
         in failed
     )
+
+
+def test_base_policy_lock_matches_fail_closed_qualification() -> None:
+    lock_path = (
+        Path(__file__).resolve().parents[1]
+        / "docs/handover_recovery_80/base_policy.lock.json"
+    )
+    lock = json.loads(lock_path.read_text())
+
+    assert (
+        lock["base_checkpoint"]["sha256"]
+        == QUALIFICATION.IMMUTABLE_BASE_SHA256
+    )
+    assert lock["controller"]["episode_length_s"] == 40.0
+    assert lock["controller"]["physical_observation_values"] == 98
+    assert lock["controller"]["physical_action_values"] == 14
+    assert lock["qualification_seeds"] == [17, 2361, 4099]

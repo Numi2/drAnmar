@@ -1,0 +1,33 @@
+{
+  "schema_version": "dranmar-handover-recovery-base-lock-1.0",
+  "base_checkpoint": {
+    "sha256": "f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad",
+    "size_bytes": 1632580,
+    "source_path": "/home/numi/dr_anmar/DrAnmar/output/dranmar-learning/train/handover-residual-receiver-only-ppo-seed17-v1/runs/2026-07-27_00-48-45/model_final.pt",
+    "immutable_path": "/home/numi/dr_anmar/repro/recovery80/immutable/f33e41883f80f4dd791d0033568a4241bf366adcf2eb739c20c9ffd9ab568aad/model.pt",
+    "immutable_mode": "0444"
+  },
+  "controller": {
+    "qualified_40_second_tree": "183c7194ab016aba1094404b40df92837b73c42f",
+    "equivalent_main_tree": "496cb062ae0002b47da7ec354ead7e455541f8fa",
+    "episode_length_s": 40.0,
+    "physical_observation_values": 98,
+    "physical_action_values": 14,
+    "first_attempt_frozen": true,
+    "normalizer_frozen": true,
+    "base_parameters_frozen": true
+  },
+  "assets": {
+    "revision": "ac20fb02ba2e8541a6243ec4884e51db35c0a202"
+  },
+  "qualification_seeds": [
+    17,
+    2361,
+    4099
+  ],
+  "development_seeds": [
+    104729,
+    130363,
+    196613
+  ]
+}
