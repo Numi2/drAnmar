@@ -242,6 +242,10 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert contract["launch"]["phase_balanced_consolidation_updates"] == 2000
     assert contract["launch"]["minimum_deterministic_success_before_ppo"] == 0.25
     assert contract["anti_reward_hacking"]["receiver_retry_steps"] == 15
+    assert (
+        contract["anti_reward_hacking"]["receiver_approach_timeout_steps"]
+        == 75
+    )
     assert contract["anti_reward_hacking"]["pickup_contact_loss_steps"] == 3
     assert "fixed_pose_presentation_stable_for_8_steps" in (
         contract["anti_reward_hacking"]["required_sequence"]
@@ -543,6 +547,7 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert '"receiver_approach_step_count"' in state_source
     assert "receiver_approach_stalled" in state_source
     assert "receiver_approach_timeout_steps" in state_source
+    assert '"receiver_approach_timeout_steps": 75' in environment_source
     assert '"receiver_curriculum_cached_envs"' in benchmark_source
     assert '"receiver_curriculum_reset_restores"' in benchmark_source
     assert '"receiver_curriculum_reset_refreshes"' in benchmark_source

@@ -69,7 +69,12 @@ class NeedleHandoverEndToEndEnvCfg(ik_rel_env_cfg.NeedleHandoverEnvCfg):
             "receiver_capture_angular_speed_limit": 5.0,
             "giver_release_confirmation_steps": 1,
             "receiver_attempt_timeout_steps": 30,
-            "receiver_approach_timeout_steps": 0,
+            # Successful receiver contacts reach the needle by 61 steps at
+            # p90 on the 600-environment development population. A receiver
+            # still approaching after 75 steps is therefore stalled: execute
+            # the existing physical retreat and try the observed needle pose
+            # again instead of repeating the same miss until episode timeout.
+            "receiver_approach_timeout_steps": 75,
             "receiver_retry_contact_loss_steps": 8,
             "receiver_retry_steps": 15,
         }

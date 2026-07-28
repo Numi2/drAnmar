@@ -472,6 +472,7 @@
       "receiver_only_retention_for_10_steps"
     ],
     "receiver_retry_steps": 15,
+    "receiver_approach_timeout_steps": 75,
     "receiver_retry_contact_loss_steps": 8,
     "pickup_contact_loss_steps": 3,
     "giver_release_confirmation_steps": 1,
