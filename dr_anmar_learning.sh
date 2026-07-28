@@ -356,6 +356,38 @@ case "${command}" in
                 "${DR_ANMAR_PICKUP_RECOVERY_DATASET}"
             )
         fi
+        if [[ "${DR_ANMAR_RECEIVER_RECOVERY:-0}" == "1" ]]; then
+            pickup_recovery_args+=(--receiver_recovery)
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_checkpoint
+                "${DR_ANMAR_RECEIVER_RECOVERY_CHECKPOINT}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_POSITION_CAP_M:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_position_cap
+                "${DR_ANMAR_RECEIVER_RECOVERY_POSITION_CAP_M}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_ORIENTATION_CAP_DEG:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_orientation_cap_deg
+                "${DR_ANMAR_RECEIVER_RECOVERY_ORIENTATION_CAP_DEG}"
+            )
+        fi
+        if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_FIXED_CORRECTION:-}" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_fixed_correction
+                "${DR_ANMAR_RECEIVER_RECOVERY_FIXED_CORRECTION}"
+            )
+        fi
+        if [[ "${DR_ANMAR_RECEIVER_RECOVERY_RANDOM_CORRECTIONS:-0}" == "1" ]]; then
+            pickup_recovery_args+=(
+                --receiver_recovery_random_corrections
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \

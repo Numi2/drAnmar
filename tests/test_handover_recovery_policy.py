@@ -29,6 +29,11 @@ grasp_frames.NEEDLE_PROVISIONAL_GRASP_OFFSET_M = (
     0.0015,
     0.0,
 )
+grasp_frames.needle_geometry_grasp_offset_m = lambda fraction: (
+    -0.004,
+    0.003,
+    0.0,
+)
 sys.modules[grasp_frames.__name__] = grasp_frames
 
 MODULE_PATH = (
@@ -45,7 +50,11 @@ RECOVERY_POLICY = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = RECOVERY_POLICY
 SPEC.loader.exec_module(RECOVERY_POLICY)
 HandoverPickupRecoveryPolicy = RECOVERY_POLICY.HandoverPickupRecoveryPolicy
+HandoverReceiverRecoveryPolicy = (
+    RECOVERY_POLICY.HandoverReceiverRecoveryPolicy
+)
 PickupRecoveryHead = RECOVERY_POLICY.PickupRecoveryHead
+ReceiverRecoveryHead = RECOVERY_POLICY.ReceiverRecoveryHead
 
 
 class _FixedBasePolicy(nn.Module):
@@ -53,7 +62,7 @@ class _FixedBasePolicy(nn.Module):
         super().__init__()
         action = torch.linspace(-0.7, 0.6, 14)
         action[6] = -1.0
-        action[13] = 1.0
+        action[13] = -1.0
         self.register_buffer("action", action)
 
     def forward(self, obs):
@@ -193,3 +202,47 @@ def test_custody_loss_is_not_redeclared_during_reapproach() -> None:
         policy(observation)
     assert policy.retry_count.item() == 1
     assert policy.activation_count.item() == 1
+
+
+def test_receiver_first_attempt_is_identical_then_reopens_before_retry() -> None:
+    base = _FixedBasePolicy()
+    policy = HandoverReceiverRecoveryPolicy(base)
+    observation = _observation(batch_size=1)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 79] = 1.0
+    raw[:, 97] = -1.0
+    raw[:, 22:24] = 0.30
+
+    for _ in range(policy.close_dwell_steps):
+        assert torch.equal(policy(observation), base(observation))
+    assert not bool(policy.first_attempt_action_mismatch_count.any())
+
+    raw[:, 22:24] = 0.43
+    failed_action = policy(observation)
+    assert torch.equal(failed_action[:, :6], torch.zeros(1, 6))
+    assert failed_action[0, 6].item() == -1.0
+    assert torch.equal(failed_action[:, 7:13], torch.zeros(1, 6))
+    assert failed_action[0, 13].item() == 1.0
+
+    raw[:, 22:24] = 0.0
+    for _ in range(policy.open_settle_steps):
+        retry_action = policy(observation)
+    assert policy.retry_count.item() == 1
+    assert policy.activation_count.item() == 1
+    assert torch.equal(retry_action[:, :6], torch.zeros(1, 6))
+    assert retry_action[0, 6].item() == -1.0
+
+    raw[:, 79] = 0.0
+    raw[:, 80] = 1.0
+    expected = base(observation)
+    actual = policy(observation)
+    assert torch.equal(actual, expected)
+    assert policy.recovered_acquisition.item()
+
+
+def test_receiver_recovery_head_contract_has_no_gripper_channel() -> None:
+    head = ReceiverRecoveryHead()
+    output = head(torch.zeros(4, ReceiverRecoveryHead.input_dim))
+    assert output.shape == (4, 6)
+    assert torch.equal(output, torch.zeros_like(output))

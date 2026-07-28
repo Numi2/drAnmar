@@ -3769,6 +3769,152 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     else:
         policy = runner.get_inference_policy(device=env.unwrapped.device)
 
+    receiver_recovery_policy = None
+    if (
+        args.receiver_recovery_fixed_correction
+        and args.receiver_recovery_random_corrections
+    ):
+        env.close()
+        return _fail(
+            "fixed and randomized receiver corrections are exclusive"
+        )
+    if (
+        args.receiver_recovery
+        or args.receiver_recovery_checkpoint
+        or args.receiver_recovery_fixed_correction
+        or args.receiver_recovery_random_corrections
+    ):
+        from orbit.surgical.tasks.surgical.handover.recovery_policy import (
+            HandoverReceiverRecoveryPolicy,
+            ReceiverRecoveryHead,
+        )
+
+        receiver_head = ReceiverRecoveryHead().to(env.unwrapped.device)
+        if args.receiver_recovery_checkpoint:
+            receiver_checkpoint = (
+                Path(args.receiver_recovery_checkpoint)
+                .expanduser()
+                .resolve()
+            )
+            if not receiver_checkpoint.is_file():
+                env.close()
+                return _fail(
+                    "receiver recovery checkpoint not found: "
+                    f"{receiver_checkpoint}"
+                )
+            receiver_payload = torch.load(
+                receiver_checkpoint,
+                map_location=env.unwrapped.device,
+                weights_only=False,
+            )
+            if (
+                not isinstance(receiver_payload, dict)
+                or "receiver_recovery_head" not in receiver_payload
+            ):
+                env.close()
+                return _fail(
+                    "receiver checkpoint must contain "
+                    "receiver_recovery_head"
+                )
+            if receiver_payload.get("base_checkpoint_sha256") not in {
+                None,
+                _sha256(checkpoint),
+            }:
+                env.close()
+                return _fail(
+                    "receiver head was trained against another base policy"
+                )
+            if (
+                receiver_payload.get("position_cap_m") is not None
+                and not math.isclose(
+                    float(receiver_payload["position_cap_m"]),
+                    args.receiver_recovery_position_cap,
+                    rel_tol=0.0,
+                    abs_tol=1.0e-9,
+                )
+            ):
+                env.close()
+                return _fail(
+                    "receiver position cap does not match checkpoint"
+                )
+            if (
+                receiver_payload.get("orientation_cap_rad") is not None
+                and not math.isclose(
+                    float(receiver_payload["orientation_cap_rad"]),
+                    math.radians(
+                        args.receiver_recovery_orientation_cap_deg
+                    ),
+                    rel_tol=0.0,
+                    abs_tol=1.0e-9,
+                )
+            ):
+                env.close()
+                return _fail(
+                    "receiver orientation cap does not match checkpoint"
+                )
+            receiver_head.load_state_dict(
+                receiver_payload["receiver_recovery_head"],
+                strict=True,
+            )
+        receiver_base_policy = (
+            pickup_recovery_policy
+            if pickup_recovery_policy is not None
+            else policy_model
+        )
+        receiver_recovery_policy = HandoverReceiverRecoveryPolicy(
+            receiver_base_policy,
+            receiver_head,
+            position_cap_m=args.receiver_recovery_position_cap,
+            orientation_cap_rad=math.radians(
+                args.receiver_recovery_orientation_cap_deg
+            ),
+            episode_frames=args.num_frames,
+        ).to(env.unwrapped.device)
+        if args.receiver_recovery_fixed_correction:
+            correction_values = [
+                float(value.strip())
+                for value in args.receiver_recovery_fixed_correction.split(
+                    ","
+                )
+            ]
+            if len(correction_values) != 6:
+                env.close()
+                return _fail(
+                    "fixed receiver correction requires "
+                    "dx,dy,dz,rx,ry,rz"
+                )
+            correction = torch.tensor(
+                correction_values,
+                dtype=torch.float32,
+                device=env.unwrapped.device,
+            )
+            correction[3:] = torch.deg2rad(correction[3:])
+            receiver_recovery_policy.set_fixed_correction(correction)
+        elif args.receiver_recovery_random_corrections:
+            sobol = torch.quasirandom.SobolEngine(
+                dimension=6,
+                scramble=True,
+                seed=args.seed + 1,
+            )
+            normalized = (
+                2.0 * sobol.draw(env.unwrapped.num_envs) - 1.0
+            ).to(env.unwrapped.device)
+            randomized = torch.cat(
+                (
+                    normalized[:, :3]
+                    * args.receiver_recovery_position_cap,
+                    normalized[:, 3:]
+                    * math.radians(
+                        args.receiver_recovery_orientation_cap_deg
+                    ),
+                ),
+                dim=-1,
+            )
+            randomized[0] = 0.0
+            receiver_recovery_policy.set_fixed_correction(randomized)
+        receiver_recovery_policy.eval()
+        policy = receiver_recovery_policy
+
     export_dir = Path(args.output_path).resolve() / "exported"
     export_dir.mkdir(parents=True, exist_ok=True)
     runner.export_policy_to_jit(path=str(export_dir), filename="policy.pt")
@@ -3878,6 +4024,52 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             device=env.unwrapped.device,
         )
         if pickup_recovery_policy is not None
+        else None
+    )
+    first_receiver_retry_count = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.long,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_failed = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_recovered_acquisition = (
+        torch.zeros_like(first_unresolved)
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_correction = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 6),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_action_mismatch_count = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.long,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
+        else None
+    )
+    first_receiver_action_max_abs_difference = (
+        torch.zeros(
+            env.unwrapped.num_envs,
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if receiver_recovery_policy is not None
         else None
     )
     first_terminal_flags = torch.zeros(
@@ -4603,6 +4795,43 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                     first_pickup_correction[first_dones] = (
                         pickup_recovery_policy.correction[first_dones]
+                    )
+                if receiver_recovery_policy is not None:
+                    assert first_receiver_retry_count is not None
+                    assert first_receiver_failed is not None
+                    assert (
+                        first_receiver_recovered_acquisition is not None
+                    )
+                    assert first_receiver_correction is not None
+                    assert (
+                        first_receiver_action_mismatch_count is not None
+                    )
+                    assert (
+                        first_receiver_action_max_abs_difference is not None
+                    )
+                    first_receiver_retry_count[first_dones] = (
+                        receiver_recovery_policy.retry_count[first_dones]
+                    )
+                    first_receiver_failed[first_dones] = (
+                        receiver_recovery_policy.first_attempt_failed[
+                            first_dones
+                        ]
+                    )
+                    first_receiver_recovered_acquisition[first_dones] = (
+                        receiver_recovery_policy.recovered_acquisition[
+                            first_dones
+                        ]
+                    )
+                    first_receiver_correction[first_dones] = (
+                        receiver_recovery_policy.correction[first_dones]
+                    )
+                    first_receiver_action_mismatch_count[first_dones] = (
+                        receiver_recovery_policy
+                        .first_attempt_action_mismatch_count[first_dones]
+                    )
+                    first_receiver_action_max_abs_difference[first_dones] = (
+                        receiver_recovery_policy
+                        .first_attempt_action_max_abs_difference[first_dones]
                     )
                 first_outcome_success |= first_successes
                 if first_handover_max_phase is not None:
@@ -5696,6 +5925,79 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 if pickup_recovery_policy is not None
                 else {"enabled": False}
             ),
+            "receiver_recovery": (
+                {
+                    "enabled": True,
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "head_checkpoint": (
+                        {
+                            "path": str(
+                                Path(
+                                    args.receiver_recovery_checkpoint
+                                ).expanduser().resolve()
+                            ),
+                            "sha256": _sha256(
+                                Path(
+                                    args.receiver_recovery_checkpoint
+                                ).expanduser().resolve()
+                            ),
+                        }
+                        if args.receiver_recovery_checkpoint
+                        else None
+                    ),
+                    "position_cap_m": (
+                        args.receiver_recovery_position_cap
+                    ),
+                    "orientation_cap_deg": (
+                        args.receiver_recovery_orientation_cap_deg
+                    ),
+                    "fixed_correction": (
+                        args.receiver_recovery_fixed_correction
+                    ),
+                    "randomized_corrections": (
+                        args.receiver_recovery_random_corrections
+                    ),
+                    "first_attempt_failures": int(
+                        first_receiver_failed.sum().item()
+                    ),
+                    "first_attempt_action_mismatches": int(
+                        first_receiver_action_mismatch_count.sum().item()
+                    ),
+                    "first_attempt_action_max_abs_difference": float(
+                        first_receiver_action_max_abs_difference.max().item()
+                    ),
+                    "episodes_with_retries": int(
+                        (first_receiver_retry_count > 0).sum().item()
+                    ),
+                    "recovered_acquisition": int(
+                        first_receiver_recovered_acquisition.sum().item()
+                    ),
+                    "successful_after_retry": int(
+                        (
+                            first_outcome_success
+                            & (first_receiver_retry_count > 0)
+                        )
+                        .sum()
+                        .item()
+                    ),
+                    "retry_histogram": {
+                        str(retry): int(
+                            (first_receiver_retry_count == retry).sum().item()
+                        )
+                        for retry in torch.unique(
+                            first_receiver_retry_count
+                        ).tolist()
+                    },
+                    "mean_final_correction": [
+                        float(
+                            first_receiver_correction[:, axis].mean().item()
+                        )
+                        for axis in range(6)
+                    ],
+                }
+                if receiver_recovery_policy is not None
+                else {"enabled": False}
+            ),
             "exports": {
                 "jit": {"path": str(jit_path), "sha256": _sha256(jit_path)},
                 "onnx": {"path": str(onnx_path), "sha256": _sha256(onnx_path)},
@@ -5848,6 +6150,27 @@ def _parser() -> argparse.ArgumentParser:
     play.add_argument("--pickup_recovery_sobol_candidate", type=int)
     play.add_argument("--pickup_recovery_sweep_id")
     play.add_argument("--pickup_recovery_dataset")
+    play.add_argument(
+        "--receiver_recovery",
+        action="store_true",
+        help="enable the isolated post-reset receiver recovery head",
+    )
+    play.add_argument("--receiver_recovery_checkpoint")
+    play.add_argument(
+        "--receiver_recovery_position_cap",
+        type=float,
+        default=0.005,
+    )
+    play.add_argument(
+        "--receiver_recovery_orientation_cap_deg",
+        type=float,
+        default=5.0,
+    )
+    play.add_argument("--receiver_recovery_fixed_correction")
+    play.add_argument(
+        "--receiver_recovery_random_corrections",
+        action="store_true",
+    )
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 

@@ -20,7 +20,10 @@ from torch import nn
 
 from orbit.surgical.tasks.surgical.lift.grasp_frames import (
     NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+    needle_geometry_grasp_offset_m,
 )
+
+_RECEIVER_GRASP_OFFSET = needle_geometry_grasp_offset_m(0.65)
 
 
 _CANONICAL_FIRST_ATTEMPT = 0
@@ -812,6 +815,688 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self.correction[mask] = 0.0
         self.first_attempt_failed[mask] = False
         self.recovered_custody[mask] = False
+        self.activation_count[mask] = 0
+        self.first_attempt_action_mismatch_count[mask] = 0
+        self.first_attempt_action_max_abs_difference[mask] = 0.0
+
+
+class ReceiverRecoveryHead(PickupRecoveryHead):
+    """Separate one-shot receiver retry head with no gripper authority."""
+
+
+class HandoverReceiverRecoveryPolicy(nn.Module):
+    """Frozen pickup composite plus isolated receiver-acquisition retries."""
+
+    def __init__(
+        self,
+        base_policy: nn.Module,
+        recovery_head: ReceiverRecoveryHead | None = None,
+        *,
+        position_cap_m: float = 0.005,
+        orientation_cap_rad: float = math.radians(5.0),
+        episode_frames: int = 2000,
+    ) -> None:
+        super().__init__()
+        if not 0.0 < position_cap_m <= 0.005:
+            raise ValueError(
+                "receiver recovery position cap must be in (0, 0.005]"
+            )
+        if not 0.0 < orientation_cap_rad <= math.radians(5.0):
+            raise ValueError(
+                "receiver recovery orientation cap must be in (0, 5 degrees]"
+            )
+        self.base_policy = base_policy
+        self.recovery_head = recovery_head or ReceiverRecoveryHead()
+        self.position_cap_m = float(position_cap_m)
+        self.orientation_cap_rad = float(orientation_cap_rad)
+        self.episode_frames = int(episode_frames)
+        for parameter in self.base_policy.parameters():
+            parameter.requires_grad_(False)
+
+        self.position_scale = 0.01
+        self.orientation_scale = 0.05
+        self.approach_height = 0.02
+        self.lateral_alignment_threshold = 0.005
+        self.close_distance = 0.001
+        self.slow_approach_radius = 0.02
+        self.slow_approach_action_limit = 0.1
+        self.orientation_action_limit = 0.6
+        self.contact_centering_action_limit = 0.0025
+        self.normalized_contact_threshold = 0.002
+        self.close_dwell_steps = 15
+        self.open_settle_steps = 3
+        self.open_joint_displacement_tolerance_rad = 0.0215
+        self.closed_joint_displacement_rad = 0.4085
+
+        self._batch_size = 0
+        self._fixed_correction: torch.Tensor | None = None
+        self.last_context: torch.Tensor | None = None
+        self.last_activation_mask: torch.Tensor | None = None
+
+    def _initialize_state(self, raw: torch.Tensor) -> None:
+        batch_size = raw.shape[0]
+        device, dtype = raw.device, raw.dtype
+        self._batch_size = batch_size
+        self.retry_state = torch.full(
+            (batch_size,),
+            _CANONICAL_FIRST_ATTEMPT,
+            dtype=torch.long,
+            device=device,
+        )
+        self.retry_count = torch.zeros(
+            batch_size,
+            dtype=torch.long,
+            device=device,
+        )
+        self.episode_step = torch.zeros_like(self.retry_count)
+        self.close_dwell = torch.zeros_like(self.retry_count)
+        self.open_settle_dwell = torch.zeros_like(self.retry_count)
+        self.bilateral_contact_history = torch.zeros(
+            (batch_size, 5),
+            dtype=torch.bool,
+            device=device,
+        )
+        self.failure_forces = torch.zeros(
+            (batch_size, 2),
+            dtype=dtype,
+            device=device,
+        )
+        self.failure_loss_flags = torch.zeros_like(self.failure_forces)
+        self.correction = torch.zeros(
+            (batch_size, 6),
+            dtype=dtype,
+            device=device,
+        )
+        self.first_attempt_failed = torch.zeros(
+            batch_size,
+            dtype=torch.bool,
+            device=device,
+        )
+        self.recovered_acquisition = torch.zeros_like(
+            self.first_attempt_failed
+        )
+        self.activation_count = torch.zeros_like(self.retry_count)
+        self.first_attempt_action_mismatch_count = torch.zeros_like(
+            self.retry_count
+        )
+        self.first_attempt_action_max_abs_difference = torch.zeros(
+            batch_size,
+            dtype=dtype,
+            device=device,
+        )
+        self.last_context = torch.zeros(
+            (batch_size, ReceiverRecoveryHead.input_dim),
+            dtype=dtype,
+            device=device,
+        )
+        self.last_activation_mask = torch.zeros_like(
+            self.first_attempt_failed
+        )
+
+    def set_fixed_correction(
+        self,
+        correction: torch.Tensor | None,
+    ) -> None:
+        if correction is None:
+            self._fixed_correction = None
+            return
+        if correction.ndim not in {1, 2} or correction.shape[-1] != 6:
+            raise ValueError("fixed receiver recovery correction must end in 6")
+        self._fixed_correction = correction.detach().clone()
+
+    def _select_role(
+        self,
+        robot_1_value: torch.Tensor,
+        robot_2_value: torch.Tensor,
+        use_robot_1: torch.Tensor,
+    ) -> torch.Tensor:
+        return torch.where(
+            use_robot_1.unsqueeze(-1),
+            robot_1_value,
+            robot_2_value,
+        )
+
+    def _recovery_context(
+        self,
+        raw: torch.Tensor,
+        giver_is_robot_1: torch.Tensor,
+    ) -> torch.Tensor:
+        receiver_is_robot_1 = ~giver_is_robot_1
+        receiver_ee = self._select_role(
+            raw[:, 32:35],
+            raw[:, 39:42],
+            receiver_is_robot_1,
+        )
+        receiver_orientation = self._select_role(
+            raw[:, 35:39],
+            raw[:, 42:46],
+            receiver_is_robot_1,
+        )
+        object_pose = self._select_role(
+            raw[:, 46:53],
+            raw[:, 53:60],
+            receiver_is_robot_1,
+        )
+        object_position = object_pose[:, :3]
+        object_rotation = _quat_xyzw_to_matrix(object_pose[:, 3:7])
+        rotation_6d = torch.cat(
+            (object_rotation[:, :, 0], object_rotation[:, :, 1]),
+            dim=-1,
+        )
+        base_offset = torch.as_tensor(
+            (
+                float(_RECEIVER_GRASP_OFFSET[0]),
+                float(_RECEIVER_GRASP_OFFSET[1]),
+                -0.0018,
+            ),
+            dtype=raw.dtype,
+            device=raw.device,
+        )
+        canonical_position = object_position + base_offset
+        position_error_receiver = canonical_position - receiver_ee
+        position_error_needle = torch.matmul(
+            object_rotation.transpose(-1, -2),
+            position_error_receiver.unsqueeze(-1),
+        ).squeeze(-1)
+        giver_orientation = self._select_role(
+            raw[:, 35:39],
+            raw[:, 42:46],
+            giver_is_robot_1,
+        )
+        receiver_roll = torch.zeros_like(giver_orientation)
+        receiver_roll[:, 2] = 1.0
+        canonical_orientation = _quat_multiply_xyzw(
+            receiver_roll,
+            giver_orientation,
+        )
+        orientation_error_receiver = _quat_xyzw_to_axis_angle(
+            _quat_multiply_xyzw(
+                canonical_orientation,
+                _quat_conjugate_xyzw(receiver_orientation),
+            )
+        )
+        orientation_error_needle = torch.matmul(
+            object_rotation.transpose(-1, -2),
+            orientation_error_receiver.unsqueeze(-1),
+        ).squeeze(-1)
+        force_imbalance = (
+            self.failure_forces[:, 1:] - self.failure_forces[:, :1]
+        )
+        giver_contacts = self._select_role(
+            raw[:, 66:68],
+            raw[:, 68:70],
+            giver_is_robot_1,
+        )
+        giver_custody_quality = giver_contacts.amin(
+            dim=-1,
+            keepdim=True,
+        )
+        normalized_retry_and_active = (
+            self.retry_count.to(raw.dtype).clamp(max=5.0) / 5.0
+        ).unsqueeze(-1)
+        remaining_time = (
+            1.0
+            - self.episode_step.to(raw.dtype).unsqueeze(-1)
+            / float(self.episode_frames)
+        ).clamp(0.0, 1.0)
+        semantic = torch.cat(
+            (
+                object_position,
+                rotation_6d,
+                position_error_needle,
+                orientation_error_needle,
+                self.failure_forces,
+                force_imbalance,
+                self.failure_loss_flags,
+                giver_custody_quality,
+                normalized_retry_and_active,
+                remaining_time,
+            ),
+            dim=-1,
+        )
+        previous = torch.cat(
+            (
+                self.correction[:, :3] / self.position_cap_m,
+                self.correction[:, 3:] / self.orientation_cap_rad,
+            ),
+            dim=-1,
+        )
+        context = torch.cat((semantic, previous), dim=-1)
+        if context.shape[-1] != ReceiverRecoveryHead.input_dim:
+            raise RuntimeError(
+                f"receiver recovery context drifted to {context.shape[-1]}"
+            )
+        return context
+
+    def _activate_recovery(
+        self,
+        raw: torch.Tensor,
+        giver_is_robot_1: torch.Tensor,
+        activation: torch.Tensor,
+    ) -> None:
+        if not bool(activation.any()):
+            return
+        context = self._recovery_context(raw, giver_is_robot_1)
+        normalized_delta = self.recovery_head(context)
+        proposed = self.correction + torch.cat(
+            (
+                normalized_delta[:, :3] * self.position_cap_m,
+                normalized_delta[:, 3:] * self.orientation_cap_rad,
+            ),
+            dim=-1,
+        )
+        if self._fixed_correction is not None:
+            fixed = self._fixed_correction.to(
+                device=raw.device,
+                dtype=raw.dtype,
+            )
+            if fixed.ndim == 1:
+                fixed = fixed.expand(raw.shape[0], -1)
+            if fixed.shape[0] != raw.shape[0]:
+                raise ValueError(
+                    "fixed receiver correction batch does not match policy"
+                )
+            proposed = fixed
+        projected = torch.cat(
+            (
+                _project_vector(proposed[:, :3], self.position_cap_m),
+                _project_vector(
+                    proposed[:, 3:],
+                    self.orientation_cap_rad,
+                ),
+            ),
+            dim=-1,
+        )
+        self.correction[activation] = projected[activation].detach()
+        self.last_context = context.detach()
+        self.last_activation_mask = activation.detach().clone()
+        self.activation_count[activation] += 1
+
+    def _corrected_receiver_action(
+        self,
+        raw: torch.Tensor,
+        giver_is_robot_1: torch.Tensor,
+    ) -> torch.Tensor:
+        receiver_is_robot_1 = ~giver_is_robot_1
+        receiver_ee = self._select_role(
+            raw[:, 32:35],
+            raw[:, 39:42],
+            receiver_is_robot_1,
+        )
+        receiver_orientation = self._select_role(
+            raw[:, 35:39],
+            raw[:, 42:46],
+            receiver_is_robot_1,
+        )
+        giver_orientation = self._select_role(
+            raw[:, 35:39],
+            raw[:, 42:46],
+            giver_is_robot_1,
+        )
+        object_pose = self._select_role(
+            raw[:, 46:53],
+            raw[:, 53:60],
+            receiver_is_robot_1,
+        )
+        object_position = object_pose[:, :3]
+        object_rotation = _quat_xyzw_to_matrix(object_pose[:, 3:7])
+        base_offset = torch.as_tensor(
+            (
+                float(_RECEIVER_GRASP_OFFSET[0]),
+                float(_RECEIVER_GRASP_OFFSET[1]),
+                -0.0018,
+            ),
+            dtype=raw.dtype,
+            device=raw.device,
+        )
+        correction_in_receiver = torch.matmul(
+            object_rotation,
+            self.correction[:, :3].unsqueeze(-1),
+        ).squeeze(-1)
+        grasp_position = (
+            object_position + base_offset + correction_in_receiver
+        )
+        delta = grasp_position - receiver_ee
+        lateral_distance = delta[:, :2].norm(dim=-1)
+        above = grasp_position.clone()
+        above[:, 2] += self.approach_height
+        target = torch.where(
+            (
+                lateral_distance > self.lateral_alignment_threshold
+            ).unsqueeze(-1),
+            above,
+            grasp_position,
+        )
+        distance = delta.norm(dim=-1)
+        translation = ((target - receiver_ee) / self.position_scale).clamp(
+            -1.0,
+            1.0,
+        )
+        translation = torch.where(
+            (distance < self.slow_approach_radius).unsqueeze(-1),
+            translation.clamp(
+                -self.slow_approach_action_limit,
+                self.slow_approach_action_limit,
+            ),
+            translation,
+        )
+
+        receiver_roll = torch.zeros_like(giver_orientation)
+        receiver_roll[:, 2] = 1.0
+        canonical_orientation = _quat_multiply_xyzw(
+            receiver_roll,
+            giver_orientation,
+        )
+        orientation_delta_receiver = torch.matmul(
+            object_rotation,
+            self.correction[:, 3:].unsqueeze(-1),
+        ).squeeze(-1)
+        target_orientation = _quat_multiply_xyzw(
+            _axis_angle_to_quat_xyzw(orientation_delta_receiver),
+            canonical_orientation,
+        )
+        orientation_error = _quat_xyzw_to_axis_angle(
+            _quat_multiply_xyzw(
+                target_orientation,
+                _quat_conjugate_xyzw(receiver_orientation),
+            )
+        )
+        orientation = (
+            orientation_error / self.orientation_scale
+        ).clamp(
+            -self.orientation_action_limit,
+            self.orientation_action_limit,
+        )
+        receiver_contacts = self._select_role(
+            raw[:, 66:68],
+            raw[:, 68:70],
+            receiver_is_robot_1,
+        )
+        any_contact = torch.any(
+            receiver_contacts > self.normalized_contact_threshold,
+            dim=-1,
+        )
+        translation = torch.where(
+            any_contact.unsqueeze(-1),
+            torch.zeros_like(translation),
+            translation,
+        )
+        contact_imbalance = (
+            receiver_contacts[:, 1] - receiver_contacts[:, 0]
+        )
+        translation[:, 2] += torch.where(
+            any_contact,
+            torch.sign(contact_imbalance)
+            * self.contact_centering_action_limit,
+            torch.zeros_like(contact_imbalance),
+        )
+        orientation = torch.where(
+            any_contact.unsqueeze(-1),
+            torch.zeros_like(orientation),
+            orientation,
+        )
+        gripper = torch.where(
+            (distance < self.close_distance) | any_contact,
+            -torch.ones_like(distance),
+            torch.ones_like(distance),
+        ).unsqueeze(-1)
+        return torch.cat((translation, orientation, gripper), dim=-1)
+
+    def _replace_role_action(
+        self,
+        base_action: torch.Tensor,
+        role_action: torch.Tensor,
+        role_is_robot_1: torch.Tensor,
+        active: torch.Tensor,
+    ) -> torch.Tensor:
+        robot_1 = torch.where(
+            (active & role_is_robot_1).unsqueeze(-1),
+            role_action,
+            base_action[:, :7],
+        )
+        robot_2 = torch.where(
+            (active & ~role_is_robot_1).unsqueeze(-1),
+            role_action,
+            base_action[:, 7:14],
+        )
+        return torch.cat((robot_1, robot_2), dim=-1)
+
+    def forward(
+        self,
+        obs: Mapping[str, torch.Tensor],
+    ) -> torch.Tensor:
+        raw = obs["policy"]
+        if self._batch_size != raw.shape[0]:
+            self._initialize_state(raw)
+        base_action = self.base_policy(obs)
+        self.episode_step += 1
+        self.last_activation_mask = torch.zeros(
+            raw.shape[0],
+            dtype=torch.bool,
+            device=raw.device,
+        )
+        giver_is_robot_1 = raw[:, 82] > 0.5
+        receiver_is_robot_1 = ~giver_is_robot_1
+        phase = torch.argmax(raw[:, 77:82], dim=-1)
+        canonical_before = (
+            (self.retry_state == _CANONICAL_FIRST_ATTEMPT)
+            & (phase == 2)
+        )
+        receiver_contacts = self._select_role(
+            raw[:, 66:68],
+            raw[:, 68:70],
+            receiver_is_robot_1,
+        )
+        bilateral_live = torch.all(
+            receiver_contacts > self.normalized_contact_threshold,
+            dim=-1,
+        )
+        self.bilateral_contact_history = torch.roll(
+            self.bilateral_contact_history,
+            shifts=-1,
+            dims=-1,
+        )
+        self.bilateral_contact_history[:, -1] = bilateral_live
+        bilateral_qualified = (
+            self.bilateral_contact_history.sum(dim=-1) >= 3
+        )
+        any_contact = torch.any(
+            receiver_contacts > self.normalized_contact_threshold,
+            dim=-1,
+        )
+        secure_now = (phase >= 3) | (
+            (phase == 2) & bilateral_qualified
+        )
+        self.recovered_acquisition |= (
+            secure_now & (self.retry_count > 0)
+        )
+        self.retry_state[secure_now] = _SECURE_CUSTODY
+        self.close_dwell[secure_now] = 0
+
+        receiver_joint_displacement = self._select_role(
+            raw[:, 6:8],
+            raw[:, 22:24],
+            receiver_is_robot_1,
+        ).abs()
+        previous_receiver_gripper_action = torch.where(
+            receiver_is_robot_1,
+            raw[:, 90],
+            raw[:, 97],
+        )
+        first_or_retry = (
+            (self.retry_state == _CANONICAL_FIRST_ATTEMPT)
+            | (self.retry_state == _LEARNED_RETRY)
+        )
+        closing = (
+            (phase == 2)
+            & first_or_retry
+            & (previous_receiver_gripper_action < 0.0)
+        )
+        self.close_dwell[:] = torch.where(
+            closing,
+            self.close_dwell + 1,
+            torch.zeros_like(self.close_dwell),
+        )
+        failed_close = (
+            (phase == 2)
+            & first_or_retry
+            & ~bilateral_qualified
+            & (self.close_dwell >= self.close_dwell_steps)
+            & torch.all(
+                receiver_joint_displacement
+                >= self.closed_joint_displacement_rad,
+                dim=-1,
+            )
+        )
+        failure = failed_close & (
+            self.retry_state != _FAILED_GRASP
+        ) & (
+            self.retry_state != _REOPENING
+        ) & (
+            self.retry_state != _OPEN_SETTLE
+        )
+        if bool(failure.any()):
+            self.failure_forces[failure] = receiver_contacts[
+                failure
+            ].clamp(0.0, 1.0)
+            self.failure_loss_flags[failure] = (
+                receiver_contacts[failure]
+                <= self.normalized_contact_threshold
+            ).to(raw.dtype)
+            self.first_attempt_failed |= (
+                failure & (self.retry_count == 0)
+            )
+            self.retry_state[failure] = _FAILED_GRASP
+            self.open_settle_dwell[failure] = 0
+            self.close_dwell[failure] = 0
+
+        failed_grasp = self.retry_state == _FAILED_GRASP
+        ready_to_reopen = failed_grasp & ~torch.any(
+            self.bilateral_contact_history,
+            dim=-1,
+        )
+        self.retry_state[ready_to_reopen] = _REOPENING
+        failed_grasp = self.retry_state == _FAILED_GRASP
+        resetting = (
+            (self.retry_state == _REOPENING)
+            | (self.retry_state == _OPEN_SETTLE)
+        )
+        fully_open = torch.all(
+            receiver_joint_displacement
+            <= self.open_joint_displacement_tolerance_rad,
+            dim=-1,
+        )
+        force_free = ~any_contact
+        ready_to_settle = resetting & fully_open & force_free
+        self.retry_state[
+            ready_to_settle & (self.retry_state == _REOPENING)
+        ] = _OPEN_SETTLE
+        self.open_settle_dwell[:] = torch.where(
+            ready_to_settle,
+            self.open_settle_dwell + 1,
+            torch.zeros_like(self.open_settle_dwell),
+        )
+        activation = (
+            (self.retry_state == _OPEN_SETTLE)
+            & (self.open_settle_dwell >= self.open_settle_steps)
+        )
+        if bool(activation.any()):
+            self.retry_count[activation] += 1
+            self.retry_state[activation] = _LEARNED_RETRY
+            self.open_settle_dwell[activation] = 0
+            self._activate_recovery(raw, giver_is_robot_1, activation)
+
+        receiver_hold_closed = torch.zeros(
+            (raw.shape[0], 7),
+            dtype=raw.dtype,
+            device=raw.device,
+        )
+        receiver_hold_closed[:, 6] = -1.0
+        receiver_open = torch.zeros_like(receiver_hold_closed)
+        receiver_open[:, 6] = 1.0
+        giver_hold = torch.zeros_like(receiver_hold_closed)
+        giver_hold[:, 6] = -1.0
+        recovery_active = (
+            failed_grasp
+            | resetting
+            | (
+                (self.retry_state == _LEARNED_RETRY)
+                & (phase == 2)
+            )
+        )
+        result = self._replace_role_action(
+            base_action,
+            giver_hold,
+            giver_is_robot_1,
+            recovery_active,
+        )
+        result = self._replace_role_action(
+            result,
+            receiver_hold_closed,
+            receiver_is_robot_1,
+            failed_grasp,
+        )
+        result = self._replace_role_action(
+            result,
+            receiver_open,
+            receiver_is_robot_1,
+            resetting,
+        )
+        corrected_receiver_action = self._corrected_receiver_action(
+            raw,
+            giver_is_robot_1,
+        )
+        learned_retry = (
+            (self.retry_state == _LEARNED_RETRY) & (phase == 2)
+        )
+        result = self._replace_role_action(
+            result,
+            corrected_receiver_action,
+            receiver_is_robot_1,
+            learned_retry,
+        ).clamp(-1.0, 1.0)
+        preservation_mask = canonical_before & ~failure
+        action_difference = (result - base_action).abs()
+        mismatch = preservation_mask & torch.any(
+            action_difference != 0.0,
+            dim=-1,
+        )
+        self.first_attempt_action_mismatch_count += mismatch.to(torch.long)
+        self.first_attempt_action_max_abs_difference[:] = torch.where(
+            preservation_mask,
+            torch.maximum(
+                self.first_attempt_action_max_abs_difference,
+                action_difference.amax(dim=-1),
+            ),
+            self.first_attempt_action_max_abs_difference,
+        )
+        return result
+
+    def reset(
+        self,
+        dones: torch.Tensor | None = None,
+        hidden_state: Any = None,
+    ) -> None:
+        reset_base = getattr(self.base_policy, "reset", None)
+        if reset_base is not None:
+            reset_base(dones, hidden_state)
+        if self._batch_size == 0:
+            return
+        if dones is None:
+            mask = torch.ones_like(self.retry_count, dtype=torch.bool)
+        else:
+            mask = dones.to(device=self.retry_count.device, dtype=torch.bool)
+        self.retry_state[mask] = _CANONICAL_FIRST_ATTEMPT
+        self.retry_count[mask] = 0
+        self.episode_step[mask] = 0
+        self.close_dwell[mask] = 0
+        self.open_settle_dwell[mask] = 0
+        self.bilateral_contact_history[mask] = False
+        self.failure_forces[mask] = 0.0
+        self.failure_loss_flags[mask] = 0.0
+        self.correction[mask] = 0.0
+        self.first_attempt_failed[mask] = False
+        self.recovered_acquisition[mask] = False
         self.activation_count[mask] = 0
         self.first_attempt_action_mismatch_count[mask] = 0
         self.first_attempt_action_max_abs_difference[mask] = 0.0
