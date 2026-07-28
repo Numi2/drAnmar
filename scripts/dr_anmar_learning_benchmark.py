@@ -3919,8 +3919,94 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
     export_dir.mkdir(parents=True, exist_ok=True)
     runner.export_policy_to_jit(path=str(export_dir), filename="policy.pt")
     runner.export_policy_to_onnx(path=str(export_dir), filename="policy.onnx")
+    composite_jit_policy = None
+    composite_jit_path = None
+    recovery_state_contract_path = None
+    recovery_head_onnx_paths: dict[str, Path] = {}
+    if (
+        pickup_recovery_policy is not None
+        or receiver_recovery_policy is not None
+    ):
+        composite_jit_policy = torch.jit.script(
+            policy.as_jit().to(env.unwrapped.device).eval()
+        )
+        composite_jit_path = export_dir / "composite_policy.pt"
+        composite_jit_policy.save(str(composite_jit_path))
+        recovery_heads = {}
+        if pickup_recovery_policy is not None:
+            recovery_heads["pickup"] = (
+                pickup_recovery_policy.recovery_head
+            )
+        if receiver_recovery_policy is not None:
+            recovery_heads["receiver"] = (
+                receiver_recovery_policy.recovery_head
+            )
+        for head_name, recovery_head in recovery_heads.items():
+            head_path = export_dir / f"{head_name}_recovery_head.onnx"
+            torch.onnx.export(
+                recovery_head,
+                torch.zeros(
+                    1,
+                    29,
+                    device=env.unwrapped.device,
+                ),
+                str(head_path),
+                input_names=["recovery_observation"],
+                output_names=["normalized_correction_delta"],
+                dynamic_axes={
+                    "recovery_observation": {0: "batch"},
+                    "normalized_correction_delta": {0: "batch"},
+                },
+                opset_version=17,
+                dynamo=False,
+            )
+            recovery_head_onnx_paths[head_name] = head_path
+        recovery_state_contract_path = (
+            export_dir / "recovery_state_contract.json"
+        )
+        recovery_state_contract_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": (
+                        "dranmar-recovery-export-state-1.0"
+                    ),
+                    "physical_policy_input": 98,
+                    "physical_policy_output": 14,
+                    "recovery_head_input": 29,
+                    "recovery_head_output": 6,
+                    "per_environment_state": [
+                        "retry_state",
+                        "retry_count",
+                        "episode_step",
+                        "contact_history",
+                        "open_settle_dwell",
+                        "latched_correction",
+                        "failure_forces",
+                        "contact_loss_flags",
+                    ],
+                    "asynchronous_reset": (
+                        "clear every listed state value where reset_mask is true"
+                    ),
+                    "latching": (
+                        "sample once after open-settle; retain until the next "
+                        "failed retry or filtered bilateral custody"
+                    ),
+                    "heads": {
+                        name: path.name
+                        for name, path in recovery_head_onnx_paths.items()
+                    },
+                    "stateful_jit": composite_jit_path.name,
+                    "base_onnx": "policy.onnx",
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
 
     rewards: list[float] = []
+    composite_jit_action_mismatches = 0
+    composite_jit_action_max_abs_difference = 0.0
     done_count = 0
     success_count = 0
     termination_manager = env.unwrapped.termination_manager
@@ -4659,6 +4745,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         )
                     )
                 actions = policy(obs)
+                if composite_jit_policy is not None:
+                    exported_actions = composite_jit_policy(obs["policy"])
+                    export_difference = (
+                        exported_actions - actions
+                    ).abs()
+                    composite_jit_action_mismatches += int(
+                        torch.any(
+                            export_difference != 0.0,
+                            dim=-1,
+                        )
+                        .sum()
+                        .item()
+                    )
+                    composite_jit_action_max_abs_difference = max(
+                        composite_jit_action_max_abs_difference,
+                        float(export_difference.max().item()),
+                    )
                 if pickup_recovery_policy is not None:
                     assert first_pickup_context is not None
                     assert first_pickup_activation_correction is not None
@@ -5005,6 +5108,8 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             }
                         )
                 policy.reset(dones)
+                if composite_jit_policy is not None:
+                    composite_jit_policy.reset(dones)
             rewards.append(float(reward.float().mean().item()))
             done_count += int(dones.sum().item())
             success_count += int(successes.sum().item())
@@ -6001,6 +6106,35 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             "exports": {
                 "jit": {"path": str(jit_path), "sha256": _sha256(jit_path)},
                 "onnx": {"path": str(onnx_path), "sha256": _sha256(onnx_path)},
+                "stateful_composite_jit": (
+                    {
+                        "path": str(composite_jit_path),
+                        "sha256": _sha256(composite_jit_path),
+                        "action_mismatches": (
+                            composite_jit_action_mismatches
+                        ),
+                        "maximum_action_absolute_difference": (
+                            composite_jit_action_max_abs_difference
+                        ),
+                    }
+                    if composite_jit_path is not None
+                    else None
+                ),
+                "recovery_head_onnx": {
+                    name: {
+                        "path": str(path),
+                        "sha256": _sha256(path),
+                    }
+                    for name, path in recovery_head_onnx_paths.items()
+                },
+                "recovery_state_contract": (
+                    {
+                        "path": str(recovery_state_contract_path),
+                        "sha256": _sha256(recovery_state_contract_path),
+                    }
+                    if recovery_state_contract_path is not None
+                    else None
+                ),
             },
             "runtime": _runtime_evidence(repo_root),
         }

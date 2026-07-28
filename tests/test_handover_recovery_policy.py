@@ -71,6 +71,18 @@ class _FixedBasePolicy(nn.Module):
     def reset(self, dones=None, hidden_state=None) -> None:
         pass
 
+    def as_jit(self) -> nn.Module:
+        return _FixedTensorPolicy(self.action)
+
+
+class _FixedTensorPolicy(nn.Module):
+    def __init__(self, action: torch.Tensor) -> None:
+        super().__init__()
+        self.register_buffer("action", action.clone())
+
+    def forward(self, observation: torch.Tensor) -> torch.Tensor:
+        return self.action.expand(observation.shape[0], -1).clone()
+
 
 def _observation(batch_size: int = 2) -> dict[str, torch.Tensor]:
     raw = torch.zeros(batch_size, 98)
@@ -246,3 +258,50 @@ def test_receiver_recovery_head_contract_has_no_gripper_channel() -> None:
     output = head(torch.zeros(4, ReceiverRecoveryHead.input_dim))
     assert output.shape == (4, 6)
     assert torch.equal(output, torch.zeros_like(output))
+
+
+def test_pickup_jit_matches_eager_and_resets_asynchronously() -> None:
+    eager = HandoverPickupRecoveryPolicy(_FixedBasePolicy())
+    exported_source = HandoverPickupRecoveryPolicy(_FixedBasePolicy())
+    scripted = torch.jit.script(exported_source.as_jit())
+    observation = _observation(batch_size=2)
+    raw = observation["policy"]
+    raw[:, 6:8] = 0.30
+
+    for _ in range(eager.close_dwell_steps):
+        assert torch.equal(eager(observation), scripted(raw))
+    raw[0, 6:8] = 0.43
+    assert torch.equal(eager(observation), scripted(raw))
+    raw[0, 6:8] = 0.0
+    for _ in range(eager.open_settle_steps):
+        assert torch.equal(eager(observation), scripted(raw))
+
+    dones = torch.tensor([True, False])
+    eager.reset(dones)
+    scripted.reset(dones)
+    assert torch.equal(eager(observation), scripted(raw))
+
+
+def test_receiver_jit_matches_eager_through_retry() -> None:
+    eager = HandoverReceiverRecoveryPolicy(_FixedBasePolicy())
+    exported_source = HandoverReceiverRecoveryPolicy(_FixedBasePolicy())
+    scripted = torch.jit.script(exported_source.as_jit())
+    observation = _observation(batch_size=2)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 79] = 1.0
+    raw[:, 97] = -1.0
+    raw[:, 22:24] = 0.30
+
+    for _ in range(eager.close_dwell_steps):
+        assert torch.equal(eager(observation), scripted(raw))
+    raw[0, 22:24] = 0.43
+    assert torch.equal(eager(observation), scripted(raw))
+    raw[0, 22:24] = 0.0
+    for _ in range(eager.open_settle_steps):
+        assert torch.equal(eager(observation), scripted(raw))
+
+    dones = torch.tensor([False, True])
+    eager.reset(dones)
+    scripted.reset(dones)
+    assert torch.equal(eager(observation), scripted(raw))

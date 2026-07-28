@@ -11,8 +11,8 @@ has completed a deterministic full-open reset.
 
 from __future__ import annotations
 
+import copy
 import math
-from collections.abc import Mapping
 from typing import Any
 
 import torch
@@ -26,20 +26,14 @@ from orbit.surgical.tasks.surgical.lift.grasp_frames import (
 _RECEIVER_GRASP_OFFSET = needle_geometry_grasp_offset_m(0.65)
 
 
-_CANONICAL_FIRST_ATTEMPT = 0
-_FAILED_GRASP = 1
-_REOPENING = 2
-_OPEN_SETTLE = 3
-_LEARNED_RETRY = 4
-_SECURE_CUSTODY = 5
-
-
 def _quat_xyzw_to_matrix(quaternion: torch.Tensor) -> torch.Tensor:
     """Convert normalized XYZW quaternions to rotation matrices."""
 
-    quaternion = quaternion / quaternion.norm(dim=-1, keepdim=True).clamp_min(
-        1.0e-8
-    )
+    quaternion = quaternion / torch.linalg.vector_norm(
+        quaternion,
+        dim=-1,
+        keepdim=True,
+    ).clamp_min(1.0e-8)
     x, y, z, w = quaternion.unbind(dim=-1)
     xx, yy, zz = x * x, y * y, z * z
     xy, xz, yz = x * y, x * z, y * z
@@ -85,7 +79,11 @@ def _quat_multiply_xyzw(
 
 
 def _axis_angle_to_quat_xyzw(axis_angle: torch.Tensor) -> torch.Tensor:
-    angle = axis_angle.norm(dim=-1, keepdim=True)
+    angle = torch.linalg.vector_norm(
+        axis_angle,
+        dim=-1,
+        keepdim=True,
+    )
     half_angle = 0.5 * angle
     scale = torch.where(
         angle > 1.0e-8,
@@ -96,7 +94,8 @@ def _axis_angle_to_quat_xyzw(axis_angle: torch.Tensor) -> torch.Tensor:
 
 
 def _quat_xyzw_to_axis_angle(quaternion: torch.Tensor) -> torch.Tensor:
-    quaternion = quaternion / quaternion.norm(
+    quaternion = quaternion / torch.linalg.vector_norm(
+        quaternion,
         dim=-1,
         keepdim=True,
     ).clamp_min(1.0e-8)
@@ -106,7 +105,11 @@ def _quat_xyzw_to_axis_angle(quaternion: torch.Tensor) -> torch.Tensor:
         quaternion,
     )
     vector = quaternion[:, :3]
-    vector_norm = vector.norm(dim=-1, keepdim=True)
+    vector_norm = torch.linalg.vector_norm(
+        vector,
+        dim=-1,
+        keepdim=True,
+    )
     angle = 2.0 * torch.atan2(
         vector_norm,
         quaternion[:, 3:].clamp_min(1.0e-8),
@@ -123,7 +126,11 @@ def _project_vector(
     value: torch.Tensor,
     maximum_norm: float,
 ) -> torch.Tensor:
-    norm = value.norm(dim=-1, keepdim=True)
+    norm = torch.linalg.vector_norm(
+        value,
+        dim=-1,
+        keepdim=True,
+    )
     scale = torch.clamp(maximum_norm / norm.clamp_min(1.0e-8), max=1.0)
     return value * scale
 
@@ -178,6 +185,17 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             )
         self.base_policy = base_policy
         self.recovery_head = recovery_head or PickupRecoveryHead()
+        self.register_buffer(
+            "canonical_grasp_offset",
+            torch.tensor(NEEDLE_PROVISIONAL_GRASP_OFFSET_M),
+        )
+        self.state_canonical = 0
+        self.state_failed = 1
+        self.state_reopening = 2
+        self.state_open_settle = 3
+        self.state_learned_retry = 4
+        self.state_secure = 5
+        self.context_dim = 29
         self.position_cap_m = float(position_cap_m)
         self.orientation_cap_rad = float(orientation_cap_rad)
         self.episode_frames = int(episode_frames)
@@ -203,8 +221,30 @@ class HandoverPickupRecoveryPolicy(nn.Module):
 
         self._batch_size = 0
         self._fixed_correction: torch.Tensor | None = None
-        self.last_context: torch.Tensor | None = None
-        self.last_activation_mask: torch.Tensor | None = None
+        self.retry_state = torch.empty(0, dtype=torch.long)
+        self.retry_count = torch.empty(0, dtype=torch.long)
+        self.episode_step = torch.empty(0, dtype=torch.long)
+        self.close_dwell = torch.empty(0, dtype=torch.long)
+        self.custody_loss_dwell = torch.empty(0, dtype=torch.long)
+        self.open_settle_dwell = torch.empty(0, dtype=torch.long)
+        self.ever_bilateral = torch.empty(0, dtype=torch.bool)
+        self.bilateral_contact_history = torch.empty(
+            (0, 5),
+            dtype=torch.bool,
+        )
+        self.failure_forces = torch.empty((0, 2))
+        self.failure_loss_flags = torch.empty((0, 2))
+        self.correction = torch.empty((0, 6))
+        self.first_attempt_failed = torch.empty(0, dtype=torch.bool)
+        self.recovered_custody = torch.empty(0, dtype=torch.bool)
+        self.activation_count = torch.empty(0, dtype=torch.long)
+        self.first_attempt_action_mismatch_count = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.first_attempt_action_max_abs_difference = torch.empty(0)
+        self.last_context = torch.empty((0, self.context_dim))
+        self.last_activation_mask = torch.empty(0, dtype=torch.bool)
 
     def _initialize_state(
         self,
@@ -215,7 +255,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self._batch_size = batch_size
         self.retry_state = torch.full(
             (batch_size,),
-            _CANONICAL_FIRST_ATTEMPT,
+            self.state_canonical,
             dtype=torch.long,
             device=device,
         )
@@ -265,7 +305,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             device=device,
         )
         self.last_context = torch.zeros(
-            (batch_size, PickupRecoveryHead.input_dim),
+            (batch_size, self.context_dim),
             dtype=dtype,
             device=device,
         )
@@ -324,8 +364,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             (object_rotation[:, :, 0], object_rotation[:, :, 1]),
             dim=-1,
         )
-        base_offset = torch.as_tensor(
-            NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+        base_offset = self.canonical_grasp_offset.to(
             dtype=raw.dtype,
             device=raw.device,
         )
@@ -389,7 +428,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             dim=-1,
         )
         context = torch.cat((semantic, previous), dim=-1)
-        if context.shape[-1] != PickupRecoveryHead.input_dim:
+        if context.shape[-1] != self.context_dim:
             raise RuntimeError(
                 f"pickup recovery context drifted to {context.shape[-1]}"
             )
@@ -462,8 +501,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
         object_position = object_pose[:, :3]
         object_rotation = _quat_xyzw_to_matrix(object_pose[:, 3:7])
-        base_offset = torch.as_tensor(
-            NEEDLE_PROVISIONAL_GRASP_OFFSET_M,
+        base_offset = self.canonical_grasp_offset.to(
             dtype=raw.dtype,
             device=raw.device,
         ).expand(raw.shape[0], -1)
@@ -473,7 +511,10 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         ).squeeze(-1)
         grasp_position = object_position + base_offset + correction_in_giver
         delta = grasp_position - giver_ee
-        lateral_distance = delta[:, :2].norm(dim=-1)
+        lateral_distance = torch.linalg.vector_norm(
+            delta[:, :2],
+            dim=-1,
+        )
         above = grasp_position.clone()
         above[:, 2] += self.approach_height
         target = torch.where(
@@ -483,7 +524,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             above,
             grasp_position,
         )
-        distance = delta.norm(dim=-1)
+        distance = torch.linalg.vector_norm(delta, dim=-1)
         translation = ((target - giver_ee) / self.position_scale).clamp(
             -1.0,
             1.0,
@@ -517,7 +558,8 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             self.orientation_action_limit,
         )
         orientation_ready = (
-            orientation_error.norm(dim=-1) < self.orientation_tolerance
+            torch.linalg.vector_norm(orientation_error, dim=-1)
+            < self.orientation_tolerance
         )
         pregrasp_position = grasp_position.clone()
         pregrasp_position[:, 2] += self.approach_height
@@ -571,7 +613,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
 
     def forward(
         self,
-        obs: Mapping[str, torch.Tensor],
+        obs: dict[str, torch.Tensor],
     ) -> torch.Tensor:
         raw = obs["policy"]
         if self._batch_size != raw.shape[0]:
@@ -586,7 +628,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
 
         giver_is_robot_1 = raw[:, 82] > 0.5
         canonical_before = (
-            self.retry_state == _CANONICAL_FIRST_ATTEMPT
+            self.retry_state == self.state_canonical
         )
         giver_contacts = self._select_role(
             raw[:, 66:68],
@@ -631,7 +673,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
         recovered_now = secure_now & (self.retry_count > 0)
         self.recovered_custody |= recovered_now
-        self.retry_state[secure_now] = _SECURE_CUSTODY
+        self.retry_state[secure_now] = self.state_secure
         self.close_dwell[secure_now] = 0
         self.custody_loss_dwell[:] = torch.where(
             (phase == 1) & ~bilateral_live,
@@ -640,8 +682,8 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
 
         first_or_retry_approach = (
-            (self.retry_state == _CANONICAL_FIRST_ATTEMPT)
-            | (self.retry_state == _LEARNED_RETRY)
+            (self.retry_state == self.state_canonical)
+            | (self.retry_state == self.state_learned_retry)
         )
         closing = (
             pickup_not_lifted
@@ -675,17 +717,17 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
         lost_after_custody = (
             (phase == 1)
-            & (self.retry_state == _SECURE_CUSTODY)
+            & (self.retry_state == self.state_secure)
             & self.ever_bilateral
             & (self.custody_loss_dwell >= self.custody_loss_steps)
         )
         failure = (
             missed_after_dwell
             | lost_after_custody
-        ) & (self.retry_state != _FAILED_GRASP) & (
-            self.retry_state != _REOPENING
+        ) & (self.retry_state != self.state_failed) & (
+            self.retry_state != self.state_reopening
         ) & (
-            self.retry_state != _OPEN_SETTLE
+            self.retry_state != self.state_open_settle
         )
         if bool(failure.any()):
             self.failure_forces[failure] = giver_contacts[
@@ -695,7 +737,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
                 giver_contacts[failure] <= self.normalized_contact_threshold
             ).to(raw.dtype)
             self.first_attempt_failed |= failure & (self.retry_count == 0)
-            self.retry_state[failure] = _FAILED_GRASP
+            self.retry_state[failure] = self.state_failed
             self.open_settle_dwell[failure] = 0
             self.close_dwell[failure] = 0
             self.custody_loss_dwell[failure] = 0
@@ -703,16 +745,16 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         # A three-step loss declares failure.  Keep the closed jaws stationary
         # until the five-step bilateral filter is empty, so a late contact
         # sample cannot turn the required reopening into a premature release.
-        failed_grasp = self.retry_state == _FAILED_GRASP
+        failed_grasp = self.retry_state == self.state_failed
         ready_to_reopen = failed_grasp & ~torch.any(
             self.bilateral_contact_history,
             dim=-1,
         )
-        self.retry_state[ready_to_reopen] = _REOPENING
-        failed_grasp = self.retry_state == _FAILED_GRASP
+        self.retry_state[ready_to_reopen] = self.state_reopening
+        failed_grasp = self.retry_state == self.state_failed
         resetting = (
-            (self.retry_state == _REOPENING)
-            | (self.retry_state == _OPEN_SETTLE)
+            (self.retry_state == self.state_reopening)
+            | (self.retry_state == self.state_open_settle)
         )
         fully_open = torch.all(
             giver_joint_displacement
@@ -722,20 +764,20 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         force_free = ~any_contact
         ready_to_settle = resetting & fully_open & force_free
         self.retry_state[
-            ready_to_settle & (self.retry_state == _REOPENING)
-        ] = _OPEN_SETTLE
+            ready_to_settle & (self.retry_state == self.state_reopening)
+        ] = self.state_open_settle
         self.open_settle_dwell[:] = torch.where(
             ready_to_settle,
             self.open_settle_dwell + 1,
             torch.zeros_like(self.open_settle_dwell),
         )
         activation = (
-            (self.retry_state == _OPEN_SETTLE)
+            (self.retry_state == self.state_open_settle)
             & (self.open_settle_dwell >= self.open_settle_steps)
         )
         if bool(activation.any()):
             self.retry_count[activation] += 1
-            self.retry_state[activation] = _LEARNED_RETRY
+            self.retry_state[activation] = self.state_learned_retry
             self.open_settle_dwell[activation] = 0
             self._activate_recovery(raw, giver_is_robot_1, activation)
 
@@ -760,7 +802,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
             resetting,
         )
         learned_retry = (
-            (self.retry_state == _LEARNED_RETRY) & (phase <= 1)
+            (self.retry_state == self.state_learned_retry) & (phase <= 1)
         )
         result = self._replace_giver_action(
             result,
@@ -788,21 +830,8 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
         return result
 
-    def reset(
-        self,
-        dones: torch.Tensor | None = None,
-        hidden_state: Any = None,
-    ) -> None:
-        reset_base = getattr(self.base_policy, "reset", None)
-        if reset_base is not None:
-            reset_base(dones, hidden_state)
-        if self._batch_size == 0:
-            return
-        if dones is None:
-            mask = torch.ones_like(self.retry_count, dtype=torch.bool)
-        else:
-            mask = dones.to(device=self.retry_count.device, dtype=torch.bool)
-        self.retry_state[mask] = _CANONICAL_FIRST_ATTEMPT
+    def _clear_state(self, mask: torch.Tensor) -> None:
+        self.retry_state[mask] = self.state_canonical
         self.retry_count[mask] = 0
         self.episode_step[mask] = 0
         self.close_dwell[mask] = 0
@@ -818,6 +847,36 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         self.activation_count[mask] = 0
         self.first_attempt_action_mismatch_count[mask] = 0
         self.first_attempt_action_max_abs_difference[mask] = 0.0
+
+    def reset(
+        self,
+        dones: torch.Tensor | None = None,
+        hidden_state: Any = None,
+    ) -> None:
+        reset_base = getattr(self.base_policy, "reset", None)
+        if reset_base is not None:
+            reset_base(dones, hidden_state)
+        if self._batch_size == 0:
+            return
+        if dones is None:
+            mask = torch.ones_like(self.retry_count, dtype=torch.bool)
+        else:
+            mask = dones.to(device=self.retry_count.device, dtype=torch.bool)
+        self._clear_state(mask)
+
+    @torch.jit.export
+    def reset_export(self, dones: torch.Tensor) -> None:
+        self.base_policy.reset_export(dones)
+        if self._batch_size != 0:
+            self._clear_state(
+                dones.to(
+                    device=self.retry_count.device,
+                    dtype=torch.bool,
+                )
+            )
+
+    def as_jit(self) -> nn.Module:
+        return _RecoveryTensorExport(self)
 
 
 class ReceiverRecoveryHead(PickupRecoveryHead):
@@ -847,6 +906,23 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             )
         self.base_policy = base_policy
         self.recovery_head = recovery_head or ReceiverRecoveryHead()
+        self.register_buffer(
+            "canonical_grasp_offset",
+            torch.tensor(
+                (
+                    float(_RECEIVER_GRASP_OFFSET[0]),
+                    float(_RECEIVER_GRASP_OFFSET[1]),
+                    -0.0018,
+                )
+            ),
+        )
+        self.state_canonical = 0
+        self.state_failed = 1
+        self.state_reopening = 2
+        self.state_open_settle = 3
+        self.state_learned_retry = 4
+        self.state_secure = 5
+        self.context_dim = 29
         self.position_cap_m = float(position_cap_m)
         self.orientation_cap_rad = float(orientation_cap_rad)
         self.episode_frames = int(episode_frames)
@@ -870,8 +946,28 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
 
         self._batch_size = 0
         self._fixed_correction: torch.Tensor | None = None
-        self.last_context: torch.Tensor | None = None
-        self.last_activation_mask: torch.Tensor | None = None
+        self.retry_state = torch.empty(0, dtype=torch.long)
+        self.retry_count = torch.empty(0, dtype=torch.long)
+        self.episode_step = torch.empty(0, dtype=torch.long)
+        self.close_dwell = torch.empty(0, dtype=torch.long)
+        self.open_settle_dwell = torch.empty(0, dtype=torch.long)
+        self.bilateral_contact_history = torch.empty(
+            (0, 5),
+            dtype=torch.bool,
+        )
+        self.failure_forces = torch.empty((0, 2))
+        self.failure_loss_flags = torch.empty((0, 2))
+        self.correction = torch.empty((0, 6))
+        self.first_attempt_failed = torch.empty(0, dtype=torch.bool)
+        self.recovered_acquisition = torch.empty(0, dtype=torch.bool)
+        self.activation_count = torch.empty(0, dtype=torch.long)
+        self.first_attempt_action_mismatch_count = torch.empty(
+            0,
+            dtype=torch.long,
+        )
+        self.first_attempt_action_max_abs_difference = torch.empty(0)
+        self.last_context = torch.empty((0, self.context_dim))
+        self.last_activation_mask = torch.empty(0, dtype=torch.bool)
 
     def _initialize_state(self, raw: torch.Tensor) -> None:
         batch_size = raw.shape[0]
@@ -879,7 +975,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self._batch_size = batch_size
         self.retry_state = torch.full(
             (batch_size,),
-            _CANONICAL_FIRST_ATTEMPT,
+            self.state_canonical,
             dtype=torch.long,
             device=device,
         )
@@ -925,7 +1021,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             device=device,
         )
         self.last_context = torch.zeros(
-            (batch_size, ReceiverRecoveryHead.input_dim),
+            (batch_size, self.context_dim),
             dtype=dtype,
             device=device,
         )
@@ -983,12 +1079,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             (object_rotation[:, :, 0], object_rotation[:, :, 1]),
             dim=-1,
         )
-        base_offset = torch.as_tensor(
-            (
-                float(_RECEIVER_GRASP_OFFSET[0]),
-                float(_RECEIVER_GRASP_OFFSET[1]),
-                -0.0018,
-            ),
+        base_offset = self.canonical_grasp_offset.to(
             dtype=raw.dtype,
             device=raw.device,
         )
@@ -1062,7 +1153,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             dim=-1,
         )
         context = torch.cat((semantic, previous), dim=-1)
-        if context.shape[-1] != ReceiverRecoveryHead.input_dim:
+        if context.shape[-1] != self.context_dim:
             raise RuntimeError(
                 f"receiver recovery context drifted to {context.shape[-1]}"
             )
@@ -1140,12 +1231,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         object_position = object_pose[:, :3]
         object_rotation = _quat_xyzw_to_matrix(object_pose[:, 3:7])
-        base_offset = torch.as_tensor(
-            (
-                float(_RECEIVER_GRASP_OFFSET[0]),
-                float(_RECEIVER_GRASP_OFFSET[1]),
-                -0.0018,
-            ),
+        base_offset = self.canonical_grasp_offset.to(
             dtype=raw.dtype,
             device=raw.device,
         )
@@ -1157,7 +1243,10 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             object_position + base_offset + correction_in_receiver
         )
         delta = grasp_position - receiver_ee
-        lateral_distance = delta[:, :2].norm(dim=-1)
+        lateral_distance = torch.linalg.vector_norm(
+            delta[:, :2],
+            dim=-1,
+        )
         above = grasp_position.clone()
         above[:, 2] += self.approach_height
         target = torch.where(
@@ -1167,7 +1256,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             above,
             grasp_position,
         )
-        distance = delta.norm(dim=-1)
+        distance = torch.linalg.vector_norm(delta, dim=-1)
         translation = ((target - receiver_ee) / self.position_scale).clamp(
             -1.0,
             1.0,
@@ -1263,7 +1352,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
 
     def forward(
         self,
-        obs: Mapping[str, torch.Tensor],
+        obs: dict[str, torch.Tensor],
     ) -> torch.Tensor:
         raw = obs["policy"]
         if self._batch_size != raw.shape[0]:
@@ -1279,7 +1368,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         receiver_is_robot_1 = ~giver_is_robot_1
         phase = torch.argmax(raw[:, 77:82], dim=-1)
         canonical_before = (
-            (self.retry_state == _CANONICAL_FIRST_ATTEMPT)
+            (self.retry_state == self.state_canonical)
             & (phase == 2)
         )
         receiver_contacts = self._select_role(
@@ -1310,7 +1399,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         self.recovered_acquisition |= (
             secure_now & (self.retry_count > 0)
         )
-        self.retry_state[secure_now] = _SECURE_CUSTODY
+        self.retry_state[secure_now] = self.state_secure
         self.close_dwell[secure_now] = 0
 
         receiver_joint_displacement = self._select_role(
@@ -1324,8 +1413,8 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             raw[:, 97],
         )
         first_or_retry = (
-            (self.retry_state == _CANONICAL_FIRST_ATTEMPT)
-            | (self.retry_state == _LEARNED_RETRY)
+            (self.retry_state == self.state_canonical)
+            | (self.retry_state == self.state_learned_retry)
         )
         closing = (
             (phase == 2)
@@ -1349,11 +1438,11 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             )
         )
         failure = failed_close & (
-            self.retry_state != _FAILED_GRASP
+            self.retry_state != self.state_failed
         ) & (
-            self.retry_state != _REOPENING
+            self.retry_state != self.state_reopening
         ) & (
-            self.retry_state != _OPEN_SETTLE
+            self.retry_state != self.state_open_settle
         )
         if bool(failure.any()):
             self.failure_forces[failure] = receiver_contacts[
@@ -1366,20 +1455,20 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             self.first_attempt_failed |= (
                 failure & (self.retry_count == 0)
             )
-            self.retry_state[failure] = _FAILED_GRASP
+            self.retry_state[failure] = self.state_failed
             self.open_settle_dwell[failure] = 0
             self.close_dwell[failure] = 0
 
-        failed_grasp = self.retry_state == _FAILED_GRASP
+        failed_grasp = self.retry_state == self.state_failed
         ready_to_reopen = failed_grasp & ~torch.any(
             self.bilateral_contact_history,
             dim=-1,
         )
-        self.retry_state[ready_to_reopen] = _REOPENING
-        failed_grasp = self.retry_state == _FAILED_GRASP
+        self.retry_state[ready_to_reopen] = self.state_reopening
+        failed_grasp = self.retry_state == self.state_failed
         resetting = (
-            (self.retry_state == _REOPENING)
-            | (self.retry_state == _OPEN_SETTLE)
+            (self.retry_state == self.state_reopening)
+            | (self.retry_state == self.state_open_settle)
         )
         fully_open = torch.all(
             receiver_joint_displacement
@@ -1389,20 +1478,20 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         force_free = ~any_contact
         ready_to_settle = resetting & fully_open & force_free
         self.retry_state[
-            ready_to_settle & (self.retry_state == _REOPENING)
-        ] = _OPEN_SETTLE
+            ready_to_settle & (self.retry_state == self.state_reopening)
+        ] = self.state_open_settle
         self.open_settle_dwell[:] = torch.where(
             ready_to_settle,
             self.open_settle_dwell + 1,
             torch.zeros_like(self.open_settle_dwell),
         )
         activation = (
-            (self.retry_state == _OPEN_SETTLE)
+            (self.retry_state == self.state_open_settle)
             & (self.open_settle_dwell >= self.open_settle_steps)
         )
         if bool(activation.any()):
             self.retry_count[activation] += 1
-            self.retry_state[activation] = _LEARNED_RETRY
+            self.retry_state[activation] = self.state_learned_retry
             self.open_settle_dwell[activation] = 0
             self._activate_recovery(raw, giver_is_robot_1, activation)
 
@@ -1420,7 +1509,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             failed_grasp
             | resetting
             | (
-                (self.retry_state == _LEARNED_RETRY)
+                (self.retry_state == self.state_learned_retry)
                 & (phase == 2)
             )
         )
@@ -1447,7 +1536,7 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             giver_is_robot_1,
         )
         learned_retry = (
-            (self.retry_state == _LEARNED_RETRY) & (phase == 2)
+            (self.retry_state == self.state_learned_retry) & (phase == 2)
         )
         result = self._replace_role_action(
             result,
@@ -1472,6 +1561,22 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
         )
         return result
 
+    def _clear_state(self, mask: torch.Tensor) -> None:
+        self.retry_state[mask] = self.state_canonical
+        self.retry_count[mask] = 0
+        self.episode_step[mask] = 0
+        self.close_dwell[mask] = 0
+        self.open_settle_dwell[mask] = 0
+        self.bilateral_contact_history[mask] = False
+        self.failure_forces[mask] = 0.0
+        self.failure_loss_flags[mask] = 0.0
+        self.correction[mask] = 0.0
+        self.first_attempt_failed[mask] = False
+        self.recovered_acquisition[mask] = False
+        self.activation_count[mask] = 0
+        self.first_attempt_action_mismatch_count[mask] = 0
+        self.first_attempt_action_max_abs_difference[mask] = 0.0
+
     def reset(
         self,
         dones: torch.Tensor | None = None,
@@ -1486,17 +1591,63 @@ class HandoverReceiverRecoveryPolicy(nn.Module):
             mask = torch.ones_like(self.retry_count, dtype=torch.bool)
         else:
             mask = dones.to(device=self.retry_count.device, dtype=torch.bool)
-        self.retry_state[mask] = _CANONICAL_FIRST_ATTEMPT
-        self.retry_count[mask] = 0
-        self.episode_step[mask] = 0
-        self.close_dwell[mask] = 0
-        self.open_settle_dwell[mask] = 0
-        self.bilateral_contact_history[mask] = False
-        self.failure_forces[mask] = 0.0
-        self.failure_loss_flags[mask] = 0.0
-        self.correction[mask] = 0.0
-        self.first_attempt_failed[mask] = False
-        self.recovered_acquisition[mask] = False
-        self.activation_count[mask] = 0
-        self.first_attempt_action_mismatch_count[mask] = 0
-        self.first_attempt_action_max_abs_difference[mask] = 0.0
+        self._clear_state(mask)
+
+    @torch.jit.export
+    def reset_export(self, dones: torch.Tensor) -> None:
+        self.base_policy.reset_export(dones)
+        if self._batch_size != 0:
+            self._clear_state(
+                dones.to(
+                    device=self.retry_count.device,
+                    dtype=torch.bool,
+                )
+            )
+
+    def as_jit(self) -> nn.Module:
+        return _RecoveryTensorExport(self)
+
+
+class _MappingTensorPolicy(nn.Module):
+    """Adapt a stateless tensor-export policy to the eager observation map."""
+
+    def __init__(self, tensor_policy: nn.Module) -> None:
+        super().__init__()
+        self.tensor_policy = tensor_policy
+
+    def forward(self, obs: dict[str, torch.Tensor]) -> torch.Tensor:
+        return self.tensor_policy(obs["policy"])
+
+    @torch.jit.export
+    def reset_export(self, dones: torch.Tensor) -> None:
+        return None
+
+
+def _as_mapping_export(policy: nn.Module) -> nn.Module:
+    if isinstance(policy, HandoverReceiverRecoveryPolicy):
+        exported = copy.deepcopy(policy)
+        exported.base_policy = _as_mapping_export(policy.base_policy)
+        return exported
+    if isinstance(policy, HandoverPickupRecoveryPolicy):
+        exported = copy.deepcopy(policy)
+        exported.base_policy = _as_mapping_export(policy.base_policy)
+        return exported
+    as_jit = getattr(policy, "as_jit", None)
+    if as_jit is None:
+        raise TypeError("base recovery policy does not expose as_jit")
+    return _MappingTensorPolicy(as_jit())
+
+
+class _RecoveryTensorExport(nn.Module):
+    """Tensor-only stateful export with per-environment reset support."""
+
+    def __init__(self, policy: nn.Module) -> None:
+        super().__init__()
+        self.policy = _as_mapping_export(policy)
+
+    def forward(self, observation: torch.Tensor) -> torch.Tensor:
+        return self.policy({"policy": observation})
+
+    @torch.jit.export
+    def reset(self, dones: torch.Tensor) -> None:
+        self.policy.reset_export(dones)
