@@ -329,6 +329,15 @@ case "${command}" in
                 "${DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION}"
             )
         fi
+        if [[ "${DR_ANMAR_PICKUP_RECOVERY_RANDOM_CORRECTIONS:-0}" == "1" ]]; then
+            pickup_recovery_args+=(--pickup_recovery_random_corrections)
+        fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_DATASET:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_dataset
+                "${DR_ANMAR_PICKUP_RECOVERY_DATASET}"
+            )
+        fi
         "${DR_ANMAR_ISAAC_PYTHON}" "${REPO_ROOT}/scripts/dr_anmar_learning_benchmark.py" play \
             --task "${task}" \
             --checkpoint "${checkpoint}" \

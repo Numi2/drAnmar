@@ -3573,6 +3573,14 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
         )
     pickup_recovery_policy = None
     if (
+        args.pickup_recovery_fixed_correction
+        and args.pickup_recovery_random_corrections
+    ):
+        env.close()
+        return _fail(
+            "fixed and randomized pickup recovery corrections are exclusive"
+        )
+    if (
         args.pickup_recovery
         or args.pickup_recovery_checkpoint
         or args.pickup_recovery_fixed_correction
@@ -3598,6 +3606,46 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 map_location=env.unwrapped.device,
                 weights_only=False,
             )
+            if (
+                isinstance(recovery_payload, dict)
+                and recovery_payload.get("base_checkpoint_sha256")
+                not in {None, _sha256(checkpoint)}
+            ):
+                env.close()
+                return _fail(
+                    "pickup recovery head was trained against a different "
+                    "base checkpoint"
+                )
+            if (
+                isinstance(recovery_payload, dict)
+                and recovery_payload.get("position_cap_m") is not None
+                and not math.isclose(
+                    float(recovery_payload["position_cap_m"]),
+                    args.pickup_recovery_position_cap,
+                    rel_tol=0.0,
+                    abs_tol=1.0e-9,
+                )
+            ):
+                env.close()
+                return _fail(
+                    "pickup recovery position cap does not match checkpoint"
+                )
+            if (
+                isinstance(recovery_payload, dict)
+                and recovery_payload.get("orientation_cap_rad") is not None
+                and not math.isclose(
+                    float(recovery_payload["orientation_cap_rad"]),
+                    math.radians(
+                        args.pickup_recovery_orientation_cap_deg
+                    ),
+                    rel_tol=0.0,
+                    abs_tol=1.0e-9,
+                )
+            ):
+                env.close()
+                return _fail(
+                    "pickup recovery orientation cap does not match checkpoint"
+                )
             if isinstance(recovery_payload, dict) and (
                 "pickup_recovery_head" in recovery_payload
             ):
@@ -3637,6 +3685,28 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             )
             correction[3:] = torch.deg2rad(correction[3:])
             pickup_recovery_policy.set_fixed_correction(correction)
+        elif args.pickup_recovery_random_corrections:
+            sobol = torch.quasirandom.SobolEngine(
+                dimension=6,
+                scramble=True,
+                seed=args.seed,
+            )
+            normalized = (
+                2.0 * sobol.draw(env.unwrapped.num_envs) - 1.0
+            ).to(env.unwrapped.device)
+            randomized = torch.cat(
+                (
+                    normalized[:, :3]
+                    * args.pickup_recovery_position_cap,
+                    normalized[:, 3:]
+                    * math.radians(
+                        args.pickup_recovery_orientation_cap_deg
+                    ),
+                ),
+                dim=-1,
+            )
+            randomized[0] = 0.0
+            pickup_recovery_policy.set_fixed_correction(randomized)
         pickup_recovery_policy.eval()
         policy = pickup_recovery_policy
     else:
@@ -3690,6 +3760,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             dtype=torch.float32,
             device=env.unwrapped.device,
         )
+        if pickup_recovery_policy is not None
+        else None
+    )
+    first_pickup_context = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 29),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if pickup_recovery_policy is not None
+        else None
+    )
+    first_pickup_activation_correction = (
+        torch.zeros(
+            (env.unwrapped.num_envs, 6),
+            dtype=torch.float32,
+            device=env.unwrapped.device,
+        )
+        if pickup_recovery_policy is not None
+        else None
+    )
+    first_pickup_activation_seen = (
+        torch.zeros_like(first_unresolved)
         if pickup_recovery_policy is not None
         else None
     )
@@ -4275,6 +4368,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         )
                     )
                 actions = policy(obs)
+                if pickup_recovery_policy is not None:
+                    assert first_pickup_context is not None
+                    assert first_pickup_activation_correction is not None
+                    assert first_pickup_activation_seen is not None
+                    activation = (
+                        pickup_recovery_policy.last_activation_mask
+                        & was_first_unresolved
+                        & ~first_pickup_activation_seen
+                    )
+                    if bool(activation.any()):
+                        first_pickup_context[activation] = (
+                            pickup_recovery_policy.last_context[activation]
+                        )
+                        first_pickup_activation_correction[activation] = (
+                            pickup_recovery_policy.correction[activation]
+                        )
+                        first_pickup_activation_seen |= activation
                 obs, reward, dones, extras = env.step(actions)
                 term_values = {
                     name: termination_manager.get_term(name)
@@ -5054,6 +5164,67 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
             }
         first_completed_count = int((~first_unresolved).sum().item())
         first_success_count = int(first_outcome_success.sum().item())
+        pickup_recovery_dataset = None
+        if (
+            pickup_recovery_policy is not None
+            and args.pickup_recovery_dataset
+        ):
+            assert first_pickup_context is not None
+            assert first_pickup_activation_correction is not None
+            assert first_pickup_activation_seen is not None
+            assert first_pickup_correction is not None
+            assert first_pickup_retry_count is not None
+            assert first_pickup_recovered_custody is not None
+            dataset_path = (
+                Path(args.pickup_recovery_dataset).expanduser().resolve()
+            )
+            dataset_path.parent.mkdir(parents=True, exist_ok=True)
+            dataset_mask = first_pickup_activation_seen
+            torch.save(
+                {
+                    "schema_version": (
+                        "dranmar-pickup-recovery-dataset-1.0"
+                    ),
+                    "task": args.task,
+                    "seed": args.seed,
+                    "base_checkpoint_sha256": _sha256(checkpoint),
+                    "position_cap_m": (
+                        args.pickup_recovery_position_cap
+                    ),
+                    "orientation_cap_rad": math.radians(
+                        args.pickup_recovery_orientation_cap_deg
+                    ),
+                    "context": first_pickup_context[
+                        dataset_mask
+                    ].cpu(),
+                    "correction": first_pickup_activation_correction[
+                        dataset_mask
+                    ].cpu(),
+                    "full_success": first_outcome_success[
+                        dataset_mask
+                    ].cpu(),
+                    "recovered_custody": (
+                        first_pickup_recovered_custody[
+                            dataset_mask
+                        ].cpu()
+                    ),
+                    "lifted": (
+                        first_handover_max_phase[dataset_mask] >= 2
+                    ).cpu(),
+                    "maximum_phase": first_handover_max_phase[
+                        dataset_mask
+                    ].cpu(),
+                    "retry_count": first_pickup_retry_count[
+                        dataset_mask
+                    ].cpu(),
+                },
+                dataset_path,
+            )
+            pickup_recovery_dataset = {
+                "path": str(dataset_path),
+                "sha256": _sha256(dataset_path),
+                "samples": int(dataset_mask.sum().item()),
+            }
         evidence = {
             "schema_version": "dranmar-learning-evidence-1.0",
             "kind": "held_out_play",
@@ -5253,6 +5424,10 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "fixed_correction": (
                         args.pickup_recovery_fixed_correction
                     ),
+                    "randomized_corrections": (
+                        args.pickup_recovery_random_corrections
+                    ),
+                    "dataset": pickup_recovery_dataset,
                     "first_attempt_failures": int(
                         first_pickup_failed.sum().item()
                     ),
@@ -5428,6 +5603,11 @@ def _parser() -> argparse.ArgumentParser:
             "dx,dy,dz metres and rx,ry,rz degrees"
         ),
     )
+    play.add_argument(
+        "--pickup_recovery_random_corrections",
+        action="store_true",
+    )
+    play.add_argument("--pickup_recovery_dataset")
     play.add_argument("--benchmark_formatter", default="schema,json")
     return parser
 
