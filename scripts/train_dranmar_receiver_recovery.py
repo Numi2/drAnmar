@@ -107,6 +107,7 @@ def main(argv: list[str]) -> int:
     successful_candidate_count = 0
     retained_candidate_count = 0
     for payload_index, payload in enumerate(payloads):
+        has_attempt_records = payload.get("attempts") is not None
         samples = payload.get("attempts") or payload
         context = samples["context"].float()
         correction = samples["correction"].float()
@@ -127,6 +128,11 @@ def main(argv: list[str]) -> int:
             "state_index",
             torch.arange(context.shape[0]),
         ).long()
+        retry_count = (
+            samples["retry_count"].long()
+            if has_attempt_records
+            else torch.ones(context.shape[0], dtype=torch.long)
+        )
         candidate_index = samples.get(
             "candidate_index",
             torch.zeros(context.shape[0], dtype=torch.long),
@@ -158,6 +164,9 @@ def main(argv: list[str]) -> int:
                     "steps": int(steps[sample_index].item()),
                     "candidate_index": int(
                         candidate_index[sample_index].item()
+                    ),
+                    "retry_count": int(
+                        retry_count[sample_index].item()
                     ),
                 }
             )

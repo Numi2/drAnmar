@@ -116,6 +116,7 @@ def main(argv: list[str]) -> int:
         for retry in ("1", "2", "3_plus")
     }
     for payload_index, payload in enumerate(payloads):
+        has_attempt_records = payload.get("attempts") is not None
         samples = payload.get("attempts") or payload
         payload_context = samples["context"].float()
         payload_correction = samples["correction"].float()
@@ -141,10 +142,14 @@ def main(argv: list[str]) -> int:
             "steps_to_lift",
             torch.full((payload_context.shape[0],), 2**31 - 1),
         ).long()
-        retry_count = samples.get(
-            "retry_count",
-            torch.ones(payload_context.shape[0], dtype=torch.long),
-        ).long()
+        retry_count = (
+            samples["retry_count"].long()
+            if has_attempt_records
+            else torch.ones(
+                payload_context.shape[0],
+                dtype=torch.long,
+            )
+        )
         loss_flags = payload_context[:, 18:20] > 0.5
         ever_bilateral = payload_context[:, 20] > 0.5
         for sample_index in range(payload_context.shape[0]):
