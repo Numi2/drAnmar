@@ -708,10 +708,10 @@ class EndToEndHandoverMLPModel(MLPModel):
         """Refine the frozen joint option through acquisition and retention.
 
         A loaded joint-transfer checkpoint remains active and immutable.
-        The new exact-zero adapter alone receives gradients. During phase two,
-        it may correct giver and receiver SE(3); after bilateral acquisition,
-        only receiver SE(3) remains learnable while both grippers and giver
-        release stay under the unchanged analytic contact contract.
+        The new exact-zero adapter alone receives gradients. It may correct
+        receiver SE(3) only after the physical presentation is qualified and
+        through bilateral acquisition/retention. The giver, both grippers, and
+        giver release stay under the unchanged analytic contact contract.
         """
         self.pickup_recovery_adaptation_enabled = True
         self.receiver_adaptation_enabled = True
@@ -859,8 +859,13 @@ class EndToEndHandoverMLPModel(MLPModel):
             joint_role_residual[:, 0:6] = joint_adapter[:, 0:6]
             joint_role_residual[:, 7:13] = joint_adapter[:, 6:12]
             joint_role_residual *= joint_active.unsqueeze(-1)
-        refinement_giver_active = phase == 2
-        refinement_receiver_active = (phase == 2) | (phase == 3)
+        presentation_qualified = raw[:, 103] >= 1.0
+        refinement_giver_active = torch.zeros_like(
+            presentation_qualified
+        )
+        refinement_receiver_active = (
+            ((phase == 2) & presentation_qualified) | (phase == 3)
+        )
         if self.transfer_refinement_adaptation_enabled:
             role_observation = role_normalize_handover_observation(raw)
             refinement_adapter = self.transfer_refinement_adapter(
@@ -1083,8 +1088,13 @@ class _EndToEndHandoverExport(nn.Module):
             joint_role_residual[:, 0:6] = joint_adapter[:, 0:6]
             joint_role_residual[:, 7:13] = joint_adapter[:, 6:12]
             joint_role_residual *= joint_active.unsqueeze(-1)
-        refinement_giver_active = phase == 2
-        refinement_receiver_active = (phase == 2) | (phase == 3)
+        presentation_qualified = obs[:, 103] >= 1.0
+        refinement_giver_active = torch.zeros_like(
+            presentation_qualified
+        )
+        refinement_receiver_active = (
+            ((phase == 2) & presentation_qualified) | (phase == 3)
+        )
         if self.transfer_refinement_adaptation_enabled:
             refinement_adapter = self.transfer_refinement_adapter(
                 joint_transfer_acquisition_features(

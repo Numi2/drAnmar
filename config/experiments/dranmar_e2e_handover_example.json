@@ -393,10 +393,23 @@
     "frozen_joint_transfer_development_champion": true,
     "zero_initialized_refinement_adapter": true,
     "learned_authority": {
-      "phase_2_giver": "se3",
-      "phase_2_receiver": "se3",
+      "phase_2_giver": "none",
+      "phase_2_receiver": "se3_only_after_physical_presentation_qualification",
       "phase_3_giver": "none",
       "phase_3_receiver": "se3"
+    },
+    "rejected_unmasked_development_run": {
+      "reason": "stable_presentation_replay_trained_only_post_qualification_states_but_the_adapter_was_deployed_pre_qualification",
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_success_range": [
+        378,
+        380
+      ],
+      "incumbent_stable_presentations": 484,
+      "candidate_model_5_stable_presentations": 477,
+      "disposition": "rejected_before_formal_qualification"
     },
     "analytic_authority": [
       "both_grippers",

@@ -2386,15 +2386,8 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                     "observation_normalizer_frozen": True,
                     "zero_initialized_adapter": True,
                     "rollout_steps_per_env": agent_cfg.num_steps_per_env,
-                    "learned_giver_axes_phase_2": [
-                        "x",
-                        "y",
-                        "z",
-                        "roll",
-                        "pitch",
-                        "yaw",
-                    ],
-                    "learned_receiver_axes_phases_2_and_3": [
+                    "learned_giver_axes": [],
+                    "learned_receiver_axes_after_presentation_qualification": [
                         "x",
                         "y",
                         "z",

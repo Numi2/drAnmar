@@ -212,6 +212,7 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert refinement["capture_stage"] == "stable_presentation"
     assert refinement["rollout_steps_per_env"] == 128
     assert refinement["zero_initialized_refinement_adapter"] is True
+    assert refinement["learned_authority"]["phase_2_giver"] == "none"
     assert refinement["learned_authority"]["phase_3_giver"] == "none"
     assert refinement["learned_authority"]["phase_3_receiver"] == "se3"
     assert (
@@ -304,7 +305,9 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
         in source
     )
     assert "configure_transfer_refinement_adaptation" in source
-    assert "refinement_receiver_active = (phase == 2) | (phase == 3)" in source
+    assert "presentation_qualified = raw[:, 103] >= 1.0" in source
+    assert "presentation_qualified = obs[:, 103] >= 1.0" in source
+    assert "refinement_giver_active = torch.zeros_like(" in source
     assert "receiver_se3_row_mask[7:13] = 1.0" in source
     assert (
         "self.recovery_receiver_grasp_retain_adaptation_enabled"
