@@ -344,6 +344,12 @@ case "${command}" in
                 "${DR_ANMAR_PICKUP_RECOVERY_SWEEP_REPLICAS}"
             )
         fi
+        if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_SOBOL_START:-}" ]]; then
+            pickup_recovery_args+=(
+                --pickup_recovery_sobol_start
+                "${DR_ANMAR_PICKUP_RECOVERY_SOBOL_START}"
+            )
+        fi
         if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_SOBOL_CANDIDATE:-}" ]]; then
             pickup_recovery_args+=(
                 --pickup_recovery_sobol_candidate
