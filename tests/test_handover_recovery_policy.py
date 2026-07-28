@@ -163,3 +163,29 @@ def test_recovery_head_contract_has_no_gripper_channel() -> None:
 
     assert output.shape == (4, 6)
     assert torch.equal(output, torch.zeros_like(output))
+
+
+def test_custody_loss_is_not_redeclared_during_reapproach() -> None:
+    policy = HandoverPickupRecoveryPolicy(_FixedBasePolicy())
+    observation = _observation(batch_size=1)
+    raw = observation["policy"]
+    raw[:, 77] = 0.0
+    raw[:, 78] = 1.0
+    raw[:, 66:68] = 0.01
+    for _ in range(3):
+        policy(observation)
+
+    raw[:, 66:68] = 0.0
+    for _ in range(policy.custody_loss_steps):
+        policy(observation)
+    assert policy.first_attempt_failed.item()
+
+    raw[:, 6:8] = 0.0
+    for _ in range(policy.open_settle_steps):
+        policy(observation)
+    assert policy.retry_count.item() == 1
+
+    for _ in range(10):
+        policy(observation)
+    assert policy.retry_count.item() == 1
+    assert policy.activation_count.item() == 1

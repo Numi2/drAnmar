@@ -661,6 +661,7 @@ class HandoverPickupRecoveryPolicy(nn.Module):
         )
         lost_after_custody = (
             (phase == 1)
+            & (self.retry_state == _SECURE_CUSTODY)
             & self.ever_bilateral
             & (self.custody_loss_dwell >= self.custody_loss_steps)
         )
