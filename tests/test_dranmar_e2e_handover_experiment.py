@@ -462,8 +462,8 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
         "self.recovery_receiver_shaft_guard_minimum_distance_m = 0.015"
         in controller_source
     )
-    assert "recovery_receiver_shaft_guard_active = (" in controller_source
-    assert "receiver_shaft_correction" in controller_source
+    assert "_project_translation_outside_capsule(" in controller_source
+    assert "receiver_distal_tool_guard_enabled" in controller_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
     assert "pickup_contact_loss_steps debounce" in controller_source
     recovery_cfg_source = (

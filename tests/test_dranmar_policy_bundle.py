@@ -91,6 +91,8 @@ def test_versioned_v23_bundle_and_controller_profile_are_self_consistent():
         is False
     )
     assert profile["values"]["receiver_shaft_guard_preposition_enabled"] is False
+    assert profile["values"]["receiver_distal_tool_guard_enabled"] is False
+    assert profile["values"]["custody_quality_minimum_transport_scale"] == 0.20
     frontier = PROFILES.controller_profile("frontier-hardening-v24")
     assert frontier["values"]["transport_custody_latch_enabled"] is False
     assert frontier["values"]["receiver_shaft_guard_all_pickups_enabled"] is True
@@ -99,6 +101,12 @@ def test_versioned_v23_bundle_and_controller_profile_are_self_consistent():
         is True
     )
     assert frontier["values"]["receiver_shaft_guard_preposition_enabled"] is True
+    assert frontier["values"]["receiver_distal_tool_guard_enabled"] is True
+    assert (
+        frontier["values"]["receiver_distal_tool_guard_minimum_distance_m"]
+        == 0.008
+    )
+    assert frontier["values"]["custody_quality_minimum_transport_scale"] == 0.0
     assert set(profile["implementation_sha256"]) == {
         "controller_profiles.py",
         "end_to_end_model.py",

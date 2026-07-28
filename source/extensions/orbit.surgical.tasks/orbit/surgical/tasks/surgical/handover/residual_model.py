@@ -75,6 +75,15 @@ class HandoverAnalyticController(nn.Module):
         self.receiver_shaft_guard_segment_distance_enabled = False
         self.receiver_shaft_guard_preposition_enabled = False
         self.receiver_jaw_proximal_offset_m = 0.0093
+        # The roll/pitch collision envelope is physically distinct from the
+        # long insertion shaft.  It is therefore represented by a second,
+        # smaller capsule rather than inflating the shaft through the needle
+        # acquisition corridor.
+        self.receiver_distal_tool_guard_enabled = False
+        self.receiver_distal_tool_guard_start_from_tip_m = 0.010
+        self.receiver_distal_tool_guard_end_from_tip_m = 0.025
+        self.receiver_distal_tool_guard_activation_distance_m = 0.012
+        self.receiver_distal_tool_guard_minimum_distance_m = 0.008
         self.register_buffer(
             "last_recovery_receiver_shaft_guard_active",
             torch.empty(0, dtype=torch.bool),
@@ -92,6 +101,21 @@ class HandoverAnalyticController(nn.Module):
         )
         self.register_buffer(
             "last_recovery_receiver_shaft_distance_m",
+            torch.empty(0),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_receiver_distal_tool_guard_active",
+            torch.empty(0, dtype=torch.bool),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_receiver_preposition_distal_tool_guard_active",
+            torch.empty(0, dtype=torch.bool),
+            persistent=False,
+        )
+        self.register_buffer(
+            "last_receiver_distal_tool_distance_m",
             torch.empty(0),
             persistent=False,
         )
@@ -265,6 +289,135 @@ class HandoverAnalyticController(nn.Module):
             second_start + second_fraction.unsqueeze(-1) * second_vector
         )
         return second_closest - first_closest
+
+    @staticmethod
+    def _stable_segment_separation_direction(
+        delta: torch.Tensor,
+        first_vector: torch.Tensor,
+        second_vector: torch.Tensor,
+        preferred_side: torch.Tensor,
+    ) -> torch.Tensor:
+        """Return a stable outward normal, including at segment crossings."""
+        distance = torch.linalg.vector_norm(
+            delta,
+            dim=-1,
+            keepdim=True,
+        )
+        delta_direction = delta / distance.clamp_min(1.0e-8)
+        first_direction = first_vector / torch.linalg.vector_norm(
+            first_vector,
+            dim=-1,
+            keepdim=True,
+        ).clamp_min(1.0e-8)
+        second_direction = second_vector / torch.linalg.vector_norm(
+            second_vector,
+            dim=-1,
+            keepdim=True,
+        ).clamp_min(1.0e-8)
+        crossing_normal = torch.linalg.cross(
+            first_direction,
+            second_direction,
+            dim=-1,
+        )
+        crossing_normal = torch.where(
+            (
+                (crossing_normal * preferred_side).sum(
+                    dim=-1,
+                    keepdim=True,
+                )
+                < 0.0
+            ),
+            -crossing_normal,
+            crossing_normal,
+        )
+        preferred_normal = (
+            preferred_side
+            - (
+                preferred_side * first_direction
+            ).sum(dim=-1, keepdim=True)
+            * first_direction
+        )
+        crossing_norm = torch.linalg.vector_norm(
+            crossing_normal,
+            dim=-1,
+            keepdim=True,
+        )
+        preferred_norm = torch.linalg.vector_norm(
+            preferred_normal,
+            dim=-1,
+            keepdim=True,
+        )
+        x_axis = torch.zeros_like(first_direction)
+        x_axis[:, 0] = 1.0
+        y_axis = torch.zeros_like(first_direction)
+        y_axis[:, 1] = 1.0
+        fallback_axis = torch.where(
+            (first_direction[:, 0].abs() < 0.9).unsqueeze(-1),
+            x_axis,
+            y_axis,
+        )
+        axis_normal = torch.linalg.cross(
+            first_direction,
+            fallback_axis,
+            dim=-1,
+        )
+        axis_normal = axis_normal / torch.linalg.vector_norm(
+            axis_normal,
+            dim=-1,
+            keepdim=True,
+        ).clamp_min(1.0e-8)
+        preferred_direction = torch.where(
+            preferred_norm > 1.0e-8,
+            preferred_normal / preferred_norm.clamp_min(1.0e-8),
+            axis_normal,
+        )
+        crossing_direction = torch.where(
+            crossing_norm > 1.0e-8,
+            crossing_normal / crossing_norm.clamp_min(1.0e-8),
+            preferred_direction,
+        )
+        return torch.where(
+            distance > 1.0e-5,
+            delta_direction,
+            crossing_direction,
+        )
+
+    def _project_translation_outside_capsule(
+        self,
+        action: torch.Tensor,
+        separation_direction: torch.Tensor,
+        distance: torch.Tensor,
+        *,
+        minimum_distance_m: float,
+        activation_distance_m: float,
+        eligible: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Project only the unsafe inward translation component."""
+        radial_action = (
+            action[:, :3] * separation_direction
+        ).sum(dim=-1)
+        maximum_inward_action = (
+            (distance - minimum_distance_m) / self.position_scale
+        ).clamp_min(0.0)
+        projected_radial_action = torch.maximum(
+            radial_action,
+            -maximum_inward_action,
+        )
+        active = (
+            eligible
+            & (distance < activation_distance_m)
+            & (radial_action < -maximum_inward_action)
+        )
+        correction = (
+            projected_radial_action - radial_action
+        ).unsqueeze(-1) * separation_direction
+        projected_action = action.clone()
+        projected_action[:, :3] = torch.where(
+            active.unsqueeze(-1),
+            action[:, :3] + correction,
+            action[:, :3],
+        )
+        return projected_action, active
 
     def _select_role(
         self,
@@ -716,17 +869,57 @@ class HandoverAnalyticController(nn.Module):
             segment_receiver_from_shaft,
             endpoint_receiver_from_shaft,
         )
-        receiver_from_shaft_direction = (
+        legacy_receiver_from_shaft_direction = (
             receiver_from_shaft
             / receiver_shaft_distance.clamp_min(1e-6).unsqueeze(-1)
         )
-        maximum_receiver_shaft_inward_action = (
-            (
-                receiver_shaft_distance
-                - self.recovery_receiver_shaft_guard_minimum_distance_m
+        stable_receiver_from_shaft_direction = (
+            self._stable_segment_separation_direction(
+                receiver_from_shaft,
+                giver_shaft_vector,
+                (
+                    receiver_jaw_proximal_in_giver
+                    - receiver_ee_in_giver
+                ),
+                root_2_in_giver,
             )
-            / self.position_scale
-        ).clamp_min(0.0)
+        )
+        receiver_from_shaft_direction = torch.where(
+            use_segment_distance.unsqueeze(-1),
+            stable_receiver_from_shaft_direction,
+            legacy_receiver_from_shaft_direction,
+        )
+        giver_distal_tool_start = (
+            giver_ee
+            + giver_to_rcm_direction
+            * self.receiver_distal_tool_guard_start_from_tip_m
+        )
+        giver_distal_tool_end = (
+            giver_ee
+            + giver_to_rcm_direction
+            * self.receiver_distal_tool_guard_end_from_tip_m
+        )
+        receiver_from_distal_tool = self._segment_to_segment_delta(
+            giver_distal_tool_start,
+            giver_distal_tool_end,
+            receiver_ee_in_giver,
+            receiver_jaw_proximal_in_giver,
+        )
+        receiver_distal_tool_distance = torch.linalg.vector_norm(
+            receiver_from_distal_tool,
+            dim=-1,
+        )
+        receiver_from_distal_tool_direction = (
+            self._stable_segment_separation_direction(
+                receiver_from_distal_tool,
+                giver_distal_tool_end - giver_distal_tool_start,
+                (
+                    receiver_jaw_proximal_in_giver
+                    - receiver_ee_in_giver
+                ),
+                root_2_in_giver,
+            )
+        )
         receiver_shaft_guard_context = (
             pickup_recovery_context
             | torch.full_like(
@@ -1085,44 +1278,49 @@ class HandoverAnalyticController(nn.Module):
                 )
             )
         )
-        receiver_approach_shaft_radial_action = (
-            receiver_approach[:, :3] * receiver_from_shaft_direction
-        ).sum(dim=-1)
-        projected_receiver_approach_shaft_radial_action = torch.maximum(
-            receiver_approach_shaft_radial_action,
-            -maximum_receiver_shaft_inward_action,
-        )
         receiver_approach_shaft_guard_eligible = (
             receiver_shaft_guard_context & receiver_approach_active
         )
-        receiver_approach_shaft_guard_active = (
-            receiver_approach_shaft_guard_eligible
-            & (
-                receiver_shaft_distance
-                < self.recovery_receiver_shaft_guard_activation_distance_m
-            )
-            & (
-                receiver_approach_shaft_radial_action
-                < -maximum_receiver_shaft_inward_action
+        (
+            receiver_approach,
+            receiver_approach_shaft_guard_active,
+        ) = self._project_translation_outside_capsule(
+            receiver_approach,
+            receiver_from_shaft_direction,
+            receiver_shaft_distance,
+            minimum_distance_m=(
+                self.recovery_receiver_shaft_guard_minimum_distance_m
+            ),
+            activation_distance_m=(
+                self.recovery_receiver_shaft_guard_activation_distance_m
+            ),
+            eligible=receiver_approach_shaft_guard_eligible,
+        )
+        receiver_distal_tool_guard_context = (
+            receiver_shaft_guard_context
+            & torch.full_like(
+                receiver_shaft_guard_context,
+                self.receiver_distal_tool_guard_enabled,
             )
         )
-        receiver_approach_shaft_correction = (
-            projected_receiver_approach_shaft_radial_action
-            - receiver_approach_shaft_radial_action
-        ).unsqueeze(-1) * receiver_from_shaft_direction
-        receiver_approach[:, :3] = torch.where(
-            receiver_approach_shaft_guard_active.unsqueeze(-1),
-            receiver_approach[:, :3]
-            + receiver_approach_shaft_correction,
-            receiver_approach[:, :3],
+        receiver_approach_distal_tool_guard_eligible = (
+            receiver_distal_tool_guard_context
+            & receiver_approach_active
         )
-
-        receiver_preposition_shaft_radial_action = (
-            receiver_preposition[:, :3] * receiver_from_shaft_direction
-        ).sum(dim=-1)
-        projected_receiver_preposition_shaft_radial_action = torch.maximum(
-            receiver_preposition_shaft_radial_action,
-            -maximum_receiver_shaft_inward_action,
+        (
+            receiver_approach,
+            receiver_approach_distal_tool_guard_active,
+        ) = self._project_translation_outside_capsule(
+            receiver_approach,
+            receiver_from_distal_tool_direction,
+            receiver_distal_tool_distance,
+            minimum_distance_m=(
+                self.receiver_distal_tool_guard_minimum_distance_m
+            ),
+            activation_distance_m=(
+                self.receiver_distal_tool_guard_activation_distance_m
+            ),
+            eligible=receiver_approach_distal_tool_guard_eligible,
         )
         receiver_preposition_shaft_guard_eligible = (
             receiver_shaft_guard_context
@@ -1132,34 +1330,55 @@ class HandoverAnalyticController(nn.Module):
                 self.receiver_shaft_guard_preposition_enabled,
             )
         )
-        receiver_preposition_shaft_guard_active = (
-            receiver_preposition_shaft_guard_eligible
-            & (
-                receiver_shaft_distance
-                < self.recovery_receiver_shaft_guard_activation_distance_m
-            )
-            & (
-                receiver_preposition_shaft_radial_action
-                < -maximum_receiver_shaft_inward_action
+        (
+            receiver_preposition,
+            receiver_preposition_shaft_guard_active,
+        ) = self._project_translation_outside_capsule(
+            receiver_preposition,
+            receiver_from_shaft_direction,
+            receiver_shaft_distance,
+            minimum_distance_m=(
+                self.recovery_receiver_shaft_guard_minimum_distance_m
+            ),
+            activation_distance_m=(
+                self.recovery_receiver_shaft_guard_activation_distance_m
+            ),
+            eligible=receiver_preposition_shaft_guard_eligible,
+        )
+        receiver_preposition_distal_tool_guard_eligible = (
+            receiver_distal_tool_guard_context
+            & receiver_preposition_active
+            & torch.full_like(
+                receiver_preposition_active,
+                self.receiver_shaft_guard_preposition_enabled,
             )
         )
-        receiver_preposition_shaft_correction = (
-            projected_receiver_preposition_shaft_radial_action
-            - receiver_preposition_shaft_radial_action
-        ).unsqueeze(-1) * receiver_from_shaft_direction
-        receiver_preposition[:, :3] = torch.where(
-            receiver_preposition_shaft_guard_active.unsqueeze(-1),
-            receiver_preposition[:, :3]
-            + receiver_preposition_shaft_correction,
-            receiver_preposition[:, :3],
+        (
+            receiver_preposition,
+            receiver_preposition_distal_tool_guard_active,
+        ) = self._project_translation_outside_capsule(
+            receiver_preposition,
+            receiver_from_distal_tool_direction,
+            receiver_distal_tool_distance,
+            minimum_distance_m=(
+                self.receiver_distal_tool_guard_minimum_distance_m
+            ),
+            activation_distance_m=(
+                self.receiver_distal_tool_guard_activation_distance_m
+            ),
+            eligible=receiver_preposition_distal_tool_guard_eligible,
         )
         receiver_shaft_guard_eligible = (
             receiver_approach_shaft_guard_eligible
             | receiver_preposition_shaft_guard_eligible
+            | receiver_approach_distal_tool_guard_eligible
+            | receiver_preposition_distal_tool_guard_eligible
         )
         receiver_shaft_guard_active = (
             receiver_approach_shaft_guard_active
             | receiver_preposition_shaft_guard_active
+            | receiver_approach_distal_tool_guard_active
+            | receiver_preposition_distal_tool_guard_active
         )
         self.last_recovery_receiver_shaft_guard_active = (
             receiver_shaft_guard_active.detach()
@@ -1172,6 +1391,18 @@ class HandoverAnalyticController(nn.Module):
         )
         self.last_recovery_receiver_shaft_distance_m = (
             receiver_shaft_distance.detach()
+        )
+        self.last_receiver_distal_tool_guard_active = (
+            (
+                receiver_approach_distal_tool_guard_active
+                | receiver_preposition_distal_tool_guard_active
+            ).detach()
+        )
+        self.last_receiver_preposition_distal_tool_guard_active = (
+            receiver_preposition_distal_tool_guard_active.detach()
+        )
+        self.last_receiver_distal_tool_distance_m = (
+            receiver_distal_tool_distance.detach()
         )
         giver_translation = torch.where(
             giver_transport_active.unsqueeze(-1),

@@ -400,6 +400,48 @@ def _assert_finite_segment_collision_geometry(
         raise AssertionError("synthetic endpoints do not expose the sampling gap")
     if float(crossing_distance.item()) > 1.0e-6:
         raise AssertionError("finite-segment geometry missed an interior crossing")
+    preferred_side = torch.tensor(
+        [[0.0, 0.0, 1.0]],
+        dtype=dtype,
+        device=device,
+    )
+    crossing_direction = (
+        HandoverAnalyticController._stable_segment_separation_direction(
+            crossing_delta,
+            first_end - first_start,
+            second_end - second_start,
+            preferred_side,
+        )
+    )
+    if not torch.allclose(
+        crossing_direction,
+        preferred_side,
+        atol=1.0e-6,
+        rtol=0.0,
+    ):
+        raise AssertionError(
+            "interior crossing did not produce a stable separating normal"
+        )
+    controller = HandoverAnalyticController().to(device)
+    projected_action, guard_active = (
+        controller._project_translation_outside_capsule(
+            -preferred_side,
+            crossing_direction,
+            crossing_distance,
+            minimum_distance_m=0.008,
+            activation_distance_m=0.012,
+            eligible=torch.ones(1, dtype=torch.bool, device=device),
+        )
+    )
+    if not bool(guard_active.item()):
+        raise AssertionError("interior crossing failed to activate the guard")
+    projected_inward_action = (
+        projected_action[:, :3] * crossing_direction
+    ).sum(dim=-1)
+    if float(projected_inward_action.item()) < -1.0e-6:
+        raise AssertionError(
+            "interior crossing retained an unsafe inward action"
+        )
 
     separated_delta = HandoverAnalyticController._segment_to_segment_delta(
         first_start,
@@ -427,6 +469,13 @@ def _assert_finite_segment_collision_geometry(
         ),
         "exact_crossing_distance_m": float(crossing_distance.item()),
         "exact_separated_distance_m": float(separated_distance.item()),
+        "crossing_separation_direction": [
+            float(value)
+            for value in crossing_direction[0].detach().cpu().tolist()
+        ],
+        "crossing_projected_inward_action": float(
+            projected_inward_action.item()
+        ),
     }
 
 

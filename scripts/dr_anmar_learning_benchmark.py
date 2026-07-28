@@ -6341,6 +6341,29 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 torch.inf,
                 device=env.unwrapped.device,
             ),
+            "receiver_distal_tool_guard_active_steps": torch.zeros(
+                (),
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "ever_receiver_distal_tool_guard_active": torch.zeros_like(
+                first_unresolved
+            ),
+            "receiver_preposition_distal_tool_guard_active_steps": (
+                torch.zeros(
+                    (),
+                    dtype=torch.int64,
+                    device=env.unwrapped.device,
+                )
+            ),
+            "ever_receiver_preposition_distal_tool_guard_active": (
+                torch.zeros_like(first_unresolved)
+            ),
+            "minimum_receiver_distal_tool_distance_m": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.inf,
+                device=env.unwrapped.device,
+            ),
             "deadline_option_step_counts": torch.zeros(
                 3,
                 dtype=torch.int64,
@@ -7517,6 +7540,24 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "last_recovery_receiver_shaft_distance_m",
                         None,
                     )
+                    distal_tool_guard_active = getattr(
+                        controller,
+                        "last_receiver_distal_tool_guard_active",
+                        None,
+                    )
+                    preposition_distal_tool_guard_active = getattr(
+                        controller,
+                        (
+                            "last_receiver_preposition_"
+                            "distal_tool_guard_active"
+                        ),
+                        None,
+                    )
+                    distal_tool_distance = getattr(
+                        controller,
+                        "last_receiver_distal_tool_distance_m",
+                        None,
+                    )
                     if (
                         shaft_guard_active is not None
                         and shaft_guard_eligible is not None
@@ -7559,6 +7600,57 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             first_handover_history[
                                 "minimum_recovery_receiver_"
                                 "shaft_distance_m"
+                            ],
+                        )
+                    if (
+                        distal_tool_guard_active is not None
+                        and preposition_distal_tool_guard_active is not None
+                        and distal_tool_distance is not None
+                    ):
+                        counted_distal_tool_guard = (
+                            was_first_unresolved
+                            & distal_tool_guard_active
+                        )
+                        first_handover_history[
+                            "receiver_distal_tool_guard_active_steps"
+                        ] += counted_distal_tool_guard.sum()
+                        first_handover_history[
+                            "ever_receiver_distal_tool_guard_active"
+                        ] |= counted_distal_tool_guard
+                        counted_preposition_distal_tool_guard = (
+                            was_first_unresolved
+                            & preposition_distal_tool_guard_active
+                        )
+                        first_handover_history[
+                            (
+                                "receiver_preposition_"
+                                "distal_tool_guard_active_steps"
+                            )
+                        ] += counted_preposition_distal_tool_guard.sum()
+                        first_handover_history[
+                            (
+                                "ever_receiver_preposition_"
+                                "distal_tool_guard_active"
+                            )
+                        ] |= counted_preposition_distal_tool_guard
+                        first_handover_history[
+                            "minimum_receiver_distal_tool_distance_m"
+                        ] = torch.where(
+                            was_first_unresolved,
+                            torch.minimum(
+                                first_handover_history[
+                                    (
+                                        "minimum_receiver_"
+                                        "distal_tool_distance_m"
+                                    )
+                                ],
+                                distal_tool_distance,
+                            ),
+                            first_handover_history[
+                                (
+                                    "minimum_receiver_"
+                                    "distal_tool_distance_m"
+                                )
                             ],
                         )
                     option_index = getattr(
@@ -9496,6 +9588,63 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                                 ]
                             )
                         ),
+                        "distal_tool_capsule": {
+                            "active_steps": int(
+                                first_handover_history[
+                                    (
+                                        "receiver_distal_tool_"
+                                        "guard_active_steps"
+                                    )
+                                ].item()
+                            ),
+                            "environments_activated": int(
+                                first_handover_history[
+                                    (
+                                        "ever_receiver_distal_"
+                                        "tool_guard_active"
+                                    )
+                                ][first_completed]
+                                .sum()
+                                .item()
+                            ),
+                            "preposition_active_steps": int(
+                                first_handover_history[
+                                    (
+                                        "receiver_preposition_distal_"
+                                        "tool_guard_active_steps"
+                                    )
+                                ].item()
+                            ),
+                            "preposition_environments_activated": int(
+                                first_handover_history[
+                                    (
+                                        "ever_receiver_preposition_"
+                                        "distal_tool_guard_active"
+                                    )
+                                ][first_completed]
+                                .sum()
+                                .item()
+                            ),
+                            "minimum_distance_m": (
+                                handover_scalar_quantiles(
+                                    first_handover_history[
+                                        (
+                                            "minimum_receiver_"
+                                            "distal_tool_distance_m"
+                                        )
+                                    ][
+                                        torch.isfinite(
+                                            first_handover_history[
+                                                (
+                                                    "minimum_receiver_"
+                                                    "distal_tool_distance_m"
+                                                )
+                                            ]
+                                        )
+                                    ]
+                                )
+                            ),
+                        },
                     },
                     "deadline_option_step_counts": {
                         label: int(

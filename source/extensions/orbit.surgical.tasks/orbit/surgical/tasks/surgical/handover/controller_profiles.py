@@ -36,6 +36,11 @@ _V23_VALUES: dict[str, bool | float | int] = {
     "receiver_shaft_guard_segment_distance_enabled": False,
     "receiver_shaft_guard_preposition_enabled": False,
     "receiver_jaw_proximal_offset_m": 0.0093,
+    "receiver_distal_tool_guard_enabled": False,
+    "receiver_distal_tool_guard_start_from_tip_m": 0.010,
+    "receiver_distal_tool_guard_end_from_tip_m": 0.025,
+    "receiver_distal_tool_guard_activation_distance_m": 0.012,
+    "receiver_distal_tool_guard_minimum_distance_m": 0.008,
     "transport_custody_latch_enabled": True,
     "receiver_preposition_enabled": True,
     "receiver_preposition_height": 0.025,
@@ -109,13 +114,19 @@ _PROFILE_VALUES: dict[str, dict[str, bool | float | int]] = {
         # Receiver preposition moves concurrently with giver lift/transport
         # and therefore needs the same physical inter-tool constraint.
         "receiver_shaft_guard_preposition_enabled": True,
+        # The proximal shaft capsule starts behind the roll/pitch assembly.
+        # Cover that distinct 10--25 mm region with its own asset-sized
+        # capsule while leaving the needle-acquisition corridor at the tip.
+        "receiver_distal_tool_guard_enabled": True,
         # A two-jaw grasp can be usable while briefly asymmetric.  This score
         # slows transport before physical custody is lost; it does not create
         # contact, success, or permission to open the giver.
         "custody_quality_slow_threshold": 0.55,
         "custody_quality_stop_threshold": 0.30,
         "custody_quality_centering_action_limit": 0.02,
-        "custody_quality_minimum_transport_scale": 0.20,
+        # A custody barrier must be able to remove transport authority
+        # completely.  A non-zero floor kept pulling after incipient slip.
+        "custody_quality_minimum_transport_scale": 0.0,
     },
 }
 

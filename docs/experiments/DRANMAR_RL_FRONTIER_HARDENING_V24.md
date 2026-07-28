@@ -96,9 +96,10 @@ The controller derives a bounded custody-quality score from:
 Below the slow threshold, transport authority is smoothly reduced and the
 giver receives a small bounded centering correction. The giver never opens in
 mid-air, contact is not fabricated, and the existing three-attempt physical
-regrasp/re-lift recovery remains authoritative. Evidence separately records
-minimum quality, minimum transport scale, and episodes where the governor was
-active.
+regrasp/re-lift recovery remains authoritative. At or below the stop threshold,
+v24 removes transport authority completely; the previous 20% floor continued
+pulling during incipient slip. Evidence separately records minimum quality,
+minimum transport scale, and episodes where the governor was active.
 
 Phase-two lateral transport and receiver acquisition additionally require
 current native bilateral giver custody. A latched phase label cannot command
@@ -110,6 +111,16 @@ misses. The same constraint covers concurrent receiver pre-position motion
 during giver lift and transport, not only the final acquisition action. The
 guard projects only an unsafe inward receiver component; it does not create
 contact or change success.
+
+The proximal shaft capsule begins 25 mm behind the tip. USD collision geometry
+and terminal attribution showed that the giver roll/pitch bodies occupy the
+otherwise-unprotected distal region while the receiver was still 33--39 mm
+from the needle. v24 therefore adds a second capsule over the 10--25 mm
+distal-tool region. Its 8 mm minimum separation follows the combined physical
+cross-sections plus clearance, rather than inflating the full shaft through the
+valid needle-acquisition corridor. Exact segment crossings use a stable
+receiver-side separating normal, so a zero-distance intersection cannot
+silently produce a zero correction.
 
 ### The new residual is narrow and exact-zero
 
