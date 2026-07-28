@@ -23,3 +23,13 @@ and 2 N hard termination are unchanged.
 Qualification requires at least 393/600 and 1,140/2,000 retained handovers,
 zero drops and excessive object-force events, and no more than four
 protected-surface terminals.
+
+## Result
+
+v21 produced 393/600, then the 2,000-environment result was bitwise identical
+to v15: 1,164 retained handovers, 133 recovered successes, and five
+protected-surface terminals. The collision does not cross the 12 mm tool-tip
+barrier. v21 is rejected and removed from serving control.
+
+The remaining attribution must separate receiver-jaw contact against the giver
+tool from receiver-jaw contact against the support surface or other geometry.

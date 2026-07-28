@@ -430,16 +430,6 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "recovery_transport_qualified = (" in controller_source
     assert "& (phase >= 2)" in controller_source
     assert "& giver_bilateral_contact" in controller_source
-    assert (
-        "self.recovery_receiver_giver_barrier_activation_distance = 0.018"
-        in controller_source
-    )
-    assert (
-        "self.recovery_receiver_giver_minimum_tip_distance = 0.012"
-        in controller_source
-    )
-    assert "recovery_receiver_barrier_active = (" in controller_source
-    assert "receiver_barrier_correction" in controller_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
     assert "pickup_contact_loss_steps debounce" in controller_source
     recovery_cfg_source = (

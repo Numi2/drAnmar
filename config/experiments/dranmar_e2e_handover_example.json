@@ -817,7 +817,7 @@
     "qualification_boundary": "rejected_no_safety_effect_at_scale"
   },
   "prospective_receiver_tip_barrier_v21": {
-    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "status": "rejected_collision_did_not_cross_tip_distance_barrier",
     "root_cause": "reactive_force_shielding_cannot_stop_a_single_step_contact_impulse_so_collision_avoidance_must_project_the_command_before_contact",
     "geometry": {
       "intended_giver_receiver_grasp_frame_distance_m": 0.015198123958282841,
@@ -826,7 +826,46 @@
     },
     "projection": "remove_only_the_receiver_action_component_that_would_cross_the_minimum_tip_distance_and_preserve_tangential_translation_and_orientation",
     "scope": "pickup_recovery_context_phase_2_only",
-    "qualification_boundary": "must_retain_at_least_393_of_600_and_1140_of_2000_with_no_more_than_4_protected_surface_events"
+    "runtime_result": {
+      "seed": 2361,
+      "development_successes": 393,
+      "development_episodes": 600,
+      "scale_successes": 1164,
+      "scale_episodes": 2000,
+      "scale_protected_surface_events": 5,
+      "reason": "scale_result_was_bitwise_identical_to_v15_so_the_collision_occurs_on_non_tip_tool_or_support_geometry"
+    },
+    "qualification_boundary": "rejected_no_measurable_effect_at_scale"
+  },
+  "current_recovery_frontier": {
+    "status": "performance_frontier_not_formally_promoted",
+    "controller": "v15_contact_qualified_recovery_transport_at_0.08",
+    "checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "development_result": {
+      "seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "candidate_successes": 393,
+      "incumbent_recovered_successes": 32,
+      "candidate_recovered_successes": 35,
+      "protected_surface_events": 0
+    },
+    "scale_result": {
+      "seed": 2361,
+      "episodes": 2000,
+      "incumbent_successes": 1130,
+      "candidate_successes": 1164,
+      "incumbent_recovered_successes": 99,
+      "candidate_recovered_successes": 133,
+      "incumbent_lifted_without_receiver_acquisition": 708,
+      "candidate_lifted_without_receiver_acquisition": 676,
+      "incumbent_protected_surface_events": 2,
+      "candidate_protected_surface_events": 5,
+      "drops": 0,
+      "excessive_object_force_events": 0
+    },
+    "promotion_blocker": "three_additional_protected_surface_events_exceed_the_two_event_0.001_noninferiority_allowance_by_one_event",
+    "next_required_evidence": "collider_level_receiver_jaw_vs_giver_tool_vs_support_surface_attribution"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",
