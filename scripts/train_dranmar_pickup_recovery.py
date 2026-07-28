@@ -34,6 +34,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--weight_decay", type=float, default=1.0e-6)
     parser.add_argument("--validation_fraction", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=104729)
+    parser.add_argument("--require_collection_gate", action="store_true")
+    parser.add_argument("--minimum_per_cohort", type=int, default=1000)
     return parser
 
 
@@ -103,6 +105,16 @@ def main(argv: list[str]) -> int:
     positive_correction_parts = []
     candidate_groups: dict[tuple[str, int], list[dict[str, object]]] = {}
     strict_replay_groups: set[tuple[str, int]] = set()
+    collection_cohorts = {
+        f"{failure}|retry_{retry}": 0
+        for failure in (
+            "never_bilateral",
+            "lost_jaw_1",
+            "lost_jaw_2",
+            "lost_both",
+        )
+        for retry in ("1", "2", "3_plus")
+    }
     for payload_index, payload in enumerate(payloads):
         samples = payload.get("attempts") or payload
         payload_context = samples["context"].float()
@@ -129,6 +141,36 @@ def main(argv: list[str]) -> int:
             "steps_to_lift",
             torch.full((payload_context.shape[0],), 2**31 - 1),
         ).long()
+        retry_count = samples.get(
+            "retry_count",
+            torch.ones(payload_context.shape[0], dtype=torch.long),
+        ).long()
+        loss_flags = payload_context[:, 18:20] > 0.5
+        ever_bilateral = payload_context[:, 20] > 0.5
+        for sample_index in range(payload_context.shape[0]):
+            if not bool(ever_bilateral[sample_index].item()):
+                failure_cohort = "never_bilateral"
+            elif bool(loss_flags[sample_index, 0].item()) and bool(
+                loss_flags[sample_index, 1].item()
+            ):
+                failure_cohort = "lost_both"
+            elif bool(loss_flags[sample_index, 0].item()):
+                failure_cohort = "lost_jaw_1"
+            elif bool(loss_flags[sample_index, 1].item()):
+                failure_cohort = "lost_jaw_2"
+            else:
+                failure_cohort = "lost_both"
+            retry_value = int(retry_count[sample_index].item())
+            retry_cohort = (
+                "1"
+                if retry_value <= 1
+                else "2"
+                if retry_value == 2
+                else "3_plus"
+            )
+            collection_cohorts[
+                f"{failure_cohort}|retry_{retry_cohort}"
+            ] += 1
         sweep_id = payload.get("sweep_id")
         if sweep_id:
             group_prefix = (
@@ -156,10 +198,25 @@ def main(argv: list[str]) -> int:
                     "candidate_index": int(
                         candidate_index[sample_index].item()
                     ),
+                    "retry_count": int(
+                        retry_count[sample_index].item()
+                    ),
                 }
             )
             if sweep_id:
                 strict_replay_groups.add(key)
+    collection_gate_passed = (
+        total_samples >= 12_000
+        and all(
+            count >= args.minimum_per_cohort
+            for count in collection_cohorts.values()
+        )
+    )
+    if args.require_collection_gate and not collection_gate_passed:
+        raise ValueError(
+            "pickup recovery collection gate failed: "
+            f"samples={total_samples}, cohorts={collection_cohorts}"
+        )
     maximum_replay_context_spread = 0.0
     maximum_observed_replay_context_spread = 0.0
     excluded_context_drift_candidates = 0
@@ -368,6 +425,12 @@ def main(argv: list[str]) -> int:
             "replay_groups_without_canonical_reference": (
                 replay_groups_without_canonical_reference
             ),
+            "collection_gate": {
+                "passed": collection_gate_passed,
+                "minimum_total_samples": 12_000,
+                "minimum_per_cohort": args.minimum_per_cohort,
+                "cohorts": collection_cohorts,
+            },
             "training_demonstrations": int(training_context.shape[0]),
             "validation_demonstrations": int(validation_context.shape[0]),
             "final_training_loss": final_training_loss,

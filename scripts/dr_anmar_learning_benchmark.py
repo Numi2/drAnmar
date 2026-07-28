@@ -6932,6 +6932,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     "recovered_bilateral_custody": int(
                         first_pickup_recovered_custody.sum().item()
                     ),
+                    "lifted_10mm_after_retry": int(
+                        (
+                            (first_handover_max_phase >= 2)
+                            & (first_pickup_retry_count > 0)
+                        )
+                        .sum()
+                        .item()
+                    ),
+                    "failed_pickup_conversion_rate": (
+                        float(
+                            (
+                                (first_handover_max_phase >= 2)
+                                & (first_pickup_retry_count > 0)
+                            )
+                            .sum()
+                            .item()
+                        )
+                        / int(first_pickup_failed.sum().item())
+                        if bool(first_pickup_failed.any())
+                        else None
+                    ),
                     "successful_after_retry": int(
                         (
                             first_outcome_success
@@ -7026,6 +7047,27 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     ),
                     "recovered_acquisition": int(
                         first_receiver_recovered_acquisition.sum().item()
+                    ),
+                    "acquired_after_retry": int(
+                        (
+                            (first_handover_max_phase >= 3)
+                            & (first_receiver_retry_count > 0)
+                        )
+                        .sum()
+                        .item()
+                    ),
+                    "failed_acquisition_conversion_rate": (
+                        float(
+                            (
+                                (first_handover_max_phase >= 3)
+                                & (first_receiver_retry_count > 0)
+                            )
+                            .sum()
+                            .item()
+                        )
+                        / int(first_receiver_failed.sum().item())
+                        if bool(first_receiver_failed.any())
+                        else None
                     ),
                     "successful_after_retry": int(
                         (
