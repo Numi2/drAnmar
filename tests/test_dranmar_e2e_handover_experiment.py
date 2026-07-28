@@ -469,6 +469,17 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert '"protected_surface_attribution"' in benchmark_source
     assert '"episodes_crossing_limit_by_sensor"' in benchmark_source
     assert '"episodes_crossing_limit_by_tool"' in benchmark_source
+    assert (
+        '"terminal_protected_surface_force_by_sensor_n"'
+        in benchmark_source
+    )
+    termination_source = (
+        TASK_ROOT / "handover/mdp/terminations.py"
+    ).read_text()
+    assert (
+        "_dr_anmar_terminal_protected_surface_forces_n"
+        in termination_source
+    )
     assert '"terminal_pickup_attempt_histogram"' in benchmark_source
     assert "--receiver_crossing_angle_rad" in benchmark_source
     assert "--receiver_grasp_retain_residual" in benchmark_source

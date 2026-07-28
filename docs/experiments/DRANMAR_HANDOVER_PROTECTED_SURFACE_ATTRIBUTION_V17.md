@@ -13,6 +13,10 @@ termination. It adds first-episode evidence for:
 - the number of protected-surface episodes crossing 2 N per jaw; and
 - attribution to robot 1 or robot 2.
 
+Because Isaac Lab automatically resets terminal environments inside
+`env.step`, v17 stores the four-force vector at the termination function
+before reset. Post-step sensor snapshots are not used for attribution.
+
 The diagnostic is evaluated on the v15 0.08 phase- and contact-qualified
 controller at the exact 2,000-environment population. The next control change
 must target the measured collision path.

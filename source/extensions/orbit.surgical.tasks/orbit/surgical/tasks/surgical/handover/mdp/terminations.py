@@ -49,4 +49,24 @@ def excessive_contact_force(
 def excessive_non_object_contact_force(
     env: ManagerBasedRLEnv, sensor_names: tuple[str, ...], hard_limit: float
 ) -> torch.Tensor:
-    return mdp_common.maximum_non_object_contact_force(env, sensor_names) > hard_limit
+    forces = torch.stack(
+        [
+            mdp_common.non_object_contact_force_magnitude(env, sensor_name)
+            for sensor_name in sensor_names
+        ],
+        dim=-1,
+    )
+    violations = forces.amax(dim=-1) > hard_limit
+    # Isaac Lab resets terminal environments inside ``env.step``. Preserve the
+    # exact pre-reset force vector so held-out evidence can attribute a safety
+    # terminal to the responsible tool and jaw without affecting control.
+    terminal_forces = getattr(
+        env,
+        "_dr_anmar_terminal_protected_surface_forces_n",
+        None,
+    )
+    if terminal_forces is None or terminal_forces.shape != forces.shape:
+        terminal_forces = torch.zeros_like(forces)
+    terminal_forces[violations] = forces[violations]
+    env._dr_anmar_terminal_protected_surface_forces_n = terminal_forces
+    return violations

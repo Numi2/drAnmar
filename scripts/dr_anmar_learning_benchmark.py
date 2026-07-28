@@ -5355,6 +5355,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 len(handover_non_object_sensor_names),
                 device=env.unwrapped.device,
             ),
+            "terminal_protected_surface_force_by_sensor_n": torch.zeros(
+                env.unwrapped.num_envs,
+                len(handover_non_object_sensor_names),
+                device=env.unwrapped.device,
+            ),
             "ever_giver_bilateral_contact": torch.zeros_like(
                 first_unresolved
             ),
@@ -6629,6 +6634,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 first_outcome_success |= first_successes
                 if first_handover_max_phase is not None:
                     assert first_handover_history is not None
+                    terminal_protected_surface_forces = getattr(
+                        env.unwrapped,
+                        "_dr_anmar_terminal_protected_surface_forces_n",
+                        None,
+                    )
+                    if terminal_protected_surface_forces is not None:
+                        protected_surface_dones = (
+                            first_dones
+                            & term_values["protected_surface_force"].bool()
+                        )
+                        first_handover_history[
+                            "terminal_protected_surface_force_by_sensor_n"
+                        ][protected_surface_dones] = (
+                            terminal_protected_surface_forces[
+                                protected_surface_dones
+                            ]
+                        )
                     post_handover_state = getattr(
                         env.unwrapped,
                         "_dr_anmar_handover_state",
@@ -7540,7 +7562,7 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 torch.zeros_like(first_unresolved),
             )
             protected_surface_sensor_forces = first_handover_history[
-                "maximum_non_object_force_by_sensor_n"
+                "terminal_protected_surface_force_by_sensor_n"
             ][protected_surface_mask]
             protected_surface_attribution = {
                 "hard_limit_n": 2.0,
@@ -7562,6 +7584,9 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         handover_non_object_sensor_names
                     )
                 },
+                "capture_point": (
+                    "termination_source_before_automatic_environment_reset"
+                ),
                 "episodes_crossing_limit_by_sensor": {
                     sensor_name: int(
                         (
