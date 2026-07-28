@@ -27,7 +27,7 @@
   },
   "analytic_only": false,
   "checkpoint": {
-    "path": "/home/numi/dr_anmar/DrAnmar-e2e-joint-v8/output/v8-joint-2400x90-lr1e5/runs/2026-07-28_03-19-21/model_20.pt",
+    "path": "output/v8-joint-2400x90-lr1e5/runs/2026-07-28_03-19-21/model_20.pt",
     "sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b"
   },
   "completed_episodes": 2000,
@@ -59,11 +59,11 @@
   "environment_runtime_contract_sha256": "655b1c0b3e2c56bda2e2c1a292283d9176833e93b19454fa88d1eae2ff3e3e9a",
   "exports": {
     "jit": {
-      "path": "/home/numi/dr_anmar/DrAnmar-e2e-joint-v8/output/v23-recovery-shaft-guard/exact-seed2361-2000/exported/policy.pt",
+      "path": "output/v23-recovery-shaft-guard/exact-seed2361-2000/exported/policy.pt",
       "sha256": "087ef30e2b2e32c7c0b6bb2375dc93941d1e688cdda8cda97126b73473d07d11"
     },
     "onnx": {
-      "path": "/home/numi/dr_anmar/DrAnmar-e2e-joint-v8/output/v23-recovery-shaft-guard/exact-seed2361-2000/exported/policy.onnx",
+      "path": "output/v23-recovery-shaft-guard/exact-seed2361-2000/exported/policy.onnx",
       "sha256": "291b66cadc354743d9a413cf0ccc075e82bbb82043029ab6bc3836ec7d802e23"
     }
   },

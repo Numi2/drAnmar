@@ -39,7 +39,7 @@ predeclared scale gates of at least 1,140 retained handovers and at most four
 protected-force terminals. Evidence is frozen at
 `docs/experiments/evidence/recovery-shaft-guard-v23-seed2361-2000.json` with
 SHA-256
-`3b276d1427b46d8fec00b40641c115ad71c8731509301e408a74744df33c0b40`.
+`387b38b78c6c65fe23d0029a96873125f016dec52481290e455712cec3dcd0d0`.
 
 This is an Isaac Lab simulator result. It is not physics calibration, clinical
 validation, or authorization for patient use.

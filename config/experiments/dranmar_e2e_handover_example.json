@@ -932,7 +932,7 @@
       "guard_activated_environments": 230,
       "guard_active_steps": 623,
       "evidence_path": "docs/experiments/evidence/recovery-shaft-guard-v23-seed2361-2000.json",
-      "evidence_sha256": "3b276d1427b46d8fec00b40641c115ad71c8731509301e408a74744df33c0b40"
+      "evidence_sha256": "387b38b78c6c65fe23d0029a96873125f016dec52481290e455712cec3dcd0d0"
     },
     "qualification": "passes_success_floor_1140_and_protected_surface_ceiling_4_with_zero_drop_and_excessive_object_force_failures"
   },
