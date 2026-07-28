@@ -14,6 +14,7 @@ from torch import nn
 
 from isaaclab.utils.math import (
     axis_angle_from_quat,
+    quat_apply,
     quat_conjugate,
     quat_mul,
 )
@@ -61,6 +62,20 @@ class HandoverAnalyticController(nn.Module):
         self.slow_approach_radius = 0.02
         self.slow_approach_action_limit = 0.1
         self.receiver_contact_centering_action_limit = 0.005
+        # The receiver must approach the needle beside the giver's jaws, but
+        # it must never cross the giver's long insertion shaft. The protected
+        # segment starts 25 mm behind the giver tip so intended distal-tool
+        # acquisition remains unchanged.
+        self.recovery_receiver_shaft_guard_start_from_tip_m = 0.025
+        self.recovery_receiver_shaft_guard_activation_distance_m = 0.018
+        self.recovery_receiver_shaft_guard_minimum_distance_m = 0.015
+        self.receiver_jaw_proximal_offset_m = 0.0093
+        self.last_recovery_receiver_shaft_guard_active: (
+            torch.Tensor | None
+        ) = None
+        self.last_recovery_receiver_shaft_distance_m: (
+            torch.Tensor | None
+        ) = None
         self.transport_custody_latch_enabled = True
         self.receiver_preposition_enabled = True
         self.receiver_preposition_height = 0.025
@@ -473,6 +488,121 @@ class HandoverAnalyticController(nn.Module):
             receiver_grasp_position[:, 1] += self.receiver_grasp_y
             receiver_grasp_position[:, 2] += self.receiver_grasp_z
         root_2_in_giver = object_in_giver - object_in_receiver
+        # Both PSM roots have the same fixed orientation in this task. Express
+        # the receiver's distal jaw segment in the giver root frame, then keep
+        # its nearest endpoint outside a capsule around the giver insertion
+        # shaft. This projects only the inward component and preserves the
+        # tangential motion needed to acquire the curved needle.
+        receiver_ee_in_giver = receiver_ee + root_2_in_giver
+        receiver_jaw_offset = torch.zeros_like(receiver_ee_in_giver)
+        receiver_jaw_offset[:, 2] = self.receiver_jaw_proximal_offset_m
+        receiver_jaw_proximal_in_giver = (
+            receiver_ee_in_giver
+            + quat_apply(receiver_orientation, receiver_jaw_offset)
+        )
+        giver_to_rcm = -giver_ee
+        giver_to_rcm_direction = giver_to_rcm / torch.linalg.vector_norm(
+            giver_to_rcm,
+            dim=-1,
+            keepdim=True,
+        ).clamp_min(1e-6)
+        giver_shaft_start = (
+            giver_ee
+            + giver_to_rcm_direction
+            * self.recovery_receiver_shaft_guard_start_from_tip_m
+        )
+        giver_shaft_vector = -giver_shaft_start
+        giver_shaft_length_squared = (
+            giver_shaft_vector * giver_shaft_vector
+        ).sum(dim=-1).clamp_min(1e-8)
+
+        receiver_shaft_points = torch.stack(
+            (receiver_ee_in_giver, receiver_jaw_proximal_in_giver),
+            dim=1,
+        )
+        shaft_fraction = (
+            (
+                (
+                    receiver_shaft_points
+                    - giver_shaft_start.unsqueeze(1)
+                )
+                * giver_shaft_vector.unsqueeze(1)
+            ).sum(dim=-1)
+            / giver_shaft_length_squared.unsqueeze(-1)
+        ).clamp(0.0, 1.0)
+        closest_shaft_points = (
+            giver_shaft_start.unsqueeze(1)
+            + shaft_fraction.unsqueeze(-1)
+            * giver_shaft_vector.unsqueeze(1)
+        )
+        receiver_shaft_deltas = (
+            receiver_shaft_points - closest_shaft_points
+        )
+        receiver_shaft_distances = torch.linalg.vector_norm(
+            receiver_shaft_deltas,
+            dim=-1,
+        )
+        receiver_tip_shaft_distance = receiver_shaft_distances[:, 0]
+        receiver_proximal_shaft_distance = receiver_shaft_distances[:, 1]
+        proximal_is_closer = (
+            receiver_proximal_shaft_distance
+            < receiver_tip_shaft_distance
+        )
+        receiver_shaft_distance = torch.where(
+            proximal_is_closer,
+            receiver_proximal_shaft_distance,
+            receiver_tip_shaft_distance,
+        )
+        receiver_from_shaft = torch.where(
+            proximal_is_closer.unsqueeze(-1),
+            receiver_shaft_deltas[:, 1],
+            receiver_shaft_deltas[:, 0],
+        )
+        receiver_from_shaft_direction = (
+            receiver_from_shaft
+            / receiver_shaft_distance.clamp_min(1e-6).unsqueeze(-1)
+        )
+        receiver_shaft_radial_action = (
+            receiver_approach[:, :3] * receiver_from_shaft_direction
+        ).sum(dim=-1)
+        maximum_receiver_shaft_inward_action = (
+            (
+                receiver_shaft_distance
+                - self.recovery_receiver_shaft_guard_minimum_distance_m
+            )
+            / self.position_scale
+        ).clamp_min(0.0)
+        projected_receiver_shaft_radial_action = torch.maximum(
+            receiver_shaft_radial_action,
+            -maximum_receiver_shaft_inward_action,
+        )
+        recovery_receiver_shaft_guard_active = (
+            pickup_recovery_context
+            & (phase == 2)
+            & (
+                receiver_shaft_distance
+                < self.recovery_receiver_shaft_guard_activation_distance_m
+            )
+            & (
+                receiver_shaft_radial_action
+                < -maximum_receiver_shaft_inward_action
+            )
+        )
+        receiver_shaft_correction = (
+            projected_receiver_shaft_radial_action
+            - receiver_shaft_radial_action
+        ).unsqueeze(-1) * receiver_from_shaft_direction
+        receiver_approach[:, :3] = torch.where(
+            recovery_receiver_shaft_guard_active.unsqueeze(-1),
+            receiver_approach[:, :3] + receiver_shaft_correction,
+            receiver_approach[:, :3],
+        )
+        self.last_recovery_receiver_shaft_guard_active = (
+            recovery_receiver_shaft_guard_active.detach()
+        )
+        self.last_recovery_receiver_shaft_distance_m = (
+            receiver_shaft_distance.detach()
+        )
         presentation_in_giver = (
             self.presentation_fraction_from_giver
             * root_2_in_giver

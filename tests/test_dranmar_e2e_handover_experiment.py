@@ -439,6 +439,16 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "recovery_transport_qualified = (" in controller_source
     assert "& (phase >= 2)" in controller_source
     assert "& giver_bilateral_contact" in controller_source
+    assert (
+        "self.recovery_receiver_shaft_guard_start_from_tip_m = 0.025"
+        in controller_source
+    )
+    assert (
+        "self.recovery_receiver_shaft_guard_minimum_distance_m = 0.015"
+        in controller_source
+    )
+    assert "recovery_receiver_shaft_guard_active = (" in controller_source
+    assert "receiver_shaft_correction" in controller_source
     assert "(phase == 1) | giver_pre_lift_contact" in controller_source
     assert "pickup_contact_loss_steps debounce" in controller_source
     recovery_cfg_source = (
@@ -500,6 +510,8 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert '"pre_reset_geometric_attribution"' in benchmark_source
     assert '"minimum_counterpart_body_origin_distance_m"' in benchmark_source
     assert "PhysxJawContactAttributionCollector" not in benchmark_source
+    assert '"recovery_receiver_shaft_guard"' in benchmark_source
+    assert '"minimum_recovery_receiver_shaft_distance_m"' in benchmark_source
     assert '"terminal_pickup_attempt_histogram"' in benchmark_source
     assert "--receiver_crossing_angle_rad" in benchmark_source
     assert "--receiver_grasp_retain_residual" in benchmark_source

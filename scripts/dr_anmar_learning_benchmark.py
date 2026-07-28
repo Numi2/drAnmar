@@ -5651,6 +5651,19 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "recovery_receiver_shaft_guard_active_steps": torch.zeros(
+                (),
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "ever_recovery_receiver_shaft_guard_active": torch.zeros_like(
+                first_unresolved
+            ),
+            "minimum_recovery_receiver_shaft_distance_m": torch.full(
+                (env.unwrapped.num_envs,),
+                torch.inf,
+                device=env.unwrapped.device,
+            ),
             "deadline_option_step_counts": torch.zeros(
                 3,
                 dtype=torch.int64,
@@ -6528,6 +6541,58 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                     )
                 actions = policy(obs)
                 if first_handover_history is not None:
+                    controller = getattr(policy_model, "controller", None)
+                    shaft_guard_active = getattr(
+                        controller,
+                        "last_recovery_receiver_shaft_guard_active",
+                        None,
+                    )
+                    shaft_distance = getattr(
+                        controller,
+                        "last_recovery_receiver_shaft_distance_m",
+                        None,
+                    )
+                    if (
+                        shaft_guard_active is not None
+                        and shaft_distance is not None
+                    ):
+                        policy_observation = obs["policy"]
+                        shaft_guard_eligible = (
+                            was_first_unresolved
+                            & (policy_observation[:, 98] > 0.5)
+                            & (
+                                torch.argmax(
+                                    policy_observation[:, 77:82],
+                                    dim=-1,
+                                )
+                                == 2
+                            )
+                        )
+                        counted_shaft_guard = (
+                            shaft_guard_eligible & shaft_guard_active
+                        )
+                        first_handover_history[
+                            "recovery_receiver_shaft_guard_active_steps"
+                        ] += counted_shaft_guard.sum()
+                        first_handover_history[
+                            "ever_recovery_receiver_shaft_guard_active"
+                        ] |= counted_shaft_guard
+                        first_handover_history[
+                            "minimum_recovery_receiver_shaft_distance_m"
+                        ] = torch.where(
+                            shaft_guard_eligible,
+                            torch.minimum(
+                                first_handover_history[
+                                    "minimum_recovery_receiver_"
+                                    "shaft_distance_m"
+                                ],
+                                shaft_distance,
+                            ),
+                            first_handover_history[
+                                "minimum_recovery_receiver_"
+                                "shaft_distance_m"
+                            ],
+                        )
                     option_index = getattr(
                         policy_model,
                         "last_deadline_option_index",
@@ -8241,6 +8306,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         .sum()
                         .item()
                     ),
+                    "recovery_receiver_shaft_guard": {
+                        "active_steps": int(
+                            first_handover_history[
+                                "recovery_receiver_shaft_guard_active_steps"
+                            ].item()
+                        ),
+                        "environments_activated": int(
+                            first_handover_history[
+                                "ever_recovery_receiver_"
+                                "shaft_guard_active"
+                            ][first_completed]
+                            .sum()
+                            .item()
+                        ),
+                        "minimum_distance_m": (
+                            handover_scalar_quantiles(
+                                first_handover_history[
+                                    "minimum_recovery_receiver_"
+                                    "shaft_distance_m"
+                                ][
+                                    torch.isfinite(
+                                        first_handover_history[
+                                            "minimum_recovery_receiver_"
+                                            "shaft_distance_m"
+                                        ]
+                                    )
+                                ]
+                            )
+                        ),
+                    },
                     "deadline_option_step_counts": {
                         label: int(
                             first_handover_history[
