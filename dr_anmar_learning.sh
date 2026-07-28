@@ -331,8 +331,7 @@ case "${command}" in
         fi
         if [[ -n "${DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION:-}" ]]; then
             pickup_recovery_args+=(
-                --pickup_recovery_fixed_correction
-                "${DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION}"
+                "--pickup_recovery_fixed_correction=${DR_ANMAR_PICKUP_RECOVERY_FIXED_CORRECTION}"
             )
         fi
         if [[ "${DR_ANMAR_PICKUP_RECOVERY_RANDOM_CORRECTIONS:-0}" == "1" ]]; then
@@ -409,8 +408,7 @@ case "${command}" in
         fi
         if [[ -n "${DR_ANMAR_RECEIVER_RECOVERY_FIXED_CORRECTION:-}" ]]; then
             pickup_recovery_args+=(
-                --receiver_recovery_fixed_correction
-                "${DR_ANMAR_RECEIVER_RECOVERY_FIXED_CORRECTION}"
+                "--receiver_recovery_fixed_correction=${DR_ANMAR_RECEIVER_RECOVERY_FIXED_CORRECTION}"
             )
         fi
         if [[ "${DR_ANMAR_RECEIVER_RECOVERY_RANDOM_CORRECTIONS:-0}" == "1" ]]; then
