@@ -758,7 +758,7 @@
     }
   },
   "recovered_receiver_contact_deceleration_v18": {
-    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "status": "rejected_over_braked_receiver_and_erased_performance_gain",
     "root_cause": "the_receiver_crossed_the_2_n_protected_surface_limit_in_all_five_v15_scale_safety_terminals_four_after_lift_before_acquisition",
     "activation": "pickup_recovery_context_and_receiver_grasp_distance_below_6mm",
     "receiver_translation_action_limit": 0.05,
@@ -774,6 +774,21 @@
       "episode_deadline",
       "hard_terminations"
     ],
+    "runtime_result": {
+      "seed": 2361,
+      "episodes": 600,
+      "successes": 390,
+      "recovered_successes": 32,
+      "protected_surface_events": 0,
+      "reason": "the_6mm_0.05_limit_removed_the_development_gain"
+    },
+    "qualification_boundary": "rejected_below_393_of_600_screen"
+  },
+  "narrow_recovered_receiver_deceleration_v19": {
+    "status": "implemented_awaiting_exact_runtime_evaluation",
+    "activation": "pickup_recovery_context_and_receiver_grasp_distance_below_4mm",
+    "receiver_translation_action_limit": 0.075,
+    "design": "one_step_scale_final_seating_energy_reduction_without_delaying_the_25mm_preposition_or_outer_approach",
     "qualification_boundary": "must_retain_at_least_393_of_600_and_1140_of_2000_with_no_more_than_4_protected_surface_events"
   },
   "architecture": {

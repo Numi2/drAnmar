@@ -431,11 +431,11 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "& (phase >= 2)" in controller_source
     assert "& giver_bilateral_contact" in controller_source
     assert (
-        "self.recovery_receiver_contact_approach_radius = 0.006"
+        "self.recovery_receiver_contact_approach_radius = 0.004"
         in controller_source
     )
     assert (
-        "self.recovery_receiver_contact_approach_action_limit = 0.05"
+        "self.recovery_receiver_contact_approach_action_limit = 0.075"
         in controller_source
     )
     assert "recovery_receiver_contact_approach = (" in controller_source

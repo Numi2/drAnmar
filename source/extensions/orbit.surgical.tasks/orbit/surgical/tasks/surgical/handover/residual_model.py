@@ -60,8 +60,8 @@ class HandoverAnalyticController(nn.Module):
         self.receiver_close_distance = 0.001
         self.slow_approach_radius = 0.02
         self.slow_approach_action_limit = 0.1
-        self.recovery_receiver_contact_approach_radius = 0.006
-        self.recovery_receiver_contact_approach_action_limit = 0.05
+        self.recovery_receiver_contact_approach_radius = 0.004
+        self.recovery_receiver_contact_approach_action_limit = 0.075
         self.receiver_contact_centering_action_limit = 0.005
         self.transport_custody_latch_enabled = True
         self.receiver_preposition_enabled = True

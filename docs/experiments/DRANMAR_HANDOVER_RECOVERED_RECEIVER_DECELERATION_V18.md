@@ -22,3 +22,9 @@ The screen requires at least 393/600 retained handovers with zero protected
 events. Scale requires at least 1,140/2,000 retained handovers, zero drops and
 excessive object-force events, and no more than four protected-surface
 terminals.
+
+## Result
+
+v18 produced zero protected-surface events but only 390/600 retained
+handovers, erasing the recovery gain. It is rejected. v19 narrows deceleration
+to the final 4 mm and raises the action cap to 0.075.
