@@ -359,6 +359,10 @@ class NeedleHandoverFrontierHardeningEnvCfg(
             func=mdp.assign_balanced_handover_roles,
             mode="reset",
         )
+        self.events.role_conditioned_object_pose = EventTerm(
+            func=mdp.place_object_in_assigned_giver_frame,
+            mode="reset",
+        )
         # A resting needle is planar: randomize the full in-plane heading and
         # measured placement tolerance, not physically impossible free-space
         # roll/pitch.  Dynamics randomization remains disabled until calibrated
@@ -376,6 +380,7 @@ class NeedleHandoverFrontierHardeningEnvCfg(
             "placement_xy_m": [-0.025, 0.025],
             "resting_roll_pitch_rad": [0.0, 0.0],
             "heading_yaw_rad": [-math.pi, math.pi],
+            "placement_frame": "assigned_giver_root",
             "mass_randomization_enabled": False,
             "friction_randomization_enabled": False,
             "reason_physics_randomization_disabled": (
@@ -406,6 +411,10 @@ class NeedleHandoverFrontierEvalEnvCfg(
             func=mdp.assign_balanced_handover_roles,
             mode="reset",
         )
+        self.events.role_conditioned_object_pose = EventTerm(
+            func=mdp.place_object_in_assigned_giver_frame,
+            mode="reset",
+        )
         self.events.reset_object_position.params["pose_range"] = {
             "x": (-0.025, 0.025),
             "y": (-0.025, 0.025),
@@ -419,6 +428,7 @@ class NeedleHandoverFrontierEvalEnvCfg(
             "placement_xy_m": [-0.025, 0.025],
             "resting_roll_pitch_rad": [0.0, 0.0],
             "heading_yaw_rad": [-math.pi, math.pi],
+            "placement_frame": "assigned_giver_root",
             "mass_randomization_enabled": False,
             "friction_randomization_enabled": False,
             "reason_physics_randomization_disabled": (

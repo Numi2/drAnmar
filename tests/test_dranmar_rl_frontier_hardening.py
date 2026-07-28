@@ -217,6 +217,10 @@ def test_v24_uses_canonical_geometry_balanced_roles_and_zero_adapter():
         "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks/"
         "surgical/handover/mdp/state.py"
     )
+    environment = _source(
+        "source/extensions/orbit.surgical.tasks/orbit/surgical/tasks/"
+        "surgical/handover/config/needle/e2e_ik_rel_env_cfg.py"
+    )
     assert "canonical_needle_local_frames_enabled" in controller
     assert "return quat_apply(object_orientation, offset)" in controller
     assert "giver_uses_object_frame" in controller
@@ -232,6 +236,10 @@ def test_v24_uses_canonical_geometry_balanced_roles_and_zero_adapter():
     assert "frontier_hardening_features" in model
     assert "def assign_balanced_handover_roles(" in state
     assert 'state["giver_is_robot_1"][env_ids] = forced_roles[env_ids]' in state
+    assert "def place_object_in_assigned_giver_frame(" in state
+    assert "subtract_frame_transforms(" in state
+    assert "combine_frame_transforms(" in state
+    assert "role_conditioned_object_pose" in environment
     assert "_failure_stratified_receiver_sources" in state
     assert "return target_env_ids.to(dtype=torch.long)" in state
     assert "selected = torch.empty(" in state

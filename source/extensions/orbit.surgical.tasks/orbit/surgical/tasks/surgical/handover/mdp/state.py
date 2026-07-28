@@ -12,6 +12,10 @@ import torch
 from isaaclab.assets import Articulation, RigidObject
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import FrameTransformer
+from isaaclab.utils.math import (
+    combine_frame_transforms,
+    subtract_frame_transforms,
+)
 
 from orbit.surgical.tasks.surgical import mdp_common
 
@@ -105,6 +109,75 @@ def assign_balanced_handover_roles(
     state = getattr(env, "_dr_anmar_handover_state", None)
     if state is not None:
         state["giver_is_robot_1"][env_ids] = forced_roles[env_ids]
+
+
+def place_object_in_assigned_giver_frame(
+    env: ManagerBasedRLEnv,
+    env_ids: torch.Tensor | None,
+) -> None:
+    """Map Robot 1's randomized object pose into the assigned giver frame.
+
+    The inherited reset distribution is expressed around Robot 1. Balanced
+    roles must preserve that exact local SE(3) distribution for Robot 2,
+    rather than forcing Robot 2 to acquire an object centered on Robot 1.
+    """
+    if env_ids is None:
+        env_ids = torch.arange(
+            env.num_envs,
+            dtype=torch.long,
+            device=env.device,
+        )
+    forced_roles = getattr(
+        env,
+        "_dr_anmar_forced_giver_is_robot_1",
+        None,
+    )
+    if forced_roles is None:
+        raise RuntimeError(
+            "giver roles must be assigned before object-frame placement"
+        )
+    robot_1: Articulation = env.scene["robot_1"]
+    robot_2: Articulation = env.scene["robot_2"]
+    obj: RigidObject = env.scene["object"]
+    robot_1_position = mdp_common.as_torch(
+        robot_1.data.root_pos_w
+    )[env_ids]
+    robot_1_orientation = mdp_common.as_torch(
+        robot_1.data.root_quat_w
+    )[env_ids]
+    object_position = mdp_common.as_torch(
+        obj.data.root_pos_w
+    )[env_ids]
+    object_orientation = mdp_common.as_torch(
+        obj.data.root_quat_w
+    )[env_ids]
+    local_position, local_orientation = subtract_frame_transforms(
+        robot_1_position,
+        robot_1_orientation,
+        object_position,
+        object_orientation,
+    )
+    giver_is_robot_1 = forced_roles[env_ids]
+    giver_position = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        robot_1_position,
+        mdp_common.as_torch(robot_2.data.root_pos_w)[env_ids],
+    )
+    giver_orientation = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        robot_1_orientation,
+        mdp_common.as_torch(robot_2.data.root_quat_w)[env_ids],
+    )
+    target_position, target_orientation = combine_frame_transforms(
+        giver_position,
+        giver_orientation,
+        local_position,
+        local_orientation,
+    )
+    obj.write_root_pose_to_sim(
+        torch.cat((target_position, target_orientation), dim=-1),
+        env_ids=env_ids,
+    )
 
 
 def _failure_stratified_receiver_sources(

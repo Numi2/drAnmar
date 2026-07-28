@@ -13,6 +13,7 @@ from .rewards import *  # noqa: F401, F403
 from .safe_bite import *  # noqa: F401, F403
 from .state import (  # noqa: F401
     assign_balanced_handover_roles,
+    place_object_in_assigned_giver_frame,
     reset_pickup_recovery_curriculum_from_cache,
     reset_receiver_curriculum_from_cache,
 )

@@ -9,10 +9,16 @@ from types import SimpleNamespace
 
 import torch
 
-from isaaclab.utils.math import quat_apply
+from isaaclab.utils.math import (
+    combine_frame_transforms,
+    quat_apply,
+    quat_error_magnitude,
+    subtract_frame_transforms,
+)
 
 from orbit.surgical.tasks.surgical.handover.mdp.state import (
     assign_balanced_handover_roles,
+    place_object_in_assigned_giver_frame,
 )
 from orbit.surgical.tasks.surgical.handover.residual_model import (
     HandoverAnalyticController,
@@ -126,6 +132,145 @@ def _assert_balanced_episode_zero_roles(device: torch.device) -> dict:
     }
 
 
+def _assert_role_conditioned_object_pose(
+    device: torch.device,
+) -> dict:
+    count = 4
+    identity = torch.zeros(
+        (count, 4),
+        dtype=torch.float32,
+        device=device,
+    )
+    identity[:, 3] = 1.0
+    robot_1_position = torch.tensor(
+        [-0.2, 0.0, 0.15],
+        dtype=torch.float32,
+        device=device,
+    ).expand(count, -1).clone()
+    robot_2_position = torch.tensor(
+        [-0.1, 0.05, 0.15],
+        dtype=torch.float32,
+        device=device,
+    ).expand(count, -1).clone()
+    robot_2_orientation = _yaw_quaternion(
+        torch.full(
+            (count,),
+            0.5 * math.pi,
+            dtype=torch.float32,
+            device=device,
+        )
+    )
+    local_position = torch.tensor(
+        [
+            [0.01, -0.02, -0.15],
+            [-0.01, 0.015, -0.15],
+            [0.02, 0.01, -0.15],
+            [-0.02, -0.01, -0.15],
+        ],
+        dtype=torch.float32,
+        device=device,
+    )
+    local_orientation = _yaw_quaternion(
+        torch.tensor(
+            [-2.4, -0.7, 0.8, 2.5],
+            dtype=torch.float32,
+            device=device,
+        )
+    )
+    object_position, object_orientation = combine_frame_transforms(
+        robot_1_position,
+        identity,
+        local_position,
+        local_orientation,
+    )
+
+    class FakeAsset:
+        def __init__(
+            self,
+            position: torch.Tensor,
+            orientation: torch.Tensor,
+        ) -> None:
+            self.data = SimpleNamespace(
+                root_pos_w=position.clone(),
+                root_quat_w=orientation.clone(),
+            )
+
+    class FakeObject(FakeAsset):
+        def write_root_pose_to_sim(
+            self,
+            pose: torch.Tensor,
+            *,
+            env_ids: torch.Tensor,
+        ) -> None:
+            self.data.root_pos_w[env_ids] = pose[:, :3]
+            self.data.root_quat_w[env_ids] = pose[:, 3:7]
+
+    env = SimpleNamespace(
+        num_envs=count,
+        device=device,
+        scene={
+            "robot_1": FakeAsset(robot_1_position, identity),
+            "robot_2": FakeAsset(
+                robot_2_position,
+                robot_2_orientation,
+            ),
+            "object": FakeObject(
+                object_position,
+                object_orientation,
+            ),
+        },
+    )
+    env_ids = torch.arange(count, device=device)
+    assign_balanced_handover_roles(env, env_ids)
+    place_object_in_assigned_giver_frame(env, env_ids)
+    giver_is_robot_1 = env._dr_anmar_forced_giver_is_robot_1
+    giver_position = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        robot_1_position,
+        robot_2_position,
+    )
+    giver_orientation = torch.where(
+        giver_is_robot_1.unsqueeze(-1),
+        identity,
+        robot_2_orientation,
+    )
+    actual_local_position, actual_local_orientation = (
+        subtract_frame_transforms(
+            giver_position,
+            giver_orientation,
+            env.scene["object"].data.root_pos_w,
+            env.scene["object"].data.root_quat_w,
+        )
+    )
+    position_error = torch.linalg.vector_norm(
+        actual_local_position - local_position,
+        dim=-1,
+    )
+    orientation_error = quat_error_magnitude(
+        actual_local_orientation,
+        local_orientation,
+    )
+    if float(position_error.max().item()) > 1.0e-6:
+        raise AssertionError(
+            "object placement changed the giver-local position distribution"
+        )
+    if float(orientation_error.max().item()) > 1.0e-6:
+        raise AssertionError(
+            "object placement changed the giver-local orientation distribution"
+        )
+    return {
+        "robot_1_giver_count": int(giver_is_robot_1.sum().item()),
+        "robot_2_giver_count": int((~giver_is_robot_1).sum().item()),
+        "maximum_local_position_error_m": float(
+            position_error.max().item()
+        ),
+        "maximum_local_orientation_error_rad": float(
+            orientation_error.max().item()
+        ),
+        "tested_nonidentity_robot_2_root_orientation": True,
+    }
+
+
 def _assert_yaw_equivariant_pickup(device: torch.device) -> dict:
     yaw = torch.tensor(
         [0.0, 0.5 * math.pi, math.pi, -0.5 * math.pi],
@@ -217,6 +362,9 @@ def main() -> int:
         "schema_version": "dranmar-frontier-invariants-1.0",
         "device": str(device),
         "balanced_roles": _assert_balanced_episode_zero_roles(device),
+        "role_conditioned_object_pose": (
+            _assert_role_conditioned_object_pose(device)
+        ),
         "yaw_equivariant_controller": _assert_yaw_equivariant_pickup(
             device
         ),
