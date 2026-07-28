@@ -2440,12 +2440,12 @@ def _train(args: argparse.Namespace, repo_root: Path) -> int:
                         "physics_owned_recovered_stable_presentation_with_"
                         "original_episode_deadline_and_complete_markov_state"
                     ),
-                    "options": [
-                        "continue",
-                        "reseat",
-                        "backoff",
-                    ],
-                    "option_success": "unchanged_retained_handover_terminal",
+                    "control": (
+                        "incumbent_plus_bounded_continuous_receiver_se3_"
+                        "residual"
+                    ),
+                    "discrete_trajectory_switches": [],
+                    "success": "unchanged_retained_handover_terminal",
                     "incumbent_checkpoint_frozen_and_active": True,
                     "optimizer_state_reset": True,
                     "optimizer_schedule": "fixed",
@@ -5559,6 +5559,21 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                 dtype=torch.int64,
                 device=env.unwrapped.device,
             ),
+            "deadline_residual_active_steps": torch.zeros(
+                (),
+                dtype=torch.int64,
+                device=env.unwrapped.device,
+            ),
+            "deadline_residual_norm_sum": torch.zeros(
+                (),
+                dtype=torch.float32,
+                device=env.unwrapped.device,
+            ),
+            "deadline_residual_norm_max": torch.zeros(
+                (),
+                dtype=torch.float32,
+                device=env.unwrapped.device,
+            ),
             "ever_deadline_reseat": torch.zeros_like(first_unresolved),
             "ever_deadline_backoff": torch.zeros_like(first_unresolved),
             "terminal_pickup_attempts": torch.zeros(
@@ -6400,6 +6415,11 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         "last_deadline_option_active",
                         None,
                     )
+                    residual_norm = getattr(
+                        policy_model,
+                        "last_deadline_receiver_residual_norm",
+                        None,
+                    )
                     if option_index is not None and option_active is not None:
                         counted_option = (
                             was_first_unresolved & option_active
@@ -6416,6 +6436,23 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                         first_handover_history[
                             "ever_deadline_backoff"
                         ] |= counted_option & (option_index == 2)
+                        if residual_norm is not None:
+                            counted_norm = residual_norm[counted_option]
+                            first_handover_history[
+                                "deadline_residual_active_steps"
+                            ] += counted_norm.numel()
+                            first_handover_history[
+                                "deadline_residual_norm_sum"
+                            ] += counted_norm.sum()
+                            if counted_norm.numel() > 0:
+                                first_handover_history[
+                                    "deadline_residual_norm_max"
+                                ] = torch.maximum(
+                                    first_handover_history[
+                                        "deadline_residual_norm_max"
+                                    ],
+                                    counted_norm.max(),
+                                )
                 obs, reward, dones, extras = env.step(actions)
                 term_values = {
                     name: termination_manager.get_term(name)
@@ -7739,6 +7776,36 @@ def _play(args: argparse.Namespace, repo_root: Path) -> int:
                             "ever_deadline_backoff"
                         ][first_completed].sum().item()
                     ),
+                    "deadline_receiver_residual": {
+                        "active_steps": int(
+                            first_handover_history[
+                                "deadline_residual_active_steps"
+                            ].item()
+                        ),
+                        "mean_normalized_l2": (
+                            float(
+                                first_handover_history[
+                                    "deadline_residual_norm_sum"
+                                ].item()
+                            )
+                            / int(
+                                first_handover_history[
+                                    "deadline_residual_active_steps"
+                                ].item()
+                            )
+                            if int(
+                                first_handover_history[
+                                    "deadline_residual_active_steps"
+                                ].item()
+                            )
+                            else 0.0
+                        ),
+                        "maximum_normalized_l2": float(
+                            first_handover_history[
+                                "deadline_residual_norm_max"
+                            ].item()
+                        ),
+                    },
                 },
                 "unresolved": int(first_unresolved.sum().item()),
             }

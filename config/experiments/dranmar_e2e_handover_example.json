@@ -448,7 +448,7 @@
     "qualification_boundary": "no_promotion_until_the_preregistered_aggregate_improvement_and_safety_gates_pass_on_fresh_held_out_populations"
   },
   "deadline_recovery_option_v10": {
-    "status": "implemented_awaiting_exact_zero_and_runtime_training",
+    "status": "rejected_discrete_switching_erased_recovered_successes",
     "initial_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
     "root_cause": "171_of_177_lifted_without_receiver_acquisition_failures_followed_pickup_recovery_and_reached_first_lift_about_128_steps_later_than_successes",
     "source_states": "physics_owned_recovered_stable_presentations_with_original_episode_deadline_and_complete_markov_state",
@@ -490,6 +490,22 @@
       "reason": "terminal_transfer_failure_penalized_physical_failures_but_not_unsuccessful_timeout_so_backoff_could_avoid_the_terminal_cost",
       "disposition": "reward_loophole_closed_and_run_rejected"
     },
+    "rejected_timeout_penalty_run": {
+      "training_num_envs": 1200,
+      "rollout_steps_per_env": 128,
+      "iterations": 30,
+      "simulated_frames": 4608000,
+      "development_seed": 2361,
+      "episodes": 600,
+      "incumbent_successes": 390,
+      "checkpoint_8_successes": 358,
+      "recovered_successes": 0,
+      "deadline_reseat_environments": 21,
+      "deadline_backoff_environments": 55,
+      "hard_safety_events": 0,
+      "reason": "closing_the_timeout_loophole_did_not_fix_the_discontinuous_option_selector_tiny_logits_still_replaced_complete_incumbent_trajectories_and_erased_recovered_successes",
+      "disposition": "architecture_rejected_not_promotable"
+    },
     "learned_authority": "receiver_se3_only_after_recovered_physically_qualified_presentation",
     "analytic_authority": [
       "giver_motion",
@@ -501,6 +517,35 @@
     "deadline_replay_contract": "restore_the_captured_episode_length_instead_of_granting_a_fresh_horizon",
     "evaluation_contract": "same_environment_contract_hash_same_seed_same_initial_state_population_hash_complete_first_terminal_population",
     "qualification_boundary": "no_performance_claim_until_exact_zero_equivalence_then_held_out_full_task_improvement"
+  },
+  "deadline_recovery_residual_v11": {
+    "status": "implemented_awaiting_exact_zero_and_runtime_training",
+    "initial_checkpoint_sha256": "9853a65f75933b1b07578228414c33c4913d83224b669dff44691dac4c1e7d6b",
+    "root_cause": "the_discrete_v10_option_changed_complete_trajectories_from_microscopic_logit_differences_and_destroyed_the_incumbent_recovery_path",
+    "source_states": "physics_owned_recovered_stable_presentations_with_original_episode_deadline_and_complete_markov_state",
+    "restore_probability": 0.98,
+    "num_envs": 1200,
+    "rollout_steps_per_env": 128,
+    "zero_impact_adapter": true,
+    "frozen_incumbent_policy": true,
+    "control": "incumbent_plus_bounded_continuous_receiver_se3_residual",
+    "discrete_trajectory_switches": [],
+    "learned_authority": "receiver_se3_only_after_recovered_physically_qualified_presentation",
+    "analytic_authority": [
+      "giver_motion",
+      "both_grippers",
+      "giver_release",
+      "success",
+      "hard_terminations"
+    ],
+    "anti_reward_hacking": [
+      "unsuccessful_timeout_cost_equals_success_value",
+      "original_episode_deadline_restored_from_cache",
+      "complete_first_terminal_population_evaluation",
+      "unchanged_physical_success_and_safety_contract"
+    ],
+    "evaluation_contract": "same_environment_contract_hash_same_seed_same_initial_state_population_hash_complete_first_terminal_population",
+    "qualification_boundary": "no_promotion_until_exact_zero_equivalence_and_held_out_full_task_improvement"
   },
   "architecture": {
     "actor": "frozen_pickup_lift_and_fixed_pose_presentation_teacher_plus_receiver_only_phase_specific_bounded_residual",

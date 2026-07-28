@@ -221,10 +221,10 @@ class NeedleHandoverRecoveryReceiverGraspRetainEnvCfg(
 
 
 @configclass
-class NeedleHandoverDeadlineRecoveryOptionEnvCfg(
+class NeedleHandoverDeadlineRecoveryResidualEnvCfg(
     NeedleHandoverRecoveryReceiverGraspRetainEnvCfg
 ):
-    """Learn recovery-only continue, re-seat, or backoff decisions."""
+    """Learn a bounded receiver residual under the original deadline."""
 
     def __post_init__(self):
         super().__post_init__()
@@ -238,6 +238,16 @@ class NeedleHandoverDeadlineRecoveryOptionEnvCfg(
             "retained_handover_from_recovered_presentation_under_original_"
             "episode_deadline"
         )
+        self.dr_anmar_deadline_recovery_control = (
+            "incumbent_plus_bounded_continuous_receiver_se3_residual"
+        )
+
+
+@configclass
+class NeedleHandoverDeadlineRecoveryOptionEnvCfg(
+    NeedleHandoverDeadlineRecoveryResidualEnvCfg
+):
+    """Backward-compatible alias for rejected v10 experiment artifacts."""
 
 
 @configclass

@@ -66,6 +66,16 @@ receives the same `-80` terminal-transfer penalty; a success completed on the
 last step is explicitly excluded. This changes learning credit only, not the
 environment's success or termination definitions.
 
+Closing that loophole did not rescue the architecture. A fresh
+4.61-million-frame run at 1,200 environments made the timeout penalty visible
+to PPO, but checkpoint 8 still completed only 358/600 retained handovers.
+It selected re-seat in 21 environments and backoff in 55, while recovered
+successes remained zero. The discrete selector is therefore rejected: very
+small logit differences can replace an entire incumbent trajectory, producing
+a control discontinuity much larger than the learned update that selected it.
+The v11 experiment removes that switch and retains only a bounded continuous
+receiver residual.
+
 ## Replay correction
 
 Previous recovered-state replay restored the simulator and logical Markov

@@ -236,6 +236,17 @@ def test_e2e_handover_experiment_is_isolated_and_physics_owned() -> None:
     assert "original_episode_deadline" in (
         deadline_recovery["source_states"]
     )
+    assert deadline_recovery["status"].startswith(
+        "rejected_discrete_switching"
+    )
+    continuous_recovery = contract["deadline_recovery_residual_v11"]
+    assert continuous_recovery["zero_impact_adapter"] is True
+    assert continuous_recovery["frozen_incumbent_policy"] is True
+    assert continuous_recovery["rollout_steps_per_env"] == 128
+    assert continuous_recovery["control"] == (
+        "incumbent_plus_bounded_continuous_receiver_se3_residual"
+    )
+    assert continuous_recovery["discrete_trajectory_switches"] == []
     assert contract["anti_reward_hacking"]["analytic_actions_at_inference"] is True
     assert contract["anti_reward_hacking"]["phase_progress_weight"] == 1.0
     assert contract["anti_reward_hacking"]["retained_success_weight"] == 80.0
@@ -331,8 +342,9 @@ def test_e2e_actor_role_normalizes_observations_and_actions() -> None:
     assert "configure_deadline_recovery_adaptation" in source
     assert "deadline_recovery_features" in source
     assert "deadline_option_selection" in source
-    assert "reseat_role_action" in source
-    assert "backoff_role_action" in source
+    assert "reseat_role_action" not in source
+    assert "backoff_role_action" not in source
+    assert "Always retaining the incumbent action" in source
     assert "deadline_recovery_residual_scale" in source
     assert "last_deadline_option_index" in source
     assert "presentation_qualified = raw[:, 103] >= 1.0" in source
@@ -580,6 +592,9 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert "NeedleHandoverDeadlineRecoveryOptionEnvCfg" in (
         environment_source
     )
+    assert "NeedleHandoverDeadlineRecoveryResidualEnvCfg" in (
+        environment_source
+    )
     assert '"restored_episode_length_buf"' in state_source
     assert (
         'env.episode_length_buf[target_env_ids] = receiver_cache['
@@ -612,6 +627,7 @@ def test_e2e_task_adds_native_contact_history_without_changing_success() -> None
     assert '"environment_runtime_contract_sha256"' in benchmark_source
     assert "configure_deadline_recovery_adaptation" in benchmark_source
     assert '"deadline_recovery_adaptation_contract"' in benchmark_source
+    assert '"discrete_trajectory_switches": []' in benchmark_source
     assert '"deadline_option_step_counts"' in benchmark_source
     assert '"joint_transfer_acquisition_adaptation_contract"' in (
         benchmark_source

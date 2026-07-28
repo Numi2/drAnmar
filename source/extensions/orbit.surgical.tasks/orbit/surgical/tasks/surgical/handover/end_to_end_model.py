@@ -462,7 +462,13 @@ class _TransferRefinementAdapter(nn.Module):
 
 
 class _DeadlineRecoveryAdapter(nn.Module):
-    """Choose continue, re-seat, or backoff plus bounded receiver SE(3)."""
+    """Produce an incumbent-preserving receiver SE(3) recovery residual.
+
+    The nine-row output is retained so checkpoints produced by the rejected
+    discrete-option experiment remain loadable.  Rows zero through two are
+    intentionally inert; rows three through eight command the bounded
+    continuous residual.
+    """
 
     def __init__(self) -> None:
         super().__init__()
@@ -475,32 +481,22 @@ class _DeadlineRecoveryAdapter(nn.Module):
         self.output = nn.Linear(64, 9)
         nn.init.zeros_(self.output.weight)
         nn.init.zeros_(self.output.bias)
-        self.register_buffer(
-            "continue_prior",
-            torch.zeros(3),
-            persistent=False,
-        )
 
     def forward(
         self,
         features: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         output = self.output(self.encoder(features))
-        option_logits = output[:, :3] + self.continue_prior
-        soft_selection = torch.softmax(option_logits, dim=-1)
-        hard_selection = torch.nn.functional.one_hot(
-            torch.argmax(option_logits, dim=-1),
-            num_classes=3,
-        ).to(output.dtype)
-        # At the all-zero initialization argmax deterministically chooses the
-        # first (continue) option. The tie keeps the forward pass exact while
-        # avoiding a large prior that PPO would need to overcome before it can
-        # exercise re-seat or backoff.
-        option_selection = (
-            hard_selection
-            + soft_selection
-            - soft_selection.detach()
+        # The discrete continue/re-seat/backoff selector was rejected: tiny
+        # logit changes switched complete trajectories and erased every
+        # recovered success. Always retaining the incumbent action makes the
+        # learned correction continuous, bounded, and exact at initialization.
+        option_selection = torch.zeros(
+            (output.shape[0], 3),
+            dtype=output.dtype,
+            device=output.device,
         )
+        option_selection[:, 0] = 1.0
         receiver_residual = torch.tanh(output[:, 3:9])
         return option_selection, receiver_residual
 
@@ -562,6 +558,7 @@ class EndToEndHandoverMLPModel(MLPModel):
             parameter.requires_grad_(False)
         self.last_deadline_option_index: torch.Tensor | None = None
         self.last_deadline_option_active: torch.Tensor | None = None
+        self.last_deadline_receiver_residual_norm: torch.Tensor | None = None
         self.recovery_receiver_reference_network: (
             _PhaseHeadedNetwork | None
         ) = None
@@ -1022,6 +1019,11 @@ class EndToEndHandoverMLPModel(MLPModel):
         deadline_role_residual = torch.zeros_like(
             learned_role_residual
         )
+        deadline_receiver_residual = torch.zeros(
+            (raw.shape[0], 6),
+            dtype=raw.dtype,
+            device=raw.device,
+        )
         if self.deadline_recovery_adaptation_enabled:
             role_observation = role_normalize_handover_observation(raw)
             (
@@ -1043,6 +1045,10 @@ class EndToEndHandoverMLPModel(MLPModel):
             dim=-1,
         ).detach()
         self.last_deadline_option_active = deadline_active.detach()
+        self.last_deadline_receiver_residual_norm = torch.linalg.vector_norm(
+            deadline_receiver_residual,
+            dim=-1,
+        ).detach()
         physical_residual = role_action_to_physical(
             learned_role_residual,
             raw[:, 82] > 0.5,
@@ -1084,42 +1090,6 @@ class EndToEndHandoverMLPModel(MLPModel):
             giver_residual_mask,
             receiver_residual_mask,
         ) = self.controller(raw)
-        if self.deadline_recovery_adaptation_enabled:
-            giver_is_robot_1 = raw[:, 82] > 0.5
-            base_role_action = physical_action_to_role(
-                base_action,
-                giver_is_robot_1,
-            )
-            reseat_role_action = base_role_action.clone()
-            reseat_role_action[:, 7:13] = 0.0
-            reseat_role_action[:, 9] = 0.10
-            reseat_role_action[:, 13] = 1.0
-            backoff_role_action = base_role_action.clone()
-            backoff_role_action[:, 7:13] = 0.0
-            backoff_role_action[:, 9] = 0.20
-            backoff_role_action[:, 13] = 1.0
-            option_candidates = torch.stack(
-                (
-                    base_role_action,
-                    reseat_role_action,
-                    backoff_role_action,
-                ),
-                dim=1,
-            )
-            selected_role_action = torch.sum(
-                deadline_option_selection.unsqueeze(-1)
-                * option_candidates,
-                dim=1,
-            )
-            selected_physical_action = role_action_to_physical(
-                selected_role_action,
-                giver_is_robot_1,
-            )
-            base_action = torch.where(
-                deadline_active.unsqueeze(-1),
-                selected_physical_action,
-                base_action,
-            )
         deadline_physical_residual = role_action_to_physical(
             deadline_role_residual,
             raw[:, 82] > 0.5,
@@ -1415,41 +1385,6 @@ class _EndToEndHandoverExport(nn.Module):
             giver_residual_mask,
             receiver_residual_mask,
         ) = self.controller(obs)
-        if self.deadline_recovery_adaptation_enabled:
-            base_role_action = physical_action_to_role(
-                base_action,
-                giver_is_robot_1,
-            )
-            reseat_role_action = base_role_action.clone()
-            reseat_role_action[:, 7:13] = 0.0
-            reseat_role_action[:, 9] = 0.10
-            reseat_role_action[:, 13] = 1.0
-            backoff_role_action = base_role_action.clone()
-            backoff_role_action[:, 7:13] = 0.0
-            backoff_role_action[:, 9] = 0.20
-            backoff_role_action[:, 13] = 1.0
-            option_candidates = torch.stack(
-                (
-                    base_role_action,
-                    reseat_role_action,
-                    backoff_role_action,
-                ),
-                dim=1,
-            )
-            selected_role_action = torch.sum(
-                deadline_option_selection.unsqueeze(-1)
-                * option_candidates,
-                dim=1,
-            )
-            selected_physical_action = role_action_to_physical(
-                selected_role_action,
-                giver_is_robot_1,
-            )
-            base_action = torch.where(
-                deadline_active.unsqueeze(-1),
-                selected_physical_action,
-                base_action,
-            )
         deadline_role_action_mask = torch.zeros_like(
             learned_role_residual,
             dtype=torch.bool,
